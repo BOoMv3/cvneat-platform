@@ -1,0 +1,380 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Variables CSS pour le thème */
+:root {
+  --primary-color: #000000;
+  --secondary-color: #f3f4f6;
+  --accent-color: #3b82f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --background-primary: #ffffff;
+  --background-secondary: #f9fafb;
+  --border-color: #e5e7eb;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Mode sombre */
+.dark {
+  --primary-color: #ffffff;
+  --secondary-color: #1f2937;
+  --accent-color: #60a5fa;
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --background-primary: #111827;
+  --background-secondary: #1f2937;
+  --border-color: #374151;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Transitions globales */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  /* Optimisations mobile */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Optimisations pour mobile */
+@media (max-width: 768px) {
+  /* Améliorer la lisibilité sur mobile */
+  body {
+    font-size: 16px; /* Évite le zoom sur iOS */
+  }
+  
+  /* Optimiser les boutons tactiles */
+  button, [role="button"] {
+    min-height: 44px; /* Taille minimale recommandée par Apple */
+    min-width: 44px;
+  }
+  
+  /* Améliorer l'espacement des liens */
+  a {
+    padding: 8px 0;
+  }
+  
+  /* Optimiser les inputs */
+  input, select, textarea {
+    font-size: 16px; /* Évite le zoom sur iOS */
+    padding: 12px;
+  }
+  
+  /* Améliorer la navigation tactile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Classes utilitaires personnalisées */
+@layer components {
+  .btn-primary {
+    @apply bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+  }
+
+  .input-primary {
+    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+  }
+
+  .badge-error {
+    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+  }
+
+  .badge-info {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200;
+  }
+
+  /* Classes spécifiques mobile */
+  .mobile-optimized {
+    @apply touch-manipulation select-none;
+  }
+  
+  .mobile-card {
+    @apply bg-white rounded-xl shadow-sm overflow-hidden transform transition-all duration-200;
+  }
+  
+  .mobile-button {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  .mobile-input {
+    @apply text-base px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent;
+  }
+
+  /* Animations */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in;
+  }
+
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .bounce-in {
+    animation: bounceIn 0.6s ease-out;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-gray-300 border-t-blue-600;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 dark:bg-gray-700 rounded;
+  }
+
+  /* Gradient backgrounds */
+  .gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .gradient-secondary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  /* Responsive utilities */
+  .container-responsive {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Focus styles */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-secondary);
+  }
+  
+  /* Masquer la scrollbar sur mobile */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Optimisations pour les modales mobiles */
+  .mobile-modal {
+    @apply fixed inset-0 z-50 bg-black bg-opacity-50 flex items-end;
+  }
+  
+  .mobile-modal-content {
+    @apply bg-white w-full max-h-[80vh] rounded-t-2xl overflow-hidden;
+  }
+  
+  /* Optimisations pour les listes mobiles */
+  .mobile-list {
+    @apply space-y-2;
+  }
+  
+  .mobile-list-item {
+    @apply p-3 bg-gray-50 rounded-lg flex items-center space-x-3;
+  }
+  
+  /* Optimisations pour les formulaires mobiles */
+  .mobile-form {
+    @apply space-y-4;
+  }
+  
+  .mobile-form-group {
+    @apply space-y-2;
+  }
+  
+  .mobile-form-label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300;
+  }
+  
+  .mobile-form-input {
+    @apply w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent;
+  }
+}
+
+/* Animations keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* PWA specific styles */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    border: 2px solid currentColor;
+  }
+  
+  .card {
+    border: 2px solid var(--border-color);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Optimisations pour les écrans tactiles */
+@media (hover: none) and (pointer: coarse) {
+  /* Désactiver les effets hover sur mobile */
+  .hover\:scale-\[1\.02\]:hover {
+    transform: none;
+  }
+  
+  .hover\:shadow-md:hover {
+    box-shadow: inherit;
+  }
+  
+  .hover\:bg-gray-800:hover {
+    background-color: inherit;
+  }
+  
+  /* Améliorer les interactions tactiles */
+  .touch-target {
+    position: relative;
+  }
+  
+  .touch-target::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    bottom: -8px;
+    left: -8px;
+  }
+}
+
+/* Optimisations pour les petits écrans */
+@media (max-width: 480px) {
+  .container-responsive {
+    @apply px-3;
+  }
+  
+  .mobile-card {
+    @apply rounded-lg;
+  }
+  
+  .mobile-button {
+    @apply min-h-[48px] min-w-[48px];
+  }
+}
+
+@layer base {
+  body {
+    @apply antialiased text-gray-900;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+} 
