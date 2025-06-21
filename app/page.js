@@ -53,6 +53,22 @@ export default function Home() {
     fetchRestaurants();
   }, []);
 
+  // Charger le panier depuis localStorage au montage côté client pour éviter les erreurs d'hydratation
+  useEffect(() => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        const cartData = JSON.parse(savedCart);
+        if (cartData && Array.isArray(cartData.items)) {
+          setCart(cartData.items);
+        }
+      } catch (e) {
+        console.error("Impossible de parser le panier depuis localStorage", e);
+        localStorage.removeItem('cart'); // Nettoyer le panier corrompu
+      }
+    }
+  }, []);
+
   // Ajout d'un effet pour fermer la modale avec Échap
   useEffect(() => {
     if (!isModalOpen) return;

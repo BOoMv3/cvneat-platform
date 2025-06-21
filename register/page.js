@@ -69,6 +69,28 @@ export default function Register() {
     }));
   };
 
+  if (success) {
+    return (
+      <>
+        <Navbar />
+        <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
+          <div className="w-full max-w-md bg-white rounded-lg shadow p-8 text-center">
+            <h1 className="text-2xl font-bold mb-4 text-green-600">Inscription presque terminée !</h1>
+            <p className="text-gray-700">
+              Nous vous avons envoyé un e-mail à <strong className="font-semibold">{formData.email}</strong>.
+            </p>
+            <p className="mt-4 text-gray-700">
+              Veuillez cliquer sur le lien dans cet e-mail pour activer votre compte.
+            </p>
+            <p className="mt-6 text-sm text-gray-500">
+              (Pensez à vérifier votre dossier de courriers indésirables ou spam)
+            </p>
+          </div>
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <Navbar />
@@ -76,7 +98,6 @@ export default function Register() {
         <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Inscription</h1>
           {errors.global && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{errors.global}</div>}
-          {success && <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">{success}</div>}
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-4">
               <FormInput
