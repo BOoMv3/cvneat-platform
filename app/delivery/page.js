@@ -1,7 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import AuthGuard from '../../components/AuthGuard';
-import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
 
 export default function DeliveryDashboard() {
@@ -69,7 +67,6 @@ export default function DeliveryDashboard() {
   if (loading) {
     return (
       <AuthGuard requiredRole="delivery">
-        <Navbar />
         <main className="min-h-screen bg-gray-50 p-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse">
@@ -91,7 +88,6 @@ export default function DeliveryDashboard() {
 
   return (
     <AuthGuard requiredRole="delivery">
-      <Navbar />
       <main className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">

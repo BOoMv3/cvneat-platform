@@ -16,7 +16,11 @@ import {
   FaShoppingCart,
   FaTimes,
   FaPlus,
-  FaMinus
+  FaMinus,
+  FaUser,
+  FaSignInAlt,
+  FaUserPlus,
+  FaGift
 } from 'react-icons/fa';
 
 export default function Home() {
@@ -34,8 +38,35 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('recommended');
   const [showFilters, setShowFilters] = useState(false);
   const [favorites, setFavorites] = useState([]);
+  const [user, setUser] = useState(null);
+  const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
+    // Vérifier l'authentification
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      if (user) {
+        // Récupérer les points de fidélité
+        try {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('points_fidelite')
+            .eq('id', user.id)
+            .single();
+          
+          if (userData) {
+            setUserPoints(userData.points_fidelite || 0);
+          }
+        } catch (error) {
+          console.error('Erreur récupération points:', error);
+        }
+      }
+    };
+
+    checkAuth();
+
     const fetchRestaurants = async () => {
       try {
         console.log('Début du chargement des restaurants...');
@@ -117,6 +148,13 @@ export default function Home() {
   };
 
   const handleRestaurantClick = async (restaurant) => {
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      alert('Vous devez être connecté pour commander. Veuillez vous inscrire ou vous connecter.');
+      router.push('/login');
+      return;
+    }
+
     try {
       setMenuLoading(true);
       setError(null);
@@ -154,7 +192,66 @@ export default function Home() {
     }
   };
 
-  const addToCart = (item) => {
+  const addToCart = async (item) => {
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      alert('Vous devez être connecté pour ajouter des articles au panier.');
+      router.push('/login');
+      return;
+    }
+
+    // Calculer les frais de livraison si c'est le premier article
+    let fraisLivraison = 2.50; // Prix par défaut pour Ganges
+    
+    if (cart.length === 0 && selectedRestaurant) {
+      try {
+        // Récupérer l'adresse de l'utilisateur depuis son profil
+        const { data: userData } = await supabase
+          .from('users')
+          .select('adresse')
+          .eq('id', user.id)
+          .single();
+
+        if (userData?.adresse) {
+          const response = await fetch('/api/delivery/calculate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              restaurantAddress: selectedRestaurant.adresse || 'Ganges',
+              deliveryAddress: userData.adresse,
+              orderAmount: cartTotal + item.price
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.livrable) {
+              fraisLivraison = data.frais_livraison;
+            } else {
+              alert(`Livraison impossible : ${data.message}`);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erreur calcul frais livraison:', error);
+        // Utiliser le prix par défaut en cas d'erreur
+      }
+    } else if (cart.length > 0) {
+      // Récupérer les frais de livraison existants
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        try {
+          const cartData = JSON.parse(savedCart);
+          fraisLivraison = cartData.frais_livraison || 2.50;
+        } catch (e) {
+          console.error('Erreur lecture panier:', e);
+        }
+      }
+    }
+
     setCart(prevCart => {
       const existingItem = prevCart.find(i => i.id === item.id);
       let newCart;
@@ -168,7 +265,8 @@ export default function Home() {
       
       const cartData = {
         items: newCart,
-        restaurant: selectedRestaurant
+        restaurant: selectedRestaurant,
+        frais_livraison: fraisLivraison
       };
       localStorage.setItem('cart', JSON.stringify(cartData));
       
@@ -179,9 +277,23 @@ export default function Home() {
   const removeFromCart = (itemId) => {
     setCart(prevCart => {
       const newCart = prevCart.filter(item => item.id !== itemId);
+      
+      // Récupérer les frais de livraison existants
+      let fraisLivraison = 2.50;
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        try {
+          const cartData = JSON.parse(savedCart);
+          fraisLivraison = cartData.frais_livraison || 2.50;
+        } catch (e) {
+          console.error('Erreur lecture panier:', e);
+        }
+      }
+      
       const cartData = {
         items: newCart,
-        restaurant: selectedRestaurant
+        restaurant: selectedRestaurant,
+        frais_livraison: fraisLivraison
       };
       localStorage.setItem('cart', JSON.stringify(cartData));
       return newCart;
@@ -197,9 +309,23 @@ export default function Home() {
       const newCart = prevCart.map(item =>
         item.id === itemId ? { ...item, quantity } : item
       );
+      
+      // Récupérer les frais de livraison existants
+      let fraisLivraison = 2.50;
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        try {
+          const cartData = JSON.parse(savedCart);
+          fraisLivraison = cartData.frais_livraison || 2.50;
+        } catch (e) {
+          console.error('Erreur lecture panier:', e);
+        }
+      }
+      
       const cartData = {
         items: newCart,
-        restaurant: selectedRestaurant
+        restaurant: selectedRestaurant,
+        frais_livraison: fraisLivraison
       };
       localStorage.setItem('cart', JSON.stringify(cartData));
       return newCart;
@@ -211,6 +337,7 @@ export default function Home() {
       const newFavorites = prev.includes(restaurantId)
         ? prev.filter(id => id !== restaurantId)
         : [...prev, restaurantId];
+      
       localStorage.setItem('favorites', JSON.stringify(newFavorites));
       return newFavorites;
     });
@@ -218,12 +345,12 @@ export default function Home() {
 
   const categories = [
     { id: 'all', name: 'Tous', icon: '🍽️' },
-    { id: 'french', name: 'Français', icon: '🍷' },
-    { id: 'italian', name: 'Italien', icon: '🍕' },
-    { id: 'japanese', name: 'Japonais', icon: '🍱' },
-    { id: 'indian', name: 'Indien', icon: '🍛' },
-    { id: 'fast-food', name: 'Fast-Food', icon: '🍔' },
-    { id: 'vegetarian', name: 'Végétarien', icon: '🥗' },
+    { id: 'pizza', name: 'Pizza', icon: '🍕' },
+    { id: 'burger', name: 'Burgers', icon: '🍔' },
+    { id: 'sushi', name: 'Sushi', icon: '🍣' },
+    { id: 'salade', name: 'Salades', icon: '🥗' },
+    { id: 'dessert', name: 'Desserts', icon: '🍰' },
+    { id: 'boisson', name: 'Boissons', icon: '🥤' }
   ];
 
   // Filtrage et tri des restaurants
@@ -254,7 +381,23 @@ export default function Home() {
       }
     });
 
+  // Récupérer les frais de livraison depuis le localStorage
+  const getFraisLivraison = () => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        const cartData = JSON.parse(savedCart);
+        return cartData.frais_livraison || 2.50;
+      } catch (e) {
+        console.error('Erreur lecture frais livraison:', e);
+      }
+    }
+    return 2.50; // Prix par défaut pour Ganges
+  };
+
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const fraisLivraison = getFraisLivraison();
+  const totalAvecLivraison = cartTotal + fraisLivraison;
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   if (error) {
@@ -277,48 +420,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header avec navigation */}
-      <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-8">
-              <Link href="/" className="text-2xl font-bold text-blue-600">
-                CVNeat
-              </Link>
-              <nav className="hidden md:flex space-x-6">
-                <Link href="/restaurants" className="text-gray-600 hover:text-blue-600 transition-colors">
-                  Restaurants
-                </Link>
-                <Link href="/devenir-partenaire" className="text-gray-600 hover:text-blue-600 transition-colors">
-                  Devenir partenaire
-                </Link>
-                <Link href="/cgv" className="text-gray-600 hover:text-blue-600 transition-colors">
-                  CGV
-                </Link>
-              </nav>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {cartItemCount > 0 && (
-                <button
-                  onClick={() => router.push('/panier')}
-                  className="relative bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
-                >
-                  <FaShoppingCart className="h-4 w-4" />
-                  <span>{cartItemCount} articles</span>
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartItemCount}
-                  </span>
-                </button>
-              )}
-              <Link href="/login" className="text-gray-600 hover:text-blue-600 transition-colors">
-                Connexion
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <section className="relative h-[600px] overflow-hidden">
         <Image
@@ -339,28 +440,55 @@ export default function Home() {
               Livraison rapide et repas délicieux à votre porte
             </p>
             
-            {/* Barre de recherche */}
-            <div className="bg-white rounded-lg p-2 flex items-center max-w-md">
-              <FaSearch className="h-5 w-5 text-gray-400 ml-3" />
-              <input
-                type="text"
-                placeholder="Rechercher un restaurant..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 py-2 outline-none text-gray-900"
-              />
+            {/* Barre de recherche améliorée */}
+            <div className="bg-white rounded-xl p-4 shadow-lg max-w-lg">
+              <div className="flex items-center space-x-3">
+                <FaSearch className="h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Nom du restaurant, cuisine, plat..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 px-3 py-2 outline-none text-gray-900 placeholder-gray-500"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <FaTimes className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Suggestions rapides */}
+              {searchTerm.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <div className="flex flex-wrap gap-2">
+                    {['Pizza', 'Burger', 'Sushi', 'Salade'].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => setSearchTerm(suggestion)}
+                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="flex gap-4 mt-6">
               <button 
                 onClick={() => router.push('/restaurants')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
               >
                 Commander maintenant
               </button>
               <button 
                 onClick={() => router.push('/restaurants')}
-                className="bg-white hover:bg-gray-100 text-blue-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                className="bg-white hover:bg-gray-100 text-orange-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
               >
                 Voir les restaurants
               </button>
@@ -623,11 +751,23 @@ export default function Home() {
                         ))}
                         
                         <div className="border-t pt-4">
-                          <div className="flex justify-between items-center mb-4">
-                            <span className="text-lg font-semibold text-gray-900">Total</span>
-                            <span className="text-2xl font-bold text-blue-600">
-                              {cartTotal.toFixed(2)}€
-                            </span>
+                          <div className="space-y-2 mb-4">
+                            <div className="flex justify-between items-center text-gray-600">
+                              <span>Sous-total</span>
+                              <span>{cartTotal.toFixed(2)}€</span>
+                            </div>
+                            <div className="flex justify-between items-center text-gray-600">
+                              <span>Frais de livraison</span>
+                              <span>{fraisLivraison.toFixed(2)}€</span>
+                            </div>
+                            <div className="border-t pt-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-lg font-semibold text-gray-900">Total</span>
+                                <span className="text-2xl font-bold text-blue-600">
+                                  {totalAvecLivraison.toFixed(2)}€
+                                </span>
+                              </div>
+                            </div>
                           </div>
                           <button
                             onClick={() => {

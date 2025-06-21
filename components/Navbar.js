@@ -4,10 +4,21 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
+import { 
+  FaShoppingCart, 
+  FaUser, 
+  FaSignInAlt, 
+  FaUserPlus, 
+  FaGift,
+  FaSignOutAlt,
+  FaUtensils
+} from 'react-icons/fa';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [userPoints, setUserPoints] = useState(0);
+  const [cartItemCount, setCartItemCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -17,95 +28,156 @@ export default function Navbar() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
+
+    // Charger le panier depuis localStorage
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        const cartData = JSON.parse(savedCart);
+        if (cartData && Array.isArray(cartData.items)) {
+          setCartItemCount(cartData.items.reduce((total, item) => total + item.quantity, 0));
+        }
+      } catch (e) {
+        console.error("Impossible de parser le panier depuis localStorage", e);
+      }
+    }
+
     return () => {
       listener?.subscription.unsubscribe();
     };
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      fetchUserPoints();
+    }
+  }, [user]);
+
+  const fetchUserPoints = async () => {
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('points_fidelite')
+        .eq('id', user.id)
+        .single();
+      
+      if (userData) {
+        setUserPoints(userData.points_fidelite || 0);
+      }
+    } catch (error) {
+      console.error('Erreur récupération points:', error);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setUserPoints(0);
     router.push('/');
   };
 
   return (
-    <nav className="bg-white shadow-sm">
-      <div className="container mx-auto px-4">
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="text-2xl font-bold text-black">
-            CVNeat
+          {/* Logo CVN'EAT */}
+          <Link href="/" className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                  <FaUtensils className="h-5 w-5 text-orange-600" />
+                </div>
+              </div>
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-3 border-white shadow-md animate-pulse"></div>
+              <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white"></div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight">
+                CVN'EAT
+              </span>
+              <span className="text-xs text-gray-500 -mt-1 font-medium">Excellence culinaire</span>
+            </div>
           </Link>
 
           {/* Navigation Links - Desktop */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link href="/restaurants" className="text-gray-600 hover:text-black">
+            <Link href="/restaurants" className="text-gray-700 hover:text-orange-600 transition-colors">
               Restaurants
             </Link>
-            <Link href="/categories" className="text-gray-600 hover:text-black">
+            <Link href="/delivery-zones" className="text-gray-700 hover:text-orange-600 transition-colors">
+              Zones de livraison
+            </Link>
+            <Link href="/categories" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
               Catégories
             </Link>
-            <Link href="/devenir-partenaire" className="text-gray-600 hover:text-black">
+            <Link href="/devenir-partenaire" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
               Devenir partenaire
             </Link>
           </div>
 
           {/* Right Side - Desktop */}
           <div className="hidden md:flex items-center space-x-4">
-            <button
-              onClick={() => router.push('/panier')}
-              className="flex items-center space-x-2 text-gray-600 hover:text-black"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {/* Points de fidélité */}
+            {user && (
+              <div className="flex items-center space-x-2 bg-yellow-100 px-3 py-2 rounded-lg">
+                <FaGift className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm font-medium text-yellow-800">{userPoints} points</span>
+              </div>
+            )}
+            
+            {/* Panier */}
+            {cartItemCount > 0 && (
+              <button
+                onClick={() => router.push('/panier')}
+                className="relative bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-orange-700 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <span>Panier</span>
-            </button>
+                <FaShoppingCart className="h-4 w-4" />
+                <span>{cartItemCount} articles</span>
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              </button>
+            )}
+            
+            {/* Boutons de connexion/inscription */}
             {user ? (
-              <>
-                <Link href="/profile" className="text-gray-600 hover:text-black">
-                  Mon profil
+              <div className="flex items-center space-x-3">
+                <Link href="/profil" className="flex items-center space-x-2 text-gray-600 hover:text-orange-600 transition-colors">
+                  <FaUser className="h-4 w-4" />
+                  <span>Profil</span>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600"
+                  className="flex items-center space-x-2 text-gray-600 hover:text-red-600 transition-colors"
                 >
-                  Déconnexion
+                  <FaSignOutAlt className="h-4 w-4" />
+                  <span>Déconnexion</span>
                 </button>
-              </>
+              </div>
             ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-gray-600 hover:text-black"
+              <div className="flex items-center space-x-3">
+                <Link 
+                  href="/login" 
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Connexion
+                  <FaSignInAlt className="h-4 w-4" />
+                  <span>Connexion</span>
                 </Link>
-                <Link
-                  href="/inscription"
-                  className="bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800"
+                <Link 
+                  href="/register" 
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  Inscription
+                  <FaUserPlus className="h-4 w-4" />
+                  <span>Inscription</span>
                 </Link>
-              </>
+              </div>
             )}
           </div>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden text-gray-600 hover:text-black"
+            className="md:hidden text-gray-600 hover:text-orange-600"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -135,57 +207,65 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4">
+          <div className="md:hidden py-4 border-t">
             <div className="flex flex-col space-y-4">
+              {/* Points de fidélité mobile */}
+              {user && (
+                <div className="flex items-center space-x-2 bg-yellow-100 px-3 py-2 rounded-lg">
+                  <FaGift className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800">{userPoints} points de fidélité</span>
+                </div>
+              )}
+
               <Link
                 href="/restaurants"
-                className="text-gray-600 hover:text-black"
+                className="text-gray-600 hover:text-orange-600 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Restaurants
               </Link>
               <Link
+                href="/delivery-zones"
+                className="text-gray-600 hover:text-orange-600 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Zones de livraison
+              </Link>
+              <Link
                 href="/categories"
-                className="text-gray-600 hover:text-black"
+                className="text-gray-600 hover:text-orange-600 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Catégories
               </Link>
               <Link
                 href="/devenir-partenaire"
-                className="text-gray-600 hover:text-black"
+                className="text-gray-600 hover:text-orange-600 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Devenir partenaire
               </Link>
-              <button
-                onClick={() => {
-                  router.push('/panier');
-                  setIsMenuOpen(false);
-                }}
-                className="flex items-center space-x-2 text-gray-600 hover:text-black"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+              
+              {/* Panier mobile */}
+              {cartItemCount > 0 && (
+                <button
+                  onClick={() => {
+                    router.push('/panier');
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-orange-600 transition-colors"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-                <span>Panier</span>
-              </button>
+                  <FaShoppingCart className="h-4 w-4" />
+                  <span>Panier ({cartItemCount} articles)</span>
+                </button>
+              )}
+
+              {/* Boutons mobile */}
               {user ? (
                 <>
                   <Link
-                    href="/profile"
-                    className="text-gray-600 hover:text-black"
+                    href="/profil"
+                    className="text-gray-600 hover:text-orange-600 transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Mon profil
@@ -195,28 +275,28 @@ export default function Navbar() {
                       handleLogout();
                       setIsMenuOpen(false);
                     }}
-                    className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 text-center"
+                    className="text-red-600 hover:text-red-700 transition-colors text-left"
                   >
                     Déconnexion
                   </button>
                 </>
               ) : (
-                <>
+                <div className="flex flex-col space-y-2">
                   <Link
                     href="/login"
-                    className="text-gray-600 hover:text-black"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Connexion
                   </Link>
                   <Link
-                    href="/inscription"
-                    className="bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 text-center"
+                    href="/register"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-center"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Inscription
                   </Link>
-                </>
+                </div>
               )}
             </div>
           </div>
