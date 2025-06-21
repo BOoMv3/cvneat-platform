@@ -12,8 +12,8 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         *,
-        restaurants(nom, adresse),
-        users(nom, prenom, email, telephone)
+        restaurant:restaurants(nom, adresse),
+        customer:users(nom, prenom, email, telephone)
       `)
       .eq('livreur_id', deliveryId)
       .in('statut', ['en_livraison', 'pret_a_livrer'])
@@ -36,10 +36,10 @@ export async function GET(request) {
     // Formater les données
     const formattedOrder = {
       id: order.id,
-      restaurant_nom: order.restaurants?.nom || 'Restaurant inconnu',
-      restaurant_adresse: order.restaurants?.adresse || 'Adresse inconnue',
-      customer_name: `${order.users?.prenom || ''} ${order.users?.nom || ''}`.trim(),
-      customer_phone: order.users?.telephone || '',
+      restaurant_nom: order.restaurant?.nom || 'Restaurant inconnu',
+      restaurant_adresse: order.restaurant?.adresse || 'Adresse inconnue',
+      customer_name: `${order.customer?.prenom || ''} ${order.customer?.nom || ''}`.trim(),
+      customer_phone: order.customer?.telephone || '',
       delivery_address: order.adresse_livraison,
       total: order.montant_total,
       delivery_fee: order.frais_livraison,

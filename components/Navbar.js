@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
+import { safeLocalStorage } from '../lib/localStorage';
 import { 
   FaShoppingCart, 
   FaUser, 
@@ -22,52 +23,39 @@ export default function Navbar() {
   const router = useRouter();
 
   useEffect(() => {
-    const session = supabase.auth.getSession().then(({ data }) => {
-      setUser(data?.session?.user || null);
-    });
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role, points_fidelite')
+          .eq('id', session.user.id)
+          .single();
+        if(userData) {
+          setUserPoints(userData.points_fidelite || 0);
+        }
+      }
+    };
+
+    const loadCart = () => {
+      const savedCart = safeLocalStorage.getJSON('cart');
+      if (savedCart) {
+        setCartItemCount(savedCart.items.reduce((total, item) => total + item.quantity, 0));
+      }
+    };
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
 
-    // Charger le panier depuis localStorage
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const cartData = JSON.parse(savedCart);
-        if (cartData && Array.isArray(cartData.items)) {
-          setCartItemCount(cartData.items.reduce((total, item) => total + item.quantity, 0));
-        }
-      } catch (e) {
-        console.error("Impossible de parser le panier depuis localStorage", e);
-      }
-    }
+    checkUser();
+    loadCart();
 
     return () => {
       listener?.subscription.unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (user) {
-      fetchUserPoints();
-    }
-  }, [user]);
-
-  const fetchUserPoints = async () => {
-    try {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('points_fidelite')
-        .eq('id', user.id)
-        .single();
-      
-      if (userData) {
-        setUserPoints(userData.points_fidelite || 0);
-      }
-    } catch (error) {
-      console.error('Erreur récupération points:', error);
-    }
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

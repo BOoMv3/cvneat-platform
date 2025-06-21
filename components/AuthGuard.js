@@ -1,60 +1,61 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../lib/supabase';
+import { safeLocalStorage } from '../lib/localStorage';
 
-export default function AuthGuard({ children, allowedRoles = [] }) {
+export default function AuthGuard({ children, requiredRole }) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [status, setStatus] = useState('loading');
 
   useEffect(() => {
     const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('Non authentifié');
-        }
-
-        const response = await fetch('/api/auth/verify', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Token invalide');
-        }
-
-        const data = await response.json();
-        
-        if (allowedRoles.length > 0 && !allowedRoles.includes(data.role)) {
-          throw new Error('Non autorisé');
-        }
-
-        setIsAuthorized(true);
-      } catch (error) {
-        console.error('Erreur d\'authentification:', error);
-        localStorage.removeItem('token');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        // Pas d'utilisateur connecte
         router.push('/login');
-      } finally {
-        setIsLoading(false);
+        return;
       }
+
+      // Recuperer le role de l'utilisateur
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error || !userData) {
+        // Erreur ou pas de profil
+        router.push('/login');
+        return;
+      }
+
+      const userRoles = userData.role ? userData.role.split(',') : [];
+      if (requiredRole && !userRoles.includes(requiredRole)) {
+        // Mauvais role
+        router.push('/'); // Rediriger vers la page d'accueil
+        return;
+      }
+      
+      // Tout est bon
+      setStatus('authenticated');
     };
 
     checkAuth();
-  }, [router, allowedRoles]);
+  }, [requiredRole, router]);
 
-  if (isLoading) {
+  if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  if (!isAuthorized) {
-    return null;
+  if (status === 'authenticated') {
+    return <>{children}</>;
   }
 
-  return children;
+  return null;
 } 

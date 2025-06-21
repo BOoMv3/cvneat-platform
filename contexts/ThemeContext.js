@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
+import { safeLocalStorage } from '../../lib/localStorage';
 
 const ThemeContext = createContext();
 
@@ -13,34 +14,28 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(false);
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    // Récupérer le thème depuis localStorage
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    setIsDark(savedTheme === 'dark' || (!savedTheme && prefersDark));
+    const savedTheme = safeLocalStorage.getItem('theme');
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    }
   }, []);
 
-  useEffect(() => {
-    // Appliquer le thème au document
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-
   const toggleTheme = () => {
-    setIsDark(!isDark);
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    safeLocalStorage.setItem('theme', newTheme);
   };
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
-}; 
+};
+
+export default ThemeContext; 
