@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabase';
 export async function GET() {
   const { data, error } = await supabase
     .from('restaurants')
-    .select('id, nom, adresse, type_cuisine, image_url, frais_livraison')
+    .select('id, nom, adresse, type_cuisine, image_url, frais_livraison, note, ouvert, telephone')
     .eq('status', 'active');
 
   if (error) {
