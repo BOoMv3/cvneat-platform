@@ -1,26 +1,22 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
+// Récupérer les messages d'une commande
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const deliveryId = 'current-user-id'; // À remplacer par l'ID réel
     const orderId = searchParams.get('orderId');
 
     if (!orderId) {
       return NextResponse.json(
-        { error: 'ID commande requis' },
+        { error: 'ID de commande requis' },
         { status: 400 }
       );
     }
 
-    // Récupérer les messages pour cette commande
     const { data: messages, error } = await supabase
       .from('delivery_messages')
-      .select(`
-        *,
-        users(nom, prenom)
-      `)
+      .select('*')
       .eq('order_id', orderId)
       .order('created_at', { ascending: true });
 
@@ -32,7 +28,7 @@ export async function GET(request) {
       );
     }
 
-    return NextResponse.json(messages || []);
+    return NextResponse.json({ messages: messages || [] });
   } catch (error) {
     console.error('Erreur API messages:', error);
     return NextResponse.json(
@@ -42,41 +38,25 @@ export async function GET(request) {
   }
 }
 
+// Envoyer un nouveau message
 export async function POST(request) {
   try {
-    const { orderId, message, senderType } = await request.json();
-    const deliveryId = 'current-user-id'; // À remplacer par l'ID réel
+    const body = await request.json();
+    const { order_id, message, sender_type } = body;
 
-    if (!orderId || !message || !senderType) {
+    if (!order_id || !message || !sender_type) {
       return NextResponse.json(
-        { error: 'ID commande, message et type d\'expéditeur requis' },
+        { error: 'Tous les champs sont requis' },
         { status: 400 }
       );
     }
 
-    // Vérifier que la commande appartient au livreur
-    const { data: order, error: orderError } = await supabase
-      .from('commandes')
-      .select('*')
-      .eq('id', orderId)
-      .eq('livreur_id', deliveryId)
-      .single();
-
-    if (orderError || !order) {
-      return NextResponse.json(
-        { error: 'Commande non trouvée ou non autorisée' },
-        { status: 403 }
-      );
-    }
-
-    // Créer le message
     const { data: newMessage, error } = await supabase
       .from('delivery_messages')
       .insert({
-        order_id: orderId,
-        sender_id: deliveryId,
-        sender_type: senderType, // 'delivery' ou 'customer'
-        message: message,
+        order_id,
+        message,
+        sender_type,
         created_at: new Date().toISOString()
       })
       .select()
@@ -90,10 +70,7 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      message: newMessage
-    });
+    return NextResponse.json(newMessage);
   } catch (error) {
     console.error('Erreur API envoi message:', error);
     return NextResponse.json(

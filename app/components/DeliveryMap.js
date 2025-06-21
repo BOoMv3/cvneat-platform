@@ -1,255 +1,108 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { FaMapMarkerAlt, FaTruck, FaUser } from 'react-icons/fa';
+import { useState, useEffect, useRef } from 'react';
+import { FaMapMarkerAlt, FaRoute, FaClock } from 'react-icons/fa';
 
-export default function DeliveryMap({ 
-  restaurantAddress, 
-  deliveryAddress, 
-  deliveryId,
-  orderId 
-}) {
+export default function DeliveryMap({ currentOrder, deliveryAddress }) {
+  const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef(null);
-  const [map, setMap] = useState(null);
-  const [markers, setMarkers] = useState([]);
-  const [route, setRoute] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Charger Leaflet dynamiquement
-    const loadLeaflet = async () => {
-      if (typeof window !== 'undefined') {
-        const L = await import('leaflet');
-        await import('leaflet/dist/leaflet.css');
-        
-        if (!mapRef.current) return;
+    // Simuler le chargement de la carte
+    const timer = setTimeout(() => {
+      setMapLoaded(true);
+    }, 1000);
 
-        // Initialiser la carte
-        const mapInstance = L.map(mapRef.current).setView([48.8566, 2.3522], 13); // Paris par défaut
-
-        // Ajouter la couche OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors'
-        }).addTo(mapInstance);
-
-        setMap(mapInstance);
-        setLoading(false);
-
-        // Géocoder les adresses
-        await geocodeAddresses(L, mapInstance);
-      }
-    };
-
-    loadLeaflet();
+    return () => clearTimeout(timer);
   }, []);
 
-  const geocodeAddresses = async (L, mapInstance) => {
-    try {
-      // Géocoder l'adresse du restaurant
-      const restaurantCoords = await geocodeAddress(restaurantAddress);
-      if (restaurantCoords) {
-        const restaurantMarker = L.marker(restaurantCoords, {
-          icon: L.divIcon({
-            className: 'custom-marker restaurant-marker',
-            html: '<div class="marker-icon restaurant"><i class="fas fa-map-marker-alt"></i></div>',
-            iconSize: [30, 30]
-          })
-        }).addTo(mapInstance);
-
-        restaurantMarker.bindPopup(`
-          <div class="marker-popup">
-            <h4>🍽️ Restaurant</h4>
-            <p>${restaurantAddress}</p>
-          </div>
-        `);
-
-        setMarkers(prev => [...prev, { type: 'restaurant', marker: restaurantMarker, coords: restaurantCoords }]);
-      }
-
-      // Géocoder l'adresse de livraison
-      const deliveryCoords = await geocodeAddress(deliveryAddress);
-      if (deliveryCoords) {
-        const deliveryMarker = L.marker(deliveryCoords, {
-          icon: L.divIcon({
-            className: 'custom-marker delivery-marker',
-            html: '<div class="marker-icon delivery"><i class="fas fa-user"></i></div>',
-            iconSize: [30, 30]
-          })
-        }).addTo(mapInstance);
-
-        deliveryMarker.bindPopup(`
-          <div class="marker-popup">
-            <h4>🏠 Livraison</h4>
-            <p>${deliveryAddress}</p>
-          </div>
-        `);
-
-        setMarkers(prev => [...prev, { type: 'delivery', marker: deliveryMarker, coords: deliveryCoords }]);
-
-        // Ajuster la vue pour inclure les deux points
-        if (restaurantCoords) {
-          const bounds = L.latLngBounds([restaurantCoords, deliveryCoords]);
-          mapInstance.fitBounds(bounds, { padding: [20, 20] });
-        }
-      }
-
-      // Ajouter le marqueur du livreur (position simulée)
-      const driverCoords = restaurantCoords ? 
-        [restaurantCoords[0] + 0.001, restaurantCoords[1] + 0.001] : 
-        [48.8566, 2.3522];
-
-      const driverMarker = L.marker(driverCoords, {
-        icon: L.divIcon({
-          className: 'custom-marker driver-marker',
-          html: '<div class="marker-icon driver"><i class="fas fa-truck"></i></div>',
-          iconSize: [30, 30]
-        })
-      }).addTo(mapInstance);
-
-      driverMarker.bindPopup(`
-        <div class="marker-popup">
-          <h4>🚚 Livreur</h4>
-          <p>En route vers la livraison</p>
+  if (!currentOrder) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <FaMapMarkerAlt className="h-5 w-5 text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900">Carte de livraison</h3>
         </div>
-      `);
-
-      setMarkers(prev => [...prev, { type: 'driver', marker: driverMarker, coords: driverCoords }]);
-
-      // Dessiner le trajet
-      if (restaurantCoords && deliveryCoords) {
-        drawRoute(L, mapInstance, restaurantCoords, deliveryCoords);
-      }
-
-    } catch (error) {
-      console.error('Erreur géocodage:', error);
-    }
-  };
-
-  const geocodeAddress = async (address) => {
-    try {
-      // Utiliser l'API de géocodage gratuite Nominatim
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
-      );
-      const data = await response.json();
-      
-      if (data && data.length > 0) {
-        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-      }
-      return null;
-    } catch (error) {
-      console.error('Erreur géocodage:', error);
-      return null;
-    }
-  };
-
-  const drawRoute = (L, mapInstance, start, end) => {
-    // Simuler un trajet avec des points intermédiaires
-    const routePoints = [
-      start,
-      [start[0] + (end[0] - start[0]) * 0.25, start[1] + (end[1] - start[1]) * 0.25],
-      [start[0] + (end[0] - start[0]) * 0.5, start[1] + (end[1] - start[1]) * 0.5],
-      [start[0] + (end[0] - start[0]) * 0.75, start[1] + (end[1] - start[1]) * 0.75],
-      end
-    ];
-
-    const routeLine = L.polyline(routePoints, {
-      color: '#3B82F6',
-      weight: 4,
-      opacity: 0.8
-    }).addTo(mapInstance);
-
-    setRoute(routeLine);
-  };
+        <div className="text-center py-8 text-gray-500">
+          <FaMapMarkerAlt className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+          <p>Aucune livraison en cours</p>
+          <p className="text-sm">La carte s'affichera ici quand vous aurez une commande</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative">
-      {/* Styles pour les marqueurs */}
-      <style jsx>{`
-        .custom-marker {
-          background: none;
-          border: none;
-        }
-        
-        .marker-icon {
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 14px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .marker-icon.restaurant {
-          background-color: #EF4444;
-        }
-        
-        .marker-icon.delivery {
-          background-color: #10B981;
-        }
-        
-        .marker-icon.driver {
-          background-color: #3B82F6;
-        }
-        
-        .marker-popup {
-          text-align: center;
-        }
-        
-        .marker-popup h4 {
-          margin: 0 0 5px 0;
-          font-weight: 600;
-        }
-        
-        .marker-popup p {
-          margin: 0;
-          font-size: 12px;
-          color: #666;
-        }
-      `}</style>
-
-      <div className="bg-white rounded-lg shadow-sm border p-4">
-        <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-xl shadow-sm border p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <FaMapMarkerAlt className="h-5 w-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-gray-900">Carte de livraison</h3>
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>Restaurant</span>
+        </div>
+        <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <FaClock className="h-4 w-4" />
+          <span>Est. 15-20 min</span>
+        </div>
+      </div>
+
+      {/* Carte simulée */}
+      <div className="relative bg-gray-100 rounded-lg h-64 mb-4 overflow-hidden">
+        {!mapLoaded ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="relative h-full">
+            {/* Restaurant marker */}
+            <div className="absolute top-4 left-4 bg-green-500 text-white p-2 rounded-full shadow-lg">
+              <FaMapMarkerAlt className="h-4 w-4" />
             </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span>Livraison</span>
+            
+            {/* Delivery address marker */}
+            <div className="absolute bottom-4 right-4 bg-red-500 text-white p-2 rounded-full shadow-lg">
+              <FaMapMarkerAlt className="h-4 w-4" />
             </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <span>Livreur</span>
+            
+            {/* Route line */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-full h-1 bg-blue-500 opacity-50 relative">
+                <div className="absolute top-0 left-0 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Informations de livraison */}
+      <div className="space-y-3">
+        <div className="flex items-start space-x-3">
+          <div className="bg-green-100 p-2 rounded-full">
+            <FaMapMarkerAlt className="h-4 w-4 text-green-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-gray-900">Restaurant</p>
+            <p className="text-sm text-gray-600">{currentOrder.restaurant_nom}</p>
+            <p className="text-xs text-gray-500">{currentOrder.restaurant_adresse}</p>
           </div>
         </div>
 
-        <div 
-          ref={mapRef} 
-          className="w-full h-64 rounded-lg border"
-          style={{ minHeight: '256px' }}
-        >
-          {loading && (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Chargement de la carte...</span>
-            </div>
-          )}
+        <div className="flex items-start space-x-3">
+          <div className="bg-red-100 p-2 rounded-full">
+            <FaMapMarkerAlt className="h-4 w-4 text-red-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-gray-900">Adresse de livraison</p>
+            <p className="text-sm text-gray-600">{currentOrder.delivery_address}</p>
+            <p className="text-xs text-gray-500">Client: {currentOrder.customer_name}</p>
+          </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-1">📍 Restaurant</h4>
-            <p className="text-gray-600">{restaurantAddress}</p>
+        <div className="flex items-center space-x-3 pt-3 border-t">
+          <div className="bg-blue-100 p-2 rounded-full">
+            <FaRoute className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-1">🏠 Livraison</h4>
-            <p className="text-gray-600">{deliveryAddress}</p>
+          <div className="flex-1">
+            <p className="font-medium text-gray-900">Distance estimée</p>
+            <p className="text-sm text-gray-600">2.5 km • 15-20 minutes</p>
           </div>
         </div>
       </div>
