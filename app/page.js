@@ -27,6 +27,7 @@ export default function Home() {
         
         const data = await response.json();
         console.log('Données reçues:', data);
+        console.log('Données reçues de l-API :', JSON.stringify(data, null, 2));
         
         if (!response.ok) {
           console.error('Erreur détaillée:', data);
