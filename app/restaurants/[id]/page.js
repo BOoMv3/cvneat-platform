@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../../lib/supabase';
+import { safeLocalStorage } from '../../../lib/localStorage';
 import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 import Modal from '../../components/Modal';
 
@@ -10,46 +12,67 @@ export default function RestaurantDetail({ params }) {
   const [restaurant, setRestaurant] = useState(null);
   const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState([]);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCartModal, setShowCartModal] = useState(false);
 
   useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    checkUser();
     fetchRestaurantDetails();
+    loadCartFromStorage();
   }, [params.id]);
 
+  useEffect(() => {
+    // Sauvegarder le panier a chaque modification
+    if (!loading) {
+      saveCartToStorage();
+    }
+  }, [cart]);
+
+  const loadCartFromStorage = () => {
+    const storedCart = safeLocalStorage.getJSON('cart');
+    if (storedCart) {
+      // S'assurer que le panier correspond au restaurant actuel
+      if (storedCart.restaurant?.id === parseInt(params.id, 10)) {
+        setCart(storedCart.items || []);
+      } else {
+        // Le panier concerne un autre restaurant, on le vide
+        safeLocalStorage.removeItem('cart');
+      }
+    }
+  };
+
+  const saveCartToStorage = () => {
+    const deliveryFee = getDeliveryFee();
+    const cartData = {
+      items: cart,
+      restaurant: restaurant,
+      frais_livraison: deliveryFee
+    };
+    safeLocalStorage.setJSON('cart', cartData);
+  };
+  
   const fetchRestaurantDetails = async () => {
     try {
+      setLoading(true);
       const [restaurantResponse, menuResponse] = await Promise.all([
         fetch(`/api/restaurants/${params.id}`),
         fetch(`/api/restaurants/${params.id}/menu`)
       ]);
-      if (!restaurantResponse.ok) {
-        const text = await restaurantResponse.text();
-        throw new Error(text || 'Erreur lors de la récupération des détails du restaurant');
-      }
-      if (!menuResponse.ok) {
-        const text = await menuResponse.text();
-        throw new Error(text || 'Erreur lors de la récupération du menu');
-      }
-      const contentType1 = restaurantResponse.headers.get('content-type');
-      const contentType2 = menuResponse.headers.get('content-type');
-      if (!contentType1?.includes('application/json') || !contentType2?.includes('application/json')) {
-        throw new Error('Réponse inattendue du serveur (pas du JSON)');
-      }
+      if (!restaurantResponse.ok) throw new Error('Erreur de chargement du restaurant');
+      if (!menuResponse.ok) throw new Error('Erreur de chargement du menu');
+      
       const restaurantData = await restaurantResponse.json();
       const menuData = await menuResponse.json();
       
-      console.log('Menu data reçu:', menuData);
-      console.log('Premier item du menu:', menuData[0]);
-      
-      // L'API retourne déjà les données avec les bons noms de champs
-      // Pas besoin de mapping supplémentaire
-      const mappedMenu = Array.isArray(menuData) ? menuData : [];
-      
       setRestaurant(restaurantData);
-      setMenu(mappedMenu);
+      setMenu(Array.isArray(menuData) ? menuData : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -85,16 +108,27 @@ export default function RestaurantDetail({ params }) {
     });
   };
 
-  const getCartTotal = () => {
+  const getSubtotal = () => {
     return cart.reduce((total, item) => total + ((item.price || 0) * (item.quantity || 0)), 0);
   };
 
+  const getDeliveryFee = () => {
+    // La logique de calcul avancee pourrait etre ici si necessaire.
+    // Pour l'instant on se base sur les donnees du restaurant.
+    return restaurant?.deliveryFee || restaurant?.frais_livraison || 2.50;
+  };
+
+  const getTotal = () => {
+    return getSubtotal() + getDeliveryFee();
+  };
+
   const handleCheckout = () => {
-    if (!localStorage.getItem('token')) {
+    if (!user) {
       router.push('/login?redirect=' + encodeURIComponent(`/restaurants/${params.id}`));
       return;
     }
-    setShowCartModal(true);
+    // La sauvegarde se fait via le useEffect, on peut directement aller au checkout
+    router.push('/checkout');
   };
 
   const filteredMenu = menu.filter(item => 
@@ -277,15 +311,15 @@ export default function RestaurantDetail({ params }) {
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center mb-2">
                       <p>Sous-total</p>
-                      <p>{getCartTotal().toFixed(2)}€</p>
+                      <p>{getSubtotal().toFixed(2)}€</p>
                     </div>
                     <div className="flex justify-between items-center mb-4">
                       <p>Frais de livraison</p>
-                      <p>{(restaurant.deliveryFee ?? 0).toFixed(2)}€</p>
+                      <p>{getDeliveryFee().toFixed(2)}€</p>
                     </div>
                     <div className="flex justify-between items-center font-bold text-lg mb-4">
                       <p>Total</p>
-                      <p>{(getCartTotal() + (restaurant.deliveryFee ?? 0)).toFixed(2)}€</p>
+                      <p>{getTotal().toFixed(2)}€</p>
                     </div>
                     <button
                       onClick={handleCheckout}
@@ -312,9 +346,9 @@ export default function RestaurantDetail({ params }) {
                 </div>
               ))}
             </div>
-            <div className="flex justify-between mb-2"><span>Sous-total</span><span>{getCartTotal().toFixed(2)}€</span></div>
-            <div className="flex justify-between mb-2"><span>Frais de livraison</span><span>{(restaurant.deliveryFee || 0).toFixed(2)}€</span></div>
-            <div className="flex justify-between font-bold text-lg mb-4"><span>Total</span><span>{(getCartTotal() + (restaurant.deliveryFee || 0)).toFixed(2)}€</span></div>
+            <div className="flex justify-between mb-2"><span>Sous-total</span><span>{getSubtotal().toFixed(2)}€</span></div>
+            <div className="flex justify-between mb-2"><span>Frais de livraison</span><span>{getDeliveryFee().toFixed(2)}€</span></div>
+            <div className="flex justify-between font-bold text-lg mb-4"><span>Total</span><span>{getTotal().toFixed(2)}€</span></div>
             <button onClick={() => router.push('/checkout')} className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600">Valider et payer</button>
           </Modal>
         )}

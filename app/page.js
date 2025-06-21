@@ -182,42 +182,41 @@ export default function Home() {
   };
 
   const addToCart = async (item) => {
-    // Vérifier si l'utilisateur est connecté
+    // Verifier si l'utilisateur est connecte
     if (!user) {
-      alert('Vous devez être connecté pour ajouter des articles au panier.');
+      alert('Vous devez etre connecte pour ajouter des articles au panier.');
       router.push('/login');
       return;
     }
 
-    // Calculer les frais de livraison si c'est le premier article
-    let fraisLivraison = 2.50; // Prix par défaut pour Ganges
-    
-    if (cart.length === 0 && selectedRestaurant) {
-      try {
-        // Récupérer l'adresse de l'utilisateur depuis son profil
-        const { data: userData } = await supabase
-          .from('users')
-          .select('adresse')
-          .eq('id', user.id)
-          .single();
+    let deliveryFee = cart.length > 0 ? getDeliveryFee() : (selectedRestaurant?.deliveryFee || selectedRestaurant?.frais_livraison || 2.50);
 
-        if (userData?.adresse) {
+    // Calculer les frais de livraison si le panier est vide
+    if (cart.length === 0 && selectedRestaurant && user) {
+      try {
+        const { data: userAddress } = await supabase
+          .from('user_addresses')
+          .select('address, city, postal_code')
+          .eq('user_id', user.id)
+          .is('is_default', true)
+          .single();
+        
+        const fullDeliveryAddress = userAddress ? `${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}` : null;
+
+        if (fullDeliveryAddress) {
           const response = await fetch('/api/delivery/calculate', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              restaurantAddress: selectedRestaurant.adresse || 'Ganges',
-              deliveryAddress: userData.adresse,
-              orderAmount: cartTotal + item.price
+              restaurantAddress: selectedRestaurant.address,
+              deliveryAddress: fullDeliveryAddress
             })
           });
-
+          
           if (response.ok) {
             const data = await response.json();
             if (data.livrable) {
-              fraisLivraison = data.frais_livraison;
+              deliveryFee = data.frais_livraison;
             } else {
               alert(`Livraison impossible : ${data.message}`);
               return;
@@ -225,18 +224,7 @@ export default function Home() {
           }
         }
       } catch (error) {
-        console.error('Erreur calcul frais livraison:', error);
-        // Utiliser le prix par défaut en cas d'erreur
-      }
-    } else if (cart.length > 0) {
-      // Récupérer les frais de livraison existants
-      const savedCart = safeLocalStorage.getJSON('cart');
-      if (savedCart) {
-        try {
-          fraisLivraison = savedCart.frais_livraison || 2.50;
-        } catch (e) {
-          console.error('Erreur lecture panier:', e);
-        }
+        console.error('Erreur calcul frais livraison, utilisation des frais par defaut:', error);
       }
     }
 
@@ -254,12 +242,20 @@ export default function Home() {
       const cartData = {
         items: newCart,
         restaurant: selectedRestaurant,
-        frais_livraison: fraisLivraison
+        frais_livraison: deliveryFee
       };
       safeLocalStorage.setJSON('cart', cartData);
       
       return newCart;
     });
+  };
+
+  const getDeliveryFee = () => {
+    const savedCart = safeLocalStorage.getJSON('cart');
+    if (savedCart && savedCart.frais_livraison !== undefined) {
+      return savedCart.frais_livraison;
+    }
+    return restaurant?.deliveryFee || restaurant?.frais_livraison || 2.50;
   };
 
   const removeFromCart = (itemId) => {
@@ -381,7 +377,7 @@ export default function Home() {
   };
 
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-  const fraisLivraison = getFraisLivraison();
+  const fraisLivraison = getDeliveryFee();
   const totalAvecLivraison = cartTotal + fraisLivraison;
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
