@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
+import { safeLocalStorage } from '../lib/localStorage';
 import { 
   FaSearch, 
   FaStar, 
@@ -42,13 +43,13 @@ export default function Home() {
   const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
-    // Vérifier l'authentification
+    // Verifier l'authentification
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
       if (user) {
-        // Récupérer les points de fidélité
+        // Recuperer les points de fidelite
         try {
           const { data: userData } = await supabase
             .from('users')
@@ -60,7 +61,7 @@ export default function Home() {
             setUserPoints(userData.points_fidelite || 0);
           }
         } catch (error) {
-          console.error('Erreur récupération points:', error);
+          console.error('Erreur recuperation points:', error);
         }
       }
     };
@@ -69,28 +70,28 @@ export default function Home() {
 
     const fetchRestaurants = async () => {
       try {
-        console.log('Début du chargement des restaurants...');
+        console.log('Debut du chargement des restaurants...');
         const response = await fetch('/api/restaurants');
-        console.log('Statut de la réponse:', response.status);
+        console.log('Statut de la reponse:', response.status);
         
         const data = await response.json();
-        console.log('Données reçues:', data);
+        console.log('Donnees recues:', data);
         
         if (!response.ok) {
-          console.error('Erreur détaillée:', data);
+          console.error('Erreur detaillee:', data);
           throw new Error(data.message || 'Erreur lors du chargement des restaurants');
         }
         
         if (!Array.isArray(data)) {
-          console.error('Les données reçues ne sont pas un tableau:', data);
+          console.error('Les donnees recues ne sont pas un tableau:', data);
           setRestaurants([]);
-          setError('Format de données invalide');
+          setError('Format de donnees invalide');
           return;
         }
         
         setRestaurants(data);
       } catch (error) {
-        console.error('Erreur complète:', error);
+        console.error('Erreur complete:', error);
         setError(error.message);
         setRestaurants([]);
       } finally {
@@ -100,30 +101,18 @@ export default function Home() {
 
     fetchRestaurants();
     
-    // Charger les favoris depuis localStorage
-    const savedFavorites = localStorage.getItem('favorites');
+    // Charger les favoris depuis localStorage (cote client uniquement)
+    const savedFavorites = safeLocalStorage.getJSON('favorites');
     if (savedFavorites) {
-      try {
-        setFavorites(JSON.parse(savedFavorites));
-      } catch (e) {
-        console.error('Erreur chargement favoris:', e);
-      }
+      setFavorites(savedFavorites);
     }
   }, []);
 
-  // Charger le panier depuis localStorage
+  // Charger le panier depuis localStorage (cote client uniquement)
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const cartData = JSON.parse(savedCart);
-        if (cartData && Array.isArray(cartData.items)) {
-          setCart(cartData.items);
-        }
-      } catch (e) {
-        console.error("Impossible de parser le panier depuis localStorage", e);
-        localStorage.removeItem('cart');
-      }
+    const savedCart = safeLocalStorage.getJSON('cart');
+    if (savedCart && Array.isArray(savedCart.items)) {
+      setCart(savedCart.items);
     }
   }, []);
 
@@ -241,11 +230,10 @@ export default function Home() {
       }
     } else if (cart.length > 0) {
       // Récupérer les frais de livraison existants
-      const savedCart = localStorage.getItem('cart');
+      const savedCart = safeLocalStorage.getJSON('cart');
       if (savedCart) {
         try {
-          const cartData = JSON.parse(savedCart);
-          fraisLivraison = cartData.frais_livraison || 2.50;
+          fraisLivraison = savedCart.frais_livraison || 2.50;
         } catch (e) {
           console.error('Erreur lecture panier:', e);
         }
@@ -268,7 +256,7 @@ export default function Home() {
         restaurant: selectedRestaurant,
         frais_livraison: fraisLivraison
       };
-      localStorage.setItem('cart', JSON.stringify(cartData));
+      safeLocalStorage.setJSON('cart', cartData);
       
       return newCart;
     });
@@ -280,11 +268,10 @@ export default function Home() {
       
       // Récupérer les frais de livraison existants
       let fraisLivraison = 2.50;
-      const savedCart = localStorage.getItem('cart');
+      const savedCart = safeLocalStorage.getJSON('cart');
       if (savedCart) {
         try {
-          const cartData = JSON.parse(savedCart);
-          fraisLivraison = cartData.frais_livraison || 2.50;
+          fraisLivraison = savedCart.frais_livraison || 2.50;
         } catch (e) {
           console.error('Erreur lecture panier:', e);
         }
@@ -295,7 +282,7 @@ export default function Home() {
         restaurant: selectedRestaurant,
         frais_livraison: fraisLivraison
       };
-      localStorage.setItem('cart', JSON.stringify(cartData));
+      safeLocalStorage.setJSON('cart', cartData);
       return newCart;
     });
   };
@@ -312,11 +299,10 @@ export default function Home() {
       
       // Récupérer les frais de livraison existants
       let fraisLivraison = 2.50;
-      const savedCart = localStorage.getItem('cart');
+      const savedCart = safeLocalStorage.getJSON('cart');
       if (savedCart) {
         try {
-          const cartData = JSON.parse(savedCart);
-          fraisLivraison = cartData.frais_livraison || 2.50;
+          fraisLivraison = savedCart.frais_livraison || 2.50;
         } catch (e) {
           console.error('Erreur lecture panier:', e);
         }
@@ -327,7 +313,7 @@ export default function Home() {
         restaurant: selectedRestaurant,
         frais_livraison: fraisLivraison
       };
-      localStorage.setItem('cart', JSON.stringify(cartData));
+      safeLocalStorage.setJSON('cart', cartData);
       return newCart;
     });
   };
@@ -338,7 +324,7 @@ export default function Home() {
         ? prev.filter(id => id !== restaurantId)
         : [...prev, restaurantId];
       
-      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+      safeLocalStorage.setJSON('favorites', newFavorites);
       return newFavorites;
     });
   };
@@ -383,11 +369,10 @@ export default function Home() {
 
   // Récupérer les frais de livraison depuis le localStorage
   const getFraisLivraison = () => {
-    const savedCart = localStorage.getItem('cart');
+    const savedCart = safeLocalStorage.getJSON('cart');
     if (savedCart) {
       try {
-        const cartData = JSON.parse(savedCart);
-        return cartData.frais_livraison || 2.50;
+        return savedCart.frais_livraison || 2.50;
       } catch (e) {
         console.error('Erreur lecture frais livraison:', e);
       }
@@ -797,4 +782,7 @@ export default function Home() {
       )}
     </div>
   );
-} 
+}
+
+// Desactiver le rendu statique pour cette page
+export const dynamic = 'force-dynamic'; 

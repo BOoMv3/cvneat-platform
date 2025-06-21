@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Optimisations pour les images
   images: {
-    domains: ['images.unsplash.com', 'via.placeholder.com'],
+    domains: ['images.unsplash.com', 'localhost'],
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -11,7 +10,10 @@ const nextConfig = {
   // Optimisations pour le build
   swcMinify: true,
   
-  // Headers de sécurité
+  // Desactiver le rendu statique pour certaines pages
+  output: 'standalone',
+  
+  // Headers de securite
   async headers() {
     return [
       {
@@ -36,12 +38,11 @@ const nextConfig = {
         ],
       },
       {
-        source: '/api/(.*)',
+        source: '/api/:path*',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-store, max-age=0',
-          },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
         ],
       },
     ];
@@ -82,7 +83,7 @@ const nextConfig = {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
   
-  // Optimisations pour le développement
+  // Optimisations pour le developpement
   ...(process.env.NODE_ENV === 'development' && {
     eslint: {
       ignoreDuringBuilds: true,
