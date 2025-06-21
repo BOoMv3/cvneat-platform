@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { safeLocalStorage } from '../../lib/localStorage';
 import { 
   FaArrowLeft, 
   FaTrash, 
@@ -31,11 +32,10 @@ export default function Panier() {
 
   const loadCart = () => {
     try {
-      const cartData = localStorage.getItem('cart');
+      const cartData = safeLocalStorage.getJSON('cart');
       if (cartData) {
-        const parsed = JSON.parse(cartData);
-        setCart(parsed.items || []);
-        setRestaurant(parsed.restaurant);
+        setCart(cartData.items || []);
+        setRestaurant(cartData.restaurant);
       }
     } catch (error) {
       console.error('Erreur lors du chargement du panier:', error);
@@ -74,9 +74,10 @@ export default function Panier() {
   const saveCart = (updatedCart) => {
     const cartData = {
       items: updatedCart,
-      restaurant: restaurant
+      restaurant: restaurant,
+      frais_livraison: restaurant?.frais_livraison || 2.50
     };
-    localStorage.setItem('cart', JSON.stringify(cartData));
+    safeLocalStorage.setJSON('cart', cartData);
   };
 
   const getSubtotal = () => {
@@ -84,7 +85,9 @@ export default function Panier() {
   };
 
   const getDeliveryFee = () => {
-    return restaurant?.frais_livraison || 0;
+    // Recuperer les frais de livraison depuis le panier sauvegarde
+    const cartData = safeLocalStorage.getJSON('cart');
+    return cartData?.frais_livraison || restaurant?.frais_livraison || 2.50;
   };
 
   const getTotal = () => {
@@ -104,9 +107,9 @@ export default function Panier() {
   };
 
   const clearCart = () => {
-    if (confirm('Êtes-vous sûr de vouloir vider votre panier ?')) {
+    if (confirm('Etes-vous sur de vouloir vider votre panier ?')) {
       setCart([]);
-      localStorage.removeItem('cart');
+      safeLocalStorage.removeItem('cart');
     }
   };
 

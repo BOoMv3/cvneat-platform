@@ -77,26 +77,28 @@ export async function POST(request) {
     console.log('=== DÉBUT CRÉATION COMMANDE ===');
     
     const body = await request.json();
-    console.log('Données reçues:', JSON.stringify(body, null, 2));
+    console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
-    const { restaurantId, deliveryInfo, items } = body;
+    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount } = body;
     
-    console.log('Restaurant ID reçu:', restaurantId);
+    console.log('Restaurant ID recu:', restaurantId);
     console.log('Type du restaurant ID:', typeof restaurantId);
+    console.log('Frais de livraison recus:', deliveryFee);
+    console.log('Montant total recu:', totalAmount);
 
-    // Validation des données
+    // Validation des donnees
     if (!restaurantId || !items || items.length === 0) {
-      console.log('Validation échouée: données manquantes');
+      console.log('Validation echouee: donnees manquantes');
       return NextResponse.json(
-        { error: 'Données de commande invalides' },
+        { error: 'Donnees de commande invalides' },
         { status: 400 }
       );
     }
 
-    console.log('Validation des données OK');
+    console.log('Validation des donnees OK');
 
-    // Vérifier que le restaurant existe
-    console.log('Vérification du restaurant ID:', restaurantId);
+    // Verifier que le restaurant existe
+    console.log('Verification du restaurant ID:', restaurantId);
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('*')
@@ -112,19 +114,19 @@ export async function POST(request) {
     }
 
     if (!restaurant) {
-      console.log('Restaurant non trouvé');
+      console.log('Restaurant non trouve');
       return NextResponse.json(
         { error: 'Restaurant invalide' },
         { status: 400 }
       );
     }
 
-    console.log('Restaurant trouvé:', restaurant.name);
+    console.log('Restaurant trouve:', restaurant.nom);
 
-    // Vérifier que tous les articles existent
-    console.log('Vérification des articles...');
+    // Verifier que tous les articles existent
+    console.log('Verification des articles...');
     for (const item of items) {
-      console.log('Vérification article ID:', item.id);
+      console.log('Verification article ID:', item.id);
       const { data: menuItem, error: menuError } = await supabase
         .from('menus')
         .select('*')
@@ -141,7 +143,7 @@ export async function POST(request) {
       }
 
       if (!menuItem) {
-        console.log('Article non trouvé:', item.id);
+        console.log('Article non trouve:', item.id);
         return NextResponse.json(
           { error: 'Un ou plusieurs articles ne sont pas disponibles' },
           { status: 400 }
@@ -151,27 +153,15 @@ export async function POST(request) {
 
     console.log('Tous les articles sont valides');
 
-    // Calculer le total de la commande
-    let total = 0;
-    for (const item of items) {
-      const { data: menuItem } = await supabase
-        .from('menus')
-        .select('prix')
-        .eq('id', item.id)
-        .single();
-      
-      if (menuItem) {
-        total += menuItem.prix * item.quantity;
-      }
-    }
+    // Utiliser le montant total et les frais de livraison envoyes par le frontend
+    const total = totalAmount || 0;
+    const fraisLivraison = deliveryFee || restaurant.frais_livraison || 0;
 
-    // Ajouter les frais de livraison
-    total += restaurant.frais_livraison || 0;
+    console.log('Total utilise:', total);
+    console.log('Frais de livraison utilises:', fraisLivraison);
 
-    console.log('Total calculé:', total);
-
-    // Créer la commande dans Supabase
-    console.log('Tentative de création de la commande...');
+    // Creer la commande dans Supabase
+    console.log('Tentative de creation de la commande...');
     const orderData = {
       restaurant_id: restaurantId,
       customer_name: deliveryInfo.name,
@@ -181,12 +171,12 @@ export async function POST(request) {
       delivery_postal_code: deliveryInfo.postalCode,
       delivery_instructions: deliveryInfo.instructions || '',
       total_amount: total,
-      delivery_fee: restaurant.frais_livraison || 0,
+      delivery_fee: fraisLivraison,
       status: 'pending', // En attente d'acceptation par le restaurant
       items: items // Stocker les articles comme JSON
     };
 
-    console.log('Données de commande à insérer:', JSON.stringify(orderData, null, 2));
+    console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
 
     const { data: order, error: orderError } = await supabase
       .from('orders')

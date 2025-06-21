@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
+import { safeLocalStorage } from '../../lib/localStorage';
 import { 
   FaArrowLeft, 
   FaUser, 
@@ -26,6 +28,7 @@ export default function Checkout() {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,21 +42,30 @@ export default function Checkout() {
   const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
-    loadCart();
+    checkAuthAndLoadCart();
   }, []);
 
-  const loadCart = () => {
+  const checkAuthAndLoadCart = async () => {
     try {
-      const cartData = localStorage.getItem('cart');
+      // Verifier l'authentification
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Vous devez etre connecte pour passer une commande');
+        router.push('/login');
+        return;
+      }
+      setUser(user);
+
+      // Charger le panier
+      const cartData = safeLocalStorage.getJSON('cart');
       if (cartData) {
-        const parsed = JSON.parse(cartData);
-        setCart(parsed.items || []);
-        setRestaurant(parsed.restaurant);
+        setCart(cartData.items || []);
+        setRestaurant(cartData.restaurant);
       } else {
-        setError('Aucun panier trouvé');
+        setError('Aucun panier trouve');
       }
     } catch (error) {
-      setError('Erreur lors du chargement du panier');
+      setError('Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
@@ -146,19 +158,21 @@ export default function Checkout() {
         body: JSON.stringify({
           restaurantId: restaurant.id,
           deliveryInfo: formData,
-          items: cart
+          items: cart,
+          deliveryFee: getDeliveryFee(),
+          totalAmount: getTotal()
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de la création de la commande');
+        throw new Error(errorData.error || 'Erreur lors de la creation de la commande');
       }
 
       const data = await response.json();
       
       // Vider le panier
-      localStorage.removeItem('cart');
+      safeLocalStorage.removeItem('cart');
       
       // Rediriger vers la confirmation
       router.push(`/order-confirmation/${data.orderId}`);
@@ -174,7 +188,9 @@ export default function Checkout() {
   };
 
   const getDeliveryFee = () => {
-    return restaurant?.frais_livraison || 0;
+    // Recuperer les frais de livraison depuis le panier sauvegarde
+    const cartData = safeLocalStorage.getJSON('cart');
+    return cartData?.frais_livraison || restaurant?.frais_livraison || 2.50;
   };
 
   const getTotal = () => {
