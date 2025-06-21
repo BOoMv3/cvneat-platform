@@ -13,5 +13,16 @@ export async function GET(request, { params }) {
     return NextResponse.json({ message: "Erreur lors de la récupération du restaurant", error }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // Ajouter les valeurs par défaut pour les colonnes manquantes
+  const restaurantWithDefaults = {
+    ...data,
+    frais_livraison: data.frais_livraison || 2.50,
+    deliveryTime: data.deliveryTime || 30,
+    minOrder: data.minOrder || 15,
+    rating: data.rating || 4.5,
+    mise_en_avant: data.mise_en_avant || false,
+    mise_en_avant_fin: data.mise_en_avant_fin || null
+  };
+
+  return NextResponse.json(restaurantWithDefaults);
 } 

@@ -205,6 +205,42 @@ export default function Home() {
     return aSponsor ? -1 : 1;
   });
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center px-4 bg-gray-50">
+        <div className="bg-white p-8 rounded-xl shadow-md max-w-lg">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Une erreur est survenue</h1>
+          <p className="text-gray-700 mb-6">Impossible de charger les restaurants pour le moment.</p>
+          <p className="text-sm text-gray-500">
+            Détail de l'erreur : {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 bg-black text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (restaurants.length === 0) {
+    return (
+      <div className="text-center text-gray-600">
+        <p>Aucun restaurant disponible</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="relative h-[600px]">
@@ -259,65 +295,42 @@ export default function Home() {
           )}
         </div>
         
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center text-red-600 p-4 bg-red-50 rounded-lg">
-            <p className="font-semibold mb-2">Une erreur est survenue :</p>
-            <p>{error}</p>
-            <p className="mt-4 text-sm text-gray-600">
-              Veuillez vérifier que :
-              <ul className="list-disc list-inside mt-2">
-                <li>MySQL est installé et en cours d'exécution</li>
-                <li>La base de données 'cvneat' existe</li>
-                <li>Le fichier .env.local est correctement configuré</li>
-              </ul>
-            </p>
-          </div>
-        ) : restaurants.length === 0 ? (
-          <div className="text-center text-gray-600">
-            <p>Aucun restaurant disponible</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sortedRestaurants.map((restaurant) => (
-              <div
-                key={restaurant.id}
-                onClick={() => handleRestaurantClick(restaurant)}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
-              >
-                <div className="relative h-48">
-                  <Image
-                    src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
-                    alt={restaurant.nom}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                  {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > now && (
-                    <span className="absolute top-2 left-2 bg-yellow-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">Sponsorisé</span>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="text-xl font-semibold mb-2">{restaurant.nom}</h3>
-                  <p className="text-gray-600 mb-2">{restaurant.description}</p>
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <span className="mr-4">⭐ {restaurant.rating || '4.5'}</span>
-                      <span>🕒 {restaurant.deliveryTime} min</span>
-                    </div>
-                    <div className="text-right">
-                      <p>Frais de livraison: {restaurant.deliveryFee}€</p>
-                      <p>Commande min: {restaurant.minOrder}€</p>
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {sortedRestaurants.map((restaurant) => (
+            <div
+              key={restaurant.id}
+              onClick={() => handleRestaurantClick(restaurant)}
+              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+            >
+              <div className="relative h-48">
+                <Image
+                  src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
+                  alt={restaurant.nom}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+                {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > now && (
+                  <span className="absolute top-2 left-2 bg-yellow-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">Sponsorisé</span>
+                )}
+              </div>
+              <div className="p-4">
+                <h3 className="text-xl font-semibold mb-2">{restaurant.nom}</h3>
+                <p className="text-gray-600 mb-2">{restaurant.description}</p>
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <span className="mr-4">⭐ {restaurant.rating || '4.5'}</span>
+                    <span>🕒 {restaurant.deliveryTime} min</span>
+                  </div>
+                  <div className="text-right">
+                    <p>Frais de livraison: {restaurant.frais_livraison ? `${restaurant.frais_livraison}€` : 'Gratuit'}</p>
+                    <p>Commande min: {restaurant.minOrder}€</p>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Modal */}
