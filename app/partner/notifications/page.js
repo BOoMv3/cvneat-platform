@@ -9,8 +9,8 @@ import {
   FaTrash,
   FaShoppingCart,
   FaEuroSign,
-  FaExclamationTriangle,
-  FaInfoCircle
+  FaInfoCircle,
+  FaExclamationCircle
 } from 'react-icons/fa';
 
 export default function PartnerNotifications() {
@@ -132,7 +132,7 @@ export default function PartnerNotifications() {
       case 'revenue':
         return <FaEuroSign className="h-5 w-5 text-green-600" />;
       case 'alert':
-        return <FaExclamationTriangle className="h-5 w-5 text-red-600" />;
+        return <FaExclamationCircle className="h-5 w-5 text-red-600" />;
       default:
         return <FaInfoCircle className="h-5 w-5 text-gray-600" />;
     }

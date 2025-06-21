@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { FaBell, FaTimes, FaShoppingCart, FaEuroSign, FaExclamationTriangle } from 'react-icons/fa';
+import { FaBell, FaTimes, FaShoppingCart, FaEuroSign, FaExclamationCircle } from 'react-icons/fa';
 
 export default function RealTimeNotifications({ restaurantId }) {
   const [notifications, setNotifications] = useState([]);
@@ -68,7 +68,7 @@ export default function RealTimeNotifications({ restaurantId }) {
       case 'revenue':
         return <FaEuroSign className="h-4 w-4 text-green-600" />;
       case 'alert':
-        return <FaExclamationTriangle className="h-4 w-4 text-red-600" />;
+        return <FaExclamationCircle className="h-4 w-4 text-red-600" />;
       default:
         return <FaBell className="h-4 w-4 text-gray-600" />;
     }
