@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { supabase } from '../../../lib/supabase';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes } from 'react-icons/fa';
 
 export default function MenuManagement() {
   const router = useRouter();
@@ -15,23 +16,46 @@ export default function MenuManagement() {
     name: '',
     description: '',
     price: '',
+    category_id: '',
     image: ''
   });
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
-    fetchMenu();
-  }, []);
+    const checkUserAndFetchMenu = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.user_metadata.role !== 'partner') {
+        router.push('/login');
+        return;
+      }
+      fetchMenu();
+    };
+    checkUserAndFetchMenu();
+  }, [router]);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return fetch(url, { ...options, headers });
+  };
 
   const fetchMenu = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/restaurants/menu', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Erreur lors de la récupération du menu');
+      const response = await fetchWithAuth('/api/partner/menu');
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération du menu');
+      }
       const data = await response.json();
       setMenu(data);
       if (data.categories.length > 0) {
@@ -44,55 +68,79 @@ export default function MenuManagement() {
     }
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewItem(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleAddItem = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/restaurants/menu/items', {
+      const response = await fetchWithAuth('/api/partner/menu/items', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           ...newItem,
-          categoryId: selectedCategory
-        })
+          price: parseFloat(newItem.price),
+        }),
       });
-
-      if (!response.ok) throw new Error('Erreur lors de l\'ajout de l\'item');
-      const data = await response.json();
-      setMenu(prev => ({
-        ...prev,
-        items: [...prev.items, data]
-      }));
-      setNewItem({
-        name: '',
-        description: '',
-        price: '',
-        image: ''
-      });
-      setIsAddingItem(false);
+      if (!response.ok) throw new Error("Erreur lors de l'ajout de l'article");
+      fetchMenu();
+      setNewItem({ name: '', description: '', price: '', category_id: '', image: '' });
     } catch (err) {
       setError(err.message);
     }
   };
 
   const handleDeleteItem = async (itemId) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet article ?")) return;
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/restaurants/menu/items?id=${itemId}`, {
+      const response = await fetchWithAuth(`/api/partner/menu/items?id=${itemId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
+      if (!response.ok) throw new Error("Erreur lors de la suppression de l'article");
+      fetchMenu();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
-      if (!response.ok) throw new Error('Erreur lors de la suppression de l\'item');
-      setMenu(prev => ({
-        ...prev,
-        items: prev.items.filter(item => item.id !== itemId)
-      }));
+  const handleUpdateCategory = async (categoryId, name) => {
+    try {
+      const response = await fetchWithAuth('/api/partner/menu', {
+        method: 'PUT',
+        body: JSON.stringify({ type: 'category', id: categoryId, name }),
+      });
+      if (!response.ok) throw new Error('Failed to update category');
+      fetchMenu();
+      setEditingCategory(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette catégorie et tous ses articles ?")) return;
+    try {
+      const response = await fetchWithAuth('/api/partner/menu', {
+        method: 'DELETE',
+        body: JSON.stringify({ type: 'category', id: categoryId }),
+      });
+      if (!response.ok) throw new Error('Failed to delete category');
+      fetchMenu();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateItem = async (itemId, data) => {
+    try {
+      const response = await fetchWithAuth('/api/partner/menu', {
+        method: 'PUT',
+        body: JSON.stringify({ type: 'item', id: itemId, ...data }),
+      });
+      if (!response.ok) throw new Error('Failed to update item');
+      fetchMenu();
+      setEditingItem(null);
     } catch (err) {
       setError(err.message);
     }
@@ -104,6 +152,18 @@ export default function MenuManagement() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            {error}
           </div>
         </div>
       </div>
@@ -123,12 +183,6 @@ export default function MenuManagement() {
               Retour au tableau de bord
             </button>
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-              {error}
-            </div>
-          )}
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Catégories */}
@@ -172,7 +226,8 @@ export default function MenuManagement() {
                       <input
                         type="text"
                         value={newItem.name}
-                        onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                        onChange={handleInputChange}
+                        name="name"
                         placeholder="Nom de l'item"
                         className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                         required
@@ -180,7 +235,8 @@ export default function MenuManagement() {
                       <input
                         type="number"
                         value={newItem.price}
-                        onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                        onChange={handleInputChange}
+                        name="price"
                         placeholder="Prix"
                         step="0.01"
                         className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
@@ -189,7 +245,8 @@ export default function MenuManagement() {
                       <input
                         type="text"
                         value={newItem.description}
-                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                        onChange={handleInputChange}
+                        name="description"
                         placeholder="Description"
                         className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                         required
@@ -197,7 +254,8 @@ export default function MenuManagement() {
                       <input
                         type="text"
                         value={newItem.image}
-                        onChange={(e) => setNewItem({ ...newItem, image: e.target.value })}
+                        onChange={handleInputChange}
+                        name="image"
                         placeholder="URL de l'image"
                         className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                       />
@@ -235,7 +293,7 @@ export default function MenuManagement() {
                         </div>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => router.push(`/restaurant/menu/edit/${item.id}`)}
+                            onClick={() => setEditingItem(item.id)}
                             className="p-2 text-gray-600 hover:text-black"
                           >
                             <FaEdit />

@@ -30,14 +30,23 @@ export default function Login() {
       return;
     }
 
-    // Stocker l'utilisateur dans le localStorage (optionnel)
-    localStorage.setItem('user', JSON.stringify(data.user));
-    // Stocker le token dans un cookie pour le middleware
-    if (data.session && data.session.access_token) {
-      document.cookie = `token=${data.session.access_token}; path=/; SameSite=Lax`;
+    if (data.user) {
+      // La session est gérée par Supabase via les cookies sécurisés.
+      // Aucune action manuelle de stockage (comme localStorage) n'est nécessaire.
+      
+      // Rediriger en fonction du rôle
+      const role = data.user.user_metadata?.role || 'customer';
+      switch (role) {
+        case 'admin':
+          router.push('/admin');
+          break;
+        case 'customer':
+          router.push('/');
+          break;
+        default:
+          router.push('/');
+      }
     }
-    // Rediriger vers l'accueil
-    router.push('/');
     setLoading(false);
   };
 

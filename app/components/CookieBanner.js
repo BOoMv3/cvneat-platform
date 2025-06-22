@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '../../lib/supabase';
+import { safeLocalStorage } from '../../lib/localStorage';
 
 export default function CookieBanner() {
-  const [showBanner, setShowBanner] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+  const [consent, setConsent] = useState(null);
+  const [showPreferences, setShowPreferences] = useState(false);
   const [preferences, setPreferences] = useState({
     necessary: true,
     analytics: false,
@@ -22,9 +22,12 @@ export default function CookieBanner() {
     };
     checkUser();
 
-    const consent = localStorage.getItem('cookieConsent');
-    if (!consent) {
-      setShowBanner(true);
+    const savedConsent = safeLocalStorage.getJSON('cookieConsent');
+    if (savedConsent) {
+      setConsent(true);
+      setPreferences(savedConsent);
+    } else {
+      setConsent(false);
     }
   }, []);
 
@@ -44,25 +47,24 @@ export default function CookieBanner() {
     }
   };
 
-  const acceptAll = async () => {
-    const allPreferences = {
-      necessary: true,
-      analytics: true,
-      marketing: true
-    };
-    localStorage.setItem('cookieConsent', JSON.stringify(allPreferences));
-    setPreferences(allPreferences);
+  const handleAcceptAll = async () => {
+    const allPreferences = { necessary: true, analytics: true, marketing: true };
+    safeLocalStorage.setJSON('cookieConsent', allPreferences);
+    setConsent(true);
     await savePreferencesToSupabase(allPreferences);
-    setShowBanner(false);
   };
 
-  const savePreferences = async () => {
-    localStorage.setItem('cookieConsent', JSON.stringify(preferences));
+  const handleAcceptSelection = async () => {
+    safeLocalStorage.setJSON('cookieConsent', preferences);
+    setConsent(true);
     await savePreferencesToSupabase(preferences);
-    setShowBanner(false);
   };
 
-  if (!showBanner) return null;
+  const handlePreferenceChange = (key) => {
+    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  if (consent === null || consent) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
@@ -77,7 +79,7 @@ export default function CookieBanner() {
               Vous pouvez choisir les cookies que vous acceptez.
             </p>
             
-            {showDetails && (
+            {showPreferences && (
               <div className="mt-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -100,7 +102,7 @@ export default function CookieBanner() {
                   <input
                     type="checkbox"
                     checked={preferences.analytics}
-                    onChange={(e) => setPreferences({...preferences, analytics: e.target.checked})}
+                    onChange={(e) => handlePreferenceChange('analytics')}
                     className="h-4 w-4 text-orange-500 rounded border-gray-300"
                   />
                 </div>
@@ -113,7 +115,7 @@ export default function CookieBanner() {
                   <input
                     type="checkbox"
                     checked={preferences.marketing}
-                    onChange={(e) => setPreferences({...preferences, marketing: e.target.checked})}
+                    onChange={(e) => handlePreferenceChange('marketing')}
                     className="h-4 w-4 text-orange-500 rounded border-gray-300"
                   />
                 </div>
@@ -123,19 +125,19 @@ export default function CookieBanner() {
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => setShowDetails(!showDetails)}
+              onClick={() => setShowPreferences(!showPreferences)}
               className="text-sm text-gray-600 hover:text-gray-900 underline"
             >
-              {showDetails ? 'Masquer les détails' : 'Voir les détails'}
+              {showPreferences ? 'Masquer les détails' : 'Voir les détails'}
             </button>
             <button
-              onClick={savePreferences}
+              onClick={handleAcceptSelection}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
             >
               Enregistrer mes choix
             </button>
             <button
-              onClick={acceptAll}
+              onClick={handleAcceptAll}
               className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
             >
               Tout accepter

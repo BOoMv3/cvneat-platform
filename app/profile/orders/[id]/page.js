@@ -4,31 +4,52 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '../../../../components/Navbar';
 import { FaArrowLeft, FaSpinner, FaCheck, FaTimes } from 'react-icons/fa';
+import { supabase } from '../../../../lib/supabase';
 
 export default function OrderDetail({ params }) {
   const router = useRouter();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { id } = params;
 
   useEffect(() => {
-    fetchOrder();
-  }, []);
-
-  const fetchOrder = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/users/orders/${params.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+    const checkUserAndFetchOrder = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            router.push('/login');
+            return;
         }
-      });
+        if(id) fetchOrder();
+    };
+    
+    checkUserAndFetchOrder();
+  }, [id, router]);
 
-      if (!response.ok) throw new Error('Erreur lors de la récupération de la commande');
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers });
+  };
+  
+  const fetchOrder = async () => {
+    setLoading(true);
+    try {
+      const response = await fetchWithAuth(`/api/users/me/orders/${id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch order details');
+      }
       const data = await response.json();
       setOrder(data);
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }

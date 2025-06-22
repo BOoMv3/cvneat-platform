@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '../../../components/Navbar';
 import { FaEdit, FaTrash, FaSpinner } from 'react-icons/fa';
+import { supabase } from '../../../lib/supabase';
 
 export default function AdminUsers() {
   const router = useRouter();
@@ -20,23 +21,38 @@ export default function AdminUsers() {
   });
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    const checkUserAndFetchUsers = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.user_metadata.role !== 'admin') {
+        router.push('/login');
+        return;
+      }
+      fetchUsers();
+    };
+    checkUserAndFetchUsers();
+  }, [router]);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers });
+  };
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Erreur lors de la récupération des utilisateurs');
+      const response = await fetchWithAuth('/api/admin/users');
       const data = await response.json();
       setUsers(data);
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }

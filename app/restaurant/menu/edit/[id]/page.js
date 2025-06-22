@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '../../../../../components/Navbar';
+import { supabase } from '../../../../../lib/supabase';
 
 export default function EditMenuItem({ params }) {
   const router = useRouter();
@@ -10,22 +11,38 @@ export default function EditMenuItem({ params }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { id } = params;
 
   useEffect(() => {
-    fetchItem();
-    fetchCategories();
-  }, [params.id]);
+    const checkUserAndFetchItem = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.user_metadata.role !== 'partner') {
+        router.push('/login');
+        return;
+      }
+      if (id) fetchItem();
+    };
+    checkUserAndFetchItem();
+  }, [id, router]);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers });
+  };
 
   const fetchItem = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/restaurants/menu/items/${params.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Erreur lors de la récupération de l\'item');
+      const response = await fetchWithAuth(`/api/partner/menu/items?id=${id}`);
+      if (!response.ok) throw new Error("Erreur lors de la récupération de l'article");
       const data = await response.json();
       setItem(data);
     } catch (err) {
@@ -37,13 +54,7 @@ export default function EditMenuItem({ params }) {
 
   const fetchCategories = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/restaurants/menu', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
+      const response = await fetchWithAuth('/api/restaurants/menu');
       if (!response.ok) throw new Error('Erreur lors de la récupération des catégories');
       const data = await response.json();
       setCategories(data.categories);
@@ -55,17 +66,24 @@ export default function EditMenuItem({ params }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/restaurants/menu/items/${params.id}`, {
+      const response = await fetchWithAuth(`/api/partner/menu/items?id=${id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(item)
       });
+      if (!response.ok) throw new Error("Erreur lors de la mise à jour");
+      router.push('/restaurant/menu');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
-      if (!response.ok) throw new Error('Erreur lors de la mise à jour de l\'item');
+  const handleDelete = async () => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet article ?")) return;
+    try {
+      const response = await fetchWithAuth(`/api/partner/menu/items?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error("Erreur lors de la suppression");
       router.push('/restaurant/menu');
     } catch (err) {
       setError(err.message);

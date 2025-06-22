@@ -1,5 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
+import { FaChartLine, FaBoxOpen, FaFileAlt, FaBell } from 'react-icons/fa';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import AuthGuard from '@/components/AuthGuard';
 
@@ -9,20 +13,38 @@ export default function PartnerDashboard() {
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState('orders');
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    fetchOrders();
-    fetchMenu();
-    fetchStats();
-  }, []);
+    const checkUserAndFetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.user_metadata.role !== 'partner') {
+        router.push('/login');
+        return;
+      }
+      fetchOrders();
+      fetchMenu();
+      fetchStats();
+    };
+    checkUserAndFetchData();
+  }, [router]);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers });
+  };
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/orders/restaurant/me', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetchWithAuth('/api/orders/restaurant/me');
       const data = await response.json();
       setOrders(data);
     } catch (error) {
@@ -32,11 +54,7 @@ export default function PartnerDashboard() {
 
   const fetchMenu = async () => {
     try {
-      const response = await fetch('/api/restaurants/me/menu', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetchWithAuth('/api/restaurants/me/menu');
       const data = await response.json();
       setMenu(data);
     } catch (error) {
@@ -46,11 +64,7 @@ export default function PartnerDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/restaurants/me/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetchWithAuth('/api/restaurants/me/stats');
       const data = await response.json();
       setStats(data);
       setLoading(false);
@@ -62,12 +76,8 @@ export default function PartnerDashboard() {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
+      const response = await fetchWithAuth(`/api/orders/${orderId}/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ status })
       });
 
@@ -78,6 +88,10 @@ export default function PartnerDashboard() {
       console.error('Erreur lors de la mise à jour du statut:', error);
     }
   };
+
+  if (loading || !stats) {
+    return <div>Chargement du tableau de bord partenaire...</div>;
+  }
 
   return (
     <AuthGuard allowedRoles={['partner']}>

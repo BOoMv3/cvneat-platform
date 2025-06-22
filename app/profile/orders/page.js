@@ -1,32 +1,51 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../../lib/supabase';
 
-export default function OrderHistory() {
-  const router = useRouter();
+export default function UserOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    const checkUserAndFetchOrders = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+        fetchOrders();
+    };
+    checkUserAndFetchOrders();
+  }, [router]);
+  
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers });
+  };
 
   const fetchOrders = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/users/orders', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Erreur lors de la récupération des commandes');
+      const response = await fetchWithAuth('/api/users/me/orders');
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
       const data = await response.json();
       setOrders(data);
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -78,12 +97,6 @@ export default function OrderHistory() {
               Retour au profil
             </button>
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-              {error}
-            </div>
-          )}
 
           <div className="space-y-4">
             {orders.map((order) => (

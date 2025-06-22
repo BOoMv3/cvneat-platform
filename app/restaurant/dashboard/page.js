@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaUtensils, FaClipboardList, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { supabase } from '../../../lib/supabase';
 
 export default function RestaurantDashboard() {
   const router = useRouter();
@@ -16,31 +17,50 @@ export default function RestaurantDashboard() {
   });
 
   useEffect(() => {
-    fetchRestaurantData();
-  }, []);
+    const checkUserAndFetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.user_metadata.role !== 'partner') {
+        router.push('/login');
+        return;
+      }
+      fetchRestaurantData();
+    };
+    checkUserAndFetchData();
+  }, [router]);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers });
+  };
 
   const fetchRestaurantData = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/restaurants/dashboard', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Erreur lors de la récupération des données');
+      const response = await fetchWithAuth('/api/partner/dashboard');
+      if (!response.ok) {
+        throw new Error('Failed to fetch restaurant data');
+      }
       const data = await response.json();
       setRestaurant(data.restaurant);
       setStats(data.stats);
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error(error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     router.push('/login');
   };
 

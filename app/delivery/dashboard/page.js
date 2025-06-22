@@ -6,159 +6,175 @@ import DeliveryNotifications from '@/components/DeliveryNotifications';
 import DeliveryMap from '@/components/DeliveryMap';
 import DeliveryChat from '@/components/DeliveryChat';
 import { useRouter } from 'next/navigation';
-import { FaCalendarAlt } from 'react-icons/fa';
-import { FaStar } from 'react-icons/fa';
-import { FaDownload, FaChartLine, FaBell, FaComments } from 'react-icons/fa';
+import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments } from 'react-icons/fa';
+import { supabase } from '../../../lib/supabase';
+import RealTimeNotifications from '../../components/DeliveryNotifications';
 
 export default function DeliveryDashboard() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [currentOrder, setCurrentOrder] = useState(null);
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({ total_earnings: 0, total_deliveries: 0, average_rating: 0 });
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   const [deliveryId, setDeliveryId] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const router = useRouter();
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // Récupérer l'ID du livreur depuis le token ou la session
-    const token = localStorage.getItem('token');
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      setUser(user);
+      setDeliveryId(user.id);
+      fetchAvailableOrders();
+      fetchStats();
+      fetchCurrentOrder();
+    };
+    checkUser();
+  }, [router]);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
     if (token) {
-      // Décoder le token pour récupérer l'ID (simulation)
-      // En production, vous utiliseriez une vraie décodification JWT
-      setDeliveryId('current-user-id'); // À remplacer par l'ID réel
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    
-    fetchAvailableOrders();
-    fetchStats();
-    fetchCurrentOrder();
-  }, []);
+
+    return fetch(url, { ...options, headers });
+  };
 
   const fetchAvailableOrders = async () => {
     try {
-      const response = await fetch('/api/delivery/available-orders', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetchWithAuth('/api/delivery/available-orders');
       const data = await response.json();
       setAvailableOrders(data);
     } catch (error) {
-      console.error('Erreur lors de la récupération des commandes disponibles:', error);
+      console.error("Erreur lors de la récupération des commandes disponibles:", error);
     }
   };
 
   const fetchCurrentOrder = async () => {
     try {
-      const response = await fetch('/api/delivery/current-order', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetchWithAuth('/api/delivery/current-order');
+      if (response.status === 404) {
+        setCurrentOrder(null);
+        return;
+      }
       const data = await response.json();
       setCurrentOrder(data);
       setLoading(false);
     } catch (error) {
-      console.error('Erreur lors de la récupération de la commande en cours:', error);
+      console.error("Erreur lors de la récupération de la commande en cours:", error);
       setLoading(false);
     }
   };
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/delivery/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetchWithAuth('/api/delivery/stats');
       const data = await response.json();
       setStats(data);
     } catch (error) {
-      console.error('Erreur lors de la récupération des statistiques:', error);
+      console.error("Erreur lors de la récupération des statistiques:", error);
     }
   };
 
   const acceptOrder = async (orderId) => {
     try {
-      const response = await fetch(`/api/delivery/accept-order/${orderId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const response = await fetchWithAuth(`/api/delivery/accept-order/${orderId}`, {
+        method: 'POST'
       });
 
       if (response.ok) {
+        alert("Commande acceptée !");
         fetchAvailableOrders();
         fetchCurrentOrder();
+      } else {
+        const error = await response.json();
+        alert(`Erreur: ${error.message}`);
       }
     } catch (error) {
-      console.error('Erreur lors de l\'acceptation de la commande:', error);
+      console.error("Erreur lors de l'acceptation de la commande:", error);
     }
   };
 
   const updateOrderStatus = async (status) => {
     try {
-      const response = await fetch(`/api/delivery/order/${currentOrder.id}/status`, {
+      const response = await fetchWithAuth(`/api/delivery/order/${currentOrder.id}/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ status })
       });
 
       if (response.ok) {
+        alert("Statut de la commande mis à jour !");
         fetchCurrentOrder();
         if (status === 'livree') {
-          fetchStats();
+           setChatOpen(false); // Fermer le chat après la livraison
         }
+      } else {
+        const error = await response.json();
+        alert(`Erreur: ${error.message}`);
       }
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
+      console.error("Erreur lors de la mise à jour du statut:", error);
     }
   };
-
+  
   const toggleAvailability = async () => {
     try {
-      const response = await fetch('/api/delivery/availability', {
+      const response = await fetchWithAuth('/api/delivery/availability', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ is_available: !isAvailable })
       });
 
       if (response.ok) {
         setIsAvailable(!isAvailable);
+        alert(`Disponibilité mise à jour: ${!isAvailable ? 'En ligne' : 'Hors ligne'}`);
+      } else {
+        const error = await response.json();
+        alert(`Erreur: ${error.message}`);
       }
     } catch (error) {
-      console.error('Erreur lors de la mise à jour de la disponibilité:', error);
+      console.error("Erreur lors du changement de disponibilité:", error);
     }
   };
 
   const exportEarnings = async () => {
     try {
-      const response = await fetch('/api/delivery/export-earnings');
+      const response = await fetchWithAuth('/api/delivery/export-earnings');
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `gains_livreur_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = "rapport-gains.pdf";
         document.body.appendChild(a);
         a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        a.remove();
+      } else {
+        alert("Erreur lors de l'exportation des gains.");
       }
     } catch (error) {
-      console.error('Erreur export gains:', error);
+      console.error("Erreur d'exportation:", error);
     }
   };
 
+  if (!user) {
+    return <div>Chargement...</div>;
+  }
+
   return (
     <AuthGuard allowedRoles={['delivery']}>
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4">
         <Navbar />
         
         <main className="container mx-auto px-4 py-8">
@@ -230,7 +246,7 @@ export default function DeliveryDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-yellow-100 text-sm font-medium">Note Moyenne</p>
-                  <p className="text-3xl font-bold">{stats?.rating?.toFixed(1) || 0}/5</p>
+                  <p className="text-3xl font-bold">{stats?.average_rating?.toFixed(1) || 0}/5</p>
                 </div>
                 <div className="bg-yellow-400 bg-opacity-30 p-3 rounded-full">
                   <FaStar className="h-6 w-6" />

@@ -1,3 +1,5 @@
+import { safeLocalStorage } from "../../lib/localStorage";
+
 // Fonction pour envoyer une notification push
 export const sendPushNotification = (title, body, options = {}) => {
   if (!('Notification' in window)) {
@@ -64,19 +66,34 @@ export const sendOrderStatusNotification = (orderId, status, orderDetails = {}) 
 };
 
 // Fonction pour demander la permission
-export const requestNotificationPermission = async () => {
+export async function requestNotificationPermission(orderId) {
   if (!('Notification' in window)) {
-    return false;
+    alert("Ce navigateur ne supporte pas les notifications desktop");
+    return;
   }
 
-  try {
-    const permission = await Notification.requestPermission();
-    return permission === 'granted';
-  } catch (error) {
-    console.error('Erreur lors de la demande de permission:', error);
-    return false;
+  const permission = await Notification.requestPermission();
+  if (permission === 'granted') {
+    new Notification("Notifications activées !", {
+      body: "Vous serez notifié du statut de votre commande.",
+      icon: '/logo.png'
+    });
+    
+    safeLocalStorage.setItem('cvneat_notifications_enabled', 'true');
+    safeLocalStorage.setItem('cvneat_notification_order_id', orderId);
+    
+    // Envoyer le token au serveur
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        body: JSON.stringify(subscription),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
   }
-};
+}
 
 // Fonction pour vérifier si les notifications sont activées
 export const isNotificationEnabled = () => {
@@ -95,9 +112,17 @@ export const saveNotificationPreferences = (orderId, enabled = true) => {
 };
 
 // Fonction pour récupérer les préférences de notification
-export const getNotificationPreferences = () => {
+export function getNotificationStatus() {
   return {
-    enabled: localStorage.getItem('cvneat_notifications_enabled') === 'true',
-    orderId: localStorage.getItem('cvneat_notification_order_id')
+    supported: 'Notification' in window,
+    permission: Notification.permission,
+    enabled: safeLocalStorage.getItem('cvneat_notifications_enabled') === 'true',
+    orderId: safeLocalStorage.getItem('cvneat_notification_order_id')
   };
-}; 
+}
+
+export function disableNotifications() {
+  safeLocalStorage.removeItem('cvneat_notifications_enabled');
+  safeLocalStorage.removeItem('cvneat_notification_order_id');
+  console.log("Notifications désactivées.");
+} 
