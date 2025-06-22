@@ -11,7 +11,7 @@ export async function GET(request) {
         restaurant:restaurants(nom, adresse)
       `)
       .eq('statut', 'pret_a_livrer')
-      .is('livreur_id', null)
+      .is('delivery_id', null)
       .order('created_at', { ascending: true });
 
     if (error) {

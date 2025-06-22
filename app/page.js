@@ -341,13 +341,17 @@ export default function Home() {
   // Filtrage et tri des restaurants
   const filteredAndSortedRestaurants = Array.isArray(restaurants) ? restaurants
     .filter(restaurant => {
-      if (!restaurant || !restaurant.nom) return false;
+      if (!restaurant || typeof restaurant !== 'object') return false;
+      if (!restaurant.nom) return false;
+      
       const matchesSearch = restaurant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (restaurant.description && restaurant.description.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = selectedCategory === 'all' || restaurant.categorie === selectedCategory;
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
+      if (!a || !b) return 0;
+      
       const now = new Date();
       const aSponsor = a.mise_en_avant && a.mise_en_avant_fin && new Date(a.mise_en_avant_fin) > now;
       const bSponsor = b.mise_en_avant && b.mise_en_avant_fin && new Date(b.mise_en_avant_fin) > now;

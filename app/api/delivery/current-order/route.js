@@ -14,7 +14,7 @@ export async function GET(request) {
         *,
         restaurant:restaurants(nom, adresse)
       `)
-      .eq('livreur_id', deliveryId)
+      .eq('delivery_id', deliveryId)
       .in('statut', ['en_livraison', 'pret_a_livrer'])
       .single();
 
