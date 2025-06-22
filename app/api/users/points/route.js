@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
+
+export const dynamic = 'force-dynamic';
 
 // Récupérer les points de fidélité d'un utilisateur
 export async function GET(request) {
