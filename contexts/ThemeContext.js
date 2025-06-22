@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { safeLocalStorage } from '../../lib/localStorage';
+import { safeLocalStorage } from '../lib/localStorage';
 
 const ThemeContext = createContext();
 

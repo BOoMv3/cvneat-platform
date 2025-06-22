@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
     return NextResponse.json(data);
 
   } catch (e) {
-    console.error('Exception dans l''API menu:', e);
+    console.error('Exception dans l\'API menu:', e);
     return NextResponse.json({ message: "Erreur serveur inattendue", error: e.message }, { status: 500 });
   }
 } 

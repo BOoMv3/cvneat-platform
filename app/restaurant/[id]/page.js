@@ -18,7 +18,7 @@ const MenuSection = ({ restaurantId }) => {
       try {
         const response = await fetch(`/api/restaurants/${restaurantId}/menu`);
         if (!response.ok) {
-          throw new Error('Le menu n''est pas disponible pour le moment.');
+          throw new Error('Le menu n\'est pas disponible pour le moment.');
         }
         const data = await response.json();
         setMenu(data);
