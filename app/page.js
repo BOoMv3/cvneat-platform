@@ -339,7 +339,7 @@ export default function Home() {
   ];
 
   // Filtrage et tri des restaurants
-  const filteredAndSortedRestaurants = restaurants
+  const filteredAndSortedRestaurants = (restaurants || [])
     .filter(restaurant => {
       const matchesSearch = restaurant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            restaurant.description.toLowerCase().includes(searchTerm.toLowerCase());
