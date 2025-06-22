@@ -19,7 +19,7 @@ import {
   FaShieldAlt,
   FaTruck
 } from 'react-icons/fa';
-import AuthGuard from "../components/AuthGuard";
+import AuthGuard from "../../components/AuthGuard";
 
 export default function Checkout() {
   const router = useRouter();

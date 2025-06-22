@@ -5,7 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaShoppingCart, FaSpinner } from 'react-icons/fa';
-import { supabase } from '../../../lib/supabase'; // Assurez-vous que le chemin est correct
 
 // Composant pour la section du menu
 const MenuSection = ({ restaurantId }) => {
