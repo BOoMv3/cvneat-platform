@@ -61,17 +61,12 @@ export default function AdminUsers() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       const url = editingUser 
         ? `/api/admin/users/${editingUser.id}`
         : '/api/admin/users';
       
-      const response = await fetch(url, {
+      const response = await fetchWithAuth(url, {
         method: editingUser ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(formData)
       });
 
@@ -88,12 +83,8 @@ export default function AdminUsers() {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetchWithAuth(`/api/admin/users/${id}`, {
+        method: 'DELETE'
       });
 
       if (!response.ok) throw new Error('Erreur lors de la suppression de l\'utilisateur');

@@ -103,11 +103,11 @@ export const isNotificationEnabled = () => {
 // Fonction pour enregistrer les préférences de notification
 export const saveNotificationPreferences = (orderId, enabled = true) => {
   if (enabled) {
-    localStorage.setItem('cvneat_notifications_enabled', 'true');
-    localStorage.setItem('cvneat_notification_order_id', orderId);
+    safeLocalStorage.setItem('cvneat_notifications_enabled', 'true');
+    safeLocalStorage.setItem('cvneat_notification_order_id', orderId);
   } else {
-    localStorage.removeItem('cvneat_notifications_enabled');
-    localStorage.removeItem('cvneat_notification_order_id');
+    safeLocalStorage.removeItem('cvneat_notifications_enabled');
+    safeLocalStorage.removeItem('cvneat_notification_order_id');
   }
 };
 
