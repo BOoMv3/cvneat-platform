@@ -101,7 +101,10 @@ export default function Home() {
 
     fetchRestaurants();
     
-    // Charger les favoris depuis localStorage (cote client uniquement)
+  }, []);
+
+  // Gestion des favoris côté client uniquement
+  useEffect(() => {
     const savedFavorites = safeLocalStorage.getJSON('favorites');
     if (savedFavorites) {
       setFavorites(savedFavorites);

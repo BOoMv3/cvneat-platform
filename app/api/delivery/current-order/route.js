@@ -13,7 +13,7 @@ export async function GET(request) {
       .select(`
         *,
         restaurant:restaurants(nom, adresse),
-        customer:users(nom, prenom, email, telephone)
+        customer:users!commandes_user_id_fkey(nom, prenom, email, telephone)
       `)
       .eq('livreur_id', deliveryId)
       .in('statut', ['en_livraison', 'pret_a_livrer'])
