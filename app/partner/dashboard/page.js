@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import { FaChartLine, FaBoxOpen, FaFileAlt, FaBell } from 'react-icons/fa';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
