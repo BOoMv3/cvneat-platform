@@ -5,12 +5,12 @@ export async function GET(request) {
   try {
     // Récupérer les commandes prêtes à être livrées et non assignées
     const { data: orders, error } = await supabase
-      .from('commandes')
+      .from('orders')
       .select(`
         *,
         restaurant:restaurants(nom, adresse)
       `)
-      .eq('statut', 'pret_a_livrer')
+      .eq('status', 'ready_for_delivery')
       .is('delivery_id', null)
       .order('created_at', { ascending: true });
 
@@ -27,10 +27,10 @@ export async function GET(request) {
       id: order.id,
       restaurant_nom: order.restaurant?.nom || 'Restaurant inconnu',
       restaurant_adresse: order.restaurant?.adresse || 'Adresse inconnue',
-      customer_email: order.customer?.email || 'Email inconnu',
-      delivery_address: order.adresse_livraison,
-      total: order.montant_total,
-      delivery_fee: order.frais_livraison,
+      customer_email: order.customer_email || 'Email inconnu',
+      delivery_address: order.delivery_address,
+      total: order.total_amount,
+      delivery_fee: order.delivery_fee,
       created_at: order.created_at,
       estimated_time: 30 // Temps estimé en minutes
     })) || [];

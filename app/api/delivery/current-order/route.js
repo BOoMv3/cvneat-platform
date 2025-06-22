@@ -9,13 +9,13 @@ export async function GET(request) {
 
     // Récupérer la commande en cours du livreur
     const { data: order, error } = await supabase
-      .from('commandes')
+      .from('orders')
       .select(`
         *,
         restaurant:restaurants(nom, adresse)
       `)
       .eq('delivery_id', deliveryId)
-      .in('statut', ['en_livraison', 'pret_a_livrer'])
+      .in('status', ['in_delivery', 'ready_for_delivery'])
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
@@ -35,11 +35,11 @@ export async function GET(request) {
       id: order.id,
       restaurant_name: order.restaurant?.nom || 'Restaurant inconnu',
       restaurant_address: order.restaurant?.adresse || 'Adresse inconnue',
-      customer_email: order.customer?.email || 'Email inconnu',
-      delivery_address: order.adresse_livraison,
-      total: order.montant_total,
-      delivery_fee: order.frais_livraison,
-      status: order.statut,
+      customer_email: order.customer_email || 'Email inconnu',
+      delivery_address: order.delivery_address,
+      total: order.total_amount,
+      delivery_fee: order.delivery_fee,
+      status: order.status,
       created_at: order.created_at,
       estimated_time: 30
     };

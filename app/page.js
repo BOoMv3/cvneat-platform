@@ -24,6 +24,10 @@ import {
   FaGift
 } from 'react-icons/fa';
 
+// Desactiver le rendu statique pour cette page
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+
 export default function Home() {
   const router = useRouter();
   const [restaurants, setRestaurants] = useState([]);
@@ -786,7 +790,4 @@ export default function Home() {
       )}
     </div>
   );
-}
-
-// Desactiver le rendu statique pour cette page
-export const dynamic = 'force-dynamic'; 
+} 
