@@ -45,6 +45,11 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     // Verifier l'authentification
@@ -407,6 +412,15 @@ export default function Home() {
             Réessayer
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Vérification de sécurité pour éviter l'erreur restaurant is not defined
+  if (!Array.isArray(restaurants)) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }

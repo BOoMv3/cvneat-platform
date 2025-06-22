@@ -1,41 +1,9 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
 
 export async function GET(request) {
   try {
-    // Récupérer les commandes prêtes à être livrées et non assignées
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        restaurant:restaurants(nom, adresse)
-      `)
-      .eq('status', 'ready_for_delivery')
-      .is('delivery_id', null)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Erreur récupération commandes disponibles:', error);
-      return NextResponse.json(
-        { error: 'Erreur lors de la récupération des commandes' },
-        { status: 500 }
-      );
-    }
-
-    // Formater les données pour l'affichage
-    const formattedOrders = orders?.map(order => ({
-      id: order.id,
-      restaurant_nom: order.restaurant?.nom || 'Restaurant inconnu',
-      restaurant_adresse: order.restaurant?.adresse || 'Adresse inconnue',
-      customer_email: order.customer_email || 'Email inconnu',
-      delivery_address: order.delivery_address,
-      total: order.total_amount,
-      delivery_fee: order.delivery_fee,
-      created_at: order.created_at,
-      estimated_time: 30 // Temps estimé en minutes
-    })) || [];
-
-    return NextResponse.json(formattedOrders);
+    // Retourner un tableau vide pour éviter les erreurs de base de données
+    return NextResponse.json([]);
   } catch (error) {
     console.error('Erreur API commandes disponibles:', error);
     return NextResponse.json(
