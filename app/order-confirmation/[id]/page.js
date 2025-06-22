@@ -329,9 +329,9 @@ export default function OrderConfirmation() {
                           </p>
                           {isActive && (
                             <p className="text-sm text-gray-500">En cours...</p>
-                          )}
-                        </div>
-                      </div>
+              )}
+            </div>
+          </div>
                     );
                   })}
                 </div>
@@ -370,7 +370,7 @@ export default function OrderConfirmation() {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-4">Articles commandés</h3>
                   <div className="space-y-3">
-                    {orderData.items && orderData.items.map((item, index) => (
+              {orderData.items && orderData.items.map((item, index) => (
                       <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{item.name}</p>
@@ -387,13 +387,13 @@ export default function OrderConfirmation() {
                 {/* Totaux */}
                 <div className="border-t pt-4 space-y-3">
                   <div className="flex justify-between text-gray-600">
-                    <span>Sous-total</span>
-                    <span>{(orderData.total_amount - orderData.delivery_fee).toFixed(2)}€</span>
-                  </div>
+                  <span>Sous-total</span>
+                  <span>{(orderData.total_amount - orderData.delivery_fee).toFixed(2)}€</span>
+                </div>
                   <div className="flex justify-between text-gray-600">
-                    <span>Frais de livraison</span>
-                    <span>{orderData.delivery_fee.toFixed(2)}€</span>
-                  </div>
+                  <span>Frais de livraison</span>
+                  <span>{orderData.delivery_fee.toFixed(2)}€</span>
+                </div>
                   <div className="border-t pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-gray-900">Total</span>
@@ -456,8 +456,8 @@ export default function OrderConfirmation() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions rapides</h3>
                 
                 <div className="space-y-3">
-                  <button
-                    onClick={() => router.push('/')}
+            <button
+              onClick={() => router.push('/')}
                     className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 font-semibold"
                   >
                     Commander à nouveau
@@ -487,7 +487,7 @@ export default function OrderConfirmation() {
                 </p>
                 <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
                   Contacter le support
-                </button>
+            </button>
               </div>
             </div>
           </div>

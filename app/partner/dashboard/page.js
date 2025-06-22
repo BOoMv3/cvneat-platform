@@ -2,215 +2,137 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaChartLine, FaBoxOpen, FaFileAlt, FaBell } from 'react-icons/fa';
+import { FaChartLine, FaBoxOpen, FaFileAlt, FaBell, FaUtensils, FaPlus } from 'react-icons/fa';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
-import AuthGuard from '@/components/AuthGuard';
+import AuthGuard from '../../../components/AuthGuard';
+import Navbar from '../../../components/Navbar';
+
 
 export default function PartnerDashboard() {
-  const [orders, setOrders] = useState([]);
-  const [menu, setMenu] = useState([]);
   const [stats, setStats] = useState(null);
-  const [activeTab, setActiveTab] = useState('orders');
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    const checkUserAndFetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.user_metadata.role !== 'partner') {
-        router.push('/login');
-        return;
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+
+        const token = session.access_token;
+
+        // Fetch stats
+        const statsRes = await fetch('/api/partner/dashboard', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!statsRes.ok) throw new Error('Erreur lors du chargement des statistiques.');
+        const statsData = await statsRes.json();
+        setStats(statsData);
+
+        // Fetch orders (à implémenter)
+        // const ordersRes = await fetch('/api/partner/orders', {
+        //   headers: { 'Authorization': `Bearer ${token}` }
+        // });
+        // if (!ordersRes.ok) throw new Error('Erreur lors du chargement des commandes.');
+        // const ordersData = await ordersRes.json();
+        // setOrders(ordersData);
+
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-      fetchOrders();
-      fetchMenu();
-      fetchStats();
     };
-    checkUserAndFetchData();
+
+    fetchData();
   }, [router]);
 
-  const fetchWithAuth = async (url, options = {}) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return fetch(url, { ...options, headers });
-  };
-
-  const fetchOrders = async () => {
-    try {
-      const response = await fetchWithAuth('/api/orders/restaurant/me');
-      const data = await response.json();
-      setOrders(data);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des commandes:', error);
-    }
-  };
-
-  const fetchMenu = async () => {
-    try {
-      const response = await fetchWithAuth('/api/restaurants/me/menu');
-      const data = await response.json();
-      setMenu(data);
-    } catch (error) {
-      console.error('Erreur lors de la récupération du menu:', error);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetchWithAuth('/api/restaurants/me/stats');
-      const data = await response.json();
-      setStats(data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des statistiques:', error);
-      setLoading(false);
-    }
-  };
-
-  const updateOrderStatus = async (orderId, status) => {
-    try {
-      const response = await fetchWithAuth(`/api/orders/${orderId}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status })
-      });
-
-      if (response.ok) {
-        fetchOrders();
-      }
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
-    }
-  };
-
-  if (loading || !stats) {
-    return <div>Chargement du tableau de bord partenaire...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
+      </div>
+    );
   }
+  
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-xl font-bold text-red-600">Une erreur est survenue</h2>
+          <p className="text-gray-700 mt-2">{error}</p>
+          <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <AuthGuard allowedRoles={['partner']}>
       <div className="min-h-screen bg-gray-100">
         <Navbar />
         
-        <main className="container mx-auto px-4 py-8">
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Tableau de bord Partenaire
+            </h1>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           {/* Statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-gray-500 text-sm font-medium">Commandes Aujourd'hui</h3>
-              <p className="text-3xl font-bold">{stats?.today_orders || 0}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-gray-500 text-sm font-medium">Commandes en Attente</h3>
-              <p className="text-3xl font-bold">{stats?.pending_orders || 0}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-gray-500 text-sm font-medium">Chiffre d'Affaires</h3>
-              <p className="text-3xl font-bold">{stats?.total_revenue?.toFixed(2) || 0}€</p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard icon={<FaBoxOpen className="text-blue-500" />} title="Commandes du jour" value={stats?.today_orders || 0} />
+            <StatCard icon={<FaBell className="text-yellow-500" />} title="Commandes en attente" value={stats?.pending_orders || 0} />
+            <StatCard icon={<FaChartLine className="text-green-500" />} title="Revenu total" value={`${(stats?.total_revenue || 0).toFixed(2)}€`} />
+            <StatCard icon={<FaFileAlt className="text-purple-500" />} title="Plats au menu" value={"N/A"} />
           </div>
 
-          {/* Onglets */}
-          <div className="bg-white rounded-lg shadow mb-8">
-            <div className="border-b">
-              <nav className="flex">
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className={`px-6 py-4 text-sm font-medium ${
-                    activeTab === 'orders'
-                      ? 'border-b-2 border-blue-500 text-blue-600'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Commandes
-                </button>
-                <button
-                  onClick={() => setActiveTab('menu')}
-                  className={`px-6 py-4 text-sm font-medium ${
-                    activeTab === 'menu'
-                      ? 'border-b-2 border-blue-500 text-blue-600'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Menu
-                </button>
-              </nav>
-            </div>
+          {/* Actions rapides */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+             <ActionCard title="Gérer le Menu" description="Ajoutez, modifiez ou supprimez des plats et catégories." link="/restaurant/menu/edit" icon={<FaUtensils />} />
+             <ActionCard title="Voir les Commandes" description="Consultez l'historique et le statut de vos commandes." link="/restaurant/orders" icon={<FaBoxOpen />} />
+             <ActionCard title="Gérer les Horaires" description="Mettez à jour vos heures d'ouverture et de fermeture." link="/partner/hours" icon={<FaPlus />} />
+          </div>
 
-            {/* Contenu des onglets */}
-            <div className="p-6">
-              {activeTab === 'orders' ? (
-                <div className="space-y-4">
-                  {orders.map((order) => (
-                    <div key={order.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">Commande #{order.id}</h3>
-                          <p className="text-gray-600">{order.client_email}</p>
-                          <p className="text-gray-600">{order.adresse_livraison}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-3 py-1 rounded text-sm ${
-                            order.status === 'livree' ? 'bg-green-100 text-green-800' :
-                            order.status === 'en_preparation' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {order.status}
-                          </span>
-                          {order.status === 'en_attente' && (
-                            <button
-                              onClick={() => updateOrderStatus(order.id, 'en_preparation')}
-                              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                            >
-                              Préparer
-                            </button>
-                          )}
-                          {order.status === 'en_preparation' && (
-                            <button
-                              onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
-                              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                            >
-                              Prêt à livrer
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div>
-                  <button className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                    Ajouter un plat
-                  </button>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {menu.map((item) => (
-                      <div key={item.id} className="border rounded-lg p-4">
-                        <h3 className="font-medium">{item.nom}</h3>
-                        <p className="text-gray-600">{item.description}</p>
-                        <p className="text-lg font-semibold mt-2">{item.prix.toFixed(2)}€</p>
-                        <div className="mt-4 flex space-x-2">
-                          <button className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
-                            Modifier
-                          </button>
-                          <button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-                            Supprimer
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* Commandes récentes (à venir) */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold mb-4">Commandes Récentes</h2>
+            <p className="text-gray-500">La liste de vos commandes les plus récentes apparaîtra ici.</p>
+            {/* Le code pour lister les commandes ira ici */}
           </div>
         </main>
       </div>
     </AuthGuard>
   );
-} 
+}
+
+const StatCard = ({ icon, title, value }) => (
+  <div className="bg-white rounded-lg shadow-sm p-6 flex items-center space-x-4">
+    <div className="text-3xl bg-gray-100 p-3 rounded-full">{icon}</div>
+    <div>
+      <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
+      <p className="text-2xl font-bold">{value}</p>
+    </div>
+  </div>
+);
+
+const ActionCard = ({ title, description, link, icon }) => (
+  <Link href={link} className="block bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+    <div className="flex items-center space-x-4 mb-2">
+      <div className="text-2xl text-orange-500">{icon}</div>
+      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+    </div>
+    <p className="text-gray-600">{description}</p>
+  </Link>
+); 
