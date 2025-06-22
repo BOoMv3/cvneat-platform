@@ -12,13 +12,10 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse),
-        customer:users!commandes_user_id_fkey(nom, prenom, email, telephone)
+        restaurant:restaurants(nom, adresse)
       `)
       .eq('livreur_id', deliveryId)
       .in('statut', ['en_livraison', 'pret_a_livrer'])
-      .order('created_at', { ascending: false })
-      .limit(1)
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
@@ -36,10 +33,9 @@ export async function GET(request) {
     // Formater les données
     const formattedOrder = {
       id: order.id,
-      restaurant_nom: order.restaurant?.nom || 'Restaurant inconnu',
-      restaurant_adresse: order.restaurant?.adresse || 'Adresse inconnue',
-      customer_name: `${order.customer?.prenom || ''} ${order.customer?.nom || ''}`.trim(),
-      customer_phone: order.customer?.telephone || '',
+      restaurant_name: order.restaurant?.nom || 'Restaurant inconnu',
+      restaurant_address: order.restaurant?.adresse || 'Adresse inconnue',
+      customer_email: order.customer?.email || 'Email inconnu',
       delivery_address: order.adresse_livraison,
       total: order.montant_total,
       delivery_fee: order.frais_livraison,

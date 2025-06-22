@@ -339,10 +339,11 @@ export default function Home() {
   ];
 
   // Filtrage et tri des restaurants
-  const filteredAndSortedRestaurants = (restaurants || [])
+  const filteredAndSortedRestaurants = Array.isArray(restaurants) ? restaurants
     .filter(restaurant => {
+      if (!restaurant || !restaurant.nom) return false;
       const matchesSearch = restaurant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           restaurant.description.toLowerCase().includes(searchTerm.toLowerCase());
+                           (restaurant.description && restaurant.description.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = selectedCategory === 'all' || restaurant.categorie === selectedCategory;
       return matchesSearch && matchesCategory;
     })
@@ -364,7 +365,7 @@ export default function Home() {
         default:
           return 0;
       }
-    });
+    }) : [];
 
   // Récupérer les frais de livraison depuis le localStorage
   const getFraisLivraison = () => {

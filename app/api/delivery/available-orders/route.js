@@ -8,8 +8,7 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse),
-        customer:users!commandes_user_id_fkey(nom, prenom, email, telephone)
+        restaurant:restaurants(nom, adresse)
       `)
       .eq('statut', 'pret_a_livrer')
       .is('livreur_id', null)
@@ -28,8 +27,7 @@ export async function GET(request) {
       id: order.id,
       restaurant_nom: order.restaurant?.nom || 'Restaurant inconnu',
       restaurant_adresse: order.restaurant?.adresse || 'Adresse inconnue',
-      customer_name: `${order.customer?.prenom || ''} ${order.customer?.nom || ''}`.trim(),
-      customer_phone: order.customer?.telephone || '',
+      customer_email: order.customer?.email || 'Email inconnu',
       delivery_address: order.adresse_livraison,
       total: order.montant_total,
       delivery_fee: order.frais_livraison,
