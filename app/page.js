@@ -638,7 +638,7 @@ export default function Home() {
                     
                     <div className="text-right">
                       <p className="font-medium text-gray-900">
-                        {restaurant.frais_livraison ? `${restaurant.frais_livraison}€` : 'Gratuit'}
+                        Frais de livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€
                       </p>
                       <p className="text-xs text-gray-500">Commande min: {restaurant.minOrder}€</p>
                     </div>

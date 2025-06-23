@@ -87,7 +87,7 @@ export default function RestaurantsList() {
                     <span>🕒 {restaurant.deliveryTime} min</span>
                   </div>
                   <div className="text-right">
-                    <p>Frais de livraison: {restaurant.deliveryFee}€</p>
+                    <p>Frais de livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€</p>
                     <p>Commande min: {restaurant.minOrder}€</p>
                   </div>
                 </div>

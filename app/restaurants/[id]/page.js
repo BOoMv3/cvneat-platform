@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { safeLocalStorage } from '../../../lib/localStorage';
-import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
+import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart, FaMapMarkerAlt } from 'react-icons/fa';
 import Modal from '../../components/Modal';
 
 export default function RestaurantDetail({ params }) {
@@ -17,6 +17,9 @@ export default function RestaurantDetail({ params }) {
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCartModal, setShowCartModal] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState(2.50);
+  const [deliveryInfoLoading, setDeliveryInfoLoading] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -35,6 +38,56 @@ export default function RestaurantDetail({ params }) {
     }
   }, [cart]);
 
+  // Charger l'adresse par défaut si connecté
+  useEffect(() => {
+    if (user) {
+      (async () => {
+        const { data: userAddress } = await supabase
+          .from('user_addresses')
+          .select('address, city, postal_code')
+          .eq('user_id', user.id)
+          .eq('is_default', true)
+          .single();
+        if (userAddress) {
+          setDeliveryAddress(`${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}`);
+        }
+      })();
+    }
+  }, [user]);
+
+  // Calcul dynamique des frais de livraison
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      if (!restaurant || !deliveryAddress) return;
+      setDeliveryInfoLoading(true);
+      try {
+        const response = await fetch('/api/delivery/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurantAddress: restaurant.adresse + ', ' + restaurant.code_postal + ' ' + restaurant.ville,
+            deliveryAddress: deliveryAddress
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.livrable) {
+            setDeliveryFee(data.frais_livraison);
+          } else {
+            setDeliveryFee(null);
+          }
+        } else {
+          setDeliveryFee(null);
+        }
+      } catch (e) {
+        setDeliveryFee(null);
+      } finally {
+        setDeliveryInfoLoading(false);
+      }
+    };
+    fetchDeliveryFee();
+  }, [restaurant, deliveryAddress]);
+
   const loadCartFromStorage = () => {
     const storedCart = safeLocalStorage.getJSON('cart');
     if (storedCart) {
@@ -49,11 +102,10 @@ export default function RestaurantDetail({ params }) {
   };
 
   const saveCartToStorage = () => {
-    const deliveryFee = getDeliveryFee();
     const cartData = {
       items: cart,
       restaurant: restaurant,
-      frais_livraison: deliveryFee
+      frais_livraison: deliveryFee || 2.50
     };
     safeLocalStorage.setJSON('cart', cartData);
   };
@@ -109,7 +161,7 @@ export default function RestaurantDetail({ params }) {
   };
 
   const getSubtotal = () => {
-    return cart.reduce((total, item) => total + ((item.price || 0) * (item.quantity || 0)), 0);
+    return cart.reduce((total, item) => total + ((item.prix || item.price || 0) * (item.quantity || 0)), 0);
   };
 
   const getDeliveryFee = () => {
@@ -119,7 +171,7 @@ export default function RestaurantDetail({ params }) {
   };
 
   const getTotal = () => {
-    return getSubtotal() + getDeliveryFee();
+    return getSubtotal() + (deliveryFee || 0);
   };
 
   const handleCheckout = () => {
@@ -201,8 +253,21 @@ export default function RestaurantDetail({ params }) {
                 </div>
                 <div className="flex items-center">
                   <FaMotorcycle className="text-gray-500 mr-1" />
-                  <span>{restaurant.deliveryFee}€ de livraison</span>
+                  <span>
+                    {deliveryInfoLoading ? 'Calcul...' : deliveryFee !== null ? `${deliveryFee.toFixed(2)}€ de livraison` : 'Livraison non disponible'}
+                  </span>
                 </div>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><FaMapMarkerAlt className="mr-2" />Adresse de livraison :</label>
+                <input
+                  type="text"
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Votre adresse complète"
+                  value={deliveryAddress}
+                  onChange={e => setDeliveryAddress(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">Le prix de livraison s'adapte automatiquement à votre adresse.</p>
               </div>
               <div className="text-sm text-gray-500">
                 <p>{restaurant.adresse}</p>
@@ -227,7 +292,7 @@ export default function RestaurantDetail({ params }) {
               >
                 Tout
               </button>
-              {[...new Set(menu.map(item => item.category))].map(category => (
+              {[...new Set(menu.map(item => item.category))].filter(category => category).map(category => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
@@ -242,36 +307,83 @@ export default function RestaurantDetail({ params }) {
               ))}
             </div>
 
-            {/* Liste des plats */}
-            {filteredMenu.length === 0 ? (
-              <div className="text-center text-gray-500">Aucun plat disponible dans cette catégorie.</div>
+            {/* Liste des plats organisée par catégories */}
+            {selectedCategory === 'all' ? (
+              // Afficher toutes les catégories séparément
+              [...new Set(menu.map(item => item.category))].filter(category => category).map(category => {
+                const categoryItems = menu.filter(item => item.category === category);
+                return (
+                  <div key={category} className="mb-8">
+                    <h3 className="text-2xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">
+                      {category}
+                    </h3>
+                    <div className="space-y-4">
+                      {categoryItems.map((item) => (
+                        <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom || item.name}</h4>
+                              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xl font-bold text-blue-600">{(item.prix || item.price || 0).toFixed(2)}€</span>
+                                <button
+                                  onClick={() => addToCart(item)}
+                                  className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
+                                >
+                                  <FaPlus />
+                                </button>
+                              </div>
+                            </div>
+                            {item.image_url && (
+                              <img
+                                src={item.image_url}
+                                alt={item.nom || item.name}
+                                className="w-24 h-24 object-cover rounded-lg ml-4"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
             ) : (
-              filteredMenu.map((item) => (
-                <div key={item.id} className="bg-white rounded-lg shadow-sm p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold mb-2">{item.name}</h3>
-                      <p className="text-gray-600 text-sm mb-4">{item.description}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{(item.price || 0).toFixed(2)}€</span>
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800"
-                        >
-                          <FaPlus />
-                        </button>
+              // Afficher seulement la catégorie sélectionnée
+              filteredMenu.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <p>Aucun plat disponible dans cette catégorie.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredMenu.map((item) => (
+                    <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom || item.name}</h4>
+                          <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xl font-bold text-blue-600">{(item.prix || item.price || 0).toFixed(2)}€</span>
+                            <button
+                              onClick={() => addToCart(item)}
+                              className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
+                            >
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </div>
+                        {item.image_url && (
+                          <img
+                            src={item.image_url}
+                            alt={item.nom || item.name}
+                            className="w-24 h-24 object-cover rounded-lg ml-4"
+                          />
+                        )}
                       </div>
                     </div>
-                    {item.image && (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-24 h-24 object-cover rounded-lg ml-4"
-                      />
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))
+              )
             )}
           </div>
 
@@ -287,8 +399,8 @@ export default function RestaurantDetail({ params }) {
                     {cart.map((item) => (
                       <div key={item.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-gray-500">{item.price?.toFixed(2) ?? '0.00'}€</p>
+                          <p className="font-medium">{item.nom || item.name}</p>
+                          <p className="text-sm text-gray-500">{(item.prix || item.price || 0).toFixed(2)}€</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -315,7 +427,7 @@ export default function RestaurantDetail({ params }) {
                     </div>
                     <div className="flex justify-between items-center mb-4">
                       <p>Frais de livraison</p>
-                      <p>{getDeliveryFee().toFixed(2)}€</p>
+                      <p>{deliveryFee !== null ? deliveryFee.toFixed(2) : 'Calcul en cours'}€</p>
                     </div>
                     <div className="flex justify-between items-center font-bold text-lg mb-4">
                       <p>Total</p>
@@ -341,13 +453,13 @@ export default function RestaurantDetail({ params }) {
             <div className="space-y-2 mb-4">
               {cart.map((item) => (
                 <div key={item.id} className="flex justify-between">
-                  <span>{item.name} x{item.quantity}</span>
-                  <span>{((item.price || 0) * (item.quantity || 0)).toFixed(2)}€</span>
+                  <span>{item.nom || item.name} x{item.quantity}</span>
+                  <span>{((item.prix || item.price || 0) * (item.quantity || 0)).toFixed(2)}€</span>
                 </div>
               ))}
             </div>
             <div className="flex justify-between mb-2"><span>Sous-total</span><span>{getSubtotal().toFixed(2)}€</span></div>
-            <div className="flex justify-between mb-2"><span>Frais de livraison</span><span>{getDeliveryFee().toFixed(2)}€</span></div>
+            <div className="flex justify-between mb-2"><span>Frais de livraison</span><span>{deliveryFee !== null ? deliveryFee.toFixed(2) : 'Calcul en cours'}€</span></div>
             <div className="flex justify-between font-bold text-lg mb-4"><span>Total</span><span>{getTotal().toFixed(2)}€</span></div>
             <button onClick={() => router.push('/checkout')} className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600">Valider et payer</button>
           </Modal>
