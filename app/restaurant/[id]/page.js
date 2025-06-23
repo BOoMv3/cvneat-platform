@@ -64,7 +64,7 @@ const MenuSection = ({ restaurantId }) => {
                 <div>
                   <h3 className="font-semibold text-lg">{item.nom}</h3>
                   <p className="text-gray-600 text-sm mt-1">{item.description}</p>
-                  <p className="font-bold text-orange-600 mt-2">{item.prix.toFixed(2)}€</p>
+                  <p className="font-bold text-orange-600 mt-2">{typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€</p>
                 </div>
                 <button 
                   onClick={() => handleAddToCart(item)}
