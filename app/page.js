@@ -267,7 +267,7 @@ export default function Home() {
     if (savedCart && savedCart.frais_livraison !== undefined) {
       return savedCart.frais_livraison;
     }
-    return restaurant?.deliveryFee || restaurant?.frais_livraison || 2.50;
+    return 2.50; // Prix par défaut
   };
 
   const removeFromCart = (itemId) => {
@@ -394,7 +394,7 @@ export default function Home() {
   };
 
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-  const fraisLivraison = getDeliveryFee();
+  const fraisLivraison = getFraisLivraison();
   const totalAvecLivraison = cartTotal + fraisLivraison;
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
