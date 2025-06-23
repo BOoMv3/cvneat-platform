@@ -123,6 +123,9 @@ export default function RestaurantDetail({ params }) {
       const restaurantData = await restaurantResponse.json();
       const menuData = await menuResponse.json();
       
+      console.log('Données du restaurant:', restaurantData);
+      console.log('Données du menu:', menuData);
+      
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
     } catch (err) {
@@ -184,7 +187,7 @@ export default function RestaurantDetail({ params }) {
   };
 
   const filteredMenu = menu.filter(item => 
-    selectedCategory === 'all' || item.category === selectedCategory
+    selectedCategory === 'all' || (item.category || item.categorie || 'Autres') === selectedCategory
   );
 
   if (loading) {
@@ -292,7 +295,7 @@ export default function RestaurantDetail({ params }) {
               >
                 Tout
               </button>
-              {[...new Set(menu.map(item => item.category))].filter(category => category).map(category => (
+              {menu.length > 0 && [...new Set(menu.map(item => item.category || item.categorie || 'Autres'))].filter(category => category).map(category => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
@@ -310,44 +313,50 @@ export default function RestaurantDetail({ params }) {
             {/* Liste des plats organisée par catégories */}
             {selectedCategory === 'all' ? (
               // Afficher toutes les catégories séparément
-              [...new Set(menu.map(item => item.category))].filter(category => category).map(category => {
-                const categoryItems = menu.filter(item => item.category === category);
-                return (
-                  <div key={category} className="mb-8">
-                    <h3 className="text-2xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">
-                      {category}
-                    </h3>
-                    <div className="space-y-4">
-                      {categoryItems.map((item) => (
-                        <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom || item.name}</h4>
-                              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xl font-bold text-blue-600">{(item.prix || item.price || 0).toFixed(2)}€</span>
-                                <button
-                                  onClick={() => addToCart(item)}
-                                  className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
-                                >
-                                  <FaPlus />
-                                </button>
+              menu.length > 0 ? (
+                [...new Set(menu.map(item => item.category || item.categorie || 'Autres'))].filter(category => category).map(category => {
+                  const categoryItems = menu.filter(item => (item.category || item.categorie || 'Autres') === category);
+                  return (
+                    <div key={category} className="mb-8">
+                      <h3 className="text-2xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">
+                        {category}
+                      </h3>
+                      <div className="space-y-4">
+                        {categoryItems.map((item) => (
+                          <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom || item.name || 'Nom non disponible'}</h4>
+                                <p className="text-gray-600 text-sm mb-4">{item.description || 'Aucune description'}</p>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xl font-bold text-blue-600">{(item.prix || item.price || 0).toFixed(2)}€</span>
+                                  <button
+                                    onClick={() => addToCart(item)}
+                                    className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
+                                  >
+                                    <FaPlus />
+                                  </button>
+                                </div>
                               </div>
+                              {item.image_url && (
+                                <img
+                                  src={item.image_url}
+                                  alt={item.nom || item.name || 'Plat'}
+                                  className="w-24 h-24 object-cover rounded-lg ml-4"
+                                />
+                              )}
                             </div>
-                            {item.image_url && (
-                              <img
-                                src={item.image_url}
-                                alt={item.nom || item.name}
-                                className="w-24 h-24 object-cover rounded-lg ml-4"
-                              />
-                            )}
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <p>Aucun plat disponible pour ce restaurant.</p>
+                </div>
+              )
             ) : (
               // Afficher seulement la catégorie sélectionnée
               filteredMenu.length === 0 ? (
@@ -360,8 +369,8 @@ export default function RestaurantDetail({ params }) {
                     <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom || item.name}</h4>
-                          <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+                          <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom || item.name || 'Nom non disponible'}</h4>
+                          <p className="text-gray-600 text-sm mb-4">{item.description || 'Aucune description'}</p>
                           <div className="flex items-center justify-between">
                             <span className="text-xl font-bold text-blue-600">{(item.prix || item.price || 0).toFixed(2)}€</span>
                             <button
@@ -375,7 +384,7 @@ export default function RestaurantDetail({ params }) {
                         {item.image_url && (
                           <img
                             src={item.image_url}
-                            alt={item.nom || item.name}
+                            alt={item.nom || item.name || 'Plat'}
                             className="w-24 h-24 object-cover rounded-lg ml-4"
                           />
                         )}
