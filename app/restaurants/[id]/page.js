@@ -124,6 +124,8 @@ export default function RestaurantDetail({ params }) {
       
       console.log('Données du restaurant:', restaurantData);
       console.log('Données du menu:', menuData);
+      console.log('Premier plat du menu:', menuData[0]);
+      console.log('Champs disponibles dans le premier plat:', menuData[0] ? Object.keys(menuData[0]) : 'Aucun plat');
       
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
@@ -282,35 +284,45 @@ export default function RestaurantDetail({ params }) {
             {menu.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
                 <p>Aucun plat disponible pour ce restaurant.</p>
+                <p className="text-sm">Debug: menu.length = {menu.length}</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {menu.map((item) => (
-                  <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom || item.name}</h4>
-                        <p className="text-gray-600 text-sm mb-4">{item.description}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xl font-bold text-blue-600">{(item.prix || item.price || 0).toFixed(2)}€</span>
-                          <button
-                            onClick={() => addToCart(item)}
-                            className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
-                          >
-                            <FaPlus />
-                          </button>
+                {menu.map((item, index) => {
+                  console.log(`Plat ${index}:`, item);
+                  return (
+                    <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-bold mb-2 text-gray-900">
+                            {item.nom || item.name || `Plat ${index + 1} (nom manquant)`}
+                          </h4>
+                          <p className="text-gray-600 text-sm mb-4">
+                            {item.description || 'Aucune description'}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xl font-bold text-blue-600">
+                              {(item.prix || item.price || 0).toFixed(2)}€
+                            </span>
+                            <button
+                              onClick={() => addToCart(item)}
+                              className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
+                            >
+                              <FaPlus />
+                            </button>
+                          </div>
                         </div>
+                        {item.image_url && (
+                          <img
+                            src={item.image_url}
+                            alt={item.nom || item.name || `Plat ${index + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg ml-4"
+                          />
+                        )}
                       </div>
-                      {item.image_url && (
-                        <img
-                          src={item.image_url}
-                          alt={item.nom || item.name}
-                          className="w-24 h-24 object-cover rounded-lg ml-4"
-                        />
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
