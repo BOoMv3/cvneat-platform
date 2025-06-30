@@ -700,13 +700,15 @@ export default function Home() {
                   <div>
                     <h3 className="text-2xl font-semibold mb-6 text-gray-900">Menu</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {Array.isArray(menu) && menu.map((item) => (
+                      {menu.map((item) => (
                         <div key={item.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h5 className="font-semibold text-gray-900 mb-1">{item.name}</h5>
+                              <h5 className="font-semibold text-gray-900 mb-1">{item.nom}</h5>
                               <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                              <p className="text-lg font-bold text-blue-600">{item.price}€</p>
+                              <p className="text-lg font-bold text-blue-600">
+                                {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
+                              </p>
                             </div>
                             <button
                               onClick={() => addToCart(item)}
