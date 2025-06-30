@@ -1,171 +1,216 @@
 import { NextResponse } from 'next/server';
-import mysql from 'mysql2/promise';
-import jwt from 'jsonwebtoken';
+import { supabase } from '../../../../../lib/supabase';
 
-export async function PUT(request, { params }) {
+// GET /api/admin/restaurants/[id] - Récupérer un restaurant spécifique
+export async function GET(request, { params }) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Non autorisé' },
-        { status: 401 }
-      );
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Accès non autorisé' },
-        { status: 403 }
-      );
+    // Vérifier que l'utilisateur est admin
+    const { data: adminUser, error: adminError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (adminError || adminUser.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    const {
-      name,
-      description,
-      address,
-      city,
-      postalCode,
-      phone,
-      email,
-      openingHours,
-      deliveryFee,
-      minimumOrder
-    } = await request.json();
+    const { data: restaurant, error } = await supabase
+      .from('restaurants')
+      .select(`
+        *,
+        menus(*),
+        orders(count),
+        partner:users(email, full_name, telephone)
+      `)
+      .eq('id', params.id)
+      .single();
 
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: 'cvneat'
-    });
+    if (error) throw error;
 
-    // Vérifier si le restaurant existe
-    const [restaurants] = await connection.execute(
-      'SELECT * FROM restaurants WHERE id = ?',
-      [params.id]
-    );
-
-    if (restaurants.length === 0) {
-      await connection.end();
-      return NextResponse.json(
-        { error: 'Restaurant non trouvé' },
-        { status: 404 }
-      );
-    }
-
-    // Mettre à jour le restaurant
-    await connection.execute(
-      `UPDATE restaurants SET
-        name = ?,
-        description = ?,
-        address = ?,
-        city = ?,
-        postalCode = ?,
-        phone = ?,
-        email = ?,
-        openingHours = ?,
-        deliveryFee = ?,
-        minimumOrder = ?
-      WHERE id = ?`,
-      [
-        name,
-        description,
-        address,
-        city,
-        postalCode,
-        phone,
-        email,
-        openingHours,
-        deliveryFee,
-        minimumOrder,
-        params.id
-      ]
-    );
-
-    // Récupérer le restaurant mis à jour
-    const [updatedRestaurants] = await connection.execute(
-      'SELECT * FROM restaurants WHERE id = ?',
-      [params.id]
-    );
-
-    await connection.end();
-
-    return NextResponse.json(updatedRestaurants[0]);
+    return NextResponse.json(restaurant);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du restaurant:', error);
-    if (error.name === 'JsonWebTokenError') {
-      return NextResponse.json(
-        { error: 'Token invalide' },
-        { status: 401 }
-      );
-    }
-    return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour du restaurant' },
-      { status: 500 }
-    );
+    console.error('Erreur récupération restaurant:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
+// PUT /api/admin/restaurants/[id] - Mettre à jour un restaurant
+export async function PUT(request, { params }) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur est admin
+    const { data: adminUser, error: adminError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (adminError || adminUser.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const {
+      nom,
+      adresse,
+      telephone,
+      email,
+      description,
+      horaires,
+      is_active,
+      commission_rate
+    } = await request.json();
+
+    const updateData = {};
+    if (nom !== undefined) updateData.nom = nom;
+    if (adresse !== undefined) updateData.adresse = adresse;
+    if (telephone !== undefined) updateData.telephone = telephone;
+    if (email !== undefined) updateData.email = email;
+    if (description !== undefined) updateData.description = description;
+    if (horaires !== undefined) updateData.horaires = horaires;
+    if (is_active !== undefined) updateData.is_active = is_active;
+    if (commission_rate !== undefined) updateData.commission_rate = commission_rate;
+
+    const { data: updatedRestaurant, error } = await supabase
+      .from('restaurants')
+      .update(updateData)
+      .eq('id', params.id)
+      .select(`
+        *,
+        partner:users(email, full_name)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    // Envoyer email de notification au partenaire si le statut change
+    if (is_active !== undefined && is_active !== updatedRestaurant.is_active) {
+      try {
+        await fetch('/api/notifications/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: is_active ? 'restaurantActivated' : 'restaurantDeactivated',
+            data: {
+              restaurantName: updatedRestaurant.nom,
+              partnerName: updatedRestaurant.partner?.full_name,
+              reason: is_active ? 'Votre restaurant a été activé' : 'Votre restaurant a été désactivé'
+            },
+            recipientEmail: updatedRestaurant.partner?.email
+          })
+        });
+      } catch (emailError) {
+        console.error('Erreur envoi email notification restaurant:', emailError);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      restaurant: updatedRestaurant
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour restaurant:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}
+
+// DELETE /api/admin/restaurants/[id] - Désactiver un restaurant
 export async function DELETE(request, { params }) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Non autorisé' },
-        { status: 401 }
-      );
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Accès non autorisé' },
-        { status: 403 }
-      );
+    // Vérifier que l'utilisateur est admin
+    const { data: adminUser, error: adminError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (adminError || adminUser.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: 'cvneat'
+    // Récupérer les infos du restaurant avant désactivation
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select(`
+        *,
+        partner:users(email, full_name)
+      `)
+      .eq('id', params.id)
+      .single();
+
+    if (restaurantError) throw restaurantError;
+
+    // Désactiver le restaurant
+    const { data: deactivatedRestaurant, error } = await supabase
+      .from('restaurants')
+      .update({ is_active: false })
+      .eq('id', params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Envoyer email de notification au partenaire
+    try {
+      await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'restaurantDeactivated',
+          data: {
+            restaurantName: restaurant.nom,
+            partnerName: restaurant.partner?.full_name,
+            reason: 'Votre restaurant a été désactivé par l\'administration'
+          },
+          recipientEmail: restaurant.partner?.email
+        })
+      });
+    } catch (emailError) {
+      console.error('Erreur envoi email désactivation:', emailError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Restaurant désactivé',
+      restaurant: deactivatedRestaurant
     });
-
-    // Vérifier si le restaurant existe
-    const [restaurants] = await connection.execute(
-      'SELECT * FROM restaurants WHERE id = ?',
-      [params.id]
-    );
-
-    if (restaurants.length === 0) {
-      await connection.end();
-      return NextResponse.json(
-        { error: 'Restaurant non trouvé' },
-        { status: 404 }
-      );
-    }
-
-    // Supprimer le restaurant
-    await connection.execute(
-      'DELETE FROM restaurants WHERE id = ?',
-      [params.id]
-    );
-
-    await connection.end();
-
-    return NextResponse.json({ message: 'Restaurant supprimé avec succès' });
   } catch (error) {
-    console.error('Erreur lors de la suppression du restaurant:', error);
-    if (error.name === 'JsonWebTokenError') {
-      return NextResponse.json(
-        { error: 'Token invalide' },
-        { status: 401 }
-      );
-    }
-    return NextResponse.json(
-      { error: 'Erreur lors de la suppression du restaurant' },
-      { status: 500 }
-    );
+    console.error('Erreur désactivation restaurant:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 } 

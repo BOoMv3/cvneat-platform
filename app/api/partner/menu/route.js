@@ -4,25 +4,36 @@ import { supabase } from '../../../../lib/supabase';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const restaurantId = searchParams.get('restaurantId');
+    const restaurantId = searchParams.get('restaurant_id');
 
     if (!restaurantId) {
-      return NextResponse.json({ error: 'Restaurant ID requis' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'ID du restaurant requis' },
+        { status: 400 }
+      );
     }
 
     const { data: menu, error } = await supabase
       .from('menus')
       .select('*')
       .eq('restaurant_id', restaurantId)
-      .order('created_at', { ascending: false });
+      .eq('is_available', true)
+      .order('category', { ascending: true })
+      .order('nom', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Erreur récupération menu:', error);
+      return NextResponse.json(
+        { error: 'Erreur lors de la récupération du menu' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(menu || []);
   } catch (error) {
-    console.error('Erreur récupération menu:', error);
+    console.error('Erreur API récupération menu:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération du menu' },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }
@@ -30,33 +41,67 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { restaurantId, nom, description, prix, image_url, disponible, category } = await request.json();
+    const {
+      restaurant_id,
+      nom,
+      description,
+      prix,
+      category = 'Autres'
+    } = await request.json();
 
-    if (!restaurantId || !nom || !prix) {
-      return NextResponse.json({ error: 'Restaurant ID, nom et prix requis' }, { status: 400 });
+    if (!restaurant_id || !nom || !prix) {
+      return NextResponse.json(
+        { error: 'ID restaurant, nom et prix sont requis' },
+        { status: 400 }
+      );
     }
 
-    const { data, error } = await supabase
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('id, partner_id')
+      .eq('id', restaurant_id)
+      .eq('is_active', true)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      return NextResponse.json(
+        { error: 'Restaurant non trouvé ou inactif' },
+        { status: 404 }
+      );
+    }
+
+    const { data: menuItem, error: menuError } = await supabase
       .from('menus')
-      .insert({
-        restaurant_id: restaurantId,
-        nom,
-        description,
-        prix: parseFloat(prix),
-        image_url,
-        disponible: disponible !== undefined ? disponible : true,
-        category
-      })
+      .insert([
+        {
+          restaurant_id,
+          nom,
+          description,
+          prix: parseFloat(prix),
+          category,
+          is_available: true
+        }
+      ])
       .select()
       .single();
 
-    if (error) throw error;
+    if (menuError) {
+      console.error('Erreur création menu:', menuError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la création de l\'item de menu' },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      success: true,
+      menuItem,
+      message: 'Item de menu créé avec succès'
+    });
   } catch (error) {
-    console.error('Erreur création menu:', error);
+    console.error('Erreur API création menu:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la création du menu' },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

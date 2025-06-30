@@ -1,114 +1,161 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
-export const dynamic = 'force-dynamic';
-
+// GET /api/partner/analytics - Récupérer les analytics du partenaire
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const restaurantId = searchParams.get('restaurantId');
-    const period = searchParams.get('period') || 'week'; // week, month, year
-
-    if (!restaurantId) {
-      return NextResponse.json({ error: 'Restaurant ID requis' }, { status: 400 });
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
     }
-
-    // Calculer la date de début selon la période
-    const now = new Date();
-    let startDate;
     
-    switch (period) {
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les commandes de la période
-    const { data: orders, error: ordersError } = await supabase
-      .from('commandes')
+    // Vérifier que l'utilisateur est partenaire
+    const { data: partnerUser, error: partnerError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (partnerError || partnerUser.role !== 'partner') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || '30'; // jours
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(period));
+
+    // Récupérer le restaurant du partenaire
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
       .select('*')
-      .eq('restaurant_id', restaurantId)
+      .eq('partner_id', user.id)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
+    }
+
+    // Commandes du restaurant
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        user:users(email, full_name),
+        order_items(
+          *,
+          menu:menus(nom, prix)
+        )
+      `)
+      .eq('restaurant_id', restaurant.id)
       .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (ordersError) throw ordersError;
 
-    // Calculer les statistiques
+    // Statistiques générales
     const totalOrders = orders?.length || 0;
-    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
-    const completedOrders = orders?.filter(order => order.statut === 'livree').length || 0;
-    const cancelledOrders = orders?.filter(order => order.statut === 'annulee').length || 0;
-
-    // Calculer la moyenne par commande
+    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
+    const commissionEarned = totalRevenue * (restaurant.commission_rate / 100);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-    // Statistiques par jour
-    const dailyStats = {};
-    if (orders) {
-      orders.forEach(order => {
-        const date = new Date(order.created_at).toLocaleDateString('fr-FR');
-        if (!dailyStats[date]) {
-          dailyStats[date] = { orders: 0, revenue: 0 };
+    // Commandes par statut
+    const ordersByStatus = orders?.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1;
+      return acc;
+    }, {}) || {};
+
+    // Produits les plus vendus
+    const menuStats = {};
+    orders?.forEach(order => {
+      order.order_items?.forEach(item => {
+        const menuId = item.menu_id;
+        if (!menuStats[menuId]) {
+          menuStats[menuId] = {
+            name: item.menu?.nom || 'Inconnu',
+            quantity: 0,
+            revenue: 0
+          };
         }
-        dailyStats[date].orders += 1;
-        dailyStats[date].revenue += parseFloat(order.total);
+        menuStats[menuId].quantity += item.quantity;
+        menuStats[menuId].revenue += parseFloat(item.total_price);
       });
-    }
+    });
 
-    // Plats les plus populaires
-    const { data: menuStats, error: menuError } = await supabase
-      .from('commande_details')
-      .select(`
-        quantite,
-        menus(nom)
-      `)
-      .in('commande_id', orders?.map(o => o.id) || []);
+    const topMenuItems = Object.values(menuStats)
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
 
-    if (menuError) throw menuError;
+    // Tendances quotidiennes
+    const dailyStats = orders?.reduce((acc, order) => {
+      const date = new Date(order.created_at).toDateString();
+      if (!acc[date]) {
+        acc[date] = { orders: 0, revenue: 0 };
+      }
+      acc[date].orders += 1;
+      acc[date].revenue += parseFloat(order.total_amount);
+      return acc;
+    }, {}) || {};
 
-    const popularItems = {};
-    if (menuStats) {
-      menuStats.forEach(item => {
-        const itemName = item.menus?.nom;
-        if (itemName) {
-          popularItems[itemName] = (popularItems[itemName] || 0) + item.quantite;
-        }
-      });
-    }
-
-    const analytics = {
-      period,
-      totalOrders,
-      totalRevenue: totalRevenue.toFixed(2),
-      completedOrders,
-      cancelledOrders,
-      averageOrderValue: averageOrderValue.toFixed(2),
-      completionRate: totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : 0,
-      dailyStats: Object.entries(dailyStats).map(([date, stats]) => ({
+    const dailyTrends = Object.entries(dailyStats)
+      .map(([date, stats]) => ({
         date,
         orders: stats.orders,
-        revenue: stats.revenue.toFixed(2)
-      })),
-      popularItems: Object.entries(popularItems)
-        .map(([name, quantity]) => ({ name, quantity }))
-        .sort((a, b) => b.quantity - a.quantity)
-        .slice(0, 5)
-    };
+        revenue: Math.round(stats.revenue * 100) / 100
+      }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    return NextResponse.json(analytics);
+    // Heures de pointe
+    const hourlyStats = orders?.reduce((acc, order) => {
+      const hour = new Date(order.created_at).getHours();
+      if (!acc[hour]) {
+        acc[hour] = { orders: 0, revenue: 0 };
+      }
+      acc[hour].orders += 1;
+      acc[hour].revenue += parseFloat(order.total_amount);
+      return acc;
+    }, {}) || {};
+
+    const peakHours = Object.entries(hourlyStats)
+      .map(([hour, stats]) => ({
+        hour: parseInt(hour),
+        orders: stats.orders,
+        revenue: Math.round(stats.revenue * 100) / 100
+      }))
+      .sort((a, b) => b.orders - a.orders)
+      .slice(0, 5);
+
+    // Commandes récentes
+    const recentOrders = orders?.slice(0, 10) || [];
+
+    return NextResponse.json({
+      restaurant: {
+        id: restaurant.id,
+        nom: restaurant.nom,
+        commission_rate: restaurant.commission_rate
+      },
+      overview: {
+        totalOrders,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        commissionEarned: Math.round(commissionEarned * 100) / 100,
+        averageOrderValue: Math.round(averageOrderValue * 100) / 100,
+        period: parseInt(period)
+      },
+      orderStatusStats: ordersByStatus,
+      topMenuItems,
+      dailyTrends,
+      peakHours,
+      recentOrders
+    });
   } catch (error) {
-    console.error('Erreur analytics:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la récupération des analytics' },
-      { status: 500 }
-    );
+    console.error('Erreur récupération analytics partenaire:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 } 

@@ -6,61 +6,219 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const restaurantId = searchParams.get('restaurantId');
-    const type = searchParams.get('type') || 'orders'; // orders, revenue, menu
-    const period = searchParams.get('period') || 'month'; // week, month, year
-    const format = searchParams.get('format') || 'json'; // json, csv
-
-    if (!restaurantId) {
-      return NextResponse.json({ error: 'Restaurant ID requis' }, { status: 400 });
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
     }
-
-    // Calculer la date de début selon la période
-    const now = new Date();
-    let startDate;
     
-    switch (period) {
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur est partenaire
+    const { data: partnerUser, error: partnerError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (partnerError || partnerUser.role !== 'partner') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const reportType = searchParams.get('type') || 'monthly';
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
+
+    // Récupérer le restaurant du partenaire
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('partner_id', user.id)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
+    }
+
+    // Définir les dates selon le type de rapport
+    let queryStartDate, queryEndDate;
+    const now = new Date();
+
+    switch (reportType) {
+      case 'weekly':
+        queryStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        queryEndDate = now;
         break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      case 'monthly':
+        queryStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        queryEndDate = now;
         break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
+      case 'quarterly':
+        const quarter = Math.floor(now.getMonth() / 3);
+        queryStartDate = new Date(now.getFullYear(), quarter * 3, 1);
+        queryEndDate = now;
+        break;
+      case 'yearly':
+        queryStartDate = new Date(now.getFullYear(), 0, 1);
+        queryEndDate = now;
+        break;
+      case 'custom':
+        if (!startDate || !endDate) {
+          return NextResponse.json({ error: 'Dates de début et fin requises pour le rapport personnalisé' }, { status: 400 });
+        }
+        queryStartDate = new Date(startDate);
+        queryEndDate = new Date(endDate);
         break;
       default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        queryStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        queryEndDate = now;
     }
 
-    let reportData;
+    // Récupérer les commandes pour la période
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        user:users(email, full_name),
+        order_items(
+          *,
+          menu:menus(nom, prix, category)
+        )
+      `)
+      .eq('restaurant_id', restaurant.id)
+      .gte('created_at', queryStartDate.toISOString())
+      .lte('created_at', queryEndDate.toISOString())
+      .order('created_at', { ascending: false });
 
-    switch (type) {
-      case 'orders':
-        reportData = await generateOrdersReport(restaurantId, startDate);
-        break;
-      case 'revenue':
-        reportData = await generateRevenueReport(restaurantId, startDate);
-        break;
-      case 'menu':
-        reportData = await generateMenuReport(restaurantId, startDate);
-        break;
-      default:
-        return NextResponse.json({ error: 'Type de rapport invalide' }, { status: 400 });
-    }
+    if (ordersError) throw ordersError;
 
-    if (format === 'csv') {
-      return generateCSVResponse(reportData, `${type}_report_${period}`);
-    }
+    // Calculer les statistiques du rapport
+    const totalOrders = orders?.length || 0;
+    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
+    const commissionEarned = totalRevenue * (restaurant.commission_rate / 100);
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-    return NextResponse.json(reportData);
+    // Commandes livrées vs annulées
+    const deliveredOrders = orders?.filter(order => order.status === 'delivered').length || 0;
+    const cancelledOrders = orders?.filter(order => order.status === 'cancelled').length || 0;
+    const deliveryRate = totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0;
+
+    // Analyse des produits
+    const productAnalysis = {};
+    orders?.forEach(order => {
+      order.order_items?.forEach(item => {
+        const menuId = item.menu_id;
+        if (!productAnalysis[menuId]) {
+          productAnalysis[menuId] = {
+            name: item.menu?.nom || 'Inconnu',
+            category: item.menu?.category || 'Non catégorisé',
+            quantity: 0,
+            revenue: 0,
+            orders: 0
+          };
+        }
+        productAnalysis[menuId].quantity += item.quantity;
+        productAnalysis[menuId].revenue += parseFloat(item.total_price);
+        productAnalysis[menuId].orders += 1;
+      });
+    });
+
+    const topProducts = Object.values(productAnalysis)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    // Analyse par catégorie
+    const categoryAnalysis = {};
+    Object.values(productAnalysis).forEach(product => {
+      const category = product.category;
+      if (!categoryAnalysis[category]) {
+        categoryAnalysis[category] = {
+          revenue: 0,
+          orders: 0,
+          products: 0
+        };
+      }
+      categoryAnalysis[category].revenue += product.revenue;
+      categoryAnalysis[category].orders += product.orders;
+      categoryAnalysis[category].products += 1;
+    });
+
+    // Tendances temporelles
+    const timeAnalysis = orders?.reduce((acc, order) => {
+      const date = new Date(order.created_at);
+      const dayOfWeek = date.toLocaleDateString('fr-FR', { weekday: 'long' });
+      const hour = date.getHours();
+      
+      if (!acc.days[dayOfWeek]) {
+        acc.days[dayOfWeek] = { orders: 0, revenue: 0 };
+      }
+      if (!acc.hours[hour]) {
+        acc.hours[hour] = { orders: 0, revenue: 0 };
+      }
+      
+      acc.days[dayOfWeek].orders += 1;
+      acc.days[dayOfWeek].revenue += parseFloat(order.total_amount);
+      acc.hours[hour].orders += 1;
+      acc.hours[hour].revenue += parseFloat(order.total_amount);
+      
+      return acc;
+    }, { days: {}, hours: {} }) || { days: {}, hours: {} };
+
+    const dayTrends = Object.entries(timeAnalysis.days)
+      .map(([day, stats]) => ({
+        day,
+        orders: stats.orders,
+        revenue: Math.round(stats.revenue * 100) / 100
+      }))
+      .sort((a, b) => b.orders - a.orders);
+
+    const hourTrends = Object.entries(timeAnalysis.hours)
+      .map(([hour, stats]) => ({
+        hour: parseInt(hour),
+        orders: stats.orders,
+        revenue: Math.round(stats.revenue * 100) / 100
+      }))
+      .sort((a, b) => a.hour - b.hour);
+
+    return NextResponse.json({
+      reportInfo: {
+        type: reportType,
+        startDate: queryStartDate.toISOString(),
+        endDate: queryEndDate.toISOString(),
+        generatedAt: new Date().toISOString()
+      },
+      restaurant: {
+        id: restaurant.id,
+        nom: restaurant.nom,
+        commission_rate: restaurant.commission_rate
+      },
+      summary: {
+        totalOrders,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        commissionEarned: Math.round(commissionEarned * 100) / 100,
+        averageOrderValue: Math.round(averageOrderValue * 100) / 100,
+        deliveredOrders,
+        cancelledOrders,
+        deliveryRate: Math.round(deliveryRate * 100) / 100
+      },
+      productAnalysis: {
+        topProducts,
+        categoryAnalysis
+      },
+      trends: {
+        dayTrends,
+        hourTrends
+      },
+      orders: orders?.slice(0, 50) || [] // Limiter à 50 commandes pour le rapport
+    });
   } catch (error) {
     console.error('Erreur génération rapport:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la génération du rapport' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 

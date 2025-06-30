@@ -1,170 +1,233 @@
 import { NextResponse } from 'next/server';
-import mysql from 'mysql2/promise';
-import jwt from 'jsonwebtoken';
+import { supabase } from '../../../../../lib/supabase';
 
-// Fonction pour vérifier le token et le rôle admin
-const verifyAdminToken = async (request) => {
-  const token = request.headers.get('authorization')?.split(' ')[1];
-  if (!token) {
-    return { error: 'Token manquant', status: 401 };
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== 'admin') {
-      return { error: 'Accès non autorisé', status: 403 };
-    }
-    return { userId: decoded.userId };
-  } catch (error) {
-    return { error: 'Token invalide', status: 401 };
-  }
-};
-
-// GET /api/admin/orders/[id]
+// GET /api/admin/orders/[id] - Récupérer une commande spécifique
 export async function GET(request, { params }) {
-  const auth = await verifyAdminToken(request);
-  if (auth.error) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
-
   try {
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME
-    });
-
-    // Récupérer les détails de la commande
-    const [orders] = await connection.execute(`
-      SELECT 
-        o.*,
-        u.name as user_name,
-        u.email as user_email,
-        u.phone as user_phone,
-        r.name as restaurant_name,
-        r.address as restaurant_address,
-        r.phone as restaurant_phone
-      FROM orders o
-      JOIN users u ON o.userId = u.id
-      JOIN restaurants r ON o.restaurantId = r.id
-      WHERE o.id = ?
-    `, [params.id]);
-
-    if (orders.length === 0) {
-      await connection.end();
-      return NextResponse.json(
-        { error: 'Commande non trouvée' },
-        { status: 404 }
-      );
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les articles de la commande
-    const [items] = await connection.execute(`
-      SELECT 
-        oi.*,
-        mi.name,
-        mi.price
-      FROM order_items oi
-      JOIN menu_items mi ON oi.menuItemId = mi.id
-      WHERE oi.orderId = ?
-    `, [params.id]);
+    // Vérifier que l'utilisateur est admin
+    const { data: adminUser, error: adminError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-    // Récupérer l'adresse de livraison
-    const [addresses] = await connection.execute(`
-      SELECT *
-      FROM addresses
-      WHERE id = ?
-    `, [orders[0].deliveryAddressId]);
+    if (adminError || adminUser.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
 
-    // Formater les données pour l'affichage
-    const order = {
-      id: orders[0].id,
-      status: orders[0].status,
-      total: orders[0].total,
-      deliveryFee: orders[0].deliveryFee,
-      createdAt: orders[0].createdAt,
-      user: {
-        name: orders[0].user_name,
-        email: orders[0].user_email,
-        phone: orders[0].user_phone
-      },
-      restaurant: {
-        name: orders[0].restaurant_name,
-        address: orders[0].restaurant_address,
-        phone: orders[0].restaurant_phone
-      },
-      deliveryAddress: addresses[0],
-      items: items.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity
-      }))
-    };
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        user:users(email, full_name, telephone),
+        restaurant:restaurants(nom, adresse, telephone),
+        order_items(
+          *,
+          menu:menus(nom, description, prix)
+        ),
+        delivery:users!delivery_id(email, full_name, telephone)
+      `)
+      .eq('id', params.id)
+      .single();
 
-    await connection.end();
+    if (error) throw error;
+
     return NextResponse.json(order);
   } catch (error) {
-    console.error('Erreur lors de la récupération de la commande:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la récupération de la commande' },
-      { status: 500 }
-    );
+    console.error('Erreur récupération commande:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
-// PUT /api/admin/orders/[id]
+// PUT /api/admin/orders/[id] - Mettre à jour une commande
 export async function PUT(request, { params }) {
-  const auth = await verifyAdminToken(request);
-  if (auth.error) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
-
   try {
-    const { status } = await request.json();
-
-    if (!status) {
-      return NextResponse.json(
-        { error: 'Le statut est requis' },
-        { status: 400 }
-      );
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME
+    // Vérifier que l'utilisateur est admin
+    const { data: adminUser, error: adminError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (adminError || adminUser.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const { status, delivery_id, notes } = await request.json();
+
+    const updateData = {};
+    if (status !== undefined) updateData.status = status;
+    if (delivery_id !== undefined) updateData.delivery_id = delivery_id;
+    if (notes !== undefined) updateData.notes = notes;
+
+    const { data: updatedOrder, error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', params.id)
+      .select(`
+        *,
+        user:users(email, full_name),
+        restaurant:restaurants(nom),
+        delivery:users!delivery_id(email, full_name)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    // Envoyer email de notification au client
+    if (status && status !== updatedOrder.status) {
+      try {
+        await fetch('/api/notifications/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'orderStatusUpdate',
+            data: {
+              id: updatedOrder.id,
+              customerName: updatedOrder.user?.full_name || updatedOrder.user?.email,
+              restaurantName: updatedOrder.restaurant?.nom || 'Restaurant',
+              status
+            },
+            recipientEmail: updatedOrder.user?.email
+          })
+        });
+      } catch (emailError) {
+        console.error('Erreur envoi email statut commande:', emailError);
+      }
+    }
+
+    // Envoyer email au livreur si assigné
+    if (delivery_id && delivery_id !== updatedOrder.delivery_id) {
+      try {
+        await fetch('/api/notifications/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'deliveryAssigned',
+            data: {
+              orderId: updatedOrder.id,
+              deliveryName: updatedOrder.delivery?.full_name,
+              restaurantName: updatedOrder.restaurant?.nom,
+              deliveryAddress: updatedOrder.delivery_address
+            },
+            recipientEmail: updatedOrder.delivery?.email
+          })
+        });
+      } catch (emailError) {
+        console.error('Erreur envoi email livreur:', emailError);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      order: updatedOrder
     });
+  } catch (error) {
+    console.error('Erreur mise à jour commande:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}
 
-    // Vérifier si la commande existe
-    const [orders] = await connection.execute(
-      'SELECT id FROM orders WHERE id = ?',
-      [params.id]
-    );
-
-    if (orders.length === 0) {
-      await connection.end();
-      return NextResponse.json(
-        { error: 'Commande non trouvée' },
-        { status: 404 }
-      );
+// DELETE /api/admin/orders/[id] - Annuler une commande
+export async function DELETE(request, { params }) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Mettre à jour le statut de la commande
-    await connection.execute(
-      'UPDATE orders SET status = ? WHERE id = ?',
-      [status, params.id]
-    );
+    // Vérifier que l'utilisateur est admin
+    const { data: adminUser, error: adminError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-    await connection.end();
-    return NextResponse.json({ message: 'Statut mis à jour avec succès' });
+    if (adminError || adminUser.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    // Récupérer les infos de la commande avant annulation
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        user:users(email, full_name),
+        restaurant:restaurants(nom)
+      `)
+      .eq('id', params.id)
+      .single();
+
+    if (orderError) throw orderError;
+
+    // Annuler la commande
+    const { data: cancelledOrder, error } = await supabase
+      .from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Envoyer email de notification au client
+    try {
+      await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'orderCancelled',
+          data: {
+            id: order.id,
+            customerName: order.user?.full_name || order.user?.email,
+            restaurantName: order.restaurant?.nom || 'Restaurant',
+            total: order.total_amount
+          },
+          recipientEmail: order.user?.email
+        })
+      });
+    } catch (emailError) {
+      console.error('Erreur envoi email annulation:', emailError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Commande annulée',
+      order: cancelledOrder
+    });
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du statut:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour du statut' },
-      { status: 500 }
-    );
+    console.error('Erreur annulation commande:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 } 
