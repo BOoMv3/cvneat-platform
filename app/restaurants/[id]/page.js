@@ -302,7 +302,7 @@ export default function RestaurantDetail({ params }) {
                         <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom} <span style={{color:'red',fontWeight:'normal',fontSize:'14px'}}>[{String(item.prix)}]</span></h4>
+                              <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom} <span style={{color:'red',fontWeight:'normal',fontSize:'10px'}}> {JSON.stringify(item)}</span></h4>
                               <p className="text-gray-600 text-sm mb-4">{item.description}</p>
                               <div className="flex items-center justify-between">
                                 <span className="text-xl font-bold text-blue-600">[{String(item.prix)}]</span>
