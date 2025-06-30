@@ -20,11 +20,11 @@ const VILLES_DESSERVIES = {
   'saint-félix-de-pallières': { lat: 43.9500, lng: 3.8000, distanceFromGanges: 10.0 }
 };
 
-// Prix de base pour Ganges
-const PRIX_BASE_GANGES = 2.50;
+// Prix de base pour Ganges (augmenté)
+const PRIX_BASE_GANGES = 3.50;
 
-// Coût de l'essence par km (estimation basée sur prix actuel ~1.80€/L et consommation ~6L/100km)
-const COUT_ESSENCE_PAR_KM = 0.11; // ~1.80€/L * 6L/100km
+// Coût de l'essence par km (augmenté - prix actuel ~2.00€/L et consommation ~7L/100km)
+const COUT_ESSENCE_PAR_KM = 0.14; // ~2.00€/L * 7L/100km
 
 // Limite de livraison en km
 const LIMITE_LIVRAISON_KM = 15;
@@ -61,20 +61,25 @@ function calculateDeliveryFee(distanceFromGanges, orderAmount = 0) {
   // Prix de base pour Ganges
   let fraisLivraison = PRIX_BASE_GANGES;
   
-  // Ajouter le coût de l'essence pour la distance
-  const coutEssence = distanceFromGanges * COUT_ESSENCE_PAR_KM;
+  // Ajouter le coût de l'essence pour la distance (aller-retour)
+  const coutEssence = distanceFromGanges * COUT_ESSENCE_PAR_KM * 2; // Aller-retour
   fraisLivraison += coutEssence;
   
-  // Ajouter un supplément pour la distance (usure véhicule, temps)
+  // Ajouter un supplément pour la distance (usure véhicule, temps, main d'œuvre)
+  if (distanceFromGanges > 3) {
+    fraisLivraison += Math.ceil((distanceFromGanges - 3) / 2) * 0.75; // +0.75€ tous les 2km après 3km
+  }
+  
+  // Supplément pour temps de livraison (plus c'est loin, plus ça prend du temps)
   if (distanceFromGanges > 5) {
-    fraisLivraison += Math.ceil((distanceFromGanges - 5) / 2) * 0.30; // +0.30€ tous les 2km après 5km
+    fraisLivraison += Math.ceil((distanceFromGanges - 5) / 3) * 1.00; // +1.00€ tous les 3km après 5km
   }
   
   // Ajuster selon le montant de la commande
-  if (orderAmount >= 30) {
-    fraisLivraison = Math.max(fraisLivraison - 0.50, PRIX_BASE_GANGES); // Réduction de 0.50€ max
-  } else if (orderAmount < 15) {
-    fraisLivraison += 1; // Supplément pour petites commandes
+  if (orderAmount >= 40) {
+    fraisLivraison = Math.max(fraisLivraison - 1.00, PRIX_BASE_GANGES); // Réduction de 1.00€ max
+  } else if (orderAmount < 20) {
+    fraisLivraison += 1.50; // Supplément pour petites commandes
   }
   
   // Arrondir à 2 décimales
@@ -131,9 +136,9 @@ export async function POST(request) {
       details: {
         prix_de_base: PRIX_BASE_GANGES,
         distance_depuis_ganges: deliveryCity.distanceFromGanges.toFixed(1) + 'km',
-        cout_essence: (deliveryCity.distanceFromGanges * COUT_ESSENCE_PAR_KM).toFixed(2) + '€',
-        reduction_commande: orderAmount >= 30 ? 'Oui (-0.50€)' : 'Non',
-        supplement_petite_commande: orderAmount < 15 ? 'Oui (+1.00€)' : 'Non'
+        cout_essence_ar: (deliveryCity.distanceFromGanges * COUT_ESSENCE_PAR_KM * 2).toFixed(2) + '€',
+        reduction_commande: orderAmount >= 40 ? 'Oui (-1.00€)' : 'Non',
+        supplement_petite_commande: orderAmount < 20 ? 'Oui (+1.50€)' : 'Non'
       }
     });
 
