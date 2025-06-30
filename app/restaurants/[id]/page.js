@@ -283,112 +283,100 @@ export default function RestaurantDetail({ params }) {
         </div>
 
         {/* Menu */}
-        <div className="flex gap-8">
-          <div className="flex-1">
-            {menu.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <p>Aucun plat disponible pour ce restaurant.</p>
-              </div>
-            ) : (
-              [...new Set(menu.map(item => item.category))].filter(Boolean).map(category => {
-                const categoryItems = menu.filter(item => item.category === category);
-                return (
-                  <div key={category} className="mb-8">
-                    <h3 className="text-2xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">
-                      {category}
-                    </h3>
-                    <div className="space-y-4">
-                      {categoryItems.map((item) => (
-                        <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom} <span style={{color:'red',fontWeight:'normal',fontSize:'10px'}}> {JSON.stringify(item)}</span></h4>
-                              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xl font-bold text-blue-600">[{String(item.prix)}]</span>
-                                <button
-                                  onClick={() => addToCart(item)}
-                                  className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
-                                >
-                                  <FaPlus />
-                                </button>
-                              </div>
-                            </div>
-                            {item.image_url && (
-                              <img
-                                src={item.image_url}
-                                alt={item.nom}
-                                className="w-24 h-24 object-cover rounded-lg ml-4"
-                              />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div className="text-xs text-gray-400 mt-8">Si la pizza Coppa n'est pas dans "Base tomate", il faut corriger sa catégorie dans Supabase.</div>
-          </div>
-
-          {/* Panier */}
-          <div className="w-96">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
-              <h2 className="text-xl font-bold mb-4">Votre commande</h2>
-              {cart.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Votre panier est vide</p>
-              ) : (
-                <>
-                  <div className="space-y-4 mb-4">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between">
+        <div className="space-y-12">
+          {menu.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <p>Aucun plat disponible pour ce restaurant.</p>
+            </div>
+          ) : (
+            [...new Set(menu.map(item => item.category))].filter(Boolean).map(category => {
+              const categoryItems = menu.filter(item => item.category === category);
+              return (
+                <div key={category}>
+                  <h3 className="text-3xl font-bold mb-8 text-gray-900 border-b border-gray-200 pb-2 uppercase tracking-wide">{category}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {categoryItems.map((item) => (
+                      <div key={item.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between hover:shadow-2xl transition-shadow">
                         <div>
-                          <p className="font-medium">{item.nom || item.name}</p>
-                          <p className="text-sm text-gray-500">{(item.prix || item.price || 0).toFixed(2)}€</p>
+                          <h4 className="text-xl font-bold text-gray-900 mb-2">{item.nom}</h4>
+                          <p className="text-gray-600 text-base mb-4">{item.description}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
-                          >
-                            <FaMinus className="text-xs" />
-                          </button>
-                          <span>{item.quantity}</span>
+                        <div className="flex items-center justify-between mt-4">
+                          <span className="text-2xl font-bold text-blue-600">
+                            {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
+                          </span>
                           <button
                             onClick={() => addToCart(item)}
-                            className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
+                            className="ml-4 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors shadow"
                           >
-                            <FaPlus className="text-xs" />
+                            <FaPlus className="h-5 w-5" />
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <p>Sous-total</p>
-                      <p>{getSubtotal().toFixed(2)}€</p>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Panier */}
+        <div className="w-96">
+          <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+            <h2 className="text-xl font-bold mb-4">Votre commande</h2>
+            {cart.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">Votre panier est vide</p>
+            ) : (
+              <>
+                <div className="space-y-4 mb-4">
+                  {cart.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{item.nom || item.name}</p>
+                        <p className="text-sm text-gray-500">{(item.prix || item.price || 0).toFixed(2)}€</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
+                        >
+                          <FaMinus className="text-xs" />
+                        </button>
+                        <span>{item.quantity}</span>
+                        <button
+                          onClick={() => addToCart(item)}
+                          className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
+                        >
+                          <FaPlus className="text-xs" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center mb-4">
-                      <p>Frais de livraison</p>
-                      <p>{deliveryFee !== null ? deliveryFee.toFixed(2) : 'Calcul en cours'}€</p>
-                    </div>
-                    <div className="flex justify-between items-center font-bold text-lg mb-4">
-                      <p>Total</p>
-                      <p>{getTotal().toFixed(2)}€</p>
-                    </div>
-                    <button
-                      onClick={handleCheckout}
-                      className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 flex items-center justify-center gap-2"
-                    >
-                      <FaShoppingCart />
-                      Commander
-                    </button>
+                  ))}
+                </div>
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <p>Sous-total</p>
+                    <p>{getSubtotal().toFixed(2)}€</p>
                   </div>
-                </>
-              )}
-            </div>
+                  <div className="flex justify-between items-center mb-4">
+                    <p>Frais de livraison</p>
+                    <p>{deliveryFee !== null ? deliveryFee.toFixed(2) : 'Calcul en cours'}€</p>
+                  </div>
+                  <div className="flex justify-between items-center font-bold text-lg mb-4">
+                    <p>Total</p>
+                    <p>{getTotal().toFixed(2)}€</p>
+                  </div>
+                  <button
+                    onClick={handleCheckout}
+                    className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 flex items-center justify-center gap-2"
+                  >
+                    <FaShoppingCart />
+                    Commander
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
         {/* Modal panier */}

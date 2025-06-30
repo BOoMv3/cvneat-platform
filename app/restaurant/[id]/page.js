@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FaShoppingCart, FaSpinner } from 'react-icons/fa';
+import { FaShoppingCart, FaSpinner, FaArrowLeft } from 'react-icons/fa';
 
-// Composant pour la section du menu
+// Composant pour la section du menu avec onglets
 const MenuSection = ({ restaurantId }) => {
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeCategory, setActiveCategory] = useState('all');
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -53,31 +54,87 @@ const MenuSection = ({ restaurantId }) => {
     return acc;
   }, {});
 
+  const categories = Object.keys(groupedMenu);
+  const filteredMenu = activeCategory === 'all' ? menu : groupedMenu[activeCategory] || [];
+
   return (
-    <div className="space-y-8">
-      {Object.entries(groupedMenu).map(([category, items]) => (
-        <div key={category}>
-          <h2 className="text-2xl font-bold mb-4 text-gray-800 border-b-2 border-orange-500 pb-2">{category}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {items.map(item => (
-              <div key={item.id} className="bg-white rounded-lg shadow-sm p-4 flex justify-between items-center">
-                <div>
-                  <h3 className="font-semibold text-lg">{item.nom}</h3>
-                  <p className="text-gray-600 text-sm mt-1">{item.description}</p>
-                  <p className="font-bold text-orange-600 mt-2">{typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€</p>
-                </div>
-                <button 
-                  onClick={() => handleAddToCart(item)}
-                  className="bg-black text-white rounded-full p-3 hover:bg-gray-800 transition-colors"
-                  aria-label={`Ajouter ${item.nom} au panier`}
-                >
-                  <FaShoppingCart />
-                </button>
+    <div className="space-y-6">
+      {/* Onglets de catégories */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => setActiveCategory('all')}
+          className={`px-4 py-2 rounded-full font-medium transition-colors ${
+            activeCategory === 'all'
+              ? 'bg-orange-500 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Tout le menu
+        </button>
+        {categories.map(category => (
+          <button
+            key={category}
+            onClick={() => setActiveCategory(category)}
+            className={`px-4 py-2 rounded-full font-medium transition-colors ${
+              activeCategory === category
+                ? 'bg-orange-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
+      {/* Affichage du menu */}
+      {activeCategory === 'all' ? (
+        // Affichage par catégories
+        <div className="space-y-8">
+          {Object.entries(groupedMenu).map(([category, items]) => (
+            <div key={category}>
+              <h2 className="text-2xl font-bold mb-4 text-gray-800 border-b-2 border-orange-500 pb-2">{category}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {items.map(item => (
+                  <div key={item.id} className="bg-white rounded-lg shadow-sm p-4 flex justify-between items-center hover:shadow-md transition-shadow">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg text-gray-900">{item.nom}</h3>
+                      <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                      <p className="font-bold text-orange-600 mt-2">{typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€</p>
+                    </div>
+                    <button 
+                      onClick={() => handleAddToCart(item)}
+                      className="bg-black text-white rounded-full p-3 hover:bg-gray-800 transition-colors ml-4"
+                      aria-label={`Ajouter ${item.nom} au panier`}
+                    >
+                      <FaShoppingCart />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      ))}
+      ) : (
+        // Affichage d'une seule catégorie
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredMenu.map(item => (
+            <div key={item.id} className="bg-white rounded-lg shadow-sm p-4 flex justify-between items-center hover:shadow-md transition-shadow">
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg text-gray-900">{item.nom}</h3>
+                <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                <p className="font-bold text-orange-600 mt-2">{typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€</p>
+              </div>
+              <button 
+                onClick={() => handleAddToCart(item)}
+                className="bg-black text-white rounded-full p-3 hover:bg-gray-800 transition-colors ml-4"
+                aria-label={`Ajouter ${item.nom} au panier`}
+              >
+                <FaShoppingCart />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -89,24 +146,17 @@ export default function RestaurantPage({ params }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log('Page chargée avec les paramètres:', params);
-    
     const fetchRestaurant = async () => {
       try {
-        console.log('ID du restaurant:', params.id);
         const response = await fetch(`/api/restaurants/${params.id}`);
-        console.log('Statut de la réponse:', response.status);
         const data = await response.json();
-        console.log('Données reçues:', data);
         
         if (!response.ok) {
-          console.error('Erreur détaillée:', data);
           throw new Error(data.message || 'Erreur lors du chargement du restaurant');
         }
         
         setRestaurant(data);
       } catch (error) {
-        console.error('Erreur complète:', error);
         setError(error.message);
       } finally {
         setLoading(false);
@@ -116,7 +166,6 @@ export default function RestaurantPage({ params }) {
     if (params.id) {
       fetchRestaurant();
     } else {
-      console.error('Pas d\'ID de restaurant fourni');
       setError('ID du restaurant manquant');
       setLoading(false);
     }
@@ -165,6 +214,7 @@ export default function RestaurantPage({ params }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header avec image et bouton retour */}
       <div className="relative h-[350px]">
         <Image
           src={restaurant.image_url || '/default-restaurant.jpg'}
@@ -174,6 +224,15 @@ export default function RestaurantPage({ params }) {
           priority
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+        
+        {/* Bouton retour */}
+        <button
+          onClick={() => router.push('/')}
+          className="absolute top-4 left-4 bg-white bg-opacity-90 text-gray-800 p-3 rounded-full hover:bg-opacity-100 transition-all duration-200"
+        >
+          <FaArrowLeft className="h-5 w-5" />
+        </button>
+        
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-4">
           <h1 className="text-4xl md:text-6xl font-bold mb-2">{restaurant.nom}</h1>
           <p className="text-lg md:text-xl max-w-2xl">{restaurant.description}</p>
