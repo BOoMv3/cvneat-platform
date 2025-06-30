@@ -285,7 +285,6 @@ export default function RestaurantDetail({ params }) {
         {/* Menu */}
         <div className="flex gap-8">
           <div className="flex-1">
-            {/* Liste des plats organisée par catégories */}
             {menu.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
                 <p>Aucun plat disponible pour ce restaurant.</p>
@@ -306,7 +305,9 @@ export default function RestaurantDetail({ params }) {
                               <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom}</h4>
                               <p className="text-gray-600 text-sm mb-4">{item.description}</p>
                               <div className="flex items-center justify-between">
-                                <span className="text-xl font-bold text-blue-600">{item.prix.toFixed(2)}€</span>
+                                <span className="text-xl font-bold text-blue-600">
+                                  {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
+                                </span>
                                 <button
                                   onClick={() => addToCart(item)}
                                   className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
