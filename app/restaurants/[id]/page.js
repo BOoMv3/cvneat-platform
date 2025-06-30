@@ -285,136 +285,52 @@ export default function RestaurantDetail({ params }) {
         {/* Menu */}
         <div className="flex gap-8">
           <div className="flex-1">
-            {/* Catégories */}
-            <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-4 py-2 rounded-full whitespace-nowrap ${
-                  selectedCategory === 'all'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                Tout
-              </button>
-              {menu.length > 0 && [...new Set(menu.map(item => item.category || item.categorie || 'Autres'))].filter(category => category).map(category => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full whitespace-nowrap ${
-                    selectedCategory === category
-                      ? 'bg-black text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-
             {/* Liste des plats organisée par catégories */}
-            {selectedCategory === 'all' ? (
-              // Afficher toutes les catégories séparément
-              menu.length > 0 ? (
-                [...new Set(menu.map(item => item.category || item.categorie || 'Autres'))].filter(category => category).map(category => {
-                  const categoryItems = menu.filter(item => (item.category || item.categorie || 'Autres') === category);
-                  return (
-                    <div key={category} className="mb-8">
-                      <h3 className="text-2xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">
-                        {category}
-                      </h3>
-                      <div className="space-y-4">
-                        {categoryItems.map((item, index) => {
-                          console.log(`Plat ${index} dans ${category}:`, item);
-                          return (
-                            <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h4 className="text-lg font-bold mb-2 text-gray-900">
-                                    {item.nom || item.name || `Plat ${index + 1} (nom manquant)`}
-                                  </h4>
-                                  <p className="text-gray-600 text-sm mb-4">
-                                    {item.description || 'Aucune description'}
-                                  </p>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xl font-bold text-blue-600">
-                                      {(item.prix || item.price || 0).toFixed(2)}€
-                                    </span>
-                                    <button
-                                      onClick={() => addToCart(item)}
-                                      className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
-                                    >
-                                      <FaPlus />
-                                    </button>
-                                  </div>
-                                </div>
-                                {item.image_url && (
-                                  <img
-                                    src={item.image_url}
-                                    alt={item.nom || item.name || `Plat ${index + 1}`}
-                                    className="w-24 h-24 object-cover rounded-lg ml-4"
-                                  />
-                                )}
+            {menu.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                <p>Aucun plat disponible pour ce restaurant.</p>
+              </div>
+            ) : (
+              [...new Set(menu.map(item => item.category))].filter(Boolean).map(category => {
+                const categoryItems = menu.filter(item => item.category === category);
+                return (
+                  <div key={category} className="mb-8">
+                    <h3 className="text-2xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">
+                      {category}
+                    </h3>
+                    <div className="space-y-4">
+                      {categoryItems.map((item) => (
+                        <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="text-lg font-bold mb-2 text-gray-900">{item.nom}</h4>
+                              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xl font-bold text-blue-600">{item.prix.toFixed(2)}€</span>
+                                <button
+                                  onClick={() => addToCart(item)}
+                                  className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
+                                >
+                                  <FaPlus />
+                                </button>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <p>Aucun plat disponible pour ce restaurant.</p>
-                  <p className="text-sm">Debug: menu.length = {menu.length}</p>
-                </div>
-              )
-            ) : (
-              // Afficher seulement la catégorie sélectionnée
-              filteredMenu.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  <p>Aucun plat disponible dans cette catégorie.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredMenu.map((item, index) => {
-                    console.log(`Plat ${index} dans catégorie sélectionnée:`, item);
-                    return (
-                      <div key={item.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h4 className="text-lg font-bold mb-2 text-gray-900">
-                              {item.nom || item.name || `Plat ${index + 1} (nom manquant)`}
-                            </h4>
-                            <p className="text-gray-600 text-sm mb-4">
-                              {item.description || 'Aucune description'}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xl font-bold text-blue-600">
-                                {(item.prix || item.price || 0).toFixed(2)}€
-                              </span>
-                              <button
-                                onClick={() => addToCart(item)}
-                                className="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
-                              >
-                                <FaPlus />
-                              </button>
-                            </div>
+                            {item.image_url && (
+                              <img
+                                src={item.image_url}
+                                alt={item.nom}
+                                className="w-24 h-24 object-cover rounded-lg ml-4"
+                              />
+                            )}
                           </div>
-                          {item.image_url && (
-                            <img
-                              src={item.image_url}
-                              alt={item.nom || item.name || `Plat ${index + 1}`}
-                              className="w-24 h-24 object-cover rounded-lg ml-4"
-                            />
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
             )}
+            <div className="text-xs text-gray-400 mt-8">Si la pizza Coppa n'est pas dans "Base tomate", il faut corriger sa catégorie dans Supabase.</div>
           </div>
 
           {/* Panier */}
