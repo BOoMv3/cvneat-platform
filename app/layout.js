@@ -5,7 +5,6 @@ import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
-import NotificationPermission from '../components/NotificationPermission';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -92,7 +91,6 @@ export default function RootLayout({ children }) {
             </main>
             <Footer />
             <CookieBanner />
-            <NotificationPermission />
           </div>
         </ThemeProvider>
         
