@@ -20,8 +20,8 @@ const VILLES_DESSERVIES = {
   'saint-félix-de-pallières': { lat: 43.9500, lng: 3.8000, distanceFromGanges: 10.0 }
 };
 
-// Prix de base pour Ganges (augmenté)
-const PRIX_BASE_GANGES = 3.50;
+// Prix de base pour Ganges (corrigé)
+const PRIX_BASE_GANGES = 2.50;
 
 // Coût de l'essence par km (augmenté - prix actuel ~2.00€/L et consommation ~7L/100km)
 const COUT_ESSENCE_PAR_KM = 0.14; // ~2.00€/L * 7L/100km
