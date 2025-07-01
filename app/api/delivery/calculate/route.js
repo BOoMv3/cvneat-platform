@@ -73,31 +73,36 @@ function detectCityFromAddress(address) {
 }
 
 // Calculer les frais de livraison basés sur la distance et le coût de l'essence
-function calculateDeliveryFee(distanceFromGanges, orderAmount = 0) {
+function calculateDeliveryFee(distanceFromGanges, orderAmount = 0, city = '') {
   // Prix de base pour Ganges
   let fraisLivraison = PRIX_BASE_GANGES;
-  
+
+  // Si c'est Ganges, on ne rajoute rien
+  if (city === 'ganges') {
+    return PRIX_BASE_GANGES;
+  }
+
   // Ajouter le coût de l'essence pour la distance (aller-retour)
   const coutEssence = distanceFromGanges * COUT_ESSENCE_PAR_KM * 2; // Aller-retour
   fraisLivraison += coutEssence;
-  
+
   // Ajouter un supplément pour la distance (usure véhicule, temps, main d'œuvre)
   if (distanceFromGanges > 3) {
     fraisLivraison += Math.ceil((distanceFromGanges - 3) / 2) * 0.75; // +0.75€ tous les 2km après 3km
   }
-  
+
   // Supplément pour temps de livraison (plus c'est loin, plus ça prend du temps)
   if (distanceFromGanges > 5) {
     fraisLivraison += Math.ceil((distanceFromGanges - 5) / 3) * 1.00; // +1.00€ tous les 3km après 5km
   }
-  
+
   // Ajuster selon le montant de la commande
   if (orderAmount >= 40) {
     fraisLivraison = Math.max(fraisLivraison - 1.00, PRIX_BASE_GANGES); // Réduction de 1.00€ max
   } else if (orderAmount < 20) {
     fraisLivraison += 1.50; // Supplément pour petites commandes
   }
-  
+
   // Arrondir à 2 décimales
   return Math.round(fraisLivraison * 100) / 100;
 }
@@ -141,7 +146,7 @@ export async function POST(request) {
     }
 
     // Calculer les frais de livraison basés sur la distance depuis Ganges
-    const fraisLivraison = calculateDeliveryFee(deliveryCity.distanceFromGanges, orderAmount);
+    const fraisLivraison = calculateDeliveryFee(deliveryCity.distanceFromGanges, orderAmount, deliveryCity.city);
 
     return NextResponse.json({
       livrable: true,
