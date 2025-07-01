@@ -66,7 +66,8 @@ export default function RestaurantDetail({ params }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             restaurantAddress: restaurant.adresse + ', ' + restaurant.code_postal + ' ' + restaurant.ville,
-            deliveryAddress: deliveryAddress
+            deliveryAddress: deliveryAddress,
+            orderAmount: getSubtotal() // On envoie le montant du panier
           })
         });
         if (response.ok) {
@@ -86,7 +87,8 @@ export default function RestaurantDetail({ params }) {
       }
     };
     fetchDeliveryFee();
-  }, [restaurant, deliveryAddress]);
+    // On déclenche le calcul à chaque changement du restaurant, de l'adresse ou du panier
+  }, [restaurant, deliveryAddress, cart]);
 
   const loadCartFromStorage = () => {
     const storedCart = safeLocalStorage.getJSON('cart');
