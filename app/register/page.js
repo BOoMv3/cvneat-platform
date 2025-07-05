@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import Navbar from '@/components/Navbar';
+// import Navbar from '@/components/Navbar';
 import FormInput from '@/components/FormInput';
 import { supabase } from '@/lib/supabase';
 
@@ -88,92 +88,90 @@ export default function Register() {
   }
 
   return (
-    <>
-      <Navbar />
-      <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
-        <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold mb-6 text-center">Inscription</h1>
-          {errors.global && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{errors.global}</div>}
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label="Prénom"
-                name="prenom"
-                placeholder="Votre prénom"
-                required
-                error={errors.prenom}
-                value={formData.prenom}
-                onChange={handleChange}
-              />
-              <FormInput
-                label="Nom"
-                name="nom"
-                placeholder="Votre nom"
-                required
-                error={errors.nom}
-                value={formData.nom}
-                onChange={handleChange}
-              />
-            </div>
+    {/* <Navbar /> */}
+    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
+      <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
+        <h1 className="text-2xl font-bold mb-6 text-center">Inscription</h1>
+        {errors.global && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{errors.global}</div>}
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-2 gap-4">
             <FormInput
-              label="Email"
-              type="email"
-              name="email"
-              placeholder="votre@email.com"
+              label="Prénom"
+              name="prenom"
+              placeholder="Votre prénom"
               required
-              error={errors.email}
-              value={formData.email}
+              error={errors.prenom}
+              value={formData.prenom}
               onChange={handleChange}
             />
             <FormInput
-              label="Téléphone"
-              type="tel"
-              name="telephone"
-              placeholder="06 12 34 56 78"
+              label="Nom"
+              name="nom"
+              placeholder="Votre nom"
               required
-              error={errors.telephone}
-              value={formData.telephone}
+              error={errors.nom}
+              value={formData.nom}
               onChange={handleChange}
             />
-            <FormInput
-              label="Adresse"
-              name="adresse"
-              placeholder="Votre adresse de livraison"
-              required
-              error={errors.adresse}
-              value={formData.adresse}
-              onChange={handleChange}
-            />
-            <FormInput
-              label="Mot de passe"
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              required
-              error={errors.password}
-              value={formData.password}
-              onChange={handleChange}
-            />
-            <FormInput
-              label="Confirmer le mot de passe"
-              type="password"
-              name="confirmPassword"
-              placeholder="••••••••"
-              required
-              error={errors.confirmPassword}
-              value={formData.confirmPassword}
-              onChange={handleChange}
-            />
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-              disabled={loading}
-            >
-              {loading ? "Inscription en cours..." : "S'inscrire"}
-            </button>
-          </form>
-        </div>
-      </main>
-    </>
+          </div>
+          <FormInput
+            label="Email"
+            type="email"
+            name="email"
+            placeholder="votre@email.com"
+            required
+            error={errors.email}
+            value={formData.email}
+            onChange={handleChange}
+          />
+          <FormInput
+            label="Téléphone"
+            type="tel"
+            name="telephone"
+            placeholder="06 12 34 56 78"
+            required
+            error={errors.telephone}
+            value={formData.telephone}
+            onChange={handleChange}
+          />
+          <FormInput
+            label="Adresse"
+            name="adresse"
+            placeholder="Votre adresse de livraison"
+            required
+            error={errors.adresse}
+            value={formData.adresse}
+            onChange={handleChange}
+          />
+          <FormInput
+            label="Mot de passe"
+            type="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            error={errors.password}
+            value={formData.password}
+            onChange={handleChange}
+          />
+          <FormInput
+            label="Confirmer le mot de passe"
+            type="password"
+            name="confirmPassword"
+            placeholder="••••••••"
+            required
+            error={errors.confirmPassword}
+            value={formData.confirmPassword}
+            onChange={handleChange}
+          />
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            disabled={loading}
+          >
+            {loading ? "Inscription en cours..." : "S'inscrire"}
+          </button>
+        </form>
+      </div>
+    </main>
   );
 } 
