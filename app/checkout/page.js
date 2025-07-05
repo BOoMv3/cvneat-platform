@@ -114,10 +114,19 @@ export default function Checkout() {
     }
 
     try {
+      // Si on définit cette adresse comme défaut, on retire le statut défaut des autres
+      if (newAddress.is_default) {
+        await supabase
+          .from('user_addresses')
+          .update({ is_default: false })
+          .eq('user_id', user.id);
+      }
+
       const { data, error } = await supabase
         .from('user_addresses')
         .insert({
           user_id: user.id,
+          name: `${newAddress.city} - ${newAddress.address}`, // Nom automatique
           address: newAddress.address,
           city: newAddress.city,
           postal_code: newAddress.postal_code,
@@ -126,7 +135,10 @@ export default function Checkout() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur détaillée:', error);
+        throw error;
+      }
 
       setUserAddresses(prev => [...prev, data]);
       setSelectedAddress(data);
@@ -135,9 +147,22 @@ export default function Checkout() {
 
       // Recalculer les frais de livraison
       await calculateDeliveryFee(data);
+      
+      // Notification de succès
+      alert('Adresse ajoutée avec succès !');
     } catch (error) {
       console.error('Erreur ajout adresse:', error);
-      alert('Erreur lors de l\'ajout de l\'adresse');
+      
+      // Messages d'erreur plus spécifiques
+      if (error.code === '23505') {
+        alert('Cette adresse existe déjà pour votre compte.');
+      } else if (error.code === '23503') {
+        alert('Erreur de référence utilisateur. Veuillez vous reconnecter.');
+      } else if (error.message) {
+        alert(`Erreur lors de l'ajout de l'adresse : ${error.message}`);
+      } else {
+        alert('Erreur lors de l\'ajout de l\'adresse. Veuillez réessayer.');
+      }
     }
   };
 
@@ -148,27 +173,45 @@ export default function Checkout() {
       const savedCart = safeLocalStorage.getJSON('cart');
       const restaurantAddress = savedCart?.restaurant?.address;
 
+      console.log('Calcul frais livraison pour:', {
+        restaurantAddress,
+        deliveryAddress: `${address.address}, ${address.postal_code} ${address.city}`,
+        cartTotal
+      });
+
       if (restaurantAddress) {
         const response = await fetch('/api/delivery/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             restaurantAddress: restaurantAddress,
-            deliveryAddress: `${address.address}, ${address.postal_code} ${address.city}`
+            deliveryAddress: `${address.address}, ${address.postal_code} ${address.city}`,
+            orderAmount: cartTotal
           })
         });
 
         if (response.ok) {
           const data = await response.json();
+          console.log('Réponse API frais livraison:', data);
+          
           if (data.livrable) {
             setFraisLivraison(data.frais_livraison);
+            console.log(`Frais de livraison mis à jour: ${data.frais_livraison}€ pour ${address.city}`);
           } else {
             alert(`Livraison impossible : ${data.message}`);
+            console.error('Livraison impossible:', data.message);
           }
+        } else {
+          const errorData = await response.json();
+          console.error('Erreur API frais livraison:', errorData);
+          alert('Erreur lors du calcul des frais de livraison');
         }
+      } else {
+        console.warn('Adresse restaurant non trouvée dans le panier');
       }
     } catch (error) {
       console.error('Erreur calcul frais livraison:', error);
+      alert('Erreur lors du calcul des frais de livraison');
     }
   };
 
@@ -360,6 +403,27 @@ export default function Checkout() {
                 Ajouter une nouvelle adresse
               </button>
             )}
+
+            {/* Test de l'API de calcul (temporaire) */}
+            <div className="border-t pt-6 mt-6">
+              <h3 className="font-medium text-gray-900 mb-4">Test de calcul des frais</h3>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/delivery/calculate?test=Laroque');
+                    const data = await response.json();
+                    console.log('Test API Laroque:', data);
+                    alert(`Test Laroque: ${JSON.stringify(data, null, 2)}`);
+                  } catch (error) {
+                    console.error('Erreur test:', error);
+                    alert('Erreur lors du test');
+                  }
+                }}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Tester détection Laroque
+              </button>
+            </div>
 
             {/* Informations de contact */}
             <div className="border-t pt-6 mt-6">
