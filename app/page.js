@@ -47,6 +47,9 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [addingToCart, setAddingToCart] = useState({});
+  const [showCartNotification, setShowCartNotification] = useState(false);
+  const [lastAddedItem, setLastAddedItem] = useState(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -202,6 +205,10 @@ export default function Home() {
       return;
     }
 
+    // Animation d'ajout
+    setAddingToCart(prev => ({ ...prev, [item.id]: true }));
+    setLastAddedItem(item);
+
     let deliveryFee = cart.length > 0 ? getDeliveryFee() : (selectedRestaurant?.deliveryFee || selectedRestaurant?.frais_livraison || 2.50);
 
     // Calculer les frais de livraison si le panier est vide
@@ -232,6 +239,7 @@ export default function Home() {
               deliveryFee = data.frais_livraison;
             } else {
               alert(`Livraison impossible : ${data.message}`);
+              setAddingToCart(prev => ({ ...prev, [item.id]: false }));
               return;
             }
           }
@@ -261,6 +269,15 @@ export default function Home() {
       
       return newCart;
     });
+
+    // Notification visuelle
+    setShowCartNotification(true);
+    setTimeout(() => setShowCartNotification(false), 2000);
+    
+    // Arrêter l'animation après un délai
+    setTimeout(() => {
+      setAddingToCart(prev => ({ ...prev, [item.id]: false }));
+    }, 500);
   };
 
   const getDeliveryFee = () => {
@@ -428,6 +445,21 @@ export default function Home() {
 
   return (
     <>
+      {/* Notification d'ajout au panier */}
+      {showCartNotification && lastAddedItem && (
+        <div className="fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce">
+          <div className="flex items-center space-x-3">
+            <div className="w-6 h-6 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+              <FaPlus className="h-3 w-3" />
+            </div>
+            <div>
+              <p className="font-semibold">Ajouté au panier !</p>
+              <p className="text-sm opacity-90">{lastAddedItem.nom}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Encart publicitaire sponsorisé déplacé dans la liste des restaurants */}
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section */}
@@ -726,25 +758,72 @@ export default function Home() {
                         <div key={category} className="mb-8">
                           <h3 className="text-xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">{category}</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {categoryItems.map((item) => (
-                              <div key={item.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors shadow-sm">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <h5 className="font-semibold text-gray-900 mb-1">{item.nom}</h5>
-                                    <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                                    <p className="text-lg font-bold text-blue-600">
-                                      {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
-                                    </p>
+                            {categoryItems.map((item) => {
+                              const isAdding = addingToCart[item.id];
+                              const cartItem = cart.find(cartItem => cartItem.id === item.id);
+                              const itemQuantity = cartItem ? cartItem.quantity : 0;
+                              
+                              return (
+                                <div 
+                                  key={item.id} 
+                                  className={`bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-all duration-300 shadow-sm border-2 ${
+                                    isAdding ? 'border-green-400 bg-green-50 scale-105' : 'border-transparent'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <h5 className="font-semibold text-gray-900 mb-1">{item.nom}</h5>
+                                      <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                                      <p className="text-lg font-bold text-blue-600">
+                                        {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
+                                      </p>
+                                    </div>
+                                    
+                                    {/* Contrôles de quantité améliorés */}
+                                    <div className="flex items-center space-x-2 ml-4">
+                                      {itemQuantity > 0 && (
+                                        <>
+                                          <button
+                                            onClick={() => updateQuantity(item.id, itemQuantity - 1)}
+                                            className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center justify-center"
+                                            disabled={isAdding}
+                                          >
+                                            <FaMinus className="h-3 w-3" />
+                                          </button>
+                                          <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">
+                                            {itemQuantity}
+                                          </span>
+                                        </>
+                                      )}
+                                      <button
+                                        onClick={() => addToCart(item)}
+                                        disabled={isAdding}
+                                        className={`w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center ${
+                                          isAdding 
+                                            ? 'bg-green-500 text-white scale-110' 
+                                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105'
+                                        }`}
+                                      >
+                                        {isAdding ? (
+                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        ) : (
+                                          <FaPlus className="h-4 w-4" />
+                                        )}
+                                      </button>
+                                    </div>
                                   </div>
-                                  <button
-                                    onClick={() => addToCart(item)}
-                                    className="ml-4 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
-                                  >
-                                    <FaPlus className="h-4 w-4" />
-                                  </button>
+                                  
+                                  {/* Animation de confirmation */}
+                                  {isAdding && (
+                                    <div className="mt-2 text-center">
+                                      <span className="text-green-600 text-sm font-medium animate-pulse">
+                                        ✓ Ajouté au panier !
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       ));
@@ -752,19 +831,35 @@ export default function Home() {
                     
                     {/* Panier amélioré */}
                     {cart.length > 0 && (
-                      <div className="border-t pt-6">
-                        <h3 className="text-2xl font-semibold mb-4 text-gray-900">Votre panier</h3>
-                        <div className="space-y-4">
+                      <div className="border-t pt-6 mt-8 bg-blue-50 rounded-lg p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-2xl font-semibold text-gray-900 flex items-center">
+                            🛒 Votre panier
+                            <span className="ml-2 bg-blue-600 text-white text-sm px-2 py-1 rounded-full">
+                              {cartItemCount}
+                            </span>
+                          </h3>
+                          <button
+                            onClick={() => setCart([])}
+                            className="text-red-500 hover:text-red-700 text-sm font-medium"
+                          >
+                            Vider le panier
+                          </button>
+                        </div>
+                        
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
                           {cart.map((item) => (
-                            <div key={item.id} className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
+                            <div key={item.id} className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                               <div className="flex-1">
-                                <p className="font-semibold text-gray-900">{item.name}</p>
-                                <p className="text-sm text-gray-600">{item.price}€ x {item.quantity}</p>
+                                <p className="font-semibold text-gray-900">{item.nom}</p>
+                                <p className="text-sm text-gray-600">
+                                  {typeof item.prix === 'number' ? item.prix.toFixed(2) : Number(item.prix).toFixed(2)}€ x {item.quantity}
+                                </p>
                               </div>
-                              <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-2">
                                 <button
                                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                  className="text-gray-500 hover:text-gray-700 p-1"
+                                  className="w-6 h-6 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center justify-center"
                                 >
                                   <FaMinus className="h-3 w-3" />
                                 </button>
@@ -773,49 +868,49 @@ export default function Home() {
                                 </span>
                                 <button
                                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                  className="text-gray-500 hover:text-gray-700 p-1"
+                                  className="w-6 h-6 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors flex items-center justify-center"
                                 >
                                   <FaPlus className="h-3 w-3" />
                                 </button>
                                 <button
                                   onClick={() => removeFromCart(item.id)}
-                                  className="text-red-500 hover:text-red-700 p-1"
+                                  className="text-red-500 hover:text-red-700 p-1 ml-2"
                                 >
                                   <FaTimes className="h-4 w-4" />
                                 </button>
                               </div>
                             </div>
                           ))}
-                          
-                          <div className="border-t pt-4">
-                            <div className="space-y-2 mb-4">
-                              <div className="flex justify-between items-center text-gray-600">
-                                <span>Sous-total</span>
-                                <span>{cartTotal.toFixed(2)}€</span>
-                              </div>
-                              <div className="flex justify-between items-center text-gray-600">
-                                <span>Frais de livraison</span>
-                                <span>{fraisLivraison.toFixed(2)}€</span>
-                              </div>
-                              <div className="border-t pt-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-lg font-semibold text-gray-900">Total</span>
-                                  <span className="text-2xl font-bold text-blue-600">
-                                    {totalAvecLivraison.toFixed(2)}€
-                                  </span>
-                                </div>
+                        </div>
+                        
+                        <div className="border-t border-gray-300 pt-4 mt-4">
+                          <div className="space-y-2 mb-4">
+                            <div className="flex justify-between items-center text-gray-600">
+                              <span>Sous-total</span>
+                              <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
+                            </div>
+                            <div className="flex justify-between items-center text-gray-600">
+                              <span>Frais de livraison</span>
+                              <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
+                            </div>
+                            <div className="border-t border-gray-300 pt-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-lg font-semibold text-gray-900">Total</span>
+                                <span className="text-2xl font-bold text-blue-600">
+                                  {totalAvecLivraison.toFixed(2)}€
+                                </span>
                               </div>
                             </div>
-                            <button
-                              onClick={() => {
-                                router.push('/checkout');
-                                closeModal();
-                              }}
-                              className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
-                            >
-                              Passer la commande ({cartItemCount} article{cartItemCount !== 1 ? 's' : ''})
-                            </button>
                           </div>
+                          <button
+                            onClick={() => {
+                              router.push('/checkout');
+                              closeModal();
+                            }}
+                            className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-all duration-200 font-semibold text-lg transform hover:scale-105 shadow-lg"
+                          >
+                            🚀 Passer la commande ({cartItemCount} article{cartItemCount !== 1 ? 's' : ''})
+                          </button>
                         </div>
                       </div>
                     )}
