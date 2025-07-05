@@ -23,6 +23,7 @@ import {
   FaUserPlus,
   FaGift
 } from 'react-icons/fa';
+import AdBanner from '@/components/AdBanner';
 
 // Desactiver le rendu statique pour cette page
 export const dynamic = 'force-dynamic';
@@ -426,397 +427,407 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <section className="relative h-[600px] overflow-hidden">
-        <Image
-          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop"
-          alt="Bannière de restauration"
-          fill
-          className="object-cover"
-          priority
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-black bg-opacity-60"></div>
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="text-white max-w-2xl">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Découvrez les meilleurs restaurants
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-gray-200">
-              Livraison rapide et repas délicieux à votre porte
-            </p>
-            
-            {/* Barre de recherche améliorée */}
-            <div className="bg-white rounded-xl p-4 shadow-lg max-w-lg">
-              <div className="flex items-center space-x-3">
-                <FaSearch className="h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Nom du restaurant, cuisine, plat..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1 px-3 py-2 outline-none text-gray-900 placeholder-gray-500"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <FaTimes className="h-4 w-4" />
-                  </button>
+    <>
+      {/* Encart publicitaire sponsorisé */}
+      <AdBanner
+        title="Marché de Producteurs Locaux à Ganges !"
+        image="/ads/marche-ganges.jpg"
+        description="Découvrez les produits frais et locaux tous les samedis matin sur la place du marché à Ganges. Soutenez les commerçants du coin !"
+        link="https://www.ganges.fr/marche"
+        sponsor="Ville de Ganges"
+      />
+      <div className="min-h-screen bg-gray-50">
+        {/* Hero Section */}
+        <section className="relative h-[600px] overflow-hidden">
+          <Image
+            src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop"
+            alt="Bannière de restauration"
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
+            <div className="text-white max-w-2xl">
+              <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+                Découvrez les meilleurs restaurants
+              </h1>
+              <p className="text-xl md:text-2xl mb-8 text-gray-200">
+                Livraison rapide et repas délicieux à votre porte
+              </p>
+              
+              {/* Barre de recherche améliorée */}
+              <div className="bg-white rounded-xl p-4 shadow-lg max-w-lg">
+                <div className="flex items-center space-x-3">
+                  <FaSearch className="h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Nom du restaurant, cuisine, plat..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1 px-3 py-2 outline-none text-gray-900 placeholder-gray-500"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <FaTimes className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Suggestions rapides */}
+                {searchTerm.length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex flex-wrap gap-2">
+                      {['Pizza', 'Burger', 'Sushi', 'Salade'].map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          onClick={() => setSearchTerm(suggestion)}
+                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
               
-              {/* Suggestions rapides */}
-              {searchTerm.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                  <div className="flex flex-wrap gap-2">
-                    {['Pizza', 'Burger', 'Sushi', 'Salade'].map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        onClick={() => setSearchTerm(suggestion)}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex gap-4 mt-6">
-              <button 
-                onClick={() => router.push('/restaurants')}
-                className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
-              >
-                Commander maintenant
-              </button>
-              <button 
-                onClick={() => router.push('/restaurants')}
-                className="bg-white hover:bg-gray-100 text-orange-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
-              >
-                Voir les restaurants
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Filtres et tri */}
-      <section className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <FaFilter className="h-4 w-4" />
-                <span>Filtres</span>
-              </button>
-              
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="recommended">Recommandés</option>
-                <option value="rating">Mieux notés</option>
-                <option value="delivery_time">Plus rapides</option>
-                <option value="distance">Plus proches</option>
-              </select>
-            </div>
-            
-            <div className="text-gray-600">
-              {filteredAndSortedRestaurants.length} restaurant{filteredAndSortedRestaurants.length !== 1 ? 's' : ''} trouvé{filteredAndSortedRestaurants.length !== 1 ? 's' : ''}
-            </div>
-          </div>
-
-          {/* Filtres avancés */}
-          {showFilters && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      selectedCategory === category.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span className="mr-2">{category.icon}</span>
-                    {category.name}
-                  </button>
-                ))}
+              <div className="flex gap-4 mt-6">
+                <button 
+                  onClick={() => router.push('/restaurants')}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                >
+                  Commander maintenant
+                </button>
+                <button 
+                  onClick={() => router.push('/restaurants')}
+                  className="bg-white hover:bg-gray-100 text-orange-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                >
+                  Voir les restaurants
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Section des restaurants */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : filteredAndSortedRestaurants.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaSearch className="h-12 w-12 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun restaurant trouvé</h3>
-            <p className="text-gray-600">Essayez de modifier vos critères de recherche</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredAndSortedRestaurants.map((restaurant) => (
-              <div
-                key={restaurant.id}
-                className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105 overflow-hidden cursor-pointer group"
-                onClick={() => handleRestaurantClick(restaurant)}
-              >
-                <div className="relative h-48">
-                  <Image
-                    src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
-                    alt={restaurant.nom}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-200"
-                    unoptimized
-                  />
-                  
-                  {/* Badges */}
-                  <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                    {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
-                      <span className="bg-yellow-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
-                        ⭐ Sponsorisé
-                      </span>
-                    )}
-                    {favorites.includes(restaurant.id) && (
-                      <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
-                        ❤️ Favori
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Bouton favori */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(restaurant.id);
-                    }}
-                    className="absolute top-3 right-3 p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 transition-all duration-200"
-                  >
-                    <FaHeart className={`h-4 w-4 ${favorites.includes(restaurant.id) ? 'text-red-500' : 'text-gray-400'}`} />
-                  </button>
-                </div>
+        {/* Filtres et tri */}
+        <section className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <FaFilter className="h-4 w-4" />
+                  <span>Filtres</span>
+                </button>
                 
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {restaurant.nom}
-                    </h3>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="recommended">Recommandés</option>
+                  <option value="rating">Mieux notés</option>
+                  <option value="delivery_time">Plus rapides</option>
+                  <option value="distance">Plus proches</option>
+                </select>
+              </div>
+              
+              <div className="text-gray-600">
+                {filteredAndSortedRestaurants.length} restaurant{filteredAndSortedRestaurants.length !== 1 ? 's' : ''} trouvé{filteredAndSortedRestaurants.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            {/* Filtres avancés */}
+            {showFilters && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        selectedCategory === category.id
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <span className="mr-2">{category.icon}</span>
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Section des restaurants */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : filteredAndSortedRestaurants.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaSearch className="h-12 w-12 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun restaurant trouvé</h3>
+              <p className="text-gray-600">Essayez de modifier vos critères de recherche</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredAndSortedRestaurants.map((restaurant) => (
+                <div
+                  key={restaurant.id}
+                  className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105 overflow-hidden cursor-pointer group"
+                  onClick={() => handleRestaurantClick(restaurant)}
+                >
+                  <div className="relative h-48">
+                    <Image
+                      src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
+                      alt={restaurant.nom}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-200"
+                      unoptimized
+                    />
+                    
+                    {/* Badges */}
+                    <div className="absolute top-3 left-3 flex flex-col space-y-2">
+                      {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
+                        <span className="bg-yellow-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
+                          ⭐ Sponsorisé
+                        </span>
+                      )}
+                      {favorites.includes(restaurant.id) && (
+                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
+                          ❤️ Favori
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Bouton favori */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(restaurant.id);
+                      }}
+                      className="absolute top-3 right-3 p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 transition-all duration-200"
+                    >
+                      <FaHeart className={`h-4 w-4 ${favorites.includes(restaurant.id) ? 'text-red-500' : 'text-gray-400'}`} />
+                    </button>
                   </div>
                   
-                  <p className="text-gray-600 mb-4 line-clamp-2">{restaurant.description}</p>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-4 text-gray-500">
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        {restaurant.nom}
+                      </h3>
+                    </div>
+                    
+                    <p className="text-gray-600 mb-4 line-clamp-2">{restaurant.description}</p>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-4 text-gray-500">
+                        <div className="flex items-center">
+                          <FaStar className="h-4 w-4 text-yellow-400 mr-1" />
+                          <span>{restaurant.rating || '4.5'}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <FaClock className="h-4 w-4 mr-1" />
+                          <span>{restaurant.deliveryTime} min</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">
+                          Frais de livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€
+                        </p>
+                        <p className="text-xs text-gray-500">Commande min: {restaurant.minOrder}€</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Modal améliorée */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex-1">
+                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                      {selectedRestaurant?.nom || 'Chargement...'}
+                    </h2>
+                    <p className="text-gray-600 mb-3">{selectedRestaurant?.description}</p>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
                       <div className="flex items-center">
                         <FaStar className="h-4 w-4 text-yellow-400 mr-1" />
-                        <span>{restaurant.rating || '4.5'}</span>
+                        <span>{selectedRestaurant?.rating || '4.5'}</span>
                       </div>
                       <div className="flex items-center">
                         <FaClock className="h-4 w-4 mr-1" />
-                        <span>{restaurant.deliveryTime} min</span>
+                        <span>{selectedRestaurant?.deliveryTime} min</span>
+                      </div>
+                      <div className="flex items-center">
+                        <FaMotorcycle className="h-4 w-4 mr-1" />
+                        <span>{selectedRestaurant?.frais_livraison ? `${selectedRestaurant.frais_livraison}€` : 'Gratuit'}</span>
                       </div>
                     </div>
-                    
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">
-                        Frais de livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€
-                      </p>
-                      <p className="text-xs text-gray-500">Commande min: {restaurant.minOrder}€</p>
-                    </div>
                   </div>
+                  <button
+                    onClick={closeModal}
+                    className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    aria-label="Fermer la modale"
+                  >
+                    <FaTimes className="h-6 w-6" />
+                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Modal améliorée */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex-1">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                    {selectedRestaurant?.nom || 'Chargement...'}
-                  </h2>
-                  <p className="text-gray-600 mb-3">{selectedRestaurant?.description}</p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <FaStar className="h-4 w-4 text-yellow-400 mr-1" />
-                      <span>{selectedRestaurant?.rating || '4.5'}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <FaClock className="h-4 w-4 mr-1" />
-                      <span>{selectedRestaurant?.deliveryTime} min</span>
-                    </div>
-                    <div className="flex items-center">
-                      <FaMotorcycle className="h-4 w-4 mr-1" />
-                      <span>{selectedRestaurant?.frais_livraison ? `${selectedRestaurant.frais_livraison}€` : 'Gratuit'}</span>
-                    </div>
+                
+                {menuLoading ? (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                   </div>
-                </div>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  aria-label="Fermer la modale"
-                >
-                  <FaTimes className="h-6 w-6" />
-                </button>
-              </div>
-              
-              {menuLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                </div>
-              ) : error ? (
-                <div className="text-center text-red-600 p-4 bg-red-50 rounded-lg">
-                  <p>{error}</p>
-                  <button onClick={closeModal} className="mt-4 px-4 py-2 bg-gray-200 rounded">Fermer</button>
-                </div>
-              ) : selectedRestaurant && Array.isArray(menu) && menu.length > 0 ? (
-                <div className="space-y-8">
-                  {/* Menu par catégories */}
-                  {(() => {
-                    const groupedMenu = menu.reduce((acc, item) => {
-                      const category = item.category || 'Autres';
-                      if (!acc[category]) {
-                        acc[category] = [];
-                      }
-                      acc[category].push(item);
-                      return acc;
-                    }, {});
-                    
-                    return Object.entries(groupedMenu).map(([category, categoryItems]) => (
-                      <div key={category} className="mb-8">
-                        <h3 className="text-xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">{category}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {categoryItems.map((item) => (
-                            <div key={item.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors shadow-sm">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h5 className="font-semibold text-gray-900 mb-1">{item.nom}</h5>
-                                  <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                                  <p className="text-lg font-bold text-blue-600">
-                                    {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
-                                  </p>
+                ) : error ? (
+                  <div className="text-center text-red-600 p-4 bg-red-50 rounded-lg">
+                    <p>{error}</p>
+                    <button onClick={closeModal} className="mt-4 px-4 py-2 bg-gray-200 rounded">Fermer</button>
+                  </div>
+                ) : selectedRestaurant && Array.isArray(menu) && menu.length > 0 ? (
+                  <div className="space-y-8">
+                    {/* Menu par catégories */}
+                    {(() => {
+                      const groupedMenu = menu.reduce((acc, item) => {
+                        const category = item.category || 'Autres';
+                        if (!acc[category]) {
+                          acc[category] = [];
+                        }
+                        acc[category].push(item);
+                        return acc;
+                      }, {});
+                      
+                      return Object.entries(groupedMenu).map(([category, categoryItems]) => (
+                        <div key={category} className="mb-8">
+                          <h3 className="text-xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">{category}</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {categoryItems.map((item) => (
+                              <div key={item.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors shadow-sm">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <h5 className="font-semibold text-gray-900 mb-1">{item.nom}</h5>
+                                    <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                                    <p className="text-lg font-bold text-blue-600">
+                                      {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => addToCart(item)}
+                                    className="ml-4 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                                  >
+                                    <FaPlus className="h-4 w-4" />
+                                  </button>
                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                    
+                    {/* Panier amélioré */}
+                    {cart.length > 0 && (
+                      <div className="border-t pt-6">
+                        <h3 className="text-2xl font-semibold mb-4 text-gray-900">Votre panier</h3>
+                        <div className="space-y-4">
+                          {cart.map((item) => (
+                            <div key={item.id} className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
+                              <div className="flex-1">
+                                <p className="font-semibold text-gray-900">{item.name}</p>
+                                <p className="text-sm text-gray-600">{item.price}€ x {item.quantity}</p>
+                              </div>
+                              <div className="flex items-center space-x-3">
                                 <button
-                                  onClick={() => addToCart(item)}
-                                  className="ml-4 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  className="text-gray-500 hover:text-gray-700 p-1"
                                 >
-                                  <FaPlus className="h-4 w-4" />
+                                  <FaMinus className="h-3 w-3" />
+                                </button>
+                                <span className="font-semibold text-gray-900 min-w-[2rem] text-center">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  className="text-gray-500 hover:text-gray-700 p-1"
+                                >
+                                  <FaPlus className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => removeFromCart(item.id)}
+                                  className="text-red-500 hover:text-red-700 p-1"
+                                >
+                                  <FaTimes className="h-4 w-4" />
                                 </button>
                               </div>
                             </div>
                           ))}
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                  
-                  {/* Panier amélioré */}
-                  {cart.length > 0 && (
-                    <div className="border-t pt-6">
-                      <h3 className="text-2xl font-semibold mb-4 text-gray-900">Votre panier</h3>
-                      <div className="space-y-4">
-                        {cart.map((item) => (
-                          <div key={item.id} className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-900">{item.name}</p>
-                              <p className="text-sm text-gray-600">{item.price}€ x {item.quantity}</p>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="text-gray-500 hover:text-gray-700 p-1"
-                              >
-                                <FaMinus className="h-3 w-3" />
-                              </button>
-                              <span className="font-semibold text-gray-900 min-w-[2rem] text-center">
-                                {item.quantity}
-                              </span>
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="text-gray-500 hover:text-gray-700 p-1"
-                              >
-                                <FaPlus className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => removeFromCart(item.id)}
-                                className="text-red-500 hover:text-red-700 p-1"
-                              >
-                                <FaTimes className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        
-                        <div className="border-t pt-4">
-                          <div className="space-y-2 mb-4">
-                            <div className="flex justify-between items-center text-gray-600">
-                              <span>Sous-total</span>
-                              <span>{cartTotal.toFixed(2)}€</span>
-                            </div>
-                            <div className="flex justify-between items-center text-gray-600">
-                              <span>Frais de livraison</span>
-                              <span>{fraisLivraison.toFixed(2)}€</span>
-                            </div>
-                            <div className="border-t pt-2">
-                              <div className="flex justify-between items-center">
-                                <span className="text-lg font-semibold text-gray-900">Total</span>
-                                <span className="text-2xl font-bold text-blue-600">
-                                  {totalAvecLivraison.toFixed(2)}€
-                                </span>
+                          
+                          <div className="border-t pt-4">
+                            <div className="space-y-2 mb-4">
+                              <div className="flex justify-between items-center text-gray-600">
+                                <span>Sous-total</span>
+                                <span>{cartTotal.toFixed(2)}€</span>
+                              </div>
+                              <div className="flex justify-between items-center text-gray-600">
+                                <span>Frais de livraison</span>
+                                <span>{fraisLivraison.toFixed(2)}€</span>
+                              </div>
+                              <div className="border-t pt-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-lg font-semibold text-gray-900">Total</span>
+                                  <span className="text-2xl font-bold text-blue-600">
+                                    {totalAvecLivraison.toFixed(2)}€
+                                  </span>
+                                </div>
                               </div>
                             </div>
+                            <button
+                              onClick={() => {
+                                router.push('/checkout');
+                                closeModal();
+                              }}
+                              className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
+                            >
+                              Passer la commande ({cartItemCount} article{cartItemCount !== 1 ? 's' : ''})
+                            </button>
                           </div>
-                          <button
-                            onClick={() => {
-                              router.push('/checkout');
-                              closeModal();
-                            }}
-                            className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
-                          >
-                            Passer la commande ({cartItemCount} article{cartItemCount !== 1 ? 's' : ''})
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center text-gray-500 py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FaSearch className="h-8 w-8 text-gray-400" />
+                    )}
                   </div>
-                  <p>Aucun menu disponible pour ce restaurant.</p>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center text-gray-500 py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FaSearch className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p>Aucun menu disponible pour ce restaurant.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 } 
