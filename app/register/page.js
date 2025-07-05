@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
-import FormInput from '../components/FormInput';
-import { supabase } from '../lib/supabase';
+import FormInput from '@/components/FormInput';
+import { supabase } from '@/lib/supabase';
 
 export default function Register() {
   const [formData, setFormData] = useState({
