@@ -2,246 +2,471 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabase';
-import { safeLocalStorage } from '../../lib/localStorage';
+import { supabase } from '@/lib/supabase';
+import { safeLocalStorage } from '@/lib/localStorage';
 import { 
-  FaArrowLeft, 
+  FaMapMarkerAlt, 
+  FaPlus, 
+  FaTimes, 
+  FaCreditCard, 
   FaUser, 
   FaPhone, 
-  FaMapMarkerAlt, 
-  FaCreditCard,
-  FaLock,
-  FaCheck,
-  FaClock,
+  FaEnvelope,
+  FaShoppingCart,
   FaMotorcycle,
-  FaStar,
-  FaUtensils,
-  FaShieldAlt,
-  FaTruck
+  FaCheck
 } from 'react-icons/fa';
-import AuthGuard from "../../components/AuthGuard";
 
 export default function Checkout() {
   const router = useRouter();
-  const [cart, setCart] = useState([]);
-  const [restaurant, setRestaurant] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
   const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
+  const [cart, setCart] = useState([]);
+  const [cartTotal, setCartTotal] = useState(0);
+  const [fraisLivraison, setFraisLivraison] = useState(2.50);
+  const [totalAvecLivraison, setTotalAvecLivraison] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [userAddresses, setUserAddresses] = useState([]);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [newAddress, setNewAddress] = useState({
     address: '',
     city: '',
-    postalCode: '',
-    instructions: '',
-    paymentMethod: 'card'
+    postal_code: '',
+    is_default: false
   });
-  const [formErrors, setFormErrors] = useState({});
+  const [orderDetails, setOrderDetails] = useState({
+    nom: '',
+    prenom: '',
+    telephone: '',
+    email: '',
+    instructions: ''
+  });
 
   useEffect(() => {
-    checkAuthAndLoadCart();
-  }, []);
-
-  const checkAuthAndLoadCart = async () => {
-    try {
-      // Verifier l'authentification
+    const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setError('Vous devez etre connecte pour passer une commande');
         router.push('/login');
         return;
       }
       setUser(user);
+      
+      // Charger les données utilisateur
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (userData) {
+        setOrderDetails({
+          nom: userData.nom || '',
+          prenom: userData.prenom || '',
+          telephone: userData.telephone || '',
+          email: user.email || '',
+          instructions: ''
+        });
+      }
 
-      // Charger le panier
-      const cartData = safeLocalStorage.getJSON('cart');
-      if (cartData) {
-        setCart(cartData.items || []);
-        setRestaurant(cartData.restaurant);
+      // Charger les adresses
+      const { data: addresses } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false });
+
+      if (addresses && addresses.length > 0) {
+        setUserAddresses(addresses);
+        setSelectedAddress(addresses.find(addr => addr.is_default) || addresses[0]);
       } else {
-        setError('Aucun panier trouve');
+        setShowAddressForm(true);
       }
-    } catch (error) {
-      setError('Erreur lors du chargement');
-    } finally {
-      setLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  useEffect(() => {
+    // Charger le panier
+    const savedCart = safeLocalStorage.getJSON('cart');
+    if (savedCart && Array.isArray(savedCart.items)) {
+      setCart(savedCart.items);
+      setFraisLivraison(savedCart.frais_livraison || 2.50);
     }
-  };
+    setLoading(false);
+  }, []);
 
-  const validateField = (name, value) => {
-    const errors = {};
-    
-    switch (name) {
-      case 'name':
-        if (!value.trim()) errors.name = 'Le nom est requis';
-        else if (value.length < 2) errors.name = 'Le nom doit contenir au moins 2 caractères';
-        break;
-      case 'email':
-        if (!value.trim()) errors.email = 'L\'email est requis';
-        else if (!/\S+@\S+\.\S+/.test(value)) errors.email = 'Format d\'email invalide';
-        break;
-      case 'phone':
-        if (!value.trim()) errors.phone = 'Le téléphone est requis';
-        else if (!/^[0-9+\s-()]{10,}$/.test(value)) errors.phone = 'Format de téléphone invalide';
-        break;
-      case 'address':
-        if (!value.trim()) errors.address = 'L\'adresse est requise';
-        break;
-      case 'city':
-        if (!value.trim()) errors.city = 'La ville est requise';
-        break;
-      case 'postalCode':
-        if (!value.trim()) errors.postalCode = 'Le code postal est requis';
-        else if (!/^[0-9]{5}$/.test(value)) errors.postalCode = 'Code postal invalide';
-        break;
-    }
-    
-    return errors;
-  };
+  useEffect(() => {
+    // Calculer les totaux
+    const total = cart.reduce((sum, item) => {
+      const price = typeof item.prix === 'number' ? item.prix : Number(item.prix);
+      return sum + (price * item.quantity);
+    }, 0);
+    setCartTotal(total);
+    setTotalAvecLivraison(total + fraisLivraison);
+  }, [cart, fraisLivraison]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    // Validation en temps réel
-    const fieldErrors = validateField(name, value);
-    setFormErrors(prev => ({
-      ...prev,
-      [name]: fieldErrors[name]
-    }));
-  };
-
-  const validateForm = () => {
-    const errors = {};
-    Object.keys(formData).forEach(key => {
-      if (key !== 'instructions') {
-        const fieldErrors = validateField(key, formData[key]);
-        if (fieldErrors[key]) errors[key] = fieldErrors[key];
-      }
-    });
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const nextStep = () => {
-    if (validateForm()) {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  const prevStep = () => {
-    setCurrentStep(prev => prev - 1);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
+  const addNewAddress = async () => {
+    if (!newAddress.address || !newAddress.city || !newAddress.postal_code) {
+      alert('Veuillez remplir tous les champs');
       return;
     }
 
-    setIsSubmitting(true);
-    setError(null);
-
     try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          restaurantId: restaurant.id,
-          deliveryInfo: formData,
-          items: cart,
-          deliveryFee: getDeliveryFee(),
-          totalAmount: getTotal()
+      const { data, error } = await supabase
+        .from('user_addresses')
+        .insert({
+          user_id: user.id,
+          address: newAddress.address,
+          city: newAddress.city,
+          postal_code: newAddress.postal_code,
+          is_default: newAddress.is_default
         })
-      });
+        .select()
+        .single();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de la creation de la commande');
-      }
+      if (error) throw error;
 
-      const data = await response.json();
-      
-      // Vider le panier
-      safeLocalStorage.removeItem('cart');
-      
-      // Rediriger vers la confirmation
-      router.push(`/order-confirmation/${data.orderId}`);
+      setUserAddresses(prev => [...prev, data]);
+      setSelectedAddress(data);
+      setShowAddressForm(false);
+      setNewAddress({ address: '', city: '', postal_code: '', is_default: false });
+
+      // Recalculer les frais de livraison
+      await calculateDeliveryFee(data);
     } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsSubmitting(false);
+      console.error('Erreur ajout adresse:', error);
+      alert('Erreur lors de l\'ajout de l\'adresse');
     }
   };
 
-  const getSubtotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const calculateDeliveryFee = async (address) => {
+    if (!cart.length || !address) return;
+
+    try {
+      const savedCart = safeLocalStorage.getJSON('cart');
+      const restaurantAddress = savedCart?.restaurant?.address;
+
+      if (restaurantAddress) {
+        const response = await fetch('/api/delivery/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurantAddress: restaurantAddress,
+            deliveryAddress: `${address.address}, ${address.postal_code} ${address.city}`
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.livrable) {
+            setFraisLivraison(data.frais_livraison);
+          } else {
+            alert(`Livraison impossible : ${data.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erreur calcul frais livraison:', error);
+    }
   };
 
-  const getDeliveryFee = () => {
-    // Recuperer les frais de livraison depuis le panier sauvegarde
-    const cartData = safeLocalStorage.getJSON('cart');
-    return cartData?.frais_livraison || restaurant?.frais_livraison || 2.50;
+  const handleAddressSelect = async (address) => {
+    setSelectedAddress(address);
+    await calculateDeliveryFee(address);
   };
 
-  const getTotal = () => {
-    return getSubtotal() + getDeliveryFee();
-  };
+  const submitOrder = async () => {
+    if (!selectedAddress) {
+      alert('Veuillez sélectionner une adresse de livraison');
+      return;
+    }
 
-  const getItemCount = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
+    if (!orderDetails.nom || !orderDetails.prenom || !orderDetails.telephone) {
+      alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const savedCart = safeLocalStorage.getJSON('cart');
+      const restaurant = savedCart?.restaurant;
+
+      if (!restaurant) {
+        alert('Erreur: Restaurant non trouvé');
+        return;
+      }
+
+      // Créer la commande
+      const { data: order, error: orderError } = await supabase
+        .from('commandes')
+        .insert({
+          user_id: user.id,
+          restaurant_id: restaurant.id,
+          items: cart,
+          total: totalAvecLivraison,
+          frais_livraison: fraisLivraison,
+          adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
+          nom: orderDetails.nom,
+          prenom: orderDetails.prenom,
+          telephone: orderDetails.telephone,
+          email: orderDetails.email,
+          instructions: orderDetails.instructions,
+          statut: 'en_attente'
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Vider le panier
+      safeLocalStorage.removeItem('cart');
+      setCart([]);
+
+      // Rediriger vers la confirmation
+      router.push(`/order-confirmation/${order.id}`);
+    } catch (error) {
+      console.error('Erreur création commande:', error);
+      alert('Erreur lors de la création de la commande');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement de votre commande...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  if (error || !cart.length || !restaurant) {
+  if (cart.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          <div className="text-center">
-            <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FaShieldAlt className="h-12 w-12 text-red-500" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Erreur</h1>
-            <p className="text-gray-600 mb-6">{error || 'Panier ou restaurant introuvable'}</p>
-            <button
-              onClick={() => router.push('/')}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
-            >
-              Retour à l'accueil
-            </button>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <FaShoppingCart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Panier vide</h1>
+          <p className="text-gray-600 mb-4">Votre panier est vide. Ajoutez des articles pour continuer.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Retour à l'accueil
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <AuthGuard>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Finaliser la commande</h1>
-        {/* Le contenu de la page de paiement ira ici */}
-        <p>Le processus de paiement est en cours de construction.</p>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Finaliser votre commande</h1>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Informations de livraison */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-xl font-semibold mb-6 flex items-center">
+              <FaMapMarkerAlt className="h-5 w-5 text-blue-600 mr-2" />
+              Adresse de livraison
+            </h2>
+
+            {/* Adresses existantes */}
+            {userAddresses.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-medium text-gray-900 mb-3">Adresses enregistrées</h3>
+                <div className="space-y-3">
+                  {userAddresses.map((address) => (
+                    <div
+                      key={address.id}
+                      onClick={() => handleAddressSelect(address)}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedAddress?.id === address.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">{address.address}</p>
+                          <p className="text-sm text-gray-600">{address.postal_code} {address.city}</p>
+                        </div>
+                        {selectedAddress?.id === address.id && (
+                          <FaCheck className="h-5 w-5 text-blue-600" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Formulaire nouvelle adresse */}
+            {showAddressForm && (
+              <div className="border-t pt-6">
+                <h3 className="font-medium text-gray-900 mb-4">Nouvelle adresse</h3>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Adresse"
+                    value={newAddress.address}
+                    onChange={(e) => setNewAddress(prev => ({ ...prev, address: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Ville"
+                      value={newAddress.city}
+                      onChange={(e) => setNewAddress(prev => ({ ...prev, city: e.target.value }))}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Code postal"
+                      value={newAddress.postal_code}
+                      onChange={(e) => setNewAddress(prev => ({ ...prev, postal_code: e.target.value }))}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newAddress.is_default}
+                      onChange={(e) => setNewAddress(prev => ({ ...prev, is_default: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-600">Définir comme adresse par défaut</span>
+                  </label>
+                  <button
+                    onClick={addNewAddress}
+                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Ajouter l'adresse
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!showAddressForm && (
+              <button
+                onClick={() => setShowAddressForm(true)}
+                className="flex items-center text-blue-600 hover:text-blue-700"
+              >
+                <FaPlus className="h-4 w-4 mr-2" />
+                Ajouter une nouvelle adresse
+              </button>
+            )}
+
+            {/* Informations de contact */}
+            <div className="border-t pt-6 mt-6">
+              <h3 className="font-medium text-gray-900 mb-4 flex items-center">
+                <FaUser className="h-4 w-4 text-blue-600 mr-2" />
+                Informations de contact
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Prénom *"
+                    value={orderDetails.prenom}
+                    onChange={(e) => setOrderDetails(prev => ({ ...prev, prenom: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nom *"
+                    value={orderDetails.nom}
+                    onChange={(e) => setOrderDetails(prev => ({ ...prev, nom: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <input
+                  type="tel"
+                  placeholder="Téléphone *"
+                  value={orderDetails.telephone}
+                  onChange={(e) => setOrderDetails(prev => ({ ...prev, telephone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={orderDetails.email}
+                  onChange={(e) => setOrderDetails(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <textarea
+                  placeholder="Instructions spéciales (optionnel)"
+                  value={orderDetails.instructions}
+                  onChange={(e) => setOrderDetails(prev => ({ ...prev, instructions: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Résumé de la commande */}
+          <div className="bg-white rounded-lg shadow-sm p-6 h-fit">
+            <h2 className="text-xl font-semibold mb-6 flex items-center">
+              <FaShoppingCart className="h-5 w-5 text-blue-600 mr-2" />
+              Résumé de la commande
+            </h2>
+
+            <div className="space-y-4 mb-6">
+              {cart.map((item) => (
+                <div key={item.id} className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-gray-900">{item.nom}</p>
+                    <p className="text-sm text-gray-600">Quantité: {item.quantity}</p>
+                  </div>
+                  <p className="font-semibold text-gray-900">
+                    {((typeof item.prix === 'number' ? item.prix : Number(item.prix)) * item.quantity).toFixed(2)}€
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex justify-between text-gray-600">
+                <span>Sous-total</span>
+                <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span className="flex items-center">
+                  <FaMotorcycle className="h-4 w-4 mr-1" />
+                  Frais de livraison
+                </span>
+                <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
+              </div>
+              <div className="border-t pt-3">
+                <div className="flex justify-between text-lg font-bold text-blue-600">
+                  <span>Total</span>
+                  <span>{totalAvecLivraison.toFixed(2)}€</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={submitOrder}
+              disabled={submitting || !selectedAddress}
+              className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+            >
+              {submitting ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Traitement en cours...
+                </div>
+              ) : (
+                `Confirmer la commande (${totalAvecLivraison.toFixed(2)}€)`
+              )}
+            </button>
+          </div>
+        </div>
       </div>
-    </AuthGuard>
+    </div>
   );
 } 

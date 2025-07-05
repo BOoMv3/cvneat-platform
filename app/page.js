@@ -50,6 +50,7 @@ export default function Home() {
   const [addingToCart, setAddingToCart] = useState({});
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
+  const [showFloatingCart, setShowFloatingCart] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -411,10 +412,14 @@ export default function Home() {
     return 2.50; // Prix par défaut pour Ganges
   };
 
-  const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  // Calculer les totaux du panier
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartTotal = cart.reduce((total, item) => {
+    const price = typeof item.prix === 'number' ? item.prix : Number(item.prix);
+    return total + (price * item.quantity);
+  }, 0);
   const fraisLivraison = getFraisLivraison();
   const totalAvecLivraison = cartTotal + fraisLivraison;
-  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   if (error) {
     return (
@@ -928,6 +933,93 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Panier flottant */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50">
+          {/* Bouton du panier */}
+          <button
+            onClick={() => setShowFloatingCart(!showFloatingCart)}
+            className="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-110"
+          >
+            <div className="relative">
+              <FaShoppingCart className="h-6 w-6" />
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
+                {cartItemCount}
+              </span>
+            </div>
+          </button>
+
+          {/* Contenu du panier */}
+          {showFloatingCart && (
+            <div className="absolute bottom-16 right-0 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Votre panier</h3>
+                <button
+                  onClick={() => setShowFloatingCart(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-3 mb-4">
+                {cart.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900 text-sm">{item.nom}</p>
+                      <p className="text-xs text-gray-600">
+                        {typeof item.prix === 'number' ? item.prix.toFixed(2) : Number(item.prix).toFixed(2)}€ x {item.quantity}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="w-6 h-6 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center justify-center"
+                      >
+                        <FaMinus className="h-3 w-3" />
+                      </button>
+                      <span className="font-semibold text-gray-900 min-w-[1.5rem] text-center text-sm">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="w-6 h-6 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors flex items-center justify-center"
+                      >
+                        <FaPlus className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Sous-total:</span>
+                  <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Livraison:</span>
+                  <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-blue-600 border-t pt-2">
+                  <span>Total:</span>
+                  <span>{totalAvecLivraison.toFixed(2)}€</span>
+                </div>
+                <button
+                  onClick={() => {
+                    router.push('/checkout');
+                    setShowFloatingCart(false);
+                  }}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  Commander ({cartItemCount} article{cartItemCount !== 1 ? 's' : ''})
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 } 
