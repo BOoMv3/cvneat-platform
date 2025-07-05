@@ -152,17 +152,8 @@ export default function Checkout() {
       alert('Adresse ajoutée avec succès !');
     } catch (error) {
       console.error('Erreur ajout adresse:', error);
-      
-      // Messages d'erreur plus spécifiques
-      if (error.code === '23505') {
-        alert('Cette adresse existe déjà pour votre compte.');
-      } else if (error.code === '23503') {
-        alert('Erreur de référence utilisateur. Veuillez vous reconnecter.');
-      } else if (error.message) {
-        alert(`Erreur lors de l'ajout de l'adresse : ${error.message}`);
-      } else {
-        alert('Erreur lors de l\'ajout de l\'adresse. Veuillez réessayer.');
-      }
+      // Affichage détaillé de l'erreur Supabase
+      alert('Erreur lors de l\'ajout de l\'adresse : ' + (error.message || JSON.stringify(error)));
     }
   };
 
