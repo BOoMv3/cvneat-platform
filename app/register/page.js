@@ -70,23 +70,20 @@ export default function Register() {
 
   if (success) {
     return (
-      <>
-        <Navbar />
-        <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
-          <div className="w-full max-w-md bg-white rounded-lg shadow p-8 text-center">
-            <h1 className="text-2xl font-bold mb-4 text-green-600">Inscription presque terminée !</h1>
-            <p className="text-gray-700">
-              Nous vous avons envoyé un e-mail à <strong className="font-semibold">{formData.email}</strong>.
-            </p>
-            <p className="mt-4 text-gray-700">
-              Veuillez cliquer sur le lien dans cet e-mail pour activer votre compte.
-            </p>
-            <p className="mt-6 text-sm text-gray-500">
-              (Pensez à vérifier votre dossier de courriers indésirables ou spam)
-            </p>
-          </div>
-        </main>
-      </>
+      <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
+        <div className="w-full max-w-md bg-white rounded-lg shadow p-8 text-center">
+          <h1 className="text-2xl font-bold mb-4 text-green-600">Inscription presque terminée !</h1>
+          <p className="text-gray-700">
+            Nous vous avons envoyé un e-mail à <strong className="font-semibold">{formData.email}</strong>.
+          </p>
+          <p className="mt-4 text-gray-700">
+            Veuillez cliquer sur le lien dans cet e-mail pour activer votre compte.
+          </p>
+          <p className="mt-6 text-sm text-gray-500">
+            (Pensez à vérifier votre dossier de courriers indésirables ou spam)
+          </p>
+        </div>
+      </main>
     );
   }
 
