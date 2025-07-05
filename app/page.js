@@ -263,7 +263,12 @@ export default function Home() {
       
       const cartData = {
         items: newCart,
-        restaurant: selectedRestaurant,
+        restaurant: {
+          id: selectedRestaurant.id,
+          nom: selectedRestaurant.nom,
+          adresse: selectedRestaurant.adresse || selectedRestaurant.address || '',
+          city: selectedRestaurant.city || '',
+        },
         frais_livraison: deliveryFee
       };
       safeLocalStorage.setJSON('cart', cartData);

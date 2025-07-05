@@ -169,7 +169,7 @@ export default function Checkout() {
 
     try {
       const savedCart = safeLocalStorage.getJSON('cart');
-      const restaurantAddress = savedCart?.restaurant?.address;
+      const restaurantAddress = savedCart?.restaurant?.adresse || savedCart?.restaurant?.address;
 
       console.log('Calcul frais livraison pour:', {
         restaurantAddress,
