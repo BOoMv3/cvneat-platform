@@ -107,6 +107,13 @@ export default function Checkout() {
     setTotalAvecLivraison(total + fraisLivraison);
   }, [cart, fraisLivraison]);
 
+  // Recalcul automatique des frais de livraison à chaque changement d'adresse ou de panier
+  useEffect(() => {
+    if (selectedAddress && cart.length > 0) {
+      calculateDeliveryFee(selectedAddress);
+    }
+  }, [selectedAddress, cart]);
+
   const addNewAddress = async () => {
     if (!newAddress.address || !newAddress.city || !newAddress.postal_code) {
       alert('Veuillez remplir tous les champs');
