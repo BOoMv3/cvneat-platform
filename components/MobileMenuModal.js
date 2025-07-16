@@ -38,13 +38,7 @@ export default function MobileMenuModal({
     setCartTotal(total);
   }, [cart]);
 
-  // Grouper les produits par catégorie
-  const categories = menu.reduce((acc, item) => {
-    const category = item.categorie || 'Autres';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(item);
-    return acc;
-  }, {});
+
 
   const getItemQuantity = (itemId) => {
     const item = cart.find(i => i.id === itemId);
@@ -123,37 +117,10 @@ export default function MobileMenuModal({
             </div>
           </div>
         ) : (
-          <div className="h-full flex">
-            {/* Catégories (sidebar sur mobile) */}
-            <div className="w-1/3 bg-gray-50 overflow-y-auto">
-              <div className="py-2">
-                {Object.keys(categories).map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setActiveCategory(category)}
-                    className={`
-                      w-full text-left px-4 py-3 text-sm font-medium transition-colors
-                      ${activeCategory === category 
-                        ? 'bg-white text-black border-r-2 border-black' 
-                        : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                      }
-                    `}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className="h-full overflow-y-auto bg-white">
             {/* Produits */}
-            <div className="flex-1 overflow-y-auto bg-white">
-              {activeCategory && categories[activeCategory] && (
-                <div className="p-4 space-y-4">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    {activeCategory}
-                  </h3>
-                  
-                  {categories[activeCategory].map((item) => {
+            <div className="p-4 space-y-4">
+              {menu.map((item) => {
                     const quantity = getItemQuantity(item.id);
                     
                     return (

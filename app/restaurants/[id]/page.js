@@ -291,35 +291,27 @@ export default function RestaurantDetail({ params }) {
               <p>Aucun plat disponible pour ce restaurant.</p>
             </div>
           ) : (
-            [...new Set(menu.map(item => item.category))].filter(Boolean).map(category => {
-              const categoryItems = menu.filter(item => item.category === category);
-              return (
-                <div key={category}>
-                  <h3 className="text-3xl font-bold mb-8 text-gray-900 border-b border-gray-200 pb-2 uppercase tracking-wide">{category}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {categoryItems.map((item) => (
-                      <div key={item.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between hover:shadow-2xl transition-shadow">
-                        <div>
-                          <h4 className="text-xl font-bold text-gray-900 mb-2">{item.nom}</h4>
-                          <p className="text-gray-600 text-base mb-4">{item.description}</p>
-                        </div>
-                        <div className="flex items-center justify-between mt-4">
-                          <span className="text-2xl font-bold text-blue-600">
-                            {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
-                          </span>
-                          <button
-                            onClick={() => addToCart(item)}
-                            className="ml-4 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors shadow"
-                          >
-                            <FaPlus className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {menu.map((item) => (
+                <div key={item.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between hover:shadow-2xl transition-shadow">
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">{item.nom}</h4>
+                    <p className="text-gray-600 text-base mb-4">{item.description}</p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-2xl font-bold text-blue-600">
+                      {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
+                    </span>
+                    <button
+                      onClick={() => addToCart(item)}
+                      className="ml-4 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors shadow"
+                    >
+                      <FaPlus className="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
-              );
-            })
+              ))}
+            </div>
           )}
         </div>
 

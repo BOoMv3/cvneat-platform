@@ -101,7 +101,7 @@ export default function PartnerDashboard() {
           {/* Actions rapides */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
              <ActionCard title="Gérer le Menu" description="Ajoutez, modifiez ou supprimez des plats et catégories." link="/restaurant/menu/edit" icon={<FaUtensils />} />
-             <ActionCard title="Voir les Commandes" description="Consultez l'historique et le statut de vos commandes." link="/restaurant/orders" icon={<FaBoxOpen />} />
+             <ActionCard title="Voir les Commandes" description="Consultez l'historique et le statut de vos commandes." link="/partner/orders" icon={<FaBoxOpen />} />
              <ActionCard title="Gérer les Horaires" description="Mettez à jour vos heures d'ouverture et de fermeture." link="/partner/hours" icon={<FaPlus />} />
           </div>
 

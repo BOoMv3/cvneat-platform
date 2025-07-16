@@ -95,9 +95,7 @@ export default function Navbar() {
             <Link href="/delivery-zones" className="text-gray-700 hover:text-orange-600 transition-colors">
               Zones de livraison
             </Link>
-            <Link href="/categories" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
-              Catégories
-            </Link>
+
             <Link href="/devenir-partenaire" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
               Devenir partenaire
             </Link>
@@ -219,13 +217,7 @@ export default function Navbar() {
               >
                 Zones de livraison
               </Link>
-              <Link
-                href="/categories"
-                className="text-gray-600 hover:text-orange-600 transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Catégories
-              </Link>
+
               <Link
                 href="/devenir-partenaire"
                 className="text-gray-600 hover:text-orange-600 transition-colors"

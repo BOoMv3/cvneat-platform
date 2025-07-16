@@ -361,15 +361,7 @@ export default function Home() {
     });
   };
 
-  const categories = [
-    { id: 'all', name: 'Tous', icon: '🍽️' },
-    { id: 'pizza', name: 'Pizza', icon: '🍕' },
-    { id: 'burger', name: 'Burgers', icon: '🍔' },
-    { id: 'sushi', name: 'Sushi', icon: '🍣' },
-    { id: 'salade', name: 'Salades', icon: '🥗' },
-    { id: 'dessert', name: 'Desserts', icon: '🍰' },
-    { id: 'boisson', name: 'Boissons', icon: '🥤' }
-  ];
+
 
   // Filtrage et tri des restaurants
   const filteredAndSortedRestaurants = Array.isArray(restaurants) ? restaurants
@@ -379,7 +371,7 @@ export default function Home() {
       
       const matchesSearch = restaurant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (restaurant.description && restaurant.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesCategory = selectedCategory === 'all' || restaurant.categorie === selectedCategory;
+      const matchesCategory = true; // Suppression du filtrage par catégorie
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
@@ -582,22 +574,7 @@ export default function Home() {
             {/* Filtres avancés */}
             {showFilters && (
               <div className="mt-4 pt-4 border-t">
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                        selectedCategory === category.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <span className="mr-2">{category.icon}</span>
-                      {category.name}
-                    </button>
-                  ))}
-                </div>
+
               </div>
             )}
           </div>
