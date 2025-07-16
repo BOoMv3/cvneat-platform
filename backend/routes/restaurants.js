@@ -241,8 +241,58 @@ router.put('/requests/:id', auth('admin'), async (req, res) => {
           VALUES (?, ?, 'partner', ?)
         `, [email, hashedPassword, nom]);
 
-        // TODO: Envoyer un email avec les identifiants temporaires
-        console.log('Identifiants temporaires:', { email, password: tempPassword });
+        // Envoyer un email avec les identifiants temporaires
+        try {
+          const nodemailer = require('nodemailer');
+          
+          // Configuration du transporteur email (à adapter selon votre fournisseur)
+          const transporter = nodemailer.createTransporter({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: process.env.SMTP_PORT || 587,
+            secure: false,
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS
+            }
+          });
+
+          const mailOptions = {
+            from: process.env.SMTP_FROM || 'noreply@cvneat.com',
+            to: email,
+            subject: '🎉 Votre demande de partenariat a été approuvée !',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #2563eb;">Bienvenue chez CVN'Eat !</h2>
+                <p>Félicitations ! Votre demande de partenariat pour <strong>${nom}</strong> a été approuvée.</p>
+                
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="margin-top: 0;">Vos identifiants de connexion :</h3>
+                  <p><strong>Email :</strong> ${email}</p>
+                  <p><strong>Mot de passe temporaire :</strong> ${tempPassword}</p>
+                </div>
+                
+                <p><strong>Important :</strong> Veuillez changer votre mot de passe dès votre première connexion.</p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/partner" 
+                     style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+                    Accéder à votre espace partenaire
+                  </a>
+                </div>
+                
+                <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+                
+                <p>Cordialement,<br>L'équipe CVN'Eat</p>
+              </div>
+            `
+          };
+
+          await transporter.sendMail(mailOptions);
+          console.log('Email envoyé avec succès à:', email);
+        } catch (emailError) {
+          console.error('Erreur envoi email:', emailError);
+          // Ne pas faire échouer la requête si l'email échoue
+        }
       }
     }
 

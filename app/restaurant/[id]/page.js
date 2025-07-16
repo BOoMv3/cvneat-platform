@@ -33,7 +33,38 @@ const MenuSection = ({ restaurantId }) => {
 
   const handleAddToCart = (item) => {
     console.log("Ajout au panier:", item);
-    // Logique d'ajout au panier à implémenter
+    
+    // Récupérer le panier actuel depuis le localStorage
+    const currentCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    // Vérifier si l'article existe déjà dans le panier
+    const existingItemIndex = currentCart.findIndex(cartItem => 
+      cartItem.id === item.id && cartItem.restaurant_id === restaurantId
+    );
+    
+    if (existingItemIndex !== -1) {
+      // Incrémenter la quantité
+      currentCart[existingItemIndex].quantity += 1;
+    } else {
+      // Ajouter un nouvel article
+      const cartItem = {
+        id: item.id,
+        name: item.nom || item.name,
+        prix: item.prix || item.price,
+        quantity: 1,
+        restaurant_id: restaurantId,
+        restaurant_name: restaurant?.nom || restaurant?.name,
+        restaurant_address: restaurant?.adresse || restaurant?.address,
+        image_url: item.image_url
+      };
+      currentCart.push(cartItem);
+    }
+    
+    // Sauvegarder le panier mis à jour
+    localStorage.setItem('cart', JSON.stringify(currentCart));
+    
+    // Optionnel : Afficher une notification de succès
+    alert(`${item.nom || item.name} ajouté au panier !`);
   };
 
   if (loading) {

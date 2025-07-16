@@ -24,22 +24,30 @@ export async function PUT(request, { params }) {
     const body = await request.json();
     const { name, address, city, postalCode, instructions } = body;
 
-    // Pour l'instant, retourner un succès simulé
-    // TODO: Implémenter la vraie logique avec la table user_addresses
-    const mockAddress = {
-      id,
-      user_id: user.id,
-      name,
-      address,
-      city,
-      postal_code: postalCode,
-      instructions,
-      updated_at: new Date().toISOString()
-    };
+    // Mise à jour de l'adresse dans la table user_addresses
+    const { data, error } = await supabase
+      .from('user_addresses')
+      .update({
+        name,
+        address,
+        city,
+        postal_code: postalCode,
+        instructions,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erreur mise à jour adresse:', error);
+      return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
+    }
 
     return NextResponse.json({
-      message: 'Adresse mise à jour avec succès (simulation)',
-      address: mockAddress
+      message: 'Adresse mise à jour avec succès',
+      address: data
     });
 
   } catch (error) {
@@ -67,10 +75,20 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Pour l'instant, retourner un succès simulé
-    // TODO: Implémenter la vraie logique avec la table user_addresses
+    // Suppression de l'adresse
+    const { error } = await supabase
+      .from('user_addresses')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Erreur suppression adresse:', error);
+      return NextResponse.json({ error: 'Erreur lors de la suppression' }, { status: 500 });
+    }
+
     return NextResponse.json({
-      message: 'Adresse supprimée avec succès (simulation)'
+      message: 'Adresse supprimée avec succès'
     });
 
   } catch (error) {

@@ -1,10 +1,34 @@
 import { NextResponse } from 'next/server';
-import { createMiddlewareSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 
 export async function middleware(req) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareSupabaseClient({ req, res });
-  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Créer le client Supabase pour le middleware
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
+  // Récupérer le token depuis les cookies
+  const token = req.cookies.get('sb-access-token')?.value || 
+                req.cookies.get('supabase-auth-token')?.value;
+
+  let user = null;
+  if (token) {
+    try {
+      const { data: { user: userData } } = await supabase.auth.getUser(token);
+      user = userData;
+    } catch (error) {
+      console.error('Erreur vérification token:', error);
+    }
+  }
 
   // Récupérer le chemin de la requête
   const pathname = req.nextUrl.pathname;
