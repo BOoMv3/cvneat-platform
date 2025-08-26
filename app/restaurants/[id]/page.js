@@ -6,6 +6,8 @@ import { supabase } from '../../../lib/supabase';
 import { safeLocalStorage } from '../../../lib/localStorage';
 import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart, FaMapMarkerAlt } from 'react-icons/fa';
 import Modal from '../../components/Modal';
+import RestaurantBanner from '@/components/RestaurantBanner';
+import MenuItem from '@/components/MenuItem';
 
 
 export default function RestaurantDetail({ params }) {
@@ -256,29 +258,11 @@ export default function RestaurantDetail({ params }) {
     <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto px-4 py-8">
         {/* Bannière du restaurant style Uber Eats */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold">{restaurant.nom || restaurant.name}</h1>
-            <div className="flex items-center">
-              <button
-                onClick={handleToggleFavorite}
-                className={`p-2 rounded-full ${isFavorite ? 'bg-red-100 text-red-600' : 'hover:bg-gray-100'}`}
-                title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              >
-                <FaStar className="text-lg" />
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center text-sm text-gray-500 mb-4">
-            <FaClock className="mr-2" /> {restaurant.temps_livraison || 'Temps de livraison'}
-            <span className="mx-2">•</span>
-            <FaMotorcycle className="mr-2" /> {restaurant.livraison || 'Livraison'}
-          </div>
-          <p className="text-gray-700">{restaurant.description}</p>
-          <div className="flex items-center text-sm text-gray-500 mt-4">
-            <FaMapMarkerAlt className="mr-2" /> {restaurant.adresse}, {restaurant.code_postal} {restaurant.ville}
-          </div>
-        </div>
+        <RestaurantBanner
+          restaurant={restaurant}
+          isFavorite={isFavorite}
+          onToggleFavorite={handleToggleFavorite}
+        />
 
         {/* Section adresse de livraison */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
@@ -313,23 +297,12 @@ export default function RestaurantDetail({ params }) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {menu.map((item) => (
-                <div key={item.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between hover:shadow-2xl transition-shadow">
-                  <div>
-                    <h4 className="text-xl font-bold text-gray-900 mb-2">{item.nom}</h4>
-                    <p className="text-gray-600 text-base mb-4">{item.description}</p>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-2xl font-bold text-blue-600">
-                      {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
-                    </span>
-                    <button
-                      onClick={() => addToCart(item)}
-                      className="ml-4 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors shadow"
-                    >
-                      <FaPlus className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
+                <MenuItem
+                  key={item.id}
+                  item={item}
+                  onAddToCart={addToCart}
+                  onRemoveFromCart={removeFromCart}
+                />
               ))}
             </div>
           )}
