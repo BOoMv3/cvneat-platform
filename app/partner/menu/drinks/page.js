@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaWineGlass, FaCoffee } from 'react-icons/fa';
 
 export default function MenuDrinks() {
