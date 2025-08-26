@@ -378,3 +378,155 @@ body {
     text-wrap: balance;
   }
 } 
+
+/* Styles personnalisés pour CVN'Eat */
+
+/* Masquer la barre de défilement pour les sections défilantes */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Animation pour les cartes restaurant */
+.restaurant-card {
+  transition: all 0.3s ease;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Gradient personnalisé pour le logo */
+.logo-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Animation pour les boutons d'action */
+.action-button {
+  transition: all 0.2s ease;
+}
+
+.action-button:hover {
+  transform: scale(1.05);
+}
+
+/* Styles pour les sections défilantes */
+.scroll-section {
+  scroll-behavior: smooth;
+}
+
+/* Styles pour les badges sponsorisés */
+.sponsored-badge {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* Styles pour les cartes de restaurant */
+.restaurant-image {
+  transition: transform 0.3s ease;
+}
+
+.restaurant-card:hover .restaurant-image {
+  transform: scale(1.05);
+}
+
+/* Styles pour la barre de recherche */
+.search-bar {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Styles pour les notifications */
+.notification-enter {
+  animation: slideInUp 0.3s ease-out;
+}
+
+.notification-exit {
+  animation: slideOutDown 0.3s ease-in;
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* Styles pour les flèches de navigation */
+.nav-arrow {
+  transition: all 0.2s ease;
+}
+
+.nav-arrow:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* Styles pour les filtres */
+.filter-section {
+  transition: all 0.3s ease;
+}
+
+.filter-section.expanded {
+  max-height: 200px;
+  opacity: 1;
+}
+
+/* Styles pour le panier flottant */
+.floating-cart {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Styles pour les points de fidélité */
+.loyalty-points {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+/* Styles pour les boutons de favoris */
+.favorite-button {
+  transition: all 0.2s ease;
+}
+
+.favorite-button:hover {
+  transform: scale(1.1);
+}
+
+.favorite-button.active {
+  animation: heartBeat 0.3s ease-in-out;
+}
+
+@keyframes heartBeat {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+} 

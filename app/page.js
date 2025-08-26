@@ -37,24 +37,15 @@ export default function Home() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [menu, setMenu] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [menuLoading, setMenuLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recommended');
   const [showFilters, setShowFilters] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
   const [isClient, setIsClient] = useState(false);
-  const [addingToCart, setAddingToCart] = useState({});
-  const [showCartNotification, setShowCartNotification] = useState(false);
-  const [lastAddedItem, setLastAddedItem] = useState(null);
+  const [cart, setCart] = useState([]);
   const [showFloatingCart, setShowFloatingCart] = useState(false);
-  const [favoritesLoading, setFavoritesLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -81,23 +72,6 @@ export default function Home() {
         } catch (error) {
           console.error('Erreur recuperation points:', error);
         }
-
-        // Recuperer les restaurants favoris (temporairement désactivé)
-        // TODO: Réactiver après application de la migration SQL
-        /*
-        try {
-          const { data: favoritesData } = await supabase
-            .from('user_favorites')
-            .select('restaurant_id')
-            .eq('user_id', user.id);
-          
-          if (favoritesData) {
-            setFavorites(favoritesData.map(fav => fav.restaurant_id));
-          }
-        } catch (error) {
-          console.error('Erreur recuperation favoris:', error);
-        }
-        */
       }
     };
 
@@ -139,176 +113,6 @@ export default function Home() {
     // TODO: Réactiver après application de la migration SQL
     alert('Fonctionnalité des favoris temporairement désactivée. Appliquez d\'abord la migration SQL sur Supabase.');
     return;
-  };
-
-  const addToCart = async (item) => {
-    // Verifier si l'utilisateur est connecte
-    if (!user) {
-      alert('Vous devez etre connecte pour ajouter des articles au panier.');
-      router.push('/login');
-      return;
-    }
-
-    // Animation d'ajout
-    setAddingToCart(prev => ({ ...prev, [item.id]: true }));
-    setLastAddedItem(item);
-
-    let deliveryFee = cart.length > 0 ? getDeliveryFee() : (selectedRestaurant?.deliveryFee || selectedRestaurant?.frais_livraison || 2.50);
-
-    // Calculer les frais de livraison si le panier est vide
-    if (cart.length === 0 && selectedRestaurant && user) {
-      try {
-        const { data: userAddress } = await supabase
-          .from('user_addresses')
-          .select('address, city, postal_code')
-          .eq('user_id', user.id)
-          .is('is_default', true)
-          .single();
-        
-        const fullDeliveryAddress = userAddress ? `${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}` : null;
-
-        if (fullDeliveryAddress) {
-          const response = await fetch('/api/delivery/calculate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              restaurantAddress: selectedRestaurant.address,
-              deliveryAddress: fullDeliveryAddress
-            })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.livrable) {
-              deliveryFee = data.frais_livraison;
-            } else {
-              alert(`Livraison impossible : ${data.message}`);
-              setAddingToCart(prev => ({ ...prev, [item.id]: false }));
-              return;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Erreur calcul frais livraison, utilisation des frais par defaut:', error);
-      }
-    }
-
-    setCart(prevCart => {
-      const existingItem = prevCart.find(i => i.id === item.id);
-      let newCart;
-      if (existingItem) {
-        newCart = prevCart.map(i =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      } else {
-        newCart = [...prevCart, { ...item, quantity: 1 }];
-      }
-      
-      const cartData = {
-        items: newCart,
-        restaurant: {
-          id: selectedRestaurant.id,
-          nom: selectedRestaurant.nom,
-          adresse: selectedRestaurant.adresse || selectedRestaurant.address || '',
-          city: selectedRestaurant.city || '',
-        },
-        frais_livraison: deliveryFee
-      };
-      safeLocalStorage.setJSON('cart', cartData);
-      
-      return newCart;
-    });
-
-    // Notification visuelle
-    setShowCartNotification(true);
-    setTimeout(() => setShowCartNotification(false), 2000);
-    
-    // Arrêter l'animation après un délai
-    setTimeout(() => {
-      setAddingToCart(prev => ({ ...prev, [item.id]: false }));
-    }, 500);
-  };
-
-  const getDeliveryFee = () => {
-    const savedCart = safeLocalStorage.getJSON('cart');
-    if (savedCart && savedCart.frais_livraison !== undefined) {
-      return savedCart.frais_livraison;
-    }
-    return 2.50; // Prix par défaut
-  };
-
-  const removeFromCart = (itemId) => {
-    setCart(prevCart => {
-      const newCart = prevCart.filter(item => item.id !== itemId);
-      
-      // Récupérer les frais de livraison existants
-      let fraisLivraison = 2.50;
-      const savedCart = safeLocalStorage.getJSON('cart');
-      if (savedCart) {
-        try {
-          fraisLivraison = savedCart.frais_livraison || 2.50;
-        } catch (e) {
-          console.error('Erreur lecture panier:', e);
-        }
-      }
-      
-      const cartData = {
-        items: newCart,
-        restaurant: selectedRestaurant,
-        frais_livraison: fraisLivraison
-      };
-      safeLocalStorage.setJSON('cart', cartData);
-      return newCart;
-    });
-  };
-
-  const updateQuantity = (itemId, quantity) => {
-    if (quantity < 1) {
-      removeFromCart(itemId);
-      return;
-    }
-    setCart(prevCart => {
-      const newCart = prevCart.map(item =>
-        item.id === itemId ? { ...item, quantity } : item
-      );
-      
-      // Récupérer les frais de livraison existants
-      let fraisLivraison = 2.50;
-      const savedCart = safeLocalStorage.getJSON('cart');
-      if (savedCart) {
-        try {
-          fraisLivraison = savedCart.frais_livraison || 2.50;
-        } catch (e) {
-          console.error('Erreur lecture panier:', e);
-        }
-      }
-      
-      const cartData = {
-        items: newCart,
-        restaurant: selectedRestaurant,
-        frais_livraison: fraisLivraison
-      };
-      safeLocalStorage.setJSON('cart', cartData);
-      return newCart;
-    });
-  };
-
-  const getSubtotal = () => {
-    return cart.reduce((total, item) => total + ((item.prix || item.price || 0) * (item.quantity || 0)), 0);
-  };
-
-  const getTotal = () => {
-    return getSubtotal() + getDeliveryFee();
-  };
-
-  const handleRestaurantClick = (restaurant) => {
-    router.push(`/restaurants/${restaurant.id}`);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedRestaurant(null);
-    setMenu([]);
   };
 
   const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
@@ -404,58 +208,6 @@ export default function Home() {
           </div>
         </div>
       </header>
-
-      {/* Panier flottant */}
-      {showFloatingCart && cart.length > 0 && (
-        <div className="fixed top-20 right-4 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 z-50 min-w-80">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-900">Votre panier</h3>
-            <button
-              onClick={() => setShowFloatingCart(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <FaTimes className="h-4 w-4" />
-            </button>
-          </div>
-          
-          <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
-            {cart.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm">
-                <span className="flex-1">{item.nom}</span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
-                    className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200"
-                  >
-                    <FaMinus className="h-3 w-3" />
-                  </button>
-                  <span className="w-8 text-center">{item.quantity || 1}</span>
-                  <button
-                    onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
-                    className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200"
-                  >
-                    <FaPlus className="h-3 w-3" />
-                  </button>
-                </div>
-                <span className="font-medium">{(item.prix || 0) * (item.quantity || 1)}€</span>
-              </div>
-            ))}
-          </div>
-          
-          <div className="border-t pt-3">
-            <div className="flex justify-between mb-3">
-              <span className="font-medium">Total:</span>
-              <span className="font-bold text-lg">{getTotal().toFixed(2)}€</span>
-            </div>
-            <Link
-              href="/checkout"
-              className="block w-full bg-purple-600 text-white text-center py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Commander
-            </Link>
-          </div>
-        </div>
-      )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section "À découvrir sur CVN'Eat" */}
@@ -623,16 +375,6 @@ export default function Home() {
           )}
         </section>
       </main>
-
-      {/* Notification d'ajout au panier */}
-      {showCartNotification && lastAddedItem && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce">
-          <div className="flex items-center space-x-2">
-            <FaCheck className="h-5 w-5" />
-            <span>{lastAddedItem.nom} ajouté au panier !</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 } 
