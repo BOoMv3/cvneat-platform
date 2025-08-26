@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaChartLine, FaBoxOpen, FaFileAlt, FaBell, FaUtensils, FaPlus } from 'react-icons/fa';
+import { FaChartLine, FaBoxOpen, FaFileAlt, FaBell, FaUtensils, FaPlus, FaWineGlass } from 'react-icons/fa';
 import Link from 'next/link';
 import AuthGuard from '../../../components/AuthGuard';
 import Navbar from '../../../components/Navbar';
@@ -103,6 +103,51 @@ export default function PartnerDashboard() {
              <ActionCard title="Gérer le Menu" description="Ajoutez, modifiez ou supprimez des plats et catégories." link="/restaurant/menu/edit" icon={<FaUtensils />} />
              <ActionCard title="Voir les Commandes" description="Consultez l'historique et le statut de vos commandes." link="/partner/orders" icon={<FaBoxOpen />} />
              <ActionCard title="Gérer les Horaires" description="Mettez à jour vos heures d'ouverture et de fermeture." link="/partner/hours" icon={<FaPlus />} />
+          </div>
+
+          {/* Gestion du menu */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Gestion du Menu</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Link
+                href="/partner/menu"
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors"
+              >
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                  <FaUtensils className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Plats</h4>
+                  <p className="text-sm text-gray-600">Gérer vos plats</p>
+                </div>
+              </Link>
+              
+              <Link
+                href="/partner/menu/supplements"
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors"
+              >
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                  <FaPlus className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Suppléments</h4>
+                  <p className="text-sm text-gray-600">Options et suppléments</p>
+                </div>
+              </Link>
+              
+              <Link
+                href="/partner/menu/drinks"
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors"
+              >
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <FaWineGlass className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Boissons</h4>
+                  <p className="text-sm text-gray-600">Gérer vos boissons</p>
+                </div>
+              </Link>
+            </div>
           </div>
 
           {/* Commandes récentes (à venir) */}

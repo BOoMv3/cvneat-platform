@@ -106,43 +106,9 @@ export default function RestaurantDetail({ params }) {
   }, [restaurant, deliveryAddress, cart]);
 
   const handleToggleFavorite = async () => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    try {
-      const restaurantId = parseInt(params.id, 10);
-      
-      if (isFavorite) {
-        // Retirer des favoris
-        const { error } = await supabase
-          .from('user_favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('restaurant_id', restaurantId);
-        
-        if (!error) {
-          setIsFavorite(false);
-          setFavorites(prev => prev.filter(id => id !== restaurantId));
-        }
-      } else {
-        // Ajouter aux favoris
-        const { error } = await supabase
-          .from('user_favorites')
-          .insert({
-            user_id: user.id,
-            restaurant_id: restaurantId
-          });
-        
-        if (!error) {
-          setIsFavorite(true);
-          setFavorites(prev => [...prev, restaurantId]);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur gestion favoris:', error);
-    }
+    // TODO: Réactiver après application de la migration SQL
+    alert('Fonctionnalité des favoris temporairement désactivée. Appliquez d\'abord la migration SQL sur Supabase.');
+    return;
   };
 
   const loadCartFromStorage = () => {
