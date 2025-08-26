@@ -1,10 +1,15 @@
--- Migration pour créer la gestion des suppléments de menu
+-- Migration corrigée pour créer la gestion des suppléments de menu
 -- Date: 2025-06-23
+-- Correction des types UUID
 
--- Créer la table des suppléments
+-- Supprimer les tables existantes si elles existent (en cas d'erreur précédente)
+DROP TABLE IF EXISTS order_supplements;
+DROP TABLE IF EXISTS menu_supplements;
+
+-- Créer la table des suppléments avec les bons types
 CREATE TABLE IF NOT EXISTS menu_supplements (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    menu_item_id INTEGER REFERENCES menus(id) ON DELETE CASCADE,
+    menu_item_id UUID REFERENCES menus(id) ON DELETE CASCADE,
     nom VARCHAR(255) NOT NULL,
     description TEXT,
     prix DECIMAL(10,2) NOT NULL,
@@ -17,7 +22,7 @@ CREATE TABLE IF NOT EXISTS menu_supplements (
 -- Créer la table des suppléments de commande
 CREATE TABLE IF NOT EXISTS order_supplements (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    order_item_id INTEGER REFERENCES order_items(id) ON DELETE CASCADE,
+    order_item_id UUID REFERENCES order_items(id) ON DELETE CASCADE,
     supplement_id UUID REFERENCES menu_supplements(id) ON DELETE CASCADE,
     prix DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
