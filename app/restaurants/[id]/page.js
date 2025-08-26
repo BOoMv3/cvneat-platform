@@ -6,6 +6,8 @@ import { supabase } from '../../../lib/supabase';
 import { safeLocalStorage } from '../../../lib/localStorage';
 import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart, FaMapMarkerAlt } from 'react-icons/fa';
 import Modal from '../../components/Modal';
+import RestaurantBanner from '@/components/RestaurantBanner';
+import MenuItem from '@/components/MenuItem';
 
 export default function RestaurantDetail({ params }) {
   const router = useRouter();
@@ -20,6 +22,8 @@ export default function RestaurantDetail({ params }) {
   const [deliveryFee, setDeliveryFee] = useState(2.50);
   const [deliveryInfoLoading, setDeliveryInfoLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [favorites, setFavorites] = useState([]);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -51,9 +55,20 @@ export default function RestaurantDetail({ params }) {
         if (userAddress) {
           setDeliveryAddress(`${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}`);
         }
+
+        // Charger les favoris
+        const { data: favoritesData } = await supabase
+          .from('user_favorites')
+          .select('restaurant_id')
+          .eq('user_id', user.id);
+        
+        if (favoritesData) {
+          setFavorites(favoritesData.map(fav => fav.restaurant_id));
+          setIsFavorite(favoritesData.some(fav => fav.restaurant_id === parseInt(params.id, 10)));
+        }
       })();
     }
-  }, [user]);
+  }, [user, params.id]);
 
   // Calcul dynamique des frais de livraison
   useEffect(() => {
@@ -89,6 +104,46 @@ export default function RestaurantDetail({ params }) {
     fetchDeliveryFee();
     // On déclenche le calcul à chaque changement du restaurant, de l'adresse ou du panier
   }, [restaurant, deliveryAddress, cart]);
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const restaurantId = parseInt(params.id, 10);
+      
+      if (isFavorite) {
+        // Retirer des favoris
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('restaurant_id', restaurantId);
+        
+        if (!error) {
+          setIsFavorite(false);
+          setFavorites(prev => prev.filter(id => id !== restaurantId));
+        }
+      } else {
+        // Ajouter aux favoris
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: user.id,
+            restaurant_id: restaurantId
+          });
+        
+        if (!error) {
+          setIsFavorite(true);
+          setFavorites(prev => [...prev, restaurantId]);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur gestion favoris:', error);
+    }
+  };
 
   const loadCartFromStorage = () => {
     const storedCart = safeLocalStorage.getJSON('cart');
@@ -235,52 +290,35 @@ export default function RestaurantDetail({ params }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto px-4 py-8">
-        {/* En-tête du restaurant */}
+        {/* Bannière du restaurant style Uber Eats */}
+        <RestaurantBanner
+          restaurant={restaurant}
+          onBack={() => router.push('/restaurants')}
+          onToggleFavorite={handleToggleFavorite}
+          isFavorite={isFavorite}
+        />
+
+        {/* Section adresse de livraison */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="w-full md:w-1/3">
-              <img
-                src={restaurant.image || '/placeholder-restaurant.jpg'}
-                alt={restaurant.nom}
-                className="w-full h-64 object-cover rounded-lg"
-              />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-4">{restaurant.nom}</h1>
-              <p className="text-gray-600 mb-4">{restaurant.description}</p>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex items-center">
-                  <FaStar className="text-yellow-400 mr-1" />
-                  <span className="font-medium">{restaurant.rating}</span>
-                  <span className="text-gray-500 ml-1">({restaurant.reviewCount} avis)</span>
-                </div>
-                <div className="flex items-center">
-                  <FaClock className="text-gray-500 mr-1" />
-                  <span>{restaurant.deliveryTime} min</span>
-                </div>
-                <div className="flex items-center">
-                  <FaMotorcycle className="text-gray-500 mr-1" />
-                  <span>
-                    {deliveryInfoLoading ? 'Calcul...' : deliveryFee !== null ? `${deliveryFee.toFixed(2)}€ de livraison` : 'Livraison non disponible'}
-                  </span>
-                </div>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><FaMapMarkerAlt className="mr-2" />Adresse de livraison :</label>
-                <input
-                  type="text"
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Votre adresse complète"
-                  value={deliveryAddress}
-                  onChange={e => setDeliveryAddress(e.target.value)}
-                />
-                <p className="text-xs text-gray-500 mt-1">Le prix de livraison s'adapte automatiquement à votre adresse.</p>
-              </div>
-              <div className="text-sm text-gray-500">
-                <p>{restaurant.adresse}</p>
-                <p>{restaurant.ville}, {restaurant.code_postal}</p>
-              </div>
-            </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+              <FaMapMarkerAlt className="mr-2" />
+              Adresse de livraison :
+            </label>
+            <input
+              type="text"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Votre adresse complète"
+              value={deliveryAddress}
+              onChange={e => setDeliveryAddress(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Le prix de livraison s'adapte automatiquement à votre adresse.
+            </p>
+          </div>
+          <div className="text-sm text-gray-500">
+            <p>{restaurant.adresse}</p>
+            <p>{restaurant.ville}, {restaurant.code_postal}</p>
           </div>
         </div>
 
@@ -293,23 +331,18 @@ export default function RestaurantDetail({ params }) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {menu.map((item) => (
-                <div key={item.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between hover:shadow-2xl transition-shadow">
-                  <div>
-                    <h4 className="text-xl font-bold text-gray-900 mb-2">{item.nom}</h4>
-                    <p className="text-gray-600 text-base mb-4">{item.description}</p>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-2xl font-bold text-blue-600">
-                      {typeof item.prix === 'number' ? item.prix.toFixed(2) + '€' : (item.prix ? Number(item.prix).toFixed(2) + '€' : 'Prix manquant')}
-                    </span>
-                    <button
-                      onClick={() => addToCart(item)}
-                      className="ml-4 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors shadow"
-                    >
-                      <FaPlus className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
+                <MenuItem
+                  key={item.id}
+                  item={{
+                    ...item,
+                    rating: Math.floor(Math.random() * 20) + 80,
+                    review_count: Math.floor(Math.random() * 100) + 50,
+                    is_popular: Math.random() > 0.7,
+                    promotion: Math.random() > 0.8 ? '1 acheté = 1 offert' : null
+                  }}
+                  onAddToCart={addToCart}
+                  isAdding={false}
+                />
               ))}
             </div>
           )}

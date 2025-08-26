@@ -1,154 +1,135 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
-import { FaStar, FaClock, FaMotorcycle, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
+import Link from 'next/link';
+import { FaStar, FaClock, FaMotorcycle, FaHeart } from 'react-icons/fa';
 
-export default function RestaurantCard({ restaurant, onClick, isSponsored = false }) {
-  const [imageError, setImageError] = useState(false);
-  const [isPressed, setIsPressed] = useState(false);
-
-  const handleTouchStart = () => setIsPressed(true);
-  const handleTouchEnd = () => setIsPressed(false);
-
-  const handleClick = () => {
-    if (onClick) onClick(restaurant);
-  };
+export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorite = false }) {
+  const {
+    id,
+    nom,
+    description,
+    image,
+    logo,
+    rating,
+    review_count,
+    delivery_time,
+    delivery_fee,
+    minimum_order,
+    promotion,
+    is_sponsored
+  } = restaurant;
 
   return (
-    <div
-      className={`
-        relative bg-white rounded-xl shadow-sm overflow-hidden
-        transform transition-all duration-200 ease-out
-        ${isPressed ? 'scale-95 shadow-lg' : 'hover:scale-[1.02] hover:shadow-md'}
-        ${isSponsored ? 'ring-2 ring-yellow-400' : ''}
-        cursor-pointer select-none
-        touch-manipulation
-      `}
-      onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleTouchStart}
-      onMouseUp={handleTouchEnd}
-      onMouseLeave={handleTouchEnd}
-    >
-      {/* Badge sponsorisé */}
-      {isSponsored && (
-        <div className="absolute top-2 left-2 z-10">
-          <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full">
-            ⭐ Sponsorisé
-          </span>
-        </div>
-      )}
+    <Link href={`/restaurants/${id}`} className="block">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+        {/* Image de fond avec logo intégré */}
+        <div className="relative h-48 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden">
+          {image ? (
+            <Image
+              src={image}
+              alt={nom}
+              fill
+              className="object-cover opacity-60 group-hover:opacity-70 transition-opacity"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800" />
+          )}
 
-      {/* Image du restaurant */}
-      <div className="relative h-48 sm:h-56 w-full overflow-hidden">
-        {!imageError ? (
-          <Image
-            src={restaurant.image_url || '/default-restaurant.jpg'}
-            alt={restaurant.nom}
-            fill
-            className="object-cover transition-transform duration-300 hover:scale-105"
-            onError={() => setImageError(true)}
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-            <span className="text-gray-400 text-4xl">🍽️</span>
+          {/* Overlay sombre */}
+          <div className="absolute inset-0 bg-black bg-opacity-30" />
+
+          {/* Logo du restaurant centré */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {logo ? (
+              <div className="w-20 h-20 bg-white rounded-full shadow-2xl flex items-center justify-center border-4 border-white">
+                <Image
+                  src={logo}
+                  alt={`Logo ${nom}`}
+                  width={64}
+                  height={64}
+                  className="rounded-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-20 h-20 bg-white rounded-full shadow-2xl flex items-center justify-center border-4 border-white">
+                <span className="text-2xl font-bold text-purple-600">
+                  {nom.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
-        )}
-        
-        {/* Overlay pour les informations rapides */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center space-x-2">
-              <FaStar className="text-yellow-400 text-sm" />
-              <span className="text-sm font-medium">
-                {restaurant.note || '4.5'}
-              </span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <FaClock className="text-sm" />
-              <span className="text-xs">20-30 min</span>
-            </div>
+
+          {/* Nom du restaurant en bas */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4">
+            <h3 className="text-white font-bold text-lg text-center drop-shadow-lg">
+              {nom}
+            </h3>
           </div>
-        </div>
-      </div>
 
-      {/* Contenu de la carte */}
-      <div className="p-4 space-y-3">
-        {/* Nom et type de cuisine */}
-        <div>
-          <h3 className="font-bold text-lg text-gray-900 line-clamp-1">
-            {restaurant.nom}
-          </h3>
-          <p className="text-sm text-gray-600 line-clamp-1">
-            {restaurant.type_cuisine || 'Cuisine variée'}
-          </p>
+          {/* Badge sponsorisé */}
+          {is_sponsored && (
+            <div className="absolute top-3 left-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              Sponsorisé
+            </div>
+          )}
+
+          {/* Promotion */}
+          {promotion && (
+            <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              {promotion}
+            </div>
+          )}
+
+          {/* Bouton favori */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              onToggleFavorite && onToggleFavorite(restaurant);
+            }}
+            className="absolute top-3 right-3 w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
+          >
+            <FaHeart className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
+          </button>
         </div>
 
-        {/* Informations pratiques */}
-        <div className="space-y-2">
-          {/* Adresse */}
-          <div className="flex items-start space-x-2">
-            <FaMapMarkerAlt className="text-gray-400 text-sm mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-gray-600 line-clamp-2">
-              {restaurant.adresse}
+        {/* Informations du restaurant */}
+        <div className="p-4">
+          {/* Description */}
+          {description && (
+            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+              {description}
             </p>
-          </div>
+          )}
 
-          {/* Frais de livraison */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <FaMotorcycle className="text-gray-400 text-sm" />
-              <span className="text-xs text-gray-600">
-                {restaurant.frais_livraison ? `${restaurant.frais_livraison}€` : 'Gratuit'}
-              </span>
+          {/* Détails de livraison */}
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <div className="flex items-center gap-1">
+              <FaMotorcycle className="text-gray-500" />
+              <span>{delivery_fee || '2.50'}€</span>
             </div>
-            
-            {/* Statut d'ouverture */}
-            <span className={`
-              text-xs px-2 py-1 rounded-full font-medium
-              ${restaurant.ouvert ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-            `}>
-              {restaurant.ouvert ? 'Ouvert' : 'Fermé'}
-            </span>
+            <div className="flex items-center gap-1">
+              <FaClock className="text-gray-500" />
+              <span>{delivery_time || '25'} min</span>
+            </div>
           </div>
-        </div>
 
-        {/* Actions rapides */}
-        <div className="flex space-x-2 pt-2">
-          <button
-            className="flex-1 bg-black text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-800 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClick();
-            }}
-          >
-            Voir le menu
-          </button>
-          
-          <button
-            className="p-2 text-gray-600 hover:text-black transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (restaurant.telephone) {
-                window.location.href = `tel:${restaurant.telephone}`;
-              }
-            }}
-          >
-            <FaPhone className="text-sm" />
-          </button>
+          {/* Note et commande minimum */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <FaStar className="text-yellow-400" />
+              <span className="font-semibold text-gray-800">{rating || '4.5'}</span>
+              <span className="text-gray-600">({review_count || '100+'})</span>
+            </div>
+            {minimum_order && (
+              <span className="text-xs text-gray-500">
+                Min. {minimum_order}€
+              </span>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Indicateur de chargement tactile */}
-      <div className={`
-        absolute inset-0 bg-black/5 rounded-xl
-        transition-opacity duration-200
-        ${isPressed ? 'opacity-100' : 'opacity-0'}
-        pointer-events-none
-      `} />
-    </div>
+    </Link>
   );
 } 

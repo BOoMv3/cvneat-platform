@@ -24,6 +24,7 @@ import {
   FaGift
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
+import RestaurantCard from '@/components/RestaurantCard';
 
 // Desactiver le rendu statique pour cette page
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('recommended');
   const [showFilters, setShowFilters] = useState(false);
   const [favorites, setFavorites] = useState([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
   const [isClient, setIsClient] = useState(false);
@@ -76,6 +78,20 @@ export default function Home() {
           }
         } catch (error) {
           console.error('Erreur recuperation points:', error);
+        }
+
+        // Recuperer les restaurants favoris
+        try {
+          const { data: favoritesData } = await supabase
+            .from('user_favorites')
+            .select('restaurant_id')
+            .eq('user_id', user.id);
+          
+          if (favoritesData) {
+            setFavorites(favoritesData.map(fav => fav.restaurant_id));
+          }
+        } catch (error) {
+          console.error('Erreur recuperation favoris:', error);
         }
       }
     };
@@ -195,6 +211,47 @@ export default function Home() {
       setMenu([]);
     } finally {
       setMenuLoading(false);
+    }
+  };
+
+  const handleToggleFavorite = async (restaurant) => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      setFavoritesLoading(true);
+      const isCurrentlyFavorite = favorites.includes(restaurant.id);
+      
+      if (isCurrentlyFavorite) {
+        // Retirer des favoris
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('restaurant_id', restaurant.id);
+        
+        if (!error) {
+          setFavorites(prev => prev.filter(id => id !== restaurant.id));
+        }
+      } else {
+        // Ajouter aux favoris
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: user.id,
+            restaurant_id: restaurant.id
+          });
+        
+        if (!error) {
+          setFavorites(prev => [...prev, restaurant.id]);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur gestion favoris:', error);
+    } finally {
+      setFavoritesLoading(false);
     }
   };
 
@@ -608,77 +665,24 @@ export default function Home() {
                 />
               </div>
               
-              {filteredAndSortedRestaurants.map((restaurant, idx) => (
-                <div
+              {filteredAndSortedRestaurants.map((restaurant) => (
+                <RestaurantCard
                   key={restaurant.id}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105 overflow-hidden cursor-pointer group"
-                  onClick={() => handleRestaurantClick(restaurant)}
-                >
-                  <div className="relative h-48">
-                    <Image
-                      src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
-                      alt={restaurant.nom}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-200"
-                      unoptimized
-                    />
-                    
-                    {/* Badges */}
-                    <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                      {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
-                        <span className="bg-yellow-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
-                          ⭐ Sponsorisé
-                        </span>
-                      )}
-                      {favorites.includes(restaurant.id) && (
-                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
-                          ❤️ Favori
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Bouton favori */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(restaurant.id);
-                      }}
-                      className="absolute top-3 right-3 p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 transition-all duration-200"
-                    >
-                      <FaHeart className={`h-4 w-4 ${favorites.includes(restaurant.id) ? 'text-red-500' : 'text-gray-400'}`} />
-                    </button>
-                  </div>
-                  
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                        {restaurant.nom}
-                      </h3>
-                    </div>
-                    
-                    <p className="text-gray-600 mb-4 line-clamp-2">{restaurant.description}</p>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-4 text-gray-500">
-                        <div className="flex items-center">
-                          <FaStar className="h-4 w-4 text-yellow-400 mr-1" />
-                          <span>{restaurant.rating || '4.5'}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <FaClock className="h-4 w-4 mr-1" />
-                          <span>{restaurant.deliveryTime} min</span>
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">
-                          Frais de livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€
-                        </p>
-                        <p className="text-xs text-gray-500">Commande min: {restaurant.minOrder}€</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  restaurant={{
+                    ...restaurant,
+                    image: restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
+                    logo: restaurant.logo,
+                    rating: restaurant.rating || '4.5',
+                    review_count: restaurant.reviewCount || '100+',
+                    delivery_time: restaurant.deliveryTime || '25',
+                    delivery_fee: restaurant.frais_livraison || '2.50',
+                    minimum_order: restaurant.minOrder,
+                    promotion: restaurant.promotion,
+                    is_sponsored: restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date()
+                  }}
+                  onToggleFavorite={handleToggleFavorite}
+                  isFavorite={favorites.includes(restaurant.id)}
+                />
               ))}
             </div>
           )}
