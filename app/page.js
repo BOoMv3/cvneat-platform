@@ -336,37 +336,30 @@ export default function Home() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Section des catégories */}
-        <section className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Explorez par catégorie</h2>
-          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3">
+        {/* Section des catégories style Uber Eats */}
+        <section className="mb-6">
+          <div className="flex items-center space-x-4 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => {
               const Icon = category.icon;
               return (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`group p-3 rounded-xl text-center transition-all duration-300 transform hover:scale-105 ${
+                  className={`flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-200 ${
                     selectedCategory === category.id
-                      ? 'bg-gradient-to-br ' + category.color + ' text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 hover:shadow-lg border border-gray-200 hover:border-orange-300'
+                      ? 'bg-orange-500 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <div className={`w-8 h-8 mx-auto mb-2 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                  <Icon className={`h-4 w-4 ${
                     selectedCategory === category.id 
-                      ? 'bg-white/20 backdrop-blur-sm' 
-                      : 'bg-gray-50 group-hover:bg-orange-50'
-                  }`}>
-                    <Icon className={`h-5 w-5 transition-all duration-300 ${
-                      selectedCategory === category.id 
-                        ? 'text-white transform scale-110' 
-                        : 'text-gray-600 group-hover:text-orange-600'
-                    }`} />
-                  </div>
-                  <span className={`text-xs font-medium transition-colors duration-300 ${
+                      ? 'text-white' 
+                      : 'text-gray-600'
+                  }`} />
+                  <span className={`text-sm font-medium whitespace-nowrap ${
                     selectedCategory === category.id 
-                      ? 'text-white font-semibold' 
-                      : 'text-gray-700 group-hover:text-orange-700'
+                      ? 'text-white' 
+                      : 'text-gray-700'
                   }`}>
                     {category.name}
                   </span>
