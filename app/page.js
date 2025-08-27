@@ -178,42 +178,57 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Header moderne avec barre de recherche intégrée */}
-      <header className="bg-white shadow-lg sticky top-0 z-40 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between mb-6">
-            {/* Logo CVN'Eat original */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header avec barre de recherche */}
+      <header className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo CVN'Eat */}
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-500 rounded-full flex items-center justify-center mr-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-orange-500 rounded-full flex items-center justify-center mr-3">
                 <span className="text-white font-bold text-xl">C</span>
               </div>
               <h1 className="text-2xl font-bold text-gray-900">CVN'Eat</h1>
             </div>
 
+            {/* Barre de recherche */}
+            <div className="flex-1 max-w-2xl mx-8">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaSearch className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Rechercher un restaurant, un plat..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+            </div>
+
             {/* Actions utilisateur */}
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
               {user ? (
                 <>
-                  <div className="flex items-center space-x-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white px-4 py-2 rounded-full shadow-lg">
-                    <FaGift className="text-white" />
-                    <span className="font-semibold">{userPoints} pts</span>
+                  <div className="flex items-center space-x-2">
+                    <FaGift className="text-orange-500" />
+                    <span className="text-sm font-medium text-gray-700">{userPoints} pts</span>
                   </div>
-                  <Link href="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-orange-600 transition-colors">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center">
-                      <FaUser className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <span className="hidden sm:block font-medium">Profil</span>
+                  <Link href="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
+                    <FaUser className="h-5 w-5" />
+                    <span className="hidden sm:block">Profil</span>
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="flex items-center space-x-2 text-gray-700 hover:text-orange-600 transition-colors">
+                  <Link href="/login" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
                     <FaSignInAlt className="h-5 w-5" />
-                    <span className="hidden sm:block font-medium">Connexion</span>
+                    <span className="hidden sm:block">Connexion</span>
                   </Link>
-                  <Link href="/register" className="bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-3 rounded-full font-semibold hover:from-orange-600 hover:to-amber-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                    Inscription
+                  <Link href="/register" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
+                    <FaUserPlus className="h-5 w-5" />
+                    <span className="hidden sm:block">Inscription</span>
                   </Link>
                 </>
               )}
@@ -222,30 +237,14 @@ export default function Home() {
               {cart.length > 0 && (
                 <button
                   onClick={() => setShowFloatingCart(!showFloatingCart)}
-                  className="relative p-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  className="relative p-2 text-gray-700 hover:text-purple-600 transition-colors"
                 >
                   <FaShoppingCart className="h-6 w-6" />
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold animate-pulse">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {cart.length}
                   </span>
                 </button>
               )}
-            </div>
-          </div>
-
-          {/* Barre de recherche moderne intégrée */}
-          <div className="max-w-3xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                <FaSearch className="h-6 w-6 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Rechercher un restaurant, un plat, une cuisine..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-16 pr-6 py-4 text-lg border-2 border-gray-200 rounded-2xl leading-6 bg-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-orange-100 focus:border-orange-400 transition-all duration-200 shadow-lg"
-              />
             </div>
           </div>
         </div>
