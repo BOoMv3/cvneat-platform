@@ -337,33 +337,33 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section des catégories */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Explorez par catégorie</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Explorez par catégorie</h2>
+          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3">
             {categories.map((category) => {
               const Icon = category.icon;
               return (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`group p-4 rounded-2xl text-center transition-all duration-300 transform hover:scale-105 ${
+                  className={`group p-3 rounded-xl text-center transition-all duration-300 transform hover:scale-105 ${
                     selectedCategory === category.id
                       ? 'bg-gradient-to-br ' + category.color + ' text-white shadow-lg scale-105'
                       : 'bg-white text-gray-700 hover:shadow-lg border border-gray-200 hover:border-orange-300'
                   }`}
                 >
-                  <div className={`w-12 h-12 mx-auto mb-3 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                  <div className={`w-8 h-8 mx-auto mb-2 rounded-xl flex items-center justify-center transition-all duration-300 ${
                     selectedCategory === category.id 
                       ? 'bg-white/20 backdrop-blur-sm' 
                       : 'bg-gray-50 group-hover:bg-orange-50'
                   }`}>
-                    <Icon className={`h-8 w-8 transition-all duration-300 ${
+                    <Icon className={`h-5 w-5 transition-all duration-300 ${
                       selectedCategory === category.id 
                         ? 'text-white transform scale-110' 
                         : 'text-gray-600 group-hover:text-orange-600'
                     }`} />
                   </div>
-                  <span className={`text-sm font-medium transition-colors duration-300 ${
+                  <span className={`text-xs font-medium transition-colors duration-300 ${
                     selectedCategory === category.id 
                       ? 'text-white font-semibold' 
                       : 'text-gray-700 group-hover:text-orange-700'
