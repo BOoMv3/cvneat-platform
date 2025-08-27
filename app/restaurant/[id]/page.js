@@ -547,6 +547,20 @@ export default function RestaurantPage({ params }) {
               <span className="font-medium">Retour</span>
             </button>
             
+            {/* Bouton de test pour l'animation */}
+            <button
+              onClick={() => {
+                console.log("🧪 Test d'animation");
+                setAddingToCart(prev => ({ ...prev, 'test': true }));
+                setTimeout(() => {
+                  setAddingToCart(prev => ({ ...prev, 'test': false }));
+                }, 2000);
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Test Animation
+            </button>
+            
             <div className="flex items-center space-x-4">
               <button
                 onClick={handleToggleFavorite}
