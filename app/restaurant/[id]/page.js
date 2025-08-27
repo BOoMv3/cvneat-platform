@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { FaShoppingCart, FaSpinner, FaArrowLeft, FaHeart, FaStar, FaClock, FaMotorcycle, FaSearch } from 'react-icons/fa';
 
 // Composant pour la section du menu simplifié
-const MenuSection = ({ restaurantId, restaurant }) => {
+const MenuSection = ({ restaurantId, restaurant, onAddToCart }) => {
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -311,9 +311,9 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                   <button 
                     onClick={() => {
                       const currentSelection = selectedItems[item.id] || { supplements: [], size: null };
-                      handleAddToCart(item, currentSelection.supplements, currentSelection.size);
+                      onAddToCart(item, currentSelection.supplements, currentSelection.size);
                     }}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
+                    className="bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-amber-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
                   >
                     <FaShoppingCart className="inline-block mr-2 h-4 w-4" />
                     Ajouter au panier
@@ -334,6 +334,8 @@ export default function RestaurantPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
+  const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification
 
   useEffect(() => {
     const fetchRestaurant = async () => {
@@ -365,6 +367,23 @@ export default function RestaurantPage({ params }) {
     setIsFavorite(!isFavorite);
     // TODO: Implémenter la logique de favoris avec Supabase
     alert(isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris');
+  };
+
+  const handleAddToCartWithAnimation = (item, supplements = [], size = null) => {
+    // Animation d'ajout au panier
+    setAddingToCart(prev => ({ ...prev, [item.id]: true }));
+    
+    // Appeler la fonction originale
+    handleAddToCart(item, supplements, size);
+    
+    // Notification de succès
+    setShowCartNotification(true);
+    setTimeout(() => setShowCartNotification(false), 2000);
+    
+    // Arrêter l'animation après un délai
+    setTimeout(() => {
+      setAddingToCart(prev => ({ ...prev, [item.id]: false }));
+    }, 500);
   };
 
   if (loading) {
@@ -496,9 +515,19 @@ export default function RestaurantPage({ params }) {
         </div>
       </div>
 
+      {/* Notification d'ajout au panier */}
+      {showCartNotification && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 animate-bounce">
+          <div className="flex items-center space-x-2">
+            <FaShoppingCart className="h-5 w-5" />
+            <span className="font-semibold">Article ajouté au panier !</span>
+          </div>
+        </div>
+      )}
+
       {/* Contenu principal */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <MenuSection restaurantId={params.id} restaurant={restaurant} />
+        <MenuSection restaurantId={params.id} restaurant={restaurant} onAddToCart={handleAddToCartWithAnimation} />
       </div>
     </div>
   );
