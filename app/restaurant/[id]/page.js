@@ -24,7 +24,51 @@ const MenuSection = ({ restaurantId, restaurant }) => {
           throw new Error('Le menu n\'est pas disponible pour le moment.');
         }
         const data = await response.json();
-        setMenu(data);
+        
+        // Ajouter des données de test pour les suppléments et boissons
+        const enhancedData = data.map(item => {
+          // Simuler des boissons avec tailles
+          if (item.category === 'Boissons' || item.nom?.toLowerCase().includes('coca') || item.nom?.toLowerCase().includes('café')) {
+            return {
+              ...item,
+              is_drink: true,
+              drink_price_small: (item.prix || 0) * 0.8,
+              drink_price_medium: item.prix || 0,
+              drink_price_large: (item.prix || 0) * 1.3
+            };
+          }
+          
+          // Simuler des plats avec suppléments
+          if (item.category === 'Plats' || item.nom?.toLowerCase().includes('pizza') || item.nom?.toLowerCase().includes('burger')) {
+            return {
+              ...item,
+              supplements: [
+                {
+                  id: 'supp1',
+                  nom: 'Fromage supplémentaire',
+                  prix: 1.50,
+                  disponible: true
+                },
+                {
+                  id: 'supp2',
+                  nom: 'Bacon',
+                  prix: 2.00,
+                  disponible: true
+                },
+                {
+                  id: 'supp3',
+                  nom: 'Sauce spéciale',
+                  prix: 0.80,
+                  disponible: true
+                }
+              ]
+            };
+          }
+          
+          return item;
+        });
+        
+        setMenu(enhancedData);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -185,16 +229,18 @@ const MenuSection = ({ restaurantId, restaurant }) => {
 
                 {/* Gestion des tailles pour les boissons */}
                 {item.is_drink && (
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Choisir la taille :</p>
-                    <div className="flex space-x-2">
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm font-semibold text-blue-800 mb-2 flex items-center">
+                      🥤 Choisir la taille :
+                    </p>
+                    <div className="flex flex-wrap gap-2">
                       {item.drink_price_small && (
                         <button
                           onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'small')}
-                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             selectedItems[item.id]?.size === 'small'
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                              : 'bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50'
                           }`}
                         >
                           Petit ({item.drink_price_small.toFixed(2)}€)
@@ -203,10 +249,10 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                       {item.drink_price_medium && (
                         <button
                           onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'medium')}
-                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             selectedItems[item.id]?.size === 'medium'
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                              : 'bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50'
                           }`}
                         >
                           Moyen ({item.drink_price_medium.toFixed(2)}€)
@@ -215,10 +261,10 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                       {item.drink_price_large && (
                         <button
                           onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'large')}
-                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             selectedItems[item.id]?.size === 'large'
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                              : 'bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50'
                           }`}
                         >
                           Grand ({item.drink_price_large.toFixed(2)}€)
@@ -230,11 +276,13 @@ const MenuSection = ({ restaurantId, restaurant }) => {
 
                 {/* Gestion des suppléments */}
                 {item.supplements && item.supplements.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Suppléments disponibles :</p>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm font-semibold text-green-800 mb-2 flex items-center">
+                      🧀 Suppléments disponibles :
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {item.supplements.map(supplement => (
-                        <label key={supplement.id} className="flex items-center space-x-2 cursor-pointer">
+                        <label key={supplement.id} className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-green-100 transition-colors">
                           <input
                             type="checkbox"
                             checked={(selectedItems[item.id]?.supplements || []).some(s => s.id === supplement.id)}
@@ -248,9 +296,10 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                               }
                               handleItemSelection(item.id, newSupplements, selectedItems[item.id]?.size);
                             }}
-                            className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+                            className="w-5 h-5 text-purple-600 border-2 border-green-300 rounded focus:ring-purple-500 focus:ring-2"
                           />
-                          <span className="text-sm text-gray-700">{supplement.nom} (+{supplement.prix.toFixed(2)}€)</span>
+                          <span className="text-sm font-medium text-green-800">{supplement.nom}</span>
+                          <span className="text-sm font-bold text-green-600">+{supplement.prix.toFixed(2)}€</span>
                         </label>
                       ))}
                     </div>
@@ -264,7 +313,7 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                       const currentSelection = selectedItems[item.id] || { supplements: [], size: null };
                       handleAddToCart(item, currentSelection.supplements, currentSelection.size);
                     }}
-                    className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
                   >
                     <FaShoppingCart className="inline-block mr-2 h-4 w-4" />
                     Ajouter au panier
