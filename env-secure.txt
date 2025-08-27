@@ -1,0 +1,18 @@
+# CONFIGURATION SÉCURISÉE SUPABASE
+# ⚠️ NE JAMAIS COMMITER CE FICHIER !
+
+# 1. Créez un fichier .env.local à la racine de votre projet
+# 2. Copiez ce contenu (sans les #)
+# 3. Remplacez par vos vraies clés
+
+NEXT_PUBLIC_SUPABASE_URL=https://jxbgrvlmvnofaxbtcmsw.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_clé_anon_ici
+
+# Clés sensibles (UNIQUEMENT pour scripts locaux)
+SUPABASE_SERVICE_ROLE_KEY=votre_nouvelle_clé_service_role_ici
+
+# ⚠️ SÉCURITÉ :
+# - .env.local est automatiquement ignoré par Git
+# - Ne jamais commiter de clés secrètes
+# - Utiliser uniquement la clé ANON dans le frontend
+# - Clé SERVICE_ROLE uniquement pour scripts d'administration 
