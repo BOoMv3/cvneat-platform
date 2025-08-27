@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { FaShoppingCart, FaSpinner, FaArrowLeft, FaHeart, FaStar, FaClock, FaMotorcycle, FaSearch } from 'react-icons/fa';
 
 // Composant pour la section du menu simplifié
-const MenuSection = ({ restaurantId, restaurant, onAddToCart }) => {
+const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) => {
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -306,17 +306,34 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart }) => {
                   </div>
                 )}
 
-                {/* Bouton d'ajout au panier */}
+                {/* Bouton d'ajout au panier avec animation */}
                 <div className="flex justify-end">
                   <button 
                     onClick={() => {
                       const currentSelection = selectedItems[item.id] || { supplements: [], size: null };
                       onAddToCart(item, currentSelection.supplements, currentSelection.size);
                     }}
-                    className="bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-amber-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
+                    disabled={addingToCart[item.id]}
+                    className={`relative overflow-hidden px-6 py-3 rounded-xl font-medium transition-all duration-200 transform ${
+                      addingToCart[item.id]
+                        ? 'bg-green-500 text-white scale-95 shadow-lg'
+                        : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700 hover:scale-105 shadow-lg'
+                    }`}
                   >
-                    <FaShoppingCart className="inline-block mr-2 h-4 w-4" />
-                    Ajouter au panier
+                    {addingToCart[item.id] ? (
+                      <>
+                        <div className="absolute inset-0 bg-green-400 animate-pulse"></div>
+                        <span className="relative z-10 flex items-center">
+                          <FaShoppingCart className="mr-2 h-4 w-4 animate-bounce" />
+                          Ajouté ! ✓
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex items-center">
+                        <FaShoppingCart className="mr-2 h-4 w-4" />
+                        Ajouter au panier
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
@@ -376,14 +393,16 @@ export default function RestaurantPage({ params }) {
     // Appeler la fonction originale
     handleAddToCart(item, supplements, size);
     
-    // Notification de succès
+    // Notification de succès avec le nom de l'article
     setShowCartNotification(true);
-    setTimeout(() => setShowCartNotification(false), 2000);
     
-    // Arrêter l'animation après un délai
+    // Masquer la notification après 3 secondes
+    setTimeout(() => setShowCartNotification(false), 3000);
+    
+    // Arrêter l'animation après 1.5 secondes pour laisser le temps de voir l'effet
     setTimeout(() => {
       setAddingToCart(prev => ({ ...prev, [item.id]: false }));
-    }, 500);
+    }, 1500);
   };
 
   // Fonction pour ajouter au panier (logique simplifiée)
@@ -590,17 +609,22 @@ export default function RestaurantPage({ params }) {
 
       {/* Notification d'ajout au panier */}
       {showCartNotification && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 animate-bounce">
-          <div className="flex items-center space-x-2">
-            <FaShoppingCart className="h-5 w-5" />
-            <span className="font-semibold">Article ajouté au panier !</span>
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 animate-bounce">
+          <div className="flex items-center space-x-3">
+            <div className="w-6 h-6 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+              <FaShoppingCart className="h-3 w-3" />
+            </div>
+            <div>
+              <p className="font-semibold">Article ajouté au panier !</p>
+              <p className="text-sm opacity-90">Votre commande a été mise à jour</p>
+            </div>
           </div>
         </div>
       )}
 
       {/* Contenu principal */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <MenuSection restaurantId={params.id} restaurant={restaurant} onAddToCart={handleAddToCartWithAnimation} />
+        <MenuSection restaurantId={params.id} restaurant={restaurant} onAddToCart={handleAddToCartWithAnimation} addingToCart={addingToCart} />
       </div>
     </div>
   );
