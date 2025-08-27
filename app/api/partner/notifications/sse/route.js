@@ -2,71 +2,115 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const restaurantId = searchParams.get('restaurantId');
+  try {
+    const { searchParams } = new URL(request.url);
+    const restaurantId = searchParams.get('restaurantId');
+    
+    if (!restaurantId) {
+      return NextResponse.json({ error: 'restaurantId requis' }, { status: 400 });
+    }
 
-  if (!restaurantId) {
-    return NextResponse.json({ error: 'Restaurant ID requis' }, { status: 400 });
-  }
+    // Vérifier l'authentification
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
 
-  // Créer une réponse SSE
-  const stream = new ReadableStream({
-    start(controller) {
-      const sendNotification = (data) => {
-        const message = `data: ${JSON.stringify(data)}\n\n`;
-        controller.enqueue(new TextEncoder().encode(message));
-      };
+    // Vérifier que l'utilisateur est le propriétaire du restaurant
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('id')
+      .eq('id', restaurantId)
+      .eq('user_id', user.id)
+      .single();
 
-      // Envoyer une notification de connexion
-      sendNotification({
-        type: 'connection',
-        message: 'Connecté aux notifications',
-        timestamp: new Date().toISOString()
-      });
+    if (restaurantError || !restaurant) {
+      return NextResponse.json({ error: 'Restaurant non trouvé ou non autorisé' }, { status: 403 });
+    }
 
-      // Vérifier les nouvelles commandes toutes les 30 secondes
-      const checkNewOrders = async () => {
-        try {
-          const { data: newOrders, error } = await supabase
-            .from('commandes')
-            .select('*')
-            .eq('restaurant_id', restaurantId)
-            .eq('statut', 'en_attente')
-            .gte('created_at', new Date(Date.now() - 30000).toISOString());
+    // Configuration SSE
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        // Envoyer un message de connexion
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'connection',
+          message: 'Connexion SSE établie'
+        })}\n\n`));
 
-          if (!error && newOrders && newOrders.length > 0) {
-            newOrders.forEach(order => {
-              sendNotification({
-                type: 'new_order',
-                order: order,
-                message: `Nouvelle commande #${order.id}`,
-                timestamp: new Date().toISOString()
-              });
+        // Fonction pour envoyer des notifications
+        const sendNotification = (data) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        };
+
+        // Écouter les nouvelles commandes
+        const ordersSubscription = supabase
+          .channel(`orders-${restaurantId}`)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'orders',
+            filter: `restaurant_id=eq.${restaurantId}`
+          }, (payload) => {
+            sendNotification({
+              type: 'new_order',
+              order: payload.new,
+              message: 'Nouvelle commande reçue !'
             });
-          }
-        } catch (error) {
-          console.error('Erreur vérification nouvelles commandes:', error);
-        }
-      };
+          })
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'orders',
+            filter: `restaurant_id=eq.${restaurantId}`
+          }, (payload) => {
+            sendNotification({
+              type: 'order_update',
+              order: payload.new,
+              oldOrder: payload.old,
+              message: 'Commande mise à jour'
+            });
+          })
+          .subscribe();
 
-      // Vérifier immédiatement puis toutes les 30 secondes
-      checkNewOrders();
-      const interval = setInterval(checkNewOrders, 30000);
+        // Écouter les messages de livraison
+        const deliverySubscription = supabase
+          .channel(`delivery-${restaurantId}`)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'delivery_messages',
+            filter: `restaurant_id=eq.${restaurantId}`
+          }, (payload) => {
+            sendNotification({
+              type: 'delivery_message',
+              message: payload.new,
+              text: 'Message de livraison reçu'
+            });
+          })
+          .subscribe();
 
-      // Nettoyer l'intervalle quand la connexion se ferme
-      return () => {
-        clearInterval(interval);
-      };
-    }
-  });
+        // Nettoyer les souscriptions à la fermeture
+        request.signal.addEventListener('abort', () => {
+          ordersSubscription.unsubscribe();
+          deliverySubscription.unsubscribe();
+          controller.close();
+        });
+      }
+    });
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control'
-    }
-  });
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur SSE notifications:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
 } 

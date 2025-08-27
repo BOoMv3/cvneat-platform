@@ -7,14 +7,29 @@ export default function DeliveryDashboard() {
   const [stats, setStats] = useState({
     todayDeliveries: 0,
     completedDeliveries: 0,
-    totalEarnings: 0
+    totalEarnings: 0,
+    averageDeliveryTime: 0,
+    rating: 0,
+    totalDeliveries: 0
   });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const [currentOrder, setCurrentOrder] = useState(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+
   useEffect(() => {
     fetchStats();
     fetchAvailableOrders();
+    fetchCurrentOrder();
+    
+    // Vérifier les nouvelles commandes toutes les 30 secondes
+    const interval = setInterval(() => {
+      fetchAvailableOrders();
+      fetchCurrentOrder();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {
@@ -24,9 +39,12 @@ export default function DeliveryDashboard() {
       
       if (response.ok) {
         setStats({
-          todayDeliveries: data.total_deliveries || 0,
-          completedDeliveries: data.total_deliveries || 0,
-          totalEarnings: data.total_earnings || 0
+          todayDeliveries: data.today_deliveries || 0,
+          completedDeliveries: data.completed_deliveries || 0,
+          totalEarnings: data.total_earnings || 0,
+          averageDeliveryTime: data.average_delivery_time || 0,
+          rating: data.average_rating || 0,
+          totalDeliveries: data.total_deliveries || 0
         });
       }
     } catch (error) {
@@ -46,6 +64,35 @@ export default function DeliveryDashboard() {
       console.error('Erreur recuperation commandes:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCurrentOrder = async () => {
+    try {
+      const response = await fetch('/api/delivery/current-order');
+      const data = await response.json();
+      
+      if (response.ok && data.order) {
+        setCurrentOrder(data.order);
+      }
+    } catch (error) {
+      console.error('Erreur récupération commande actuelle:', error);
+    }
+  };
+
+  const completeDelivery = async (orderId) => {
+    try {
+      const response = await fetch(`/api/delivery/complete-delivery/${orderId}`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        setCurrentOrder(null);
+        fetchStats();
+        fetchAvailableOrders();
+      }
+    } catch (error) {
+      console.error('Erreur finalisation livraison:', error);
     }
   };
 
@@ -97,20 +144,67 @@ export default function DeliveryDashboard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Livraisons totales</h3>
-            <p className="text-3xl font-bold">{stats.todayDeliveries}</p>
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">Livraisons aujourd'hui</h3>
+            <p className="text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Livraisons terminees</h3>
-            <p className="text-3xl font-bold">{stats.completedDeliveries}</p>
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">Total livraisons</h3>
+            <p className="text-3xl font-bold text-indigo-600">{stats.totalDeliveries}</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">Livraisons terminées</h3>
+            <p className="text-3xl font-bold text-green-600">{stats.completedDeliveries}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold text-gray-600 mb-2">Gains totaux</h3>
-            <p className="text-3xl font-bold">{stats.totalEarnings.toFixed(2)}€</p>
+            <p className="text-3xl font-bold text-purple-600">{stats.totalEarnings.toFixed(2)}€</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">Temps moyen</h3>
+            <p className="text-3xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">Note moyenne</h3>
+            <p className="text-3xl font-bold text-yellow-600">{stats.rating.toFixed(1)} ⭐</p>
           </div>
         </div>
+
+        {/* Commande actuelle en cours de livraison */}
+        {currentOrder && (
+          <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg shadow-md mb-6">
+            <h2 className="text-xl font-bold text-blue-900 mb-4">🚚 Livraison en cours</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-2">Détails de la commande</h3>
+                <p className="text-sm text-blue-800 mb-1">
+                  <strong>Restaurant:</strong> {currentOrder.restaurant_nom}
+                </p>
+                <p className="text-sm text-blue-800 mb-1">
+                  <strong>Client:</strong> {currentOrder.customer_name}
+                </p>
+                <p className="text-sm text-blue-800 mb-1">
+                  <strong>Adresse:</strong> {currentOrder.delivery_address}
+                </p>
+                <p className="text-sm text-blue-800 mb-1">
+                  <strong>Frais de livraison:</strong> {currentOrder.delivery_fee}€
+                </p>
+              </div>
+              <div className="text-right">
+                <button
+                  onClick={() => completeDelivery(currentOrder.id)}
+                  className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  ✅ Marquer comme livrée
+                </button>
+                <p className="text-xs text-blue-600 mt-2">
+                  Commande #{currentOrder.id} - {new Date(currentOrder.created_at).toLocaleTimeString('fr-FR')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-bold mb-4">Commandes disponibles</h2>
