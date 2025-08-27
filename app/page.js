@@ -27,7 +27,8 @@ import {
   FaPizzaSlice,
   FaHamburger,
   FaCoffee,
-  FaIceCream
+  FaIceCream,
+  FaSignOutAlt
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 
@@ -53,6 +54,14 @@ export default function Home() {
   const [showFloatingCart, setShowFloatingCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
+
+  // Fonction de déconnexion
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setUserPoints(0);
+    router.push('/');
+  };
 
   // Catégories de restaurants avec icônes et couleurs
   const categories = [
@@ -223,6 +232,13 @@ export default function Home() {
               <Link href="/profile" className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-white/30 transition-colors">
                 <FaUser className="h-5 w-5 text-white" />
               </Link>
+              <button
+                onClick={handleLogout}
+                className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full text-white hover:bg-red-500/30 transition-colors flex items-center space-x-2"
+              >
+                <FaSignOutAlt className="h-4 w-4" />
+                <span className="text-sm">Déconnexion</span>
+              </button>
             </>
           ) : (
             <>

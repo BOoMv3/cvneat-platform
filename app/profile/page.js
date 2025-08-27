@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle } from 'react-icons/fa';
+import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt } from 'react-icons/fa';
 
 export default function Profile() {
   const router = useRouter();
@@ -122,6 +122,11 @@ export default function Profile() {
     return texts[status] || status;
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+
   const handleAddressSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -221,7 +226,16 @@ export default function Profile() {
     <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Mon profil</h1>
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Mon profil</h1>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+            >
+              <FaSignOutAlt className="h-4 w-4" />
+              <span>Déconnexion</span>
+            </button>
+          </div>
 
           {/* Formulaire de modification des infos utilisateur */}
           <section className="mb-12">
