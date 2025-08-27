@@ -79,13 +79,20 @@ export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = 
         <button
           onClick={() => setShowSupplements(true)}
           disabled={isAdding}
-          className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
+          className={`absolute bottom-3 right-3 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform ${
             isAdding
-              ? 'bg-green-500 text-white scale-110'
+              ? 'bg-green-500 text-white scale-110 shadow-xl animate-pulse'
               : 'bg-white text-gray-800 hover:bg-gray-50 hover:scale-105'
           }`}
         >
-          <FaPlus className="w-4 h-4" />
+          {isAdding ? (
+            <>
+              <div className="absolute inset-0 bg-green-400 rounded-full animate-ping"></div>
+              <FaPlus className="w-5 h-5 relative z-10 animate-bounce" />
+            </>
+          ) : (
+            <FaPlus className="w-5 h-5" />
+          )}
         </button>
       </div>
 
@@ -147,9 +154,23 @@ export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = 
         <button
           onClick={handleAddToCart}
           disabled={isAdding}
-          className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+          className={`relative w-full py-3 px-4 rounded-lg transition-all duration-300 transform ${
+            isAdding
+              ? 'bg-green-500 text-white scale-95 shadow-xl animate-pulse'
+              : 'bg-purple-600 text-white hover:bg-purple-700 hover:scale-105 shadow-lg'
+          }`}
         >
-          {isAdding ? 'Ajout...' : 'Ajouter au panier'}
+          {isAdding ? (
+            <>
+              <div className="absolute inset-0 bg-green-400 rounded-lg animate-ping"></div>
+              <span className="relative z-10 flex items-center justify-center">
+                <FaPlus className="mr-2 h-4 w-4 animate-bounce" />
+                Ajouté ! ✓
+              </span>
+            </>
+          ) : (
+            'Ajouter au panier'
+          )}
         </button>
       </div>
 
@@ -225,7 +246,7 @@ export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = 
                   </div>
                   <button
                     onClick={handleAddToCart}
-                    className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+                    className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     Ajouter au panier
                   </button>
