@@ -1,196 +1,196 @@
 // Script pour créer des comptes de test CVN'Eat
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env.local' });
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+// Configuration Supabase (remplacez par vos vraies clés)
+const supabaseUrl = 'VOTRE_SUPABASE_URL';
+const supabaseServiceKey = 'VOTRE_SUPABASE_SERVICE_KEY';
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function createTestAccounts() {
-  console.log('🧪 Création des comptes de test CVN\'Eat...\n');
+  console.log('🚀 Création des comptes de test...');
 
-  const testAccounts = [
-    {
-      email: 'partenaire@example.com',
-      password: 'partenaire123',
-      role: 'partner',
-      nom: 'Restaurant Test',
-      prenom: 'Partenaire',
-      telephone: '0123456789',
-      restaurant: {
-        nom: 'Le Bistrot Gourmet',
-        description: 'Restaurant de cuisine française traditionnelle',
-        adresse: '123 Rue de la Gastronomie',
-        ville: 'Paris',
-        code_postal: '75001',
-        telephone: '0123456789',
-        email: 'contact@bistrotgourmet.fr',
-        horaires: 'Lun-Sam: 11h-23h',
-        categorie: 'Française',
-        rating: 4.5,
-        review_count: 127,
-        delivery_time: 25,
-        minimum_order: 15.00,
-        delivery_fee: 2.50,
-        is_active: true
-      }
-    },
-    {
-      email: 'client@example.com',
-      password: 'client123',
-      role: 'client',
-      nom: 'Dupont',
-      prenom: 'Marie',
-      telephone: '0987654321',
-      adresse: '456 Avenue des Clients',
-      ville: 'Paris',
-      code_postal: '75002'
-    },
-    {
-      email: 'admin@example.com',
+  try {
+    // 1. Créer un compte ADMIN
+    console.log('\n📝 Création du compte ADMIN...');
+    const { data: adminUser, error: adminError } = await supabase.auth.admin.createUser({
+      email: 'admin@cvneat.com',
       password: 'admin123',
-      role: 'admin',
-      nom: 'Administrateur',
-      prenom: 'Admin',
-      telephone: '0555666777'
-    },
-    {
-      email: 'livreur@example.com',
-      password: 'livreur123',
-      role: 'delivery',
-      nom: 'Martin',
-      prenom: 'Pierre',
-      telephone: '0444333222',
-      adresse: '789 Rue des Livreurs',
-      ville: 'Paris',
-      code_postal: '75003'
-    }
-  ];
+      email_confirm: true
+    });
 
-  for (const account of testAccounts) {
-    try {
-      console.log(`📝 Création du compte: ${account.email} (${account.role})`);
-      
-      // 1. Créer l'utilisateur dans Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: account.email,
-        password: account.password
-      });
-
-      if (authError) {
-        console.log(`❌ Erreur création auth: ${authError.message}`);
-        continue;
-      }
-
-      const userId = authData.user.id;
-      console.log(`✅ Utilisateur créé avec ID: ${userId}`);
-
-      // 2. Créer le profil utilisateur
+    if (adminError) {
+      console.error('❌ Erreur création admin:', adminError);
+    } else {
+      // Créer le profil utilisateur admin
       const { error: profileError } = await supabase
         .from('users')
         .insert({
-          id: userId,
-          email: account.email,
-          nom: account.nom,
-          prenom: account.prenom,
-          telephone: account.telephone,
-          role: account.role,
-          created_at: new Date().toISOString()
+          id: adminUser.user.id,
+          nom: 'Admin',
+          prenom: 'CVN\'EAT',
+          email: 'admin@cvneat.com',
+          telephone: '0123456789',
+          adresse: '123 Rue Admin',
+          code_postal: '75000',
+          ville: 'Paris',
+          role: 'admin'
         });
 
       if (profileError) {
-        console.log(`❌ Erreur création profil: ${profileError.message}`);
-        continue;
+        console.error('❌ Erreur profil admin:', profileError);
+      } else {
+        console.log('✅ Compte ADMIN créé avec succès !');
+        console.log('   Email: admin@cvneat.com');
+        console.log('   Mot de passe: admin123');
       }
+    }
 
-      console.log(`✅ Profil utilisateur créé`);
+    // 2. Créer un compte PARTENAIRE (RESTAURANT)
+    console.log('\n🍕 Création du compte PARTENAIRE...');
+    const { data: partnerUser, error: partnerError } = await supabase.auth.admin.createUser({
+      email: 'restaurant@cvneat.com',
+      password: 'restaurant123',
+      email_confirm: true
+    });
 
-      // 3. Si c'est un partenaire, créer le restaurant
-      if (account.role === 'partner' && account.restaurant) {
+    if (partnerError) {
+      console.error('❌ Erreur création partenaire:', partnerError);
+    } else {
+      // Créer le profil utilisateur partenaire
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: partnerUser.user.id,
+          nom: 'Restaurant',
+          prenom: 'Test',
+          email: 'restaurant@cvneat.com',
+          telephone: '0123456790',
+          adresse: '456 Rue Restaurant',
+          code_postal: '75001',
+          ville: 'Paris',
+          role: 'restaurant'
+        });
+
+      if (profileError) {
+        console.error('❌ Erreur profil partenaire:', profileError);
+      } else {
+        // Créer le restaurant
         const { error: restaurantError } = await supabase
           .from('restaurants')
           .insert({
-            user_id: userId,
-            ...account.restaurant,
-            created_at: new Date().toISOString()
+            user_id: partnerUser.user.id,
+            nom: 'Restaurant Test',
+            description: 'Un restaurant de test pour CVN\'EAT',
+            type_cuisine: 'Français',
+            telephone: '0123456790',
+            adresse: '456 Rue Restaurant',
+            code_postal: '75001',
+            ville: 'Paris',
+            email: 'restaurant@cvneat.com',
+            status: 'active',
+            horaires: {
+              lundi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+              mardi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+              mercredi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+              jeudi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+              vendredi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+              samedi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+              dimanche: { ouvert: false }
+            }
           });
 
         if (restaurantError) {
-          console.log(`❌ Erreur création restaurant: ${restaurantError.message}`);
+          console.error('❌ Erreur création restaurant:', restaurantError);
         } else {
-          console.log(`✅ Restaurant créé: ${account.restaurant.nom}`);
+          console.log('✅ Compte PARTENAIRE créé avec succès !');
+          console.log('   Email: restaurant@cvneat.com');
+          console.log('   Mot de passe: restaurant123');
         }
       }
-
-      // 4. Si c'est un client, créer l'adresse
-      if (account.role === 'client' && account.adresse) {
-        const { error: addressError } = await supabase
-          .from('user_addresses')
-          .insert({
-            user_id: userId,
-            address: account.adresse,
-            city: account.ville,
-            postal_code: account.code_postal,
-            is_default: true,
-            created_at: new Date().toISOString()
-          });
-
-        if (addressError) {
-          console.log(`❌ Erreur création adresse: ${addressError.message}`);
-        } else {
-          console.log(`✅ Adresse client créée`);
-        }
-      }
-
-      // 5. Si c'est un livreur, créer les stats
-      if (account.role === 'delivery') {
-        const { error: statsError } = await supabase
-          .from('delivery_stats')
-          .insert({
-            delivery_id: userId,
-            total_earnings: 0.00,
-            total_deliveries: 0,
-            average_rating: 0.00,
-            last_month_earnings: 0.00,
-            total_distance_km: 0.00,
-            total_time_hours: 0.00,
-            created_at: new Date().toISOString()
-          });
-
-        if (statsError) {
-          console.log(`❌ Erreur création stats livreur: ${statsError.message}`);
-        } else {
-          console.log(`✅ Stats livreur créées`);
-        }
-      }
-
-      console.log(`🎉 Compte ${account.role} créé avec succès!\n`);
-
-    } catch (error) {
-      console.log(`❌ Erreur générale pour ${account.email}: ${error.message}\n`);
     }
+
+    // 3. Créer un compte LIVREUR
+    console.log('\n🚚 Création du compte LIVREUR...');
+    const { data: deliveryUser, error: deliveryError } = await supabase.auth.admin.createUser({
+      email: 'livreur@cvneat.com',
+      password: 'livreur123',
+      email_confirm: true
+    });
+
+    if (deliveryError) {
+      console.error('❌ Erreur création livreur:', deliveryError);
+    } else {
+      // Créer le profil utilisateur livreur
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: deliveryUser.user.id,
+          nom: 'Livreur',
+          prenom: 'Test',
+          email: 'livreur@cvneat.com',
+          telephone: '0123456791',
+          adresse: '789 Rue Livreur',
+          code_postal: '75002',
+          ville: 'Paris',
+          role: 'delivery'
+        });
+
+      if (profileError) {
+        console.error('❌ Erreur profil livreur:', profileError);
+      } else {
+        console.log('✅ Compte LIVREUR créé avec succès !');
+        console.log('   Email: livreur@cvneat.com');
+        console.log('   Mot de passe: livreur123');
+      }
+    }
+
+    // 4. Créer un compte CLIENT
+    console.log('\n👤 Création du compte CLIENT...');
+    const { data: clientUser, error: clientError } = await supabase.auth.admin.createUser({
+      email: 'client@cvneat.com',
+      password: 'client123',
+      email_confirm: true
+    });
+
+    if (clientError) {
+      console.error('❌ Erreur création client:', clientError);
+    } else {
+      // Créer le profil utilisateur client
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: clientUser.user.id,
+          nom: 'Client',
+          prenom: 'Test',
+          email: 'client@cvneat.com',
+          telephone: '0123456792',
+          adresse: '321 Rue Client',
+          code_postal: '75003',
+          ville: 'Paris',
+          role: 'user'
+        });
+
+      if (profileError) {
+        console.error('❌ Erreur profil client:', profileError);
+      } else {
+        console.log('✅ Compte CLIENT créé avec succès !');
+        console.log('   Email: client@cvneat.com');
+        console.log('   Mot de passe: client123');
+      }
+    }
+
+    console.log('\n🎉 Tous les comptes de test ont été créés !');
+    console.log('\n📋 Récapitulatif des connexions :');
+    console.log('   👑 ADMIN: admin@cvneat.com / admin123');
+    console.log('   🍕 PARTENAIRE: restaurant@cvneat.com / restaurant123');
+    console.log('   🚚 LIVREUR: livreur@cvneat.com / livreur123');
+    console.log('   👤 CLIENT: client@cvneat.com / client123');
+
+  } catch (error) {
+    console.error('❌ Erreur générale:', error);
   }
-
-  console.log('📋 Récapitulatif des comptes de test:');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  testAccounts.forEach(account => {
-    console.log(`👤 ${account.role.toUpperCase()}:`);
-    console.log(`   Email: ${account.email}`);
-    console.log(`   Mot de passe: ${account.password}`);
-    console.log(`   Nom: ${account.prenom} ${account.nom}`);
-    if (account.role === 'partner') {
-      console.log(`   Restaurant: ${account.restaurant.nom}`);
-    }
-    console.log('');
-  });
-
-  console.log('🚀 Instructions de test:');
-  console.log('1. Connecte-toi avec chaque compte sur tes tablettes');
-  console.log('2. Teste les fonctionnalités spécifiques à chaque rôle');
-  console.log('3. Vérifie que les estimations de temps fonctionnent');
-  console.log('4. Teste le processus de commande complet');
 }
 
 // Exécuter le script
-createTestAccounts().catch(console.error); 
+createTestAccounts(); 

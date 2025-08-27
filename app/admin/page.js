@@ -36,7 +36,7 @@ export default function AdminDashboard() {
         .eq('id', session.user.id)
         .single();
       console.log('UserData Supabase:', userData, 'Error:', error);
-      if (!userData || !userData.role.split(',').includes('admin')) {
+      if (!userData || userData.role !== 'admin') {
         setError(`Accès refusé. Votre rôle est : ${userData ? userData.role : 'aucun'}. Contactez un administrateur.`);
         setLoading(false);
         return;

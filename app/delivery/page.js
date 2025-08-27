@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 
 export default function DeliveryDashboard() {
+  const [user, setUser] = useState(null);
   const [deliveries, setDeliveries] = useState([]);
   const [stats, setStats] = useState({
     todayDeliveries: 0,
@@ -13,23 +15,49 @@ export default function DeliveryDashboard() {
     totalDeliveries: 0
   });
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
   const router = useRouter();
 
   const [currentOrder, setCurrentOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
 
   useEffect(() => {
-    fetchStats();
-    fetchAvailableOrders();
-    fetchCurrentOrder();
-    
-    // Vérifier les nouvelles commandes toutes les 30 secondes
-    const interval = setInterval(() => {
-      fetchAvailableOrders();
-      fetchCurrentOrder();
-    }, 30000);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setAuthError('Vous devez être connecté pour accéder à cette page');
+        setLoading(false);
+        return;
+      }
 
-    return () => clearInterval(interval);
+      // Vérifier le rôle
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userError || !userData || userData.role !== 'delivery') {
+        setAuthError(`Accès refusé. Votre rôle est : ${userData ? userData.role : 'aucun'}. Seuls les livreurs peuvent accéder à cette page.`);
+        setLoading(false);
+        return;
+      }
+
+      setUser(session.user);
+      await fetchStats();
+      await fetchAvailableOrders();
+      await fetchCurrentOrder();
+      
+      // Vérifier les nouvelles commandes toutes les 30 secondes
+      const interval = setInterval(() => {
+        fetchAvailableOrders();
+        fetchCurrentOrder();
+      }, 30000);
+
+      return () => clearInterval(interval);
+    };
+
+    checkAuth();
   }, []);
 
   const fetchStats = async () => {
@@ -125,6 +153,25 @@ export default function DeliveryDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (authError) {
+    return (
+      <main className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-center">
+            <h2 className="text-lg font-semibold mb-2">Accès refusé</h2>
+            <p className="mb-4">{authError}</p>
+            <button
+              onClick={() => router.push('/login')}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Se connecter
+            </button>
           </div>
         </div>
       </main>

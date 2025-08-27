@@ -70,6 +70,7 @@ export default function PartnerDashboard() {
         .single();
 
       if (userError || !userData || userData.role !== 'restaurant') {
+        console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant');
         router.push('/');
         return;
       }
