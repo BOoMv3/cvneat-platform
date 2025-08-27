@@ -36,11 +36,19 @@ export default function AdminDashboard() {
         .eq('id', session.user.id)
         .single();
       console.log('UserData Supabase:', userData, 'Error:', error);
+      console.log('🔍 DEBUG ADMIN - UserData complet:', userData);
+      console.log('🔍 DEBUG ADMIN - Rôle utilisateur:', userData?.role);
+      console.log('🔍 DEBUG ADMIN - Rôle attendu: admin');
+      console.log('🔍 DEBUG ADMIN - Comparaison:', userData?.role === 'admin');
+      
       if (!userData || userData.role !== 'admin') {
+        console.log('❌ ACCÈS REFUSÉ - Redirection vers l\'accueil');
         setError(`Accès refusé. Votre rôle est : ${userData ? userData.role : 'aucun'}. Contactez un administrateur.`);
         setLoading(false);
         return;
       }
+      
+      console.log('✅ ACCÈS AUTORISÉ - Rôle admin confirmé');
       setUser(session.user);
       setRole(userData.role);
       setLoading(false);

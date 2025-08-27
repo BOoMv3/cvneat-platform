@@ -1,0 +1,9 @@
+# Configuration Supabase - COPIEZ CE CONTENU DANS UN FICHIER .env.local
+NEXT_PUBLIC_SUPABASE_URL=https://jxbgrvlmvnofaxbtcmsw.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4Ymdydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU2NzI4MDAsImV4cCI6MjA1MTI0ODgwMH0.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8
+
+# INSTRUCTIONS :
+# 1. Créez un fichier .env.local à la racine de votre projet
+# 2. Copiez le contenu ci-dessus
+# 3. Remplacez la clé anon par votre vraie clé anon (pas la service_role !)
+# 4. Redémarrez votre serveur de développement 

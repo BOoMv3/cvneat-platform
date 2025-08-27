@@ -69,11 +69,19 @@ export default function PartnerDashboard() {
         .eq('id', session.user.id)
         .single();
 
+      console.log('🔍 DEBUG PARTNER - UserData complet:', userData);
+      console.log('🔍 DEBUG PARTNER - Rôle utilisateur:', userData?.role);
+      console.log('🔍 DEBUG PARTNER - Rôle attendu: restaurant');
+      console.log('🔍 DEBUG PARTNER - Comparaison:', userData?.role === 'restaurant');
+      
       if (userError || !userData || userData.role !== 'restaurant') {
+        console.log('❌ ACCÈS REFUSÉ - Redirection vers l\'accueil');
         console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant');
         router.push('/');
         return;
       }
+      
+      console.log('✅ ACCÈS AUTORISÉ - Rôle restaurant confirmé');
 
       setUser(session.user);
 
