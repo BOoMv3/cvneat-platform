@@ -1,6 +1,5 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
-import Navbar from '@/components/Navbar';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
 import { ThemeProvider } from '../contexts/ThemeContext';
@@ -85,7 +84,6 @@ export default function RootLayout({ children }) {
       <body className={`${inter.className} transition-colors duration-300`}>
         <ThemeProvider>
           <div className="min-h-screen flex flex-col">
-            <Navbar />
             <main className="flex-grow">
               {children}
             </main>

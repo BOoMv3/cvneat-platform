@@ -50,16 +50,18 @@ export default function Home() {
   const [userPoints, setUserPoints] = useState(0);
   const [isClient, setIsClient] = useState(false);
   const [showFloatingCart, setShowFloatingCart] = useState(false);
+  const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
+  const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
 
   // Catégories de restaurants avec icônes et couleurs
   const categories = [
-    { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-purple-500 to-pink-500' },
-    { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-red-500 to-orange-500' },
-    { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-yellow-500 to-orange-500' },
-    { id: 'coffee', name: 'Café', icon: FaCoffee, color: 'from-amber-600 to-yellow-600' },
-    { id: 'dessert', name: 'Desserts', icon: FaIceCream, color: 'from-pink-400 to-purple-400' },
-    { id: 'healthy', name: 'Healthy', icon: FaLeaf, color: 'from-green-500 to-emerald-500' },
-    { id: 'fast', name: 'Fast Food', icon: FaFire, color: 'from-orange-500 to-red-500' }
+    { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-purple-600 to-pink-500' },
+    { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-purple-600 to-pink-500' },
+    { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-purple-600 to-pink-500' },
+    { id: 'coffee', name: 'Café', icon: FaCoffee, color: 'from-purple-600 to-pink-500' },
+    { id: 'dessert', name: 'Desserts', icon: FaIceCream, color: 'from-purple-600 to-pink-500' },
+    { id: 'healthy', name: 'Healthy', icon: FaLeaf, color: 'from-purple-600 to-pink-500' },
+    { id: 'fast', name: 'Fast Food', icon: FaFire, color: 'from-purple-600 to-pink-500' }
   ];
 
   useEffect(() => {
@@ -120,6 +122,33 @@ export default function Home() {
     // TODO: Réactiver après application de la migration SQL
     alert('Fonctionnalité des favoris temporairement désactivée. Appliquez d\'abord la migration SQL sur Supabase.');
     return;
+  };
+
+  const handleAddToCart = (restaurant) => {
+    // Animation d'ajout au panier
+    setAddingToCart(prev => ({ ...prev, [restaurant.id]: true }));
+    
+    // Ajouter au panier (logique simplifiée pour l'instant)
+    const newCartItem = {
+      id: restaurant.id,
+      nom: restaurant.nom,
+      prix: 15.00, // Prix par défaut
+      quantity: 1,
+      restaurant_id: restaurant.id,
+      restaurant_name: restaurant.nom,
+      image_url: restaurant.imageUrl
+    };
+    
+    setCart(prev => [...prev, newCartItem]);
+    
+    // Notification de succès
+    setShowCartNotification(true);
+    setTimeout(() => setShowCartNotification(false), 2000);
+    
+    // Arrêter l'animation après un délai
+    setTimeout(() => {
+      setAddingToCart(prev => ({ ...prev, [restaurant.id]: false }));
+    }, 500);
   };
 
   const handleRestaurantClick = (restaurant) => {
@@ -260,7 +289,9 @@ export default function Home() {
           <div className="border-t border-gray-200 pt-4">
             <div className="flex justify-between mb-4">
               <span className="text-lg font-semibold text-gray-700">Total:</span>
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">0.00€</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                {cart.reduce((total, item) => total + ((item.prix || 0) * (item.quantity || 1)), 0).toFixed(2)}€
+              </span>
             </div>
             <Link
               href="/checkout"
@@ -268,6 +299,16 @@ export default function Home() {
             >
               Commander maintenant
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Notification d'ajout au panier */}
+      {showCartNotification && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 animate-bounce">
+          <div className="flex items-center space-x-2">
+            <FaShoppingCart className="h-5 w-5" />
+            <span className="font-semibold">Article ajouté au panier !</span>
           </div>
         </div>
       )}
@@ -454,8 +495,21 @@ export default function Home() {
                         </div>
                         
                         {/* Bouton commander */}
-                        <button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg">
-                          Commander maintenant
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Empêcher le clic sur le bouton de commande lui-même
+                            handleAddToCart(restaurant);
+                          }}
+                          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg"
+                        >
+                          {addingToCart[restaurant.id] ? (
+                            <div className="flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                              Ajouté
+                            </div>
+                          ) : (
+                            'Commander maintenant'
+                          )}
                         </button>
                       </div>
                     </div>
