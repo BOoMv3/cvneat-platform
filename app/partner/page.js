@@ -323,6 +323,13 @@ export default function PartnerDashboard() {
                 </svg>
                 <span>Paramètres</span>
               </button>
+              <button
+                onClick={() => router.push('/partner/delivery-zones')}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                <FaMapMarkerAlt className="h-4 w-4" />
+                <span>Zones de livraison</span>
+              </button>
             </div>
           </div>
         </div>

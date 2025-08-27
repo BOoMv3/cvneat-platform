@@ -4,21 +4,27 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { 
   FaChartLine, 
-  FaChartBar, 
-  FaChartPie,
   FaCalendarAlt,
   FaEuroSign,
-  FaShoppingCart,
-  FaCheckCircle,
-  FaTimesCircle
+  FaUtensils,
+  FaClock,
+  FaStar,
+  FaUsers
 } from 'react-icons/fa';
 
 export default function PartnerAnalytics() {
   const [user, setUser] = useState(null);
   const [restaurant, setRestaurant] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('week');
+  const [timeRange, setTimeRange] = useState('week'); // week, month, year
+  const [analytics, setAnalytics] = useState({
+    orders: [],
+    revenue: [],
+    popularItems: [],
+    customerStats: {},
+    deliveryStats: {}
+  });
+  
   const router = useRouter();
 
   useEffect(() => {
@@ -56,17 +62,18 @@ export default function PartnerAnalytics() {
       }
 
       setRestaurant(resto);
-      await fetchAnalytics(resto.id, period);
+      await fetchAnalytics(resto.id);
       setLoading(false);
     };
 
     fetchData();
-  }, [router]);
+  }, [router, timeRange]);
 
-  const fetchAnalytics = async (restaurantId, selectedPeriod) => {
+  const fetchAnalytics = async (restaurantId) => {
     try {
-      const response = await fetch(`/api/partner/analytics?restaurantId=${restaurantId}&period=${selectedPeriod}`);
+      const response = await fetch(`/api/partner/analytics?restaurantId=${restaurantId}&timeRange=${timeRange}`);
       const data = await response.json();
+      
       if (response.ok) {
         setAnalytics(data);
       }
@@ -75,10 +82,26 @@ export default function PartnerAnalytics() {
     }
   };
 
-  const handlePeriodChange = (newPeriod) => {
-    setPeriod(newPeriod);
-    if (restaurant) {
-      fetchAnalytics(restaurant.id, newPeriod);
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount);
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit'
+    });
+  };
+
+  const getTimeRangeLabel = () => {
+    switch (timeRange) {
+      case 'week': return '7 derniers jours';
+      case 'month': return '30 derniers jours';
+      case 'year': return '12 derniers mois';
+      default: return '7 derniers jours';
     }
   };
 
@@ -90,16 +113,6 @@ export default function PartnerAnalytics() {
     );
   }
 
-  if (!analytics) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Aucune donnée disponible</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -107,13 +120,22 @@ export default function PartnerAnalytics() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Analytics & Statistiques</h1>
               <p className="text-gray-600">{restaurant?.nom}</p>
             </div>
             <div className="flex items-center space-x-4">
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="week">7 derniers jours</option>
+                <option value="month">30 derniers jours</option>
+                <option value="year">12 derniers mois</option>
+              </select>
               <button
                 onClick={() => router.push('/partner')}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
               >
                 Retour au dashboard
               </button>
@@ -123,137 +145,221 @@ export default function PartnerAnalytics() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Période sélector */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-gray-700">Période :</span>
-            {[
-              { value: 'week', label: '7 jours' },
-              { value: 'month', label: 'Ce mois' },
-              { value: 'year', label: 'Cette année' }
-            ].map((p) => (
-              <button
-                key={p.value}
-                onClick={() => handlePeriodChange(p.value)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  period === p.value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+        <div className="mb-6">
+          <h2 className="text-lg font-medium text-gray-900">
+            Période analysée : <span className="text-blue-600">{getTimeRangeLabel()}</span>
+          </h2>
         </div>
 
-        {/* Stats Cards */}
+        {/* Statistiques principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <FaShoppingCart className="h-6 w-6 text-blue-600" />
+                <FaUtensils className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total commandes</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.totalOrders}</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {analytics.orders?.length || 0}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
                 <FaEuroSign className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Chiffre d'affaires</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.totalRevenue}€</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {formatCurrency(analytics.revenue?.total || 0)}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <FaChartLine className="h-6 w-6 text-purple-600" />
+                <FaUsers className="h-6 w-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Panier moyen</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.averageOrderValue}€</p>
+                <p className="text-sm font-medium text-gray-600">Clients uniques</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {analytics.customerStats?.uniqueCustomers || 0}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-yellow-100 rounded-lg">
-                <FaCheckCircle className="h-6 w-6 text-yellow-600" />
+                <FaStar className="h-6 w-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Taux de réussite</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.completionRate}%</p>
+                <p className="text-sm font-medium text-gray-600">Note moyenne</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {analytics.customerStats?.averageRating?.toFixed(1) || 'N/A'} ⭐
+                </p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Graphiques et analyses détaillées */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Graphique des commandes par jour */}
+          {/* Évolution des commandes */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Commandes par jour</h2>
-            <div className="space-y-4">
-              {analytics.dailyStats.map((day, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">{day.date}</span>
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm font-medium">{day.orders} commandes</span>
-                    <span className="text-sm text-gray-500">{day.revenue}€</span>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Évolution des commandes</h3>
+            {analytics.orders && analytics.orders.length > 0 ? (
+              <div className="space-y-3">
+                {analytics.orders.slice(-7).map((order, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatDate(order.date)}
+                      </span>
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      {order.count} commande{order.count > 1 ? 's' : ''}
+                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">Aucune donnée disponible</p>
+            )}
           </div>
 
-          {/* Plats les plus populaires */}
+          {/* Évolution du chiffre d'affaires */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Plats les plus populaires</h2>
-            <div className="space-y-4">
-              {analytics.popularItems.map((item, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{item.name}</span>
-                  <span className="text-sm text-gray-600">{item.quantity} commandes</span>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Évolution du CA</h3>
+            {analytics.revenue && analytics.revenue.data && analytics.revenue.data.length > 0 ? (
+              <div className="space-y-3">
+                {analytics.revenue.data.slice(-7).map((rev, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatDate(rev.date)}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-green-600">
+                      {formatCurrency(rev.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">Aucune donnée disponible</p>
+            )}
+          </div>
+
+          {/* Articles les plus populaires */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Articles les plus populaires</h3>
+            {analytics.popularItems && analytics.popularItems.length > 0 ? (
+              <div className="space-y-3">
+                {analytics.popularItems.slice(0, 5).map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                        index === 0 ? 'bg-yellow-500' :
+                        index === 1 ? 'bg-gray-400' :
+                        index === 2 ? 'bg-orange-500' : 'bg-blue-500'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">
+                        {item.name}
+                      </span>
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      {item.orders} commande{item.orders > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">Aucune donnée disponible</p>
+            )}
+          </div>
+
+          {/* Statistiques de livraison */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistiques de livraison</h3>
+            {analytics.deliveryStats ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Temps moyen de préparation</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {analytics.deliveryStats.averagePreparationTime || 0} min
+                  </span>
                 </div>
-              ))}
-            </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Temps moyen de livraison</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {analytics.deliveryStats.averageDeliveryTime || 0} min
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Taux de satisfaction</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {analytics.deliveryStats.satisfactionRate || 0}%
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">Aucune donnée disponible</p>
+            )}
           </div>
         </div>
 
-        {/* Détails des commandes */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm border">
-          <div className="px-6 py-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">Détails des commandes</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">{analytics.completedOrders}</div>
-                <div className="text-sm text-gray-600">Commandes livrées</div>
+        {/* Résumé des performances */}
+        <div className="mt-8 bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Résumé des performances</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600 mb-2">
+                {analytics.orders?.length > 0 ? 
+                  Math.round((analytics.orders.length / getTimeRangeDays()) * 100) / 100 : 0
+                }
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-600">{analytics.cancelledOrders}</div>
-                <div className="text-sm text-gray-600">Commandes annulées</div>
+              <p className="text-sm text-gray-600">Commandes par jour</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600 mb-2">
+                {analytics.revenue?.total > 0 ? 
+                  formatCurrency(analytics.revenue.total / getTimeRangeDays()) : formatCurrency(0)
+                }
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">
-                  {analytics.totalOrders - analytics.completedOrders - analytics.cancelledOrders}
-                </div>
-                <div className="text-sm text-gray-600">En cours</div>
+              <p className="text-sm text-gray-600">CA moyen par jour</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600 mb-2">
+                {analytics.revenue?.total > 0 && analytics.orders?.length > 0 ? 
+                  formatCurrency(analytics.revenue.total / analytics.orders.length) : formatCurrency(0)
+                }
               </div>
+              <p className="text-sm text-gray-600">Panier moyen</p>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
+
+  function getTimeRangeDays() {
+    switch (timeRange) {
+      case 'week': return 7;
+      case 'month': return 30;
+      case 'year': return 365;
+      default: return 7;
+    }
+  }
 } 
