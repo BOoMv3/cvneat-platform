@@ -6,6 +6,44 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaShoppingCart, FaSpinner, FaArrowLeft, FaHeart, FaStar, FaClock, FaMotorcycle, FaSearch } from 'react-icons/fa';
 
+// Styles CSS personnalisés pour les animations
+const customStyles = `
+  @keyframes cartBounce {
+    0%, 20%, 53%, 80%, 100% {
+      transform: translate3d(0,0,0);
+    }
+    40%, 43% {
+      transform: translate3d(0,-8px,0);
+    }
+    70% {
+      transform: translate3d(0,-4px,0);
+    }
+    90% {
+      transform: translate3d(0,-2px,0);
+    }
+  }
+  
+  @keyframes cartPulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  .cart-bounce {
+    animation: cartBounce 1s ease-in-out;
+  }
+  
+  .cart-pulse {
+    animation: cartPulse 0.6s ease-in-out;
+  }
+`;
+
 // Composant pour la section du menu simplifié
 const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) => {
   const [menu, setMenu] = useState([]);
@@ -314,17 +352,17 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
                       onAddToCart(item, currentSelection.supplements, currentSelection.size);
                     }}
                     disabled={addingToCart[item.id]}
-                    className={`relative overflow-hidden px-6 py-3 rounded-xl font-medium transition-all duration-200 transform ${
+                    className={`relative overflow-hidden px-6 py-3 rounded-xl font-medium transition-all duration-300 transform ${
                       addingToCart[item.id]
-                        ? 'bg-green-500 text-white scale-95 shadow-lg'
+                        ? 'bg-green-500 text-white scale-95 shadow-xl'
                         : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700 hover:scale-105 shadow-lg'
                     }`}
                   >
                     {addingToCart[item.id] ? (
                       <>
                         <div className="absolute inset-0 bg-green-400 animate-pulse"></div>
-                        <span className="relative z-10 flex items-center">
-                          <FaShoppingCart className="mr-2 h-4 w-4 animate-bounce" />
+                        <span className="relative z-10 flex items-center cart-bounce">
+                          <FaShoppingCart className="mr-2 h-4 w-4 cart-pulse" />
                           Ajouté ! ✓
                         </span>
                       </>
@@ -390,23 +428,7 @@ export default function RestaurantPage({ params }) {
     // Animation d'ajout au panier
     setAddingToCart(prev => ({ ...prev, [item.id]: true }));
     
-    // Appeler la fonction originale
-    handleAddToCart(item, supplements, size);
-    
-    // Notification de succès avec le nom de l'article
-    setShowCartNotification(true);
-    
-    // Masquer la notification après 3 secondes
-    setTimeout(() => setShowCartNotification(false), 3000);
-    
-    // Arrêter l'animation après 1.5 secondes pour laisser le temps de voir l'effet
-    setTimeout(() => {
-      setAddingToCart(prev => ({ ...prev, [item.id]: false }));
-    }, 1500);
-  };
-
-  // Fonction pour ajouter au panier (logique simplifiée)
-  const handleAddToCart = (item, supplements = [], size = null) => {
+    // Logique d'ajout au panier
     console.log("Ajout au panier:", item, supplements, size);
     
     // Récupérer le panier actuel depuis le localStorage
@@ -447,11 +469,18 @@ export default function RestaurantPage({ params }) {
     localStorage.setItem('cart', JSON.stringify(currentCart));
     
     // Notification de succès
-    const supplementText = supplements.length > 0 ? ` avec ${supplements.length} supplément(s)` : '';
-    const sizeText = size ? ` (${size})` : '';
-    console.log(`${item.nom || item.name}${sizeText}${supplementText} ajouté au panier !`);
+    setShowCartNotification(true);
+    
+    // Masquer la notification après 3 secondes
+    setTimeout(() => setShowCartNotification(false), 3000);
+    
+    // Arrêter l'animation après 1.5 secondes pour laisser le temps de voir l'effet
+    setTimeout(() => {
+      setAddingToCart(prev => ({ ...prev, [item.id]: false }));
+    }, 1500);
   };
 
+  // Fonction pour calculer le prix final
   const calculateFinalPrice = (item, supplements, size) => {
     let basePrice = item.prix || item.price || 0;
     
@@ -530,6 +559,9 @@ export default function RestaurantPage({ params }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Styles CSS personnalisés */}
+      <style jsx>{customStyles}</style>
+      
       {/* Header avec navigation */}
       <div className="bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -609,13 +641,13 @@ export default function RestaurantPage({ params }) {
 
       {/* Notification d'ajout au panier */}
       {showCartNotification && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 animate-bounce">
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-50 cart-bounce">
           <div className="flex items-center space-x-3">
-            <div className="w-6 h-6 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-              <FaShoppingCart className="h-3 w-3" />
+            <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center cart-pulse">
+              <FaShoppingCart className="h-4 w-4" />
             </div>
             <div>
-              <p className="font-semibold">Article ajouté au panier !</p>
+              <p className="font-bold text-lg">Article ajouté au panier !</p>
               <p className="text-sm opacity-90">Votre commande a été mise à jour</p>
             </div>
           </div>
