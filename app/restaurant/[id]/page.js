@@ -13,6 +13,7 @@ const MenuSection = ({ restaurantId, restaurant }) => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedItems, setSelectedItems] = useState({}); // Pour gérer les suppléments et tailles
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -33,15 +34,33 @@ const MenuSection = ({ restaurantId, restaurant }) => {
     fetchMenu();
   }, [restaurantId]);
 
-  const handleAddToCart = (item) => {
-    console.log("Ajout au panier:", item);
+  const handleAddToCart = (item, supplements = [], size = null) => {
+    console.log("Ajout au panier:", item, supplements, size);
     
     // Récupérer le panier actuel depuis le localStorage
     const currentCart = JSON.parse(localStorage.getItem('cart') || '[]');
     
+    // Créer l'article avec suppléments et taille
+    const cartItem = {
+      id: item.id,
+      nom: item.nom || item.name,
+      prix: calculateFinalPrice(item, supplements, size),
+      quantity: 1,
+      restaurant_id: restaurantId,
+      restaurant_name: restaurant?.nom || restaurant?.name,
+      restaurant_address: restaurant?.adresse || restaurant?.address,
+      image_url: item.image_url,
+      supplements: supplements,
+      size: size,
+      base_price: item.prix || item.price
+    };
+    
     // Vérifier si l'article existe déjà dans le panier
     const existingItemIndex = currentCart.findIndex(cartItem => 
-      cartItem.id === item.id && cartItem.restaurant_id === restaurantId
+      cartItem.id === item.id && 
+      cartItem.restaurant_id === restaurantId &&
+      JSON.stringify(cartItem.supplements) === JSON.stringify(supplements) &&
+      cartItem.size === size
     );
     
     if (existingItemIndex !== -1) {
@@ -49,16 +68,6 @@ const MenuSection = ({ restaurantId, restaurant }) => {
       currentCart[existingItemIndex].quantity += 1;
     } else {
       // Ajouter un nouvel article
-      const cartItem = {
-        id: item.id,
-        nom: item.nom || item.name,
-        prix: item.prix || item.price,
-        quantity: 1,
-        restaurant_id: restaurantId,
-        restaurant_name: restaurant?.nom || restaurant?.name,
-        restaurant_address: restaurant?.adresse || restaurant?.address,
-        image_url: item.image_url
-      };
       currentCart.push(cartItem);
     }
     
@@ -66,7 +75,42 @@ const MenuSection = ({ restaurantId, restaurant }) => {
     localStorage.setItem('cart', JSON.stringify(currentCart));
     
     // Notification de succès
-    alert(`${item.nom || item.name} ajouté au panier !`);
+    const supplementText = supplements.length > 0 ? ` avec ${supplements.length} supplément(s)` : '';
+    const sizeText = size ? ` (${size})` : '';
+    alert(`${item.nom || item.name}${sizeText}${supplementText} ajouté au panier !`);
+  };
+
+  const calculateFinalPrice = (item, supplements, size) => {
+    let basePrice = item.prix || item.price || 0;
+    
+    // Ajouter le prix de la taille pour les boissons
+    if (size && item.is_drink) {
+      switch (size) {
+        case 'small':
+          basePrice = item.drink_price_small || basePrice;
+          break;
+        case 'medium':
+          basePrice = item.drink_price_medium || basePrice;
+          break;
+        case 'large':
+          basePrice = item.drink_price_large || basePrice;
+          break;
+        default:
+          break;
+      }
+    }
+    
+    // Ajouter le prix des suppléments
+    const supplementsPrice = supplements.reduce((total, supplement) => total + (supplement.prix || 0), 0);
+    
+    return basePrice + supplementsPrice;
+  };
+
+  const handleItemSelection = (itemId, supplements, size) => {
+    setSelectedItems(prev => ({
+      ...prev,
+      [itemId]: { supplements, size }
+    }));
   };
 
   if (loading) {
@@ -122,30 +166,109 @@ const MenuSection = ({ restaurantId, restaurant }) => {
             <span className="mr-2">🍽️</span>
             {category}
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {items.map(item => (
-              <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 rounded-lg px-3 transition-colors duration-200">
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 text-lg">{item.nom || item.name}</h3>
-                      {item.description && (
-                        <p className="text-gray-600 mt-1 text-sm leading-relaxed">{item.description}</p>
+              <div key={item.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-lg">{item.nom || item.name}</h3>
+                    {item.description && (
+                      <p className="text-gray-600 mt-1 text-sm leading-relaxed">{item.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-3 ml-4">
+                    <span className="font-bold text-orange-600 text-lg">
+                      {typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€
+                    </span>
+                  </div>
+                </div>
+
+                {/* Gestion des tailles pour les boissons */}
+                {item.is_drink && (
+                  <div className="mb-3">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Choisir la taille :</p>
+                    <div className="flex space-x-2">
+                      {item.drink_price_small && (
+                        <button
+                          onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'small')}
+                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            selectedItems[item.id]?.size === 'small'
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Petit ({item.drink_price_small.toFixed(2)}€)
+                        </button>
+                      )}
+                      {item.drink_price_medium && (
+                        <button
+                          onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'medium')}
+                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            selectedItems[item.id]?.size === 'medium'
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Moyen ({item.drink_price_medium.toFixed(2)}€)
+                        </button>
+                      )}
+                      {item.drink_price_large && (
+                        <button
+                          onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'large')}
+                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            selectedItems[item.id]?.size === 'large'
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Grand ({item.drink_price_large.toFixed(2)}€)
+                        </button>
                       )}
                     </div>
-                    <div className="flex items-center space-x-3 ml-4">
-                      <span className="font-bold text-orange-600 text-lg">
-                        {typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€
-                      </span>
-                      <button 
-                        onClick={() => handleAddToCart(item)}
-                        className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full p-3 hover:from-orange-600 hover:to-red-600 transition-all duration-200 transform hover:scale-105 shadow-lg"
-                        aria-label={`Ajouter ${item.nom || item.name} au panier`}
-                      >
-                        <FaShoppingCart className="h-4 w-4" />
-                      </button>
+                  </div>
+                )}
+
+                {/* Gestion des suppléments */}
+                {item.supplements && item.supplements.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Suppléments disponibles :</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {item.supplements.map(supplement => (
+                        <label key={supplement.id} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(selectedItems[item.id]?.supplements || []).some(s => s.id === supplement.id)}
+                            onChange={(e) => {
+                              const currentSupplements = selectedItems[item.id]?.supplements || [];
+                              let newSupplements;
+                              if (e.target.checked) {
+                                newSupplements = [...currentSupplements, supplement];
+                              } else {
+                                newSupplements = currentSupplements.filter(s => s.id !== supplement.id);
+                              }
+                              handleItemSelection(item.id, newSupplements, selectedItems[item.id]?.size);
+                            }}
+                            className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+                          />
+                          <span className="text-sm text-gray-700">{supplement.nom} (+{supplement.prix.toFixed(2)}€)</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
+                )}
+
+                {/* Bouton d'ajout au panier */}
+                <div className="flex justify-end">
+                  <button 
+                    onClick={() => {
+                      const currentSelection = selectedItems[item.id] || { supplements: [], size: null };
+                      handleAddToCart(item, currentSelection.supplements, currentSelection.size);
+                    }}
+                    className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
+                  >
+                    <FaShoppingCart className="inline-block mr-2 h-4 w-4" />
+                    Ajouter au panier
+                  </button>
                 </div>
               </div>
             ))}

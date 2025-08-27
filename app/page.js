@@ -29,7 +29,7 @@ import {
   FaCoffee,
   FaIceCream
 } from 'react-icons/fa';
-import AdBanner from '@/components/AdBanner';
+
 
 // Desactiver le rendu statique pour cette page
 export const dynamic = 'force-dynamic';
@@ -311,23 +311,6 @@ export default function Home() {
               );
             })}
           </div>
-        </section>
-
-        {/* Encart publicitaire amélioré */}
-        <section className="mb-12">
-          <AdBanner
-            title="Marché de Producteurs Locaux à Ganges !"
-            image="/ads/marche-ganges.jpg"
-            description="Découvrez les produits frais et locaux tous les samedis matin sur la place du marché à Ganges. Soutenez les commerçants du coin !"
-            link="https://www.ganges.fr/marche"
-            sponsor="Ville de Ganges"
-            style={{ 
-              boxShadow: '0 20px 40px 0 rgba(255,193,7,0.3)', 
-              background: 'linear-gradient(135deg, #fffbe6 0%, #fffde4 100%)', 
-              border: '3px solid #ffe082',
-              borderRadius: '24px'
-            }}
-          />
         </section>
 
         {/* Section des restaurants avec défilement vertical élégant */}
