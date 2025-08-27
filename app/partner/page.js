@@ -27,6 +27,8 @@ export default function PartnerDashboard() {
     totalRevenue: 0,
     recentOrders: []
   });
+  const [orders, setOrders] = useState([]);
+  const [showOrdersTab, setShowOrdersTab] = useState(false);
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -36,10 +38,21 @@ export default function PartnerDashboard() {
     description: '',
     prix: '',
     category: '',
-    disponible: true
+    disponible: true,
+    image_url: '',
+    supplements: [],
+    boisson_taille: '',
+    prix_taille: ''
   });
   const [editingMenu, setEditingMenu] = useState(null);
   const router = useRouter();
+
+  const [supplementForm, setSupplementForm] = useState({
+    nom: '',
+    prix: 0
+  });
+
+  const [showSupplementModal, setShowSupplementModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,6 +91,7 @@ export default function PartnerDashboard() {
       setRestaurant(resto);
       await fetchDashboardData(resto.id);
       await fetchMenu(resto.id);
+      await fetchOrders(resto.id);
       setLoading(false);
     };
 
@@ -127,7 +141,17 @@ export default function PartnerDashboard() {
 
       if (response.ok) {
         setShowMenuModal(false);
-        setMenuForm({ nom: '', description: '', prix: '', category: '', disponible: true });
+        setMenuForm({ 
+          nom: '', 
+          description: '', 
+          prix: '', 
+          category: '', 
+          disponible: true,
+          image_url: '',
+          supplements: [],
+          boisson_taille: '',
+          prix_taille: ''
+        });
         setEditingMenu(null);
         await fetchMenu(restaurant.id);
       }
@@ -166,6 +190,86 @@ export default function PartnerDashboard() {
     } catch (error) {
       console.error('Erreur mise a jour commande:', error);
     }
+  };
+
+  const addSupplement = () => {
+    if (supplementForm.nom && supplementForm.prix > 0) {
+      setMenuForm(prev => ({
+        ...prev,
+        supplements: [...prev.supplements, { ...supplementForm, id: Date.now() }]
+      }));
+      setSupplementForm({ nom: '', prix: 0 });
+      setShowSupplementModal(false);
+    }
+  };
+
+  const removeSupplement = (index) => {
+    setMenuForm(prev => ({
+      ...prev,
+      supplements: prev.supplements.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('restaurantId', restaurant.id);
+
+        const response = await fetch('/api/partner/upload-image', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const { imageUrl } = await response.json();
+          setMenuForm(prev => ({ ...prev, image_url: imageUrl }));
+        }
+      } catch (error) {
+        console.error('Erreur upload image:', error);
+      }
+    }
+  };
+
+  const fetchOrders = async (restaurantId) => {
+    try {
+      const response = await fetch(`/api/partner/orders?restaurantId=${restaurantId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setOrders(data);
+        
+        // Calculer les statistiques
+        const today = new Date().toDateString();
+        const todayOrders = data.filter(order => 
+          new Date(order.created_at).toDateString() === today
+        );
+        
+        const pendingOrders = data.filter(order => 
+          order.status === 'en_attente'
+        );
+        
+        const totalRevenue = data.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
+        const todayRevenue = todayOrders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
+        
+        setStats({
+          todayOrders: todayOrders.length,
+          pendingOrders: pendingOrders.length,
+          totalRevenue: todayRevenue,
+          recentOrders: data.slice(0, 5)
+        });
+      }
+    } catch (error) {
+      console.error('Erreur récupération commandes:', error);
+    }
+  };
+
+  const calculateCommission = (totalAmount) => {
+    const amount = parseFloat(totalAmount || 0);
+    const commission = amount * 0.20; // 20% pour CVN'EAT
+    const restaurantRevenue = amount - commission;
+    return { commission, restaurantRevenue };
   };
 
   if (loading) {
@@ -337,12 +441,166 @@ export default function PartnerDashboard() {
         )}
 
         {activeTab === 'orders' && (
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-6 border-b">
-              <h2 className="text-lg font-semibold">Gestion des commandes</h2>
+          <div className="space-y-6">
+            {/* Statistiques des commandes */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <FaUtensils className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total commandes</p>
+                    <p className="text-2xl font-semibold text-gray-900">{orders.length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <FaClock className="h-6 w-6 text-yellow-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">En attente</p>
+                    <p className="text-2xl font-semibold text-gray-900">{stats.pendingOrders}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <FaEuroSign className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Chiffre d'affaires</p>
+                    <p className="text-2xl font-semibold text-gray-900">{stats.totalRevenue.toFixed(2)} €</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <FaEuroSign className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Vos gains (80%)</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {(stats.totalRevenue * 0.8).toFixed(2)} €
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="p-6">
-              <p className="text-gray-500">Interface de gestion des commandes en cours de developpement...</p>
+
+            {/* Liste des commandes */}
+            <div className="bg-white rounded-lg shadow-sm">
+              <div className="p-6 border-b">
+                <h2 className="text-lg font-semibold">Gestion des commandes</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Gérez vos commandes et calculez vos gains (CVN'EAT prélève 20% de commission)
+                </p>
+              </div>
+              <div className="p-6">
+                {orders.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Aucune commande pour le moment</p>
+                ) : (
+                  <div className="space-y-4">
+                    {orders.map((order) => {
+                      const { commission, restaurantRevenue } = calculateCommission(order.total_amount);
+                      return (
+                        <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h3 className="font-medium text-gray-900">Commande #{order.id}</h3>
+                              <p className="text-sm text-gray-600">
+                                {new Date(order.created_at).toLocaleString('fr-FR')}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                Client: {order.users?.nom} {order.users?.prenom}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-semibold text-gray-900">
+                                {order.total_amount} €
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Commission CVN'EAT: {commission.toFixed(2)} €
+                              </p>
+                              <p className="text-sm font-medium text-green-600">
+                                Votre gain: {restaurantRevenue.toFixed(2)} €
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Articles de la commande */}
+                          {order.order_items && order.order_items.length > 0 && (
+                            <div className="mb-3">
+                              <p className="text-sm font-medium text-gray-700 mb-2">Articles :</p>
+                              <div className="space-y-1">
+                                {order.order_items.map((item, index) => (
+                                  <div key={index} className="flex justify-between text-sm">
+                                    <span className="text-gray-600">
+                                      {item.quantity}x {item.nom}
+                                    </span>
+                                    <span className="text-gray-900">{item.prix} €</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Statut et actions */}
+                          <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              order.status === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
+                              order.status === 'acceptee' ? 'bg-blue-100 text-blue-800' :
+                              order.status === 'pret' ? 'bg-green-100 text-green-800' :
+                              order.status === 'livree' ? 'bg-gray-100 text-gray-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {order.status === 'en_attente' ? 'En attente' :
+                               order.status === 'acceptee' ? 'Acceptée' :
+                               order.status === 'pret' ? 'Prête' :
+                               order.status === 'livree' ? 'Livrée' :
+                               'Annulée'}
+                            </span>
+                            
+                            <div className="flex space-x-2">
+                              {order.status === 'en_attente' && (
+                                <>
+                                  <button
+                                    onClick={() => updateOrderStatus(order.id, 'acceptee')}
+                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
+                                  >
+                                    Accepter
+                                  </button>
+                                  <button
+                                    onClick={() => updateOrderStatus(order.id, 'refusee')}
+                                    className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                                  >
+                                    Refuser
+                                  </button>
+                                </>
+                              )}
+                              {order.status === 'acceptee' && (
+                                <button
+                                  onClick={() => updateOrderStatus(order.id, 'pret')}
+                                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
+                                >
+                                  Marquer comme prête
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -366,30 +624,79 @@ export default function PartnerDashboard() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {menu.map((item) => (
-                      <div key={item.id} className="border rounded-lg p-4">
+                      <div key={item.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                        {/* Image du plat */}
+                        {item.image_url && (
+                          <div className="mb-3">
+                            <img 
+                              src={item.image_url} 
+                              alt={item.nom}
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                          </div>
+                        )}
+                        
                         <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium">{item.nom}</h3>
+                          <h3 className="font-medium text-gray-900">{item.nom}</h3>
                           <div className="flex space-x-2">
                             <button
                               onClick={() => {
                                 setEditingMenu(item);
-                                setMenuForm(item);
+                                setMenuForm({
+                                  ...item,
+                                  supplements: item.supplements || [],
+                                  boisson_taille: item.boisson_taille || '',
+                                  prix_taille: item.prix_taille || ''
+                                });
                                 setShowMenuModal(true);
                               }}
-                              className="text-blue-600 hover:text-blue-800"
+                              className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
                             >
                               <FaEdit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteMenu(item.id)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
                             >
                               <FaTrash className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
+                        
                         <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                        <p className="font-semibold">{item.prix} €</p>
+                        
+                        {/* Prix et catégorie */}
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="font-semibold text-lg text-green-600">{item.prix} €</p>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {item.category}
+                          </span>
+                        </div>
+                        
+                        {/* Suppléments */}
+                        {item.supplements && item.supplements.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-xs text-gray-500 mb-1">Suppléments :</p>
+                            <div className="flex flex-wrap gap-1">
+                              {item.supplements.map((supp, index) => (
+                                <span key={index} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                  {supp.nom} (+{supp.prix}€)
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Taille de boisson */}
+                        {item.boisson_taille && (
+                          <div className="mb-2">
+                            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                              Taille: {item.boisson_taille}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Statut de disponibilité */}
                         <span className={`inline-block px-2 py-1 rounded-full text-xs ${
                           item.disponible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
@@ -408,23 +715,39 @@ export default function PartnerDashboard() {
       {/* Menu Modal */}
       {showMenuModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">
               {editingMenu ? 'Modifier le plat' : 'Ajouter un plat'}
             </h3>
             <form onSubmit={handleMenuSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom du plat
-                </label>
-                <input
-                  type="text"
-                  value={menuForm.nom}
-                  onChange={(e) => setMenuForm({...menuForm, nom: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nom du plat
+                  </label>
+                  <input
+                    type="text"
+                    value={menuForm.nom}
+                    onChange={(e) => setMenuForm({...menuForm, nom: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prix (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={menuForm.prix}
+                    onChange={(e) => setMenuForm({...menuForm, prix: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
               </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description
@@ -436,48 +759,121 @@ export default function PartnerDashboard() {
                   rows="3"
                 />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Categorie
+                  </label>
+                  <select
+                    value={menuForm.category}
+                    onChange={(e) => setMenuForm({...menuForm, category: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selectionner une categorie</option>
+                    <option value="entree">Entree</option>
+                    <option value="plat">Plat principal</option>
+                    <option value="dessert">Dessert</option>
+                    <option value="boisson">Boisson</option>
+                  </select>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="disponible"
+                    checked={menuForm.disponible}
+                    onChange={(e) => setMenuForm({...menuForm, disponible: e.target.checked})}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="disponible" className="ml-2 block text-sm text-gray-900">
+                    Disponible
+                  </label>
+                </div>
+              </div>
+
+              {/* Upload d'image */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prix (€)
+                  Image du plat
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  value={menuForm.prix}
-                  onChange={(e) => setMenuForm({...menuForm, prix: e.target.value})}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
                 />
+                {menuForm.image_url && (
+                  <div className="mt-2">
+                    <img src={menuForm.image_url} alt="Aperçu" className="w-20 h-20 object-cover rounded-lg" />
+                  </div>
+                )}
               </div>
+
+              {/* Gestion des suppléments */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Categorie
-                </label>
-                <select
-                  value={menuForm.category}
-                  onChange={(e) => setMenuForm({...menuForm, category: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Selectionner une categorie</option>
-                  <option value="entree">Entree</option>
-                  <option value="plat">Plat principal</option>
-                  <option value="dessert">Dessert</option>
-                  <option value="boisson">Boisson</option>
-                </select>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Suppléments disponibles
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowSupplementModal(true)}
+                    className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                  >
+                    + Ajouter
+                  </button>
+                </div>
+                {menuForm.supplements.length > 0 && (
+                  <div className="space-y-2">
+                    {menuForm.supplements.map((supp, index) => (
+                      <div key={supp.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span className="text-sm">{supp.nom} - {supp.prix}€</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSupplement(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="disponible"
-                  checked={menuForm.disponible}
-                  onChange={(e) => setMenuForm({...menuForm, disponible: e.target.checked})}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="disponible" className="ml-2 block text-sm text-gray-900">
-                  Disponible
-                </label>
-              </div>
-              <div className="flex space-x-3">
+
+              {/* Gestion des tailles de boissons */}
+              {menuForm.category === 'boisson' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Taille
+                    </label>
+                    <input
+                      type="text"
+                      value={menuForm.boisson_taille}
+                      onChange={(e) => setMenuForm({...menuForm, boisson_taille: e.target.value})}
+                      placeholder="ex: 33cl, 50cl, 1L"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Prix pour cette taille (€)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={menuForm.prix_taille}
+                      onChange={(e) => setMenuForm({...menuForm, prix_taille: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex space-x-3 pt-4">
                 <button
                   type="submit"
                   className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
@@ -488,7 +884,17 @@ export default function PartnerDashboard() {
                   type="button"
                   onClick={() => {
                     setShowMenuModal(false);
-                    setMenuForm({ nom: '', description: '', prix: '', category: '', disponible: true });
+                    setMenuForm({ 
+                      nom: '', 
+                      description: '', 
+                      prix: '', 
+                      category: '', 
+                      disponible: true,
+                      image_url: '',
+                      supplements: [],
+                      boisson_taille: '',
+                      prix_taille: ''
+                    });
                     setEditingMenu(null);
                   }}
                   className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
@@ -497,6 +903,57 @@ export default function PartnerDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour ajouter un supplément */}
+      {showSupplementModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 w-full max-w-md">
+            <h4 className="text-lg font-semibold mb-4">Ajouter un supplément</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom du supplément
+                </label>
+                <input
+                  type="text"
+                  value={supplementForm.nom}
+                  onChange={(e) => setSupplementForm({...supplementForm, nom: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ex: Extra fromage, Bacon, etc."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Prix (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={supplementForm.prix}
+                  onChange={(e) => setSupplementForm({...supplementForm, prix: parseFloat(e.target.value)})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={addSupplement}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Ajouter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSupplementModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

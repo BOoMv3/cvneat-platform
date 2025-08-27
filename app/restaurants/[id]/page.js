@@ -265,13 +265,13 @@ export default function RestaurantDetail({ params }) {
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="container mx-auto px-4 py-4">
           <button 
-            onClick={() => router.push('/restaurants')}
+            onClick={() => router.push('/')}
             className="flex items-center space-x-2 text-gray-600 hover:text-orange-600 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="font-medium">Retour aux restaurants</span>
+            <span className="font-medium">Retour à l'accueil</span>
           </button>
         </div>
       </div>
