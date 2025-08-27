@@ -191,6 +191,27 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-black bg-opacity-60"></div>
         
+        {/* Logo CVN'EAT en haut à gauche */}
+        <div className="absolute top-4 left-4 z-20">
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                  <FaUtensils className="h-5 w-5 text-orange-600" />
+                </div>
+              </div>
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-3 border-white shadow-md animate-pulse"></div>
+              <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white"></div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight">
+                CVN'EAT
+              </span>
+              <span className="text-xs text-gray-500 -mt-1 font-medium">Excellence culinaire</span>
+            </div>
+          </div>
+        </div>
+        
         {/* Actions utilisateur en haut à droite */}
         <div className="absolute top-4 right-4 z-20 flex items-center space-x-4">
           {user ? (
