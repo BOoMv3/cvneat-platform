@@ -12,7 +12,6 @@ import {
   FaClock, 
   FaMotorcycle, 
   FaFilter, 
-  FaMapMarkerAlt,
   FaHeart,
   FaShoppingCart,
   FaTimes,
@@ -22,8 +21,13 @@ import {
   FaSignInAlt,
   FaUserPlus,
   FaGift,
-  FaArrowRight,
-  FaCheck
+  FaFire,
+  FaLeaf,
+  FaUtensils,
+  FaPizzaSlice,
+  FaHamburger,
+  FaCoffee,
+  FaIceCream
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 
@@ -36,11 +40,7 @@ export default function Home() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [menuLoading, setMenuLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recommended');
@@ -49,11 +49,18 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
   const [isClient, setIsClient] = useState(false);
-  const [addingToCart, setAddingToCart] = useState({});
-  const [showCartNotification, setShowCartNotification] = useState(false);
-  const [lastAddedItem, setLastAddedItem] = useState(null);
   const [showFloatingCart, setShowFloatingCart] = useState(false);
-  const [favoritesLoading, setFavoritesLoading] = useState(false);
+
+  // Catégories de restaurants avec icônes et couleurs
+  const categories = [
+    { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-purple-500 to-pink-500' },
+    { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-red-500 to-orange-500' },
+    { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-yellow-500 to-orange-500' },
+    { id: 'coffee', name: 'Café', icon: FaCoffee, color: 'from-amber-600 to-yellow-600' },
+    { id: 'dessert', name: 'Desserts', icon: FaIceCream, color: 'from-pink-400 to-purple-400' },
+    { id: 'healthy', name: 'Healthy', icon: FaLeaf, color: 'from-green-500 to-emerald-500' },
+    { id: 'fast', name: 'Fast Food', icon: FaFire, color: 'from-orange-500 to-red-500' }
+  ];
 
   useEffect(() => {
     setIsClient(true);
@@ -66,7 +73,6 @@ export default function Home() {
       setUser(user);
       
       if (user) {
-        // Recuperer les points de fidelite
         try {
           const { data: userData } = await supabase
             .from('users')
@@ -87,25 +93,18 @@ export default function Home() {
 
     const fetchRestaurants = async () => {
       try {
-        console.log('Debut du chargement des restaurants...');
         const response = await fetch('/api/restaurants');
-        console.log('Statut de la reponse:', response.status);
-        
         const data = await response.json();
-        console.log('Donnees recues:', data);
         
         if (!response.ok) {
-          console.error('Erreur detaillee:', data);
           throw new Error(data.message || 'Erreur lors du chargement des restaurants');
         }
         
         if (!Array.isArray(data)) {
-          console.error('Les donnees recues ne sont pas un tableau:', data);
           throw new Error('Format de donnees invalide');
         }
         
         setRestaurants(data);
-        console.log('Restaurants charges avec succes:', data.length);
       } catch (error) {
         console.error('Erreur lors du chargement des restaurants:', error);
         setError(error.message);
@@ -123,174 +122,8 @@ export default function Home() {
     return;
   };
 
-  const addToCart = async (item) => {
-    // Verifier si l'utilisateur est connecte
-    if (!user) {
-      alert('Vous devez etre connecte pour ajouter des articles au panier.');
-      router.push('/login');
-      return;
-    }
-
-    // Animation d'ajout
-    setAddingToCart(prev => ({ ...prev, [item.id]: true }));
-    setLastAddedItem(item);
-
-    let deliveryFee = cart.length > 0 ? getDeliveryFee() : (selectedRestaurant?.deliveryFee || selectedRestaurant?.frais_livraison || 2.50);
-
-    // Calculer les frais de livraison si le panier est vide
-    if (cart.length === 0 && selectedRestaurant && user) {
-      try {
-        const { data: userAddress } = await supabase
-          .from('user_addresses')
-          .select('address, city, postal_code')
-          .eq('user_id', user.id)
-          .is('is_default', true)
-          .single();
-        
-        const fullDeliveryAddress = userAddress ? `${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}` : null;
-
-        if (fullDeliveryAddress) {
-          const response = await fetch('/api/delivery/calculate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              restaurantAddress: selectedRestaurant.address,
-              deliveryAddress: fullDeliveryAddress
-            })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.livrable) {
-              deliveryFee = data.frais_livraison;
-            } else {
-              alert(`Livraison impossible : ${data.message}`);
-              setAddingToCart(prev => ({ ...prev, [item.id]: false }));
-              return;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Erreur calcul frais livraison, utilisation des frais par defaut:', error);
-      }
-    }
-
-    setCart(prevCart => {
-      const existingItem = prevCart.find(i => i.id === item.id);
-      let newCart;
-      if (existingItem) {
-        newCart = prevCart.map(i =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      } else {
-        newCart = [...prevCart, { ...item, quantity: 1 }];
-      }
-      
-      const cartData = {
-        items: newCart,
-        restaurant: {
-          id: selectedRestaurant.id,
-          nom: selectedRestaurant.nom,
-          adresse: selectedRestaurant.adresse || selectedRestaurant.address || '',
-          city: selectedRestaurant.city || '',
-        },
-        frais_livraison: deliveryFee
-      };
-      safeLocalStorage.setJSON('cart', cartData);
-      
-      return newCart;
-    });
-
-    // Notification visuelle
-    setShowCartNotification(true);
-    setTimeout(() => setShowCartNotification(false), 2000);
-    
-    // Arrêter l'animation après un délai
-    setTimeout(() => {
-      setAddingToCart(prev => ({ ...prev, [item.id]: false }));
-    }, 500);
-  };
-
-  const getDeliveryFee = () => {
-    const savedCart = safeLocalStorage.getJSON('cart');
-    if (savedCart && savedCart.frais_livraison !== undefined) {
-      return savedCart.frais_livraison;
-    }
-    return 2.50; // Prix par défaut
-  };
-
-  const removeFromCart = (itemId) => {
-    setCart(prevCart => {
-      const newCart = prevCart.filter(item => item.id !== itemId);
-      
-      // Récupérer les frais de livraison existants
-      let fraisLivraison = 2.50;
-      const savedCart = safeLocalStorage.getJSON('cart');
-      if (savedCart) {
-        try {
-          fraisLivraison = savedCart.frais_livraison || 2.50;
-        } catch (e) {
-          console.error('Erreur lecture panier:', e);
-        }
-      }
-      
-      const cartData = {
-        items: newCart,
-        restaurant: selectedRestaurant,
-        frais_livraison: fraisLivraison
-      };
-      safeLocalStorage.setJSON('cart', cartData);
-      return newCart;
-    });
-  };
-
-  const updateQuantity = (itemId, quantity) => {
-    if (quantity < 1) {
-      removeFromCart(itemId);
-      return;
-    }
-    setCart(prevCart => {
-      const newCart = prevCart.map(item =>
-        item.id === itemId ? { ...item, quantity } : item
-      );
-      
-      // Récupérer les frais de livraison existants
-      let fraisLivraison = 2.50;
-      const savedCart = safeLocalStorage.getJSON('cart');
-      if (savedCart) {
-        try {
-          fraisLivraison = savedCart.frais_livraison || 2.50;
-        } catch (e) {
-          console.error('Erreur lecture panier:', e);
-        }
-      }
-      
-      const cartData = {
-        items: newCart,
-        restaurant: selectedRestaurant,
-        frais_livraison: fraisLivraison
-      };
-      safeLocalStorage.setJSON('cart', cartData);
-      return newCart;
-    });
-  };
-
-  const getSubtotal = () => {
-    return cart.reduce((total, item) => total + ((item.prix || item.price || 0) * (item.quantity || 0)), 0);
-  };
-
-  const getTotal = () => {
-    return getSubtotal() + getDeliveryFee();
-  };
-
   const handleRestaurantClick = (restaurant) => {
     router.push(`/restaurants/${restaurant.id}`);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedRestaurant(null);
-    setMenu([]);
   };
 
   const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
@@ -315,57 +148,47 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header avec barre de recherche */}
-      <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo CVN'Eat */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      {/* Header moderne avec barre de recherche intégrée */}
+      <header className="bg-white shadow-lg sticky top-0 z-40 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between mb-6">
+            {/* Logo CVN'Eat avec design moderne */}
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-orange-500 rounded-full flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-xl">C</span>
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                <span className="text-white font-bold text-2xl">C</span>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">CVN'Eat</h1>
-            </div>
-
-            {/* Barre de recherche */}
-            <div className="flex-1 max-w-2xl mx-8">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Rechercher un restaurant, un plat..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  CVN'Eat
+                </h1>
+                <p className="text-sm text-gray-500 -mt-1">Livraison de qualité</p>
               </div>
             </div>
 
             {/* Actions utilisateur */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               {user ? (
                 <>
-                  <div className="flex items-center space-x-2">
-                    <FaGift className="text-orange-500" />
-                    <span className="text-sm font-medium text-gray-700">{userPoints} pts</span>
+                  <div className="flex items-center space-x-3 bg-gradient-to-r from-orange-400 to-pink-400 text-white px-4 py-2 rounded-full shadow-lg">
+                    <FaGift className="text-white" />
+                    <span className="font-semibold">{userPoints} pts</span>
                   </div>
                   <Link href="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
-                    <FaUser className="h-5 w-5" />
-                    <span className="hidden sm:block">Profil</span>
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center">
+                      <FaUser className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <span className="hidden sm:block font-medium">Profil</span>
                   </Link>
                 </>
               ) : (
                 <>
                   <Link href="/login" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
                     <FaSignInAlt className="h-5 w-5" />
-                    <span className="hidden sm:block">Connexion</span>
+                    <span className="hidden sm:block font-medium">Connexion</span>
                   </Link>
-                  <Link href="/register" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
-                    <FaUserPlus className="h-5 w-5" />
-                    <span className="hidden sm:block">Inscription</span>
+                  <Link href="/register" className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                    Inscription
                   </Link>
                 </>
               )}
@@ -374,14 +197,30 @@ export default function Home() {
               {cart.length > 0 && (
                 <button
                   onClick={() => setShowFloatingCart(!showFloatingCart)}
-                  className="relative p-2 text-gray-700 hover:text-purple-600 transition-colors"
+                  className="relative p-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                 >
                   <FaShoppingCart className="h-6 w-6" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold animate-pulse">
                     {cart.length}
                   </span>
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Barre de recherche moderne intégrée */}
+          <div className="max-w-3xl mx-auto">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                <FaSearch className="h-6 w-6 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Rechercher un restaurant, un plat, une cuisine..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-16 pr-6 py-4 text-lg border-2 border-gray-200 rounded-2xl leading-6 bg-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all duration-200 shadow-lg"
+              />
             </div>
           </div>
         </div>
@@ -389,186 +228,252 @@ export default function Home() {
 
       {/* Panier flottant */}
       {showFloatingCart && cart.length > 0 && (
-        <div className="fixed top-20 right-4 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 z-50 min-w-80">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-900">Votre panier</h3>
+        <div className="fixed top-24 right-6 bg-white rounded-3xl shadow-2xl border border-gray-200 p-6 z-50 min-w-96">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-gray-900">Votre panier</h3>
             <button
               onClick={() => setShowFloatingCart(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <FaTimes className="h-4 w-4" />
+              <FaTimes className="h-5 w-5" />
             </button>
           </div>
           
-          <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+          <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
             {cart.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm">
-                <span className="flex-1">{item.nom}</span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
-                    className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200"
-                  >
-                    <FaMinus className="h-3 w-3" />
+              <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="flex-1 font-medium text-gray-800">{item.nom}</span>
+                <div className="flex items-center space-x-3">
+                  <button className="w-8 h-8 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors">
+                    <FaMinus className="h-3 w-3 text-gray-600" />
                   </button>
-                  <span className="w-8 text-center">{item.quantity || 1}</span>
-                  <button
-                    onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
-                    className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200"
-                  >
+                  <span className="w-10 text-center font-semibold text-gray-900">{item.quantity || 1}</span>
+                  <button className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full flex items-center justify-center hover:from-purple-600 hover:to-pink-600 transition-all duration-200">
                     <FaPlus className="h-3 w-3" />
                   </button>
                 </div>
-                <span className="font-medium">{(item.prix || 0) * (item.quantity || 1)}€</span>
+                <span className="font-bold text-lg text-gray-900 ml-4">{(item.prix || 0) * (item.quantity || 1)}€</span>
               </div>
             ))}
           </div>
           
-          <div className="border-t pt-3">
-            <div className="flex justify-between mb-3">
-              <span className="font-medium">Total:</span>
-              <span className="font-bold text-lg">{getTotal().toFixed(2)}€</span>
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex justify-between mb-4">
+              <span className="text-lg font-semibold text-gray-700">Total:</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">0.00€</span>
             </div>
             <Link
               href="/checkout"
-              className="block w-full bg-purple-600 text-white text-center py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+              className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center py-4 px-6 rounded-2xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
-              Commander
+              Commander maintenant
             </Link>
           </div>
         </div>
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Section "Tous nos restaurants" */}
+        {/* Section des catégories */}
         <section className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Tous nos restaurants</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Explorez par catégorie</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            {categories.map((category) => {
+              const Icon = category.icon;
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`group p-4 rounded-2xl text-center transition-all duration-300 transform hover:scale-105 ${
+                    selectedCategory === category.id
+                      ? 'bg-gradient-to-br ' + category.color + ' text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-700 hover:shadow-lg border border-gray-200 hover:border-purple-300'
+                  }`}
+                >
+                  <div className={`w-12 h-12 mx-auto mb-3 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                    selectedCategory === category.id 
+                      ? 'bg-white/20 backdrop-blur-sm' 
+                      : 'bg-gray-50 group-hover:bg-purple-50'
+                  }`}>
+                    <Icon className={`h-8 w-8 transition-all duration-300 ${
+                      selectedCategory === category.id 
+                        ? 'text-white transform scale-110' 
+                        : 'text-gray-600 group-hover:text-purple-600'
+                    }`} />
+                  </div>
+                  <span className={`text-sm font-medium transition-colors duration-300 ${
+                    selectedCategory === category.id 
+                      ? 'text-white font-semibold' 
+                      : 'text-gray-700 group-hover:text-purple-700'
+                  }`}>
+                    {category.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Encart publicitaire amélioré */}
+        <section className="mb-12">
+          <AdBanner
+            title="Marché de Producteurs Locaux à Ganges !"
+            image="/ads/marche-ganges.jpg"
+            description="Découvrez les produits frais et locaux tous les samedis matin sur la place du marché à Ganges. Soutenez les commerçants du coin !"
+            link="https://www.ganges.fr/marche"
+            sponsor="Ville de Ganges"
+            style={{ 
+              boxShadow: '0 20px 40px 0 rgba(255,193,7,0.3)', 
+              background: 'linear-gradient(135deg, #fffbe6 0%, #fffde4 100%)', 
+              border: '3px solid #ffe082',
+              borderRadius: '24px'
+            }}
+          />
+        </section>
+
+        {/* Section des restaurants avec défilement vertical élégant */}
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Restaurants populaires</h2>
+              <p className="text-gray-600">Découvrez les meilleurs restaurants de votre région</p>
+            </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="flex items-center gap-3 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl hover:border-purple-400 hover:shadow-lg transition-all duration-200"
             >
-              <FaFilter />
-              Filtres
+              <FaFilter className="h-5 w-5" />
+              <span className="font-medium">Filtres</span>
             </button>
           </div>
 
           {/* Filtres et tri */}
           {showFilters && (
-            <div className="bg-white rounded-lg p-4 mb-6 shadow-sm">
-              <div className="flex flex-wrap gap-4">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="recommended">Recommandés</option>
-                  <option value="rating">Mieux notés</option>
-                  <option value="delivery_time">Plus rapides</option>
-                  <option value="distance">Plus proches</option>
-                </select>
+            <div className="bg-white rounded-3xl p-6 mb-8 shadow-xl border border-gray-100">
+              <div className="flex flex-wrap gap-6 items-center">
+                <div className="flex items-center space-x-4">
+                  <span className="text-gray-700 font-medium">Trier par:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition-all duration-200"
+                  >
+                    <option value="recommended">Recommandés</option>
+                    <option value="rating">Mieux notés</option>
+                    <option value="delivery_time">Plus rapides</option>
+                    <option value="distance">Plus proches</option>
+                  </select>
+                </div>
                 
-                <div className="text-gray-600 text-sm">
+                <div className="text-gray-600 text-sm bg-gray-100 px-4 py-2 rounded-full">
                   {filteredAndSortedRestaurants.length} restaurant{filteredAndSortedRestaurants.length !== 1 ? 's' : ''} trouvé{filteredAndSortedRestaurants.length !== 1 ? 's' : ''}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Grille des restaurants */}
+          {/* Liste verticale des restaurants avec espacement élégant */}
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
             </div>
           ) : filteredAndSortedRestaurants.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaSearch className="h-12 w-12 text-gray-400" />
+            <div className="text-center py-16">
+              <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-6xl">🔍</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun restaurant trouvé</h3>
-              <p className="text-gray-600">Essayez de modifier vos critères de recherche</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Aucun restaurant trouvé</h3>
+              <p className="text-gray-600 text-lg">Essayez de modifier vos critères de recherche</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {/* Encart publicitaire en haut de la liste */}
-              <div className="col-span-1 md:col-span-2 lg:col-span-3">
-                <AdBanner
-                  title="Marché de Producteurs Locaux à Ganges !"
-                  image="/ads/marche-ganges.jpg"
-                  description="Découvrez les produits frais et locaux tous les samedis matin sur la place du marché à Ganges. Soutenez les commerçants du coin !"
-                  link="https://www.ganges.fr/marche"
-                  sponsor="Ville de Ganges"
-                  style={{ boxShadow: '0 8px 32px 0 rgba(255,193,7,0.25)', background: 'linear-gradient(90deg, #fffbe6 0%, #fffde4 100%)', border: '2px solid #ffe082' }}
-                />
-              </div>
-              
-              {filteredAndSortedRestaurants.map((restaurant) => (
+            <div className="space-y-8">
+              {filteredAndSortedRestaurants.map((restaurant, index) => (
                 <div
                   key={restaurant.id}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105 overflow-hidden cursor-pointer group"
+                  className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02]"
                   onClick={() => handleRestaurantClick(restaurant)}
                 >
-                  <div className="relative h-48">
-                    <Image
-                      src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
-                      alt={restaurant.nom}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-200"
-                      unoptimized
-                    />
-                    
-                    {/* Badges */}
-                    <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                      {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
-                        <span className="bg-yellow-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
-                          ⭐ Sponsorisé
-                        </span>
-                      )}
-                      {favorites.includes(restaurant.id) && (
-                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
-                          ❤️ Favori
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Bouton favori */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleFavorite(restaurant);
-                      }}
-                      className="absolute top-3 right-3 w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
-                    >
-                      <FaHeart className={`w-4 h-4 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
-                    </button>
-                  </div>
-                  
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                        {restaurant.nom}
-                      </h3>
-                    </div>
-                    
-                    <p className="text-gray-600 mb-4 line-clamp-2">{restaurant.description}</p>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-4 text-gray-500">
-                        <div className="flex items-center">
-                          <FaStar className="h-4 w-4 text-yellow-400 mr-1" />
-                          <span>{restaurant.rating || '4.5'}</span>
+                  <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
+                    <div className="flex flex-col lg:flex-row">
+                      {/* Image du restaurant */}
+                      <div className="relative h-64 lg:h-auto lg:w-1/3 overflow-hidden">
+                        <Image
+                          src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
+                          alt={restaurant.nom}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          unoptimized
+                        />
+                        
+                        {/* Overlay avec gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                        
+                        {/* Badges */}
+                        <div className="absolute top-4 left-4 flex flex-col space-y-2">
+                          {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
+                            <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                              ⭐ Sponsorisé
+                            </span>
+                          )}
+                          {favorites.includes(restaurant.id) && (
+                            <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                              ❤️ Favori
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center">
-                          <FaClock className="h-4 w-4 mr-1" />
-                          <span>{restaurant.deliveryTime} min</span>
+                        
+                        {/* Bouton favori */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleFavorite(restaurant);
+                          }}
+                          className="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-200 group-hover:scale-110"
+                        >
+                          <FaHeart className={`w-5 h-5 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
+                        </button>
+                        
+                        {/* Temps de livraison */}
+                        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full shadow-lg">
+                          <div className="flex items-center space-x-2">
+                            <FaClock className="h-4 w-4 text-gray-600" />
+                            <span className="text-sm font-semibold text-gray-800">{restaurant.deliveryTime || '25-35'} min</span>
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">
-                          Frais de livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€
-                        </p>
-                        <p className="text-xs text-gray-500">Commande min: {restaurant.minOrder}€</p>
+                      {/* Contenu de la carte */}
+                      <div className="flex-1 p-8 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between mb-4">
+                            <h3 className="text-2xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
+                              {restaurant.nom}
+                            </h3>
+                            <div className="flex items-center bg-yellow-100 px-3 py-1 rounded-full">
+                              <FaStar className="h-4 w-4 text-yellow-500 mr-1" />
+                              <span className="text-sm font-semibold text-gray-800">{restaurant.rating || '4.5'}</span>
+                            </div>
+                          </div>
+                          
+                          <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                            {restaurant.description}
+                          </p>
+                          
+                          {/* Informations de livraison */}
+                          <div className="flex items-center justify-between text-sm mb-6">
+                            <div className="flex items-center text-gray-500">
+                              <FaMotorcycle className="h-4 w-4 mr-2" />
+                              <span>Livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€</span>
+                            </div>
+                            <div className="text-gray-500">
+                              Min. {restaurant.minOrder || 15}€
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Bouton commander */}
+                        <button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg">
+                          Commander maintenant
+                        </button>
                       </div>
                     </div>
                   </div>
