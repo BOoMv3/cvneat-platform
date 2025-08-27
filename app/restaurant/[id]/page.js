@@ -46,6 +46,8 @@ const customStyles = `
 
 // Composant pour la section du menu simplifié
 const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) => {
+  console.log("🔍 MenuSection - addingToCart reçu:", addingToCart);
+  
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -349,6 +351,7 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
                   <button 
                     onClick={() => {
                       const currentSelection = selectedItems[item.id] || { supplements: [], size: null };
+                      console.log("🖱️ Clic sur le bouton pour l'article:", item.id);
                       onAddToCart(item, currentSelection.supplements, currentSelection.size);
                     }}
                     disabled={addingToCart[item.id]}
@@ -358,6 +361,7 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
                         : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700 hover:scale-105 shadow-lg'
                     }`}
                   >
+                    {console.log("🎨 Rendu du bouton pour l'article:", item.id, "addingToCart:", addingToCart[item.id])}
                     {addingToCart[item.id] ? (
                       <>
                         <div className="absolute inset-0 bg-green-400 animate-pulse"></div>
@@ -425,8 +429,13 @@ export default function RestaurantPage({ params }) {
   };
 
   const handleAddToCartWithAnimation = (item, supplements = [], size = null) => {
+    console.log("🚀 Animation démarrée pour l'article:", item.id);
+    
     // Animation d'ajout au panier
-    setAddingToCart(prev => ({ ...prev, [item.id]: true }));
+    setAddingToCart(prev => {
+      console.log("📝 Mise à jour addingToCart:", { ...prev, [item.id]: true });
+      return { ...prev, [item.id]: true };
+    });
     
     // Logique d'ajout au panier
     console.log("Ajout au panier:", item, supplements, size);
@@ -470,14 +479,19 @@ export default function RestaurantPage({ params }) {
     
     // Notification de succès
     setShowCartNotification(true);
+    console.log("🔔 Notification affichée");
     
     // Masquer la notification après 3 secondes
-    setTimeout(() => setShowCartNotification(false), 3000);
-    
-    // Arrêter l'animation après 1.5 secondes pour laisser le temps de voir l'effet
     setTimeout(() => {
+      setShowCartNotification(false);
+      console.log("🔕 Notification masquée");
+    }, 3000);
+    
+    // Arrêter l'animation après 2 secondes pour laisser le temps de voir l'effet
+    setTimeout(() => {
+      console.log("⏹️ Arrêt de l'animation pour l'article:", item.id);
       setAddingToCart(prev => ({ ...prev, [item.id]: false }));
-    }, 1500);
+    }, 2000);
   };
 
   // Fonction pour calculer le prix final
