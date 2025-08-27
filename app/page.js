@@ -183,37 +183,32 @@ export default function Home() {
       <header className="bg-white shadow-lg sticky top-0 z-40 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between mb-6">
-            {/* Logo CVN'Eat avec design moderne */}
+            {/* Logo CVN'Eat original */}
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
-                <span className="text-white font-bold text-2xl">C</span>
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-500 rounded-full flex items-center justify-center mr-3">
+                <span className="text-white font-bold text-xl">C</span>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  CVN'Eat
-                </h1>
-                <p className="text-sm text-gray-500 -mt-1">Livraison de qualité</p>
-              </div>
+              <h1 className="text-2xl font-bold text-gray-900">CVN'Eat</h1>
             </div>
 
             {/* Actions utilisateur */}
             <div className="flex items-center space-x-6">
               {user ? (
                 <>
-                  <div className="flex items-center space-x-3 bg-gradient-to-r from-orange-400 to-pink-400 text-white px-4 py-2 rounded-full shadow-lg">
+                  <div className="flex items-center space-x-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white px-4 py-2 rounded-full shadow-lg">
                     <FaGift className="text-white" />
                     <span className="font-semibold">{userPoints} pts</span>
                   </div>
-                  <Link href="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center">
-                      <FaUser className="h-5 w-5 text-purple-600" />
+                  <Link href="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-orange-600 transition-colors">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center">
+                      <FaUser className="h-5 w-5 text-orange-600" />
                     </div>
                     <span className="hidden sm:block font-medium">Profil</span>
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
+                  <Link href="/login" className="flex items-center space-x-2 text-gray-700 hover:text-orange-600 transition-colors">
                     <FaSignInAlt className="h-5 w-5" />
                     <span className="hidden sm:block font-medium">Connexion</span>
                   </Link>
@@ -249,7 +244,7 @@ export default function Home() {
                 placeholder="Rechercher un restaurant, un plat, une cuisine..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-16 pr-6 py-4 text-lg border-2 border-gray-200 rounded-2xl leading-6 bg-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all duration-200 shadow-lg"
+                className="block w-full pl-16 pr-6 py-4 text-lg border-2 border-gray-200 rounded-2xl leading-6 bg-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-orange-100 focus:border-orange-400 transition-all duration-200 shadow-lg"
               />
             </div>
           </div>

@@ -386,6 +386,79 @@ export default function RestaurantPage({ params }) {
     }, 500);
   };
 
+  // Fonction pour ajouter au panier (logique simplifiée)
+  const handleAddToCart = (item, supplements = [], size = null) => {
+    console.log("Ajout au panier:", item, supplements, size);
+    
+    // Récupérer le panier actuel depuis le localStorage
+    const currentCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    // Créer l'article avec suppléments et taille
+    const cartItem = {
+      id: item.id,
+      nom: item.nom || item.name,
+      prix: calculateFinalPrice(item, supplements, size),
+      quantity: 1,
+      restaurant_id: params.id,
+      restaurant_name: restaurant?.nom || restaurant?.name,
+      restaurant_address: restaurant?.adresse || restaurant?.address,
+      image_url: item.image_url,
+      supplements: supplements,
+      size: size,
+      base_price: item.prix || item.price
+    };
+    
+    // Vérifier si l'article existe déjà dans le panier
+    const existingItemIndex = currentCart.findIndex(cartItem => 
+      cartItem.id === item.id && 
+      cartItem.restaurant_id === params.id &&
+      JSON.stringify(cartItem.supplements) === JSON.stringify(supplements) &&
+      cartItem.size === size
+    );
+    
+    if (existingItemIndex !== -1) {
+      // Incrémenter la quantité
+      currentCart[existingItemIndex].quantity += 1;
+    } else {
+      // Ajouter un nouvel article
+      currentCart.push(cartItem);
+    }
+    
+    // Sauvegarder le panier mis à jour
+    localStorage.setItem('cart', JSON.stringify(currentCart));
+    
+    // Notification de succès
+    const supplementText = supplements.length > 0 ? ` avec ${supplements.length} supplément(s)` : '';
+    const sizeText = size ? ` (${size})` : '';
+    console.log(`${item.nom || item.name}${sizeText}${supplementText} ajouté au panier !`);
+  };
+
+  const calculateFinalPrice = (item, supplements, size) => {
+    let basePrice = item.prix || item.price || 0;
+    
+    // Ajouter le prix de la taille pour les boissons
+    if (size && item.is_drink) {
+      switch (size) {
+        case 'small':
+          basePrice = item.drink_price_small || basePrice;
+          break;
+        case 'medium':
+          basePrice = item.drink_price_medium || basePrice;
+          break;
+        case 'large':
+          basePrice = item.drink_price_large || basePrice;
+          break;
+        default:
+          break;
+      }
+    }
+    
+    // Ajouter le prix des suppléments
+    const supplementsPrice = supplements.reduce((total, supplement) => total + (supplement.prix || 0), 0);
+    
+    return basePrice + supplementsPrice;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-gray-50 to-gray-100">
