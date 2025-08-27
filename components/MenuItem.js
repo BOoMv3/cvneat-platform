@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { FaPlus, FaThumbsUp, FaLock } from 'react-icons/fa';
 
-export default function MenuItem({ item, onAddToCart, isAdding = false }) {
+export default function MenuItem({ item, onAddToCart }) {
+  const [isAdding, setIsAdding] = useState(false);
+  
   const {
     id,
     nom,
@@ -15,6 +18,18 @@ export default function MenuItem({ item, onAddToCart, isAdding = false }) {
     promotion,
     is_popular
   } = item;
+
+  const handleAddToCart = async () => {
+    setIsAdding(true);
+    
+    // Appeler la fonction d'ajout au panier
+    onAddToCart(item);
+    
+    // Garder l'animation active pendant 1.5 secondes
+    setTimeout(() => {
+      setIsAdding(false);
+    }, 1500);
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300">
@@ -41,17 +56,24 @@ export default function MenuItem({ item, onAddToCart, isAdding = false }) {
           </div>
         )}
 
-        {/* Bouton d'ajout */}
+        {/* Bouton d'ajout avec animation */}
         <button
-          onClick={() => onAddToCart(item)}
+          onClick={handleAddToCart}
           disabled={isAdding}
-          className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
+          className={`absolute bottom-3 right-3 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform ${
             isAdding
-              ? 'bg-green-500 text-white scale-110'
+              ? 'bg-green-500 text-white scale-110 shadow-xl animate-pulse'
               : 'bg-white text-gray-800 hover:bg-gray-50 hover:scale-105'
           }`}
         >
-          <FaPlus className="w-4 h-4" />
+          {isAdding ? (
+            <>
+              <div className="absolute inset-0 bg-green-400 rounded-full animate-ping"></div>
+              <FaPlus className="w-5 h-5 relative z-10 animate-bounce" />
+            </>
+          ) : (
+            <FaPlus className="w-4 h-4" />
+          )}
         </button>
 
         {/* Promotion */}

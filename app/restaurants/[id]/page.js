@@ -25,6 +25,8 @@ export default function RestaurantDetail({ params }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [favorites, setFavorites] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showCartNotification, setShowCartNotification] = useState(false);
+  const [lastAddedItem, setLastAddedItem] = useState(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -173,6 +175,9 @@ export default function RestaurantDetail({ params }) {
       }
       return [...prevCart, { ...item, quantity: 1 }];
     });
+    setLastAddedItem(item);
+    setShowCartNotification(true);
+    setTimeout(() => setShowCartNotification(false), 3000);
   };
 
   const removeFromCart = (itemId) => {
@@ -256,6 +261,21 @@ export default function RestaurantDetail({ params }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header avec bouton de retour */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="container mx-auto px-4 py-4">
+          <button 
+            onClick={() => router.push('/restaurants')}
+            className="flex items-center space-x-2 text-gray-600 hover:text-orange-600 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">Retour aux restaurants</span>
+          </button>
+        </div>
+      </div>
+
       <main className="container mx-auto px-4 py-8">
         {/* Bannière du restaurant style Uber Eats */}
         <RestaurantBanner
@@ -383,6 +403,11 @@ export default function RestaurantDetail({ params }) {
             <div className="flex justify-between font-bold text-lg mb-4"><span>Total</span><span>{getTotal().toFixed(2)}€</span></div>
             <button onClick={() => router.push('/checkout')} className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600">Valider et payer</button>
           </Modal>
+        )}
+        {showCartNotification && lastAddedItem && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+            <p>{lastAddedItem.nom || lastAddedItem.name} ajouté au panier !</p>
+          </div>
         )}
       </main>
     </div>
