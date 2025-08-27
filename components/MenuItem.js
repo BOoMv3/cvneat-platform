@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FaPlus, FaThumbsUp, FaLock } from 'react-icons/fa';
 
 export default function MenuItem({ item, onAddToCart }) {
   const [isAdding, setIsAdding] = useState(false);
+  const [itemRating, setItemRating] = useState(null);
+  const [itemReviewCount, setItemReviewCount] = useState(null);
+  const [popularNumber, setPopularNumber] = useState(null);
   
   const {
     id,
@@ -18,6 +21,19 @@ export default function MenuItem({ item, onAddToCart }) {
     promotion,
     is_popular
   } = item;
+
+  // Initialiser les valeurs une seule fois
+  useEffect(() => {
+    if (itemRating === null) {
+      setItemRating(rating || Math.floor(Math.random() * 20) + 80);
+    }
+    if (itemReviewCount === null) {
+      setItemReviewCount(review_count || Math.floor(Math.random() * 100) + 50);
+    }
+    if (popularNumber === null && is_popular) {
+      setPopularNumber(Math.floor(Math.random() * 3) + 1);
+    }
+  }, [rating, review_count, itemRating, itemReviewCount, is_popular, popularNumber]);
 
   const handleAddToCart = async () => {
     setIsAdding(true);
@@ -52,7 +68,7 @@ export default function MenuItem({ item, onAddToCart }) {
         {/* Badge populaire */}
         {is_popular && (
           <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-            Le n° {Math.floor(Math.random() * 3) + 1} le plus aimé...
+            Le n° {popularNumber} le plus aimé...
           </div>
         )}
 
@@ -115,7 +131,7 @@ export default function MenuItem({ item, onAddToCart }) {
           <div className="flex items-center gap-1 text-sm text-gray-600">
             <FaThumbsUp className="text-green-500" />
             <span>
-              {rating || Math.floor(Math.random() * 20) + 80}% ({review_count || Math.floor(Math.random() * 100) + 50})
+              {itemRating}% ({itemReviewCount})
             </span>
           </div>
         </div>
