@@ -6,44 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaShoppingCart, FaSpinner, FaArrowLeft, FaHeart, FaStar, FaClock, FaMotorcycle, FaSearch } from 'react-icons/fa';
 
-// Styles CSS personnalisés pour les animations
-const customStyles = `
-  @keyframes cartBounce {
-    0%, 20%, 53%, 80%, 100% {
-      transform: translate3d(0,0,0);
-    }
-    40%, 43% {
-      transform: translate3d(0,-8px,0);
-    }
-    70% {
-      transform: translate3d(0,-4px,0);
-    }
-    90% {
-      transform: translate3d(0,-2px,0);
-    }
-  }
-  
-  @keyframes cartPulse {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-  
-  .cart-bounce {
-    animation: cartBounce 1s ease-in-out;
-  }
-  
-  .cart-pulse {
-    animation: cartPulse 0.6s ease-in-out;
-  }
-`;
-
 // Composant pour la section du menu simplifié
 const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) => {
   console.log("🔍 MenuSection - addingToCart reçu:", addingToCart);
@@ -355,18 +317,17 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
                       onAddToCart(item, currentSelection.supplements, currentSelection.size);
                     }}
                     disabled={addingToCart[item.id]}
-                    className={`relative overflow-hidden px-6 py-3 rounded-xl font-medium transition-all duration-300 transform ${
+                    className={`relative overflow-hidden px-6 py-3 rounded-xl font-medium transition-all duration-500 transform ${
                       addingToCart[item.id]
                         ? 'bg-green-500 text-white scale-95 shadow-xl'
                         : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700 hover:scale-105 shadow-lg'
                     }`}
                   >
-                    {console.log("🎨 Rendu du bouton pour l'article:", item.id, "addingToCart:", addingToCart[item.id])}
                     {addingToCart[item.id] ? (
                       <>
                         <div className="absolute inset-0 bg-green-400 animate-pulse"></div>
-                        <span className="relative z-10 flex items-center cart-bounce">
-                          <FaShoppingCart className="mr-2 h-4 w-4 cart-pulse" />
+                        <span className="relative z-10 flex items-center animate-bounce">
+                          <FaShoppingCart className="mr-2 h-4 w-4" />
                           Ajouté ! ✓
                         </span>
                       </>
@@ -573,8 +534,6 @@ export default function RestaurantPage({ params }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Styles CSS personnalisés */}
-      <style jsx>{customStyles}</style>
       
       {/* Header avec navigation */}
       <div className="bg-white shadow-lg border-b border-gray-200">
@@ -655,9 +614,9 @@ export default function RestaurantPage({ params }) {
 
       {/* Notification d'ajout au panier */}
       {showCartNotification && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-50 cart-bounce">
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-50 animate-bounce">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center cart-pulse">
+            <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center animate-pulse">
               <FaShoppingCart className="h-4 w-4" />
             </div>
             <div>
