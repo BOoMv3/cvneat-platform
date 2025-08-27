@@ -179,76 +179,82 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header avec barre de recherche */}
-      <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo CVN'Eat */}
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-orange-500 rounded-full flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-xl">C</span>
+      {/* Hero Section avec bannière et image de base */}
+      <section className="relative h-[600px] overflow-hidden">
+        <Image
+          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop"
+          alt="Bannière de restauration"
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+        />
+        <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+        
+        {/* Actions utilisateur en haut à droite */}
+        <div className="absolute top-4 right-4 z-20 flex items-center space-x-4">
+          {user ? (
+            <>
+              <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full">
+                <FaGift className="text-yellow-400" />
+                <span className="text-white text-sm font-medium">{userPoints} pts</span>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">CVN'Eat</h1>
-            </div>
+              <Link href="/profile" className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-white/30 transition-colors">
+                <FaUser className="h-5 w-5 text-white" />
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-colors">
+                <FaSignInAlt className="h-5 w-5 inline mr-2" />
+                Connexion
+              </Link>
+              <Link href="/register" className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-colors">
+                <FaUserPlus className="h-5 w-5 inline mr-2" />
+                Inscription
+              </Link>
+            </>
+          )}
+          
+          {/* Panier flottant */}
+          {cart.length > 0 && (
+            <button
+              onClick={() => setShowFloatingCart(!showFloatingCart)}
+              className="relative bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-white/30 transition-colors"
+            >
+              <FaShoppingCart className="h-5 w-5 text-white" />
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {cart.length}
+              </span>
+            </button>
+          )}
+        </div>
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
+          <div className="text-white max-w-2xl">
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+              Découvrez les meilleurs restaurants
+            </h1>
+            <p className="text-xl md:text-2xl mb-8 text-gray-200">
+              Livraison rapide et repas délicieux à votre porte
+            </p>
 
-            {/* Barre de recherche */}
-            <div className="flex-1 max-w-2xl mx-8">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="h-5 w-5 text-gray-400" />
-                </div>
+            {/* Barre de recherche intégrée */}
+            <div className="bg-white rounded-xl p-4 shadow-lg max-w-lg">
+              <div className="flex items-center space-x-3">
+                <FaSearch className="h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Rechercher un restaurant, un plat..."
+                  placeholder="Nom du restaurant, cuisine, plat..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="flex-1 border-none outline-none text-gray-900 placeholder-gray-500"
                 />
               </div>
             </div>
-
-            {/* Actions utilisateur */}
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <>
-                  <div className="flex items-center space-x-2">
-                    <FaGift className="text-orange-500" />
-                    <span className="text-sm font-medium text-gray-700">{userPoints} pts</span>
-                  </div>
-                  <Link href="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
-                    <FaUser className="h-5 w-5" />
-                    <span className="hidden sm:block">Profil</span>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link href="/login" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
-                    <FaSignInAlt className="h-5 w-5" />
-                    <span className="hidden sm:block">Connexion</span>
-                  </Link>
-                  <Link href="/register" className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors">
-                    <FaUserPlus className="h-5 w-5" />
-                    <span className="hidden sm:block">Inscription</span>
-                  </Link>
-                </>
-              )}
-              
-              {/* Panier flottant */}
-              {cart.length > 0 && (
-                <button
-                  onClick={() => setShowFloatingCart(!showFloatingCart)}
-                  className="relative p-2 text-gray-700 hover:text-purple-600 transition-colors"
-                >
-                  <FaShoppingCart className="h-6 w-6" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cart.length}
-                  </span>
-                </button>
-              )}
-            </div>
           </div>
         </div>
-      </header>
+      </section>
 
       {/* Panier flottant */}
       {showFloatingCart && cart.length > 0 && (
