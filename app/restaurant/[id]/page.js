@@ -239,7 +239,7 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                           onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'small')}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             selectedItems[item.id]?.size === 'small'
-                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
                               : 'bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50'
                           }`}
                         >
@@ -251,7 +251,7 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                           onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'medium')}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             selectedItems[item.id]?.size === 'medium'
-                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
                               : 'bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50'
                           }`}
                         >
@@ -263,7 +263,7 @@ const MenuSection = ({ restaurantId, restaurant }) => {
                           onClick={() => handleItemSelection(item.id, selectedItems[item.id]?.supplements || [], 'large')}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             selectedItems[item.id]?.size === 'large'
-                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
                               : 'bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50'
                           }`}
                         >
