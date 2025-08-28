@@ -1,0 +1,3 @@
+# Fichier temporaire pour forcer le redéploiement Vercel
+# Date: $(Get-Date)
+# Action: Redéploiement forcé pour prendre en compte les nouvelles clés Supabase 
