@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Configuration Supabase (remplacez par vos vraies clés)
 const supabaseUrl = 'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4Ymdydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTg5MjE3MiwiZXhwIjoyMDY1NDY4MTcyfQ.uZKkyYa9rnqOJWvEO-vYiad-HMd6J_N9e7Ne3XBSyZQ'; // Votre vraie clé service_role
+const supabaseServiceKey = 'VOTRE_NOUVELLE_CLÉ_SERVICE_ROLE' // Remplacez par votre NOUVELLE cléHMd6J_N9e7Ne3XBSyZQ'; // Votre vraie clé service_role
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
