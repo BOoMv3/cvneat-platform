@@ -14,12 +14,14 @@ import {
   FaEye,
   FaChartLine,
   FaCog,
-  FaFileAlt
+  FaFileAlt,
+  FaMapMarkerAlt
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 
 export default function PartnerDashboard() {
   const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null); // Ajout de userData
   const [restaurant, setRestaurant] = useState(null);
   const [stats, setStats] = useState({
     todayOrders: 0,
@@ -63,6 +65,8 @@ export default function PartnerDashboard() {
       }
 
       // Verifier le role
+      console.log('🔍 DEBUG PARTNER - Session user ID:', session.user.id);
+      
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -70,6 +74,7 @@ export default function PartnerDashboard() {
         .single();
 
       console.log('🔍 DEBUG PARTNER - UserData complet:', userData);
+      console.log('🔍 DEBUG PARTNER - UserError:', userError);
       console.log('🔍 DEBUG PARTNER - Rôle utilisateur:', userData?.role);
       console.log('🔍 DEBUG PARTNER - Rôle attendu: restaurant');
       console.log('🔍 DEBUG PARTNER - Comparaison:', userData?.role === 'restaurant');
@@ -84,6 +89,7 @@ export default function PartnerDashboard() {
       console.log('✅ ACCÈS AUTORISÉ - Rôle restaurant confirmé');
 
       setUser(session.user);
+      setUserData(userData); // Stocker userData dans le state
 
       // Recuperer le restaurant
       const { data: resto, error: restoError } = await supabase
@@ -139,8 +145,8 @@ export default function PartnerDashboard() {
       const url = editingMenu ? '/api/partner/menu' : '/api/partner/menu';
       const method = editingMenu ? 'PUT' : 'POST';
       const body = editingMenu 
-        ? { id: editingMenu.id, ...menuForm }
-        : { restaurantId: restaurant.id, ...menuForm };
+        ? { id: editingMenu.id, ...menuForm, user_email: userData.email }
+        : { restaurant_id: restaurant.id, ...menuForm, user_email: userData.email };
 
       const response = await fetch(url, {
         method,

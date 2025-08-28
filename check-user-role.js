@@ -1,8 +1,16 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
 
-// Configuration Supabase (remplacez par vos vraies clés)
-const supabaseUrl = 'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
-const supabaseServiceKey = 'VOTRE_NOUVELLE_CLÉ_SERVICE_ROLE'; // Remplacez par votre NOUVELLE clé service_role
+// Configuration Supabase (utilise les variables d'environnement)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseServiceKey) {
+  console.error('❌ ERREUR: Clé SUPABASE_SERVICE_ROLE_KEY manquante dans .env.local');
+  console.log('📝 Ajoutez cette ligne dans votre .env.local:');
+  console.log('SUPABASE_SERVICE_ROLE_KEY=votre_clé_service_role_ici');
+  process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

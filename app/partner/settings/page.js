@@ -95,34 +95,40 @@ export default function PartnerSettings() {
     }));
   };
 
-  const handleImageUpload = async (e, type) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('restaurantId', restaurant.id);
-        formData.append('imageType', type);
+  const handleImageUpload = async (imageUrl, type) => {
+    if (!imageUrl) {
+      setError('URL d\'image requise');
+      return;
+    }
 
-        const response = await fetch('/api/partner/upload-restaurant-image', {
-          method: 'POST',
-          body: formData
-        });
+    try {
+      const formData = new FormData();
+      formData.append('imageUrl', imageUrl);
+      formData.append('restaurantId', restaurant.id);
+      formData.append('imageType', type);
+      formData.append('userEmail', user.email);
 
-        if (response.ok) {
-          const { imageUrl } = await response.json();
-          if (type === 'profile') {
-            setProfileImage(imageUrl);
-          } else {
-            setBannerImage(imageUrl);
-          }
-          setSuccess('Image mise à jour avec succès !');
-          setTimeout(() => setSuccess(''), 3000);
+      const response = await fetch('/api/partner/upload-restaurant-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const { imageUrl: updatedUrl } = await response.json();
+        if (type === 'profile') {
+          setProfileImage(updatedUrl);
+        } else {
+          setBannerImage(updatedUrl);
         }
-      } catch (error) {
-        setError('Erreur lors de l\'upload de l\'image');
-        console.error('Erreur upload image:', error);
+        setSuccess('Image mise à jour avec succès !');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Erreur lors de la mise à jour de l\'image');
       }
+    } catch (error) {
+      setError('Erreur lors de la mise à jour de l\'image');
+      console.error('Erreur mise à jour image:', error);
     }
   };
 
@@ -209,46 +215,78 @@ export default function PartnerSettings() {
               {/* Photo de profil */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Photo de profil
+                  Photo de profil (URL)
                 </label>
-                <div className="relative">
+                <div className="space-y-3">
                   <img 
                     src={profileImage || restaurant.profile_image || '/default-restaurant.jpg'} 
                     alt="Photo de profil"
                     className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
                   />
-                  <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
-                    <FaCamera className="h-4 w-4" />
+                  <div className="flex space-x-2">
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e, 'profile')}
-                      className="hidden"
+                      type="url"
+                      placeholder="https://exemple.com/image.jpg"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleImageUpload(e.target.value, 'profile');
+                        }
+                      }}
                     />
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.querySelector('input[type="url"]');
+                        if (input && input.value) {
+                          handleImageUpload(input.value, 'profile');
+                        }
+                      }}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Mettre à jour
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Bannière */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bannière du restaurant
+                  Bannière du restaurant (URL)
                 </label>
-                <div className="relative">
+                <div className="space-y-3">
                   <img 
                     src={bannerImage || restaurant.banner_image || '/default-banner.jpg'} 
                     alt="Bannière"
                     className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
                   />
-                  <label className="absolute bottom-2 right-2 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
-                    <FaCamera className="h-4 w-4" />
+                  <div className="flex space-x-2">
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e, 'banner')}
-                      className="hidden"
+                      type="url"
+                      placeholder="https://exemple.com/banner.jpg"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleImageUpload(e.target.value, 'banner');
+                        }
+                      }}
                     />
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.querySelectorAll('input[type="url"]')[1];
+                        if (input && input.value) {
+                          handleImageUpload(input.value, 'banner');
+                        }
+                      }}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Mettre à jour
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

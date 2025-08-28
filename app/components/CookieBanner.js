@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { safeLocalStorage } from '../../lib/localStorage';
+import { supabase } from '../../lib/supabase';
 
 export default function CookieBanner() {
   const [consent, setConsent] = useState(null);

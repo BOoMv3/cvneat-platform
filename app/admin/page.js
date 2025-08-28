@@ -57,19 +57,7 @@ export default function AdminDashboard() {
   }, [router]);
 
   useEffect(() => {
-    // Charger les partenaires à valider
-    const fetchPendingPartners = async () => {
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('status', 'pending');
-      if (!error) setPendingPartners(data || []);
-    };
-    fetchPendingPartners();
-  }, [router, refresh]);
-
-  useEffect(() => {
-    // Charger toutes les commandes
+    // Charger les commandes avec les détails des utilisateurs et restaurants
     const fetchOrders = async () => {
       const { data, error } = await supabase
         .from('commandes')
@@ -80,34 +68,36 @@ export default function AdminDashboard() {
     fetchOrders();
   }, [router, refresh]);
 
-  useEffect(() => {
+  // Fonction pour rafraîchir toutes les données
+  const fetchData = async () => {
+    // Charger tous les utilisateurs
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('*');
+    if (!usersError) setAllUsers(usersData || []);
+
     // Charger tous les restaurants
-    const fetchAllRestaurants = async () => {
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('*');
-      if (!error) setAllRestaurants(data || []);
-    };
-    fetchAllRestaurants();
-    // Charger toutes les commandes (pour le calcul des commissions)
-    const fetchAllOrders = async () => {
-      const { data, error } = await supabase
-        .from('commandes')
-        .select('*');
-      if (!error) setAllOrders(data || []);
-    };
-    fetchAllOrders();
-  }, [router, refresh]);
+    const { data: restaurantsData, error: restaurantsError } = await supabase
+      .from('restaurants')
+      .select('*');
+    if (!restaurantsError) setAllRestaurants(restaurantsData || []);
+
+    // Charger toutes les commandes
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('commandes')
+      .select('*');
+    if (!ordersError) setAllOrders(ordersData || []);
+
+    // Charger les partenaires en attente
+    const { data: pendingData, error: pendingError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('status', 'pending');
+    if (!pendingError) setPendingPartners(pendingData || []);
+  };
 
   useEffect(() => {
-    // Charger tous les utilisateurs
-    const fetchAllUsers = async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*');
-      if (!error) setAllUsers(data || []);
-    };
-    fetchAllUsers();
+    fetchData();
   }, [router, refresh]);
 
   const handlePartnerStatus = async (id, status) => {
@@ -121,34 +111,98 @@ export default function AdminDashboard() {
     setActionLoading(false);
   };
 
-  const handleRoleChange = async (id, newRole) => {
+  const handleRoleChange = async (userId, newRole) => {
     setActionLoading(true);
-    setActionSuccess('');
-    setActionError('');
-    
     try {
-      // Mettre à jour directement avec le nouveau rôle
       const { error } = await supabase
         .from('users')
         .update({ role: newRole })
-        .eq('id', id);
+        .eq('id', userId);
 
-      if (error) {
-        console.error('Erreur lors de la mise à jour du rôle:', error);
-        setActionError(error.message);
-      } else {
-        setActionSuccess('Rôle utilisateur mis à jour !');
-        // Rafraîchir la liste des utilisateurs
-        const { data: users, error: fetchError } = await supabase
-          .from('users')
-          .select('*');
-        if (!fetchError) {
-          setAllUsers(users);
+      if (error) throw error;
+
+      // Si le rôle devient 'restaurant', créer un restaurant par défaut
+      if (newRole === 'restaurant') {
+        const user = allUsers.find(u => u.id === userId);
+        if (user) {
+          const { error: restoError } = await supabase
+            .from('restaurants')
+            .insert({
+              user_id: userId,
+              nom: `${user.prenom} ${user.nom}`,
+              description: 'Restaurant créé automatiquement',
+              type_cuisine: 'À définir',
+              telephone: user.telephone || 'Téléphone à définir',
+              adresse: user.adresse || 'Adresse à définir',
+              code_postal: user.code_postal || '34000',
+              ville: user.ville || 'Ville à définir',
+              email: user.email,
+              status: 'active',
+              horaires: {
+                lundi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+                mardi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+                mercredi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+                jeudi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+                vendredi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+                samedi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+                dimanche: { ouvert: false }
+              }
+            });
+
+          if (restoError) {
+            console.error('Erreur création restaurant:', restoError);
+          }
         }
       }
-    } catch (err) {
-      console.error('Erreur:', err);
-      setActionError('Une erreur est survenue lors de la mise à jour du rôle');
+
+      await fetchData();
+      setActionSuccess('Rôle mis à jour avec succès');
+    } catch (error) {
+      console.error('Erreur mise à jour rôle:', error);
+      setActionError('Erreur lors de la mise à jour du rôle');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCreateRestaurant = async (userId) => {
+    setActionLoading(true);
+    try {
+      const user = allUsers.find(u => u.id === userId);
+      if (!user) throw new Error('Utilisateur non trouvé');
+
+      // Créer un restaurant avec toutes les colonnes obligatoires
+      const { error } = await supabase
+        .from('restaurants')
+        .insert({
+          user_id: userId,
+          nom: `${user.prenom} ${user.nom}`,
+          description: 'Restaurant créé automatiquement',
+          type_cuisine: 'À définir',
+          telephone: user.telephone || 'Téléphone à définir',
+          adresse: user.adresse || 'Adresse à définir',
+          code_postal: user.code_postal || '34000',
+          ville: user.ville || 'Ville à définir',
+          email: user.email,
+          status: 'active',
+          horaires: {
+            lundi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+            mardi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+            mercredi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+            jeudi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+            vendredi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+            samedi: { ouvert: true, ouverture: '09:00', fermeture: '22:00' },
+            dimanche: { ouvert: false }
+          }
+        });
+
+      if (error) throw error;
+
+      await fetchData();
+      setActionSuccess('Restaurant créé avec succès');
+    } catch (error) {
+      console.error('Erreur création restaurant:', error);
+      setActionError('Erreur lors de la création du restaurant: ' + error.message);
     } finally {
       setActionLoading(false);
     }
@@ -382,6 +436,15 @@ export default function AdminDashboard() {
                         <button onClick={() => handleBlockUser(user.id, false)} className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600" disabled={actionLoading}>Débloquer</button>
                       ) : (
                         <button onClick={() => handleBlockUser(user.id, true)} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" disabled={actionLoading}>Bloquer</button>
+                      )}
+                      {user.role === 'restaurant' && (
+                        <button 
+                          onClick={() => handleCreateRestaurant(user.id)} 
+                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600" 
+                          disabled={actionLoading}
+                        >
+                          Créer Restaurant
+                        </button>
                       )}
                     </td>
                   </tr>

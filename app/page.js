@@ -88,12 +88,16 @@ export default function Home() {
         try {
           const { data: userData } = await supabase
             .from('users')
-            .select('points_fidelite')
+            .select('role, points_fidelite')
             .eq('id', user.id)
             .single();
           
           if (userData) {
             setUserPoints(userData.points_fidelite || 0);
+            // Stocker le rôle pour vérifier l'accès aux pages
+            if (userData.role) {
+              localStorage.setItem('userRole', userData.role);
+            }
           }
         } catch (error) {
           console.error('Erreur recuperation points:', error);
@@ -469,7 +473,7 @@ export default function Home() {
                       {/* Image du restaurant */}
                       <div className="relative h-64 lg:h-auto lg:w-1/3 overflow-hidden">
                         <Image
-                          src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
+                          src={restaurant.image_url || restaurant.imageUrl || restaurant.profile_image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
                           alt={restaurant.nom}
                           fill
                           className="object-cover group-hover:scale-110 transition-transform duration-500"

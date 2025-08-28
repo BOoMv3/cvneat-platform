@@ -4,10 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 export async function middleware(req) {
   const res = NextResponse.next();
   
-  // Créer le client Supabase pour le middleware
+  // Créer le client Supabase pour le middleware (clés hardcodées temporairement)
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    'https://jxbgrvlmvnofaxbtcmsw.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4Ymdydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNjQyNDMsImV4cCI6MjA3MTk0MDI0M30.FqDYhevVvPYe-1t52OcidgP6jG-ynJVOFkyGTPHk84A',
     {
       auth: {
         autoRefreshToken: false,
@@ -17,24 +17,31 @@ export async function middleware(req) {
   );
 
   // Récupérer le token depuis les cookies
-  const token = req.cookies.get('sb-access-token')?.value || 
+  const token = req.cookies.get('token')?.value || 
+                req.cookies.get('sb-access-token')?.value || 
                 req.cookies.get('supabase-auth-token')?.value;
+
+  console.log('🔍 MIDDLEWARE DEBUG - Token trouvé:', !!token);
+  console.log('🔍 MIDDLEWARE DEBUG - Cookies:', req.cookies.getAll());
 
   let user = null;
   if (token) {
     try {
       const { data: { user: userData } } = await supabase.auth.getUser(token);
       user = userData;
+      console.log('🔍 MIDDLEWARE DEBUG - User trouvé:', !!user);
     } catch (error) {
-      console.error('Erreur vérification token:', error);
+      console.error('❌ MIDDLEWARE DEBUG - Erreur vérification token:', error);
     }
   }
 
   // Récupérer le chemin de la requête
   const pathname = req.nextUrl.pathname;
+  console.log('🔍 MIDDLEWARE DEBUG - Pathname:', pathname);
 
   // Si l'utilisateur n'est pas connecté
   if (!user) {
+    console.log('❌ MIDDLEWARE DEBUG - Pas d\'utilisateur, redirection vers accueil');
     if (pathname.startsWith('/admin') || pathname.startsWith('/partner')) {
       return NextResponse.redirect(new URL('/', req.url));
     }
@@ -50,20 +57,25 @@ export async function middleware(req) {
       .eq('id', user.id)
       .single();
     userRole = userData?.role || 'user';
+    console.log('🔍 MIDDLEWARE DEBUG - Rôle utilisateur:', userRole);
   } catch (e) {
     userRole = 'user';
+    console.error('❌ MIDDLEWARE DEBUG - Erreur récupération rôle:', e);
   }
 
   // Protection des routes admin
-  if (pathname.startsWith('/admin') && !userRole.includes('admin')) {
+  if (pathname.startsWith('/admin') && userRole !== 'admin') {
+    console.log('❌ MIDDLEWARE DEBUG - Accès admin refusé, rôle:', userRole);
     return NextResponse.redirect(new URL('/', req.url));
   }
 
   // Protection des routes partenaire
-  if (pathname.startsWith('/partner') && !userRole.match(/(partner|admin)/)) {
+  if (pathname.startsWith('/partner') && userRole !== 'restaurant') {
+    console.log('❌ MIDDLEWARE DEBUG - Accès partenaire refusé, rôle:', userRole);
     return NextResponse.redirect(new URL('/', req.url));
   }
 
+  console.log('✅ MIDDLEWARE DEBUG - Accès autorisé pour:', pathname);
   return res;
 }
 

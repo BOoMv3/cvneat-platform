@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../../../lib/supabase';
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const restaurantId = searchParams.get('restaurant_id');
+    const restaurantId = searchParams.get('restaurantId'); // Changé de 'restaurant_id' à 'restaurantId'
 
     if (!restaurantId) {
       return NextResponse.json(
@@ -17,7 +17,7 @@ export async function GET(request) {
       .from('menus')
       .select('*')
       .eq('restaurant_id', restaurantId)
-      .eq('is_available', true)
+      .eq('disponible', true)
       .order('category', { ascending: true })
       .order('nom', { ascending: true });
 
@@ -41,34 +41,57 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    console.log('🔍 DEBUG API MENU - Début de la requête POST');
+    
+    // 1. Récupérer les données de la requête
     const {
       restaurant_id,
       nom,
       description,
       prix,
-      category = 'Autres'
+      category = 'Autres',
+      user_email // Ajout de l'email de l'utilisateur
     } = await request.json();
 
-    if (!restaurant_id || !nom || !prix) {
+    if (!restaurant_id || !nom || !prix || !user_email) {
+      console.log('❌ DEBUG API MENU - Données manquantes:', { restaurant_id, nom, prix, user_email });
       return NextResponse.json(
-        { error: 'ID restaurant, nom et prix sont requis' },
+        { error: 'ID restaurant, nom, prix et email utilisateur sont requis' },
         { status: 400 }
       );
     }
 
+    // 2. Vérifier que l'utilisateur a le rôle restaurant
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('email', user_email)
+      .single();
+
+    if (userError || !userData || userData.role !== 'restaurant') {
+      console.log('❌ DEBUG API MENU - Erreur rôle:', userError || 'Rôle incorrect:', userData?.role);
+      return NextResponse.json({ error: 'Accès refusé - Rôle restaurant requis' }, { status: 403 });
+    }
+    
+    console.log('✅ DEBUG API MENU - Rôle restaurant confirmé pour:', userData.id);
+
+    // 3. Vérifier que l'utilisateur est propriétaire du restaurant
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, partner_id')
+      .select('id')
       .eq('id', restaurant_id)
-      .eq('is_active', true)
+      .eq('user_id', userData.id)
       .single();
 
     if (restaurantError || !restaurant) {
+      console.log('❌ DEBUG API MENU - Erreur restaurant:', restaurantError || 'Restaurant non trouvé');
       return NextResponse.json(
         { error: 'Restaurant non trouvé ou inactif' },
         { status: 404 }
       );
     }
+    
+    console.log('✅ DEBUG API MENU - Restaurant confirmé comme propriétaire');
 
     const { data: menuItem, error: menuError } = await supabase
       .from('menus')
@@ -79,7 +102,7 @@ export async function POST(request) {
           description,
           prix: parseFloat(prix),
           category,
-          is_available: true
+          disponible: true
         }
       ])
       .select()
