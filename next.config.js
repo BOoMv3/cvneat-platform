@@ -2,7 +2,8 @@
 const nextConfig = {
   images: {
     domains: [
-      'images.unsplash.com', 
+      'images.unsplash.com',
+      'unsplash.com',
       'localhost',
       'ffcuisine.fr',
       'picsum.photos',
@@ -12,7 +13,8 @@ const nextConfig = {
       'i.imgur.com',
       'cdn.pixabay.com',
       'images.pexels.com',
-      'res.cloudinary.com'
+      'res.cloudinary.com',
+      'images.unsplash.com'
     ],
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
