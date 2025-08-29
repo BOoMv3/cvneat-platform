@@ -324,7 +324,7 @@ export default function PartnerDashboard() {
             </div>
             
             {/* Boutons d'action - Responsive mobile */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
               <button
                 onClick={() => router.push('/partner/analytics')}
                 className="bg-purple-600 text-white px-3 sm:px-4 py-3 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 text-sm font-medium"

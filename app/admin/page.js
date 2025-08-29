@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { FaHome } from 'react-icons/fa';
+import { FaUsers, FaStore, FaShoppingCart, FaTruck } from 'react-icons/fa';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -251,104 +252,103 @@ export default function AdminDashboard() {
           </div>
         </div>
         
-        <nav className="grid grid-cols-2 sm:flex gap-2 sm:gap-4 mb-6 sm:mb-8">
-          <a href="#partenaires" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Partenaires</a>
-          <a href="#commandes" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Commandes</a>
-          <a href="#restaurants" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Restaurants</a>
-          <a href="#roles" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Utilisateurs</a>
+        <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <a href="#partenaires" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-3 sm:py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Partenaires</a>
+          <a href="#commandes" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-3 sm:py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Commandes</a>
+          <a href="#restaurants" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-3 sm:py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Restaurants</a>
+          <a href="#roles" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-3 sm:py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Utilisateurs</a>
         </nav>
         
         {/* Statistiques globales */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+              <div className="p-2 sm:p-3 rounded-full bg-blue-100">
+                <FaUsers className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
               <div className="ml-3 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Restaurants</p>
-                <p className="text-xl sm:text-2xl font-semibold text-gray-900">{allRestaurants.length}</p>
+                <p className="text-sm sm:text-base font-medium text-gray-600">Total utilisateurs</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{allUsers.length}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="p-2 sm:p-3 rounded-full bg-green-100">
+                <FaStore className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
               </div>
               <div className="ml-3 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">En attente</p>
-                <p className="text-xl sm:text-2xl font-semibold text-gray-900">{pendingPartners.length}</p>
+                <p className="text-sm sm:text-base font-medium text-gray-600">Restaurants</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{allRestaurants.length}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="p-2 sm:p-3 rounded-full bg-purple-100">
+                <FaShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
               </div>
               <div className="ml-3 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Commandes</p>
-                <p className="text-xl sm:text-2xl font-semibold text-gray-900">{allOrders.length}</p>
+                <p className="text-sm sm:text-base font-medium text-gray-600">Commandes</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{allOrders.length}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
+              <div className="p-2 sm:p-3 rounded-full bg-orange-100">
+                <FaTruck className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
               </div>
               <div className="ml-3 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Commission CVN'EAT</p>
-                <p className="text-xl sm:text-2xl font-semibold text-gray-900">
-                  {(allOrders.reduce((sum, o) => sum + (o.total || 0), 0) * COMMISSION).toFixed(2)} €
-                </p>
+                <p className="text-sm sm:text-base font-medium text-gray-600">Livreurs</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{allUsers.filter(u => u.role === 'delivery').length}</p>
               </div>
             </div>
           </div>
         </div>
         
-        <div id="partenaires" className="mb-12">
-          <h2 className="text-2xl font-bold mb-4">Partenaires à valider</h2>
-          {pendingPartners.length === 0 ? (
-            <p className="text-gray-600">Aucun partenaire en attente de validation.</p>
-          ) : (
-            <table className="w-full border">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-2">Nom</th>
-                  <th className="p-2">Email</th>
-                  <th className="p-2">Téléphone</th>
-                  <th className="p-2">Actions</th>
+        {/* Section Partenaires à valider */}
+        <section id="partenaires" className="mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">Partenaires à valider</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded-lg shadow-md">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Restaurant</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {pendingPartners.map(partner => (
-                  <tr key={partner.id} className="border-t">
-                    <td className="p-2">{partner.nom}</td>
-                    <td className="p-2">{partner.email}</td>
-                    <td className="p-2">{partner.telephone}</td>
-                    <td className="p-2 space-x-2">
-                      <button onClick={() => handlePartnerStatus(partner.id, 'active')} className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600" disabled={actionLoading}>Accepter</button>
-                      <button onClick={() => handlePartnerStatus(partner.id, 'inactive')} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" disabled={actionLoading}>Refuser</button>
+              <tbody className="divide-y divide-gray-200">
+                {pendingPartners.map((partner) => (
+                  <tr key={partner.id} className="hover:bg-gray-50">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-900">{partner.nom}</td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{partner.email}</td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{partner.nom_restaurant}</td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-medium">
+                      <button
+                        onClick={() => handleApprovePartner(partner.id)}
+                        className="text-green-600 hover:text-green-900 mr-2"
+                      >
+                        ✅ Approuver
+                      </button>
+                      <button
+                        onClick={() => handleRejectPartner(partner.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        ❌ Rejeter
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        </section>
         <div id="commandes" className="mb-12">
           <h2 className="text-2xl font-bold mb-4">Toutes les commandes</h2>
           {orders.length === 0 ? (
