@@ -225,31 +225,7 @@ export default function PartnerDashboard() {
     }));
   };
 
-  const handleImageUpload = async (file, menuItemId) => {
-    if (file) {
-      try {
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('menuItemId', menuItemId);
-        formData.append('userEmail', userData.email);
-
-        const response = await fetch('/api/partner/upload-image', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (response.ok) {
-          const { imageUrl } = await response.json();
-          // Mettre à jour la liste des plats
-                  setMenu(prev => prev.map(item =>
-          item.id === menuItemId ? { ...item, image_url: imageUrl } : item
-        ));
-        }
-      } catch (error) {
-        console.error('Erreur upload image:', error);
-      }
-    }
-  };
+  
 
   const handleImageUrlUpload = async (imageUrl, menuItemId) => {
     if (imageUrl) {
@@ -267,9 +243,9 @@ export default function PartnerDashboard() {
         if (response.ok) {
           const { imageUrl: newImageUrl } = await response.json();
           // Mettre à jour la liste des plats
-                  setMenu(prev => prev.map(item =>
-          item.id === menuItemId ? { ...item, image_url: newImageUrl } : item
-        ));
+          setMenu(prev => prev.map(item =>
+            item.id === menuItemId ? { ...item, image_url: newImageUrl } : item
+          ));
         }
       } catch (error) {
         console.error('Erreur upload URL image:', error);
@@ -702,19 +678,11 @@ export default function PartnerDashboard() {
                           
                           {/* Upload d'image */}
                           <div className="mt-2 space-y-2">
-                            <div className="flex gap-1">
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleImageUpload(e.target.files[0], item.id)}
-                                className="text-xs flex-1"
-                              />
-                            </div>
-                            <div className="flex gap-1">
+                            <div className="flex gap-2">
                               <input
                                 type="url"
-                                placeholder="Ou coller une URL"
-                                className="text-xs border border-gray-300 rounded px-2 py-1 flex-1"
+                                placeholder="Coller une URL d'image"
+                                className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
                                 onKeyPress={(e) => {
                                   if (e.key === 'Enter') {
                                     e.preventDefault();
@@ -723,15 +691,15 @@ export default function PartnerDashboard() {
                                 }}
                               />
                               <button
-                                onClick={(e) => {
+                                onClick={() => {
                                   const input = e.target.previousElementSibling;
                                   if (input && input.value) {
                                     handleImageUrlUpload(input.value, item.id);
                                   }
                                 }}
-                                className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700"
+                                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
                               >
-                                ✓
+                                Mettre à jour
                               </button>
                             </div>
                           </div>
