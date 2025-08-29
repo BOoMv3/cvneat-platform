@@ -48,9 +48,9 @@ export default function MenuItem({ item, onAddToCart }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 w-full max-w-xs">
-      {/* Image de l'article - PROPORTIONS STANDARD */}
-      <div className="relative h-40 w-full bg-gradient-to-br from-purple-100 to-orange-100">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 w-full max-w-sm mx-auto">
+      {/* Image de l'article - PROPORTIONS MOBILE OPTIMISÉES */}
+      <div className="relative h-36 w-full bg-gradient-to-br from-purple-100 to-orange-100">
         {image_url ? (
           <Image
             src={image_url}
@@ -61,22 +61,22 @@ export default function MenuItem({ item, onAddToCart }) {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-purple-200 to-orange-200 flex items-center justify-center">
-            <span className="text-2xl">🍽️</span>
+            <span className="text-xl">🍽️</span>
           </div>
         )}
 
-        {/* Badge populaire - POSITION STANDARD */}
+        {/* Badge populaire - POSITION MOBILE OPTIMISÉE */}
         {is_popular && (
           <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
             N°{popularNumber}
           </div>
         )}
 
-        {/* Bouton d'ajout avec animation - TAILLE STANDARD */}
+        {/* Bouton d'ajout avec animation - TAILLE MOBILE OPTIMISÉE */}
         <button
           onClick={handleAddToCart}
           disabled={isAdding}
-          className={`absolute bottom-2 right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform ${
+          className={`absolute bottom-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform ${
             isAdding
               ? 'bg-green-500 text-white scale-110 shadow-xl animate-pulse'
               : 'bg-white text-gray-800 hover:bg-gray-50 hover:scale-105'
@@ -85,14 +85,14 @@ export default function MenuItem({ item, onAddToCart }) {
           {isAdding ? (
             <>
               <div className="absolute inset-0 bg-green-400 rounded-full animate-ping"></div>
-              <FaPlus className="w-4 h-4 relative z-10 animate-bounce" />
+              <FaPlus className="w-3.5 h-3.5 relative z-10 animate-bounce" />
             </>
           ) : (
-            <FaPlus className="w-4 h-4" />
+            <FaPlus className="w-3.5 h-3.5" />
           )}
         </button>
 
-        {/* Promotion - POSITION STANDARD */}
+        {/* Promotion - POSITION MOBILE OPTIMISÉE */}
         {promotion && (
           <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
             {promotion}
@@ -100,46 +100,46 @@ export default function MenuItem({ item, onAddToCart }) {
         )}
       </div>
 
-      {/* Informations de l'article - PROPORTIONS STANDARD */}
+      {/* Informations de l'article - PROPORTIONS MOBILE OPTIMISÉES */}
       <div className="p-3">
-        {/* Titre - TAILLE STANDARD */}
-        <h3 className="font-bold text-base text-gray-900 mb-2 line-clamp-1">
+        {/* Titre - TAILLE MOBILE OPTIMISÉE */}
+        <h3 className="font-bold text-sm text-gray-900 mb-2 line-clamp-1">
           {nom}
         </h3>
 
-        {/* Description - TAILLE STANDARD */}
+        {/* Description - TAILLE MOBILE OPTIMISÉE */}
         {description && (
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+          <p className="text-gray-600 text-xs mb-2 line-clamp-2">
             {description}
           </p>
         )}
 
-        {/* Prix et évaluation - PROPORTIONS STANDARD */}
+        {/* Prix et évaluation - PROPORTIONS MOBILE OPTIMISÉES */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-gray-900">
+          <div className="flex items-center gap-1.5">
+            <span className="text-base font-bold text-gray-900">
               {typeof prix === 'number' ? prix.toFixed(2) : prix}€
             </span>
             {promotion && (
-              <span className="text-sm text-gray-500 line-through">
+              <span className="text-xs text-gray-500 line-through">
                 {typeof prix === 'number' ? (prix * 2).toFixed(2) : prix}€
               </span>
             )}
           </div>
 
-          {/* Note et nombre d'avis - TAILLE STANDARD */}
-          <div className="flex items-center gap-1 text-sm text-gray-600">
-            <FaThumbsUp className="text-green-500 w-4 h-4" />
+          {/* Note et nombre d'avis - TAILLE MOBILE OPTIMISÉE */}
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            <FaThumbsUp className="text-green-500 w-3.5 h-3.5" />
             <span>
               {itemRating}% ({itemReviewCount})
             </span>
           </div>
         </div>
 
-        {/* Offre spéciale - TAILLE STANDARD */}
+        {/* Offre spéciale - TAILLE MOBILE OPTIMISÉE */}
         {promotion && (
-          <div className="mt-3 flex items-center gap-2 text-sm text-red-600 font-medium">
-            <FaLock className="text-red-500 w-4 h-4" />
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 font-medium">
+            <FaLock className="text-red-500 w-3.5 h-3.5" />
             <span>1+1 gratuit</span>
           </div>
         )}

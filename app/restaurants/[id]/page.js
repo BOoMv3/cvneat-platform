@@ -315,7 +315,7 @@ export default function RestaurantDetail({ params }) {
               <p>Aucun plat disponible pour ce restaurant.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {menu.map((item) => (
                 <MenuItem
                   key={item.id}
@@ -328,10 +328,10 @@ export default function RestaurantDetail({ params }) {
           )}
         </div>
 
-        {/* Panier */}
-        <div className="w-96">
-          <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
-            <h2 className="text-xl font-bold mb-4">Votre commande</h2>
+        {/* Panier - Responsive */}
+        <div className="w-full lg:w-96">
+          <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 sticky top-8">
+            <h2 className="text-lg lg:text-xl font-bold mb-4">Votre commande</h2>
             {cart.length === 0 ? (
               <p className="text-gray-500 text-center py-4">Votre panier est vide</p>
             ) : (
