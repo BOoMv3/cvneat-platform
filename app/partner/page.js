@@ -861,15 +861,16 @@ export default function PartnerDashboard() {
                 </div>
               </div>
 
-              {/* Upload d'image */}
+              {/* URL de l'image */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Image du plat
+                  URL de l'image du plat
                 </label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
+                  type="url"
+                  value={menuForm.image_url || ''}
+                  onChange={(e) => setMenuForm({...menuForm, image_url: e.target.value})}
+                  placeholder="https://exemple.com/image.jpg"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {menuForm.image_url && (
