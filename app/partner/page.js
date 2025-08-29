@@ -659,31 +659,31 @@ export default function PartnerDashboard() {
                 {menu.length === 0 ? (
                   <p className="text-gray-500 text-center">Aucun plat dans le menu</p>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                     {menu.map((item) => (
-                      <div key={item.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                      <div key={item.id} className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
                         {/* Image du plat */}
-                        <div className="mb-3">
+                        <div className="mb-2">
                           {item.image_url ? (
                             <img 
                               src={item.image_url} 
                               alt={item.nom}
-                              className="w-full h-32 object-cover rounded-lg"
+                              className="w-full h-20 object-cover rounded-lg"
                             />
                           ) : (
-                            <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-                              <span className="text-gray-500 text-sm">Pas d'image</span>
+                            <div className="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <span className="text-gray-500 text-xs">Pas d'image</span>
                             </div>
                           )}
                           
                           {/* Upload d'image */}
-                          <div className="mt-2 space-y-2">
-                            <div className="flex gap-2">
+                          <div className="mt-1 space-y-1">
+                            <div className="flex gap-1">
                               <input
                                 id={`menu-item-url-${item.id}`}
                                 type="url"
-                                placeholder="Coller une URL d'image"
-                                className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                                placeholder="URL image"
+                                className="flex-1 text-xs border border-gray-300 rounded px-1 py-1"
                                 onKeyPress={(e) => {
                                   if (e.key === 'Enter') {
                                     e.preventDefault();
@@ -698,17 +698,17 @@ export default function PartnerDashboard() {
                                     handleImageUrlUpload(input.value, item.id);
                                   }
                                 }}
-                                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                                className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700"
                               >
-                                Mettre à jour
+                                ✓
                               </button>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium text-gray-900">{item.nom}</h3>
-                          <div className="flex space-x-2">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-medium text-gray-900 text-sm truncate">{item.nom}</h3>
+                          <div className="flex space-x-1">
                             <button
                               onClick={() => {
                                 setEditingMenu(item);
@@ -722,34 +722,34 @@ export default function PartnerDashboard() {
                               }}
                               className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
                             >
-                              <FaEdit className="h-4 w-4" />
+                              <FaEdit className="h-3 w-3" />
                             </button>
                             <button
                               onClick={() => handleDeleteMenu(item.id)}
                               className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
                             >
-                              <FaTrash className="h-4 w-4" />
+                              <FaTrash className="h-3 w-3" />
                             </button>
                           </div>
                         </div>
                         
-                        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                        <p className="text-xs text-gray-600 mb-1 line-clamp-2">{item.description}</p>
                         
                         {/* Prix et catégorie */}
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="font-semibold text-lg text-green-600">{item.prix} €</p>
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        <div className="flex justify-between items-center mb-1">
+                          <p className="font-semibold text-sm text-green-600">{item.prix} €</p>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-1 py-0.5 rounded-full">
                             {item.category}
                           </span>
                         </div>
                         
                         {/* Suppléments */}
                         {item.supplements && item.supplements.length > 0 && (
-                          <div className="mb-2">
+                          <div className="mb-1">
                             <p className="text-xs text-gray-500 mb-1">Suppléments :</p>
                             <div className="flex flex-wrap gap-1">
                               {item.supplements.map((supp, index) => (
-                                <span key={index} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                <span key={index} className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
                                   {supp.nom} (+{supp.prix}€)
                                 </span>
                               ))}
@@ -759,15 +759,15 @@ export default function PartnerDashboard() {
                         
                         {/* Taille de boisson */}
                         {item.boisson_taille && (
-                          <div className="mb-2">
-                            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                          <div className="mb-1">
+                            <span className="text-xs bg-purple-100 text-purple-800 px-1 py-0.5 rounded">
                               Taille: {item.boisson_taille}
                             </span>
                           </div>
                         )}
                         
                         {/* Statut de disponibilité */}
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                        <span className={`inline-block px-1 py-0.5 rounded-full text-xs ${
                           item.disponible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
                           {item.disponible ? 'Disponible' : 'Indisponible'}
