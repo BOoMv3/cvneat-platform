@@ -2,29 +2,42 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
 async function getUserFromRequest(request) {
-  const token = request.headers.get('authorization')?.split(' ')[1];
-  if (!token) return null;
-  
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) return null;
+  try {
+    const token = request.headers.get('authorization')?.split(' ')[1];
+    if (!token) return null;
+    
+    // Vérifier le token avec Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
 
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+    // Vérifier le rôle dans la table users
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-  return { ...user, role: userData?.role };
+    if (userError || !userData) return null;
+
+    return { ...user, role: userData.role };
+  } catch (error) {
+    console.error('Erreur authentification:', error);
+    return null;
+  }
 }
 
 export async function GET(request) {
-  const user = await getUserFromRequest(request);
-
-  if (!user || user.role !== 'partner') {
-    return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
-  }
-
   try {
+    const user = await getUserFromRequest(request);
+
+    if (!user) {
+      return NextResponse.json({ error: 'Token invalide ou expiré' }, { status: 401 });
+    }
+
+    if (user.role !== 'restaurant') {
+      return NextResponse.json({ error: 'Accès non autorisé - Rôle restaurant requis' }, { status: 403 });
+    }
+
     // Récupérer l'ID du restaurant associé à l'utilisateur partenaire
     const { data: restaurantData, error: restaurantError } = await supabase
       .from('restaurants')
@@ -64,7 +77,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Erreur lors du calcul des statistiques' }, { status: 500 });
     }
 
-    const total_revenue = revenueData ? revenueData.reduce((sum, order) => sum + order.total_amount, 0) : 0;
+    const total_revenue = revenueData ? revenueData.reduce((sum, order) => sum + (order.total_amount || 0), 0) : 0;
 
     return NextResponse.json({
       today_orders: today_orders || 0,

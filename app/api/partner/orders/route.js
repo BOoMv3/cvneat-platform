@@ -1,55 +1,80 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
-// GET - Récupérer les commandes du restaurant
-export async function GET(request) {
+async function getUserFromRequest(request) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
+    const token = request.headers.get('authorization')?.split(' ')[1];
+    if (!token) return null;
+    
+    // Vérifier le token avec Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
 
-    // Vérifier que l'utilisateur est un partenaire
+    // Vérifier le rôle dans la table users
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || !userData.role.includes('partner')) {
-      return NextResponse.json({ error: 'Accès refusé - Rôle partenaire requis' }, { status: 403 });
+    if (userError || !userData) return null;
+
+    return { ...user, role: userData.role };
+  } catch (error) {
+    console.error('Erreur authentification:', error);
+    return null;
+  }
+}
+
+export async function GET(request) {
+  try {
+    const user = await getUserFromRequest(request);
+
+    if (!user) {
+      return NextResponse.json({ error: 'Token invalide ou expiré' }, { status: 401 });
     }
 
-    // Récupérer le restaurant du partenaire
-    const { data: restaurant, error: restaurantError } = await supabase
+    if (user.role !== 'restaurant') {
+      return NextResponse.json({ error: 'Accès non autorisé - Rôle restaurant requis' }, { status: 403 });
+    }
+
+    // Récupérer l'ID du restaurant associé à l'utilisateur partenaire
+    const { data: restaurantData, error: restaurantError } = await supabase
       .from('restaurants')
       .select('id')
       .eq('user_id', user.id)
       .single();
 
-    if (restaurantError || !restaurant) {
-      return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
+    if (restaurantError || !restaurantData) {
+      return NextResponse.json({ error: 'Restaurant non trouvé pour ce partenaire' }, { status: 404 });
     }
 
+    const restaurantId = restaurantData.id;
+
     // Récupérer les commandes du restaurant
-    const { data: orders, error } = await supabase
+    const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select(`
         *,
-        order_items(*),
-        users!orders_user_id_fkey(nom, prenom, telephone)
+        users!orders_user_id_fkey (
+          nom,
+          prenom,
+          email,
+          telephone
+        )
       `)
-      .eq('restaurant_id', restaurant.id)
+      .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Erreur récupération commandes:', error);
-      return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    if (ordersError) {
+      console.error('Erreur récupération commandes:', ordersError);
+      return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
     }
 
     return NextResponse.json(orders || []);
+
   } catch (error) {
-    console.error('Erreur API commandes partenaire:', error);
+    console.error('Erreur API (orders partner):', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
@@ -57,20 +82,13 @@ export async function GET(request) {
 // POST - Accepter une commande avec estimation du temps
 export async function POST(request) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est un partenaire
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (userError || !userData || !userData.role.includes('partner')) {
-      return NextResponse.json({ error: 'Accès refusé - Rôle partenaire requis' }, { status: 403 });
+    if (user.role !== 'restaurant') {
+      return NextResponse.json({ error: 'Accès refusé - Rôle restaurant requis' }, { status: 403 });
     }
 
     const body = await request.json();
