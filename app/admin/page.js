@@ -234,16 +234,16 @@ export default function AdminDashboard() {
       {actionLoading && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-800 px-6 py-2 rounded shadow z-50">Action en cours...</div>}
       {actionSuccess && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-green-100 text-green-800 px-6 py-2 rounded shadow z-50">{actionSuccess}</div>}
       {actionError && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-100 text-red-800 px-6 py-2 rounded shadow z-50">{actionError}</div>}
-      <div className="max-w-6xl mx-auto p-4 sm:p-8">
+      <div className="max-w-6xl mx-auto p-3 sm:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => router.push('/')}
-              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              className="bg-blue-600 text-white p-3 sm:p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
               title="Retour à l'accueil"
             >
-              <FaHome className="h-5 w-5" />
-              <span className="hidden sm:inline">Accueil</span>
+              <FaHome className="h-6 w-6 sm:h-5 sm:w-5" />
+              <span className="text-base sm:text-sm font-medium">Accueil</span>
             </button>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold">Espace Administrateur CVN'EAT</h1>
@@ -251,11 +251,11 @@ export default function AdminDashboard() {
           </div>
         </div>
         
-        <nav className="flex flex-wrap gap-2 sm:gap-4 mb-6 sm:mb-8">
-          <a href="#partenaires" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Partenaires à valider</a>
-          <a href="#commandes" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Commandes</a>
-          <a href="#restaurants" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Restaurants</a>
-          <a href="#roles" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Utilisateurs & rôles</a>
+        <nav className="grid grid-cols-2 sm:flex gap-2 sm:gap-4 mb-6 sm:mb-8">
+          <a href="#partenaires" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Partenaires</a>
+          <a href="#commandes" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Commandes</a>
+          <a href="#restaurants" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Restaurants</a>
+          <a href="#roles" className="text-blue-600 hover:underline text-sm sm:text-base px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 text-center font-medium">Utilisateurs</a>
         </nav>
         
         {/* Statistiques globales */}

@@ -180,31 +180,36 @@ export default function DeliveryDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
+    <main className="min-h-screen bg-gray-50 p-3 sm:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
+        <div className="flex flex-col space-y-4 mb-6 sm:mb-8">
+          {/* Bouton retour et titre */}
           <div className="flex items-center space-x-4">
             <button
               onClick={() => router.push('/')}
-              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              className="bg-blue-600 text-white p-3 sm:p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
               title="Retour à l'accueil"
             >
-              <FaHome className="h-5 w-5" />
-              <span className="hidden sm:inline">Accueil</span>
+              <FaHome className="h-6 w-6 sm:h-5 sm:w-5" />
+              <span className="text-base sm:text-sm font-medium">Accueil</span>
             </button>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold">Tableau de bord livreur</h1>
             </div>
           </div>
-          <button
-            onClick={() => router.push('/delivery/dashboard')}
-            className="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-          >
-            Dashboard avancé
-          </button>
+          
+          {/* Bouton dashboard avancé */}
+          <div className="flex justify-center sm:justify-end">
+            <button
+              onClick={() => router.push('/delivery/dashboard')}
+              className="bg-blue-600 text-white px-4 sm:px-6 py-3 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base font-medium w-full sm:w-auto"
+            >
+              Dashboard avancé
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
             <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Livraisons aujourd'hui</h3>
             <p className="text-2xl sm:text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
