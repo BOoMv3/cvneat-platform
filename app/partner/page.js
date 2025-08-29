@@ -225,13 +225,13 @@ export default function PartnerDashboard() {
     }));
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = async (file, menuItemId) => {
     if (file) {
       try {
         const formData = new FormData();
         formData.append('image', file);
-        formData.append('restaurantId', restaurant.id);
+        formData.append('menuItemId', menuItemId);
+        formData.append('userEmail', userData.email);
 
         const response = await fetch('/api/partner/upload-image', {
           method: 'POST',
@@ -240,10 +240,39 @@ export default function PartnerDashboard() {
 
         if (response.ok) {
           const { imageUrl } = await response.json();
-          setMenuForm(prev => ({ ...prev, image_url: imageUrl }));
+          // Mettre à jour la liste des plats
+                  setMenu(prev => prev.map(item =>
+          item.id === menuItemId ? { ...item, image_url: imageUrl } : item
+        ));
         }
       } catch (error) {
         console.error('Erreur upload image:', error);
+      }
+    }
+  };
+
+  const handleImageUrlUpload = async (imageUrl, menuItemId) => {
+    if (imageUrl) {
+      try {
+        const formData = new FormData();
+        formData.append('imageUrl', imageUrl);
+        formData.append('menuItemId', menuItemId);
+        formData.append('userEmail', userData.email);
+
+        const response = await fetch('/api/partner/upload-image', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const { imageUrl: newImageUrl } = await response.json();
+          // Mettre à jour la liste des plats
+                  setMenu(prev => prev.map(item =>
+          item.id === menuItemId ? { ...item, image_url: newImageUrl } : item
+        ));
+        }
+      } catch (error) {
+        console.error('Erreur upload URL image:', error);
       }
     }
   };
@@ -658,15 +687,55 @@ export default function PartnerDashboard() {
                     {menu.map((item) => (
                       <div key={item.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                         {/* Image du plat */}
-                        {item.image_url && (
-                          <div className="mb-3">
+                        <div className="mb-3">
+                          {item.image_url ? (
                             <img 
                               src={item.image_url} 
                               alt={item.nom}
                               className="w-full h-32 object-cover rounded-lg"
                             />
+                          ) : (
+                            <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <span className="text-gray-500 text-sm">Pas d'image</span>
+                            </div>
+                          )}
+                          
+                          {/* Upload d'image */}
+                          <div className="mt-2 space-y-2">
+                            <div className="flex gap-1">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageUpload(e.target.files[0], item.id)}
+                                className="text-xs flex-1"
+                              />
+                            </div>
+                            <div className="flex gap-1">
+                              <input
+                                type="url"
+                                placeholder="Ou coller une URL"
+                                className="text-xs border border-gray-300 rounded px-2 py-1 flex-1"
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleImageUrlUpload(e.target.value, item.id);
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={(e) => {
+                                  const input = e.target.previousElementSibling;
+                                  if (input && input.value) {
+                                    handleImageUrlUpload(input.value, item.id);
+                                  }
+                                }}
+                                className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700"
+                              >
+                                ✓
+                              </button>
+                            </div>
                           </div>
-                        )}
+                        </div>
                         
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-medium text-gray-900">{item.nom}</h3>

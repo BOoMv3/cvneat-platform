@@ -3,77 +3,75 @@ import { supabase } from '../../../../lib/supabase';
 
 export async function POST(request) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    const formData = await request.formData();
+    const imageFile = formData.get('image');
+    const imageUrl = formData.get('imageUrl');
+    const menuItemId = formData.get('menuItemId');
+    const userEmail = formData.get('userEmail');
+
+    if (!userEmail) {
+      return NextResponse.json({ error: 'Email utilisateur requis' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est un partenaire
+    // Vérifier que l'utilisateur a le rôle restaurant
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('role')
-      .eq('id', user.id)
+      .select('id, role')
+      .eq('email', userEmail)
       .single();
 
-    if (userError || !userData || !userData.role.includes('partner')) {
-      return NextResponse.json({ error: 'Accès refusé - Rôle partenaire requis' }, { status: 403 });
+    if (userError || !userData || userData.role !== 'restaurant') {
+      return NextResponse.json({ error: 'Accès refusé - Rôle restaurant requis' }, { status: 403 });
     }
 
-    const formData = await request.formData();
-    const image = formData.get('image');
-    const restaurantId = formData.get('restaurantId');
+    let finalImageUrl = '';
 
-    if (!image || !restaurantId) {
-      return NextResponse.json({ error: 'Image et restaurantId requis' }, { status: 400 });
+    if (imageFile && imageFile.size > 0) {
+      // Upload de fichier depuis PC
+      const fileName = `menu-${Date.now()}-${imageFile.name}`;
+      
+      // Upload vers Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('menu-images')
+        .upload(fileName, imageFile);
+
+      if (uploadError) {
+        console.error('Erreur upload fichier:', uploadError);
+        return NextResponse.json({ error: 'Erreur lors de l\'upload du fichier' }, { status: 500 });
+      }
+
+      // Récupérer l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('menu-images')
+        .getPublicUrl(fileName);
+
+      finalImageUrl = publicUrl;
+    } else if (imageUrl) {
+      // URL directe fournie
+      finalImageUrl = imageUrl;
+    } else {
+      return NextResponse.json({ error: 'Fichier ou URL d\'image requis' }, { status: 400 });
     }
 
-    // Vérifier que l'image appartient au bon restaurant
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
-      .select('id')
-      .eq('id', restaurantId)
-      .eq('user_id', user.id)
-      .single();
+    // Mettre à jour l'item de menu avec la nouvelle image
+    const { error: updateError } = await supabase
+      .from('menus')
+      .update({ image_url: finalImageUrl })
+      .eq('id', menuItemId);
 
-    if (restaurantError || !restaurant) {
-      return NextResponse.json({ error: 'Restaurant non trouvé ou non autorisé' }, { status: 404 });
+    if (updateError) {
+      console.error('Erreur mise à jour menu:', updateError);
+      return NextResponse.json({ error: 'Erreur lors de la mise à jour du menu' }, { status: 500 });
     }
-
-    // Convertir l'image en buffer
-    const bytes = await image.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Générer un nom unique pour l'image
-    const timestamp = Date.now();
-    const fileName = `menu-${restaurantId}-${timestamp}-${image.name}`;
-
-    // Upload vers Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('menu-images')
-      .upload(fileName, buffer, {
-        contentType: image.type,
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (uploadError) {
-      console.error('Erreur upload image:', uploadError);
-      return NextResponse.json({ error: 'Erreur lors de l\'upload de l\'image' }, { status: 500 });
-    }
-
-    // Générer l'URL publique
-    const { data: { publicUrl } } = supabase.storage
-      .from('menu-images')
-      .getPublicUrl(fileName);
 
     return NextResponse.json({
-      message: 'Image uploadée avec succès',
-      imageUrl: publicUrl,
-      fileName: fileName
+      success: true,
+      imageUrl: finalImageUrl,
+      message: 'Image mise à jour avec succès'
     });
 
   } catch (error) {
-    console.error('Erreur API upload image:', error);
+    console.error('Erreur API upload image menu:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 } 
