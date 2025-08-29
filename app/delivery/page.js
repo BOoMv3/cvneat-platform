@@ -278,18 +278,18 @@ export default function DeliveryDashboard() {
               <p className="text-sm sm:text-base">Aucune commande disponible pour le moment</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {deliveries.map(delivery => (
-                <div key={delivery.id} className="border-b pb-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
-                    <div className="flex-1">
-                      <p className="font-semibold text-sm sm:text-base">{delivery.restaurant_nom}</p>
-                      <p className="text-gray-600 text-xs sm:text-sm">{delivery.customer_name}</p>
-                      <p className="text-xs sm:text-sm text-gray-500">{delivery.delivery_address}</p>
-                      <p className="text-xs sm:text-sm text-green-600 font-medium">Frais: {delivery.delivery_fee}€</p>
+                <div key={delivery.id} className="border rounded-lg p-4 bg-gray-50 hover:shadow-md transition-shadow">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-900">{delivery.restaurant_nom}</h3>
+                      <p className="text-gray-600 text-sm">{delivery.customer_name}</p>
+                      <p className="text-gray-500 text-sm">{delivery.delivery_address}</p>
+                      <p className="text-green-600 font-medium text-lg">Frais: {delivery.delivery_fee}€</p>
                     </div>
-                    <div className="text-left sm:text-right w-full sm:w-auto">
-                      <p className="text-xs sm:text-sm text-gray-500">
+                    <div className="text-center sm:text-right">
+                      <p className="text-gray-500 text-sm mb-3">
                         {new Date(delivery.created_at).toLocaleTimeString('fr-FR', { 
                           hour: '2-digit', 
                           minute: '2-digit' 
@@ -297,7 +297,7 @@ export default function DeliveryDashboard() {
                       </p>
                       <button 
                         onClick={() => acceptOrder(delivery.id)}
-                        className="mt-2 bg-green-600 text-white py-2 px-3 sm:px-4 rounded-md hover:bg-green-700 text-xs sm:text-sm w-full sm:w-auto"
+                        className="w-full sm:w-auto bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
                       >
                         Accepter
                       </button>

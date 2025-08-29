@@ -354,40 +354,40 @@ export default function AdminDashboard() {
           {orders.length === 0 ? (
             <p className="text-gray-600">Aucune commande trouvée.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg shadow-md">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Restaurant</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {orders.map(order => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-900">{new Date(order.created_at).toLocaleString()}</td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">
-                        {order.users?.prenom} {order.users?.nom}<br />
-                        <span className="text-xs text-gray-400">{order.users?.email}</span>
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{order.restaurants?.nom}</td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-gray-900">{order.total} €</td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                          order.statut === 'livree' ? 'bg-green-100 text-green-800' :
-                          order.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.statut}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 gap-4">
+              {orders.map(order => (
+                <div key={order.id} className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Date</p>
+                      <p className="text-sm font-semibold">{new Date(order.created_at).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Client</p>
+                      <p className="text-sm font-semibold">{order.users?.prenom} {order.users?.nom}</p>
+                      <p className="text-xs text-gray-400">{order.users?.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Restaurant</p>
+                      <p className="text-sm font-semibold">{order.restaurants?.nom}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Total</p>
+                      <p className="text-lg font-bold text-green-600">{order.total} €</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Statut</p>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${
+                        order.statut === 'livree' ? 'bg-green-100 text-green-800' :
+                        order.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {order.statut}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -397,53 +397,49 @@ export default function AdminDashboard() {
           {allRestaurants.length === 0 ? (
             <p className="text-gray-600">Aucun restaurant trouvé.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg shadow-md">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Sponsorisé</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Total généré</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Commission</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">À reverser</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {allRestaurants.map(resto => {
-                    const restoOrders = allOrders.filter(o => o.restaurant_id === resto.id && o.statut === 'livree');
-                    const totalGenere = restoOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-                    const commission = totalGenere * COMMISSION;
-                    const aReverser = totalGenere - commission;
-                    const isSponsor = resto.mise_en_avant && resto.mise_en_avant_fin && new Date(resto.mise_en_avant_fin) > new Date();
-                    return (
-                      <tr key={resto.id} className="hover:bg-gray-50">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-gray-900">{resto.nom}</td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{resto.email}</td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                            resto.status === 'active' ? 'bg-green-100 text-green-800' :
-                            resto.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {resto.status}
+            <div className="grid grid-cols-1 gap-4">
+              {allRestaurants.map(resto => {
+                const restoOrders = allOrders.filter(o => o.restaurant_id === resto.id && o.statut === 'livree');
+                const totalGenere = restoOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+                const commission = totalGenere * COMMISSION;
+                const aReverser = totalGenere - commission;
+                const isSponsor = resto.mise_en_avant && resto.mise_en_avant_fin && new Date(resto.mise_en_avant_fin) > new Date();
+                return (
+                  <div key={resto.id} className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase">Nom</p>
+                        <p className="text-lg font-bold text-gray-900">{resto.nom}</p>
+                        <p className="text-sm text-gray-600">{resto.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase">Statut</p>
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${
+                          resto.status === 'active' ? 'bg-green-100 text-green-800' :
+                          resto.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {resto.status}
+                        </span>
+                        {isSponsor && (
+                          <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-bold">
+                            Sponsorisé
                           </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
-                          {isSponsor ? 
-                            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-bold">Sponsorisé</span> : 
-                            <span className="text-gray-400">-</span>
-                          }
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-green-600">{totalGenere.toFixed(2)} €</td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-purple-600">{commission.toFixed(2)} €</td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-blue-600">{aReverser.toFixed(2)} €</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase">Total généré</p>
+                        <p className="text-lg font-bold text-green-600">{totalGenere.toFixed(2)} €</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase">Commission</p>
+                        <p className="text-sm font-bold text-purple-600">{commission.toFixed(2)} €</p>
+                        <p className="text-xs text-gray-500">À reverser: {aReverser.toFixed(2)} €</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -453,66 +449,61 @@ export default function AdminDashboard() {
           {allUsers.length === 0 ? (
             <p className="text-gray-600">Aucun utilisateur trouvé.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg shadow-md">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {allUsers.map(user => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-gray-900">{user.prenom} {user.nom}</td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{user.email}</td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
-                        <select 
-                          value={user.role} 
-                          onChange={e => handleRoleChange(user.id, e.target.value)} 
-                          className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            <div className="grid grid-cols-1 gap-4">
+              {allUsers.map(user => (
+                <div key={user.id} className="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Nom</p>
+                      <p className="text-lg font-bold text-gray-900">{user.prenom} {user.nom}</p>
+                      <p className="text-sm text-gray-600">{user.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Rôle</p>
+                      <select 
+                        value={user.role} 
+                        onChange={e => handleRoleChange(user.id, e.target.value)} 
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="user">Client</option>
+                        <option value="restaurant">Partenaire</option>
+                        <option value="delivery">Livreur</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Statut</p>
+                      {user.blocked ? 
+                        <span className="inline-block bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-bold">Bloqué</span> : 
+                        <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-bold">Actif</span>
+                      }
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase mb-2">Actions</p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleBlockUser(user.id, !user.blocked)}
+                          className={`px-3 py-2 rounded text-sm font-medium ${
+                            user.blocked 
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                              : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          }`}
                         >
-                          <option value="user">Client</option>
-                          <option value="restaurant">Partenaire</option>
-                          <option value="delivery">Livreur</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
-                        {user.blocked ? 
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-bold">Bloqué</span> : 
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-bold">Actif</span>
-                        }
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
-                        <div className="flex flex-col sm:flex-row gap-2">
+                          {user.blocked ? 'Débloquer' : 'Bloquer'}
+                        </button>
+                        {user.role === 'restaurant' && (
                           <button
-                            onClick={() => handleBlockUser(user.id, !user.blocked)}
-                            className={`px-3 py-1 rounded text-xs font-medium ${
-                              user.blocked 
-                                ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                                : 'bg-red-100 text-red-800 hover:bg-red-200'
-                            }`}
+                            onClick={() => handleCreateRestaurant(user.id)}
+                            className="bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-2 rounded text-sm font-medium"
                           >
-                            {user.blocked ? 'Débloquer' : 'Bloquer'}
+                            Créer resto
                           </button>
-                          {user.role === 'restaurant' && (
-                            <button
-                              onClick={() => handleCreateRestaurant(user.id)}
-                              className="bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1 rounded text-xs font-medium"
-                            >
-                              Créer resto
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

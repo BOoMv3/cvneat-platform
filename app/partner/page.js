@@ -560,14 +560,14 @@ export default function PartnerDashboard() {
                 {orders.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">Aucune commande pour le moment</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {orders.map((order) => {
                       const { commission, restaurantRevenue } = calculateCommission(order.total_amount);
                       return (
-                        <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start mb-3">
+                        <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <h3 className="font-medium text-gray-900">Commande #{order.id}</h3>
+                              <h3 className="font-medium text-gray-900 text-lg">Commande #{order.id}</h3>
                               <p className="text-sm text-gray-600">
                                 {new Date(order.created_at).toLocaleString('fr-FR')}
                               </p>
@@ -590,7 +590,7 @@ export default function PartnerDashboard() {
                           
                           {/* Articles de la commande */}
                           {order.order_items && order.order_items.length > 0 && (
-                            <div className="mb-3">
+                            <div className="mt-4 p-3 bg-white rounded border">
                               <p className="text-sm font-medium text-gray-700 mb-2">Articles :</p>
                               <div className="space-y-1">
                                 {order.order_items.map((item, index) => (
@@ -606,46 +606,50 @@ export default function PartnerDashboard() {
                           )}
                           
                           {/* Statut et actions */}
-                          <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              order.status === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
-                              order.status === 'acceptee' ? 'bg-blue-100 text-blue-800' :
-                              order.status === 'pret' ? 'bg-green-100 text-green-800' :
-                              order.status === 'livree' ? 'bg-gray-100 text-gray-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {order.status === 'en_attente' ? 'En attente' :
-                               order.status === 'acceptee' ? 'Acceptée' :
-                               order.status === 'pret' ? 'Prête' :
-                               order.status === 'livree' ? 'Livrée' :
-                               'Annulée'}
-                            </span>
-                            
-                            <div className="flex space-x-2">
-                              {order.status === 'en_attente' && (
-                                <>
+                          <div className="mt-4 pt-3 border-t border-gray-200">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                                  order.status === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
+                                  order.status === 'acceptee' ? 'bg-blue-100 text-blue-800' :
+                                  order.status === 'pret' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'livree' ? 'bg-gray-100 text-gray-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}>
+                                  {order.status === 'en_attente' ? 'En attente' :
+                                   order.status === 'acceptee' ? 'Acceptée' :
+                                   order.status === 'pret' ? 'Prête' :
+                                   order.status === 'livree' ? 'Livrée' :
+                                   'Annulée'}
+                                </span>
+                              </div>
+                              
+                              <div className="flex flex-wrap gap-2 justify-end">
+                                {order.status === 'en_attente' && (
+                                  <>
+                                    <button
+                                      onClick={() => updateOrderStatus(order.id, 'acceptee')}
+                                      className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors"
+                                    >
+                                      Accepter
+                                    </button>
+                                    <button
+                                      onClick={() => updateOrderStatus(order.id, 'refusee')}
+                                      className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors"
+                                    >
+                                      Refuser
+                                    </button>
+                                  </>
+                                )}
+                                {order.status === 'acceptee' && (
                                   <button
-                                    onClick={() => updateOrderStatus(order.id, 'acceptee')}
-                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
+                                    onClick={() => updateOrderStatus(order.id, 'pret')}
+                                    className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
                                   >
-                                    Accepter
+                                    Marquer comme prête
                                   </button>
-                                  <button
-                                    onClick={() => updateOrderStatus(order.id, 'refusee')}
-                                    className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
-                                  >
-                                    Refuser
-                                  </button>
-                                </>
-                              )}
-                              {order.status === 'acceptee' && (
-                                <button
-                                  onClick={() => updateOrderStatus(order.id, 'pret')}
-                                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
-                                >
-                                  Marquer comme prête
-                                </button>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
