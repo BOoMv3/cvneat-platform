@@ -350,123 +350,170 @@ export default function AdminDashboard() {
           </div>
         </section>
         <div id="commandes" className="mb-12">
-          <h2 className="text-2xl font-bold mb-4">Toutes les commandes</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">Toutes les commandes</h2>
           {orders.length === 0 ? (
             <p className="text-gray-600">Aucune commande trouvée.</p>
           ) : (
-            <table className="w-full border">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-2">Date</th>
-                  <th className="p-2">Client</th>
-                  <th className="p-2">Restaurant</th>
-                  <th className="p-2">Total</th>
-                  <th className="p-2">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map(order => (
-                  <tr key={order.id} className="border-t">
-                    <td className="p-2">{new Date(order.created_at).toLocaleString()}</td>
-                    <td className="p-2">{order.users?.prenom} {order.users?.nom}<br />{order.users?.email}</td>
-                    <td className="p-2">{order.restaurants?.nom}</td>
-                    <td className="p-2">{order.total} €</td>
-                    <td className="p-2">{order.statut}</td>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white rounded-lg shadow-md">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Restaurant</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Statut</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {orders.map(order => (
+                    <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-900">{new Date(order.created_at).toLocaleString()}</td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">
+                        {order.users?.prenom} {order.users?.nom}<br />
+                        <span className="text-xs text-gray-400">{order.users?.email}</span>
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{order.restaurants?.nom}</td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-gray-900">{order.total} €</td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          order.statut === 'livree' ? 'bg-green-100 text-green-800' :
+                          order.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.statut}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
+        
         <div id="restaurants" className="mb-12">
-          <h2 className="text-2xl font-bold mb-4">Tous les restaurants</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">Tous les restaurants</h2>
           {allRestaurants.length === 0 ? (
             <p className="text-gray-600">Aucun restaurant trouvé.</p>
           ) : (
-            <table className="w-full border">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-2">Nom</th>
-                  <th className="p-2">Email</th>
-                  <th className="p-2">Statut</th>
-                  <th className="p-2">Sponsorisé</th>
-                  <th className="p-2">Total généré</th>
-                  <th className="p-2">Commission CVNeat</th>
-                  <th className="p-2">À reverser au restaurant</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allRestaurants.map(resto => {
-                  const restoOrders = allOrders.filter(o => o.restaurant_id === resto.id && o.statut === 'livree');
-                  const totalGenere = restoOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-                  const commission = totalGenere * COMMISSION;
-                  const aReverser = totalGenere - commission;
-                  const isSponsor = resto.mise_en_avant && resto.mise_en_avant_fin && new Date(resto.mise_en_avant_fin) > new Date();
-                  return (
-                    <tr key={resto.id} className="border-t">
-                      <td className="p-2">{resto.nom}</td>
-                      <td className="p-2">{resto.email}</td>
-                      <td className="p-2">{resto.status}</td>
-                      <td className="p-2">{isSponsor ? <span className="bg-yellow-400 text-white px-2 py-1 rounded-full text-xs font-bold">Sponsorisé</span> : '-'}</td>
-                      <td className="p-2">{totalGenere.toFixed(2)} €</td>
-                      <td className="p-2">{commission.toFixed(2)} €</td>
-                      <td className="p-2">{aReverser.toFixed(2)} €</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white rounded-lg shadow-md">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Sponsorisé</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Total généré</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Commission</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">À reverser</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {allRestaurants.map(resto => {
+                    const restoOrders = allOrders.filter(o => o.restaurant_id === resto.id && o.statut === 'livree');
+                    const totalGenere = restoOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+                    const commission = totalGenere * COMMISSION;
+                    const aReverser = totalGenere - commission;
+                    const isSponsor = resto.mise_en_avant && resto.mise_en_avant_fin && new Date(resto.mise_en_avant_fin) > new Date();
+                    return (
+                      <tr key={resto.id} className="hover:bg-gray-50">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-gray-900">{resto.nom}</td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{resto.email}</td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                            resto.status === 'active' ? 'bg-green-100 text-green-800' :
+                            resto.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {resto.status}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
+                          {isSponsor ? 
+                            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-bold">Sponsorisé</span> : 
+                            <span className="text-gray-400">-</span>
+                          }
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-green-600">{totalGenere.toFixed(2)} €</td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-purple-600">{commission.toFixed(2)} €</td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-blue-600">{aReverser.toFixed(2)} €</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
+        
         <div id="roles" className="mb-12">
-          <h2 className="text-2xl font-bold mb-4">Utilisateurs & rôles</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">Utilisateurs & rôles</h2>
           {allUsers.length === 0 ? (
             <p className="text-gray-600">Aucun utilisateur trouvé.</p>
           ) : (
-            <table className="w-full border">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-2">Nom</th>
-                  <th className="p-2">Email</th>
-                  <th className="p-2">Rôle</th>
-                  <th className="p-2">Statut</th>
-                  <th className="p-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allUsers.map(user => (
-                  <tr key={user.id} className="border-t">
-                    <td className="p-2">{user.prenom} {user.nom}</td>
-                    <td className="p-2">{user.email}</td>
-                    <td className="p-2">
-                      <select value={user.role} onChange={e => handleRoleChange(user.id, e.target.value)} className="input-primary">
-                        <option value="user">Client</option>
-                        <option value="restaurant">Partenaire</option>
-                        <option value="delivery">Livreur</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </td>
-                    <td className="p-2">{user.blocked ? <span className="text-red-600">Bloqué</span> : <span className="text-green-600">Actif</span>}</td>
-                    <td className="p-2 space-x-2">
-                      {user.blocked ? (
-                        <button onClick={() => handleBlockUser(user.id, false)} className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600" disabled={actionLoading}>Débloquer</button>
-                      ) : (
-                        <button onClick={() => handleBlockUser(user.id, true)} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" disabled={actionLoading}>Bloquer</button>
-                      )}
-                      {user.role === 'restaurant' && (
-                        <button 
-                          onClick={() => handleCreateRestaurant(user.id)} 
-                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600" 
-                          disabled={actionLoading}
-                        >
-                          Créer Restaurant
-                        </button>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white rounded-lg shadow-md">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {allUsers.map(user => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base font-bold text-gray-900">{user.prenom} {user.nom}</td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base text-gray-500">{user.email}</td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
+                        <select 
+                          value={user.role} 
+                          onChange={e => handleRoleChange(user.id, e.target.value)} 
+                          className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="user">Client</option>
+                          <option value="restaurant">Partenaire</option>
+                          <option value="delivery">Livreur</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
+                        {user.blocked ? 
+                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-bold">Bloqué</span> : 
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-bold">Actif</span>
+                        }
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm sm:text-base">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button
+                            onClick={() => handleBlockUser(user.id, !user.blocked)}
+                            className={`px-3 py-1 rounded text-xs font-medium ${
+                              user.blocked 
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            }`}
+                          >
+                            {user.blocked ? 'Débloquer' : 'Bloquer'}
+                          </button>
+                          {user.role === 'restaurant' && (
+                            <button
+                              onClick={() => handleCreateRestaurant(user.id)}
+                              className="bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1 rounded text-xs font-medium"
+                            >
+                              Créer resto
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
