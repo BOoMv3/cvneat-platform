@@ -680,6 +680,7 @@ export default function PartnerDashboard() {
                           <div className="mt-2 space-y-2">
                             <div className="flex gap-2">
                               <input
+                                id={`menu-item-url-${item.id}`}
                                 type="url"
                                 placeholder="Coller une URL d'image"
                                 className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
@@ -692,7 +693,7 @@ export default function PartnerDashboard() {
                               />
                               <button
                                 onClick={() => {
-                                  const input = e.target.previousElementSibling;
+                                  const input = document.querySelector(`#menu-item-url-${item.id}`);
                                   if (input && input.value) {
                                     handleImageUrlUpload(input.value, item.id);
                                   }
