@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import { FaHome } from 'react-icons/fa';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -233,69 +234,84 @@ export default function AdminDashboard() {
       {actionLoading && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-800 px-6 py-2 rounded shadow z-50">Action en cours...</div>}
       {actionSuccess && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-green-100 text-green-800 px-6 py-2 rounded shadow z-50">{actionSuccess}</div>}
       {actionError && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-100 text-red-800 px-6 py-2 rounded shadow z-50">{actionError}</div>}
-      <div className="max-w-6xl mx-auto p-8">
-        <h1 className="text-3xl font-bold mb-8">Espace Administrateur CVN'EAT</h1>
-        <nav className="flex gap-4 mb-8">
-          <a href="#partenaires" className="text-blue-600 hover:underline">Partenaires à valider</a>
-          <a href="#commandes" className="text-blue-600 hover:underline">Commandes</a>
-          <a href="#restaurants" className="text-blue-600 hover:underline">Restaurants</a>
-          <a href="#roles" className="text-blue-600 hover:underline">Utilisateurs & rôles</a>
+      <div className="max-w-6xl mx-auto p-4 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.push('/')}
+              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              title="Retour à l'accueil"
+            >
+              <FaHome className="h-5 w-5" />
+              <span className="hidden sm:inline">Accueil</span>
+            </button>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Espace Administrateur CVN'EAT</h1>
+            </div>
+          </div>
+        </div>
+        
+        <nav className="flex flex-wrap gap-2 sm:gap-4 mb-6 sm:mb-8">
+          <a href="#partenaires" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Partenaires à valider</a>
+          <a href="#commandes" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Commandes</a>
+          <a href="#restaurants" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Restaurants</a>
+          <a href="#roles" className="text-blue-600 hover:underline text-sm sm:text-base px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">Utilisateurs & rôles</a>
         </nav>
         
         {/* Statistiques globales */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6 border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Restaurants</p>
-                <p className="text-2xl font-semibold text-gray-900">{allRestaurants.length}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Restaurants</p>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">{allRestaurants.length}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm p-6 border">
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-yellow-100 rounded-lg">
-                <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">En attente</p>
-                <p className="text-2xl font-semibold text-gray-900">{pendingPartners.length}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">En attente</p>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">{pendingPartners.length}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm p-6 border">
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
-                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Commandes</p>
-                <p className="text-2xl font-semibold text-gray-900">{allOrders.length}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Commandes</p>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">{allOrders.length}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm p-6 border">
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Commission CVN'EAT</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Commission CVN'EAT</p>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">
                   {(allOrders.reduce((sum, o) => sum + (o.total || 0), 0) * COMMISSION).toFixed(2)} €
                 </p>
               </div>

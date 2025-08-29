@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import { FaHome } from 'react-icons/fa';
 
 export default function DeliveryDashboard() {
   const [user, setUser] = useState(null);
@@ -179,69 +180,81 @@ export default function DeliveryDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
+    <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Tableau de bord livreur</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.push('/')}
+              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              title="Retour à l'accueil"
+            >
+              <FaHome className="h-5 w-5" />
+              <span className="hidden sm:inline">Accueil</span>
+            </button>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Tableau de bord livreur</h1>
+            </div>
+          </div>
           <button
             onClick={() => router.push('/delivery/dashboard')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
           >
-            Dashboard avance
+            Dashboard avancé
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Livraisons aujourd'hui</h3>
-            <p className="text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Livraisons aujourd'hui</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Total livraisons</h3>
-            <p className="text-3xl font-bold text-indigo-600">{stats.totalDeliveries}</p>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Total livraisons</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-indigo-600">{stats.totalDeliveries}</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Livraisons terminées</h3>
-            <p className="text-3xl font-bold text-green-600">{stats.completedDeliveries}</p>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Livraisons terminées</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.completedDeliveries}</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Gains totaux</h3>
-            <p className="text-3xl font-bold text-purple-600">{stats.totalEarnings.toFixed(2)}€</p>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Gains totaux</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-purple-600">{stats.totalEarnings.toFixed(2)}€</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Temps moyen</h3>
-            <p className="text-3xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Temps moyen</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Note moyenne</h3>
-            <p className="text-3xl font-bold text-yellow-600">{stats.rating.toFixed(1)} ⭐</p>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Note moyenne</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-yellow-600">{stats.rating.toFixed(1)} ⭐</p>
           </div>
         </div>
 
         {/* Commande actuelle en cours de livraison */}
         {currentOrder && (
-          <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg shadow-md mb-6">
-            <h2 className="text-xl font-bold text-blue-900 mb-4">🚚 Livraison en cours</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-blue-50 border border-blue-200 p-4 sm:p-6 rounded-lg shadow-md mb-6">
+            <h2 className="text-lg sm:text-xl font-bold text-blue-900 mb-4">🚚 Livraison en cours</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div>
-                <h3 className="font-semibold text-blue-900 mb-2">Détails de la commande</h3>
-                <p className="text-sm text-blue-800 mb-1">
+                <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Détails de la commande</h3>
+                <p className="text-xs sm:text-sm text-blue-800 mb-1">
                   <strong>Restaurant:</strong> {currentOrder.restaurant_nom}
                 </p>
-                <p className="text-sm text-blue-800 mb-1">
+                <p className="text-xs sm:text-sm text-blue-800 mb-1">
                   <strong>Client:</strong> {currentOrder.customer_name}
                 </p>
-                <p className="text-sm text-blue-800 mb-1">
+                <p className="text-xs sm:text-sm text-blue-800 mb-1">
                   <strong>Adresse:</strong> {currentOrder.delivery_address}
                 </p>
-                <p className="text-sm text-blue-800 mb-1">
+                <p className="text-xs sm:text-sm text-blue-800 mb-1">
                   <strong>Frais de livraison:</strong> {currentOrder.delivery_fee}€
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-center md:text-right">
                 <button
                   onClick={() => completeDelivery(currentOrder.id)}
-                  className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  className="bg-green-600 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base"
                 >
                   ✅ Marquer comme livrée
                 </button>
@@ -253,25 +266,25 @@ export default function DeliveryDashboard() {
           </div>
         )}
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold mb-4">Commandes disponibles</h2>
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">Commandes disponibles</h2>
           {deliveries.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>Aucune commande disponible pour le moment</p>
+            <div className="text-center py-6 sm:py-8 text-gray-500">
+              <p className="text-sm sm:text-base">Aucune commande disponible pour le moment</p>
             </div>
           ) : (
             <div className="space-y-4">
               {deliveries.map(delivery => (
                 <div key={delivery.id} className="border-b pb-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold">{delivery.restaurant_nom}</p>
-                      <p className="text-gray-600">{delivery.customer_name}</p>
-                      <p className="text-sm text-gray-500">{delivery.delivery_address}</p>
-                      <p className="text-sm text-green-600 font-medium">Frais: {delivery.delivery_fee}€</p>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm sm:text-base">{delivery.restaurant_nom}</p>
+                      <p className="text-gray-600 text-xs sm:text-sm">{delivery.customer_name}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">{delivery.delivery_address}</p>
+                      <p className="text-xs sm:text-sm text-green-600 font-medium">Frais: {delivery.delivery_fee}€</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">
+                    <div className="text-left sm:text-right w-full sm:w-auto">
+                      <p className="text-xs sm:text-sm text-gray-500">
                         {new Date(delivery.created_at).toLocaleTimeString('fr-FR', { 
                           hour: '2-digit', 
                           minute: '2-digit' 
@@ -279,7 +292,7 @@ export default function DeliveryDashboard() {
                       </p>
                       <button 
                         onClick={() => acceptOrder(delivery.id)}
-                        className="mt-2 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 text-sm"
+                        className="mt-2 bg-green-600 text-white py-2 px-3 sm:px-4 rounded-md hover:bg-green-700 text-xs sm:text-sm w-full sm:w-auto"
                       >
                         Accepter
                       </button>
@@ -291,16 +304,16 @@ export default function DeliveryDashboard() {
           )}
         </div>
 
-        <div className="mt-8 flex justify-center space-x-4">
+        <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-4">
           <button
             onClick={() => router.push('/delivery/history')}
-            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            className="bg-purple-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm sm:text-base"
           >
             Historique
           </button>
           <button
             onClick={() => router.push('/delivery/reviews')}
-            className="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+            className="bg-yellow-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors text-sm sm:text-base"
           >
             Avis clients
           </button>

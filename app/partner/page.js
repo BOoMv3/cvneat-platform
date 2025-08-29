@@ -15,7 +15,8 @@ import {
   FaChartLine,
   FaCog,
   FaFileAlt,
-  FaMapMarkerAlt
+  FaMapMarkerAlt,
+  FaHome
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 
@@ -305,50 +306,65 @@ export default function PartnerDashboard() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard Partenaire</h1>
-              <p className="text-gray-600">{restaurant?.nom}</p>
-            </div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/')}
+                className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                title="Retour à l'accueil"
+              >
+                <FaHome className="h-5 w-5" />
+                <span className="hidden sm:inline">Accueil</span>
+              </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard Partenaire</h1>
+                <p className="text-sm sm:text-base text-gray-600">{restaurant?.nom}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <RealTimeNotifications restaurantId={restaurant?.id} />
               <button
                 onClick={() => router.push('/partner/analytics')}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                className="bg-purple-600 text-white px-2 sm:px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
-                <FaChartLine className="h-4 w-4" />
-                <span>Analytics</span>
+                <FaChartLine className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Analytics</span>
+                <span className="sm:hidden">📊</span>
               </button>
               <button
                 onClick={() => router.push('/partner/reports')}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                className="bg-green-600 text-white px-2 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
-                <FaFileAlt className="h-4 w-4" />
-                <span>Rapports</span>
+                <FaFileAlt className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Rapports</span>
+                <span className="sm:hidden">📋</span>
               </button>
               <button
                 onClick={() => router.push('/partner/hours')}
-                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
+                className="bg-orange-600 text-white px-2 sm:px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
-                <FaClock className="h-4 w-4" />
-                <span>Horaires</span>
+                <FaClock className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Horaires</span>
+                <span className="sm:hidden">🕐</span>
               </button>
               <button
                 onClick={() => router.push('/partner/settings')}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                className="bg-gray-600 text-white px-2 sm:px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span>Paramètres</span>
+                <span className="hidden sm:inline">Paramètres</span>
+                <span className="sm:hidden">⚙️</span>
               </button>
               <button
                 onClick={() => router.push('/partner/delivery-zones')}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                className="bg-green-600 text-white px-2 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
-                <FaMapMarkerAlt className="h-4 w-4" />
-                <span>Zones de livraison</span>
+                <FaMapMarkerAlt className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Zones de livraison</span>
+                <span className="sm:hidden">📍</span>
               </button>
             </div>
           </div>
@@ -358,10 +374,10 @@ export default function PartnerDashboard() {
       {/* Navigation */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
+          <nav className="flex flex-wrap space-x-2 sm:space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === 'dashboard'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -371,7 +387,7 @@ export default function PartnerDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('orders')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === 'orders'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -381,7 +397,7 @@ export default function PartnerDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('menu')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === 'menu'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -394,7 +410,7 @@ export default function PartnerDashboard() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {/* Stats Cards */}
