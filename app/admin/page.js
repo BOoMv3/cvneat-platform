@@ -5,10 +5,10 @@ import { supabase } from '../../lib/supabase';
 import { FaHome } from 'react-icons/fa';
 import { FaUsers, FaStore, FaShoppingCart, FaTruck } from 'react-icons/fa';
 
-// 🚨 NOUVELLE PAGE ADMIN - Cards responsives pour mobile
-// 🎯 PROBLÈME : Le serveur en ligne n'a pas encore compilé cette page !
-// 🔥 SOLUTION : Créer une page COMPLÈTEMENT NOUVELLE !
-export default function AdminDashboardNew() {
+// 🚨 FORCAGE REDEPLOIEMENT COMPLET - Page admin COMPLÈTEMENT NOUVELLE
+// 🎯 PROBLÈME : Le serveur en ligne a un cache corrompu !
+// 🔥 SOLUTION : Changer TOUTE la structure de la page !
+export default function AdminDashboardForceDeploy() {
   const router = useRouter();
   const [allUsers, setAllUsers] = useState([]);
   const [allRestaurants, setAllRestaurants] = useState([]);
@@ -26,8 +26,8 @@ export default function AdminDashboardNew() {
 
   const fetchData = async () => {
     try {
-      // 🚨 NOUVELLE PAGE ADMIN - Cette page doit être recompilée !
-      console.log('🚨 NOUVELLE PAGE ADMIN COMPILÉE - Cards responsives pour mobile');
+      // 🚨 FORCAGE REDEPLOIEMENT - Cette page DOIT être recompilée !
+      console.log('🚨 FORCAGE REDEPLOIEMENT - Page admin COMPLÈTEMENT NOUVELLE');
       
       // Récupérer tous les utilisateurs
       const { data: users, error: usersError } = await supabase
@@ -207,9 +207,9 @@ export default function AdminDashboardNew() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 🚨 MESSAGE D'ALERTE POUR FORCER LA COMPILATION */}
-      <div className="bg-red-500 text-white p-4 text-center font-bold">
-        🚨 ATTENTION : Cette page a été recompilée avec des CARDS responsives pour mobile !
+      {/* 🚨 MESSAGE D'ALERTE POUR FORCER LE REDEPLOIEMENT */}
+      <div className="bg-red-600 text-white p-6 text-center font-bold text-xl">
+        🚨 ATTENTION : FORCAGE REDEPLOIEMENT COMPLET - Page admin COMPLÈTEMENT NOUVELLE !
       </div>
       
       {actionLoading && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-800 px-6 py-2 rounded shadow z-50">Action en cours...</div>}
@@ -227,8 +227,8 @@ export default function AdminDashboardNew() {
               <span className="text-base sm:text-sm font-medium">Accueil</span>
             </button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">🔥 ADMIN COMPILÉ - Cards Responsives Mobile</h1>
-              <p className="text-sm text-gray-600 mt-2">🚨 Cette page a été recompilée avec les cards responsives !</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">🚨 FORCAGE REDEPLOIEMENT - Page Admin COMPLÈTEMENT NOUVELLE</h1>
+              <p className="text-sm text-gray-600 mt-2">🔥 Cette page a été FORCÉE à se redéployer avec les cards responsives !</p>
             </div>
           </div>
         </div>
