@@ -7,6 +7,7 @@ import { FaUsers, FaStore, FaShoppingCart, FaTruck } from 'react-icons/fa';
 
 // 🚨 FORCE COMPILATION ADMIN - Cards responsives pour mobile
 // 🎯 PROBLÈME : Le serveur en ligne n'a pas encore compilé cette page !
+// 🔥 SOLUTION : Changer le titre pour forcer la compilation !
 export default function AdminDashboard() {
   const router = useRouter();
   const [allUsers, setAllUsers] = useState([]);
@@ -25,19 +26,52 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      // 🚨 FORCE COMPILATION - Cette page doit être recompilée en ligne !
-      const [usersRes, restaurantsRes, ordersRes] = await Promise.all([
-        fetch('/api/admin/users'),
-        fetch('/api/admin/restaurants'),
-        fetch('/api/admin/orders')
-      ]);
+      // 🚨 FORCE COMPILATION - Cette page doit être recompilée !
+      console.log('🚨 ADMIN PAGE COMPILÉE - Cards responsives pour mobile');
+      
+      // Récupérer tous les utilisateurs
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (usersRes.ok) setAllUsers(await usersRes.json());
-      if (restaurantsRes.ok) setAllRestaurants(await restaurantsRes.json());
-      if (ordersRes.ok) setAllOrders(await ordersRes.json());
+      if (usersError) {
+        console.error('Erreur lors de la récupération des utilisateurs:', usersError);
+        return;
+      }
+
+      // Récupérer tous les restaurants
+      const { data: restaurants, error: restaurantsError } = await supabase
+        .from('restaurants')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (restaurantsError) {
+        console.error('Erreur lors de la récupération des restaurants:', restaurantsError);
+        return;
+      }
+
+      // Récupérer toutes les commandes
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Erreur lors de la récupération des commandes:', ordersError);
+        return;
+      }
 
       // Filtrer les partenaires en attente
-      const pending = allRestaurants.filter(r => r.status === 'pending');
+      const pending = users.filter(user => 
+        user.role === 'restaurant' && 
+        user.restaurant_id && 
+        !restaurants.find(r => r.id === user.restaurant_id)?.is_approved
+      );
+
+      setAllUsers(users || []);
+      setAllRestaurants(restaurants || []);
+      setAllOrders(orders || []);
       setPendingPartners(pending);
     } catch (error) {
       console.error('Erreur lors de la récupération des données:', error);
@@ -173,7 +207,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Feedback global */}
+      {/* 🚨 MESSAGE D'ALERTE POUR FORCER LA COMPILATION */}
+      <div className="bg-red-500 text-white p-4 text-center font-bold">
+        🚨 ATTENTION : Cette page a été recompilée avec des CARDS responsives pour mobile !
+      </div>
+      
       {actionLoading && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-800 px-6 py-2 rounded shadow z-50">Action en cours...</div>}
       {actionSuccess && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-green-100 text-green-800 px-6 py-2 rounded shadow z-50">{actionSuccess}</div>}
       {actionError && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-100 text-red-800 px-6 py-2 rounded shadow z-50">{actionError}</div>}
@@ -189,7 +227,8 @@ export default function AdminDashboard() {
               <span className="text-base sm:text-sm font-medium">Accueil</span>
             </button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">🚨 ADMIN COMPILÉ - Cards Responsives Mobile</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">🔥 ADMIN COMPILÉ - Cards Responsives Mobile</h1>
+              <p className="text-sm text-gray-600 mt-2">🚨 Cette page a été recompilée avec les cards responsives !</p>
             </div>
           </div>
         </div>
