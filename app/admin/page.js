@@ -15,7 +15,8 @@ import {
   FaArrowLeft,
   FaEye,
   FaEdit,
-  FaTrash
+  FaTrash,
+  FaLock
 } from 'react-icons/fa';
 
 export default function AdminPage() {
@@ -31,11 +32,48 @@ export default function AdminPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    fetchDashboardStats();
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      setAuthLoading(true);
+      
+      // Vérifier si l'utilisateur est connecté
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !currentUser) {
+        router.push('/login');
+        return;
+      }
+
+      // Vérifier le rôle de l'utilisateur
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (userError || !userData || userData.role !== 'admin') {
+        router.push('/');
+        return;
+      }
+
+      setUser(currentUser);
+      fetchDashboardStats();
+      
+    } catch (err) {
+      console.error('Erreur d\'authentification:', err);
+      router.push('/login');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const fetchDashboardStats = async () => {
     try {
@@ -127,15 +165,42 @@ export default function AdminPage() {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'Date inconnue';
+    try {
+      return new Date(dateString).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (err) {
+      return 'Date invalide';
+    }
   };
 
+  const getOrderDisplayId = (order) => {
+    if (!order || !order.id) return 'N/A';
+    try {
+      return order.id.slice(0, 8);
+    } catch (err) {
+      return 'N/A';
+    }
+  };
+
+  // Affichage de chargement d'authentification
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FaLock className="text-4xl text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Vérification des droits d'accès...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Affichage de chargement des données
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -147,6 +212,7 @@ export default function AdminPage() {
     );
   }
 
+  // Affichage d'erreur
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -166,16 +232,21 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header avec bouton retour */}
+        {/* Header avec bouton retour et info utilisateur */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
-          <button
-            onClick={() => router.push('/')}
-            className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
-          >
-            <FaArrowLeft className="mr-2" />
-            Retour à l'Accueil
-          </button>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">
+              Connecté en tant qu'admin
+            </span>
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+            >
+              <FaArrowLeft className="mr-2" />
+              Retour à l'Accueil
+            </button>
+          </div>
         </div>
 
         {/* Statistiques principales */}
@@ -187,7 +258,7 @@ export default function AdminPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Utilisateurs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
+                <p className="text-2xl font-bold text-gray-900">N/A</p>
               </div>
             </div>
           </div>
@@ -263,25 +334,25 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 gap-3">
                 <button 
                   onClick={() => router.push('/admin/users')}
-                  className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-left"
+                  className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-left"
                 >
                   👥 Gérer les Utilisateurs
                 </button>
                 <button 
                   onClick={() => router.push('/admin/partnerships')}
-                  className="w-full p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left"
+                  className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left"
                 >
                   🤝 Valider les Partenaires
                 </button>
                 <button 
                   onClick={() => router.push('/admin/restaurants')}
-                  className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-left"
+                  className="p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-left"
                 >
                   🏪 Gérer les Restaurants
                 </button>
                 <button 
                   onClick={() => router.push('/admin/orders')}
-                  className="w-full p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left"
+                  className="p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left"
                 >
                   📋 Voir toutes les Commandes
                 </button>
@@ -318,23 +389,23 @@ export default function AdminPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {stats.recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
+                  <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{order.id?.slice(0, 8) || 'N/A'}
+                      #{getOrderDisplayId(order)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.restaurant_name || 'Restaurant inconnu'}
+                      {order?.restaurant_name || 'Restaurant inconnu'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPrice(order.total_amount)}
+                      {formatPrice(order?.total_amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {getStatusText(order.status)}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order?.status)}`}>
+                        {getStatusText(order?.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(order.created_at)}
+                      {formatDate(order?.created_at)}
                     </td>
                   </tr>
                 ))}
@@ -371,22 +442,22 @@ export default function AdminPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {stats.recentRestaurants.map((restaurant) => (
-                  <tr key={restaurant.id} className="hover:bg-gray-50">
+                  <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {restaurant.name || 'Nom inconnu'}
+                      {restaurant?.name || 'Nom inconnu'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {restaurant.address || 'Adresse non renseignée'}
+                      {restaurant?.address || 'Adresse non renseignée'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        restaurant.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        restaurant?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
-                        {restaurant.is_active ? 'Actif' : 'Inactif'}
+                        {restaurant?.is_active ? 'Actif' : 'Inactif'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(restaurant.created_at)}
+                      {formatDate(restaurant?.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
