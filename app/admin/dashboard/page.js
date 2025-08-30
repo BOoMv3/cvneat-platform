@@ -107,6 +107,16 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fonction sécurisée pour afficher l'ID de commande
+  const getOrderDisplayId = (order) => {
+    if (!order || !order.id) return 'N/A';
+    // Si c'est un UUID, on prend les 8 premiers caractères
+    if (typeof order.id === 'string' && order.id.length > 8) {
+      return order.id.slice(0, 8);
+    }
+    return order.id.toString();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -251,16 +261,16 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-3">
                 {stats.recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={order?.id || Math.random()} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium">Commande #{order.id}</p>
-                      <p className="text-sm text-gray-600">{order.customer_name}</p>
+                      <p className="font-medium">Commande #{getOrderDisplayId(order)}</p>
+                      <p className="text-sm text-gray-600">{order?.customer_name || 'Nom non disponible'}</p>
                     </div>
                     <div className="text-right">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                        {getStatusText(order.status)}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order?.status)}`}>
+                        {getStatusText(order?.status)}
                       </span>
-                      <p className="text-sm font-medium mt-1">{order.total_amount}€</p>
+                      <p className="text-sm font-medium mt-1">{order?.total_amount || 0}€</p>
                     </div>
                   </div>
                 ))}
