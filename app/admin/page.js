@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { FaHome } from 'react-icons/fa';
 import { FaUsers, FaStore, FaShoppingCart, FaTruck } from 'react-icons/fa';
 
+// FORCE DEPLOY - Cards responsives pour mobile
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
