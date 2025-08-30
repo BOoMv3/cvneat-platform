@@ -5,103 +5,44 @@ import { supabase } from '../../lib/supabase';
 import { FaHome } from 'react-icons/fa';
 import { FaUsers, FaStore, FaShoppingCart, FaTruck } from 'react-icons/fa';
 
-// FORCE DEPLOY - Cards responsives pour mobile
+// 🚨 FORCE COMPILATION ADMIN - Cards responsives pour mobile
+// 🎯 PROBLÈME : Le serveur en ligne n'a pas encore compilé cette page !
 export default function AdminDashboard() {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [pendingPartners, setPendingPartners] = useState([]);
-  const [refresh, setRefresh] = useState(false);
-  const [orders, setOrders] = useState([]);
+  const router = useRouter();
+  const [allUsers, setAllUsers] = useState([]);
   const [allRestaurants, setAllRestaurants] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
-  const COMMISSION = 0.20; // 20% de commission CVN'EAT
-  const router = useRouter();
-  const [error, setError] = useState(null);
+  const [pendingPartners, setPendingPartners] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session Supabase:', session);
-      if (!session?.user) {
-        setError('Session utilisateur non trouvée. Veuillez vous reconnecter.');
-        setLoading(false);
-        return;
-      }
-      const { data: userData, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-      console.log('UserData Supabase:', userData, 'Error:', error);
-      console.log('🔍 DEBUG ADMIN - UserData complet:', userData);
-      console.log('🔍 DEBUG ADMIN - Rôle utilisateur:', userData?.role);
-      console.log('🔍 DEBUG ADMIN - Rôle attendu: admin');
-      console.log('🔍 DEBUG ADMIN - Comparaison:', userData?.role === 'admin');
-      
-      if (!userData || userData.role !== 'admin') {
-        console.log('❌ ACCÈS REFUSÉ - Redirection vers l\'accueil');
-        setError(`Accès refusé. Votre rôle est : ${userData ? userData.role : 'aucun'}. Contactez un administrateur.`);
-        setLoading(false);
-        return;
-      }
-      
-      console.log('✅ ACCÈS AUTORISÉ - Rôle admin confirmé');
-      setUser(session.user);
-      setRole(userData.role);
-      setLoading(false);
-    };
-    checkAdmin();
-  }, [router]);
-
-  useEffect(() => {
-    // Charger les commandes avec les détails des utilisateurs et restaurants
-    const fetchOrders = async () => {
-      const { data, error } = await supabase
-        .from('commandes')
-        .select('*, users(nom, prenom, email), restaurants(nom)')
-        .order('created_at', { ascending: false });
-      if (!error) setOrders(data || []);
-    };
-    fetchOrders();
-  }, [router, refresh]);
-
-  // Fonction pour rafraîchir toutes les données
-  const fetchData = async () => {
-    // Charger tous les utilisateurs
-    const { data: usersData, error: usersError } = await supabase
-      .from('users')
-      .select('*');
-    if (!usersError) setAllUsers(usersData || []);
-
-    // Charger tous les restaurants
-    const { data: restaurantsData, error: restaurantsError } = await supabase
-      .from('restaurants')
-      .select('*');
-    if (!restaurantsError) setAllRestaurants(restaurantsData || []);
-
-    // Charger toutes les commandes
-    const { data: ordersData, error: ordersError } = await supabase
-      .from('commandes')
-      .select('*');
-    if (!ordersError) setAllOrders(ordersData || []);
-
-    // Charger les partenaires en attente
-    const { data: pendingData, error: pendingError } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('status', 'pending');
-    if (!pendingError) setPendingPartners(pendingData || []);
-  };
+  const COMMISSION = 0.20; // 20% de commission CVN'EAT
 
   useEffect(() => {
     fetchData();
-  }, [router, refresh]);
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // 🚨 FORCE COMPILATION - Cette page doit être recompilée en ligne !
+      const [usersRes, restaurantsRes, ordersRes] = await Promise.all([
+        fetch('/api/admin/users'),
+        fetch('/api/admin/restaurants'),
+        fetch('/api/admin/orders')
+      ]);
+
+      if (usersRes.ok) setAllUsers(await usersRes.json());
+      if (restaurantsRes.ok) setAllRestaurants(await restaurantsRes.json());
+      if (ordersRes.ok) setAllOrders(await ordersRes.json());
+
+      // Filtrer les partenaires en attente
+      const pending = allRestaurants.filter(r => r.status === 'pending');
+      setPendingPartners(pending);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des données:', error);
+    }
+  };
 
   const handlePartnerStatus = async (id, status) => {
     setActionLoading(true);
@@ -248,7 +189,7 @@ export default function AdminDashboard() {
               <span className="text-base sm:text-sm font-medium">Accueil</span>
             </button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Espace Administrateur CVN'EAT</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">🚨 ADMIN COMPILÉ - Cards Responsives Mobile</h1>
             </div>
           </div>
         </div>
