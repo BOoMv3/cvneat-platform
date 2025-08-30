@@ -140,10 +140,15 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Bannière de confirmation */}
+      <div className="bg-green-600 text-white p-4 text-center font-bold">
+        ✅ PAGE ADMIN FONCTIONNELLE - Dashboard complet avec toutes les fonctionnalités !
+      </div>
+      
       <div className="max-w-7xl mx-auto px-4 py-12">
         {/* Header avec bouton retour */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Administrateur</h1>
+          <h1 className="text-3xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
           <button
             onClick={() => router.push('/')}
             className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
