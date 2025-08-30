@@ -5,10 +5,10 @@ import { supabase } from '../../lib/supabase';
 import { FaHome } from 'react-icons/fa';
 import { FaUsers, FaStore, FaShoppingCart, FaTruck } from 'react-icons/fa';
 
-// 🚨 FORCE COMPILATION ADMIN - Cards responsives pour mobile
+// 🚨 NOUVELLE PAGE ADMIN - Cards responsives pour mobile
 // 🎯 PROBLÈME : Le serveur en ligne n'a pas encore compilé cette page !
-// 🔥 SOLUTION : Changer le titre pour forcer la compilation !
-export default function AdminDashboard() {
+// 🔥 SOLUTION : Créer une page COMPLÈTEMENT NOUVELLE !
+export default function AdminDashboardNew() {
   const router = useRouter();
   const [allUsers, setAllUsers] = useState([]);
   const [allRestaurants, setAllRestaurants] = useState([]);
@@ -26,8 +26,8 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      // 🚨 FORCE COMPILATION - Cette page doit être recompilée !
-      console.log('🚨 ADMIN PAGE COMPILÉE - Cards responsives pour mobile');
+      // 🚨 NOUVELLE PAGE ADMIN - Cette page doit être recompilée !
+      console.log('🚨 NOUVELLE PAGE ADMIN COMPILÉE - Cards responsives pour mobile');
       
       // Récupérer tous les utilisateurs
       const { data: users, error: usersError } = await supabase
