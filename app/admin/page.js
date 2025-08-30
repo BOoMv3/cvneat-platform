@@ -1,71 +1,411 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
+import { 
+  FaUsers, 
+  FaStore, 
+  FaShoppingCart, 
+  FaEuroSign,
+  FaClock,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaSpinner,
+  FaArrowLeft,
+  FaEye,
+  FaEdit,
+  FaTrash
+} from 'react-icons/fa';
 
 export default function AdminPage() {
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    validatedOrders: 0,
+    totalRevenue: 0,
+    totalRestaurants: 0,
+    pendingPartners: 0,
+    recentOrders: [],
+    recentRestaurants: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const router = useRouter();
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Bannière de test */}
-        <div className="bg-blue-600 text-white p-6 text-center font-bold text-xl mb-8 rounded-lg">
-          🚀 PAGE ADMIN ULTRA-SIMPLE - TEST EN LIGNE
-        </div>
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
 
-        {/* Titre principal */}
-        <h1 className="text-4xl font-bold text-center text-gray-900 mb-8">
-          Dashboard Administrateur CVN'EAT
-        </h1>
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        {/* Statistiques basiques */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Utilisateurs</h3>
-            <p className="text-3xl font-bold text-blue-600">0</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Restaurants</h3>
-            <p className="text-3xl font-bold text-green-600">0</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Commandes</h3>
-            <p className="text-3xl font-bold text-purple-600">0</p>
-          </div>
-        </div>
+      // Récupérer toutes les commandes
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        {/* Actions rapides */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Actions Rapides</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button className="p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              Gérer les Utilisateurs
-            </button>
-            <button className="p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              Valider les Partenaires
-            </button>
-            <button className="p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-              Voir les Statistiques
-            </button>
-            <button className="p-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
-              Créer un Restaurant
-            </button>
-          </div>
-        </div>
+      if (ordersError) throw ordersError;
 
-        {/* Bouton retour */}
+      // Récupérer tous les restaurants
+      const { data: restaurants, error: restaurantsError } = await supabase
+        .from('restaurants')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (restaurantsError) throw restaurantsError;
+
+      // Récupérer les demandes de partenariat
+      const { data: partnershipRequests, error: partnershipError } = await supabase
+        .from('restaurant_requests')
+        .select('*');
+
+      if (partnershipError) throw partnershipError;
+
+      // Calculer les statistiques
+      const totalOrders = orders?.length || 0;
+      const pendingOrders = orders?.filter(o => o.status === 'pending').length || 0;
+      const validatedOrders = orders?.filter(o => ['accepted', 'preparing', 'ready', 'delivered'].includes(o.status)).length || 0;
+      const totalRevenue = orders?.filter(o => ['accepted', 'preparing', 'ready', 'delivered'].includes(o.status))
+        .reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+      const totalRestaurants = restaurants?.length || 0;
+      const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
+      const recentOrders = orders?.slice(0, 5) || [];
+      const recentRestaurants = restaurants?.slice(0, 5) || [];
+
+      setStats({
+        totalOrders,
+        pendingOrders,
+        validatedOrders,
+        totalRevenue,
+        totalRestaurants,
+        pendingPartners,
+        recentOrders,
+        recentRestaurants
+      });
+
+    } catch (err) {
+      console.error('Erreur lors du chargement des statistiques:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'accepted': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'preparing': return 'bg-blue-100 text-blue-800';
+      case 'ready': return 'bg-purple-100 text-purple-800';
+      case 'delivered': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'pending': return 'En attente';
+      case 'accepted': return 'Acceptée';
+      case 'rejected': return 'Refusée';
+      case 'preparing': return 'En préparation';
+      case 'ready': return 'Prête';
+      case 'delivered': return 'Livrée';
+      default: return status;
+    }
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(price || 0);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Chargement du dashboard admin...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 font-bold mb-4">Erreur: {error}</p>
+          <button
+            onClick={fetchDashboardStats}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header avec bouton retour */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
           <button
             onClick={() => router.push('/')}
-            className="px-8 py-4 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-lg font-semibold"
+            className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
           >
-            ← Retour à l'Accueil
+            <FaArrowLeft className="mr-2" />
+            Retour à l'Accueil
           </button>
         </div>
 
-        {/* Message de confirmation */}
-        <div className="mt-8 text-center text-gray-600">
-          <p>✅ Cette page admin est maintenant ultra-simple et devrait fonctionner en ligne</p>
+        {/* Statistiques principales */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <FaUsers className="text-2xl" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Utilisateurs</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
+                <FaStore className="text-2xl" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Restaurants</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalRestaurants}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                <FaShoppingCart className="text-2xl" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Commandes</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                <FaEuroSign className="text-2xl" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Chiffre d'Affaires</p>
+                <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistiques détaillées */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Commandes */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Statistiques des Commandes</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Commandes en attente</span>
+                  <span className="font-semibold text-yellow-600">{stats.pendingOrders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Commandes validées</span>
+                  <span className="font-semibold text-green-600">{stats.validatedOrders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Demandes partenariat</span>
+                  <span className="font-semibold text-blue-600">{stats.pendingPartners}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions rapides */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Actions Rapides</h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 gap-3">
+                <button 
+                  onClick={() => router.push('/admin/users')}
+                  className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-left"
+                >
+                  👥 Gérer les Utilisateurs
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/partnerships')}
+                  className="w-full p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left"
+                >
+                  🤝 Valider les Partenaires
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/restaurants')}
+                  className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-left"
+                >
+                  🏪 Gérer les Restaurants
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/orders')}
+                  className="w-full p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left"
+                >
+                  📋 Voir toutes les Commandes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Commandes récentes */}
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Commandes Récentes</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Commande
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Restaurant
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Montant
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {stats.recentOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      #{order.id?.slice(0, 8) || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {order.restaurant_name || 'Restaurant inconnu'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatPrice(order.total_amount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                        {getStatusText(order.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(order.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Restaurants récents */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Restaurants Récents</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nom
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Adresse
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date création
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {stats.recentRestaurants.map((restaurant) => (
+                  <tr key={restaurant.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {restaurant.name || 'Nom inconnu'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {restaurant.address || 'Adresse non renseignée'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        restaurant.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {restaurant.is_active ? 'Actif' : 'Inactif'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(restaurant.created_at)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button className="text-blue-600 hover:text-blue-900">
+                          <FaEye />
+                        </button>
+                        <button className="text-green-600 hover:text-green-900">
+                          <FaEdit />
+                        </button>
+                        <button className="text-red-600 hover:text-red-900">
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
