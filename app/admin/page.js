@@ -193,22 +193,22 @@ export default function AdminPage() {
     }
   };
 
-  const getRestaurantName = (order) => {
+  const getRestaurantName = (order, allRestaurants) => {
     if (!order) return 'Aucune commande';
     
     // Chercher le restaurant correspondant
-    const restaurant = stats.recentRestaurants?.find(r => r.id === order.restaurant_id);
+    const restaurant = allRestaurants?.find(r => r.id === order.restaurant_id);
     if (restaurant?.name) {
       return restaurant.name;
     }
     return 'Restaurant inconnu';
   };
 
-  const getRestaurantAddress = (order) => {
+  const getRestaurantAddress = (order, allRestaurants) => {
     if (!order) return 'N/A';
     
     // Chercher le restaurant correspondant
-    const restaurant = stats.recentRestaurants?.find(r => r.id === order.restaurant_id);
+    const restaurant = allRestaurants?.find(r => r.id === order.restaurant_id);
     if (restaurant?.address) {
       return restaurant.address;
     }
@@ -235,13 +235,13 @@ export default function AdminPage() {
     return 'Adresse non renseignée';
   };
 
-  const getOrderInfo = (order) => {
+  const getOrderInfo = (order, allRestaurants) => {
     if (!order) return { id: 'N/A', restaurant: 'Aucune commande', address: 'N/A' };
     
     return {
       id: getOrderDisplayId(order),
-      restaurant: getRestaurantName(order),
-      address: getRestaurantAddress(order),
+      restaurant: getRestaurantName(order, allRestaurants),
+      address: getRestaurantAddress(order, allRestaurants),
       amount: order.total_amount || 0,
       status: order.status || 'unknown',
       date: order.created_at
@@ -464,7 +464,7 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {stats.recentOrders.map((order) => {
-                    const orderInfo = getOrderInfo(order);
+                    const orderInfo = getOrderInfo(order, stats.recentRestaurants);
                     return (
                       <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
