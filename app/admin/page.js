@@ -80,16 +80,10 @@ export default function AdminPage() {
       setLoading(true);
       setError(null);
 
-      // Récupérer toutes les commandes avec les détails des restaurants
+      // Récupérer toutes les commandes
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select(`
-          *,
-          restaurants!inner(
-            name,
-            address
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
@@ -200,24 +194,26 @@ export default function AdminPage() {
   };
 
   const getRestaurantName = (order) => {
-    if (order?.restaurants?.name) {
-      return order.restaurants.name;
-    }
-    if (order?.restaurant_name) {
-      return order.restaurant_name;
-    }
-    if (order?.restaurant_id) {
-      return `Restaurant ${order.restaurant_id.slice(0, 6)}`;
+    if (!order) return 'Aucune commande';
+    
+    // Chercher le restaurant correspondant
+    const restaurant = stats.recentRestaurants?.find(r => r.id === order.restaurant_id);
+    if (restaurant?.name) {
+      return restaurant.name;
     }
     return 'Restaurant inconnu';
   };
 
   const getRestaurantAddress = (order) => {
-    if (order?.restaurants?.address) {
-      return order.restaurants.address;
+    if (!order) return 'N/A';
+    
+    // Chercher le restaurant correspondant
+    const restaurant = stats.recentRestaurants?.find(r => r.id === order.restaurant_id);
+    if (restaurant?.address) {
+      return restaurant.address;
     }
-    if (order?.delivery_address) {
-      return order.delivery_address;
+    if (restaurant?.city) {
+      return restaurant.city;
     }
     return 'Adresse non renseignée';
   };
@@ -226,10 +222,7 @@ export default function AdminPage() {
     if (restaurant?.name) {
       return restaurant.name;
     }
-    if (restaurant?.id) {
-      return `Restaurant ${restaurant.id.slice(0, 6)}`;
-    }
-    return 'Nom inconnu';
+    return 'Nom non renseigné';
   };
 
   const getRestaurantDisplayAddress = (restaurant) => {
@@ -443,118 +436,142 @@ export default function AdminPage() {
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Commandes Récentes</h2>
+            {stats.recentOrders.length === 0 && (
+              <p className="text-sm text-gray-500 mt-2">Aucune commande trouvée dans la base de données</p>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Commande
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Restaurant
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Montant
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Statut
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {stats.recentOrders.map((order) => (
-                  <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{getOrderDisplayId(order)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getRestaurantName(order)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPrice(order?.total_amount)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order?.status)}`}>
-                        {getStatusText(order?.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(order?.created_at)}
-                    </td>
+          {stats.recentOrders.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Commande
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Restaurant
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Montant
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Statut
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {stats.recentOrders.map((order) => {
+                    const orderInfo = getOrderInfo(order);
+                    return (
+                      <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{orderInfo.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {orderInfo.restaurant}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatPrice(orderInfo.amount)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(orderInfo.status)}`}>
+                            {getStatusText(orderInfo.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(orderInfo.date)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              <p>Aucune commande disponible</p>
+            </div>
+          )}
         </div>
 
         {/* Restaurants récents */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Restaurants Récents</h2>
+            {stats.recentRestaurants.length === 0 && (
+              <p className="text-sm text-gray-500 mt-2">Aucun restaurant trouvé dans la base de données</p>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nom
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Adresse
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Statut
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date création
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {stats.recentRestaurants.map((restaurant) => (
-                  <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {getRestaurantDisplayName(restaurant)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getRestaurantDisplayAddress(restaurant)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        restaurant?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {restaurant?.is_active ? 'Actif' : 'Inactif'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(restaurant?.created_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <FaEye />
-                        </button>
-                        <button className="text-green-600 hover:text-green-900">
-                          <FaEdit />
-                        </button>
-                        <button className="text-red-600 hover:text-red-900">
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </td>
+          {stats.recentRestaurants.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nom
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Adresse
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Statut
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date création
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {stats.recentRestaurants.map((restaurant) => {
+                    const restaurantInfo = getRestaurantInfo(restaurant);
+                    return (
+                      <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {restaurantInfo.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {restaurantInfo.address}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            restaurantInfo.status === 'Actif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {restaurantInfo.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(restaurantInfo.date)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button className="text-blue-600 hover:text-blue-900">
+                              <FaEye />
+                            </button>
+                            <button className="text-green-600 hover:text-green-900">
+                              <FaEdit />
+                            </button>
+                            <button className="text-red-600 hover:text-red-900">
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              <p>Aucun restaurant disponible</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
