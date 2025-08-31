@@ -464,25 +464,32 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {stats.recentOrders.map((order) => {
-                    const orderInfo = getOrderInfo(order, stats.recentRestaurants);
+                    // Debug: afficher les données
+                    console.log('Order:', order);
+                    console.log('All restaurants:', stats.recentRestaurants);
+                    
+                    // Chercher le restaurant directement
+                    const restaurant = stats.recentRestaurants?.find(r => r.id === order.restaurant_id);
+                    console.log('Found restaurant:', restaurant);
+                    
                     return (
                       <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          #{orderInfo.id}
+                          #{getOrderDisplayId(order)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {orderInfo.restaurant}
+                          {restaurant?.name || 'Restaurant inconnu'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatPrice(orderInfo.amount)}
+                          {formatPrice(order.total_amount)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(orderInfo.status)}`}>
-                            {getStatusText(orderInfo.status)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                            {getStatusText(order.status)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(orderInfo.date)}
+                          {formatDate(order.created_at)}
                         </td>
                       </tr>
                     );
@@ -529,24 +536,26 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {stats.recentRestaurants.map((restaurant) => {
-                    const restaurantInfo = getRestaurantInfo(restaurant);
+                    // Debug: afficher les données
+                    console.log('Restaurant:', restaurant);
+                    
                     return (
                       <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {restaurantInfo.name}
+                          {restaurant?.name || 'Nom non renseigné'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {restaurantInfo.address}
+                          {restaurant?.address || restaurant?.city || 'Adresse non renseignée'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            restaurantInfo.status === 'Actif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            restaurant?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
-                            {restaurantInfo.status}
+                            {restaurant?.is_active ? 'Actif' : 'Inactif'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(restaurantInfo.date)}
+                          {formatDate(restaurant?.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
