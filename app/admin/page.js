@@ -80,10 +80,16 @@ export default function AdminPage() {
       setLoading(true);
       setError(null);
 
-      // Récupérer toutes les commandes
+      // Récupérer toutes les commandes avec les détails des restaurants
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          restaurants!inner(
+            name,
+            address
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
@@ -182,10 +188,82 @@ export default function AdminPage() {
   const getOrderDisplayId = (order) => {
     if (!order || !order.id) return 'N/A';
     try {
-      return order.id.slice(0, 8);
+      // Si c'est un UUID, on prend les 8 premiers caractères
+      if (typeof order.id === 'string' && order.id.length > 8) {
+        return order.id.slice(0, 8);
+      }
+      // Sinon on affiche l'ID complet s'il est court
+      return order.id.toString();
     } catch (err) {
       return 'N/A';
     }
+  };
+
+  const getRestaurantName = (order) => {
+    if (order?.restaurants?.name) {
+      return order.restaurants.name;
+    }
+    if (order?.restaurant_name) {
+      return order.restaurant_name;
+    }
+    if (order?.restaurant_id) {
+      return `Restaurant ${order.restaurant_id.slice(0, 6)}`;
+    }
+    return 'Restaurant inconnu';
+  };
+
+  const getRestaurantAddress = (order) => {
+    if (order?.restaurants?.address) {
+      return order.restaurants.address;
+    }
+    if (order?.delivery_address) {
+      return order.delivery_address;
+    }
+    return 'Adresse non renseignée';
+  };
+
+  const getRestaurantDisplayName = (restaurant) => {
+    if (restaurant?.name) {
+      return restaurant.name;
+    }
+    if (restaurant?.id) {
+      return `Restaurant ${restaurant.id.slice(0, 6)}`;
+    }
+    return 'Nom inconnu';
+  };
+
+  const getRestaurantDisplayAddress = (restaurant) => {
+    if (restaurant?.address) {
+      return restaurant.address;
+    }
+    if (restaurant?.city) {
+      return restaurant.city;
+    }
+    return 'Adresse non renseignée';
+  };
+
+  const getOrderInfo = (order) => {
+    if (!order) return { id: 'N/A', restaurant: 'Aucune commande', address: 'N/A' };
+    
+    return {
+      id: getOrderDisplayId(order),
+      restaurant: getRestaurantName(order),
+      address: getRestaurantAddress(order),
+      amount: order.total_amount || 0,
+      status: order.status || 'unknown',
+      date: order.created_at
+    };
+  };
+
+  const getRestaurantInfo = (restaurant) => {
+    if (!restaurant) return { name: 'Aucun restaurant', address: 'N/A', status: 'Inconnu' };
+    
+    return {
+      name: getRestaurantDisplayName(restaurant),
+      address: getRestaurantDisplayAddress(restaurant),
+      status: restaurant.is_active ? 'Actif' : 'Inactif',
+      date: restaurant.created_at
+    };
   };
 
   // Affichage de chargement d'authentification
@@ -394,7 +472,7 @@ export default function AdminPage() {
                       #{getOrderDisplayId(order)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order?.restaurant_name || 'Restaurant inconnu'}
+                      {getRestaurantName(order)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatPrice(order?.total_amount)}
@@ -444,10 +522,10 @@ export default function AdminPage() {
                 {stats.recentRestaurants.map((restaurant) => (
                   <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {restaurant?.name || 'Nom inconnu'}
+                      {getRestaurantDisplayName(restaurant)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {restaurant?.address || 'Adresse non renseignée'}
+                      {getRestaurantDisplayAddress(restaurant)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
