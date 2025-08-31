@@ -329,7 +329,7 @@ export default function AdminPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Utilisateurs</p>
-                <p className="text-2xl font-bold text-gray-900">N/A</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
               </div>
             </div>
           </div>
@@ -369,6 +369,15 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* DEBUG: Affichage des données brutes */}
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-8">
+          <h3 className="font-bold">DEBUG - Données récupérées :</h3>
+          <p>Commandes récentes: {stats.recentOrders.length}</p>
+          <p>Restaurants récents: {stats.recentRestaurants.length}</p>
+          <p>Première commande: {JSON.stringify(stats.recentOrders[0])}</p>
+          <p>Premier restaurant: {JSON.stringify(stats.recentRestaurants[0])}</p>
         </div>
 
         {/* Statistiques détaillées */}
@@ -464,13 +473,8 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {stats.recentOrders.map((order) => {
-                    // Debug: afficher les données
-                    console.log('Order:', order);
-                    console.log('All restaurants:', stats.recentRestaurants);
-                    
                     // Chercher le restaurant directement
                     const restaurant = stats.recentRestaurants?.find(r => r.id === order.restaurant_id);
-                    console.log('Found restaurant:', restaurant);
                     
                     return (
                       <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
@@ -536,9 +540,6 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {stats.recentRestaurants.map((restaurant) => {
-                    // Debug: afficher les données
-                    console.log('Restaurant:', restaurant);
-                    
                     return (
                       <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
