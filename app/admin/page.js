@@ -111,43 +111,17 @@ export default function AdminPage() {
         .reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
       const totalRestaurants = restaurants?.length || 0;
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
-      const recentOrders = orders?.slice(0, 5) || [];
-      const recentRestaurants = restaurants?.slice(0, 5) || [];
 
-      // FALLBACK: Si pas de données, utiliser des données de test
-      const testOrders = recentOrders.length === 0 ? [
-        {
-          id: 'test-order-1',
-          restaurant_id: 'test-resto-1',
-          total_amount: 25.50,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 'test-order-2', 
-          restaurant_id: 'test-resto-2',
-          total_amount: 18.90,
-          status: 'delivered',
-          created_at: new Date().toISOString()
-        }
-      ] : recentOrders;
+      // Fallback avec données de test si la base est vide
+      const recentOrders = (orders?.length > 0 ? orders : [
+        { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', user_id: '11111111-1111-1111-1111-111111111111', restaurant_id: '11111111-1111-1111-1111-111111111111', total_amount: 25.50, status: 'pending', created_at: new Date().toISOString() },
+        { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', user_id: '22222222-2222-2222-2222-222222222222', restaurant_id: '22222222-2222-2222-2222-222222222222', total_amount: 18.90, status: 'accepted', created_at: new Date(Date.now() - 3600000).toISOString() },
+      ])?.slice(0, 5) || [];
 
-      const testRestaurants = recentRestaurants.length === 0 ? [
-        {
-          id: 'test-resto-1',
-          name: 'La Bella Pizza',
-          address: '123 Rue de la Paix, Paris',
-          is_active: true,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 'test-resto-2',
-          name: 'Burger King',
-          address: '456 Avenue des Champs, Lyon', 
-          is_active: true,
-          created_at: new Date().toISOString()
-        }
-      ] : recentRestaurants;
+      const recentRestaurants = (restaurants?.length > 0 ? restaurants : [
+        { id: '11111111-1111-1111-1111-111111111111', nom: 'La Bella Pizza', adresse: '123 Rue de la Paix', ville: 'Paris', status: 'active', created_at: new Date().toISOString() },
+        { id: '22222222-2222-2222-2222-222222222222', nom: 'Burger King', adresse: '456 Avenue des Champs', ville: 'Lyon', status: 'active', created_at: new Date(Date.now() - 7200000).toISOString() },
+      ])?.slice(0, 5) || [];
 
       setStats({
         totalOrders,
@@ -156,8 +130,8 @@ export default function AdminPage() {
         totalRevenue,
         totalRestaurants,
         pendingPartners,
-        recentOrders: testOrders,
-        recentRestaurants: testRestaurants
+        recentOrders: recentOrders,
+        recentRestaurants: recentRestaurants
       });
 
     } catch (err) {
@@ -233,8 +207,8 @@ export default function AdminPage() {
     
     // Chercher le restaurant correspondant
     const restaurant = allRestaurants?.find(r => r.id === order.restaurant_id);
-    if (restaurant?.name) {
-      return restaurant.name;
+    if (restaurant?.nom) {
+      return restaurant.nom;
     }
     return 'Restaurant inconnu';
   };
@@ -244,34 +218,34 @@ export default function AdminPage() {
     
     // Chercher le restaurant correspondant
     const restaurant = allRestaurants?.find(r => r.id === order.restaurant_id);
-    if (restaurant?.address) {
-      return restaurant.address;
+    if (restaurant?.adresse) {
+      return restaurant.adresse;
     }
-    if (restaurant?.city) {
-      return restaurant.city;
+    if (restaurant?.ville) {
+      return restaurant.ville;
     }
     return 'Adresse non renseignée';
   };
 
   const getRestaurantDisplayName = (restaurant) => {
-    if (restaurant?.name) {
-      return restaurant.name;
+    if (restaurant?.nom) {
+      return restaurant.nom;
     }
     return 'Nom non renseigné';
   };
 
   const getRestaurantDisplayAddress = (restaurant) => {
-    if (restaurant?.address) {
-      return restaurant.address;
+    if (restaurant?.adresse) {
+      return restaurant.adresse;
     }
-    if (restaurant?.city) {
-      return restaurant.city;
+    if (restaurant?.ville) {
+      return restaurant.ville;
     }
     return 'Adresse non renseignée';
   };
 
   const getOrderInfo = (order, allRestaurants) => {
-    if (!order) return { id: 'N/A', restaurant: 'Aucune commande', address: 'N/A' };
+    if (!order) return { id: 'N/A', restaurant: 'Aucune commande', address: 'Aucune adresse' };
     
     return {
       id: getOrderDisplayId(order),
@@ -284,12 +258,12 @@ export default function AdminPage() {
   };
 
   const getRestaurantInfo = (restaurant) => {
-    if (!restaurant) return { name: 'Aucun restaurant', address: 'N/A', status: 'Inconnu' };
+    if (!restaurant) return { name: 'Aucun restaurant', address: 'Aucune adresse', status: 'Inconnu' };
     
     return {
       name: getRestaurantDisplayName(restaurant),
       address: getRestaurantDisplayAddress(restaurant),
-      status: restaurant.is_active ? 'Actif' : 'Inactif',
+      status: restaurant.status === 'active' ? 'Actif' : 'Inactif',
       date: restaurant.created_at
     };
   };
@@ -517,7 +491,7 @@ export default function AdminPage() {
                           #{getOrderDisplayId(order)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {restaurant?.name || 'Restaurant inconnu'}
+                          {restaurant?.nom || 'Restaurant inconnu'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {formatPrice(order.total_amount)}
@@ -578,16 +552,16 @@ export default function AdminPage() {
                     return (
                       <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {restaurant?.name || 'Nom non renseigné'}
+                          {restaurant?.nom || 'Nom non renseigné'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {restaurant?.address || restaurant?.city || 'Adresse non renseignée'}
+                          {restaurant?.adresse || restaurant?.ville || 'Adresse non renseignée'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            restaurant?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            restaurant?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
-                            {restaurant?.is_active ? 'Actif' : 'Inactif'}
+                            {restaurant?.status === 'active' ? 'Actif' : 'Inactif'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
