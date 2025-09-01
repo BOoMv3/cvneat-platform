@@ -189,7 +189,7 @@ export default function AdminPage() {
   };
 
   const getOrderDisplayId = (order) => {
-    if (!order || !order.id) return 'N/A';
+    if (!order || !order.id) return 'ID manquant';
     try {
       // Si c'est un UUID, on prend les 8 premiers caractères
       if (typeof order.id === 'string' && order.id.length > 8) {
@@ -198,7 +198,7 @@ export default function AdminPage() {
       // Sinon on affiche l'ID complet s'il est court
       return order.id.toString();
     } catch (err) {
-      return 'N/A';
+      return 'ID invalide';
     }
   };
 
@@ -214,7 +214,7 @@ export default function AdminPage() {
   };
 
   const getRestaurantAddress = (order, allRestaurants) => {
-    if (!order) return 'N/A';
+    if (!order) return 'Commande invalide';
     
     // Chercher le restaurant correspondant
     const restaurant = allRestaurants?.find(r => r.id === order.restaurant_id);
@@ -245,7 +245,7 @@ export default function AdminPage() {
   };
 
   const getOrderInfo = (order, allRestaurants) => {
-    if (!order) return { id: 'N/A', restaurant: 'Aucune commande', address: 'Aucune adresse' };
+    if (!order) return { id: 'Commande invalide', restaurant: 'Aucune commande', address: 'Aucune adresse' };
     
     return {
       id: getOrderDisplayId(order),
