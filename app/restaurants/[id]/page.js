@@ -8,6 +8,7 @@ import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart, FaMapMa
 import Modal from '../../components/Modal';
 import RestaurantBanner from '@/components/RestaurantBanner';
 import MenuItem from '@/components/MenuItem';
+import MenuByCategories from '@/components/MenuByCategories';
 
 
 export default function RestaurantDetail({ params }) {
@@ -315,16 +316,11 @@ export default function RestaurantDetail({ params }) {
               <p>Aucun plat disponible pour ce restaurant.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              {menu.map((item) => (
-                <MenuItem
-                  key={item.id}
-                  item={item}
-                  onAddToCart={addToCart}
-                  onRemoveFromCart={removeFromCart}
-                />
-              ))}
-            </div>
+            <MenuByCategories
+              menu={menu}
+              selectedCategory={selectedCategory}
+              onCategorySelect={setSelectedCategory}
+            />
           )}
         </div>
 
