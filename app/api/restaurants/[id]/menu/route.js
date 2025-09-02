@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 
 export async function GET(request, { params }) {
@@ -12,7 +12,8 @@ export async function GET(request, { params }) {
     const { data, error } = await supabase
       .from('menus')
       .select('*') // Sélectionner toutes les colonnes, y compris "category"
-      .eq('restaurant_id', id);
+      .eq('restaurant_id', id)
+      .eq('disponible', true);
 
     if (error) {
       console.error('Erreur Supabase lors de la récupération du menu:', error);
