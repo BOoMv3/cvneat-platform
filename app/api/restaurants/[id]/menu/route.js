@@ -5,14 +5,11 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     
-    const { data: menuItems, error } = await supabase
-      .from('menu_items')
-      .select(`
-        *,
-        categories(name)
-      `)
+    const { data: menus, error } = await supabase
+      .from('menus')
+      .select('*')
       .eq('restaurant_id', id)
-      .eq('is_available', true)
+      .eq('disponible', true)
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -21,14 +18,14 @@ export async function GET(request, { params }) {
     }
 
     // Transformer les données pour correspondre au format attendu par le frontend
-    const transformedMenu = menuItems?.map(item => ({
+    const transformedMenu = menus?.map(item => ({
       id: item.id,
-      nom: item.name,
+      nom: item.nom,
       description: item.description,
-      prix: item.price,
-      image_url: item.image,
-      category: item.categories?.name || 'Autres',
-      disponible: item.is_available,
+      prix: item.prix,
+      image_url: item.image_url,
+      category: item.category || 'Autres',
+      disponible: item.disponible,
       created_at: item.created_at
     })) || [];
 
