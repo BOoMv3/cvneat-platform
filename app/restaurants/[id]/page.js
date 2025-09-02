@@ -320,6 +320,7 @@ export default function RestaurantDetail({ params }) {
               menu={menu}
               selectedCategory={selectedCategory}
               onCategorySelect={setSelectedCategory}
+              onAddToCart={addToCart}
             />
           )}
         </div>

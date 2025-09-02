@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import MenuItem from './MenuItem';
 
-export default function MenuByCategories({ menu, selectedCategory, onCategorySelect }) {
+export default function MenuByCategories({ menu, selectedCategory, onCategorySelect, onAddToCart }) {
   // Grouper les menus par catégorie
   const menuByCategory = menu.reduce((acc, item) => {
     const category = item.category || item.categorie || 'Autres';
@@ -63,7 +63,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {menuByCategory[category].map((item) => (
-                  <MenuItem key={item.id} item={item} />
+                  <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} />
                 ))}
               </div>
             </div>
@@ -78,7 +78,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {menuByCategory[selectedCategory]?.map((item) => (
-                <MenuItem key={item.id} item={item} />
+                <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} />
               ))}
             </div>
           </div>
