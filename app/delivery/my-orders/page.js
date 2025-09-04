@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { fetchWithAuth } from '../../../lib/auth';
+// import { fetchWithAuth } from '../../../lib/auth'; // Supprimé car non utilisé
 
 export default function MyOrdersPage() {
   const [myOrders, setMyOrders] = useState([]);
@@ -12,7 +12,19 @@ export default function MyOrdersPage() {
   const fetchMyOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetchWithAuth('/api/delivery/my-orders');
+      
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Pas de token d\'authentification');
+      }
+      
+      const response = await fetch('/api/delivery/my-orders', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
       
       if (response.ok) {
@@ -31,8 +43,18 @@ export default function MyOrdersPage() {
 
   const completeOrder = async (orderId) => {
     try {
-      const response = await fetchWithAuth(`/api/delivery/complete-delivery/${orderId}`, {
-        method: 'POST'
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Pas de token d\'authentification');
+      }
+      
+      const response = await fetch(`/api/delivery/complete-delivery/${orderId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
       });
       
       if (response.ok) {
