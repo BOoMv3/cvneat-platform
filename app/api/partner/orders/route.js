@@ -46,31 +46,28 @@ export async function GET(request) {
       .single();
 
     if (restaurantError || !restaurantData) {
+      console.error('❌ Restaurant non trouvé pour user_id:', user.id);
+      console.error('Erreur:', restaurantError);
       return NextResponse.json({ error: 'Restaurant non trouvé pour ce partenaire' }, { status: 404 });
     }
 
     const restaurantId = restaurantData.id;
+    console.log('✅ Restaurant trouvé:', restaurantId, 'pour user:', user.id);
 
     // Récupérer les commandes du restaurant
+    console.log('🔍 Recherche commandes pour restaurant_id:', restaurantId);
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
-      .select(`
-        *,
-        users!orders_user_id_fkey (
-          nom,
-          prenom,
-          email,
-          telephone
-        )
-      `)
+      .select('*')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false });
 
     if (ordersError) {
-      console.error('Erreur récupération commandes:', ordersError);
+      console.error('❌ Erreur récupération commandes:', ordersError);
       return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
     }
 
+    console.log('✅ Commandes trouvées:', orders?.length || 0);
     return NextResponse.json(orders || []);
 
   } catch (error) {

@@ -22,11 +22,11 @@ export async function GET(request) {
 
     console.log('Utilisateur Supabase Auth:', user);
 
-    // Récupérer les informations utilisateur depuis la table users
+    // Récupérer les informations utilisateur depuis la table users (par email)
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('id', user.id)
+      .eq('email', user.email)
       .single();
 
     console.log('Données utilisateur depuis la table users:', userData, 'Erreur:', userError);
@@ -41,11 +41,15 @@ export async function GET(request) {
         const { data: newUser, error: insertError } = await supabase
           .from('users')
           .insert({
-            id: user.id,
             email: user.email,
-            nom: user.user_metadata?.name || user.email,
-            telephone: user.user_metadata?.phone || '',
-            role: 'user'
+            nom: user.user_metadata?.name || user.email.split('@')[0],
+            prenom: user.user_metadata?.first_name || 'Utilisateur',
+            telephone: user.user_metadata?.phone || '0000000000',
+            adresse: user.user_metadata?.address || 'Adresse non renseignée',
+            code_postal: user.user_metadata?.postal_code || '00000',
+            ville: user.user_metadata?.city || 'Ville non renseignée',
+            password: 'password123', // Mot de passe par défaut
+            role: user.email.includes('livreur') ? 'delivery' : 'user'
           })
           .select()
           .single();

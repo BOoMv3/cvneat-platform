@@ -4,52 +4,71 @@ import { supabase } from '../../../../../lib/supabase';
 export async function POST(request, { params }) {
   try {
     const { orderId } = params;
-    const deliveryId = 'current-user-id'; // À remplacer par l'ID réel
-
-    // Vérifier que la commande est disponible
-    const { data: order, error: checkError } = await supabase
-      .from('commandes')
-      .select('*')
-      .eq('id', orderId)
-      .eq('statut', 'pret_a_livrer')
-      .is('livreur_id', null)
-      .single();
-
-    if (checkError || !order) {
-      return NextResponse.json(
-        { error: 'Commande non disponible ou déjà prise' },
-        { status: 400 }
-      );
+    console.log('🔍 API accept-order appelée pour commande:', orderId);
+    
+    // Récupérer le token depuis les cookies ou headers
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('sb-access-token')?.value ||
+                  request.cookies.get('supabase-auth-token')?.value;
+    
+    const { data: { user } } = await supabase.auth.getUser(token);
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Assigner la commande au livreur
+    // Vérifier que l'utilisateur est un livreur
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('email', user.email)
+      .single();
+
+    if (userError || !userData || userData.role !== 'delivery') {
+      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
+    }
+
+    // Vérifier que la commande existe et est disponible
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (orderError || !order) {
+      return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 });
+    }
+
+    // Vérifier que la commande n'est pas déjà acceptée par un autre livreur
+    if (order.delivery_id && order.delivery_id !== user.id) {
+      return NextResponse.json({ error: 'Commande déjà acceptée par un autre livreur' }, { status: 409 });
+    }
+
+    // Vérifier que la commande est dans un statut acceptable
+    if (!['pending', 'accepted', 'ready'].includes(order.status)) {
+      return NextResponse.json({ error: 'Commande non disponible' }, { status: 400 });
+    }
+
+    // Accepter la commande
     const { error: updateError } = await supabase
-      .from('commandes')
+      .from('orders')
       .update({
-        livreur_id: deliveryId,
-        statut: 'en_livraison',
+        delivery_id: user.id,
+        status: 'accepted', // Le livreur accepte, mais la commande reste visible
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId);
 
     if (updateError) {
-      console.error('Erreur assignation commande:', updateError);
-      return NextResponse.json(
-        { error: 'Erreur lors de l\'acceptation de la commande' },
-        { status: 500 }
-      );
+      console.error('❌ Erreur acceptation commande:', updateError);
+      return NextResponse.json({ error: 'Erreur acceptation commande' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Commande acceptée avec succès',
-      orderId: orderId
-    });
+    console.log('✅ Commande acceptée par livreur:', user.email);
+    return NextResponse.json({ success: true, message: 'Commande acceptée avec succès' });
   } catch (error) {
-    console.error('Erreur API accepter commande:', error);
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    );
+    console.error('❌ Erreur API accept-order:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
-} 
+}

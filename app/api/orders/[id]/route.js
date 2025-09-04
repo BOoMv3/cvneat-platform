@@ -81,7 +81,7 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const { id } = params;
-    const { status, reason } = await request.json();
+    const { status, reason, preparation_time } = await request.json();
 
     // Validation du statut
     const validStatuses = ['accepted', 'rejected', 'preparing', 'ready', 'delivered'];
@@ -93,13 +93,20 @@ export async function PUT(request, { params }) {
     }
 
     // Mettre à jour la commande
+    const updateData = {
+      status: status,
+      status_reason: reason || null,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Ajouter le temps de préparation si fourni
+    if (preparation_time !== undefined && preparation_time !== null) {
+      updateData.preparation_time = preparation_time;
+    }
+
     const { data: order, error } = await supabase
       .from('orders')
-      .update({
-        status: status,
-        status_reason: reason || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

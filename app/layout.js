@@ -92,19 +92,17 @@ export default function RootLayout({ children }) {
           </div>
         </ThemeProvider>
         
-        {/* Service Worker Registration */}
+        {/* Service Worker Registration - DÉSACTIVÉ */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
-                    });
+                // Désactiver le Service Worker UNE SEULE FOIS
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('Service Worker désactivé:', registration.scope);
+                  }
                 });
               }
             `,

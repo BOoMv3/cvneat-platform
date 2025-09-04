@@ -3,7 +3,7 @@ import { supabase } from '../../../../lib/supabase';
 
 export async function GET(request) {
   try {
-    console.log('🔍 API available-orders appelée');
+    console.log('🔍 API my-orders appelée');
     
     // Récupérer le token depuis les cookies ou headers
     const authHeader = request.headers.get('authorization');
@@ -22,7 +22,7 @@ export async function GET(request) {
 
     console.log('✅ Utilisateur connecté:', user.email);
 
-    // Vérifier que l'utilisateur est un livreur (par email)
+    // Vérifier que l'utilisateur est un livreur
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('role')
@@ -36,30 +36,29 @@ export async function GET(request) {
 
     console.log('✅ Rôle livreur confirmé');
 
-    // Récupérer les commandes disponibles pour livraison
-    // Les livreurs voient les commandes 'ready' (prêtes et pas encore acceptées)
+    // Récupérer les commandes acceptées par ce livreur
     const { data: orders, error } = await supabase
       .from('orders')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
       `)
-      .eq('status', 'ready') // Commandes prêtes
-      .is('delivery_id', null) // Pas encore assignées à un livreur
-      .order('created_at', { ascending: true });
+      .eq('delivery_id', user.id) // Commandes assignées à ce livreur
+      .in('status', ['accepted', 'delivered']) // Commandes acceptées ou livrées
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Erreur récupération commandes:', error);
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
-    console.log('✅ Commandes récupérées:', orders?.length || 0);
+    console.log('✅ Commandes trouvées:', orders?.length || 0);
     return NextResponse.json(orders || []);
   } catch (error) {
-    console.error('❌ Erreur API commandes disponibles:', error);
+    console.error('❌ Erreur API mes commandes:', error);
     return NextResponse.json(
       { error: 'Erreur serveur' },
       { status: 500 }
     );
   }
-} 
+}

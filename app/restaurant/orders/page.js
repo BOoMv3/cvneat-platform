@@ -12,24 +12,83 @@ export default function RestaurantOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [newOrderNotification, setNewOrderNotification] = useState(null);
+  const [preparationTime, setPreparationTime] = useState(30);
+  const [audioEnabled, setAudioEnabled] = useState(true);
 
   // Pour l'exemple, on utilise un restaurant ID fixe
   // En production, cela viendrait de l'authentification
   const restaurantId = '7f1e0b5f-5552-445d-a582-306515030c8d'; // À remplacer par l'ID du restaurant connecté
+  
+  // DEBUG: Afficher toutes les commandes pour diagnostiquer
+  const [showAllOrders, setShowAllOrders] = useState(false);
 
   useEffect(() => {
-    fetchOrders();
-    setupRealtimeSubscription();
+    // Ne pas appeler fetchOrders automatiquement - sera appelé par l'effet showAllOrders
+    if (!showAllOrders) {
+      setupRealtimeSubscription();
+    }
     
-    // Polling pour mettre à jour les commandes en temps réel
-    const interval = setInterval(fetchOrders, 10000); // Vérifier toutes les 10 secondes
+    // Polling pour mettre à jour les commandes en temps réel (seulement si pas en mode debug)
+    const interval = setInterval(() => {
+      if (!showAllOrders) {
+        fetchOrders();
+      }
+    }, 10000); // Vérifier toutes les 10 secondes
     
     return () => {
       clearInterval(interval);
       // Nettoyer la subscription
       supabase.removeAllChannels();
     };
-  }, []);
+  }, [showAllOrders]);
+
+  // Effet séparé pour gérer les changements de showAllOrders
+  useEffect(() => {
+    if (showAllOrders) {
+      // En mode debug, nettoyer les subscriptions et arrêter le polling
+      supabase.removeAllChannels();
+      console.log('🔍 Mode debug activé - subscriptions désactivées');
+      // Rafraîchir immédiatement pour voir toutes les commandes
+      fetchOrders();
+    } else {
+      // En mode normal, réactiver les subscriptions
+      setupRealtimeSubscription();
+      console.log('🔍 Mode normal activé - subscriptions réactivées');
+      // Rafraîchir immédiatement pour voir les commandes filtrées
+      fetchOrders();
+    }
+  }, [showAllOrders]);
+
+  // Fonction pour jouer un son de notification
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.error('Erreur lecture audio:', error);
+    }
+  };
+
+  // Demander la permission pour les notifications
+  const requestNotificationPermission = async () => {
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  };
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
@@ -47,6 +106,19 @@ export default function RestaurantOrders() {
           setNewOrderNotification(payload.new);
           fetchOrders(); // Rafraîchir la liste
           
+          // Alerte sonore
+          if (audioEnabled) {
+            playNotificationSound();
+          }
+          
+          // Notification du navigateur
+          if (Notification.permission === 'granted') {
+            new Notification('Nouvelle commande !', {
+              body: `Commande de ${payload.new.customer_name} - ${payload.new.total_amount}€`,
+              icon: '/favicon.ico'
+            });
+          }
+          
           // Supprimer la notification après 5 secondes
           setTimeout(() => setNewOrderNotification(null), 5000);
         }
@@ -61,6 +133,8 @@ export default function RestaurantOrders() {
         },
         (payload) => {
           console.log('Commande mise à jour:', payload.new);
+          console.log('Ancien statut:', payload.old.status);
+          console.log('Nouveau statut:', payload.new.status);
           fetchOrders(); // Rafraîchir la liste
         }
       )
@@ -71,8 +145,17 @@ export default function RestaurantOrders() {
     try {
       console.log('=== RÉCUPÉRATION COMMANDES RESTAURANT ===');
       console.log('Restaurant ID utilisé:', restaurantId);
+      console.log('Mode debug (toutes commandes):', showAllOrders);
       
-      const response = await fetch(`/api/restaurants/${restaurantId}/orders`);
+      // Si mode debug, récupérer toutes les commandes
+      const url = showAllOrders ? '/api/orders' : `/api/restaurants/${restaurantId}/orders`;
+      console.log('URL utilisée:', url);
+      
+      // Pour le mode debug, utiliser l'API debug qui ne nécessite pas d'auth
+      const debugUrl = showAllOrders ? '/api/debug/orders' : `/api/restaurants/${restaurantId}/orders`;
+      console.log('URL debug utilisée:', debugUrl);
+      
+      const response = await fetch(debugUrl);
       console.log('Statut de la réponse:', response.status);
       
       if (!response.ok) {
@@ -92,14 +175,19 @@ export default function RestaurantOrders() {
     }
   };
 
-  const updateOrderStatus = async (orderId, status, reason = '') => {
+  const updateOrderStatus = async (orderId, status, reason = '', prepTime = null) => {
     try {
+      const body = { status, reason };
+      if (prepTime !== null) {
+        body.preparation_time = prepTime;
+      }
+
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ status, reason })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
@@ -110,6 +198,7 @@ export default function RestaurantOrders() {
       await fetchOrders();
       setSelectedOrder(null);
       setRejectionReason('');
+      setPreparationTime(30);
     } catch (err) {
       setError(err.message);
     }
@@ -194,6 +283,67 @@ export default function RestaurantOrders() {
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
               <span className="text-sm font-medium">En ligne</span>
             </div>
+            <button
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                audioEnabled 
+                  ? 'bg-green-600 text-white hover:bg-green-700' 
+                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+              }`}
+            >
+              {audioEnabled ? '🔊 Audio Activé' : '🔇 Audio Désactivé'}
+            </button>
+            <button
+              onClick={() => {
+                console.log('🔄 Bouton cliqué ! showAllOrders avant:', showAllOrders);
+                setShowAllOrders(!showAllOrders);
+                console.log('🔄 showAllOrders après:', !showAllOrders);
+                // Attendre que l'état soit mis à jour
+                setTimeout(() => {
+                  console.log('🔄 fetchOrders appelé avec showAllOrders:', !showAllOrders);
+                  fetchOrders();
+                }, 100);
+              }}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                showAllOrders 
+                  ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {showAllOrders ? '🔍 Mode Debug' : '🔍 Toutes Commandes'}
+            </button>
+            <button
+              onClick={requestNotificationPermission}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              🔔 Notifications
+            </button>
+            <button
+              onClick={() => {
+                console.log('🧪 TEST: Récupération directe de toutes les commandes');
+                fetch('/api/debug/orders')
+                  .then(response => response.json())
+                  .then(data => {
+                    console.log('🧪 TEST: Commandes reçues:', data);
+                    setOrders(data);
+                  })
+                  .catch(error => console.error('🧪 TEST: Erreur:', error));
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              🧪 TEST DIRECT
+            </button>
+            {showAllOrders && (
+              <button
+                onClick={() => {
+                  console.log('🔄 Rafraîchissement forcé en mode debug');
+                  fetchOrders();
+                }}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+              >
+                🔄 Rafraîchir
+              </button>
+            )}
             <button
               onClick={() => router.push('/')}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -308,11 +458,25 @@ export default function RestaurantOrders() {
                 {/* Actions selon le statut */}
                 {selectedOrder.status === 'pending' && (
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Temps de préparation estimé (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        value={preparationTime}
+                        onChange={(e) => setPreparationTime(parseInt(e.target.value) || 30)}
+                        min="5"
+                        max="120"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        placeholder="30"
+                      />
+                    </div>
                     <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'accepted')}
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'accepted', '', preparationTime)}
                       className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
                     >
-                      ✅ Accepter la commande
+                      ✅ Accepter la commande ({preparationTime} min)
                     </button>
                     
                     <div>

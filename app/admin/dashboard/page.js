@@ -11,7 +11,9 @@ import {
   FaClock,
   FaCheckCircle,
   FaTimesCircle,
-  FaSpinner
+  FaSpinner,
+  FaPlus,
+  FaTimes
 } from 'react-icons/fa';
 
 export default function AdminDashboard() {
@@ -26,10 +28,25 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
+  const [restaurants, setRestaurants] = useState([]);
+  const [newOrder, setNewOrder] = useState({
+    restaurant_id: '',
+    customer_name: '',
+    customer_phone: '',
+    delivery_address: '',
+    delivery_city: '',
+    delivery_postal_code: '',
+    delivery_instructions: '',
+    total_amount: 0,
+    delivery_fee: 3.00,
+    items: []
+  });
   const router = useRouter();
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchRestaurants();
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -117,6 +134,78 @@ export default function AdminDashboard() {
     return order.id.toString();
   };
 
+  // Charger les restaurants pour le formulaire
+  const fetchRestaurants = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, nom, adresse')
+        .order('nom');
+      
+      if (error) throw error;
+      setRestaurants(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des restaurants:', error);
+    }
+  };
+
+  // Créer une commande de test
+  const createTestOrder = async () => {
+    try {
+      const orderData = {
+        ...newOrder,
+        status: 'pending',
+        items: [
+          {
+            name: 'Pizza Test',
+            price: 15.00,
+            quantity: 1,
+            category: 'Pizza'
+          },
+          {
+            name: 'Boisson',
+            price: 3.00,
+            quantity: 1,
+            category: 'Boisson'
+          }
+        ],
+        total_amount: 18.00,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select();
+
+      if (error) throw error;
+
+      alert('✅ Commande créée avec succès ! Les livreurs recevront une alerte.');
+      setShowCreateOrderModal(false);
+      fetchDashboardStats(); // Recharger les stats
+    } catch (error) {
+      console.error('Erreur lors de la création de la commande:', error);
+      alert('❌ Erreur lors de la création de la commande: ' + error.message);
+    }
+  };
+
+  // Remplir avec des données de test
+  const fillTestData = () => {
+    setNewOrder({
+      restaurant_id: restaurants[0]?.id || '',
+      customer_name: 'Client Test Alerte',
+      customer_phone: '0612345678',
+      delivery_address: '15 Rue de la Nouvelle Commande',
+      delivery_city: 'Paris',
+      delivery_postal_code: '75001',
+      delivery_instructions: 'Sonner fort, 3ème étage',
+      total_amount: 18.00,
+      delivery_fee: 3.00,
+      items: []
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -143,6 +232,13 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Tableau de bord administrateur</h1>
           <div className="flex space-x-4">
+            <button
+              onClick={() => setShowCreateOrderModal(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+            >
+              <FaPlus className="h-4 w-4" />
+              <span>Créer une commande</span>
+            </button>
             <button
               onClick={() => router.push('/admin/restaurants')}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -279,6 +375,138 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Modal pour créer une commande */}
+      {showCreateOrderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Créer une commande de test</h2>
+              <button
+                onClick={() => setShowCreateOrderModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FaTimes className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Restaurant
+                </label>
+                <select
+                  value={newOrder.restaurant_id}
+                  onChange={(e) => setNewOrder({...newOrder, restaurant_id: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Sélectionner un restaurant</option>
+                  {restaurants.map((restaurant) => (
+                    <option key={restaurant.id} value={restaurant.id}>
+                      {restaurant.nom} - {restaurant.adresse}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom du client
+                </label>
+                <input
+                  type="text"
+                  value={newOrder.customer_name}
+                  onChange={(e) => setNewOrder({...newOrder, customer_name: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Client Test Alerte"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Téléphone
+                </label>
+                <input
+                  type="text"
+                  value={newOrder.customer_phone}
+                  onChange={(e) => setNewOrder({...newOrder, customer_phone: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0612345678"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Adresse de livraison
+                </label>
+                <input
+                  type="text"
+                  value={newOrder.delivery_address}
+                  onChange={(e) => setNewOrder({...newOrder, delivery_address: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="15 Rue de la Nouvelle Commande"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ville
+                  </label>
+                  <input
+                    type="text"
+                    value={newOrder.delivery_city}
+                    onChange={(e) => setNewOrder({...newOrder, delivery_city: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Paris"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Code postal
+                  </label>
+                  <input
+                    type="text"
+                    value={newOrder.delivery_postal_code}
+                    onChange={(e) => setNewOrder({...newOrder, delivery_postal_code: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="75001"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Instructions de livraison
+                </label>
+                <textarea
+                  value={newOrder.delivery_instructions}
+                  onChange={(e) => setNewOrder({...newOrder, delivery_instructions: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="2"
+                  placeholder="Sonner fort, 3ème étage"
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={fillTestData}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Remplir avec des données de test
+                </button>
+                <button
+                  onClick={createTestOrder}
+                  disabled={!newOrder.restaurant_id || !newOrder.customer_name}
+                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Créer la commande
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

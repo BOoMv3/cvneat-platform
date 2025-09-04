@@ -94,17 +94,20 @@ export async function POST(request) {
     }
 
     const {
-      user_id,
+      customer_name,
+      customer_phone,
       restaurant_id,
       items,
       delivery_address,
+      delivery_city,
+      delivery_postal_code,
+      delivery_instructions,
       delivery_fee,
       total_amount,
-      instructions,
       status = 'pending'
     } = await request.json();
 
-    if (!user_id || !restaurant_id || !items || !delivery_address || !total_amount) {
+    if (!customer_name || !restaurant_id || !items || !delivery_address || !total_amount) {
       return NextResponse.json({ error: 'Données de commande incomplètes' }, { status: 400 });
     }
 
@@ -112,58 +115,30 @@ export async function POST(request) {
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert([{
-        user_id,
+        customer_name,
+        customer_phone: customer_phone || '0123456789',
         restaurant_id,
         delivery_address,
-        delivery_fee,
+        delivery_city: delivery_city || 'Paris',
+        delivery_postal_code: delivery_postal_code || '75001',
+        delivery_instructions: delivery_instructions || '',
+        delivery_fee: delivery_fee || 0,
         total_amount,
-        instructions,
+        items: items, // Stocker comme JSON
         status
       }])
       .select(`
         *,
-        user:users(email, full_name),
         restaurant:restaurants(nom)
       `)
       .single();
 
-    if (orderError) throw orderError;
-
-    // Ajouter les articles de commande
-    const orderItems = items.map(item => ({
-      order_id: order.id,
-      menu_id: item.id,
-      quantity: item.quantity,
-      unit_price: item.price,
-      total_price: item.price * item.quantity
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (itemsError) throw itemsError;
-
-    // Envoyer email de notification au client
-    try {
-      await fetch('/api/notifications/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'orderCreated',
-          data: {
-            id: order.id,
-            customerName: order.user?.full_name || order.user?.email,
-            restaurantName: order.restaurant?.nom || 'Restaurant',
-            total: order.total_amount,
-            status: order.status
-          },
-          recipientEmail: order.user?.email
-        })
-      });
-    } catch (emailError) {
-      console.error('Erreur envoi email création commande:', emailError);
+    if (orderError) {
+      console.error('Erreur création commande admin:', orderError);
+      return NextResponse.json({ error: 'Erreur création commande' }, { status: 500 });
     }
+
+    console.log('✅ Commande créée avec succès:', order.id);
 
     return NextResponse.json({
       success: true,
