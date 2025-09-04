@@ -80,8 +80,14 @@ export async function GET(request, { params }) {
 // PUT /api/orders/[id] - Mettre à jour le statut d'une commande (acceptation/refus)
 export async function PUT(request, { params }) {
   try {
+    console.log('=== MISE À JOUR STATUT COMMANDE ===');
     const { id } = params;
     const { status, reason, preparation_time } = await request.json();
+    
+    console.log('ID commande:', id);
+    console.log('Nouveau statut:', status);
+    console.log('Raison:', reason);
+    console.log('Temps préparation:', preparation_time);
 
     // Validation du statut
     const validStatuses = ['accepted', 'rejected', 'preparing', 'ready', 'delivered'];
@@ -112,13 +118,14 @@ export async function PUT(request, { params }) {
       .single();
 
     if (error) {
-      console.error('Erreur lors de la mise à jour de la commande:', error);
+      console.error('❌ Erreur lors de la mise à jour de la commande:', error);
       return NextResponse.json(
         { error: 'Erreur lors de la mise à jour de la commande' },
         { status: 500 }
       );
     }
 
+    console.log('✅ Commande mise à jour avec succès:', order);
     return NextResponse.json({
       message: `Commande ${status === 'accepted' ? 'acceptée' : status === 'rejected' ? 'refusée' : 'mise à jour'}`,
       order: order

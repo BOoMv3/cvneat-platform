@@ -37,14 +37,14 @@ export async function GET(request) {
     console.log('✅ Rôle livreur confirmé');
 
     // Récupérer les commandes disponibles pour livraison
-    // Les livreurs voient les commandes 'ready' (prêtes et pas encore acceptées)
+    // Les livreurs voient les commandes prêtes (ready) et acceptées par le restaurant (accepted)
     const { data: orders, error } = await supabase
       .from('orders')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
       `)
-      .eq('status', 'ready') // Commandes prêtes
+      .in('status', ['ready', 'accepted']) // Commandes prêtes ET acceptées par le restaurant
       .is('delivery_id', null) // Pas encore assignées à un livreur
       .order('created_at', { ascending: true });
 
