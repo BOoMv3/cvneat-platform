@@ -81,6 +81,24 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     console.log('=== MISE À JOUR STATUT COMMANDE ===');
+    
+    // Vérification de l'authentification
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ Token manquant');
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.log('❌ Token invalide:', authError);
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+
+    console.log('✅ Utilisateur authentifié:', user.email);
+
     const { id } = params;
     const { status, reason, preparation_time } = await request.json();
     

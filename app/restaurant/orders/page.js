@@ -177,6 +177,12 @@ export default function RestaurantOrders() {
 
   const updateOrderStatus = async (orderId, status, reason = '', prepTime = null) => {
     try {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Pas de token d\'authentification');
+      }
+
       const body = { status, reason };
       if (prepTime !== null) {
         body.preparation_time = prepTime;
@@ -185,7 +191,8 @@ export default function RestaurantOrders() {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(body)
       });
