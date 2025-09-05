@@ -17,7 +17,7 @@ export default function RestaurantOrders() {
 
   // Pour l'exemple, on utilise un restaurant ID fixe
   // En production, cela viendrait de l'authentification
-  const restaurantId = '7f1e0b5f-5552-445d-a582-306515030c8d'; // À remplacer par l'ID du restaurant connecté
+  const [restaurantId, setRestaurantId] = useState(null);
   
   // DEBUG: Afficher toutes les commandes pour diagnostiquer
   const [showAllOrders, setShowAllOrders] = useState(false);
@@ -158,18 +158,45 @@ export default function RestaurantOrders() {
   const fetchOrders = async () => {
     try {
       console.log('=== RÉCUPÉRATION COMMANDES RESTAURANT ===');
-      console.log('Restaurant ID utilisé:', restaurantId);
-      console.log('Mode debug (toutes commandes):', showAllOrders);
       
       // Si mode debug, récupérer toutes les commandes
-      const url = showAllOrders ? '/api/orders' : `/api/restaurants/${restaurantId}/orders`;
-      console.log('URL utilisée:', url);
+      if (showAllOrders) {
+        console.log('Mode debug activé - récupération de toutes les commandes');
+        const response = await fetch('/api/debug/orders');
+        const data = await response.json();
+        console.log('Commandes reçues (debug):', data);
+        setOrders(data);
+        return;
+      }
       
-      // Pour le mode debug, utiliser l'API debug qui ne nécessite pas d'auth
-      const debugUrl = showAllOrders ? '/api/debug/orders' : `/api/restaurants/${restaurantId}/orders`;
-      console.log('URL debug utilisée:', debugUrl);
+      // Récupérer l'utilisateur connecté
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erreur utilisateur:', userError);
+        throw new Error('Utilisateur non connecté');
+      }
       
-      const response = await fetch(debugUrl);
+      console.log('Utilisateur connecté:', user.email);
+      
+      // Récupérer le restaurant de l'utilisateur
+      const { data: restaurant, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (restaurantError || !restaurant) {
+        console.error('Erreur restaurant:', restaurantError);
+        throw new Error('Restaurant non trouvé');
+      }
+      
+      console.log('Restaurant trouvé:', restaurant.id);
+      
+      // Mettre à jour l'ID du restaurant pour les subscriptions
+      setRestaurantId(restaurant.id);
+      
+      // Récupérer les commandes du restaurant
+      const response = await fetch(`/api/restaurants/${restaurant.id}/orders`);
       console.log('Statut de la réponse:', response.status);
       
       if (!response.ok) {

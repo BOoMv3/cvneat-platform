@@ -256,12 +256,17 @@ export default function DeliveryDashboard() {
 
   const acceptOrder = async (orderId) => {
     try {
+      console.log('🚚 Acceptation commande:', orderId);
+      
       // Récupérer le token d'authentification
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         console.error('❌ Pas de token d\'authentification');
+        alert('Erreur: Pas de token d\'authentification');
         return;
       }
+      
+      console.log('✅ Token trouvé, envoi requête...');
       
       const response = await fetch(`/api/delivery/accept-order/${orderId}`, {
         method: 'POST',
@@ -271,17 +276,22 @@ export default function DeliveryDashboard() {
         }
       });
 
+      console.log('📥 Réponse reçue:', response.status, response.statusText);
+
       if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Commande acceptée:', data);
         alert('Commande acceptée avec succès !');
         fetchAvailableOrders();
         fetchCurrentOrder();
         fetchStats();
       } else {
         const error = await response.json();
-        alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
+        console.error('❌ Erreur API:', error);
+        alert(`Erreur: ${error.error || error.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
-      console.error('Erreur acceptation commande:', error);
+      console.error('❌ Erreur acceptation commande:', error);
       alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
     }
   };
