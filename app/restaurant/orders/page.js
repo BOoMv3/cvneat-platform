@@ -23,7 +23,9 @@ export default function RestaurantOrders() {
   const [showAllOrders, setShowAllOrders] = useState(false);
 
   useEffect(() => {
-    // Ne pas appeler fetchOrders automatiquement - sera appelé par l'effet showAllOrders
+    // Charger les commandes au démarrage
+    fetchOrders();
+    
     if (!showAllOrders) {
       setupRealtimeSubscription();
     }

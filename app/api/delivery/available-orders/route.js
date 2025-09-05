@@ -42,7 +42,7 @@ export async function GET(request) {
       .from('orders')
       .select(`
         *,
-        restaurant:restaurants(name, address, phone)
+        restaurant:restaurants(nom, adresse, telephone)
       `)
       .not('status', 'eq', 'delivered') // Toutes sauf livrées
       .is('delivery_id', null) // Pas encore assignées à un livreur
