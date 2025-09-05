@@ -30,34 +30,34 @@ export default function RestaurantOrders() {
       setupRealtimeSubscription();
     }
     
-    // Polling pour mettre à jour les commandes en temps réel (seulement si pas en mode debug)
-    const interval = setInterval(() => {
-      if (!showAllOrders) {
-        fetchOrders();
-      }
-    }, 10000); // Vérifier toutes les 10 secondes
-    
     return () => {
-      clearInterval(interval);
       // Nettoyer la subscription
       supabase.removeAllChannels();
     };
   }, [showAllOrders]);
 
+  // Polling séparé pour éviter les conflits
+  useEffect(() => {
+    if (showAllOrders) return; // Pas de polling en mode debug
+    
+    const interval = setInterval(() => {
+      console.log('🔄 Polling automatique des commandes');
+      fetchOrders();
+    }, 15000); // Vérifier toutes les 15 secondes
+    
+    return () => clearInterval(interval);
+  }, [showAllOrders]);
+
   // Effet séparé pour gérer les changements de showAllOrders
   useEffect(() => {
     if (showAllOrders) {
-      // En mode debug, nettoyer les subscriptions et arrêter le polling
+      // En mode debug, nettoyer les subscriptions
       supabase.removeAllChannels();
       console.log('🔍 Mode debug activé - subscriptions désactivées');
-      // Rafraîchir immédiatement pour voir toutes les commandes
-      fetchOrders();
     } else {
       // En mode normal, réactiver les subscriptions
       setupRealtimeSubscription();
       console.log('🔍 Mode normal activé - subscriptions réactivées');
-      // Rafraîchir immédiatement pour voir les commandes filtrées
-      fetchOrders();
     }
   }, [showAllOrders]);
 
@@ -140,7 +140,19 @@ export default function RestaurantOrders() {
           fetchOrders(); // Rafraîchir la liste
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔔 Statut de la subscription:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Subscription active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Erreur de subscription, retry dans 5s...');
+          setTimeout(() => {
+            if (!showAllOrders) {
+              setupRealtimeSubscription();
+            }
+          }, 5000);
+        }
+      });
   };
 
   const fetchOrders = async () => {
