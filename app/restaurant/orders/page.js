@@ -275,23 +275,23 @@ export default function RestaurantOrders() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Gestion des commandes</h1>
-          <div className="flex space-x-4">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-12">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestion des commandes</h1>
+          <div className="flex flex-wrap gap-2 sm:gap-4">
             <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
               <span className="text-sm font-medium">En ligne</span>
             </div>
             <button
               onClick={() => setAudioEnabled(!audioEnabled)}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                 audioEnabled 
                   ? 'bg-green-600 text-white hover:bg-green-700' 
                   : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
               }`}
             >
-              {audioEnabled ? '🔊 Audio Activé' : '🔇 Audio Désactivé'}
+              {audioEnabled ? '🔊 Audio' : '🔇 Audio'}
             </button>
             <button
               onClick={() => {
@@ -304,19 +304,19 @@ export default function RestaurantOrders() {
                   fetchOrders();
                 }, 100);
               }}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                 showAllOrders 
                   ? 'bg-orange-600 text-white hover:bg-orange-700' 
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
-              {showAllOrders ? '🔍 Mode Debug' : '🔍 Toutes Commandes'}
+              {showAllOrders ? '🔍 Debug' : '🔍 Toutes'}
             </button>
             <button
               onClick={requestNotificationPermission}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              🔔 Notifications
+              🔔 Notif
             </button>
             <button
               onClick={() => {
