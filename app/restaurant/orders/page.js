@@ -177,9 +177,15 @@ export default function RestaurantOrders() {
 
   const updateOrderStatus = async (orderId, status, reason = '', prepTime = null) => {
     try {
+      console.log('🔄 Mise à jour statut commande:', { orderId, status, reason, prepTime });
+      
       // Récupérer le token d'authentification
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('🔑 Session:', session ? 'Trouvée' : 'Non trouvée');
+      console.log('🔑 Erreur session:', sessionError);
+      
       if (!session?.access_token) {
+        console.error('❌ Pas de token d\'authentification');
         throw new Error('Pas de token d\'authentification');
       }
 
@@ -187,6 +193,8 @@ export default function RestaurantOrders() {
       if (prepTime !== null) {
         body.preparation_time = prepTime;
       }
+
+      console.log('📤 Envoi requête:', { orderId, body });
 
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
@@ -197,8 +205,12 @@ export default function RestaurantOrders() {
         body: JSON.stringify(body)
       });
 
+      console.log('📥 Réponse reçue:', response.status, response.statusText);
+
       if (!response.ok) {
-        throw new Error('Erreur lors de la mise à jour du statut');
+        const errorData = await response.json();
+        console.error('❌ Erreur API:', errorData);
+        throw new Error(`Erreur ${response.status}: ${errorData.error || 'Erreur inconnue'}`);
       }
 
       // Rafraîchir les commandes

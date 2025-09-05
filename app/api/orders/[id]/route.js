@@ -94,7 +94,11 @@ export async function PUT(request, { params }) {
     
     if (authError || !user) {
       console.log('❌ Token invalide:', authError);
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      console.log('❌ Détails erreur auth:', JSON.stringify(authError, null, 2));
+      return NextResponse.json({ 
+        error: 'Token invalide', 
+        details: authError?.message || 'Utilisateur non trouvé' 
+      }, { status: 401 });
     }
 
     console.log('✅ Utilisateur authentifié:', user.email);
