@@ -42,7 +42,7 @@ export async function GET(request) {
       .from('orders')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone)
+        restaurant:restaurants(name, address, phone)
       `)
       .not('status', 'eq', 'delivered') // Toutes sauf livrées
       .is('delivery_id', null) // Pas encore assignées à un livreur
@@ -50,10 +50,15 @@ export async function GET(request) {
 
     if (error) {
       console.error('❌ Erreur récupération commandes:', error);
-      return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+      console.error('❌ Détails erreur:', JSON.stringify(error, null, 2));
+      return NextResponse.json({ 
+        error: 'Erreur serveur', 
+        details: error.message 
+      }, { status: 500 });
     }
 
     console.log('✅ Commandes récupérées:', orders?.length || 0);
+    console.log('✅ Détails commandes:', orders);
     return NextResponse.json(orders || []);
   } catch (error) {
     console.error('❌ Erreur API commandes disponibles:', error);
