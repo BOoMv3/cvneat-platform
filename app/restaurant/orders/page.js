@@ -588,12 +588,12 @@ export default function RestaurantOrders() {
 
                 {selectedOrder.status === 'ready' && (
                   <div className="space-y-2">
-                    <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                      className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      🚚 Marquer comme livrée
-                    </button>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                      <p className="text-blue-800 font-medium">Commande prête !</p>
+                      <p className="text-sm text-blue-600 mt-1">
+                        En attente qu'un livreur accepte et livre la commande
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
