@@ -510,11 +510,15 @@ export default function RestaurantOrders() {
                       ))}
                     </div>
                     <div className="border-t mt-2 pt-2">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Sous-total</span>
+                        <span>{(selectedOrder.total_amount - selectedOrder.delivery_fee).toFixed(2)}€</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600">
                         <span>Frais de livraison</span>
                         <span>{selectedOrder.delivery_fee.toFixed(2)}€</span>
                       </div>
-                      <div className="flex justify-between font-bold">
+                      <div className="flex justify-between font-bold text-lg border-t pt-2">
                         <span>Total</span>
                         <span>{selectedOrder.total_amount.toFixed(2)}€</span>
                       </div>
