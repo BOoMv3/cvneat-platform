@@ -5,7 +5,7 @@
 INSERT INTO users (
   id,
   email,
-  full_name,
+  name,
   role,
   created_at,
   updated_at
@@ -23,7 +23,7 @@ ON CONFLICT (email) DO NOTHING;
 SELECT 
   id,
   email,
-  full_name,
+  name,
   role
 FROM users 
 WHERE email = 'client.test@example.com';
@@ -32,11 +32,11 @@ WHERE email = 'client.test@example.com';
 SELECT 
   o.id,
   o.customer_name,
-  u.full_name as user_name,
+  u.name as user_name,
   u.email,
   o.status
 FROM orders o
-LEFT JOIN users u ON u.full_name = o.customer_name
+LEFT JOIN users u ON u.name = o.customer_name
 WHERE o.id = 54;
 
 -- 4. Si vous voulez créer d'autres utilisateurs pour d'autres commandes
@@ -44,7 +44,7 @@ WHERE o.id = 54;
 INSERT INTO users (
   id,
   email,
-  full_name,
+  name,
   role,
   created_at,
   updated_at
