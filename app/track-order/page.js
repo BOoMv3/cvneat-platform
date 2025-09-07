@@ -26,32 +26,54 @@ export default function TrackOrder() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        setError('Vous devez être connecté pour suivre une commande');
+        setError('Vous devez être connecté pour suivre une commande. Veuillez vous connecter d\'abord.');
         setLoading(false);
         return;
       }
 
+      console.log('🔑 Session trouvée:', !!session);
+      console.log('👤 Token:', session.access_token ? 'Présent' : 'Manquant');
+
       // Récupérer les informations de l'utilisateur
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('❌ Erreur utilisateur:', userError);
+        setError('Erreur d\'authentification. Veuillez vous reconnecter.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Utilisateur connecté:', user.email);
       
       // Récupérer la commande avec vérification d'appartenance
       const response = await fetch(`/api/orders/${orderId}`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
         }
       });
       
+      console.log('📡 Réponse API:', response.status, response.statusText);
+      
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Erreur API:', errorData);
+        
         if (response.status === 404) {
           throw new Error('Commande non trouvée');
         } else if (response.status === 403) {
-          throw new Error('Vous n\'êtes pas autorisé à voir cette commande');
+          throw new Error('Vous n\'êtes pas autorisé à voir cette commande. Vérifiez que le nom de la commande correspond à votre nom d\'utilisateur.');
+        } else if (response.status === 401) {
+          throw new Error('Session expirée. Veuillez vous reconnecter.');
         } else {
-          throw new Error('Erreur lors de la récupération de la commande');
+          throw new Error(`Erreur serveur (${response.status}): ${errorData.error || 'Erreur inconnue'}`);
         }
       }
       
       const data = await response.json();
+      console.log('✅ Commande récupérée:', data);
+      
       setOrder(data);
       setLastStatus(data.status);
       
@@ -63,6 +85,7 @@ export default function TrackOrder() {
         setIsTracking(true);
       }
     } catch (err) {
+      console.error('❌ Erreur fetchOrder:', err);
       setError(err.message);
       setOrder(null);
     } finally {
@@ -392,6 +415,21 @@ export default function TrackOrder() {
                   <strong>🔒 Sécurité :</strong> Vous devez être connecté pour suivre une commande. 
                   Vous ne pouvez voir que vos propres commandes.
                 </p>
+                <div className="mt-3">
+                  <a 
+                    href="/login" 
+                    className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Se connecter
+                  </a>
+                  <span className="mx-2 text-gray-400">ou</span>
+                  <a 
+                    href="/register" 
+                    className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    S'inscrire
+                  </a>
+                </div>
               </div>
             </div>
           )}
