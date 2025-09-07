@@ -512,7 +512,7 @@ export default function RestaurantOrders() {
                     <div className="border-t mt-2 pt-2">
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>Sous-total</span>
-                        <span>{(selectedOrder.total_amount - selectedOrder.delivery_fee).toFixed(2)}€</span>
+                        <span>{selectedOrder.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2) || '0.00'}€</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>Frais de livraison</span>
