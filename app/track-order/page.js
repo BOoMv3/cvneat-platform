@@ -218,7 +218,19 @@ export default function TrackOrder() {
 
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/orders/${orderId}`);
+        // Récupérer la session pour le token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setIsTracking(false);
+          return;
+        }
+
+        const response = await fetch(`/api/orders/${orderId}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           
