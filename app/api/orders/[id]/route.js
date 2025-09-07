@@ -47,7 +47,7 @@ export async function GET(request, { params }) {
     // Dans un vrai système, on aurait une relation user_id dans la commande
     const { data: userData, error: userDataError } = await supabase
       .from('users')
-      .select('name, email')
+      .select('nom, prenom, email')
       .eq('id', user.id)
       .single();
 
@@ -58,10 +58,11 @@ export async function GET(request, { params }) {
 
     // Vérifier si la commande appartient à cet utilisateur
     // On compare le nom du client avec le nom de l'utilisateur connecté
-    if (order.customer_name !== userData.name) {
+    const fullUserName = `${userData.prenom} ${userData.nom}`;
+    if (order.customer_name !== fullUserName) {
       console.error('❌ Commande ne appartient pas à l\'utilisateur:', {
         commande_client: order.customer_name,
-        utilisateur: userData.name
+        utilisateur: fullUserName
       });
       return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
     }
