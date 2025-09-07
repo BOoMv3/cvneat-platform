@@ -225,8 +225,14 @@ export default function Home() {
           </div>
         </div>
         
-        {/* Actions utilisateur en haut à droite */}
+          {/* Actions utilisateur en haut à droite */}
         <div className="absolute top-4 right-4 z-20 flex items-center space-x-4">
+          {/* Bouton Suivre ma commande - toujours visible */}
+          <Link href="/track-order" className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-colors flex items-center space-x-2">
+            <FaSearch className="h-4 w-4" />
+            <span className="text-sm">Suivre ma commande</span>
+          </Link>
+          
           {user ? (
             <>
               <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full">

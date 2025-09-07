@@ -1,163 +1,87 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
-// GET /api/orders/[id] - Récupérer une commande spécifique
 export async function GET(request, { params }) {
   try {
     const { id } = params;
-    console.log('=== RÉCUPÉRATION COMMANDE ===');
-    console.log('ID de commande demandé:', id);
-    console.log('Type de l\'ID:', typeof id);
     
-    // D'abord, essayons de récupérer la commande sans jointure
-    console.log('Tentative de récupération de la commande sans jointure...');
-    const { data: orderBasic, error: basicError } = await supabase
+    console.log('=== RÉCUPÉRATION COMMANDE PAR ID ===');
+    console.log('ID demandé:', id);
+
+    const { data: order, error } = await supabase
       .from('orders')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (basicError) {
-      console.error('Erreur lors de la récupération basique:', basicError);
-      return NextResponse.json(
-        { error: `Commande non trouvée: ${basicError.message}` },
-        { status: 404 }
-      );
-    }
-
-    if (!orderBasic) {
-      console.log('Commande non trouvée avec ID:', id);
-      return NextResponse.json(
-        { error: 'Commande non trouvée' },
-        { status: 404 }
-      );
-    }
-
-    console.log('Commande trouvée:', orderBasic);
-    
-    // Maintenant, essayons avec la jointure
-    console.log('Tentative de récupération avec jointure...');
-    const { data: order, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        restaurants (
-          id,
-          name,
-          description,
-          image_url
-        )
-      `)
-      .eq('id', id)
-      .single();
-
     if (error) {
-      console.error('Erreur lors de la récupération avec jointure:', error);
-      // Si la jointure échoue, retournons au moins la commande de base
-      console.log('Retour de la commande sans jointure');
-      return NextResponse.json(orderBasic);
+      console.error('❌ Erreur récupération commande:', error);
+      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
     }
 
     if (!order) {
-      console.log('Commande non trouvée avec jointure');
-      return NextResponse.json(
-        { error: 'Commande non trouvée' },
-        { status: 404 }
-      );
+      console.log('❌ Aucune commande trouvée pour l\'ID:', id);
+      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
     }
 
-    console.log('Commande récupérée avec succès:', order);
+    console.log('✅ Commande trouvée:', order);
     return NextResponse.json(order);
   } catch (error) {
-    console.error('Erreur générale lors de la récupération de la commande:', error);
-    return NextResponse.json(
-      { error: `Erreur lors de la récupération de la commande: ${error.message}` },
-      { status: 500 }
-    );
+    console.error('❌ Erreur API commande:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
-// PUT /api/orders/[id] - Mettre à jour le statut d'une commande (acceptation/refus)
 export async function PUT(request, { params }) {
   try {
-    console.log('=== MISE À JOUR STATUT COMMANDE ===');
+    const { id } = params;
+    const body = await request.json();
     
-    // Vérification de l'authentification
+    console.log('=== MISE À JOUR COMMANDE ===');
+    console.log('ID commande:', id);
+    console.log('Données reçues:', body);
+
+    // Récupérer le token d'authentification
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ Token manquant');
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+      console.error('❌ Pas de token d\'authentification');
+      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
     }
-    
+
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      console.log('❌ Token invalide:', authError);
-      console.log('❌ Détails erreur auth:', JSON.stringify(authError, null, 2));
-      return NextResponse.json({ 
-        error: 'Token invalide', 
-        details: authError?.message || 'Utilisateur non trouvé' 
-      }, { status: 401 });
+    console.log('🔑 Token reçu:', token ? 'Oui' : 'Non');
+
+    // Vérifier l'authentification
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      console.error('❌ Erreur authentification:', userError);
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
     console.log('✅ Utilisateur authentifié:', user.email);
 
-    const { id } = params;
-    const { status, reason, preparation_time } = await request.json();
-    
-    console.log('ID commande:', id);
-    console.log('Nouveau statut:', status);
-    console.log('Raison:', reason);
-    console.log('Temps préparation:', preparation_time);
-
-    // Validation du statut
-    const validStatuses = ['accepted', 'rejected', 'preparing', 'ready', 'delivered'];
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json(
-        { error: 'Statut invalide' },
-        { status: 400 }
-      );
-    }
-
     // Mettre à jour la commande
-    const updateData = {
-      status: status,
-      status_reason: reason || null,
-      updated_at: new Date().toISOString()
-    };
-    
-    // Ajouter le temps de préparation si fourni
-    if (preparation_time !== undefined && preparation_time !== null) {
-      updateData.preparation_time = preparation_time;
-    }
-
-    const { data: order, error } = await supabase
+    const { data, error } = await supabase
       .from('orders')
-      .update(updateData)
+      .update({
+        status: body.status,
+        rejection_reason: body.reason || null,
+        preparation_time: body.preparation_time || null,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Erreur lors de la mise à jour de la commande:', error);
-      return NextResponse.json(
-        { error: 'Erreur lors de la mise à jour de la commande' },
-        { status: 500 }
-      );
+      console.error('❌ Erreur mise à jour:', error);
+      return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
     }
 
-    console.log('✅ Commande mise à jour avec succès:', order);
-    return NextResponse.json({
-      message: `Commande ${status === 'accepted' ? 'acceptée' : status === 'rejected' ? 'refusée' : 'mise à jour'}`,
-      order: order
-    });
-
+    console.log('✅ Commande mise à jour:', data);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de la commande:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour de la commande' },
-      { status: 500 }
-    );
+    console.error('❌ Erreur API mise à jour:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
-} 
+}
