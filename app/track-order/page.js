@@ -22,9 +22,33 @@ export default function TrackOrder() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/orders/${orderId}`);
+      // Vérifier si l'utilisateur est connecté
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError('Vous devez être connecté pour suivre une commande');
+        setLoading(false);
+        return;
+      }
+
+      // Récupérer les informations de l'utilisateur
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Récupérer la commande avec vérification d'appartenance
+      const response = await fetch(`/api/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
       if (!response.ok) {
-        throw new Error('Commande non trouvée');
+        if (response.status === 404) {
+          throw new Error('Commande non trouvée');
+        } else if (response.status === 403) {
+          throw new Error('Vous n\'êtes pas autorisé à voir cette commande');
+        } else {
+          throw new Error('Erreur lors de la récupération de la commande');
+        }
       }
       
       const data = await response.json();
@@ -363,6 +387,12 @@ export default function TrackOrder() {
               <div className="text-6xl mb-4">📱</div>
               <p className="text-lg">Entrez votre numéro de commande pour suivre votre livraison</p>
               <p className="text-sm mt-2">Vous recevrez des notifications en temps réel sur l'avancement</p>
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>🔒 Sécurité :</strong> Vous devez être connecté pour suivre une commande. 
+                  Vous ne pouvez voir que vos propres commandes.
+                </p>
+              </div>
             </div>
           )}
         </div>
