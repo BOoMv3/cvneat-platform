@@ -12,7 +12,9 @@ export default function Register() {
     password: '',
     confirmPassword: '',
     adresse: '',
-    telephone: ''
+    telephone: '',
+    code_postal: '',
+    ville: ''
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -48,6 +50,8 @@ export default function Register() {
       prenom: formData.prenom,
       telephone: formData.telephone,
       adresse: formData.adresse,
+      code_postal: formData.code_postal,
+      ville: formData.ville,
       role: 'user',
     });
     if (insertError) {
@@ -142,6 +146,26 @@ export default function Register() {
             value={formData.adresse}
             onChange={handleChange}
           />
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput
+              label="Code postal"
+              name="code_postal"
+              placeholder="75001"
+              required
+              error={errors.code_postal}
+              value={formData.code_postal}
+              onChange={handleChange}
+            />
+            <FormInput
+              label="Ville"
+              name="ville"
+              placeholder="Paris"
+              required
+              error={errors.ville}
+              value={formData.ville}
+              onChange={handleChange}
+            />
+          </div>
           <FormInput
             label="Mot de passe"
             type="password"
