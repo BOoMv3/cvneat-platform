@@ -37,18 +37,18 @@ export async function POST(request, { params }) {
     
     console.log('✅ Rôle livreur confirmé');
 
-    // Vérifier que la commande existe et est en cours
+    // Vérifier que la commande existe et n'est pas déjà livrée
     const { data: order, error: checkError } = await supabase
       .from('orders')
       .select('*')
       .eq('id', orderId)
-      .in('status', ['accepted', 'in_delivery'])
+      .not('status', 'eq', 'delivered')
       .single();
 
     if (checkError || !order) {
-      console.log('❌ Commande non trouvée ou non en cours:', checkError);
+      console.log('❌ Commande non trouvée ou déjà livrée:', checkError);
       return NextResponse.json(
-        { error: 'Commande non trouvée ou non en cours' },
+        { error: 'Commande non trouvée ou déjà livrée' },
         { status: 400 }
       );
     }

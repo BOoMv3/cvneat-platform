@@ -382,25 +382,31 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const updateOrderStatus = async (status) => {
+  const completeDelivery = async (orderId) => {
     try {
-      const response = await fetchWithAuth(`/api/delivery/order/${currentOrder.id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status })
+      console.log('🚚 Finalisation livraison:', orderId);
+      
+      const response = await fetchWithAuth(`/api/delivery/complete-delivery/${orderId}`, {
+        method: 'POST'
       });
 
       if (response.ok) {
-        alert("Statut de la commande mis à jour !");
+        const result = await response.json();
+        console.log('✅ Livraison finalisée:', result);
+        alert("Livraison finalisée avec succès !");
+        setCurrentOrder(null);
+        setChatOpen(false); // Fermer le chat après la livraison
+        fetchStats();
+        fetchAvailableOrders();
         fetchCurrentOrder();
-        if (status === 'livree') {
-           setChatOpen(false); // Fermer le chat après la livraison
-        }
       } else {
         const error = await response.json();
-        alert(`Erreur: ${error.message}`);
+        console.error('❌ Erreur API:', error);
+        alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
-      console.error("Erreur lors de la mise à jour du statut:", error);
+      console.error("❌ Erreur finalisation livraison:", error);
+      alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
     }
   };
   
@@ -631,9 +637,9 @@ export default function DeliveryDashboard() {
                     </div>
                     
                     <div className="flex space-x-3">
-                      {currentOrder.status === 'en_livraison' && (
+                      {(currentOrder.status === 'accepted' || currentOrder.status === 'ready') && (
                         <button
-                          onClick={() => updateOrderStatus('livree')}
+                          onClick={() => completeDelivery(currentOrder.id)}
                           className="flex-1 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold"
                         >
                           ✅ Marquer comme livrée
@@ -758,7 +764,7 @@ export default function DeliveryDashboard() {
                                 📦 En cours
                               </span>
                               <button
-                                onClick={() => updateOrderStatus('delivered')}
+                                onClick={() => completeDelivery(order.id)}
                                 className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
                               >
                                 🚚 Livrer
