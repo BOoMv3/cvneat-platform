@@ -4,7 +4,17 @@ import { supabase } from '../../../../../lib/supabase';
 export async function POST(request, { params }) {
   try {
     const { orderId } = params;
+    const body = await request.json();
+    const { securityCode } = body;
+    
     console.log('🔍 API complete-delivery appelée pour:', orderId);
+    console.log('🔐 Code de sécurité reçu:', securityCode);
+    
+    // Vérifier que le code de sécurité est fourni
+    if (!securityCode) {
+      console.error('❌ Code de sécurité manquant');
+      return NextResponse.json({ error: 'Code de sécurité requis' }, { status: 400 });
+    }
     
     // Récupérer le token depuis l'header Authorization ou les cookies
     const authHeader = request.headers.get('authorization');
@@ -54,6 +64,14 @@ export async function POST(request, { params }) {
     }
     
     console.log('✅ Commande trouvée:', order.id, 'statut:', order.status);
+
+    // Vérifier le code de sécurité
+    if (order.security_code !== securityCode) {
+      console.error('❌ Code de sécurité incorrect:', securityCode, 'attendu:', order.security_code);
+      return NextResponse.json({ error: 'Code de sécurité incorrect' }, { status: 400 });
+    }
+
+    console.log('✅ Code de sécurité validé');
 
     // Marquer la commande comme livrée
     const { error: updateError } = await supabase

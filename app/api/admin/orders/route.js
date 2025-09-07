@@ -111,6 +111,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Données de commande incomplètes' }, { status: 400 });
     }
 
+    // Générer un code de sécurité à 6 chiffres
+    const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('🔐 Code de sécurité généré:', securityCode);
+
     // Créer la commande
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -125,7 +129,8 @@ export async function POST(request) {
         delivery_fee: delivery_fee || 0,
         total_amount,
         items: items, // Stocker comme JSON
-        status
+        status,
+        security_code: securityCode
       }])
       .select(`
         *,

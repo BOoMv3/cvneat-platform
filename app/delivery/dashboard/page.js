@@ -386,8 +386,17 @@ export default function DeliveryDashboard() {
     try {
       console.log('🚚 Finalisation livraison:', orderId);
       
+      // Demander le code de sécurité au livreur
+      const securityCode = prompt('🔐 Entrez le code de sécurité donné par le client:');
+      
+      if (!securityCode) {
+        alert('Code de sécurité requis pour finaliser la livraison');
+        return;
+      }
+      
       const response = await fetchWithAuth(`/api/delivery/complete-delivery/${orderId}`, {
-        method: 'POST'
+        method: 'POST',
+        body: JSON.stringify({ securityCode })
       });
 
       if (response.ok) {
