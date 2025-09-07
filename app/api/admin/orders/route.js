@@ -38,10 +38,7 @@ export async function GET(request) {
       .from('orders')
       .select(`
         *,
-        user:users(email, full_name, telephone),
-        restaurant:restaurants(nom, adresse),
-        order_items(count),
-        delivery:users!delivery_id(email, full_name)
+        restaurant:restaurants(nom, adresse)
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -53,7 +50,7 @@ export async function GET(request) {
       query = query.eq('restaurant_id', restaurant_id);
     }
     if (user_id) {
-      query = query.eq('user_id', user_id);
+      query = query.eq('customer_id', user_id);
     }
 
     const { data: orders, error } = await query;
