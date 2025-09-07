@@ -361,6 +361,14 @@ export default function AdminDashboard() {
                     <div>
                       <p className="font-medium">Commande #{getOrderDisplayId(order)}</p>
                       <p className="text-sm text-gray-600">{order?.customer_name || 'Nom non disponible'}</p>
+                      {order?.security_code && (
+                        <div className="mt-1 flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">Code:</span>
+                          <span className="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            {order.security_code}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order?.status)}`}>

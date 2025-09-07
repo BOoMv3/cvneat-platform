@@ -579,6 +579,17 @@ export default function RestaurantOrders() {
                   </div>
                 )}
 
+                {selectedOrder.status === 'accepted' && selectedOrder.delivery_id && (
+                  <div className="space-y-2">
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                      <p className="text-orange-800 font-medium">Commande acceptée par un livreur !</p>
+                      <p className="text-sm text-orange-600 mt-1">
+                        La commande est en cours de livraison. Vous ne pouvez plus la modifier.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {selectedOrder.status === 'preparing' && !selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <button
