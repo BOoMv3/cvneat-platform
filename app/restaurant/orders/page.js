@@ -520,7 +520,7 @@ export default function RestaurantOrders() {
                       </div>
                       <div className="flex justify-between font-bold text-lg border-t pt-2">
                         <span>Total</span>
-                        <span>{selectedOrder.total_amount.toFixed(2)}€</span>
+                        <span>{(selectedOrder.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) + selectedOrder.delivery_fee).toFixed(2)}€</span>
                       </div>
                     </div>
                   </div>
