@@ -254,8 +254,15 @@ export default function RestaurantOrders() {
         throw new Error(`Erreur ${response.status}: ${errorData.error || 'Erreur inconnue'}`);
       }
 
-      // Rafraîchir les commandes
-      await fetchOrders();
+      // Mettre à jour la commande localement au lieu de recharger
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: status, preparation_time: prepTime || order.preparation_time }
+            : order
+        )
+      );
+      
       setSelectedOrder(null);
       setRejectionReason('');
       setPreparationTime(30);

@@ -37,8 +37,16 @@ export async function POST(request, { params }) {
       .single();
 
     if (orderError || !order) {
+      console.log('❌ Commande introuvable:', orderId, orderError);
       return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 });
     }
+
+    console.log('✅ Commande trouvée:', {
+      id: order.id,
+      status: order.status,
+      delivery_id: order.delivery_id,
+      restaurant_id: order.restaurant_id
+    });
 
     // Vérifier que la commande n'est pas déjà acceptée par un autre livreur
     if (order.delivery_id && order.delivery_id !== user.id) {
@@ -47,7 +55,11 @@ export async function POST(request, { params }) {
 
     // Vérifier que la commande est dans un statut acceptable
     if (!['pending', 'accepted', 'ready'].includes(order.status)) {
-      return NextResponse.json({ error: 'Commande non disponible' }, { status: 400 });
+      console.log('❌ Statut commande non acceptable:', order.status);
+      return NextResponse.json({ 
+        error: 'Commande non disponible', 
+        details: `Statut actuel: ${order.status}` 
+      }, { status: 400 });
     }
 
     // Accepter la commande
