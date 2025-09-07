@@ -237,7 +237,7 @@ export default function RestaurantOrders() {
 
       console.log('📤 Envoi requête:', { orderId, body });
 
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await fetch(`/api/restaurants/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
