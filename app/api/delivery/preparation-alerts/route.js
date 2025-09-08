@@ -11,8 +11,7 @@ export async function GET(request) {
       .from('orders')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone),
-        customer:users(nom, prenom, telephone)
+        restaurant:restaurants(nom, adresse, telephone)
       `)
       .eq('status', 'preparing')
       .not('delivery_id', 'is', null)
