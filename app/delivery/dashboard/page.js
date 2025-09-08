@@ -31,6 +31,7 @@ export default function DeliveryDashboard() {
   const audioEnabledRef = useRef(false);
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [preparationAlerts, setPreparationAlerts] = useState([]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -58,6 +59,7 @@ export default function DeliveryDashboard() {
         fetchAvailableOrders();
         fetchStats();
         fetchCurrentOrder();
+        fetchPreparationAlerts();
       } catch (error) {
         console.error('❌ Erreur checkUser:', error);
         router.push('/login');
@@ -79,9 +81,16 @@ export default function DeliveryDashboard() {
       fetchStats();
     }, 30000);
 
+    // Rafraîchir les alertes de préparation toutes les 30 secondes
+    const alertsInterval = setInterval(() => {
+      console.log('🔄 Rechargement automatique des alertes préparation...');
+      fetchPreparationAlerts();
+    }, 30000);
+
     return () => {
       clearInterval(interval);
       clearInterval(statsInterval);
+      clearInterval(alertsInterval);
     };
   }, []);
 
@@ -352,6 +361,28 @@ export default function DeliveryDashboard() {
       }
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des statistiques:", error);
+    }
+  };
+
+  const fetchPreparationAlerts = async () => {
+    try {
+      console.log('🔔 Récupération des alertes de préparation...');
+      const response = await fetchWithAuth('/api/delivery/preparation-alerts');
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('🔔 Alertes préparation reçues:', data.alerts?.length || 0);
+        setPreparationAlerts(data.alerts || []);
+        
+        // Alerte sonore si nouvelles alertes
+        if (data.alerts && data.alerts.length > 0 && audioEnabledRef.current) {
+          playNotificationSound();
+        }
+      } else {
+        console.error('❌ Erreur API alertes préparation:', data);
+      }
+    } catch (error) {
+      console.error("❌ Erreur récupération alertes préparation:", error);
     }
   };
 
@@ -673,6 +704,62 @@ export default function DeliveryDashboard() {
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Alertes de préparation */}
+          {preparationAlerts.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-6">
+              <div className="p-6 border-b border-orange-200">
+                <h2 className="text-xl font-semibold text-orange-800 flex items-center">
+                  <FaBell className="mr-2" />
+                  Alertes de préparation
+                </h2>
+                <p className="text-orange-600 mt-1">Commandes bientôt prêtes à récupérer</p>
+              </div>
+              <div className="divide-y divide-orange-200">
+                {preparationAlerts.map((alert) => (
+                  <div key={alert.order_id} className="p-4 hover:bg-orange-100 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="font-semibold text-orange-900">
+                            Commande #{alert.order_id}
+                          </span>
+                          <span className="px-2 py-1 bg-orange-200 text-orange-800 text-xs rounded-full">
+                            {alert.time_remaining_minutes} min restantes
+                          </span>
+                        </div>
+                        <p className="text-orange-800 text-sm">
+                          <strong>Client:</strong> {alert.customer_name}
+                        </p>
+                        <p className="text-orange-800 text-sm">
+                          <strong>Restaurant:</strong> {alert.restaurant_name}
+                        </p>
+                        <p className="text-orange-800 text-sm">
+                          <strong>Adresse:</strong> {alert.restaurant_address}
+                        </p>
+                        <p className="text-orange-800 text-sm">
+                          <strong>Total:</strong> {alert.total_price}€
+                        </p>
+                        {alert.security_code && (
+                          <p className="text-orange-800 text-sm">
+                            <strong>Code:</strong> 
+                            <span className="ml-1 font-mono bg-orange-200 px-2 py-1 rounded">
+                              {alert.security_code}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-orange-600 text-sm">
+                          Temps de préparation: {alert.preparation_time} min
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

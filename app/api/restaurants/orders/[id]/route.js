@@ -80,6 +80,16 @@ export async function PUT(request, { params }) {
 
     console.log('✅ Commande appartient au restaurant');
 
+    // Vérifier si la commande a déjà été acceptée par un livreur
+    if (order.delivery_id && status !== 'delivered') {
+      console.log('⚠️ Commande déjà acceptée par un livreur:', order.delivery_id);
+      return NextResponse.json({ 
+        error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être modifiée',
+        current_status: order.status,
+        delivery_id: order.delivery_id
+      }, { status: 400 });
+    }
+
     // Mettre à jour la commande
     const updateData = {
       status,
