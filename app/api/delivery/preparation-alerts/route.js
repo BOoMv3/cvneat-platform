@@ -42,7 +42,7 @@ export async function GET(request) {
           restaurant_address: order.restaurant?.adresse,
           preparation_time: order.preparation_time,
           time_remaining_minutes: Math.ceil(timeRemaining / (60 * 1000)),
-          total_price: order.total_price,
+          total_price: order.total_amount,
           security_code: order.security_code,
           items: order.items
         });
