@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
-// GET /api/debug/orders - Voir toutes les commandes (pour debug)
 export async function GET(request) {
   try {
-    console.log('=== DEBUG: RÉCUPÉRATION TOUTES LES COMMANDES ===');
-    
-    // Récupérer toutes les commandes sans filtre
+    console.log('=== DEBUG TOUTES LES COMMANDES ===');
+
+    // Récupérer toutes les commandes
     const { data: orders, error } = await supabase
       .from('orders')
       .select('*')
@@ -18,9 +17,13 @@ export async function GET(request) {
     }
 
     console.log('✅ Commandes trouvées:', orders?.length || 0);
-    console.log('Commandes:', orders);
-    
-    return NextResponse.json(orders || []);
+
+    return NextResponse.json({
+      success: true,
+      orders: orders || [],
+      count: orders?.length || 0,
+      message: 'Toutes les commandes récupérées'
+    });
   } catch (error) {
     console.error('❌ Erreur API debug:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
