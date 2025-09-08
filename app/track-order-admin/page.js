@@ -29,7 +29,8 @@ export default function TrackOrderAdmin() {
         throw new Error('Erreur lors de la récupération des commandes');
       }
       
-      const orders = await response.json();
+      const result = await response.json();
+      const orders = result.orders || [];
       const data = orders.find(o => o.id == orderId);
       
       if (!data) {
