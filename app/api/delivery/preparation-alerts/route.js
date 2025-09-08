@@ -25,15 +25,24 @@ export async function GET(request) {
     const now = new Date();
     const alerts = [];
 
+    console.log(`🔍 ${orders.length} commandes en préparation trouvées`);
+
     for (const order of orders) {
-      if (!order.preparation_time) continue;
+      if (!order.preparation_time) {
+        console.log(`⚠️ Commande ${order.id} sans preparation_time`);
+        continue;
+      }
 
       const preparationStart = new Date(order.updated_at);
       const preparationEnd = new Date(preparationStart.getTime() + (order.preparation_time * 60 * 1000));
       const timeRemaining = preparationEnd.getTime() - now.getTime();
+      const minutesRemaining = Math.ceil(timeRemaining / (60 * 1000));
+
+      console.log(`🔍 Commande ${order.id}: ${minutesRemaining} min restantes`);
 
       // Alerte si il reste moins de 5 minutes
       if (timeRemaining <= 5 * 60 * 1000 && timeRemaining > 0) {
+        console.log(`🚨 Alerte déclenchée pour commande ${order.id}`);
         alerts.push({
           order_id: order.id,
           customer_name: order.customer_name,
