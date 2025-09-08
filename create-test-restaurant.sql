@@ -10,7 +10,6 @@ INSERT INTO restaurants (
   email,
   description,
   image_url,
-  is_active,
   created_at,
   updated_at
 ) VALUES (
@@ -21,7 +20,6 @@ INSERT INTO restaurants (
   'test@restaurant-cvneat.com',
   'Restaurant de test pour la plateforme CVN''Eat',
   'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500',
-  true,
   NOW(),
   NOW()
 )
@@ -33,8 +31,7 @@ SELECT
   nom,
   adresse,
   telephone,
-  email,
-  is_active
+  email
 FROM restaurants 
 WHERE email = 'test@restaurant-cvneat.com';
 

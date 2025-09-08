@@ -36,8 +36,7 @@ export default function OrderTest() {
     try {
       const { data, error } = await supabase
         .from('restaurants')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
 
       if (error) throw error;
       setRestaurants(data || []);
