@@ -50,6 +50,25 @@ export async function POST(request, { params }) {
     // Pour l'admin, on utilise les données fournies directement
     let finalUserId = user_id;
 
+    // S'assurer que l'utilisateur admin existe
+    if (user_id === 'admin-user') {
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: 'admin-user',
+          nom: 'Admin',
+          prenom: 'Test',
+          role: 'admin',
+          email: 'admin@test.com',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (userError) {
+        console.error('❌ Erreur création utilisateur admin:', userError);
+      }
+    }
+
     // Enregistrer le message
     const { data: newMessage, error } = await supabase
       .from('chat_messages')
@@ -66,7 +85,16 @@ export async function POST(request, { params }) {
 
     if (error) {
       console.error('❌ Erreur envoi message admin:', error);
-      return NextResponse.json({ error: 'Erreur envoi message' }, { status: 500 });
+      console.error('❌ Détails erreur:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      return NextResponse.json({ 
+        error: 'Erreur envoi message',
+        details: error.message 
+      }, { status: 500 });
     }
 
     console.log('✅ [ADMIN] Message envoyé:', newMessage.id);
