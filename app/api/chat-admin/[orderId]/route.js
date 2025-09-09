@@ -56,8 +56,7 @@ export async function POST(request, { params }) {
       .insert([{
         order_id: orderId,
         user_id: finalUserId,
-        message: message,
-        created_at: new Date().toISOString()
+        message: message
       }])
       .select(`
         *,

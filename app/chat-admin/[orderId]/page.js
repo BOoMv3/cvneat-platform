@@ -42,7 +42,11 @@ export default function ChatAdmin({ params }) {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || loading) return;
+
+    const messageToSend = newMessage.trim();
+    setNewMessage(''); // Vider immédiatement le champ
+    setError(null); // Effacer les erreurs précédentes
 
     try {
       setLoading(true);
@@ -52,7 +56,7 @@ export default function ChatAdmin({ params }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: newMessage,
+          message: messageToSend,
           user_id: user.id,
           user_name: `${user.prenom} ${user.nom}`,
           user_role: user.role
@@ -64,11 +68,15 @@ export default function ChatAdmin({ params }) {
         throw new Error(errorData.error || 'Erreur lors de l\'envoi du message');
       }
 
-      setNewMessage('');
-      fetchMessages(); // Rafraîchir les messages
+      // Rafraîchir les messages après envoi réussi
+      setTimeout(() => {
+        fetchMessages();
+      }, 100);
     } catch (err) {
       console.error('Erreur sendMessage:', err);
       setError(err.message);
+      // Remettre le message en cas d'erreur
+      setNewMessage(messageToSend);
     } finally {
       setLoading(false);
     }

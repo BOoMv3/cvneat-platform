@@ -83,7 +83,10 @@ export default function ChatPage({ params }) {
 
       if (response.ok) {
         setNewMessage('');
-        fetchMessages(); // Rafraîchir les messages
+        // Rafraîchir les messages sans scroll automatique
+        setTimeout(() => {
+          fetchMessages();
+        }, 100);
       } else {
         const errorData = await response.json();
         console.error('Erreur envoi message:', errorData);
