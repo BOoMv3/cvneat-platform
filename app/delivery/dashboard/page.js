@@ -916,8 +916,8 @@ export default function DeliveryDashboard() {
                         </div>
                         
                         <div className="ml-6 flex space-x-2">
-                          {order.status === 'ready' ? (
-                            // Commande prête, livreur peut accepter
+                          {(order.status === 'ready' || order.status === 'preparing') ? (
+                            // Commande prête ou en préparation, livreur peut accepter
                             <button
                               onClick={() => acceptOrder(order.id)}
                               className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg"
