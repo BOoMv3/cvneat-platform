@@ -54,7 +54,7 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier que la commande est dans un statut acceptable
-    if (!['pending', 'accepted', 'ready'].includes(order.status)) {
+    if (!['pending', 'accepted', 'ready', 'preparing'].includes(order.status)) {
       console.log('❌ Statut commande non acceptable:', order.status);
       return NextResponse.json({ 
         error: 'Commande non disponible', 
