@@ -835,7 +835,7 @@ export default function DeliveryDashboard() {
                   <p className="text-lg font-medium">Aucune commande disponible</p>
                   <p className="text-sm">Les nouvelles commandes apparaîtront ici</p>
                   <p className="text-xs text-red-500 mt-2">
-                    Debug: availableOrders.length = {availableOrders.length}
+                    Debug: availableOrders = {JSON.stringify(availableOrders)}
                   </p>
                 </div>
               ) : (
