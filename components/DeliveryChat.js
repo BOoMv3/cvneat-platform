@@ -27,7 +27,7 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
 
   const fetchMessages = async () => {
     try {
-      const response = await fetch(`/api/delivery/chat/${orderId}/messages`);
+      const response = await fetch(`/api/chat/${orderId}`);
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);
@@ -43,14 +43,22 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/delivery/chat/${orderId}/messages`, {
+      // Récupérer l'ID de l'utilisateur connecté
+      const token = localStorage.getItem('sb-jxbgrvlmvnofaxbtcmsw-auth-token');
+      if (!token) {
+        console.error('Token non trouvé');
+        return;
+      }
+
+      const response = await fetch(`/api/chat/${orderId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           message: newMessage,
-          sender: 'delivery'
+          user_id: JSON.parse(atob(token.split('.')[1])).sub
         })
       });
 
@@ -68,7 +76,7 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+    <div className="fixed bottom-4 right-4 w-full h-full sm:w-80 sm:h-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 sm:max-w-sm sm:max-h-96">
       <div className="flex justify-between items-center p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Chat de livraison</h3>
         <button
@@ -90,18 +98,18 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.sender === 'delivery' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.user?.role === 'delivery' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
                   className={`max-w-xs px-3 py-2 rounded-lg ${
-                    message.sender === 'delivery'
+                    message.user?.role === 'delivery'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-900'
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm">{message.message}</p>
                   <p className="text-xs opacity-75 mt-1">
-                    {new Date(message.created_at).toLocaleTimeString()}
+                    {message.user?.nom} {message.user?.prenom} - {new Date(message.created_at).toLocaleTimeString()}
                   </p>
                 </div>
               </div>

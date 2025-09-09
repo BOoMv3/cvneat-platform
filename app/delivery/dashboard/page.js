@@ -856,9 +856,9 @@ export default function DeliveryDashboard() {
                     console.log(`🔍 Rendu commande ${index}:`, order);
                     return (
                       <div key={`order-${order.id}-${index}`} className="p-6 hover:bg-gray-50 transition-colors">
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start space-y-4 lg:space-y-0">
                           <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-3">
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
                               <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
                                 #{order.id || 'N/A'}
                               </span>
@@ -873,25 +873,25 @@ export default function DeliveryDashboard() {
                               </span>
                             </div>
                           
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <h4 className="font-semibold text-gray-900 mb-1">🍽️ Restaurant</h4>
-                              <p className="text-gray-700 font-medium">{order.restaurant?.nom || order.restaurant_nom || 'N/A'}</p>
-                              <p className="text-gray-600 text-sm">{order.restaurant?.adresse || order.restaurant_adresse || 'N/A'}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <h4 className="font-semibold text-gray-900 mb-1 text-sm">🍽️ Restaurant</h4>
+                                <p className="text-gray-700 font-medium text-sm">{order.restaurant?.nom || order.restaurant_nom || 'N/A'}</p>
+                                <p className="text-gray-600 text-xs">{order.restaurant?.adresse || order.restaurant_adresse || 'N/A'}</p>
+                              </div>
+                              
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <h4 className="font-semibold text-gray-900 mb-1 text-sm">🏠 Livraison</h4>
+                                <p className="text-gray-700 font-medium text-sm">{order.customer_name || 'N/A'}</p>
+                                <p className="text-gray-600 text-xs">{order.delivery_address || 'N/A'}</p>
+                              </div>
                             </div>
                             
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <h4 className="font-semibold text-gray-900 mb-1">🏠 Livraison</h4>
-                              <p className="text-gray-700 font-medium">{order.customer_name || 'N/A'}</p>
-                              <p className="text-gray-600 text-sm">{order.delivery_address || 'N/A'}</p>
+                            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                              <span>Total: {order.total_amount || order.total || 'N/A'}€</span>
+                              <span>Frais: {order.delivery_fee || 'N/A'}€</span>
+                              <span>Est. {order.estimated_time || 'N/A'} min</span>
                             </div>
-                          </div>
-                          
-                          <div className="mt-3 flex items-center space-x-4 text-sm text-gray-600">
-                            <span>Total: {order.total_amount || order.total || 'N/A'}€</span>
-                            <span>Frais: {order.delivery_fee || 'N/A'}€</span>
-                            <span>Est. {order.estimated_time || 'N/A'} min</span>
-                          </div>
                           
                           {/* Décompte en temps réel */}
                           {order.status === 'preparing' && order.preparation_time && (
@@ -915,31 +915,31 @@ export default function DeliveryDashboard() {
                           )}
                         </div>
                         
-                        <div className="ml-6 flex space-x-2">
+                        <div className="mt-4 lg:mt-0 lg:ml-6 flex flex-col sm:flex-row gap-2">
                           {(order.status === 'ready' || order.status === 'preparing') ? (
                             // Commande prête ou en préparation, livreur peut accepter
                             <button
                               onClick={() => acceptOrder(order.id)}
-                              className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg"
+                              className="w-full sm:w-auto px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg text-sm"
                             >
                               ✅ Accepter
                             </button>
                           ) : order.status === 'accepted' && order.delivery_id === user?.id ? (
                             // Commande acceptée par ce livreur - SEUL ce livreur peut la livrer
-                            <div className="flex space-x-2">
-                              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg font-semibold">
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg font-semibold text-sm text-center">
                                 📦 En cours
                               </span>
                               <button
                                 onClick={() => completeDelivery(order.id)}
-                                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
                               >
                                 🚚 Livrer
                               </button>
                             </div>
                           ) : order.status === 'accepted' && order.delivery_id !== user?.id ? (
                             // Commande acceptée par un autre livreur - AUCUNE action possible
-                            <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold">
+                            <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-sm text-center">
                               👤 Autre livreur
                             </span>
                           ) : order.status === 'delivered' ? (
