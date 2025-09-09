@@ -240,7 +240,7 @@ export default function TrackOrderAdmin() {
                       <p className="text-sm text-green-600">Communiquez avec le client/livreur</p>
                     </div>
                     <a
-                      href={`/chat/${order.id}`}
+                      href={`/chat-admin/${order.id}`}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
                       Ouvrir le chat
