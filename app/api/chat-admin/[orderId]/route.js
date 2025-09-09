@@ -48,39 +48,7 @@ export async function POST(request, { params }) {
     }
 
     // Pour l'admin, on utilise les données fournies directement
-    // Créer un utilisateur temporaire si nécessaire
     let finalUserId = user_id;
-    
-    if (user_id === 'admin-user') {
-      // Vérifier si l'utilisateur admin existe, sinon le créer
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', 'admin-user')
-        .single();
-
-      if (!existingUser) {
-        // Créer l'utilisateur admin temporaire
-        const { data: newUser, error: userError } = await supabase
-          .from('users')
-          .insert([{
-            id: 'admin-user',
-            nom: 'Admin',
-            prenom: 'Test',
-            role: 'admin',
-            email: 'admin@test.com'
-          }])
-          .select()
-          .single();
-
-        if (userError) {
-          console.error('❌ Erreur création utilisateur admin:', userError);
-          // Continuer même si la création échoue
-        } else {
-          console.log('✅ Utilisateur admin créé');
-        }
-      }
-    }
 
     // Enregistrer le message
     const { data: newMessage, error } = await supabase
