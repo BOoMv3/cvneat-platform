@@ -27,7 +27,17 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
 
   const fetchMessages = async () => {
     try {
-      const response = await fetch(`/api/chat/${orderId}`);
+      const token = localStorage.getItem('sb-jxbgrvlmvnofaxbtcmsw-auth-token');
+      if (!token) {
+        console.error('Token non trouvé');
+        return;
+      }
+
+      const response = await fetch(`/api/chat/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);

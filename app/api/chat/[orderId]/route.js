@@ -8,6 +8,19 @@ export async function GET(request, { params }) {
     
     console.log('💬 Récupération messages chat pour commande:', orderId);
 
+    // Vérifier l'authentification
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
+    }
+
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+
     // Récupérer les messages du chat
     const { data: messages, error } = await supabase
       .from('chat_messages')
@@ -45,6 +58,19 @@ export async function POST(request, { params }) {
 
     if (!message || !user_id) {
       return NextResponse.json({ error: 'Message et user_id requis' }, { status: 400 });
+    }
+
+    // Vérifier l'authentification
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
+    }
+
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
     // Enregistrer le message
