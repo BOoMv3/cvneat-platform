@@ -31,10 +31,25 @@ export default function ChatPage({ params }) {
 
   const fetchMessages = async () => {
     try {
-      const response = await fetch(`/api/chat/${orderId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('❌ Pas de session pour récupérer les messages');
+        return;
+      }
+
+      const response = await fetch(`/api/chat/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);
+      } else {
+        console.error('Erreur récupération messages:', response.status);
       }
     } catch (error) {
       console.error('Erreur récupération messages:', error);
@@ -47,11 +62,19 @@ export default function ChatPage({ params }) {
 
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        alert('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
       const response = await fetch(`/api/chat/${orderId}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           message: newMessage.trim(),
           user_id: user.id
@@ -62,7 +85,9 @@ export default function ChatPage({ params }) {
         setNewMessage('');
         fetchMessages(); // Rafraîchir les messages
       } else {
-        alert('Erreur lors de l\'envoi du message');
+        const errorData = await response.json();
+        console.error('Erreur envoi message:', errorData);
+        alert(`Erreur lors de l'envoi du message: ${errorData.error || 'Erreur inconnue'}`);
       }
     } catch (error) {
       console.error('Erreur envoi message:', error);
