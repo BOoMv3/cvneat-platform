@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
-// API pour récupérer les alertes de préparation pour les livreurs
+// API pour récupérer les alertes préventives pour les livreurs
 export async function GET(request) {
   try {
-    console.log('🔔 Récupération alertes préparation pour livreurs');
+    console.log('🚨 Récupération alertes préventives pour livreurs');
 
     // Récupérer le token d'authentification
     const authHeader = request.headers.get('authorization');
@@ -26,7 +26,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les commandes en préparation qui approchent de la fin pour ce livreur
+    // Récupérer les commandes en préparation qui ne sont pas encore acceptées par ce livreur
     const { data: orders, error } = await supabase
       .from('orders')
       .select(`
@@ -34,28 +34,11 @@ export async function GET(request) {
         restaurant:restaurants(nom, adresse, telephone)
       `)
       .eq('status', 'preparing')
-      .eq('delivery_id', deliveryId)
+      .is('delivery_id', null) // Pas encore acceptées par un livreur
       .not('preparation_time', 'is', null);
 
     console.log(`🔍 Requête SQL exécutée pour delivery_id: ${deliveryId}`);
-    console.log(`🔍 ${orders?.length || 0} commandes trouvées en base`);
-    
-    // Debug : Vérifier toutes les commandes en préparation
-    const { data: allPreparingOrders } = await supabase
-      .from('orders')
-      .select('id, customer_name, status, delivery_id, preparation_time')
-      .eq('status', 'preparing')
-      .not('preparation_time', 'is', null);
-    
-    console.log(`🔍 Toutes les commandes en préparation:`, allPreparingOrders);
-    
-    // Debug : Vérifier la commande #2013 spécifiquement
-    const { data: order2013 } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', 2013);
-    
-    console.log(`🔍 Commande #2013:`, order2013);
+    console.log(`🔍 ${orders?.length || 0} commandes en préparation trouvées`);
 
     if (error) {
       console.error('❌ Erreur récupération commandes en préparation:', error);
@@ -80,10 +63,11 @@ export async function GET(request) {
 
       console.log(`🔍 Commande ${order.id}: ${minutesRemaining} min restantes`);
 
-      // Alerte si il reste moins de 5 minutes
-      if (timeRemaining <= 5 * 60 * 1000 && timeRemaining > 0) {
-        console.log(`🚨 Alerte déclenchée pour commande ${order.id}`);
+      // Alerte préventive pour toutes les commandes en préparation (pas seulement les urgentes)
+      if (timeRemaining > 0) {
+        console.log(`🚨 Alerte préventive déclenchée pour commande ${order.id}`);
         alerts.push({
+          id: order.id,
           order_id: order.id,
           customer_name: order.customer_name,
           restaurant_name: order.restaurant?.nom,
@@ -91,13 +75,15 @@ export async function GET(request) {
           preparation_time: order.preparation_time,
           time_remaining_minutes: Math.ceil(timeRemaining / (60 * 1000)),
           total_price: order.total_amount,
+          delivery_fee: order.delivery_fee,
           security_code: order.security_code,
-          items: order.items
+          items: order.items,
+          delivery_address: order.delivery_address
         });
       }
     }
 
-    console.log(`✅ ${alerts.length} alerte(s) de préparation trouvée(s)`);
+    console.log(`✅ ${alerts.length} alerte(s) préventive(s) trouvée(s)`);
 
     return NextResponse.json({
       success: true,
@@ -105,7 +91,7 @@ export async function GET(request) {
       count: alerts.length
     });
   } catch (error) {
-    console.error('❌ Erreur API alertes préparation:', error);
+    console.error('❌ Erreur API alertes préventives:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

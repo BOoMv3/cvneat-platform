@@ -5,6 +5,8 @@ import AuthGuard from '@/components/AuthGuard';
 import DeliveryNotifications from '@/components/DeliveryNotifications';
 import DeliveryMap from '@/components/DeliveryMap';
 import DeliveryChat from '@/components/DeliveryChat';
+import OrderCountdown from '@/components/OrderCountdown';
+import PreventiveAlert from '@/components/PreventiveAlert';
 import { useRouter } from 'next/navigation';
 import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments } from 'react-icons/fa';
 import { createClient } from '@supabase/supabase-js';
@@ -32,6 +34,7 @@ export default function DeliveryDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [preparationAlerts, setPreparationAlerts] = useState([]);
+  const [preventiveAlerts, setPreventiveAlerts] = useState([]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -60,6 +63,7 @@ export default function DeliveryDashboard() {
         fetchStats();
         fetchCurrentOrder();
         fetchPreparationAlerts();
+        fetchPreventiveAlerts();
       } catch (error) {
         console.error('❌ Erreur checkUser:', error);
         router.push('/login');
@@ -87,10 +91,17 @@ export default function DeliveryDashboard() {
       fetchPreparationAlerts();
     }, 30000);
 
+    // Rafraîchir les alertes préventives toutes les 10 secondes
+    const preventiveInterval = setInterval(() => {
+      console.log('🔄 Rechargement automatique des alertes préventives...');
+      fetchPreventiveAlerts();
+    }, 10000);
+
     return () => {
       clearInterval(interval);
       clearInterval(statsInterval);
       clearInterval(alertsInterval);
+      clearInterval(preventiveInterval);
     };
   }, []);
 
@@ -386,6 +397,28 @@ export default function DeliveryDashboard() {
     }
   };
 
+  const fetchPreventiveAlerts = async () => {
+    try {
+      console.log('🚨 Récupération des alertes préventives...');
+      const response = await fetchWithAuth('/api/delivery/preventive-alerts');
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('🚨 Alertes préventives reçues:', data.alerts?.length || 0);
+        setPreventiveAlerts(data.alerts || []);
+        
+        // Alerte sonore si nouvelles alertes préventives
+        if (data.alerts && data.alerts.length > 0 && audioEnabledRef.current) {
+          playNotificationSound();
+        }
+      } else {
+        console.error('❌ Erreur API alertes préventives:', data);
+      }
+    } catch (error) {
+      console.error("❌ Erreur récupération alertes préventives:", error);
+    }
+  };
+
   const acceptOrder = async (orderId) => {
     try {
       console.log('🔍 Acceptation de la commande:', orderId);
@@ -517,6 +550,23 @@ export default function DeliveryDashboard() {
             </div>
           </div>
         )}
+
+        {/* Alertes préventives */}
+        {preventiveAlerts.map((alert) => (
+          <PreventiveAlert
+            key={alert.id}
+            order={alert}
+            onAccept={(orderId) => {
+              console.log('🚨 Acceptation alerte préventive:', orderId);
+              // Ici on peut accepter la commande directement
+              acceptOrder(orderId);
+            }}
+            onDismiss={(orderId) => {
+              console.log('🚨 Dismiss alerte préventive:', orderId);
+              // Ici on peut marquer l'alerte comme ignorée
+            }}
+          />
+        ))}
         
         <main className="container mx-auto px-4 py-8">
           {/* Header avec notifications */}
@@ -842,6 +892,27 @@ export default function DeliveryDashboard() {
                             <span>Frais: {order.delivery_fee || 'N/A'}€</span>
                             <span>Est. {order.estimated_time || 'N/A'} min</span>
                           </div>
+                          
+                          {/* Décompte en temps réel */}
+                          {order.status === 'preparing' && order.preparation_time && (
+                            <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-semibold text-orange-800">⏰ Temps de préparation</h4>
+                                  <p className="text-sm text-orange-600">
+                                    Commande en préparation - {order.preparation_time} min estimées
+                                  </p>
+                                </div>
+                                <OrderCountdown 
+                                  order={order} 
+                                  onTimeUp={(orderId) => {
+                                    console.log(`🚨 Commande ${orderId} prête !`);
+                                    // Optionnel : notification ou action
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="ml-6 flex space-x-2">

@@ -37,14 +37,14 @@ export async function GET(request) {
     console.log('✅ Rôle livreur confirmé');
 
     // Récupérer les commandes disponibles pour livraison
-    // Les livreurs voient seulement les commandes prêtes (acceptées par le restaurant)
+    // Les livreurs voient les commandes prêtes ET en préparation (pour voir le décompte)
     const { data: orders, error } = await supabase
       .from('orders')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
       `)
-      .eq('status', 'ready') // Seulement les commandes prêtes
+      .in('status', ['ready', 'preparing']) // Commandes prêtes ET en préparation
       .is('delivery_id', null) // Pas encore assignées à un livreur
       .order('created_at', { ascending: true });
 

@@ -1,4 +1,4 @@
--- Vérifier la contrainte sur preparation_time
+-- Vérifier la contrainte check_preparation_time
 -- À exécuter dans Supabase SQL Editor
 
 -- 1. Vérifier les contraintes de la table orders
@@ -7,23 +7,11 @@ SELECT
   pg_get_constraintdef(oid) as constraint_definition
 FROM pg_constraint 
 WHERE conrelid = 'orders'::regclass 
-  AND conname LIKE '%preparation%';
+  AND conname = 'check_preparation_time';
 
--- 2. Vérifier la structure de la colonne preparation_time
+-- 2. Vérifier les valeurs de preparation_time existantes
 SELECT 
-  column_name, 
-  data_type, 
-  is_nullable,
-  column_default,
-  character_maximum_length,
-  numeric_precision,
-  numeric_scale
-FROM information_schema.columns 
-WHERE table_name = 'orders' 
-  AND column_name = 'preparation_time';
-
--- 3. Vérifier les valeurs existantes de preparation_time
-SELECT 
+  'Valeurs preparation_time existantes' as info,
   preparation_time,
   COUNT(*) as count
 FROM orders 

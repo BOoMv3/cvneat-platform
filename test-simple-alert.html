@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simple Alertes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .info { color: blue; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚨 Test Simple des Alertes de Préparation</h1>
+    
+    <button onclick="testDirect()">Test Direct API</button>
+    <button onclick="testToken()">Vérifier Token</button>
+    <button onclick="testDatabase()">Vérifier Base de Données</button>
+    
+    <div id="result"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            resultDiv.innerHTML += `<p class="${className}">${message}</p>`;
+        }
+
+        function testToken() {
+            log('🔑 Test du Token...');
+            
+            const token = localStorage.getItem('sb-jxbgrvlmvnofaxbtcmsw-auth-token');
+            if (!token) {
+                log('❌ Aucun token trouvé dans localStorage', 'error');
+                return;
+            }
+            
+            log('✅ Token trouvé !', 'success');
+            
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                log(`📧 Email: ${payload.email}`, 'info');
+                log(`🆔 Delivery ID: ${payload.sub}`, 'info');
+                log(`⏰ Expire: ${new Date(payload.exp * 1000).toLocaleString()}`, 'info');
+            } catch (e) {
+                log(`❌ Erreur décodage token: ${e.message}`, 'error');
+            }
+        }
+
+        async function testDirect() {
+            log('🧪 Test Direct de l\'API...');
+            
+            const token = localStorage.getItem('sb-jxbgrvlmvnofaxbtcmsw-auth-token');
+            if (!token) {
+                log('❌ Token manquant', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/delivery/preparation-alerts', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log(`📡 Statut: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                log(`📊 Réponse: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+                if (data.alerts && data.alerts.length > 0) {
+                    log(`✅ ${data.alerts.length} alerte(s) trouvée(s) !`, 'success');
+                } else {
+                    log('⚠️ Aucune alerte trouvée', 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDatabase() {
+            log('🗄️ Test de la Base de Données...');
+            
+            // Simuler une requête directe à la base
+            try {
+                const response = await fetch('/api/test-database', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`📊 Données DB: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log(`❌ Erreur DB: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur DB: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

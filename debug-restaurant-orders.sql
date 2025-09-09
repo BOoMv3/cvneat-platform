@@ -1,44 +1,47 @@
--- Script de débogage pour vérifier les commandes et restaurants
+-- Diagnostic des commandes du restaurant
 -- À exécuter dans Supabase SQL Editor
 
--- 1. Voir tous les restaurants
+-- 1. Vérifier la commande #999 et son restaurant_id
 SELECT 
+  'Commande #999' as info,
+  id,
+  customer_name,
+  status,
+  restaurant_id,
+  delivery_id,
+  created_at,
+  updated_at
+FROM orders 
+WHERE id = 999;
+
+-- 2. Vérifier tous les restaurants
+SELECT 
+  'Restaurants disponibles' as info,
   id,
   nom,
-  user_id,
   adresse,
-  created_at
-FROM restaurants 
-ORDER BY created_at DESC;
-
--- 2. Voir les commandes récentes avec leur restaurant_id
-SELECT 
-  id,
-  restaurant_id,
-  customer_name,
-  status,
-  total_amount,
-  created_at
-FROM orders 
-ORDER BY created_at DESC 
-LIMIT 10;
-
--- 3. Vérifier si le restaurant_id de la page restaurant existe
-SELECT 
-  id,
-  nom,
   user_id
-FROM restaurants 
-WHERE id = '7f1e0b5f-5552-445d-a582-306515030c8d';
+FROM restaurants;
 
--- 4. Voir les commandes pour ce restaurant spécifique
+-- 3. Vérifier les commandes pour chaque restaurant
 SELECT 
-  id,
-  restaurant_id,
-  customer_name,
-  status,
-  total_amount,
-  created_at
-FROM orders 
-WHERE restaurant_id = '7f1e0b5f-5552-445d-a582-306515030c8d'
-ORDER BY created_at DESC;
+  'Commandes par restaurant' as info,
+  r.id as restaurant_id,
+  r.nom as restaurant_nom,
+  COUNT(o.id) as nombre_commandes
+FROM restaurants r
+LEFT JOIN orders o ON r.id = o.restaurant_id
+GROUP BY r.id, r.nom
+ORDER BY nombre_commandes DESC;
+
+-- 4. Vérifier les commandes du restaurant de la commande #999
+SELECT 
+  'Commandes du restaurant de #999' as info,
+  o.id,
+  o.customer_name,
+  o.status,
+  o.restaurant_id,
+  r.nom as restaurant_nom
+FROM orders o
+JOIN restaurants r ON o.restaurant_id = r.id
+WHERE o.restaurant_id = (SELECT restaurant_id FROM orders WHERE id = 999);
