@@ -27,20 +27,33 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
 
   const fetchMessages = async () => {
     try {
-      const token = localStorage.getItem('sb-jxbgrvlmvnofaxbtcmsw-auth-token');
-      if (!token) {
-        console.error('Token non trouvé');
+      // Utiliser la même méthode que le dashboard
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4YnFydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0NzQ4NzcsImV4cCI6MjA1MDA1MDg3N30.G7iFlb2vKi1ouABfyI_azLbZ8XGi66tf9kx_dtVIE40'
+      );
+
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session?.access_token) {
+        console.error('❌ Erreur session Supabase:', error);
         return;
       }
 
       const response = await fetch(`/api/chat/${orderId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+      
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);
+      } else {
+        console.error('Erreur récupération messages:', response.status);
       }
     } catch (error) {
       console.error('Erreur récupération messages:', error);
@@ -53,10 +66,17 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
 
     setLoading(true);
     try {
-      // Récupérer l'ID de l'utilisateur connecté
-      const token = localStorage.getItem('sb-jxbgrvlmvnofaxbtcmsw-auth-token');
-      if (!token) {
-        console.error('Token non trouvé');
+      // Utiliser la même méthode que le dashboard
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4YnFydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0NzQ4NzcsImV4cCI6MjA1MDA1MDg3N30.G7iFlb2vKi1ouABfyI_azLbZ8XGi66tf9kx_dtVIE40'
+      );
+
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session?.access_token) {
+        console.error('❌ Erreur session Supabase:', error);
         return;
       }
 
@@ -64,17 +84,20 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
+        credentials: 'include',
         body: JSON.stringify({
           message: newMessage,
-          user_id: JSON.parse(atob(token.split('.')[1])).sub
+          user_id: session.user.id
         })
       });
 
       if (response.ok) {
         setNewMessage('');
         fetchMessages();
+      } else {
+        console.error('Erreur envoi message:', response.status);
       }
     } catch (error) {
       console.error('Erreur envoi message:', error);
