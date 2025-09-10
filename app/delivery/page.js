@@ -409,13 +409,13 @@ export default function DeliveryDashboard() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
+        <div className="max-w-full mx-auto">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/3 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white p-6 rounded-lg shadow-md">
+                <div key={i} className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
                   <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
                   <div className="h-8 bg-gray-200 rounded w-1/3"></div>
                 </div>
@@ -429,8 +429,8 @@ export default function DeliveryDashboard() {
 
   if (authError) {
     return (
-      <main className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
+        <div className="max-w-full mx-auto">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-center">
             <h2 className="text-lg font-semibold mb-2">Accès refusé</h2>
             <p className="mb-4">{authError}</p>
@@ -448,7 +448,7 @@ export default function DeliveryDashboard() {
 
   return (
     <main className="min-h-screen bg-gray-50 p-3 sm:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         <div className="flex flex-col space-y-4 mb-6 sm:mb-8">
           {/* Bouton retour et titre */}
           <div className="flex items-center space-x-4">

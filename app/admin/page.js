@@ -311,26 +311,27 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-full mx-auto px-4 py-4 sm:py-8">
         {/* Header avec bouton retour et info utilisateur */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <span className="text-sm text-gray-600">
               Connecté en tant qu'admin
             </span>
             <button
               onClick={() => router.push('/')}
-              className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+              className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-sm sm:text-base"
             >
               <FaArrowLeft className="mr-2" />
-              Retour à l'Accueil
+              <span className="hidden sm:inline">Retour à l'Accueil</span>
+              <span className="sm:hidden">Retour</span>
             </button>
           </div>
         </div>
 
         {/* Statistiques principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-blue-100 text-blue-600">

@@ -78,13 +78,13 @@ export default function RestaurantDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Tableau de bord</h1>
+      <main className="container mx-auto px-4 py-4 sm:py-8">
+        <div className="max-w-full mx-auto">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">Tableau de bord</h1>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm sm:text-base self-start sm:self-auto"
             >
               <FaSignOutAlt className="inline mr-2" />
               Déconnexion
@@ -110,7 +110,7 @@ export default function RestaurantDashboard() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-medium mb-2">Commandes en attente</h3>
               <p className="text-3xl font-bold">{stats.pendingOrders}</p>
