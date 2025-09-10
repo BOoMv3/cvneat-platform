@@ -11,14 +11,52 @@ export default function ChatAdmin({ params }) {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
 
-  // Simuler un utilisateur admin
+  // Récupérer le vrai utilisateur admin connecté
   useEffect(() => {
-    setUser({
-      id: 'admin-user',
-      nom: 'Admin',
-      prenom: 'Test',
-      role: 'admin'
-    });
+    const fetchUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          // Récupérer les infos complètes de l'utilisateur
+          const { data: userData } = await supabase
+            .from('users')
+            .select('id, nom, prenom, role')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (userData) {
+            setUser(userData);
+          } else {
+            // Fallback si pas trouvé dans la table users
+            setUser({
+              id: session.user.id,
+              nom: 'Admin',
+              prenom: 'Test',
+              role: 'admin'
+            });
+          }
+        } else {
+          // Mode admin sans authentification (fallback)
+          setUser({
+            id: 'admin-user',
+            nom: 'Admin',
+            prenom: 'Test',
+            role: 'admin'
+          });
+        }
+      } catch (error) {
+        console.error('Erreur récupération utilisateur:', error);
+        // Fallback
+        setUser({
+          id: 'admin-user',
+          nom: 'Admin',
+          prenom: 'Test',
+          role: 'admin'
+        });
+      }
+    };
+    
+    fetchUser();
   }, []);
 
   const fetchMessages = async () => {

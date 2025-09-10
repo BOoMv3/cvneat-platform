@@ -50,23 +50,19 @@ export async function POST(request, { params }) {
     // Pour l'admin, on utilise les données fournies directement
     let finalUserId = user_id;
 
-    // S'assurer que l'utilisateur admin existe
-    if (user_id === 'admin-user') {
-      const { error: userError } = await supabase
-        .from('users')
-        .upsert({
-          id: 'admin-user',
-          nom: 'Admin',
-          prenom: 'Test',
-          role: 'admin',
-          email: 'admin@test.com',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+    // Vérifier que l'utilisateur existe dans la base
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, nom, prenom, role')
+      .eq('id', user_id)
+      .single();
 
-      if (userError) {
-        console.error('❌ Erreur création utilisateur admin:', userError);
-      }
+    if (!existingUser) {
+      console.error('❌ Utilisateur non trouvé:', user_id);
+      return NextResponse.json({ 
+        error: 'Utilisateur non trouvé',
+        details: 'L\'utilisateur admin n\'existe pas dans la base de données'
+      }, { status: 400 });
     }
 
     // Enregistrer le message
