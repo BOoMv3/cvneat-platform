@@ -171,17 +171,17 @@ export default function TrackOrderAdmin() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm p-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-full mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8">
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h1 className="text-2xl font-bold text-yellow-800 mb-2">🔧 Mode Admin - Suivi de commande</h1>
-            <p className="text-yellow-700">Cette page permet de tester le suivi de commande sans authentification (pour les tests admin).</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-yellow-800 mb-2">🔧 Mode Admin - Suivi de commande</h1>
+            <p className="text-yellow-700 text-sm sm:text-base">Cette page permet de tester le suivi de commande sans authentification (pour les tests admin).</p>
           </div>
           
           {/* Formulaire de recherche */}
           <div className="mb-8">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <input
                 type="text"
                 value={orderId}
@@ -192,7 +192,7 @@ export default function TrackOrderAdmin() {
               <button
                 onClick={fetchOrder}
                 disabled={loading}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
               >
                 {loading ? 'Recherche...' : 'Rechercher'}
               </button>

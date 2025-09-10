@@ -285,7 +285,7 @@ export default function TrackOrder() {
           
           {/* Formulaire de recherche */}
           <div className="mb-8">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <input
                 type="text"
                 value={orderId}
@@ -296,7 +296,7 @@ export default function TrackOrder() {
               <button
                 onClick={fetchOrder}
                 disabled={loading}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
               >
                 {loading ? 'Recherche...' : 'Rechercher'}
               </button>

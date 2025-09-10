@@ -228,34 +228,37 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Tableau de bord administrateur</h1>
-          <div className="flex space-x-4">
+      <div className="max-w-full mx-auto px-4 py-4 sm:py-8">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tableau de bord administrateur</h1>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <button
               onClick={() => setShowCreateOrderModal(true)}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
             >
               <FaPlus className="h-4 w-4" />
-              <span>Créer une commande</span>
+              <span className="hidden sm:inline">Créer une commande</span>
+              <span className="sm:hidden">Créer</span>
             </button>
             <button
               onClick={() => router.push('/admin/restaurants')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
-              Gerer les restaurants
+              <span className="hidden sm:inline">Gérer les restaurants</span>
+              <span className="sm:hidden">Restaurants</span>
             </button>
             <button
               onClick={() => router.push('/admin/orders')}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
             >
-              Voir toutes les commandes
+              <span className="hidden sm:inline">Voir toutes les commandes</span>
+              <span className="sm:hidden">Commandes</span>
             </button>
           </div>
         </div>
 
         {/* Statistiques principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-blue-100 text-blue-600">

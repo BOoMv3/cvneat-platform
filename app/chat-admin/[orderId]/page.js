@@ -45,7 +45,6 @@ export default function ChatAdmin({ params }) {
     if (!newMessage.trim() || loading) return;
 
     const messageToSend = newMessage.trim();
-    setNewMessage(''); // Vider immédiatement le champ
     setError(null); // Effacer les erreurs précédentes
 
     try {
@@ -68,6 +67,9 @@ export default function ChatAdmin({ params }) {
         throw new Error(errorData.error || 'Erreur lors de l\'envoi du message');
       }
 
+      // Vider le champ seulement après succès
+      setNewMessage('');
+      
       // Rafraîchir les messages après envoi réussi
       setTimeout(() => {
         fetchMessages();
@@ -75,8 +77,6 @@ export default function ChatAdmin({ params }) {
     } catch (err) {
       console.error('Erreur sendMessage:', err);
       setError(err.message);
-      // Remettre le message en cas d'erreur
-      setNewMessage(messageToSend);
     } finally {
       setLoading(false);
     }
@@ -92,12 +92,12 @@ export default function ChatAdmin({ params }) {
   }, [orderId]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-full mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h1 className="text-2xl font-bold text-yellow-800 mb-2">💬 Chat Admin - Commande #{orderId}</h1>
-            <p className="text-yellow-700">Mode admin - Chat sans authentification</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-yellow-800 mb-2">💬 Chat Admin - Commande #{orderId}</h1>
+            <p className="text-yellow-700 text-sm sm:text-base">Mode admin - Chat sans authentification</p>
           </div>
 
           {/* Messages */}
@@ -137,7 +137,7 @@ export default function ChatAdmin({ params }) {
           </div>
 
           {/* Formulaire d'envoi */}
-          <form onSubmit={sendMessage} className="flex gap-2">
+          <form onSubmit={sendMessage} className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={newMessage}
@@ -159,7 +159,7 @@ export default function ChatAdmin({ params }) {
             <button
               type="submit"
               disabled={loading || !newMessage.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {loading ? 'Envoi...' : 'Envoyer'}
             </button>
