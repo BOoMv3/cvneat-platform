@@ -449,44 +449,44 @@ export default function DeliveryDashboard() {
   return (
     <main className="min-h-screen bg-gray-50 p-3 sm:p-8">
       <div className="max-w-full mx-auto">
-        <div className="flex flex-col space-y-4 mb-6 sm:mb-8">
-          {/* Bouton retour et titre */}
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => router.push('/')}
-              className="bg-blue-600 text-white p-3 sm:p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              title="Retour à l'accueil"
-            >
-              <FaHome className="h-6 w-6 sm:h-5 sm:w-5" />
-              <span className="text-base sm:text-sm font-medium">Accueil</span>
-            </button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Tableau de bord livreur</h1>
+        <div className="flex flex-col space-y-3 sm:space-y-4 mb-4 sm:mb-8">
+          {/* Bouton retour et titre - Optimisé mobile */}
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => router.push('/')}
+                className="bg-blue-600 text-white p-2.5 sm:p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 min-h-[44px] touch-manipulation"
+                title="Retour à l'accueil"
+              >
+                <FaHome className="h-5 w-5 sm:h-5 sm:w-5" />
+                <span className="text-sm sm:text-sm font-medium">Accueil</span>
+              </button>
+              <h1 className="text-lg sm:text-3xl font-bold">Dashboard Livreur</h1>
             </div>
           </div>
           
-          {/* Bouton dashboard avancé et activation audio */}
-          <div className="flex justify-center sm:justify-end space-x-4">
+          {/* Boutons d'action - Optimisés mobile */}
+          <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
             <button
               onClick={toggleAudio}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-[48px] touch-manipulation ${
                 audioEnabled 
                   ? 'bg-green-600 text-white hover:bg-green-700' 
                   : 'bg-orange-600 text-white hover:bg-orange-700'
               }`}
             >
-              <span>{audioEnabled ? '🔊' : '🔇'}</span>
-              <span className="text-sm sm:text-base">{audioEnabled ? 'Audio Activé' : 'Activer Audio'}</span>
+              <span className="text-lg">{audioEnabled ? '🔊' : '🔇'}</span>
+              <span className="text-sm sm:text-base font-medium">{audioEnabled ? 'Audio Activé' : 'Activer Audio'}</span>
             </button>
             <button
               onClick={() => router.push('/delivery/dashboard')}
-              className="bg-blue-600 text-white px-4 sm:px-6 py-3 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base font-medium w-full sm:w-auto"
+              className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-h-[48px] touch-manipulation"
             >
               Dashboard avancé
             </button>
             <button
               onClick={() => router.push('/delivery/my-orders')}
-              className="bg-green-600 text-white px-4 sm:px-6 py-3 sm:py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base font-medium w-full sm:w-auto"
+              className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium min-h-[48px] touch-manipulation"
             >
               Mes Commandes
             </button>
@@ -513,30 +513,31 @@ export default function DeliveryDashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-6 mb-6 sm:mb-8">
+        {/* Statistiques - Optimisées mobile */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-8">
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
             <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Aujourd'hui</h3>
-            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
+            <p className="text-base sm:text-2xl lg:text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
           </div>
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
             <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Total</h3>
-            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-indigo-600">{stats.totalDeliveries}</p>
+            <p className="text-base sm:text-2xl lg:text-3xl font-bold text-indigo-600">{stats.totalDeliveries}</p>
           </div>
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
             <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Terminées</h3>
-            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-green-600">{stats.completedDeliveries}</p>
+            <p className="text-base sm:text-2xl lg:text-3xl font-bold text-green-600">{stats.completedDeliveries}</p>
           </div>
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
             <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Gains</h3>
-            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-purple-600">{stats.totalEarnings.toFixed(2)}€</p>
+            <p className="text-base sm:text-2xl lg:text-3xl font-bold text-purple-600">{stats.totalEarnings.toFixed(2)}€</p>
           </div>
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
             <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Temps</h3>
-            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
+            <p className="text-base sm:text-2xl lg:text-3xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
           </div>
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
             <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Note</h3>
-            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-yellow-600">{stats.rating.toFixed(1)} ⭐</p>
+            <p className="text-base sm:text-2xl lg:text-3xl font-bold text-yellow-600">{stats.rating.toFixed(1)} ⭐</p>
           </div>
         </div>
 
@@ -563,7 +564,7 @@ export default function DeliveryDashboard() {
               <div className="text-center md:text-right">
                 <button
                   onClick={() => completeDelivery(currentOrder.id)}
-                  className="bg-green-600 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base"
+                  className="bg-green-600 text-white py-3 px-4 sm:px-6 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base min-h-[48px] touch-manipulation w-full sm:w-auto"
                 >
                   ✅ Marquer comme livrée
                 </button>
