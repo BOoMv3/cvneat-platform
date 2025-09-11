@@ -97,6 +97,7 @@ export default function AdsManagement() {
       fetchAds();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      alert(`Erreur lors de la sauvegarde: ${error.message}`);
     }
   };
 

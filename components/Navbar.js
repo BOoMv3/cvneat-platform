@@ -99,6 +99,9 @@ export default function Navbar() {
             <Link href="/devenir-partenaire" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
               Devenir partenaire
             </Link>
+            <Link href="/advertise" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
+              Publicité
+            </Link>
           </div>
 
           {/* Right Side - Desktop */}
@@ -224,6 +227,13 @@ export default function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Devenir partenaire
+              </Link>
+              <Link
+                href="/advertise"
+                className="text-gray-600 hover:text-orange-600 transition-colors py-1"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Publicité
               </Link>
               
               {/* Panier mobile */}
