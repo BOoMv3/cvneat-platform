@@ -119,25 +119,6 @@ export default function LoginPage() {
             </div>
           </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Comptes de test</span>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <div className="text-sm text-gray-600">
-                <strong>Livreur :</strong> livreur@cvneat.com / livreur123
-              </div>
-              <div className="text-sm text-gray-600">
-                <strong>Restaurant :</strong> owner@labonnepate.fr / password123
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

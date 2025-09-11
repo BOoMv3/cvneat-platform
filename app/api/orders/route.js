@@ -81,6 +81,29 @@ export async function POST(request) {
     console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
     const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount } = body;
+
+    // 1. VALIDATION PRÉALABLE DE LA COMMANDE
+    console.log('🔍 Validation préalable de la commande...');
+    const validationResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/orders/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        restaurantId,
+        items,
+        deliveryInfo
+      })
+    });
+
+    if (!validationResponse.ok) {
+      const validationError = await validationResponse.json();
+      console.error('❌ Validation échouée:', validationError);
+      return NextResponse.json(validationError, { status: validationResponse.status });
+    }
+
+    const validation = await validationResponse.json();
+    console.log('✅ Validation réussie:', validation);
     
     console.log('Restaurant ID recu:', restaurantId);
     console.log('Type du restaurant ID:', typeof restaurantId);

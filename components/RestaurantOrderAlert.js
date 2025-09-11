@@ -87,22 +87,78 @@ export default function RestaurantOrderAlert() {
 
   const handleRejectOrder = async (orderId) => {
     try {
+      // Demander la raison du refus
+      const reason = prompt('Raison du refus de la commande (optionnel):') || 'Non spécifiée';
+      
+      // Mettre à jour le statut de la commande
       const { error } = await supabase
         .from('orders')
         .update({ 
           status: 'rejected',
+          rejection_reason: reason,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
 
       if (error) throw error;
       
+      // Rembourser automatiquement la commande
+      try {
+        const refundResponse = await fetch('/api/orders/refund', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId: orderId,
+            reason: `Refusé par le restaurant: ${reason}`
+          })
+        });
+
+        if (refundResponse.ok) {
+          console.log('✅ Remboursement effectué automatiquement');
+        } else {
+          console.error('❌ Erreur remboursement automatique');
+        }
+      } catch (refundError) {
+        console.error('Erreur remboursement:', refundError);
+        // Ne pas bloquer le rejet si le remboursement échoue
+      }
+      
       // Retirer la commande de la liste
       setOrders(prev => prev.filter(order => order.id !== orderId));
+      
+      // Notifier le client
+      await notifyCustomerRejection(orderId, reason);
       
     } catch (error) {
       console.error('Erreur rejet commande:', error);
       alert('Erreur lors du rejet de la commande');
+    }
+  };
+
+  // Fonction pour notifier le client du refus
+  const notifyCustomerRejection = async (orderId, reason) => {
+    try {
+      // Récupérer les infos de la commande
+      const { data: order } = await supabase
+        .from('orders')
+        .select('customer_email, customer_name, customer_phone, total_amount')
+        .eq('id', orderId)
+        .single();
+
+      if (!order) return;
+
+      console.log(`📧 Notification refus envoyée à ${order.customer_email}`);
+      console.log(`💰 Montant à rembourser: ${order.total_amount}€`);
+      console.log(`📝 Raison: ${reason}`);
+
+      // Ici vous pouvez intégrer un service d'email/SMS
+      // await sendRejectionEmail(order.customer_email, orderId, reason);
+      // await sendRejectionSMS(order.customer_phone, orderId, reason);
+
+    } catch (error) {
+      console.error('Erreur notification refus:', error);
     }
   };
 

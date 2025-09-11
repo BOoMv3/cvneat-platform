@@ -39,24 +39,19 @@ export default function DeliveryDashboard() {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        console.log('🔍 Vérification de l\'utilisateur...');
-        console.log('🔍 Supabase disponible:', !!supabase);
         
         const { data: { user }, error } = await supabase.auth.getUser();
         
         if (error) {
-          console.error('❌ Erreur getUser:', error);
           router.push('/login');
           return;
         }
         
         if (!user) {
-          console.log('❌ Aucun utilisateur connecté');
           router.push('/login');
           return;
         }
         
-        console.log('✅ Utilisateur connecté:', user.email);
         setUser(user);
         setDeliveryId(user.id);
         fetchAvailableOrders();
@@ -65,7 +60,6 @@ export default function DeliveryDashboard() {
         fetchPreparationAlerts();
         fetchPreventiveAlerts();
       } catch (error) {
-        console.error('❌ Erreur checkUser:', error);
         router.push('/login');
       }
     };
@@ -75,25 +69,21 @@ export default function DeliveryDashboard() {
   // Rechargement automatique des commandes pour détecter les nouvelles
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('🔄 Rechargement automatique des commandes...');
       fetchAvailableOrders();
     }, 5000);
     
     // Rafraîchir les statistiques toutes les 30 secondes
     const statsInterval = setInterval(() => {
-      console.log('🔄 Rechargement automatique des statistiques...');
       fetchStats();
     }, 30000);
 
     // Rafraîchir les alertes de préparation toutes les 30 secondes
     const alertsInterval = setInterval(() => {
-      console.log('🔄 Rechargement automatique des alertes préparation...');
       fetchPreparationAlerts();
     }, 30000);
 
     // Rafraîchir les alertes préventives toutes les 10 secondes
     const preventiveInterval = setInterval(() => {
-      console.log('🔄 Rechargement automatique des alertes préventives...');
       fetchPreventiveAlerts();
     }, 10000);
 
@@ -110,7 +100,6 @@ export default function DeliveryDashboard() {
     const initAudio = () => {
       try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        console.log('🔊 AudioContext initialisé');
         
         // Créer un son silencieux pour activer l'audio
         const oscillator = audioContext.createOscillator();
@@ -124,9 +113,7 @@ export default function DeliveryDashboard() {
         oscillator.start();
         oscillator.stop(audioContext.currentTime + 0.001);
         
-        console.log('🔊 Audio activé avec succès');
       } catch (error) {
-        console.log('❌ Erreur initialisation audio:', error);
       }
     };
 
@@ -144,7 +131,6 @@ export default function DeliveryDashboard() {
       }
       
       const token = session?.access_token;
-      console.log('🔑 Token disponible:', !!token);
 
       const headers = {
         'Content-Type': 'application/json',
@@ -557,57 +543,55 @@ export default function DeliveryDashboard() {
             key={alert.id}
             order={alert}
             onAccept={(orderId) => {
-              console.log('🚨 Acceptation alerte préventive:', orderId);
               // Ici on peut accepter la commande directement
               acceptOrder(orderId);
             }}
             onDismiss={(orderId) => {
-              console.log('🚨 Dismiss alerte préventive:', orderId);
               // Ici on peut marquer l'alerte comme ignorée
             }}
           />
         ))}
         
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
           {/* Header avec notifications */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard Livreur</h1>
-              <p className="text-gray-600 mt-1">Gérez vos livraisons et suivez vos performances</p>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Dashboard Livreur</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Gérez vos livraisons et suivez vos performances</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <DeliveryNotifications deliveryId={deliveryId} />
               <button
                 onClick={toggleAudio}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
+                className={`flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation ${
                   audioEnabled 
                     ? 'bg-green-600 text-white hover:bg-green-700' 
                     : 'bg-orange-600 text-white hover:bg-orange-700'
                 }`}
               >
-                <span>{audioEnabled ? '🔊' : '🔇'}</span>
-                <span>{audioEnabled ? 'Audio Activé' : 'Activer Audio'}</span>
+                <span className="text-sm sm:text-base">{audioEnabled ? '🔊' : '🔇'}</span>
+                <span className="text-xs sm:text-sm">{audioEnabled ? 'Audio Activé' : 'Activer Audio'}</span>
               </button>
               <button
                 onClick={() => router.push('/delivery/history')}
-                className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 transform hover:scale-105"
+                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
               >
-                <FaCalendarAlt className="h-4 w-4" />
-                <span>Historique</span>
+                <FaCalendarAlt className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Historique</span>
               </button>
               <button
                 onClick={() => router.push('/delivery/reviews')}
-                className="flex items-center space-x-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 transform hover:scale-105"
+                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
               >
-                <FaStar className="h-4 w-4" />
-                <span>Avis</span>
+                <FaStar className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Avis</span>
               </button>
               <button
                 onClick={exportEarnings}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 transform hover:scale-105"
+                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
               >
-                <FaDownload className="h-4 w-4" />
-                <span>Exporter gains</span>
+                <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Exporter gains</span>
               </button>
               <div className="flex items-center space-x-2">
                 <div className={`w-3 h-3 rounded-full ${isAvailable ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
@@ -619,74 +603,74 @@ export default function DeliveryDashboard() {
           </div>
 
           {/* Statistiques améliorées */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Livraisons Totales</p>
-                  <p className="text-3xl font-bold">{stats?.total_deliveries || 0}</p>
+                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Livraisons Totales</p>
+                  <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.total_deliveries || 0}</p>
                 </div>
-                <div className="bg-blue-400 bg-opacity-30 p-3 rounded-full">
-                  <FaChartLine className="h-6 w-6" />
+                <div className="bg-blue-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
+                  <FaChartLine className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                 </div>
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm font-medium">Gains Totaux</p>
-                  <p className="text-3xl font-bold">{stats?.total_earnings?.toFixed(2) || 0}€</p>
+                  <p className="text-green-100 text-xs sm:text-sm font-medium">Gains Totaux</p>
+                  <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.total_earnings?.toFixed(2) || 0}€</p>
                 </div>
-                <div className="bg-green-400 bg-opacity-30 p-3 rounded-full">
-                  <FaDownload className="h-6 w-6" />
+                <div className="bg-green-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
+                  <FaDownload className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                 </div>
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-yellow-100 text-sm font-medium">Note Moyenne</p>
-                  <p className="text-3xl font-bold">{stats?.average_rating?.toFixed(1) || 0}/5</p>
+                  <p className="text-yellow-100 text-xs sm:text-sm font-medium">Note Moyenne</p>
+                  <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.average_rating?.toFixed(1) || 0}/5</p>
                 </div>
-                <div className="bg-yellow-400 bg-opacity-30 p-3 rounded-full">
-                  <FaStar className="h-6 w-6" />
+                <div className="bg-yellow-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
+                  <FaStar className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Statut</p>
-                  <p className="text-xl font-bold">{isAvailable ? 'Actif' : 'Inactif'}</p>
+                  <p className="text-purple-100 text-xs sm:text-sm font-medium">Statut</p>
+                  <p className="text-sm sm:text-lg lg:text-xl font-bold">{isAvailable ? 'Actif' : 'Inactif'}</p>
                 </div>
-                <div className="bg-purple-400 bg-opacity-30 p-3 rounded-full">
-                  <FaBell className="h-6 w-6" />
+                <div className="bg-purple-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
+                  <FaBell className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                 </div>
               </div>
             </div>
           </div>
 
           {/* Disponibilité améliorée */}
-          <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-            <div className="flex justify-between items-center">
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Statut de disponibilité</h3>
-                <p className="text-gray-600 mt-1">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Statut de disponibilité</h3>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">
                   {isAvailable ? 'Vous êtes actuellement disponible pour les livraisons' : 'Vous êtes actuellement indisponible'}
                 </p>
               </div>
               <button
                 onClick={toggleAvailability}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 ${
+                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation ${
                   isAvailable
                     ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg'
                     : 'bg-green-500 text-white hover:bg-green-600 shadow-lg'
                 }`}
               >
-                {isAvailable ? 'Se mettre indisponible' : 'Se mettre disponible'}
+                <span className="text-sm sm:text-base">{isAvailable ? 'Se mettre indisponible' : 'Se mettre disponible'}</span>
               </button>
             </div>
           </div>
@@ -694,14 +678,14 @@ export default function DeliveryDashboard() {
           {/* Commande en cours améliorée */}
           {currentOrder && (
             <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Commande en cours</h2>
-                  <div className="flex items-center space-x-2">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Commande en cours</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium">
                       #{currentOrder.id}
                     </span>
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                    <span className="px-2 sm:px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs sm:text-sm font-medium">
                       {currentOrder.status === 'en_livraison' ? 'En livraison' : 'Prêt à livrer'}
                     </span>
                   </div>
