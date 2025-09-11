@@ -126,52 +126,52 @@ export default function DeliveryHistory() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-3 sm:space-x-4">
               <button
                 onClick={() => router.push('/delivery/dashboard')}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-gray-600 hover:text-gray-900 min-h-[44px] touch-manipulation"
               >
                 <FaArrowLeft className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Historique des livraisons</h1>
-                <p className="text-gray-600">{pagination.total} livraisons au total</p>
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Historique des livraisons</h1>
+                <p className="text-sm sm:text-base text-gray-600">{pagination.total} livraisons au total</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 min-h-[44px] touch-manipulation"
               >
-                <FaFilter className="h-4 w-4" />
-                <span>Filtres</span>
+                <FaFilter className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Filtres</span>
               </button>
               <button
                 onClick={exportCSV}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 min-h-[44px] touch-manipulation"
               >
-                <FaDownload className="h-4 w-4" />
-                <span>Exporter CSV</span>
+                <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Exporter CSV</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* Filtres */}
         {showFilters && (
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">Filtres</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Filtres</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Statut</label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
                 >
                   <option value="">Tous les statuts</option>
                   <option value="livree">Livrée</option>
@@ -186,7 +186,7 @@ export default function DeliveryHistory() {
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
                 />
               </div>
               <div>
@@ -195,7 +195,7 @@ export default function DeliveryHistory() {
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
                 />
               </div>
             </div>
@@ -204,8 +204,8 @@ export default function DeliveryHistory() {
 
         {/* Liste des livraisons */}
         <div className="bg-white rounded-lg shadow-sm border">
-          <div className="px-6 py-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">Livraisons</h2>
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Livraisons</h2>
           </div>
           
           {loading ? (
@@ -221,39 +221,39 @@ export default function DeliveryHistory() {
           ) : (
             <div className="divide-y">
               {orders.map((order) => (
-                <div key={order.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex justify-between items-start">
+                <div key={order.id} className="p-4 sm:p-6 hover:bg-gray-50">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-3 sm:space-y-0">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-medium text-gray-900">Commande #{order.id}</h3>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
+                        <h3 className="font-medium text-gray-900 text-sm sm:text-base">Commande #{order.id}</h3>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                           {getStatusText(order.status)}
                         </span>
                         {order.rating && (
                           <div className="flex items-center space-x-1">
                             <FaStar className="h-3 w-3 text-yellow-500" />
-                            <span className="text-sm text-gray-600">{order.rating}/5</span>
+                            <span className="text-xs sm:text-sm text-gray-600">{order.rating}/5</span>
                           </div>
                         )}
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                         <div>
-                          <p className="text-gray-600">Restaurant</p>
-                          <p className="font-medium">{order.restaurant_nom}</p>
-                          <p className="text-gray-500">{order.restaurant_adresse}</p>
+                          <p className="text-gray-600 mb-1">Restaurant</p>
+                          <p className="font-medium text-sm sm:text-base">{order.restaurant_nom}</p>
+                          <p className="text-gray-500 text-xs sm:text-sm">{order.restaurant_adresse}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600">Client</p>
-                          <p className="font-medium">{order.customer_name}</p>
-                          <p className="text-gray-500">{order.delivery_address}</p>
+                          <p className="text-gray-600 mb-1">Client</p>
+                          <p className="font-medium text-sm sm:text-base">{order.customer_name}</p>
+                          <p className="text-gray-500 text-xs sm:text-sm">{order.delivery_address}</p>
                         </div>
                       </div>
                       
-                      <div className="mt-3 flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
                         <span>Total: {order.total}€</span>
                         <span>Frais: {order.delivery_fee}€</span>
-                        <span>{new Date(order.created_at).toLocaleString('fr-FR')}</span>
+                        <span className="break-all">{new Date(order.created_at).toLocaleString('fr-FR')}</span>
                       </div>
                       
                       {order.comment && (
@@ -271,24 +271,24 @@ export default function DeliveryHistory() {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-4 sm:mt-6 flex justify-center">
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                 disabled={pagination.page === 1}
-                className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 min-h-[44px] touch-manipulation text-sm"
               >
                 Précédent
               </button>
               
-              <span className="px-3 py-2 text-gray-700">
+              <span className="px-3 py-2 text-gray-700 text-sm">
                 Page {pagination.page} sur {pagination.totalPages}
               </span>
               
               <button
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                 disabled={pagination.page === pagination.totalPages}
-                className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 min-h-[44px] touch-manipulation text-sm"
               >
                 Suivant
               </button>
