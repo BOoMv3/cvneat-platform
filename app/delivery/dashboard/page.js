@@ -514,43 +514,50 @@ export default function DeliveryDashboard() {
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Dashboard Livreur</h1>
               <p className="text-sm sm:text-base text-gray-600 mt-1">Gérez vos livraisons et suivez vos performances</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+            <div className="space-y-3 sm:space-y-0">
               <DeliveryNotifications deliveryId={deliveryId} />
-              <button
-                onClick={toggleAudio}
-                className={`flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation ${
-                  audioEnabled 
-                    ? 'bg-green-600 text-white hover:bg-green-700' 
-                    : 'bg-orange-600 text-white hover:bg-orange-700'
-                }`}
-              >
-                <span className="text-sm sm:text-base">{audioEnabled ? '🔊' : '🔇'}</span>
-                <span className="text-xs sm:text-sm">{audioEnabled ? 'Audio Activé' : 'Activer Audio'}</span>
-              </button>
-              <button
-                onClick={() => router.push('/delivery/history')}
-                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
-              >
-                <FaCalendarAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm">Historique</span>
-              </button>
-              <button
-                onClick={() => router.push('/delivery/reviews')}
-                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
-              >
-                <FaStar className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm">Avis</span>
-              </button>
-              <button
-                onClick={exportEarnings}
-                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
-              >
-                <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm">Exporter gains</span>
-              </button>
-              <div className="flex items-center space-x-2">
+              
+              <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                <button
+                  onClick={toggleAudio}
+                  className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation ${
+                    audioEnabled 
+                      ? 'bg-green-600 text-white hover:bg-green-700' 
+                      : 'bg-orange-600 text-white hover:bg-orange-700'
+                  }`}
+                >
+                  <span className="text-sm">{audioEnabled ? '🔊' : '🔇'}</span>
+                  <span className="text-xs sm:text-sm">{audioEnabled ? 'Audio' : 'Audio'}</span>
+                </button>
+                
+                <button
+                  onClick={() => router.push('/delivery/history')}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
+                >
+                  <FaCalendarAlt className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm">Historique</span>
+                </button>
+                
+                <button
+                  onClick={() => router.push('/delivery/reviews')}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
+                >
+                  <FaStar className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm">Avis</span>
+                </button>
+                
+                <button
+                  onClick={exportEarnings}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
+                >
+                  <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm">Export</span>
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-center sm:justify-end space-x-2">
                 <div className={`w-3 h-3 rounded-full ${isAvailable ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-xs sm:text-sm font-medium text-gray-700">
                   {isAvailable ? 'Disponible' : 'Indisponible'}
                 </span>
               </div>
@@ -665,20 +672,20 @@ export default function DeliveryDashboard() {
                       <p className="text-gray-700">{currentOrder.delivery_address}</p>
                     </div>
                     
-                    <div className="flex space-x-3">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       {(currentOrder.status === 'accepted' || currentOrder.status === 'ready') && (
                         <button
                           onClick={() => completeDelivery(currentOrder.id)}
-                          className="flex-1 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold"
+                          className="flex-1 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold min-h-[44px] touch-manipulation text-sm sm:text-base"
                         >
                           ✅ Marquer comme livrée
                         </button>
                       )}
                       <button
                         onClick={() => setChatOpen(true)}
-                        className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 transform hover:scale-105 font-semibold"
+                        className="px-4 sm:px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 transform hover:scale-105 font-semibold min-h-[44px] touch-manipulation text-sm sm:text-base"
                       >
-                        <FaComments className="h-4 w-4 inline mr-2" />
+                        <FaComments className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1 sm:mr-2" />
                         Chat
                       </button>
                     </div>
@@ -700,12 +707,12 @@ export default function DeliveryDashboard() {
           {/* Alertes de préparation */}
           {preparationAlerts.length > 0 && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-6">
-              <div className="p-6 border-b border-orange-200">
-                <h2 className="text-xl font-semibold text-orange-800 flex items-center">
-                  <FaBell className="mr-2" />
+              <div className="p-4 sm:p-6 border-b border-orange-200">
+                <h2 className="text-lg sm:text-xl font-semibold text-orange-800 flex items-center">
+                  <FaBell className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                   Alertes de préparation
                 </h2>
-                <p className="text-orange-600 mt-1">Commandes bientôt prêtes à récupérer</p>
+                <p className="text-orange-600 mt-1 text-sm sm:text-base">Commandes bientôt prêtes à récupérer</p>
               </div>
               <div className="divide-y divide-orange-200">
                 {preparationAlerts.map((alert) => (
@@ -839,36 +846,36 @@ export default function DeliveryDashboard() {
                           )}
                         </div>
                         
-                        <div className="mt-4 lg:mt-0 lg:ml-6 flex flex-col sm:flex-row gap-2">
+                        <div className="mt-4 lg:mt-0 lg:ml-6 flex flex-col gap-2">
                           {(order.status === 'ready' || order.status === 'preparing') ? (
                             // Commande prête ou en préparation, livreur peut accepter
                             <button
                               onClick={() => acceptOrder(order.id)}
-                              className="w-full sm:w-auto px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg text-sm"
+                              className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg text-sm min-h-[44px] touch-manipulation"
                             >
                               ✅ Accepter
                             </button>
                           ) : order.status === 'accepted' && order.delivery_id === user?.id ? (
                             // Commande acceptée par ce livreur - SEUL ce livreur peut la livrer
-                            <div className="flex flex-col sm:flex-row gap-2">
-                              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg font-semibold text-sm text-center">
+                            <div className="flex flex-col gap-2">
+                              <span className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg font-semibold text-xs text-center">
                                 📦 En cours
                               </span>
                               <button
                                 onClick={() => completeDelivery(order.id)}
-                                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
+                                className="w-full px-4 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm min-h-[44px] touch-manipulation"
                               >
                                 🚚 Livrer
                               </button>
                             </div>
                           ) : order.status === 'accepted' && order.delivery_id !== user?.id ? (
                             // Commande acceptée par un autre livreur - AUCUNE action possible
-                            <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-sm text-center">
+                            <span className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-xs text-center">
                               👤 Autre livreur
                             </span>
                           ) : order.status === 'delivered' ? (
                             // Commande déjà livrée
-                            <span className="px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
+                            <span className="px-3 py-2 bg-green-100 text-green-800 rounded-lg font-semibold text-xs text-center">
                               ✅ Livrée
                             </span>
                           ) : null}
