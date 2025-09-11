@@ -3,10 +3,14 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mysql from 'mysql2/promise';
 import { isValidEmail } from '../../../lib/validation';
+import { logSecurityEvent, SECURITY_EVENTS, RISK_LEVELS } from '../../../lib/securityMonitor';
 
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
+    const clientIP = request.headers.get('x-forwarded-for') || 
+                     request.headers.get('x-real-ip') || 
+                     'unknown';
 
     // Validation des données
     if (!email || !password) {
@@ -41,6 +45,14 @@ export async function POST(request) {
     await connection.end();
 
     if (users.length === 0) {
+      // Log de tentative de connexion échouée
+      logSecurityEvent(
+        SECURITY_EVENTS.LOGIN_FAILED,
+        { email, reason: 'User not found', userAgent: request.headers.get('user-agent') },
+        RISK_LEVELS.MEDIUM,
+        clientIP
+      );
+      
       return NextResponse.json(
         { message: 'Email ou mot de passe incorrect' },
         { status: 401 }
@@ -53,6 +65,14 @@ export async function POST(request) {
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
+      // Log de tentative de connexion échouée
+      logSecurityEvent(
+        SECURITY_EVENTS.LOGIN_FAILED,
+        { email, reason: 'Invalid password', userAgent: request.headers.get('user-agent') },
+        RISK_LEVELS.MEDIUM,
+        clientIP
+      );
+      
       return NextResponse.json(
         { message: 'Email ou mot de passe incorrect' },
         { status: 401 }
@@ -68,6 +88,14 @@ export async function POST(request) {
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
+    );
+
+    // Log de connexion réussie
+    logSecurityEvent(
+      SECURITY_EVENTS.LOGIN_SUCCESS,
+      { email, userId: user.id, role: user.role, userAgent: request.headers.get('user-agent') },
+      RISK_LEVELS.LOW,
+      clientIP
     );
 
     // Retourne les informations de l'utilisateur et le token
