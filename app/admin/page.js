@@ -311,20 +311,20 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full mx-auto px-4 py-4 sm:py-8">
-        {/* Header avec bouton retour et info utilisateur */}
-        <div className="flex flex-col space-y-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+      <div className="max-w-full mx-auto px-3 sm:px-4 py-3 sm:py-8">
+        {/* Header avec bouton retour et info utilisateur - Optimisé mobile */}
+        <div className="flex flex-col space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900">🚀 Dashboard Admin CVN'EAT</h1>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
               <span className="text-xs sm:text-sm text-gray-600">
                 Connecté en tant qu'admin
               </span>
               <button
                 onClick={() => router.push('/')}
-                className="flex items-center px-3 sm:px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-xs sm:text-sm"
+                className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-sm sm:text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
               >
-                <FaArrowLeft className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <FaArrowLeft className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Retour à l'Accueil</span>
                 <span className="sm:hidden">Retour</span>
               </button>
@@ -332,86 +332,86 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Statistiques principales */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        {/* Statistiques principales - Optimisées mobile */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600">
-                <FaUsers className="text-lg sm:text-2xl" />
+                <FaUsers className="text-base sm:text-2xl" />
               </div>
-              <div className="ml-3 sm:ml-4">
+              <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Total Utilisateurs</p>
-                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
+                <p className="text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 sm:p-3 rounded-full bg-green-100 text-green-600">
-                <FaStore className="text-lg sm:text-2xl" />
+                <FaStore className="text-base sm:text-2xl" />
               </div>
-              <div className="ml-3 sm:ml-4">
+              <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Restaurants</p>
-                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalRestaurants}</p>
+                <p className="text-sm sm:text-2xl font-bold text-gray-900">{stats.totalRestaurants}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 sm:p-3 rounded-full bg-purple-100 text-purple-600">
-                <FaShoppingCart className="text-lg sm:text-2xl" />
+                <FaShoppingCart className="text-base sm:text-2xl" />
               </div>
-              <div className="ml-3 sm:ml-4">
+              <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Total Commandes</p>
-                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+                <p className="text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600">
-                <FaEuroSign className="text-lg sm:text-2xl" />
+                <FaEuroSign className="text-base sm:text-2xl" />
               </div>
-              <div className="ml-3 sm:ml-4">
+              <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Chiffre d'Affaires</p>
-                <p className="text-lg sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
+                <p className="text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* DEBUG: Affichage des données brutes */}
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-8">
-          <h3 className="font-bold">DEBUG - Données récupérées :</h3>
-          <p>Commandes récentes: {stats.recentOrders.length}</p>
-          <p>Restaurants récents: {stats.recentRestaurants.length}</p>
-          <p>Première commande: {JSON.stringify(stats.recentOrders[0])}</p>
-          <p>Premier restaurant: {JSON.stringify(stats.recentRestaurants[0])}</p>
+        {/* DEBUG: Affichage des données brutes - Optimisé mobile */}
+        <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-3 rounded mb-6 sm:mb-8">
+          <h3 className="font-bold text-sm sm:text-base">DEBUG - Données récupérées :</h3>
+          <p className="text-xs sm:text-sm">Commandes récentes: {stats.recentOrders.length}</p>
+          <p className="text-xs sm:text-sm">Restaurants récents: {stats.recentRestaurants.length}</p>
+          <p className="text-xs sm:text-sm break-all">Première commande: {JSON.stringify(stats.recentOrders[0])}</p>
+          <p className="text-xs sm:text-sm break-all">Premier restaurant: {JSON.stringify(stats.recentRestaurants[0])}</p>
         </div>
 
-        {/* Statistiques détaillées */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Statistiques détaillées - Optimisées mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
           {/* Commandes */}
           <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Statistiques des Commandes</h2>
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Statistiques des Commandes</h2>
             </div>
-            <div className="p-6">
-              <div className="space-y-4">
+            <div className="p-4 sm:p-6">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Commandes en attente</span>
-                  <span className="font-semibold text-yellow-600">{stats.pendingOrders}</span>
+                  <span className="text-sm sm:text-base text-gray-600">Commandes en attente</span>
+                  <span className="font-semibold text-yellow-600 text-sm sm:text-base">{stats.pendingOrders}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Commandes validées</span>
-                  <span className="font-semibold text-green-600">{stats.validatedOrders}</span>
+                  <span className="text-sm sm:text-base text-gray-600">Commandes validées</span>
+                  <span className="font-semibold text-green-600 text-sm sm:text-base">{stats.validatedOrders}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Demandes partenariat</span>
-                  <span className="font-semibold text-blue-600">{stats.pendingPartners}</span>
+                  <span className="text-sm sm:text-base text-gray-600">Demandes partenariat</span>
+                  <span className="font-semibold text-blue-600 text-sm sm:text-base">{stats.pendingPartners}</span>
                 </div>
               </div>
             </div>
@@ -419,32 +419,32 @@ export default function AdminPage() {
 
           {/* Actions rapides */}
           <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Actions Rapides</h2>
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Actions Rapides</h2>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 gap-3">
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3">
                 <button 
                   onClick={() => router.push('/admin/users')}
-                  className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-left"
+                  className="p-3 sm:p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   👥 Gérer les Utilisateurs
                 </button>
                 <button 
                   onClick={() => router.push('/admin/partnerships')}
-                  className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left"
+                  className="p-3 sm:p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   🤝 Valider les Partenaires
                 </button>
                 <button 
                   onClick={() => router.push('/admin/restaurants')}
-                  className="p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-left"
+                  className="p-3 sm:p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   🏪 Gérer les Restaurants
                 </button>
                 <button 
                   onClick={() => router.push('/admin/orders')}
-                  className="p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left"
+                  className="p-3 sm:p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   📋 Voir toutes les Commandes
                 </button>
