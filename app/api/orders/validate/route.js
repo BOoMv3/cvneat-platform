@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../lib/validation';
+import { supabase } from '@/lib/supabase';
+import { isValidId, isValidAmount } from '@/lib/validation';
 
 // POST /api/orders/validate - Valider une commande avant paiement
 export async function POST(request) {

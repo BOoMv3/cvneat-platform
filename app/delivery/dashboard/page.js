@@ -765,12 +765,6 @@ export default function DeliveryDashboard() {
             <div className="p-6 border-b">
               <h2 className="text-xl font-semibold text-gray-900">Commandes disponibles</h2>
               <p className="text-gray-600 mt-1">Acceptez une nouvelle livraison</p>
-              <p className="text-sm text-blue-600 mt-2">
-                Debug: {availableOrders.length} commandes chargées
-              </p>
-              <p className="text-xs text-green-600 mt-1">
-                isAvailable: {isAvailable.toString()}, currentOrder: {currentOrder ? 'OUI' : 'NON'}
-              </p>
             </div>
             <div className="divide-y">
               {!Array.isArray(availableOrders) || availableOrders.length === 0 ? (
@@ -781,7 +775,7 @@ export default function DeliveryDashboard() {
                   <p className="text-lg font-medium">Aucune commande disponible</p>
                   <p className="text-sm">Les nouvelles commandes apparaîtront ici</p>
                 </div>
-              )}
+              ) : null}
               
               {Array.isArray(availableOrders) && availableOrders.length > 0 && (
                 <div>
