@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mysql from 'mysql2/promise';
-import { isValidEmail } from '../../../lib/validation';
-import { logSecurityEvent, SECURITY_EVENTS, RISK_LEVELS } from '../../../lib/securityMonitor';
+const { isValidEmail } = require('@/lib/validation');
+const { logSecurityEvent, SECURITY_EVENTS, RISK_LEVELS } = require('@/lib/securityMonitor');
 
 export async function POST(request) {
   try {

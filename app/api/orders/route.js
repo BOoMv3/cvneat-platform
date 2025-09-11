@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
-import { sanitizeInput, isValidAmount, isValidId } from '../../../lib/validation';
+const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
 // GET /api/orders - Récupérer les commandes de l'utilisateur
 export async function GET(request) {

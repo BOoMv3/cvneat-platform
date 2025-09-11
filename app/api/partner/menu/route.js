@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '../../../../lib/supabase';
-import { sanitizeInput, isValidAmount, isValidId } from '../../../../lib/validation';
+const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
 export async function GET(request) {
   try {
