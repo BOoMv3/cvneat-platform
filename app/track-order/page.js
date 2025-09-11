@@ -278,58 +278,58 @@ export default function TrackOrder() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <h1 className="text-3xl font-bold text-center mb-8">Suivi de commande</h1>
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-center mb-6 sm:mb-8">Suivi de commande</h1>
           
           {/* Formulaire de recherche */}
-          <div className="mb-8">
-            <div className="flex flex-col sm:flex-row gap-4">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <input
                 type="text"
                 value={orderId}
                 onChange={(e) => setOrderId(e.target.value)}
                 placeholder="Entrez votre numéro de commande (ex: 52)"
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm sm:text-base"
               />
               <button
                 onClick={fetchOrder}
                 disabled={loading}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap min-h-[44px] touch-manipulation text-sm sm:text-base"
               >
                 {loading ? 'Recherche...' : 'Rechercher'}
               </button>
             </div>
             {error && (
-              <p className="text-red-600 mt-2">{error}</p>
+              <p className="text-red-600 mt-2 text-sm sm:text-base">{error}</p>
             )}
           </div>
 
           {/* Affichage de la commande */}
           {order && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Informations de base */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <div className="flex justify-between items-start mb-4">
+              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 sm:mb-4 space-y-2 sm:space-y-0">
                   <div>
-                    <h2 className="text-2xl font-bold">Commande #{order.id}</h2>
-                    <p className="text-gray-600">Créée le {formatDate(order.created_at)}</p>
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold">Commande #{order.id}</h2>
+                    <p className="text-sm sm:text-base text-gray-600">Créée le {formatDate(order.created_at)}</p>
                   </div>
-                  <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                  <span className={`px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(order.status)}`}>
                     {getStatusText(order.status)}
                   </span>
                 </div>
 
                 {/* Code de sécurité */}
                 {order.security_code && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                       <div>
-                        <h3 className="font-semibold text-blue-800">🔐 Code de sécurité</h3>
-                        <p className="text-sm text-blue-600">Donnez ce code au livreur pour récupérer votre commande</p>
+                        <h3 className="font-semibold text-blue-800 text-sm sm:text-base">🔐 Code de sécurité</h3>
+                        <p className="text-xs sm:text-sm text-blue-600">Donnez ce code au livreur pour récupérer votre commande</p>
                       </div>
-                      <div className="text-3xl font-mono font-bold text-blue-800 bg-white px-4 py-2 rounded-lg border-2 border-blue-300">
+                      <div className="text-2xl sm:text-3xl font-mono font-bold text-blue-800 bg-white px-3 sm:px-4 py-2 rounded-lg border-2 border-blue-300 text-center">
                         {order.security_code}
                       </div>
                     </div>
@@ -337,34 +337,34 @@ export default function TrackOrder() {
                 )}
 
                 {/* Chat */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                     <div>
-                      <h3 className="font-semibold text-green-800">💬 Chat</h3>
-                      <p className="text-sm text-green-600">Communiquez avec le restaurant/livreur</p>
+                      <h3 className="font-semibold text-green-800 text-sm sm:text-base">💬 Chat</h3>
+                      <p className="text-xs sm:text-sm text-green-600">Communiquez avec le restaurant/livreur</p>
                     </div>
                     <a
                       href={`/chat/${order.id}`}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base text-center"
                     >
                       Ouvrir le chat
                     </a>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <h3 className="font-semibold mb-2">Informations client</h3>
-                    <p><span className="font-medium">Nom :</span> {order.customer_name}</p>
-                    <p><span className="font-medium">Téléphone :</span> {order.customer_phone}</p>
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Informations client</h3>
+                    <p className="text-xs sm:text-sm"><span className="font-medium">Nom :</span> {order.customer_name}</p>
+                    <p className="text-xs sm:text-sm"><span className="font-medium">Téléphone :</span> {order.customer_phone}</p>
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold mb-2">Adresse de livraison</h3>
-                    <p>{order.delivery_address}</p>
-                    <p>{order.delivery_city} {order.delivery_postal_code}</p>
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Adresse de livraison</h3>
+                    <p className="text-xs sm:text-sm">{order.delivery_address}</p>
+                    <p className="text-xs sm:text-sm">{order.delivery_city} {order.delivery_postal_code}</p>
                     {order.delivery_instructions && (
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
                         Instructions : {order.delivery_instructions}
                       </p>
                     )}
@@ -373,26 +373,26 @@ export default function TrackOrder() {
               </div>
 
               {/* Articles commandés */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <h3 className="font-semibold mb-4">Articles commandés</h3>
-                <div className="space-y-2">
+              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+                <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Articles commandés</h3>
+                <div className="space-y-1 sm:space-y-2">
                   {order.items?.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{item.name} x{item.quantity}</span>
-                      <span>{(item.price * item.quantity).toFixed(2)}€</span>
+                    <div key={index} className="flex justify-between text-xs sm:text-sm">
+                      <span className="truncate flex-1 min-w-0">{item.name} x{item.quantity}</span>
+                      <span className="ml-2">{(item.price * item.quantity).toFixed(2)}€</span>
                     </div>
                   ))}
                 </div>
-                <div className="border-t mt-4 pt-4">
-                  <div className="flex justify-between text-sm text-gray-600">
+                <div className="border-t mt-3 sm:mt-4 pt-3 sm:pt-4">
+                  <div className="flex justify-between text-xs sm:text-sm text-gray-600">
                     <span>Sous-total</span>
                     <span>{order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}€</span>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-600">
+                  <div className="flex justify-between text-xs sm:text-sm text-gray-600">
                     <span>Frais de livraison</span>
                     <span>{order.delivery_fee.toFixed(2)}€</span>
                   </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
+                  <div className="flex justify-between font-bold text-sm sm:text-base lg:text-lg border-t pt-2">
                     <span>Total</span>
                     <span>{(order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.delivery_fee).toFixed(2)}€</span>
                   </div>
@@ -400,30 +400,30 @@ export default function TrackOrder() {
               </div>
 
               {/* Timeline des notifications */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold">Suivi de votre commande</h3>
+              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
+                  <h3 className="font-semibold text-sm sm:text-base">Suivi de votre commande</h3>
                   {isTracking && (
                     <div className="flex items-center space-x-2 text-green-600">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-medium">Suivi en temps réel</span>
+                      <span className="text-xs sm:text-sm font-medium">Suivi en temps réel</span>
                     </div>
                   )}
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {notifications.map((notif, index) => (
-                    <div key={notif.id} className="flex items-start space-x-4">
+                    <div key={notif.id} className="flex items-start space-x-3 sm:space-x-4">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-lg">{notif.icon}</span>
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm sm:text-lg">{notif.icon}</span>
                         </div>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-medium">{notif.title}</h4>
-                          <span className="text-sm text-gray-500">{formatDate(notif.time)}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-1 sm:space-y-0">
+                          <h4 className="font-medium text-sm sm:text-base">{notif.title}</h4>
+                          <span className="text-xs sm:text-sm text-gray-500">{formatDate(notif.time)}</span>
                         </div>
-                        <p className="text-gray-600 text-sm mt-1">{notif.message}</p>
+                        <p className="text-gray-600 text-xs sm:text-sm mt-1">{notif.message}</p>
                       </div>
                     </div>
                   ))}
@@ -435,25 +435,25 @@ export default function TrackOrder() {
           {/* Message d'aide */}
           {!order && (
             <div className="text-center text-gray-500">
-              <div className="text-6xl mb-4">📱</div>
-              <p className="text-lg">Entrez votre numéro de commande pour suivre votre livraison</p>
-              <p className="text-sm mt-2">Vous recevrez des notifications en temps réel sur l'avancement</p>
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="text-4xl sm:text-6xl mb-3 sm:mb-4">📱</div>
+              <p className="text-base sm:text-lg">Entrez votre numéro de commande pour suivre votre livraison</p>
+              <p className="text-xs sm:text-sm mt-2">Vous recevrez des notifications en temps réel sur l'avancement</p>
+              <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs sm:text-sm text-blue-800">
                   <strong>🔒 Sécurité :</strong> Vous devez être connecté pour suivre une commande. 
                   Vous ne pouvez voir que vos propres commandes.
                 </p>
-                <div className="mt-3">
+                <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-center sm:items-center">
                   <a 
                     href="/login" 
-                    className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="inline-block bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base"
                   >
                     Se connecter
                   </a>
-                  <span className="mx-2 text-gray-400">ou</span>
+                  <span className="mx-2 text-gray-400 text-sm">ou</span>
                   <a 
                     href="/register" 
-                    className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                    className="inline-block bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base"
                   >
                     S'inscrire
                   </a>
