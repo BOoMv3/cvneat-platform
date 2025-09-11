@@ -4,13 +4,15 @@ export default function FormInput({
   name, 
   placeholder, 
   required = false,
-  error 
+  error,
+  value,
+  onChange
 }) {
   return (
-    <div className="mb-4">
+    <div className="mb-3 sm:mb-4">
       <label 
         htmlFor={name} 
-        className="block text-sm font-medium text-gray-700 mb-1"
+        className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
       >
         {label}
       </label>
@@ -20,12 +22,14 @@ export default function FormInput({
         name={name}
         placeholder={placeholder}
         required={required}
-        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        value={value}
+        onChange={onChange}
+        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm sm:text-base ${
           error ? 'border-red-500' : 'border-gray-300'
         }`}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p className="mt-1 text-xs sm:text-sm text-red-600">{error}</p>
       )}
     </div>
   );

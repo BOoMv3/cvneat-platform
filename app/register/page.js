@@ -92,12 +92,12 @@ export default function Register() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
-        <h1 className="text-2xl font-bold mb-6 text-center">Inscription</h1>
-        {errors.global && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{errors.global}</div>}
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-gray-50">
+      <div className="w-full max-w-md bg-white rounded-lg shadow p-4 sm:p-6">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Inscription</h1>
+        {errors.global && <div className="mb-3 sm:mb-4 p-2 bg-red-100 text-red-700 rounded text-sm">{errors.global}</div>}
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <FormInput
               label="Prénom"
               name="prenom"
@@ -146,7 +146,7 @@ export default function Register() {
             value={formData.adresse}
             onChange={handleChange}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <FormInput
               label="Code postal"
               name="code_postal"
@@ -188,7 +188,7 @@ export default function Register() {
           />
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 min-h-[44px] touch-manipulation text-sm sm:text-base"
             disabled={loading}
           >
             {loading ? "Inscription en cours..." : "S'inscrire"}
