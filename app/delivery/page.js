@@ -513,30 +513,30 @@ export default function DeliveryDashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Livraisons aujourd'hui</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
+            <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Aujourd'hui</h3>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-blue-600">{stats.todayDeliveries}</p>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Total livraisons</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-indigo-600">{stats.totalDeliveries}</p>
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
+            <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Total</h3>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-indigo-600">{stats.totalDeliveries}</p>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Livraisons terminées</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.completedDeliveries}</p>
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
+            <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Terminées</h3>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-green-600">{stats.completedDeliveries}</p>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Gains totaux</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-purple-600">{stats.totalEarnings.toFixed(2)}€</p>
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
+            <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Gains</h3>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-purple-600">{stats.totalEarnings.toFixed(2)}€</p>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Temps moyen</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
+            <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Temps</h3>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-600 mb-2">Note moyenne</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-yellow-600">{stats.rating.toFixed(1)} ⭐</p>
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
+            <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">Note</h3>
+            <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-yellow-600">{stats.rating.toFixed(1)} ⭐</p>
           </div>
         </div>
 
@@ -576,32 +576,32 @@ export default function DeliveryDashboard() {
         )}
 
         {/* Commandes disponibles */}
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">📦 Commandes disponibles</h2>
+        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-md">
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-3 sm:mb-4">📦 Commandes disponibles</h2>
           {deliveries.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {deliveries.map((order) => (
-                <div key={order.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div key={order.id} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Commande #{order.id}</h3>
-                      <p className="text-sm text-gray-600">{order.customer_name}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">Commande #{order.id}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">{order.customer_name}</p>
                     </div>
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0">
                       {order.total_amount}€
                     </span>
                   </div>
-                  <div className="text-sm text-gray-600 mb-3">
-                    <p><strong>Adresse:</strong> {order.delivery_address}</p>
+                  <div className="text-xs sm:text-sm text-gray-600 mb-3 space-y-1">
+                    <p><strong>Adresse:</strong> <span className="break-words">{order.delivery_address}</span></p>
                     <p><strong>Ville:</strong> {order.delivery_city} {order.delivery_postal_code}</p>
                     {order.delivery_instructions && (
-                      <p><strong>Instructions:</strong> {order.delivery_instructions}</p>
+                      <p><strong>Instructions:</strong> <span className="break-words">{order.delivery_instructions}</span></p>
                     )}
                   </div>
                   <div className="flex justify-end">
                     <button
                       onClick={() => acceptOrder(order.id)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
                     >
                       ✅ Accepter
                     </button>
@@ -610,9 +610,9 @@ export default function DeliveryDashboard() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500 text-lg">Aucune commande disponible pour le moment</p>
-              <p className="text-gray-400 text-sm mt-2">Les nouvelles commandes apparaîtront ici</p>
+            <div className="text-center py-6 sm:py-8">
+              <p className="text-gray-500 text-sm sm:text-base lg:text-lg">Aucune commande disponible pour le moment</p>
+              <p className="text-gray-400 text-xs sm:text-sm mt-2">Les nouvelles commandes apparaîtront ici</p>
             </div>
           )}
         </div>

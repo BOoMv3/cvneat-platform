@@ -324,44 +324,49 @@ export default function PartnerDashboard() {
             </div>
             
             {/* Boutons d'action - Responsive mobile */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
               <button
                 onClick={() => router.push('/partner/analytics')}
-                className="bg-purple-600 text-white px-3 sm:px-4 py-3 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 text-sm font-medium"
+                className="bg-purple-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
-                <FaChartLine className="h-5 w-5 sm:h-4 sm:w-4" />
-                <span>Analytics</span>
+                <FaChartLine className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Analytics</span>
+                <span className="sm:hidden">Stats</span>
               </button>
               <button
                 onClick={() => router.push('/partner/reports')}
-                className="bg-green-600 text-white px-3 sm:px-4 py-3 sm:py-2 rounded-lg hover:bg-green-700 transition-colors flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 text-sm font-medium"
+                className="bg-green-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-green-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
-                <FaFileAlt className="h-5 w-5 sm:h-4 sm:w-4" />
-                <span>Rapports</span>
+                <FaFileAlt className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Rapports</span>
+                <span className="sm:hidden">Rapports</span>
               </button>
               <button
                 onClick={() => router.push('/partner/hours')}
-                className="bg-orange-600 text-white px-3 sm:px-4 py-3 sm:py-2 rounded-lg hover:bg-orange-700 transition-colors flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 text-sm font-medium"
+                className="bg-orange-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-orange-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
-                <FaClock className="h-5 w-5 sm:h-4 sm:w-4" />
-                <span>Horaires</span>
+                <FaClock className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Horaires</span>
+                <span className="sm:hidden">Horaires</span>
               </button>
               <button
                 onClick={() => router.push('/partner/settings')}
-                className="bg-gray-600 text-white px-3 sm:px-4 py-3 sm:py-2 rounded-lg hover:bg-gray-700 transition-colors flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 text-sm font-medium"
+                className="bg-gray-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-gray-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
-                <svg className="h-5 w-5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span>Paramètres</span>
+                <span className="hidden sm:inline">Paramètres</span>
+                <span className="sm:hidden">Config</span>
               </button>
               <button
                 onClick={() => router.push('/partner/delivery-zones')}
-                className="bg-green-600 text-white px-3 sm:px-4 py-3 sm:py-2 rounded-lg hover:bg-green-700 transition-colors flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 text-sm font-medium"
+                className="bg-blue-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
-                <FaMapMarkerAlt className="h-5 w-5 sm:h-4 sm:w-4" />
-                <span>Zones</span>
+                <FaMapMarkerAlt className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Zones</span>
+                <span className="sm:hidden">Zones</span>
               </button>
               <div className="flex justify-center">
                 <RealTimeNotifications restaurantId={restaurant?.id} />
@@ -374,10 +379,10 @@ export default function PartnerDashboard() {
       {/* Navigation */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <nav className="flex space-x-1 sm:space-x-8 overflow-x-auto pb-2">
+          <nav className="flex space-x-1 sm:space-x-4 lg:space-x-8 overflow-x-auto pb-2">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`py-3 sm:py-4 px-3 sm:px-1 border-b-2 font-medium text-sm sm:text-sm whitespace-nowrap rounded-t-lg ${
+              className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
                 activeTab === 'dashboard'
                   ? 'border-blue-500 text-blue-600 bg-blue-50'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
@@ -387,7 +392,7 @@ export default function PartnerDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('orders')}
-              className={`py-3 sm:py-4 px-3 sm:px-1 border-b-2 font-medium text-sm sm:text-sm whitespace-nowrap rounded-t-lg ${
+              className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
                 activeTab === 'orders'
                   ? 'border-blue-500 text-blue-600 bg-blue-50'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
@@ -397,7 +402,7 @@ export default function PartnerDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('menu')}
-              className={`py-3 sm:py-4 px-3 sm:px-1 border-b-2 font-medium text-sm sm:text-sm whitespace-nowrap rounded-t-lg ${
+              className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
                 activeTab === 'menu'
                   ? 'border-blue-500 text-blue-600 bg-blue-50'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
@@ -679,9 +684,9 @@ export default function PartnerDashboard() {
                 {menu.length === 0 ? (
                   <p className="text-gray-500 text-center">Aucun plat dans le menu</p>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                     {menu.map((item) => (
-                      <div key={item.id} className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+                      <div key={item.id} className="border rounded-lg p-2 sm:p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
                         {/* Image du plat */}
                         <div className="mb-2">
                           {item.image_url ? (

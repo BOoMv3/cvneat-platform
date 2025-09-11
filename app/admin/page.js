@@ -313,69 +313,71 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-full mx-auto px-4 py-4 sm:py-8">
         {/* Header avec bouton retour et info utilisateur */}
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <span className="text-sm text-gray-600">
-              Connecté en tant qu'admin
-            </span>
-            <button
-              onClick={() => router.push('/')}
-              className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-sm sm:text-base"
-            >
-              <FaArrowLeft className="mr-2" />
-              <span className="hidden sm:inline">Retour à l'Accueil</span>
-              <span className="sm:hidden">Retour</span>
-            </button>
+        <div className="flex flex-col space-y-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">🚀 Dashboard Administrateur CVN'EAT</h1>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <span className="text-xs sm:text-sm text-gray-600">
+                Connecté en tant qu'admin
+              </span>
+              <button
+                onClick={() => router.push('/')}
+                className="flex items-center px-3 sm:px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-xs sm:text-sm"
+              >
+                <FaArrowLeft className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Retour à l'Accueil</span>
+                <span className="sm:hidden">Retour</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Statistiques principales */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                <FaUsers className="text-2xl" />
+              <div className="p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600">
+                <FaUsers className="text-lg sm:text-2xl" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Utilisateurs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Utilisateurs</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600">
-                <FaStore className="text-2xl" />
+              <div className="p-2 sm:p-3 rounded-full bg-green-100 text-green-600">
+                <FaStore className="text-lg sm:text-2xl" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Restaurants</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalRestaurants}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Restaurants</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalRestaurants}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                <FaShoppingCart className="text-2xl" />
+              <div className="p-2 sm:p-3 rounded-full bg-purple-100 text-purple-600">
+                <FaShoppingCart className="text-lg sm:text-2xl" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Commandes</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Commandes</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                <FaEuroSign className="text-2xl" />
+              <div className="p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600">
+                <FaEuroSign className="text-lg sm:text-2xl" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Chiffre d'Affaires</p>
-                <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Chiffre d'Affaires</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
               </div>
             </div>
           </div>
@@ -452,11 +454,11 @@ export default function AdminPage() {
         </div>
 
         {/* Commandes récentes */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Commandes Récentes</h2>
+        <div className="bg-white rounded-lg shadow mb-6 sm:mb-8">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Commandes Récentes</h2>
             {stats.recentOrders.length === 0 && (
-              <p className="text-sm text-gray-500 mt-2">Aucune commande trouvée dans la base de données</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-2">Aucune commande trouvée dans la base de données</p>
             )}
           </div>
           {stats.recentOrders.length > 0 ? (
@@ -464,19 +466,19 @@ export default function AdminPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Commande
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Restaurant
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Montant
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Statut
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
                   </tr>
@@ -488,21 +490,21 @@ export default function AdminPage() {
                     
                     return (
                       <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                           #{getOrderDisplayId(order)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                           {restaurant?.nom || 'Restaurant inconnu'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                           {formatPrice(order.total_amount)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
                             {getStatusText(order.status)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                           {formatDate(order.created_at)}
                         </td>
                       </tr>
@@ -512,18 +514,18 @@ export default function AdminPage() {
               </table>
             </div>
           ) : (
-            <div className="p-6 text-center text-gray-500">
-              <p>Aucune commande disponible</p>
+            <div className="p-4 sm:p-6 text-center text-gray-500">
+              <p className="text-sm">Aucune commande disponible</p>
             </div>
           )}
         </div>
 
         {/* Restaurants récents */}
         <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Restaurants Récents</h2>
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Restaurants Récents</h2>
             {stats.recentRestaurants.length === 0 && (
-              <p className="text-sm text-gray-500 mt-2">Aucun restaurant trouvé dans la base de données</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-2">Aucun restaurant trouvé dans la base de données</p>
             )}
           </div>
           {stats.recentRestaurants.length > 0 ? (
@@ -531,19 +533,19 @@ export default function AdminPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Nom
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Adresse
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Statut
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date création
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -552,32 +554,32 @@ export default function AdminPage() {
                   {stats.recentRestaurants.map((restaurant) => {
                     return (
                       <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                           {restaurant?.nom || 'Nom non renseigné'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                           {restaurant?.adresse || restaurant?.ville || 'Adresse non renseignée'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                             restaurant?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {restaurant?.status === 'active' ? 'Actif' : 'Inactif'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                           {formatDate(restaurant?.created_at)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-900">
-                              <FaEye />
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                          <div className="flex space-x-1 sm:space-x-2">
+                            <button className="text-blue-600 hover:text-blue-900 p-1">
+                              <FaEye className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
-                            <button className="text-green-600 hover:text-green-900">
-                              <FaEdit />
+                            <button className="text-green-600 hover:text-green-900 p-1">
+                              <FaEdit className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
-                            <button className="text-red-600 hover:text-red-900">
-                              <FaTrash />
+                            <button className="text-red-600 hover:text-red-900 p-1">
+                              <FaTrash className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
                           </div>
                         </td>
@@ -588,8 +590,8 @@ export default function AdminPage() {
               </table>
             </div>
           ) : (
-            <div className="p-6 text-center text-gray-500">
-              <p>Aucun restaurant disponible</p>
+            <div className="p-4 sm:p-6 text-center text-gray-500">
+              <p className="text-sm">Aucun restaurant disponible</p>
             </div>
           )}
         </div>
