@@ -54,19 +54,19 @@ export default function RestaurantsList() {
   if (error) return <div className="p-8 text-center text-red-600">{error}<br/><button onClick={()=>window.location.reload()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Recharger</button></div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold mb-8">Tous les restaurants</h1>
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-12">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Tous les restaurants</h1>
       {sortedRestaurants.length === 0 ? (
-        <p className="text-gray-600">Aucun restaurant disponible.</p>
+        <p className="text-gray-600 text-center py-8">Aucun restaurant disponible.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {sortedRestaurants.map((restaurant) => (
             <div
               key={restaurant.id}
               onClick={() => handleCardClick(restaurant.id)}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer touch-manipulation active:scale-95"
             >
-              <div className="relative h-48">
+              <div className="relative h-40 sm:h-48">
                 <Image
                   src={restaurant.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
                   alt={restaurant.nom}
@@ -75,10 +75,10 @@ export default function RestaurantsList() {
                   unoptimized
                 />
                 {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > now && (
-                  <span className="absolute top-2 left-2 bg-yellow-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">Sponsorisé</span>
+                  <span className="absolute top-2 left-2 bg-yellow-400 text-white px-2 sm:px-3 py-1 rounded-full text-xs font-bold shadow">Sponsorisé</span>
                 )}
               </div>
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 <h3 className="text-xl font-semibold mb-2">{restaurant.nom}</h3>
                 <p className="text-gray-600 mb-2">{restaurant.description}</p>
                 <div className="flex items-center justify-between text-sm text-gray-500">

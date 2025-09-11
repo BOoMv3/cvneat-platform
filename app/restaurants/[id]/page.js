@@ -277,7 +277,7 @@ export default function RestaurantDetail({ params }) {
         </div>
       </div>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Bannière du restaurant style Uber Eats */}
         <RestaurantBanner
           restaurant={restaurant}
@@ -285,21 +285,21 @@ export default function RestaurantDetail({ params }) {
           onToggleFavorite={handleToggleFavorite}
         />
 
-        {/* Section adresse de livraison */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        {/* Section adresse de livraison - Optimisée mobile */}
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              <FaMapMarkerAlt className="mr-2" />
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+              <FaMapMarkerAlt className="mr-2 h-4 w-4" />
               Adresse de livraison :
             </label>
             <input
               type="text"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border rounded-lg px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base min-h-[48px] touch-manipulation"
               placeholder="Votre adresse complète"
               value={deliveryAddress}
               onChange={e => setDeliveryAddress(e.target.value)}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 mt-2">
               Le prix de livraison s'adapte automatiquement à votre adresse.
             </p>
           </div>
@@ -325,7 +325,7 @@ export default function RestaurantDetail({ params }) {
           )}
         </div>
 
-        {/* Panier - Responsive */}
+        {/* Panier - Optimisé mobile */}
         <div className="w-full lg:w-96">
           <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 sticky top-8">
             <h2 className="text-lg lg:text-xl font-bold mb-4">Votre commande</h2>
@@ -333,24 +333,24 @@ export default function RestaurantDetail({ params }) {
               <p className="text-gray-500 text-center py-4">Votre panier est vide</p>
             ) : (
               <>
-                <div className="space-y-4 mb-4">
+                <div className="space-y-3 sm:space-y-4 mb-4">
                   {cart.map((item) => (
                     <div key={item.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{item.nom || item.name}</p>
-                        <p className="text-sm text-gray-500">{(item.prix || item.price || 0).toFixed(2)}€</p>
+                      <div className="flex-1 pr-2">
+                        <p className="font-medium text-sm sm:text-base">{item.nom || item.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-500">{(item.prix || item.price || 0).toFixed(2)}€</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => removeFromCart(item.id)}
-                          className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
+                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border flex items-center justify-center hover:bg-gray-100 touch-manipulation active:scale-95"
                         >
                           <FaMinus className="text-xs" />
                         </button>
-                        <span>{item.quantity}</span>
+                        <span className="text-sm sm:text-base font-medium min-w-[20px] text-center">{item.quantity}</span>
                         <button
                           onClick={() => addToCart(item)}
-                          className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
+                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border flex items-center justify-center hover:bg-gray-100 touch-manipulation active:scale-95"
                         >
                           <FaPlus className="text-xs" />
                         </button>
@@ -359,23 +359,23 @@ export default function RestaurantDetail({ params }) {
                   ))}
                 </div>
                 <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex justify-between items-center mb-2 text-sm sm:text-base">
                     <p>Sous-total</p>
                     <p>{getSubtotal().toFixed(2)}€</p>
                   </div>
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex justify-between items-center mb-4 text-sm sm:text-base">
                     <p>Frais de livraison</p>
                     <p>{deliveryFee !== null ? deliveryFee.toFixed(2) : 'Calcul en cours'}€</p>
                   </div>
-                  <div className="flex justify-between items-center font-bold text-lg mb-4">
+                  <div className="flex justify-between items-center font-bold text-base sm:text-lg mb-4">
                     <p>Total</p>
                     <p>{getTotal().toFixed(2)}€</p>
                   </div>
                   <button
                     onClick={handleCheckout}
-                    className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 flex items-center justify-center gap-2"
+                    className="w-full bg-black text-white py-4 sm:py-3 rounded-lg hover:bg-gray-800 flex items-center justify-center gap-2 font-semibold text-base sm:text-base min-h-[52px] touch-manipulation active:scale-95"
                   >
-                    <FaShoppingCart />
+                    <FaShoppingCart className="h-4 w-4" />
                     Commander
                   </button>
                 </div>
