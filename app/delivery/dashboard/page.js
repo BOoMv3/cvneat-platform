@@ -155,44 +155,26 @@ export default function DeliveryDashboard() {
 
   const fetchAvailableOrders = async () => {
     try {
-      console.log('🔍 Récupération des commandes...');
       const response = await fetchWithAuth('/api/delivery/available-orders');
-      console.log('📡 Réponse reçue:', response.status);
-      
       const data = await response.json();
-      console.log('📦 Données reçues:', data);
-      console.log('📊 Type de données:', typeof data, Array.isArray(data));
-      console.log('📈 Nombre de commandes:', data?.length);
       
-      // Vérifier le contenu des commandes
-      if (data && data.length > 0) {
-        console.log('🔍 Première commande:', data[0]);
-        console.log('🔍 Clés disponibles:', Object.keys(data[0] || {}));
-      }
       
       // S'assurer que data est un tableau
       if (Array.isArray(data)) {
-        console.log('✅ Données valides, mise à jour du state');
         
         // Détecter les nouvelles commandes
         if (data.length > previousOrderCount) {
           const newOrders = data.slice(previousOrderCount);
-          console.log('🔔 Nouvelles commandes détectées:', newOrders.length);
-          console.log('🔔 Commandes précédentes:', previousOrderCount, 'Nouvelles:', data.length);
-          
           // Afficher une alerte pour chaque nouvelle commande
           newOrders.forEach(order => {
-            console.log('🔔 Affichage alerte pour commande:', order.id);
-            showNewOrderAlert(order); // L'état audio est géré dans la fonction
+            showNewOrderAlert(order);
           });
         }
         
         // Si c'est le premier chargement et qu'il y a des commandes, afficher une alerte
         if (previousOrderCount === 0 && data.length > 0) {
-          console.log('🔔 Premier chargement avec commandes disponibles, affichage alerte');
           data.forEach(order => {
-            console.log('🔔 Affichage alerte pour commande existante:', order.id);
-            showNewOrderAlert(order); // L'état audio est géré dans la fonction
+            showNewOrderAlert(order);
           });
         }
         
@@ -214,8 +196,6 @@ export default function DeliveryDashboard() {
       // Désactiver l'audio
       setAudioEnabled(false);
       audioEnabledRef.current = false;
-      console.log('🔇 Audio désactivé');
-      console.log('🔇 audioEnabledRef.current:', audioEnabledRef.current);
     } else {
       // Activer l'audio
       try {
@@ -228,15 +208,12 @@ export default function DeliveryDashboard() {
         
         setAudioEnabled(true);
         audioEnabledRef.current = true;
-        console.log('🔊 Audio activé manuellement');
-        console.log('🔊 audioEnabledRef.current:', audioEnabledRef.current);
         
         // Attendre un peu que l'état soit mis à jour, puis jouer le son de test
         setTimeout(() => {
           playAlertSound(true); // Force le son
         }, 100);
       } catch (error) {
-        console.log('❌ Erreur activation audio:', error);
       }
     }
   };
@@ -244,7 +221,6 @@ export default function DeliveryDashboard() {
   // Fonction pour jouer un son d'alerte
   const playAlertSound = (force = false) => {
     if (!audioEnabledRef.current && !force) {
-      console.log('🔇 Audio désactivé (via ref), son ignoré');
       return;
     }
 
@@ -275,27 +251,20 @@ export default function DeliveryDashboard() {
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 1.0);
       
-      console.log('🔊 Son d\'alerte joué');
     } catch (error) {
-      console.log('❌ Impossible de jouer le son d\'alerte:', error);
     }
   };
 
   // Fonction pour afficher une alerte de nouvelle commande
   const showNewOrderAlert = (order, forceSound = false) => {
-    console.log('🔔 showNewOrderAlert appelée:', { orderId: order.id, audioEnabled, audioEnabledRef: audioEnabledRef.current, forceSound });
     setAlertOrder(order);
     setShowAlert(true);
     
     // Utiliser la référence pour avoir l'état actuel
     if (audioEnabledRef.current) {
-      console.log('🔊 Audio activé (via ref), jouer le son');
-      playAlertSound(false); // Pas de force, utilise l'état normal
+      playAlertSound(false);
     } else if (forceSound) {
-      console.log('🔊 Force son activé, jouer le son');
-      playAlertSound(true); // Force le son pour les tests
-    } else {
-      console.log('🔇 Audio désactivé, son ignoré');
+      playAlertSound(true);
     }
 
     // Demander la permission pour les notifications
@@ -327,14 +296,11 @@ export default function DeliveryDashboard() {
         return;
       }
       const data = await response.json();
-      console.log('📦 Données commande en cours reçues:', data);
       
       // Vérifier si une commande existe
       if (data.hasOrder && data.order) {
-        console.log('✅ Commande en cours trouvée:', data.order.id);
         setCurrentOrder(data.order);
       } else {
-        console.log('❌ Aucune commande en cours');
         setCurrentOrder(null);
       }
       setLoading(false);
@@ -346,12 +312,10 @@ export default function DeliveryDashboard() {
 
   const fetchStats = async () => {
     try {
-      console.log('📊 Récupération des statistiques...');
       const response = await fetchWithAuth('/api/delivery/stats');
       const data = await response.json();
       
       if (response.ok) {
-        console.log('📊 Stats reçues:', data);
         setStats(data);
       } else {
         console.error('❌ Erreur API stats:', data);
@@ -363,12 +327,10 @@ export default function DeliveryDashboard() {
 
   const fetchPreparationAlerts = async () => {
     try {
-      console.log('🔔 Récupération des alertes de préparation...');
       const response = await fetchWithAuth('/api/delivery/preparation-alerts');
       const data = await response.json();
       
       if (response.ok) {
-        console.log('🔔 Alertes préparation reçues:', data.alerts?.length || 0);
         setPreparationAlerts(data.alerts || []);
         
         // Alerte sonore si nouvelles alertes
@@ -385,12 +347,10 @@ export default function DeliveryDashboard() {
 
   const fetchPreventiveAlerts = async () => {
     try {
-      console.log('🚨 Récupération des alertes préventives...');
       const response = await fetchWithAuth('/api/delivery/preventive-alerts');
       const data = await response.json();
       
       if (response.ok) {
-        console.log('🚨 Alertes préventives reçues:', data.alerts?.length || 0);
         setPreventiveAlerts(data.alerts || []);
         
         // Alerte sonore si nouvelles alertes préventives
@@ -407,17 +367,14 @@ export default function DeliveryDashboard() {
 
   const acceptOrder = async (orderId) => {
     try {
-      console.log('🔍 Acceptation de la commande:', orderId);
       
       const response = await fetchWithAuth(`/api/delivery/accept-order/${orderId}`, {
         method: 'POST'
       });
 
-      console.log('📡 Réponse acceptation:', response.status);
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Commande acceptée:', result);
         alert("Commande acceptée avec succès !");
         fetchAvailableOrders();
         fetchCurrentOrder();
@@ -434,7 +391,6 @@ export default function DeliveryDashboard() {
 
   const completeDelivery = async (orderId) => {
     try {
-      console.log('🚚 Finalisation livraison:', orderId);
       
       // Demander le code de sécurité au livreur
       const securityCode = prompt('🔐 Entrez le code de sécurité donné par le client:');
@@ -451,7 +407,6 @@ export default function DeliveryDashboard() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Livraison finalisée:', result);
         alert("Livraison finalisée avec succès !");
         setCurrentOrder(null);
         setChatOpen(false); // Fermer le chat après la livraison
@@ -818,26 +773,12 @@ export default function DeliveryDashboard() {
                   </div>
                   <p className="text-lg font-medium">Aucune commande disponible</p>
                   <p className="text-sm">Les nouvelles commandes apparaîtront ici</p>
-                  <p className="text-xs text-red-500 mt-2">
-                    Debug: availableOrders = {JSON.stringify(availableOrders)}
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 bg-green-100 border border-green-300 rounded-lg mb-4">
-                  <p className="text-green-800 font-semibold">
-                    ✅ {availableOrders.length} commandes trouvées et affichées !
-                  </p>
                 </div>
               )}
               
-              {/* FORCER L'AFFICHAGE DES COMMANDES */}
               {Array.isArray(availableOrders) && availableOrders.length > 0 && (
                 <div>
-                  <p className="p-4 bg-blue-100 text-blue-800">
-                    🔍 DEBUG: Affichage de {availableOrders.length} commandes
-                  </p>
                   {availableOrders.map((order, index) => {
-                    console.log(`🔍 Rendu commande ${index}:`, order);
                     return (
                       <div key={`order-${order.id}-${index}`} className="p-6 hover:bg-gray-50 transition-colors">
                         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start space-y-4 lg:space-y-0">
@@ -890,7 +831,6 @@ export default function DeliveryDashboard() {
                                 <OrderCountdown 
                                   order={order} 
                                   onTimeUp={(orderId) => {
-                                    console.log(`🚨 Commande ${orderId} prête !`);
                                     // Optionnel : notification ou action
                                   }}
                                 />
