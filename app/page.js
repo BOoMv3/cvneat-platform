@@ -225,64 +225,58 @@ export default function Home() {
           </div>
         </div>
         
-          {/* Actions utilisateur en haut à droite - VRAIMENT optimisé mobile */}
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col sm:flex-row items-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 lg:space-x-4">
-          {/* Bouton Suivre ma commande - Plus grand et plus visible */}
-          <Link href="/track-order" className="bg-white/30 backdrop-blur-md px-4 sm:px-5 py-3 sm:py-3 rounded-full text-white hover:bg-white/40 transition-all duration-200 flex items-center space-x-2 sm:space-x-2 text-sm sm:text-base font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 min-h-[50px] sm:min-h-[52px]">
-            <FaSearch className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-            <span className="hidden xs:inline sm:inline">Suivre ma commande</span>
-            <span className="xs:hidden sm:hidden">Suivre</span>
+          {/* Actions utilisateur en haut à droite - Design compact avec icônes */}
+        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1 sm:space-x-2">
+          {/* Bouton Suivre ma commande - Compact avec icône */}
+          <Link href="/track-order" className="bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
+            <FaSearch className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="hidden sm:inline">Suivre</span>
           </Link>
           
           {user ? (
             <>
-              {/* Points de fidélité - Beaucoup plus grand */}
-              <div className="flex items-center space-x-2 sm:space-x-2 bg-white/30 backdrop-blur-md px-4 sm:px-4 py-3 sm:py-3 rounded-full shadow-xl min-h-[50px] sm:min-h-[52px]">
-                <FaGift className="text-yellow-400 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="text-white text-sm sm:text-base font-bold">{userPoints} pts</span>
+              {/* Points de fidélité - Compact avec icône */}
+              <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[40px]">
+                <FaGift className="text-yellow-400 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="text-white text-xs sm:text-sm font-semibold">{userPoints}</span>
               </div>
               
-              {/* Profil - Beaucoup plus grand */}
-              <Link href="/profile" className="bg-white/30 backdrop-blur-md p-3 sm:p-3 rounded-full hover:bg-white/40 transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105 min-h-[50px] sm:min-h-[52px] min-w-[50px] sm:min-w-[52px] flex items-center justify-center">
-                <FaUser className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              {/* Profil - Icône seule */}
+              <Link href="/profile" className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center">
+                <FaUser className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </Link>
               
-              {/* Déconnexion - Plus grand et plus visible */}
+              {/* Déconnexion - Icône seule */}
               <button
                 onClick={handleLogout}
-                className="bg-white/30 backdrop-blur-md px-4 sm:px-5 py-3 sm:py-3 rounded-full text-white hover:bg-red-500/50 transition-all duration-200 flex items-center space-x-2 sm:space-x-2 text-sm sm:text-base font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 min-h-[50px] sm:min-h-[52px]"
+                className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-red-500/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center"
+                title="Déconnexion"
               >
-                <FaSignOutAlt className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="hidden xs:inline sm:inline">Déconnexion</span>
-                <span className="xs:hidden sm:hidden">Déco</span>
+                <FaSignOutAlt className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </>
           ) : (
             <>
-              {/* Connexion - Plus grand */}
-              <Link href="/login" className="bg-white/30 backdrop-blur-md px-4 sm:px-5 py-3 sm:py-3 rounded-full text-white hover:bg-white/40 transition-all duration-200 flex items-center space-x-2 sm:space-x-2 text-sm sm:text-base font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 min-h-[50px] sm:min-h-[52px]">
-                <FaSignInAlt className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="hidden xs:inline sm:inline">Connexion</span>
-                <span className="xs:hidden sm:hidden">Login</span>
+              {/* Connexion - Icône seule */}
+              <Link href="/login" className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center" title="Connexion">
+                <FaSignInAlt className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Link>
               
-              {/* Inscription - Plus grand */}
-              <Link href="/register" className="bg-white/30 backdrop-blur-md px-4 sm:px-5 py-3 sm:py-3 rounded-full text-white hover:bg-white/40 transition-all duration-200 flex items-center space-x-2 sm:space-x-2 text-sm sm:text-base font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 min-h-[50px] sm:min-h-[52px]">
-                <FaUserPlus className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="hidden xs:inline sm:inline">Inscription</span>
-                <span className="xs:hidden sm:hidden">Inscrip</span>
+              {/* Inscription - Icône seule */}
+              <Link href="/register" className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center" title="Inscription">
+                <FaUserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Link>
             </>
           )}
           
-          {/* Panier flottant - Plus grand */}
+          {/* Panier flottant - Icône avec badge */}
           {cart.length > 0 && (
             <button
               onClick={() => setShowFloatingCart(!showFloatingCart)}
-              className="relative bg-white/30 backdrop-blur-md p-3 sm:p-3 rounded-full hover:bg-white/40 transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105 min-h-[50px] sm:min-h-[52px] min-w-[50px] sm:min-w-[52px] flex items-center justify-center"
+              className="relative bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center"
             >
-              <FaShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-sm rounded-full h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center font-bold shadow-lg">
+              <FaShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-bold shadow-sm">
                 {cart.length}
               </span>
             </button>
