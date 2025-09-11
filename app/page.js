@@ -405,21 +405,9 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Encart publicitaire amélioré */}
+        {/* Espace publicitaire géré par l'admin */}
         <section className="mb-12">
-          <AdBanner
-            title="Marché de Producteurs Locaux à Ganges !"
-            image="/ads/marche-ganges.jpg"
-            description="Découvrez les produits frais et locaux tous les samedis matins sur la place du marché à Ganges. Soutenez les commerçants du coin !"
-            link="https://www.ganges.fr/marche"
-            sponsor="Ville de Ganges"
-            style={{ 
-              boxShadow: '0 20px 40px 0 rgba(255,193,7,0.3)', 
-              background: 'linear-gradient(135deg, #fffbe6 0%, #fffde4 100%)', 
-              border: '3px solid #ffe082',
-              borderRadius: '24px'
-            }}
-          />
+          <Advertisement position="banner_middle" className="max-w-7xl mx-auto" />
         </section>
 
         {/* Section des restaurants avec défilement vertical élégant */}
@@ -479,15 +467,11 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {filteredAndSortedRestaurants.map((restaurant, index) => (
-                <div key={restaurant.id}>
-                  {/* Publicité au milieu de la liste */}
-                  {index === Math.floor(filteredAndSortedRestaurants.length / 2) && (
-                    <Advertisement position="banner_middle" className="my-8" />
-                  )}
-                  <div
-                    className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02]"
-                    onClick={() => handleRestaurantClick(restaurant)}
-                  >
+                <div
+                  key={restaurant.id}
+                  className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02]"
+                  onClick={() => handleRestaurantClick(restaurant)}
+                >
                   <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
                     <div className="flex flex-col sm:flex-row">
                       {/* Image du restaurant */}
@@ -578,7 +562,6 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
-                  </div>
                   </div>
                 </div>
               ))}

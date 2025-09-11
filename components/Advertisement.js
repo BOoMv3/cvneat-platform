@@ -98,7 +98,7 @@ export default function Advertisement({ position, className = '' }) {
       case 'banner_top':
         return 'w-full h-32 sm:h-40 mb-4 sm:mb-6';
       case 'banner_middle':
-        return 'w-full h-24 sm:h-32 my-4 sm:my-6';
+        return 'w-full h-48 sm:h-56 my-4 sm:my-6 rounded-2xl overflow-hidden shadow-lg';
       case 'sidebar_left':
       case 'sidebar_right':
         return 'w-full h-48 sm:h-64 mb-4';
