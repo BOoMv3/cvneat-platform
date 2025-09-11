@@ -150,7 +150,7 @@ export default function Register() {
             <FormInput
               label="Code postal"
               name="code_postal"
-              placeholder="75001"
+              placeholder="34190"
               required
               error={errors.code_postal}
               value={formData.code_postal}
@@ -159,7 +159,7 @@ export default function Register() {
             <FormInput
               label="Ville"
               name="ville"
-              placeholder="Paris"
+              placeholder="Ganges"
               required
               error={errors.ville}
               value={formData.ville}

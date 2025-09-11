@@ -119,7 +119,7 @@ export default function AdminPage() {
       ])?.slice(0, 5) || [];
 
       const recentRestaurants = (restaurants?.length > 0 ? restaurants : [
-        { id: '11111111-1111-1111-1111-111111111111', nom: 'La Bella Pizza', adresse: '123 Rue de la Paix', ville: 'Paris', status: 'active', created_at: new Date().toISOString() },
+        { id: '11111111-1111-1111-1111-111111111111', nom: 'La Bella Pizza', adresse: '123 Rue de la Paix', ville: 'Ganges', status: 'active', created_at: new Date().toISOString() },
         { id: '22222222-2222-2222-2222-222222222222', nom: 'Burger King', adresse: '456 Avenue des Champs', ville: 'Lyon', status: 'active', created_at: new Date(Date.now() - 7200000).toISOString() },
       ])?.slice(0, 5) || [];
 

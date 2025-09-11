@@ -140,20 +140,20 @@ export default function DeliveryHistory() {
                 <p className="text-sm sm:text-base text-gray-600">{pagination.total} livraisons au total</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 min-h-[44px] touch-manipulation"
+                className="flex items-center justify-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 min-h-[44px] touch-manipulation text-sm w-full sm:w-auto"
               >
-                <FaFilter className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm">Filtres</span>
+                <FaFilter className="h-4 w-4" />
+                <span>Filtres</span>
               </button>
               <button
                 onClick={exportCSV}
-                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 min-h-[44px] touch-manipulation"
+                className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 min-h-[44px] touch-manipulation text-sm w-full sm:w-auto"
               >
-                <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm">Exporter CSV</span>
+                <FaDownload className="h-4 w-4" />
+                <span>Exporter CSV</span>
               </button>
             </div>
           </div>

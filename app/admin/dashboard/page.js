@@ -197,8 +197,8 @@ export default function AdminDashboard() {
       customer_name: 'Client Test Alerte',
       customer_phone: '0612345678',
       delivery_address: '15 Rue de la Nouvelle Commande',
-      delivery_city: 'Paris',
-      delivery_postal_code: '75001',
+      delivery_city: 'Ganges',
+      delivery_postal_code: '34190',
       delivery_instructions: 'Sonner fort, 3ème étage',
       total_amount: 18.00,
       delivery_fee: 3.00,
@@ -469,7 +469,7 @@ export default function AdminDashboard() {
                     value={newOrder.delivery_city}
                     onChange={(e) => setNewOrder({...newOrder, delivery_city: e.target.value})}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Paris"
+                    placeholder="Ganges"
                   />
                 </div>
                 <div>
