@@ -20,7 +20,7 @@ export async function GET(request) {
     try {
       const tokenPayload = JSON.parse(atob(token.split('.')[1]));
       deliveryId = tokenPayload.sub;
-      console.log('🔑 Delivery ID du token:', deliveryId);
+      // Delivery ID extrait du token (non loggé pour des raisons de sécurité)
     } catch (error) {
       console.error('❌ Erreur décodage token:', error);
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });

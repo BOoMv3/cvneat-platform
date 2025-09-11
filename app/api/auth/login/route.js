@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mysql from 'mysql2/promise';
+import { isValidEmail } from '../../../lib/validation';
 
 export async function POST(request) {
   try {
@@ -11,6 +12,14 @@ export async function POST(request) {
     if (!email || !password) {
       return NextResponse.json(
         { message: 'Email et mot de passe requis' },
+        { status: 400 }
+      );
+    }
+
+    // Validation du format email
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { message: 'Format d\'email invalide' },
         { status: 400 }
       );
     }

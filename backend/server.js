@@ -13,6 +13,7 @@ const adminRoutes = require('./routes/admin');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
@@ -31,9 +32,56 @@ const io = socketIo(server, {
 app.use(helmet({
   contentSecurityPolicy: false // Désactivé pour permettre les images
 }));
+
+// Rate limiting général
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limite de 100 requêtes par IP par fenêtre
+  message: {
+    error: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting strict pour l'authentification
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limite de 5 tentatives de connexion par IP par fenêtre
+  message: {
+    error: 'Trop de tentatives de connexion, veuillez réessayer dans 15 minutes.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Ne pas compter les requêtes réussies
+});
+
+// Rate limiting pour les API sensibles
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // Limite de 50 requêtes par IP par fenêtre
+  message: {
+    error: 'Trop de requêtes API depuis cette IP, veuillez réessayer plus tard.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Appliquer les rate limiters
+app.use(generalLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api/admin', apiLimiter);
+app.use('/api/partner', apiLimiter);
 app.use(cors({
-  origin: process.env.NODE_ENV === 'development' ? "http://localhost:3000" : process.env.FRONTEND_URL,
-  credentials: true
+  origin: process.env.NODE_ENV === 'development' 
+    ? "http://localhost:3000" 
+    : process.env.FRONTEND_URL || "https://cvneat.vercel.app",
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Role', 'X-User-Email']
 }));
 app.use(morgan('dev'));
 app.use(express.json());

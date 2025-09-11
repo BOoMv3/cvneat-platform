@@ -110,7 +110,7 @@ export async function POST(request) {
 
     // Générer un code de sécurité à 6 chiffres
     const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log('🔐 Code de sécurité généré:', securityCode);
+    // Code de sécurité généré (non loggé pour des raisons de sécurité)
 
     // Créer la commande
     const { data: order, error: orderError } = await supabase

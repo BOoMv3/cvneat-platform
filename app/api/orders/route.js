@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
+import { sanitizeInput, isValidAmount, isValidId } from '../../../lib/validation';
 
 // GET /api/orders - Récupérer les commandes de l'utilisateur
 export async function GET(request) {
@@ -94,6 +95,29 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    // Validation et sanitisation des données
+    if (!isValidId(restaurantId)) {
+      return NextResponse.json(
+        { error: 'ID restaurant invalide' },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidAmount(totalAmount) || !isValidAmount(deliveryFee)) {
+      return NextResponse.json(
+        { error: 'Montant invalide' },
+        { status: 400 }
+      );
+    }
+
+    // Sanitisation des informations de livraison
+    const sanitizedDeliveryInfo = {
+      address: sanitizeInput(deliveryInfo?.address || ''),
+      city: sanitizeInput(deliveryInfo?.city || ''),
+      postalCode: sanitizeInput(deliveryInfo?.postalCode || ''),
+      instructions: sanitizeInput(deliveryInfo?.instructions || '')
+    };
 
     console.log('Validation des donnees OK');
 

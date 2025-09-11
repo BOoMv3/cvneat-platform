@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '../../../../lib/supabase';
+import { sanitizeInput, isValidAmount, isValidId } from '../../../../lib/validation';
 
 export async function GET(request) {
   try {
@@ -61,6 +62,28 @@ export async function POST(request) {
       );
     }
 
+    // Validation et sanitisation des données
+    if (!isValidId(restaurant_id)) {
+      return NextResponse.json(
+        { error: 'ID restaurant invalide' },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidAmount(prix)) {
+      return NextResponse.json(
+        { error: 'Prix invalide' },
+        { status: 400 }
+      );
+    }
+
+    // Sanitisation des inputs
+    const sanitizedData = {
+      nom: sanitizeInput(nom),
+      description: sanitizeInput(description || ''),
+      category: sanitizeInput(category || 'Autres')
+    };
+
     // 2. Vérifier que l'utilisateur a le rôle restaurant
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -98,10 +121,10 @@ export async function POST(request) {
       .insert([
         {
           restaurant_id,
-          nom,
-          description,
+          nom: sanitizedData.nom,
+          description: sanitizedData.description,
           prix: parseFloat(prix),
-          category,
+          category: sanitizedData.category,
           disponible: true
         }
       ])

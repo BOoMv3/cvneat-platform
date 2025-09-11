@@ -92,7 +92,7 @@ export async function PUT(request, { params }) {
     }
 
     const token = authHeader.split(' ')[1];
-    console.log('🔑 Token reçu:', token ? 'Oui' : 'Non');
+    // Token vérifié (non loggé pour des raisons de sécurité)
 
     // Vérifier l'authentification
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);

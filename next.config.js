@@ -54,9 +54,15 @@ const nextConfig = {
       {
         source: '/api/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { 
+            key: 'Access-Control-Allow-Origin', 
+            value: process.env.NODE_ENV === 'development' 
+              ? 'http://localhost:3000' 
+              : process.env.FRONTEND_URL || 'https://cvneat.vercel.app'
+          },
           { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email' },
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
         ],
       },
     ];

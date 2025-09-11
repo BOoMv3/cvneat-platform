@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isValidEmail, validatePassword, sanitizeInput, isValidPhone, isValidPostalCode } from '../../../lib/validation';
 
 export async function POST(request) {
   try {
@@ -13,11 +14,55 @@ export async function POST(request) {
       );
     }
 
+    // Validation du format email
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { message: 'Format d\'email invalide' },
+        { status: 400 }
+      );
+    }
+
+    // Validation du mot de passe
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return NextResponse.json(
+        { message: 'Mot de passe invalide', errors: passwordValidation.errors },
+        { status: 400 }
+      );
+    }
+
+    // Validation du téléphone
+    if (!isValidPhone(telephone)) {
+      return NextResponse.json(
+        { message: 'Format de téléphone invalide' },
+        { status: 400 }
+      );
+    }
+
+    // Validation du code postal
+    if (!isValidPostalCode(codePostal)) {
+      return NextResponse.json(
+        { message: 'Format de code postal invalide' },
+        { status: 400 }
+      );
+    }
+
+    // Sanitisation des inputs
+    const sanitizedData = {
+      nom: sanitizeInput(nom),
+      prenom: sanitizeInput(prenom),
+      email: email.toLowerCase().trim(),
+      telephone: telephone.replace(/[\s\-\.]/g, ''),
+      adresse: sanitizeInput(adresse),
+      codePostal: codePostal.trim(),
+      ville: sanitizeInput(ville)
+    };
+
     // Vérifier si l'utilisateur existe déjà
     const { data: existingUser, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('email', sanitizedData.email)
       .single();
     if (existingUser) {
       return NextResponse.json(
@@ -28,7 +73,7 @@ export async function POST(request) {
 
     // Créer l'utilisateur dans Supabase Auth
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
-      email,
+      email: sanitizedData.email,
       password,
     });
     if (signUpError) {
@@ -43,13 +88,14 @@ export async function POST(request) {
       .from('users')
       .insert({
         id: authUser.user.id,
-        nom,
-        prenom,
-        telephone,
-        adresse,
-        code_postal: codePostal,
-        ville,
-        role: 'user',
+        nom: sanitizedData.nom,
+        prenom: sanitizedData.prenom,
+        email: sanitizedData.email,
+        telephone: sanitizedData.telephone,
+        adresse: sanitizedData.adresse,
+        code_postal: sanitizedData.codePostal,
+        ville: sanitizedData.ville,
+        role: 'customer',
       });
     if (insertError) {
       return NextResponse.json(
