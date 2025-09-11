@@ -14,27 +14,52 @@ export default function DeliveryMap({ currentOrder, deliveryLocation }) {
   }, [mapRef.current]);
 
   const initializeMap = () => {
-    // Simulation d'une carte
-    // En production, remplacez par une vraie implémentation de carte
+    // Simulation d'une carte avec données réalistes
     setMap({
       id: 'delivery-map',
       center: { lat: 43.9333, lng: 3.7167 }, // Ganges, France
-      zoom: 13
+      zoom: 13,
+      driverLocation: { lat: 43.9333, lng: 3.7167 },
+      restaurantLocation: currentOrder?.restaurant_location || { lat: 43.9350, lng: 3.7200 },
+      deliveryLocation: currentOrder?.delivery_location || { lat: 43.9300, lng: 3.7100 }
     });
   };
 
   const updateDeliveryLocation = (location) => {
     // Mise à jour de la position du livreur
     if (map) {
-      console.log('Mise à jour position livreur:', location);
+      setMap(prev => ({
+        ...prev,
+        driverLocation: location
+      }));
+      console.log('Position livreur mise à jour:', location);
     }
   };
 
   const showRoute = (origin, destination) => {
     // Affichage de l'itinéraire
-    if (map) {
-      console.log('Affichage itinéraire:', { origin, destination });
+    if (map && currentOrder) {
+      const route = {
+        origin: origin || map.driverLocation,
+        destination: destination || map.deliveryLocation,
+        distance: calculateDistance(origin || map.driverLocation, destination || map.deliveryLocation),
+        duration: Math.round(calculateDistance(origin || map.driverLocation, destination || map.deliveryLocation) * 2) // 2 min par km
+      };
+      console.log('Itinéraire calculé:', route);
+      return route;
     }
+  };
+
+  const calculateDistance = (point1, point2) => {
+    // Calcul simple de distance (en km)
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+    const dLon = (point2.lng - point1.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   };
 
   return (
@@ -61,15 +86,27 @@ export default function DeliveryMap({ currentOrder, deliveryLocation }) {
       
       <div 
         ref={mapRef}
-        className="w-full h-48 sm:h-64 bg-gray-200 rounded-lg flex items-center justify-center"
+        className="w-full h-48 sm:h-64 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg flex items-center justify-center relative overflow-hidden"
       >
-        <div className="text-center text-gray-600">
+        <div className="text-center text-gray-600 z-10">
           <div className="text-3xl sm:text-4xl mb-2">🗺️</div>
-          <p className="text-xs sm:text-sm">Carte de livraison</p>
+          <p className="text-xs sm:text-sm font-medium">Carte de livraison</p>
           <p className="text-xs text-gray-500 mt-1">
             {currentOrder ? 'Commande en cours' : 'Aucune commande active'}
           </p>
+          {map && (
+            <div className="mt-2 text-xs text-gray-600">
+              <p>📍 Position: {map.driverLocation.lat.toFixed(4)}, {map.driverLocation.lng.toFixed(4)}</p>
+              {currentOrder && (
+                <p>🎯 Destination: {currentOrder.delivery_address}</p>
+              )}
+            </div>
+          )}
         </div>
+        {/* Simulation de points sur la carte */}
+        <div className="absolute top-4 left-4 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+        <div className="absolute bottom-4 right-4 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
       </div>
 
       {currentOrder && (

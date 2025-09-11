@@ -320,14 +320,24 @@ export default function AdminPage() {
               <span className="text-xs sm:text-sm text-gray-600">
                 Connecté en tant qu'admin
               </span>
-              <button
-                onClick={() => router.push('/')}
-                className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-sm sm:text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
-              >
-                <FaArrowLeft className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Retour à l'Accueil</span>
-                <span className="sm:hidden">Retour</span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  onClick={() => router.push('/admin/ads')}
+                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
+                >
+                  <FaEye className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Publicités</span>
+                  <span className="sm:hidden">Ads</span>
+                </button>
+                <button
+                  onClick={() => router.push('/')}
+                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
+                >
+                  <FaArrowLeft className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Retour à l'Accueil</span>
+                  <span className="sm:hidden">Retour</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

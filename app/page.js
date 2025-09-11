@@ -31,6 +31,7 @@ import {
   FaSignOutAlt
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
+import Advertisement from '@/components/Advertisement';
 
 
 // Desactiver le rendu statique pour cette page
@@ -309,6 +310,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Publicité bannière haut */}
+      <Advertisement position="banner_top" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" />
+
       {/* Panier flottant - Optimisé mobile */}
       {showFloatingCart && cart.length > 0 && (
         <div className="fixed top-16 sm:top-24 right-2 sm:right-6 bg-white rounded-3xl shadow-2xl border border-gray-200 p-4 sm:p-6 z-50 w-[calc(100vw-1rem)] sm:w-80 sm:min-w-96 max-w-[calc(100vw-1rem)] sm:max-w-96">
@@ -475,11 +479,15 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {filteredAndSortedRestaurants.map((restaurant, index) => (
-                <div
-                  key={restaurant.id}
-                  className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02]"
-                  onClick={() => handleRestaurantClick(restaurant)}
-                >
+                <div key={restaurant.id}>
+                  {/* Publicité au milieu de la liste */}
+                  {index === Math.floor(filteredAndSortedRestaurants.length / 2) && (
+                    <Advertisement position="banner_middle" className="my-8" />
+                  )}
+                  <div
+                    className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02]"
+                    onClick={() => handleRestaurantClick(restaurant)}
+                  >
                   <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
                     <div className="flex flex-col sm:flex-row">
                       {/* Image du restaurant */}
@@ -570,6 +578,7 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
+                  </div>
                   </div>
                 </div>
               ))}

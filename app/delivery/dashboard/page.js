@@ -693,10 +693,12 @@ export default function DeliveryDashboard() {
                   
                   <div>
                     <DeliveryMap
-                      restaurantAddress={currentOrder.restaurant_adresse}
-                      deliveryAddress={currentOrder.delivery_address}
-                      deliveryId={deliveryId}
-                      orderId={currentOrder.id}
+                      currentOrder={currentOrder}
+                      deliveryLocation={{
+                        lat: 43.9333,
+                        lng: 3.7167,
+                        address: 'Position du livreur'
+                      }}
                     />
                   </div>
                 </div>
