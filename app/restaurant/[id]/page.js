@@ -194,13 +194,12 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
       {/* Barre de recherche du menu */}
       <div className="bg-white rounded-2xl p-4 shadow-lg">
         <div className="relative">
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
           <input
             type="text"
             placeholder="Rechercher dans le menu..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition-all duration-200"
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition-all duration-200"
           />
         </div>
       </div>
@@ -377,6 +376,9 @@ export default function RestaurantPage({ params }) {
 
     if (params.id) {
       fetchRestaurant();
+      // Charger l'état des favoris
+      const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+      setIsFavorite(favorites.includes(params.id));
     } else {
       setError('ID du restaurant manquant');
       setLoading(false);
@@ -385,8 +387,17 @@ export default function RestaurantPage({ params }) {
 
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite);
-    // TODO: Implémenter la logique de favoris avec Supabase
-    alert(isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris');
+    // Sauvegarder dans le localStorage pour la session
+    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    if (isFavorite) {
+      // Retirer des favoris
+      const newFavorites = favorites.filter(id => id !== params.id);
+      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    } else {
+      // Ajouter aux favoris
+      const newFavorites = [...favorites, params.id];
+      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    }
   };
 
   const handleAddToCartWithAnimation = (item, supplements = [], size = null) => {
@@ -547,19 +558,6 @@ export default function RestaurantPage({ params }) {
               <span className="font-medium">Retour</span>
             </button>
             
-            {/* Bouton de test pour l'animation */}
-            <button
-              onClick={() => {
-                console.log("🧪 Test d'animation");
-                setAddingToCart(prev => ({ ...prev, 'test': true }));
-                setTimeout(() => {
-                  setAddingToCart(prev => ({ ...prev, 'test': false }));
-                }, 2000);
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-            >
-              Test Animation
-            </button>
             
             <div className="flex items-center space-x-4">
               <button
