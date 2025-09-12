@@ -40,6 +40,7 @@ export default function RestaurantDetail({ params }) {
     
     // Charger l'état des favoris
     const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    setFavorites(favorites);
     setIsFavorite(favorites.includes(params.id));
   }, [params.id]);
 
@@ -63,14 +64,9 @@ export default function RestaurantDetail({ params }) {
         if (userAddress) {
           setDeliveryAddress(`${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}`);
         }
-
-        // Charger les favoris depuis localStorage
-        const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-        setFavorites(favorites);
-        setIsFavorite(favorites.includes(params.id));
       })();
     }
-  }, [user, params.id]);
+  }, [user]);
 
   // Calcul dynamique des frais de livraison
   useEffect(() => {
@@ -108,18 +104,25 @@ export default function RestaurantDetail({ params }) {
   }, [restaurant, deliveryAddress, cart]);
 
   const handleToggleFavorite = () => {
-    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    let newFavorites;
+    
     if (isFavorite) {
       // Retirer des favoris
-      const newFavorites = favorites.filter(id => id !== params.id);
-      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+      newFavorites = currentFavorites.filter(id => id !== params.id);
       setIsFavorite(false);
     } else {
       // Ajouter aux favoris
-      const newFavorites = [...favorites, params.id];
-      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+      newFavorites = [...currentFavorites, params.id];
       setIsFavorite(true);
     }
+    
+    // Mettre à jour localStorage et l'état local
+    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    setFavorites(newFavorites);
+    
+    console.log('Favoris mis à jour:', newFavorites);
+    console.log('Restaurant actuel est favori:', isFavorite);
   };
 
   const loadCartFromStorage = () => {
