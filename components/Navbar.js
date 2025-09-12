@@ -89,9 +89,6 @@ export default function Navbar() {
 
           {/* Navigation Links - Desktop */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link href="/restaurants" className="text-gray-700 hover:text-orange-600 transition-colors">
-              Restaurants
-            </Link>
             <Link href="/delivery-zones" className="text-gray-700 hover:text-orange-600 transition-colors">
               Zones de livraison
             </Link>
@@ -206,13 +203,6 @@ export default function Navbar() {
                 </div>
               )}
 
-              <Link
-                href="/restaurants"
-                className="text-gray-600 hover:text-orange-600 transition-colors py-1"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Restaurants
-              </Link>
               <Link
                 href="/delivery-zones"
                 className="text-gray-600 hover:text-orange-600 transition-colors py-1"

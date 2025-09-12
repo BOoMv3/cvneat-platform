@@ -134,9 +134,17 @@ export default function Home() {
   }, []);
 
   const handleToggleFavorite = async (restaurant) => {
-    // TODO: Réactiver après application de la migration SQL
-    alert('Fonctionnalité des favoris temporairement désactivée. Appliquez d\'abord la migration SQL sur Supabase.');
-    return;
+    try {
+      if (favorites.includes(restaurant.id)) {
+        // Retirer des favoris
+        setFavorites(prev => prev.filter(id => id !== restaurant.id));
+      } else {
+        // Ajouter aux favoris
+        setFavorites(prev => [...prev, restaurant.id]);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la gestion des favoris:', error);
+    }
   };
 
   const handleAddToCart = (restaurant) => {
