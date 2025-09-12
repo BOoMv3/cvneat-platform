@@ -119,16 +119,6 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
         </div>
       </div>
 
-      {/* Overlay pour fermer les menus */}
-      {(showSearch || showOptions) && (
-        <div 
-          className="fixed inset-0 z-10" 
-          onClick={() => {
-            setShowSearch(false);
-            setShowOptions(false);
-          }}
-        />
-      )}
     </div>
   );
 } 
