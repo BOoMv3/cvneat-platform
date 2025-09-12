@@ -142,10 +142,23 @@ export default function Home() {
     fetchRestaurants();
   }, []);
 
-  const handleToggleFavorite = async (restaurant) => {
-    // TODO: Réactiver après application de la migration SQL
-    alert('Fonctionnalité des favoris temporairement désactivée. Appliquez d\'abord la migration SQL sur Supabase.');
-    return;
+  const handleToggleFavorite = (restaurant) => {
+    const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    let newFavorites;
+    
+    if (favorites.includes(restaurant.id)) {
+      // Retirer des favoris
+      newFavorites = currentFavorites.filter(id => id !== restaurant.id);
+    } else {
+      // Ajouter aux favoris
+      newFavorites = [...currentFavorites, restaurant.id];
+    }
+    
+    // Mettre à jour localStorage et l'état local
+    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    setFavorites(newFavorites);
+    
+    console.log('Favoris mis à jour:', newFavorites);
   };
 
   const handleAddToCart = (restaurant) => {

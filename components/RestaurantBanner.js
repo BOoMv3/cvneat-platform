@@ -43,11 +43,21 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       <div className="absolute inset-0 bg-black bg-opacity-40" />
 
       {/* Header avec bouton favoris seulement */}
-      <div className="relative z-10 flex justify-end items-start p-4">
+      <div className="relative z-20 flex justify-end items-start p-4">
         {/* Bouton favoris */}
         <button 
-          onClick={onToggleFavorite}
-          className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Clic sur le bouton favoris');
+            if (onToggleFavorite) {
+              onToggleFavorite();
+            } else {
+              console.error('onToggleFavorite n\'est pas défini');
+            }
+          }}
+          className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all cursor-pointer z-30 relative"
+          style={{ pointerEvents: 'auto' }}
         >
           <FaHeart className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-800'}`} />
         </button>
