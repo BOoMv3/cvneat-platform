@@ -1,45 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import { FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaHeart, FaSearch, FaShare, FaFlag } from 'react-icons/fa';
-import { useState } from 'react';
+import { FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaHeart } from 'react-icons/fa';
 
-export default function RestaurantBanner({ restaurant, onBack, onToggleFavorite, isFavorite = false }) {
-  const [showSearch, setShowSearch] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
+export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false }) {
   if (!restaurant) return null;
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Recherche dans le menu (à implémenter dans le composant parent)
-      console.log('Recherche:', searchQuery);
-      setSearchQuery('');
-      setShowSearch(false);
-    }
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: restaurant.nom,
-        text: `Découvrez ${restaurant.nom} sur CVN'EAT !`,
-        url: window.location.href
-      });
-    } else {
-      // Fallback pour les navigateurs qui ne supportent pas l'API Share
-      navigator.clipboard.writeText(window.location.href);
-      alert('Lien copié dans le presse-papiers !');
-    }
-    setShowOptions(false);
-  };
-
-  const handleReport = () => {
-    alert('Fonctionnalité de signalement à implémenter');
-    setShowOptions(false);
-  };
 
   return (
     <div className="relative w-full h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden">
@@ -77,86 +42,15 @@ export default function RestaurantBanner({ restaurant, onBack, onToggleFavorite,
       {/* Overlay sombre */}
       <div className="absolute inset-0 bg-black bg-opacity-40" />
 
-      {/* Header avec boutons */}
-      <div className="relative z-10 flex justify-between items-start p-4">
-        <button
-          onClick={onBack}
+      {/* Header avec bouton favoris seulement */}
+      <div className="relative z-10 flex justify-end items-start p-4">
+        {/* Bouton favoris */}
+        <button 
+          onClick={onToggleFavorite}
           className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
         >
-          <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+          <FaHeart className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-800'}`} />
         </button>
-
-        <div className="flex gap-2">
-          {/* Barre de recherche */}
-          <div className="relative">
-            {showSearch && (
-              <form onSubmit={handleSearch} className="absolute right-0 top-0 w-64 bg-white rounded-lg shadow-lg p-2">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher dans le menu..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  className="absolute right-2 top-2 text-blue-600 hover:text-blue-800"
-                >
-                  <FaSearch className="w-4 h-4" />
-                </button>
-              </form>
-            )}
-            <button 
-              onClick={() => setShowSearch(!showSearch)}
-              className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
-            >
-              <FaSearch className="w-5 h-5 text-gray-800" />
-            </button>
-          </div>
-
-          {/* Bouton favoris */}
-          <button 
-            onClick={onToggleFavorite}
-            className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
-          >
-            <FaHeart className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-800'}`} />
-          </button>
-
-          {/* Menu d'options */}
-          <div className="relative">
-            <button 
-              onClick={() => setShowOptions(!showOptions)}
-              className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
-            >
-              <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-              </svg>
-            </button>
-
-            {/* Menu déroulant */}
-            {showOptions && (
-              <div className="absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                <button
-                  onClick={handleShare}
-                  className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                >
-                  <FaShare className="w-4 h-4" />
-                  Partager
-                </button>
-                <button
-                  onClick={handleReport}
-                  className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                >
-                  <FaFlag className="w-4 h-4" />
-                  Signaler
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Logo et nom du restaurant centrés */}

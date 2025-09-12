@@ -37,6 +37,10 @@ export default function RestaurantDetail({ params }) {
     checkUser();
     fetchRestaurantDetails();
     loadCartFromStorage();
+    
+    // Charger l'état des favoris
+    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    setIsFavorite(favorites.includes(params.id));
   }, [params.id]);
 
   useEffect(() => {
@@ -109,10 +113,19 @@ export default function RestaurantDetail({ params }) {
     // On déclenche le calcul à chaque changement du restaurant, de l'adresse ou du panier
   }, [restaurant, deliveryAddress, cart]);
 
-  const handleToggleFavorite = async () => {
-    // TODO: Réactiver après application de la migration SQL
-    alert('Fonctionnalité des favoris temporairement désactivée. Appliquez d\'abord la migration SQL sur Supabase.');
-    return;
+  const handleToggleFavorite = () => {
+    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    if (isFavorite) {
+      // Retirer des favoris
+      const newFavorites = favorites.filter(id => id !== params.id);
+      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+      setIsFavorite(false);
+    } else {
+      // Ajouter aux favoris
+      const newFavorites = [...favorites, params.id];
+      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+      setIsFavorite(true);
+    }
   };
 
   const loadCartFromStorage = () => {
