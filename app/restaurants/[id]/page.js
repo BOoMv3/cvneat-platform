@@ -64,16 +64,10 @@ export default function RestaurantDetail({ params }) {
           setDeliveryAddress(`${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}`);
         }
 
-        // Charger les favoris
-        const { data: favoritesData } = await supabase
-          .from('user_favorites')
-          .select('restaurant_id')
-          .eq('user_id', user.id);
-        
-        if (favoritesData) {
-          setFavorites(favoritesData.map(fav => fav.restaurant_id));
-          setIsFavorite(favoritesData.some(fav => fav.restaurant_id === parseInt(params.id, 10)));
-        }
+        // Charger les favoris depuis localStorage
+        const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+        setFavorites(favorites);
+        setIsFavorite(favorites.includes(params.id));
       })();
     }
   }, [user, params.id]);
@@ -171,7 +165,8 @@ export default function RestaurantDetail({ params }) {
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
     } catch (err) {
-      setError(err.message);
+      console.error('Erreur lors du chargement du restaurant:', err);
+      setError(`Erreur lors du chargement: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -252,8 +247,13 @@ export default function RestaurantDetail({ params }) {
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <p className="text-red-600 font-bold">{error}</p>
-            <button onClick={() => router.push('/restaurants')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Retour à la liste</button>
+            <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-4xl">⚠️</span>
+            </div>
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Une erreur est survenue</h1>
+            <p className="text-gray-600 mb-2">Erreur: {error}</p>
+            <p className="text-sm text-gray-500 mb-6">ID du restaurant: {params.id}</p>
+            <button onClick={() => router.push('/')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Retour à l'accueil</button>
           </div>
         </div>
       </div>
@@ -266,7 +266,7 @@ export default function RestaurantDetail({ params }) {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <p className="text-red-600 font-bold">Restaurant non trouvé ou erreur de chargement.</p>
-            <button onClick={() => router.push('/restaurants')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Retour à la liste</button>
+            <button onClick={() => router.push('/')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Retour à l'accueil</button>
           </div>
         </div>
       </div>
