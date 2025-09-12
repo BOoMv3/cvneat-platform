@@ -106,23 +106,26 @@ export default function RestaurantDetail({ params }) {
   const handleToggleFavorite = () => {
     const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
     let newFavorites;
+    let newIsFavorite;
     
     if (isFavorite) {
       // Retirer des favoris
       newFavorites = currentFavorites.filter(id => id !== params.id);
-      setIsFavorite(false);
+      newIsFavorite = false;
     } else {
       // Ajouter aux favoris
       newFavorites = [...currentFavorites, params.id];
-      setIsFavorite(true);
+      newIsFavorite = true;
     }
     
     // Mettre à jour localStorage et l'état local
     localStorage.setItem('favorites', JSON.stringify(newFavorites));
     setFavorites(newFavorites);
+    setIsFavorite(newIsFavorite);
     
     console.log('Favoris mis à jour:', newFavorites);
-    console.log('Restaurant actuel est favori:', isFavorite);
+    console.log('Restaurant actuel est favori:', newIsFavorite);
+    console.log('ID du restaurant:', params.id);
   };
 
   const loadCartFromStorage = () => {

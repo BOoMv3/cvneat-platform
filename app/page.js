@@ -121,6 +121,15 @@ export default function Home() {
           throw new Error('Format de donnees invalide');
         }
         
+        console.log('Restaurants chargés:', data);
+        console.log('Premier restaurant:', data[0]);
+        console.log('Propriétés d\'image du premier restaurant:', {
+          image_url: data[0]?.image_url,
+          imageUrl: data[0]?.imageUrl,
+          profile_image: data[0]?.profile_image,
+          banner_image: data[0]?.banner_image
+        });
+        
         setRestaurants(data);
       } catch (error) {
         console.error('Erreur lors du chargement des restaurants:', error);
@@ -477,11 +486,15 @@ export default function Home() {
                       {/* Image du restaurant */}
                       <div className="relative h-48 sm:h-64 lg:h-auto lg:w-1/3 overflow-hidden">
                         <Image
-                          src={restaurant.image_url || restaurant.imageUrl || restaurant.profile_image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
+                          src={restaurant.image_url || restaurant.imageUrl || restaurant.profile_image || restaurant.banner_image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
                           alt={restaurant.nom}
                           fill
                           className="object-cover group-hover:scale-110 transition-transform duration-500"
                           unoptimized
+                          onError={(e) => {
+                            console.log('Erreur image restaurant:', restaurant.nom, 'URL:', e.target.src);
+                            e.target.src = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop';
+                          }}
                         />
                         
                         {/* Overlay avec gradient */}
