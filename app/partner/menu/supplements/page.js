@@ -15,11 +15,11 @@ export default function MenuSupplements() {
   const [editingSupplement, setEditingSupplement] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newSupplement, setNewSupplement] = useState({
-    nom: '',
+    name: '',
     description: '',
-    prix: '',
-    menu_item_id: '',
-    disponible: true
+    price: '',
+    category: 'général',
+    is_active: true
   });
 
   useEffect(() => {
@@ -66,26 +66,8 @@ export default function MenuSupplements() {
 
       setRestaurant(restaurantData);
 
-      // Récupérer les éléments du menu
-      const { data: menuData } = await supabase
-        .from('menus')
-        .select('*')
-        .eq('restaurant_id', restaurantData.id)
-        .order('nom');
-
-      setMenuItems(menuData || []);
-
-      // Récupérer tous les suppléments
-      const { data: supplementsData } = await supabase
-        .from('menu_supplements')
-        .select(`
-          *,
-          menu_item:menus(nom)
-        `)
-        .in('menu_item_id', menuData?.map(item => item.id) || [])
-        .order('ordre');
-
-      setSupplements(supplementsData || []);
+      // Récupérer les suppléments via l'API
+      await fetchSupplements(restaurantData.id);
     } catch (error) {
       console.error('Erreur récupération données:', error);
     } finally {
@@ -93,32 +75,54 @@ export default function MenuSupplements() {
     }
   };
 
+  const fetchSupplements = async (restaurantId) => {
+    try {
+      const response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+      if (response.ok) {
+        const data = await response.json();
+        setSupplements(data);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des suppléments:', error);
+    }
+  };
+
   const handleAddSupplement = async () => {
-    if (!newSupplement.nom || !newSupplement.prix || !newSupplement.menu_item_id) {
+    if (!newSupplement.name || !newSupplement.price) {
       alert('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('menu_supplements')
-        .insert({
-          ...newSupplement,
-          prix: parseFloat(newSupplement.prix),
-          ordre: supplements.length + 1
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const response = await fetch(`/api/restaurants/${restaurant.id}/supplements`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newSupplement.name,
+          price: parseFloat(newSupplement.price),
+          category: newSupplement.category,
+          description: newSupplement.description
         })
-        .select()
-        .single();
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'ajout du supplément');
+      }
 
+      const data = await response.json();
       setSupplements(prev => [...prev, data]);
       setNewSupplement({
-        nom: '',
+        name: '',
         description: '',
-        prix: '',
-        menu_item_id: '',
-        disponible: true
+        price: '',
+        category: 'général',
+        is_active: true
       });
       setShowAddForm(false);
     } catch (error) {
@@ -128,27 +132,39 @@ export default function MenuSupplements() {
   };
 
   const handleEditSupplement = async () => {
-    if (!editingSupplement.nom || !editingSupplement.prix) {
+    if (!editingSupplement.name || !editingSupplement.price) {
       alert('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('menu_supplements')
-        .update({
-          nom: editingSupplement.nom,
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const response = await fetch(`/api/restaurants/${restaurant.id}/supplements`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          supplementId: editingSupplement.id,
+          name: editingSupplement.name,
+          price: parseFloat(editingSupplement.price),
+          category: editingSupplement.category,
           description: editingSupplement.description,
-          prix: parseFloat(editingSupplement.prix),
-          disponible: editingSupplement.disponible
+          is_active: editingSupplement.is_active
         })
-        .eq('id', editingSupplement.id);
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Erreur lors de la modification du supplément');
+      }
 
+      const data = await response.json();
       setSupplements(prev => 
         prev.map(sup => 
-          sup.id === editingSupplement.id ? editingSupplement : sup
+          sup.id === editingSupplement.id ? data : sup
         )
       );
       setEditingSupplement(null);
@@ -164,12 +180,19 @@ export default function MenuSupplements() {
     }
 
     try {
-      const { error } = await supabase
-        .from('menu_supplements')
-        .delete()
-        .eq('id', supplementId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      if (error) throw error;
+      const response = await fetch(`/api/restaurants/${restaurant.id}/supplements?supplementId=${supplementId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression du supplément');
+      }
 
       setSupplements(prev => prev.filter(sup => sup.id !== supplementId));
     } catch (error) {
@@ -180,16 +203,34 @@ export default function MenuSupplements() {
 
   const toggleSupplementAvailability = async (supplementId, currentStatus) => {
     try {
-      const { error } = await supabase
-        .from('menu_supplements')
-        .update({ disponible: !currentStatus })
-        .eq('id', supplementId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      if (error) throw error;
+      const supplement = supplements.find(sup => sup.id === supplementId);
+      
+      const response = await fetch(`/api/restaurants/${restaurant.id}/supplements`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          supplementId: supplementId,
+          name: supplement.name,
+          price: supplement.price,
+          category: supplement.category,
+          description: supplement.description,
+          is_active: !currentStatus
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la modification du statut');
+      }
 
       setSupplements(prev => 
         prev.map(sup => 
-          sup.id === supplementId ? { ...sup, disponible: !currentStatus } : sup
+          sup.id === supplementId ? { ...sup, is_active: !currentStatus } : sup
         )
       );
     } catch (error) {
@@ -238,8 +279,8 @@ export default function MenuSupplements() {
                 </label>
                 <input
                   type="text"
-                  value={newSupplement.nom}
-                  onChange={(e) => setNewSupplement(prev => ({ ...prev, nom: e.target.value }))}
+                  value={newSupplement.name}
+                  onChange={(e) => setNewSupplement(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="Ex: Fromage râpé, Bacon, Sauce..."
                 />
@@ -253,8 +294,8 @@ export default function MenuSupplements() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={newSupplement.prix}
-                  onChange={(e) => setNewSupplement(prev => ({ ...prev, prix: e.target.value }))}
+                  value={newSupplement.price}
+                  onChange={(e) => setNewSupplement(prev => ({ ...prev, price: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="0.50"
                 />
@@ -262,19 +303,19 @@ export default function MenuSupplements() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Plat associé *
+                  Catégorie
                 </label>
                 <select
-                  value={newSupplement.menu_item_id}
-                  onChange={(e) => setNewSupplement(prev => ({ ...prev, menu_item_id: e.target.value }))}
+                  value={newSupplement.category}
+                  onChange={(e) => setNewSupplement(prev => ({ ...prev, category: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="">Sélectionner un plat</option>
-                  {menuItems.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {item.nom}
-                    </option>
-                  ))}
+                  <option value="général">Général</option>
+                  <option value="fromage">Fromage</option>
+                  <option value="viande">Viande</option>
+                  <option value="légumes">Légumes</option>
+                  <option value="herbes">Herbes</option>
+                  <option value="sauces">Sauces</option>
                 </select>
               </div>
               
@@ -326,21 +367,35 @@ export default function MenuSupplements() {
               {supplements.map((supplement) => (
                 <div key={supplement.id} className="px-6 py-4">
                   {editingSupplement?.id === supplement.id ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <input
                         type="text"
-                        value={editingSupplement.nom}
-                        onChange={(e) => setEditingSupplement(prev => ({ ...prev, nom: e.target.value }))}
+                        value={editingSupplement.name}
+                        onChange={(e) => setEditingSupplement(prev => ({ ...prev, name: e.target.value }))}
                         className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Nom du supplément"
                       />
                       <input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={editingSupplement.prix}
-                        onChange={(e) => setEditingSupplement(prev => ({ ...prev, prix: e.target.value }))}
+                        value={editingSupplement.price}
+                        onChange={(e) => setEditingSupplement(prev => ({ ...prev, price: e.target.value }))}
                         className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Prix"
                       />
+                      <select
+                        value={editingSupplement.category}
+                        onChange={(e) => setEditingSupplement(prev => ({ ...prev, category: e.target.value }))}
+                        className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="général">Général</option>
+                        <option value="fromage">Fromage</option>
+                        <option value="viande">Viande</option>
+                        <option value="légumes">Légumes</option>
+                        <option value="herbes">Herbes</option>
+                        <option value="sauces">Sauces</option>
+                      </select>
                       <div className="flex gap-2">
                         <button
                           onClick={handleEditSupplement}
@@ -360,9 +415,9 @@ export default function MenuSupplements() {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          <h4 className="font-medium text-gray-900">{supplement.nom}</h4>
-                          <span className="text-sm text-gray-500">
-                            pour {supplement.menu_item?.nom}
+                          <h4 className="font-medium text-gray-900">{supplement.name}</h4>
+                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                            {supplement.category}
                           </span>
                         </div>
                         {supplement.description && (
@@ -371,17 +426,17 @@ export default function MenuSupplements() {
                       </div>
                       
                       <div className="flex items-center gap-4">
-                        <span className="font-semibold text-gray-900">{supplement.prix}€</span>
+                        <span className="font-semibold text-gray-900">{supplement.price}€</span>
                         
                         <button
-                          onClick={() => toggleSupplementAvailability(supplement.id, supplement.disponible)}
+                          onClick={() => toggleSupplementAvailability(supplement.id, supplement.is_active)}
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            supplement.disponible
+                            supplement.is_active
                               ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
                           }`}
                         >
-                          {supplement.disponible ? 'Disponible' : 'Indisponible'}
+                          {supplement.is_active ? 'Disponible' : 'Indisponible'}
                         </button>
                         
                         <div className="flex gap-2">

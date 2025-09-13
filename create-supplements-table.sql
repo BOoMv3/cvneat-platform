@@ -62,14 +62,14 @@ INSERT INTO supplements (restaurant_id, name, price, category, description) VALU
     'Olives supplémentaires',
     1.00,
     'légumes',
-    'Portion supplémentaire d\'olives noires'
+    'Portion supplémentaire d''olives noires'
 ),
 (
     (SELECT id FROM restaurants WHERE nom = 'La Bonne Pâte' LIMIT 1),
     'Artichauts supplémentaires',
     2.00,
     'légumes',
-    'Portion supplémentaire d\'artichauts'
+    'Portion supplémentaire d''artichauts'
 ),
 (
     (SELECT id FROM restaurants WHERE nom = 'La Bonne Pâte' LIMIT 1),
