@@ -1,13 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FaPlus, FaMinus, FaTimes, FaShoppingCart, FaLeaf, FaFire, FaWheat } from 'react-icons/fa';
 
-export default function MenuItemModal({ item, isOpen, onClose, onAddToCart }) {
+export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, restaurantId }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedIngredients, setSelectedIngredients] = useState(new Set());
   const [removedIngredients, setRemovedIngredients] = useState(new Set());
+  const [supplements, setSupplements] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Récupérer les suppléments du restaurant
+  useEffect(() => {
+    if (isOpen && restaurantId) {
+      fetchSupplements();
+    }
+  }, [isOpen, restaurantId]);
+
+  const fetchSupplements = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+      if (response.ok) {
+        const data = await response.json();
+        setSupplements(data);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des suppléments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Ingrédients par défaut pour chaque plat (vous pouvez les récupérer depuis la base de données)
   const defaultIngredients = {
@@ -77,11 +101,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart }) {
   const calculateTotalPrice = () => {
     let total = item.prix || 0;
     
-    // Ajouter le prix des ingrédients supplémentaires
+    // Ajouter le prix des suppléments sélectionnés
     selectedIngredients.forEach(ingredientId => {
-      const ingredient = extraIngredients.find(ing => ing.id === ingredientId);
-      if (ingredient) {
-        total += ingredient.price;
+      const supplement = supplements.find(sup => sup.id === ingredientId);
+      if (supplement) {
+        total += supplement.price;
       }
     });
 
@@ -106,8 +130,14 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="relative">
           {item.image_url && (
@@ -200,29 +230,47 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart }) {
               <FaPlus className="w-5 h-5 text-orange-600 mr-2" />
               Ajouter des ingrédients
             </h3>
-            <div className="space-y-2">
-              {extraIngredients.map((ingredient) => (
-                <div
-                  key={ingredient.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
-                    selectedIngredients.has(ingredient.id)
-                      ? 'bg-orange-50 border-orange-200 text-orange-800'
-                      : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                  }`}
-                  onClick={() => handleIngredientToggle(ingredient)}
-                >
-                  <div className="flex items-center">
-                    <span className={`w-4 h-4 rounded-full border-2 mr-3 ${
-                      selectedIngredients.has(ingredient.id)
-                        ? 'border-orange-400 bg-orange-400'
-                        : 'border-gray-300'
-                    }`}></span>
-                    <span>{ingredient.name}</span>
+            {loading ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
+                <p className="text-gray-500 mt-2">Chargement des suppléments...</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {supplements.length > 0 ? (
+                  supplements.map((supplement) => (
+                    <div
+                      key={supplement.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                        selectedIngredients.has(supplement.id)
+                          ? 'bg-orange-50 border-orange-200 text-orange-800'
+                          : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                      }`}
+                      onClick={() => handleIngredientToggle(supplement)}
+                    >
+                      <div className="flex items-center">
+                        <span className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                          selectedIngredients.has(supplement.id)
+                            ? 'border-orange-400 bg-orange-400'
+                            : 'border-gray-300'
+                        }`}></span>
+                        <div>
+                          <span className="font-medium">{supplement.name}</span>
+                          {supplement.description && (
+                            <p className="text-xs text-gray-500 mt-1">{supplement.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-orange-600">+{supplement.price.toFixed(2)}€</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>Aucun supplément disponible</p>
                   </div>
-                  <span className="text-sm font-medium text-orange-600">+{ingredient.price}€</span>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Bouton d'ajout au panier */}

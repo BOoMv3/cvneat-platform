@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { FaPlus, FaThumbsUp, FaLock } from 'react-icons/fa';
 import MenuItemModal from './MenuItemModal';
 
-export default function MenuItem({ item, onAddToCart }) {
+export default function MenuItem({ item, onAddToCart, restaurantId }) {
   const [isAdding, setIsAdding] = useState(false);
   const [itemRating, setItemRating] = useState(null);
   const [itemReviewCount, setItemReviewCount] = useState(null);
@@ -169,6 +169,7 @@ export default function MenuItem({ item, onAddToCart }) {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddToCart={handleModalAddToCart}
+        restaurantId={restaurantId}
       />
     </div>
     </>

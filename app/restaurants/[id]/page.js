@@ -340,6 +340,7 @@ export default function RestaurantDetail({ params }) {
               selectedCategory={selectedCategory}
               onCategorySelect={setSelectedCategory}
               onAddToCart={addToCart}
+              restaurantId={params.id}
             />
           )}
         </div>
