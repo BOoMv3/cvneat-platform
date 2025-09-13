@@ -1,0 +1,240 @@
+'use client';
+
+import { useState } from 'react';
+import Image from 'next/image';
+import { FaPlus, FaMinus, FaTimes, FaShoppingCart, FaLeaf, FaFire, FaWheat } from 'react-icons/fa';
+
+export default function MenuItemModal({ item, isOpen, onClose, onAddToCart }) {
+  const [quantity, setQuantity] = useState(1);
+  const [selectedIngredients, setSelectedIngredients] = useState(new Set());
+  const [removedIngredients, setRemovedIngredients] = useState(new Set());
+
+  // Ingrédients par défaut pour chaque plat (vous pouvez les récupérer depuis la base de données)
+  const defaultIngredients = {
+    'Margherita': [
+      { id: 'tomato', name: 'Sauce tomate', price: 0, removable: true },
+      { id: 'mozzarella', name: 'Mozzarella', price: 0, removable: true },
+      { id: 'basil', name: 'Basilic frais', price: 0, removable: true },
+      { id: 'olive_oil', name: 'Huile d\'olive', price: 0, removable: true }
+    ],
+    'Pepperoni': [
+      { id: 'tomato', name: 'Sauce tomate', price: 0, removable: true },
+      { id: 'mozzarella', name: 'Mozzarella', price: 0, removable: true },
+      { id: 'pepperoni', name: 'Pepperoni', price: 2, removable: true },
+      { id: 'olive_oil', name: 'Huile d\'olive', price: 0, removable: true }
+    ],
+    'Quattro Stagioni': [
+      { id: 'tomato', name: 'Sauce tomate', price: 0, removable: true },
+      { id: 'mozzarella', name: 'Mozzarella', price: 0, removable: true },
+      { id: 'artichoke', name: 'Artichauts', price: 1.5, removable: true },
+      { id: 'mushrooms', name: 'Champignons', price: 1.5, removable: true },
+      { id: 'ham', name: 'Jambon', price: 2, removable: true },
+      { id: 'olives', name: 'Olives noires', price: 1, removable: true }
+    ]
+  };
+
+  // Ingrédients supplémentaires disponibles
+  const extraIngredients = [
+    { id: 'extra_cheese', name: 'Fromage supplémentaire', price: 2 },
+    { id: 'extra_pepperoni', name: 'Pepperoni supplémentaire', price: 2.5 },
+    { id: 'extra_mushrooms', name: 'Champignons supplémentaires', price: 1.5 },
+    { id: 'extra_olives', name: 'Olives supplémentaires', price: 1 },
+    { id: 'extra_artichoke', name: 'Artichauts supplémentaires', price: 2 },
+    { id: 'extra_ham', name: 'Jambon supplémentaire', price: 2.5 },
+    { id: 'extra_basil', name: 'Basilic supplémentaire', price: 1 },
+    { id: 'extra_tomato', name: 'Tomates fraîches', price: 1.5 }
+  ];
+
+  const itemIngredients = defaultIngredients[item.nom] || [];
+  const allIngredients = [...itemIngredients, ...extraIngredients];
+
+  const handleIngredientToggle = (ingredient) => {
+    if (itemIngredients.some(ing => ing.id === ingredient.id)) {
+      // Ingrédient de base - on peut le retirer
+      setRemovedIngredients(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(ingredient.id)) {
+          newSet.delete(ingredient.id);
+        } else {
+          newSet.add(ingredient.id);
+        }
+        return newSet;
+      });
+    } else {
+      // Ingrédient supplémentaire - on peut l'ajouter
+      setSelectedIngredients(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(ingredient.id)) {
+          newSet.delete(ingredient.id);
+        } else {
+          newSet.add(ingredient.id);
+        }
+        return newSet;
+      });
+    }
+  };
+
+  const calculateTotalPrice = () => {
+    let total = item.prix || 0;
+    
+    // Ajouter le prix des ingrédients supplémentaires
+    selectedIngredients.forEach(ingredientId => {
+      const ingredient = extraIngredients.find(ing => ing.id === ingredientId);
+      if (ingredient) {
+        total += ingredient.price;
+      }
+    });
+
+    return total * quantity;
+  };
+
+  const handleAddToCart = () => {
+    const customizedItem = {
+      ...item,
+      quantity,
+      customizations: {
+        removedIngredients: Array.from(removedIngredients),
+        addedIngredients: Array.from(selectedIngredients),
+        totalPrice: calculateTotalPrice()
+      }
+    };
+    
+    onAddToCart(customizedItem);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="relative">
+          {item.image_url && (
+            <div className="relative h-48 w-full">
+              <Image
+                src={item.image_url}
+                alt={item.nom}
+                fill
+                className="object-cover rounded-t-2xl"
+              />
+            </div>
+          )}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 bg-white bg-opacity-90 rounded-full p-2 hover:bg-opacity-100 transition-all"
+          >
+            <FaTimes className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {/* Titre et description */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{item.nom}</h2>
+            <p className="text-gray-600 mb-4">{item.description}</p>
+            <div className="flex items-center justify-between">
+              <span className="text-3xl font-bold text-orange-600">{calculateTotalPrice().toFixed(2)}€</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">Quantité:</span>
+                <div className="flex items-center border rounded-lg">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="p-2 hover:bg-gray-100 transition-colors"
+                  >
+                    <FaMinus className="w-4 h-4" />
+                  </button>
+                  <span className="px-4 py-2 font-medium">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="p-2 hover:bg-gray-100 transition-colors"
+                  >
+                    <FaPlus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Ingrédients de base */}
+          {itemIngredients.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <FaLeaf className="w-5 h-5 text-green-600 mr-2" />
+                Ingrédients inclus
+              </h3>
+              <div className="space-y-2">
+                {itemIngredients.map((ingredient) => (
+                  <div
+                    key={ingredient.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                      removedIngredients.has(ingredient.id)
+                        ? 'bg-red-50 border-red-200 text-red-600'
+                        : 'bg-green-50 border-green-200 text-green-800'
+                    }`}
+                    onClick={() => handleIngredientToggle(ingredient)}
+                  >
+                    <div className="flex items-center">
+                      <span className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                        removedIngredients.has(ingredient.id)
+                          ? 'border-red-400 bg-red-400'
+                          : 'border-green-400 bg-green-400'
+                      }`}></span>
+                      <span className={removedIngredients.has(ingredient.id) ? 'line-through' : ''}>
+                        {ingredient.name}
+                      </span>
+                    </div>
+                    {ingredient.price > 0 && (
+                      <span className="text-sm font-medium">+{ingredient.price}€</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ingrédients supplémentaires */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+              <FaPlus className="w-5 h-5 text-orange-600 mr-2" />
+              Ajouter des ingrédients
+            </h3>
+            <div className="space-y-2">
+              {extraIngredients.map((ingredient) => (
+                <div
+                  key={ingredient.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                    selectedIngredients.has(ingredient.id)
+                      ? 'bg-orange-50 border-orange-200 text-orange-800'
+                      : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                  }`}
+                  onClick={() => handleIngredientToggle(ingredient)}
+                >
+                  <div className="flex items-center">
+                    <span className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                      selectedIngredients.has(ingredient.id)
+                        ? 'border-orange-400 bg-orange-400'
+                        : 'border-gray-300'
+                    }`}></span>
+                    <span>{ingredient.name}</span>
+                  </div>
+                  <span className="text-sm font-medium text-orange-600">+{ingredient.price}€</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bouton d'ajout au panier */}
+          <button
+            onClick={handleAddToCart}
+            className="w-full bg-orange-600 text-white py-4 rounded-xl hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2 font-semibold text-lg"
+          >
+            <FaShoppingCart className="w-5 h-5" />
+            <span>Ajouter au panier - {calculateTotalPrice().toFixed(2)}€</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

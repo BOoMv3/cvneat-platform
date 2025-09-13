@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FaPlus, FaThumbsUp, FaLock } from 'react-icons/fa';
+import MenuItemModal from './MenuItemModal';
 
 export default function MenuItem({ item, onAddToCart }) {
   const [isAdding, setIsAdding] = useState(false);
   const [itemRating, setItemRating] = useState(null);
   const [itemReviewCount, setItemReviewCount] = useState(null);
   const [popularNumber, setPopularNumber] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const {
     id,
@@ -47,8 +49,21 @@ export default function MenuItem({ item, onAddToCart }) {
     }, 1500);
   };
 
+  const handleItemClick = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleModalAddToCart = (customizedItem) => {
+    onAddToCart(customizedItem);
+    setIsModalOpen(false);
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 w-full max-w-sm mx-auto">
+    <>
+      <div 
+        className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 w-full max-w-sm mx-auto cursor-pointer"
+        onClick={handleItemClick}
+      >
       {/* Image de l'article - PROPORTIONS MOBILE OPTIMISÉES */}
       <div className="relative h-36 w-full bg-gradient-to-br from-purple-100 to-orange-100">
         {image_url ? (
@@ -74,7 +89,10 @@ export default function MenuItem({ item, onAddToCart }) {
 
         {/* Bouton d'ajout avec animation - TAILLE MOBILE OPTIMISÉE */}
         <button
-          onClick={handleAddToCart}
+          onClick={(e) => {
+            e.stopPropagation(); // Empêcher l'ouverture de la modal
+            handleAddToCart();
+          }}
           disabled={isAdding}
           className={`absolute bottom-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform ${
             isAdding
@@ -144,6 +162,15 @@ export default function MenuItem({ item, onAddToCart }) {
           </div>
         )}
       </div>
+
+      {/* Modal pour personnaliser le plat */}
+      <MenuItemModal
+        item={item}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAddToCart={handleModalAddToCart}
+      />
     </div>
+    </>
   );
 } 
