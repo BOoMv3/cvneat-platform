@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '../../../../components/Navbar';
+import HomepageNavbar from '../../../../components/HomepageNavbar';
 import { FaArrowLeft, FaSpinner, FaCheck, FaTimes } from 'react-icons/fa';
 import { supabase } from '../../../../lib/supabase';
 
@@ -11,15 +11,31 @@ export default function OrderDetail({ params }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userPoints, setUserPoints] = useState(0);
+  const [cart, setCart] = useState([]);
+  const [showFloatingCart, setShowFloatingCart] = useState(false);
   const { id } = params;
 
   useEffect(() => {
     const checkUserAndFetchOrder = async () => {
         const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
         if (!user) {
             router.push('/login');
             return;
         }
+        
+        // Charger les points de fidélité
+        const { data: userData } = await supabase
+          .from('users')
+          .select('points_fidelite')
+          .eq('id', user.id)
+          .single();
+        if (userData) {
+          setUserPoints(userData.points_fidelite || 0);
+        }
+        
         if(id) fetchOrder();
     };
     
@@ -78,7 +94,17 @@ export default function OrderDetail({ params }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        {/* Hero Section avec navigation */}
+        <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
+          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+          <HomepageNavbar 
+            user={user} 
+            userPoints={userPoints} 
+            cart={cart} 
+            showFloatingCart={showFloatingCart} 
+            setShowFloatingCart={setShowFloatingCart} 
+          />
+        </section>
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
@@ -91,7 +117,17 @@ export default function OrderDetail({ params }) {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        {/* Hero Section avec navigation */}
+        <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
+          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+          <HomepageNavbar 
+            user={user} 
+            userPoints={userPoints} 
+            cart={cart} 
+            showFloatingCart={showFloatingCart} 
+            setShowFloatingCart={setShowFloatingCart} 
+          />
+        </section>
         <div className="container mx-auto px-4 py-8">
           <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
             {error}
@@ -104,7 +140,17 @@ export default function OrderDetail({ params }) {
   if (!order) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        {/* Hero Section avec navigation */}
+        <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
+          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+          <HomepageNavbar 
+            user={user} 
+            userPoints={userPoints} 
+            cart={cart} 
+            showFloatingCart={showFloatingCart} 
+            setShowFloatingCart={setShowFloatingCart} 
+          />
+        </section>
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-8">
             <p className="text-gray-500">Commande non trouvée</p>
@@ -116,7 +162,17 @@ export default function OrderDetail({ params }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      {/* Hero Section avec navigation */}
+      <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
+        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+        <HomepageNavbar 
+          user={user} 
+          userPoints={userPoints} 
+          cart={cart} 
+          showFloatingCart={showFloatingCart} 
+          setShowFloatingCart={setShowFloatingCart} 
+        />
+      </section>
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
