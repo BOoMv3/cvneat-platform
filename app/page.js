@@ -28,7 +28,8 @@ import {
   FaHamburger,
   FaCoffee,
   FaIceCream,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaTruck
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
@@ -252,8 +253,8 @@ export default function Home() {
         <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1 sm:space-x-2">
           {/* Bouton Suivre ma commande - Compact avec icône */}
           <Link href="/track-order" className="bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
-            <FaSearch className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Suivre</span>
+            <FaTruck className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="hidden sm:inline">Ma commande</span>
           </Link>
           
           {user ? (
