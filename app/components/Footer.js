@@ -27,11 +27,6 @@ export default function Footer() {
                   Devenir partenaire
                 </Link>
               </li>
-              <li>
-                <Link href="/carrieres" className="text-gray-400 hover:text-white">
-                  Carrières
-                </Link>
-              </li>
             </ul>
           </div>
 
