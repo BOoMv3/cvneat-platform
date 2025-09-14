@@ -1,0 +1,14 @@
+# Variables d'environnement pour CVNeat
+# Copiez ce fichier vers .env.local et remplissez les valeurs
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# VAPID Keys pour les notifications push
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_vapid_public_key
+VAPID_PRIVATE_KEY=your_vapid_private_key
+
+# Autres configurations
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key

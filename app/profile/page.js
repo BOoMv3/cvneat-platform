@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog } from 'react-icons/fa';
+import LoyaltyProgram from '../components/LoyaltyProgram';
+import PushNotificationService from '../components/PushNotificationService';
 
 export default function Profile() {
   const router = useRouter();
@@ -556,32 +558,9 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Programme de fidélité</h3>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <FaGift className="text-orange-500 text-2xl mr-3" />
-                    <div>
-                      <h4 className="font-medium text-gray-900">Points de fidélité</h4>
-                      <p className="text-sm text-gray-600">Gagnez des points à chaque commande</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-orange-600">{user?.points_fidelite || 0}</p>
-                    <p className="text-sm text-gray-600">points</p>
-                  </div>
-                </div>
+              <LoyaltyProgram userPoints={user?.points_fidelite || 0} />
 
-                <div className="bg-gray-100 rounded-lg p-4">
-                  <h5 className="font-medium text-gray-900 mb-2">Comment gagner des points ?</h5>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• 1 point par euro dépensé</li>
-                    <li>• 10 points bonus pour votre première commande</li>
-                    <li>• 50 points pour chaque avis laissé</li>
-                  </ul>
-                </div>
-              </div>
+              <PushNotificationService />
 
               <div className="bg-red-50 border border-red-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-red-900 mb-4">Zone de danger</h3>

@@ -1,7 +1,39 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { rateLimiter } from './app/lib/rateLimiter';
 
 export async function middleware(request) {
+  // Rate limiting pour les routes API
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const apiLimiter = rateLimiter({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 100, // 100 requêtes par fenêtre
+      keyGenerator: (req) => {
+        // Utiliser l'IP comme clé
+        return req.headers.get('x-forwarded-for') || 
+               req.headers.get('x-real-ip') || 
+               'unknown';
+      }
+    });
+
+    const result = apiLimiter(request);
+    
+    if (!result.allowed) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Trop de requêtes, veuillez réessayer plus tard' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
+            'Retry-After': Math.ceil((result.resetTime - Date.now()) / 1000)
+          }
+        }
+      );
+    }
+  }
+
   // Liste des routes publiques
   const publicRoutes = [
     '/',
