@@ -15,11 +15,6 @@
       "src": "/icon-16x16.png",
       "sizes": "16x16",
       "type": "image/png"
-    },
-    {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
     }
   ],
   "shortcuts": [
@@ -28,50 +23,18 @@
       "short_name": "Commander",
       "description": "Passer une commande",
       "url": "/restaurants",
-      "icons": [
-        {
-          "src": "/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
     },
     {
       "name": "Mes commandes",
       "short_name": "Commandes",
       "description": "Voir mes commandes",
       "url": "/profile/orders",
-      "icons": [
-        {
-          "src": "/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
     },
     {
       "name": "Profil",
       "short_name": "Profil",
       "description": "Gérer mon profil",
       "url": "/profile",
-      "icons": [
-        {
-          "src": "/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/screenshot-narrow.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow"
     }
   ],
   "related_applications": [],
