@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaHeart, FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaHeart, FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaArrowLeft, FaHome } from 'react-icons/fa';
 import FavoriteButton from '../components/FavoriteButton';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
+import PageHeader from '@/components/PageHeader';
 
 export default function FavoritesPage() {
   const router = useRouter();
@@ -91,10 +92,15 @@ export default function FavoritesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <PageHeader 
+        title="Mes Favoris" 
+        icon={FaHeart}
+        className="max-w-7xl mx-auto"
+      />
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Favoris</h1>
             <p className="text-gray-600">
               {favorites.length} restaurant{favorites.length !== 1 ? 's' : ''} favori{favorites.length !== 1 ? 's' : ''}
             </p>

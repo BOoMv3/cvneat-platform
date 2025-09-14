@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog } from 'react-icons/fa';
+import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome } from 'react-icons/fa';
 import LoyaltyProgram from '../components/LoyaltyProgram';
 import PushNotificationService from '../components/PushNotificationService';
+import PageHeader from '@/components/PageHeader';
 
 export default function Profile() {
   const router = useRouter();
@@ -226,17 +227,24 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <PageHeader 
+        title="Mon Profil" 
+        icon={FaUser}
+        rightContent={
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <FaSignOutAlt className="text-sm" />
+            <span>Déconnexion</span>
+          </button>
+        }
+      />
+
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
+          <div className="mb-6 sm:mb-8">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Mon profil</h1>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 min-h-[44px] touch-manipulation w-full sm:w-auto"
-            >
-              <FaSignOutAlt className="h-4 w-4" />
-              <span>Déconnexion</span>
-            </button>
           </div>
 
           {/* Formulaire de modification des infos utilisateur */}
