@@ -2,7 +2,7 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
-import { ThemeProvider } from '../contexts/ThemeContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 
 const inter = Inter({ subsets: ['latin'] });

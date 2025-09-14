@@ -1,6 +1,6 @@
 'use client';
 
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { FaSun, FaMoon } from 'react-icons/fa';
 
 export default function DarkModeToggle({ className = '' }) {
