@@ -9,6 +9,8 @@ import Modal from '../../components/Modal';
 import RestaurantBanner from '@/components/RestaurantBanner';
 import MenuItem from '@/components/MenuItem';
 import MenuByCategories from '@/components/MenuByCategories';
+import ReviewsSection from '@/components/ReviewsSection';
+import StarRating from '@/components/StarRating';
 
 
 export default function RestaurantDetail({ params }) {
@@ -427,6 +429,11 @@ export default function RestaurantDetail({ params }) {
           </div>
         )}
       </main>
+
+      {/* Section des avis */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <ReviewsSection restaurantId={params.id} userId={user?.id} />
+      </div>
     </div>
   );
 } 

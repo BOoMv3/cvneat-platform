@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaHeart } from 'react-icons/fa';
+import StarRating from './StarRating';
 
 export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false }) {
   if (!restaurant) return null;
@@ -107,10 +108,13 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       <div className="absolute -bottom-20 left-0 right-0 bg-white bg-opacity-95 backdrop-blur-sm p-4 rounded-t-3xl shadow-lg border border-gray-200">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <FaStar className="text-yellow-400 text-lg" />
-              <span className="font-semibold text-gray-800">{restaurant.rating || '4.5'}</span>
-              <span className="text-gray-600 text-sm">({restaurant.reviewCount || '100+'})</span>
+            <div className="flex items-center gap-2">
+              <StarRating 
+                rating={restaurant.rating || 0} 
+                size="sm" 
+                showValue={true}
+              />
+              <span className="text-gray-600 text-sm">({restaurant.reviews_count || '0'} avis)</span>
             </div>
             <div className="flex items-center gap-1">
               <FaClock className="text-gray-600" />
