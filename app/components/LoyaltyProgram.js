@@ -128,9 +128,20 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
   };
 
   const redeemReward = async (rewardId) => {
-    // Logique pour échanger une récompense
-    console.log('Échange de la récompense:', rewardId);
-    // Ici on appellerait l'API pour échanger la récompense
+    try {
+      // Logique pour échanger une récompense
+      console.log('Échange de la récompense:', rewardId);
+      
+      // Ici on appellerait l'API pour échanger la récompense
+      // Pour l'instant, on simule le succès
+      alert(`Récompense ${rewardId} échangée avec succès !`);
+      
+      // Recharger les récompenses
+      fetchRewards();
+    } catch (error) {
+      console.error('Erreur lors de l\'échange de la récompense:', error);
+      alert('Erreur lors de l\'échange de la récompense');
+    }
   };
 
   const CurrentLevelIcon = LOYALTY_LEVELS[currentLevel].icon;

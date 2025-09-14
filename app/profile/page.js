@@ -9,6 +9,7 @@ import PushNotificationService from '../components/PushNotificationService';
 import PageHeader from '@/components/PageHeader';
 import DarkModeToggle from '@/components/DarkModeToggle';
 import TestComponent from '../components/TestComponent';
+import NotificationToggle from '@/components/NotificationToggle';
 
 export default function Profile() {
   const router = useRouter();
@@ -22,6 +23,8 @@ export default function Profile() {
   const [addressForm, setAddressForm] = useState({ name: '', address: '', city: '', postalCode: '', instructions: '' });
   const [editAddressId, setEditAddressId] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -130,6 +133,27 @@ export default function Profile() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  const handleEmailNotificationChange = async (enabled) => {
+    setEmailNotifications(enabled);
+    // Ici on pourrait sauvegarder la préférence en base de données
+    try {
+      // API call pour sauvegarder la préférence
+      console.log('Email notifications:', enabled ? 'activées' : 'désactivées');
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde de la préférence:', error);
+    }
+  };
+
+  const handlePushNotificationChange = async (enabled) => {
+    setPushNotifications(enabled);
+    // Ici on pourrait gérer l'abonnement aux notifications push
+    try {
+      console.log('Push notifications:', enabled ? 'activées' : 'désactivées');
+    } catch (error) {
+      console.error('Erreur lors de la gestion des notifications push:', error);
+    }
   };
 
   const handleAddressSubmit = async (e) => {
@@ -536,27 +560,19 @@ export default function Profile() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Paramètres du compte</h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Notifications par email</h4>
-                      <p className="text-sm text-gray-600">Recevoir des mises à jour sur vos commandes</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" defaultChecked />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                    </label>
-                  </div>
+                  <NotificationToggle
+                    enabled={emailNotifications}
+                    onChange={handleEmailNotificationChange}
+                    label="Notifications par email"
+                    description="Recevoir des mises à jour sur vos commandes"
+                  />
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Notifications push</h4>
-                      <p className="text-sm text-gray-600">Recevoir des notifications sur votre appareil</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                    </label>
-                  </div>
+                  <NotificationToggle
+                    enabled={pushNotifications}
+                    onChange={handlePushNotificationChange}
+                    label="Notifications push"
+                    description="Recevoir des notifications sur votre appareil"
+                  />
 
                   <div className="flex items-center justify-between">
                     <div>
