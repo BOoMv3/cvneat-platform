@@ -5,70 +5,69 @@ import { FaStar } from 'react-icons/fa';
 
 export default function StarRating({ 
   rating = 0, 
-  onRatingChange = null, 
-  interactive = false, 
-  size = 'md',
-  showValue = false 
+  maxRating = 5, 
+  size = 'sm',
+  interactive = false,
+  onRatingChange = null,
+  className = ''
 }) {
   const [hoveredRating, setHoveredRating] = useState(0);
-  
+
   const sizes = {
-    sm: 'h-3 w-3',
-    md: 'h-4 w-4',
-    lg: 'h-5 w-5',
-    xl: 'h-6 w-6'
+    xs: 'text-xs',
+    sm: 'text-sm',
+    md: 'text-base',
+    lg: 'text-lg',
+    xl: 'text-xl'
   };
 
-  const handleClick = (newRating) => {
+  const handleStarClick = (starRating) => {
     if (interactive && onRatingChange) {
-      onRatingChange(newRating);
+      onRatingChange(starRating);
     }
   };
 
-  const handleMouseEnter = (newRating) => {
+  const handleStarHover = (starRating) => {
     if (interactive) {
-      setHoveredRating(newRating);
+      setHoveredRating(starRating);
     }
   };
 
-  const handleMouseLeave = () => {
+  const handleStarLeave = () => {
     if (interactive) {
       setHoveredRating(0);
     }
   };
 
-  const displayRating = hoveredRating || rating;
+  const displayRating = interactive ? hoveredRating || rating : rating;
 
   return (
-    <div className="flex items-center space-x-1">
-      <div className="flex space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type={interactive ? 'button' : undefined}
-            onClick={() => handleClick(star)}
-            onMouseEnter={() => handleMouseEnter(star)}
-            onMouseLeave={handleMouseLeave}
-            disabled={!interactive}
-            className={`
-              ${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'}
-              transition-transform duration-150
-            `}
-          >
-            <FaStar
-              className={`${sizes[size]} ${
-                star <= displayRating
-                  ? 'text-yellow-400 fill-current'
-                  : 'text-gray-300'
-              }`}
-            />
-          </button>
-        ))}
-      </div>
-      
-      {showValue && (
-        <span className="ml-2 text-sm font-medium text-gray-700">
-          {rating.toFixed(1)}
+    <div className={`flex items-center space-x-1 ${className}`}>
+      {[...Array(maxRating)].map((_, index) => {
+        const starRating = index + 1;
+        const isFilled = starRating <= displayRating;
+        
+        return (
+          <FaStar
+            key={index}
+            className={`${sizes[size]} ${
+              isFilled 
+                ? 'text-yellow-400' 
+                : 'text-gray-300'
+            } ${
+              interactive 
+                ? 'cursor-pointer hover:scale-110 transition-transform' 
+                : ''
+            }`}
+            onClick={() => handleStarClick(starRating)}
+            onMouseEnter={() => handleStarHover(starRating)}
+            onMouseLeave={handleStarLeave}
+          />
+        );
+      })}
+      {!interactive && (
+        <span className="text-gray-600 text-sm ml-1">
+          ({rating.toFixed(1)})
         </span>
       )}
     </div>
