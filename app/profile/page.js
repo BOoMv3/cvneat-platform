@@ -375,7 +375,7 @@ export default function Profile() {
           )}
 
           {/* Contenu des onglets */}
-          {activeTab === 'orders' ? (
+          {activeTab === 'orders' && (
             <div className="space-y-4 sm:space-y-6">
               {orders.length === 0 ? (
                 <div className="text-center py-6 sm:py-8">
@@ -437,7 +437,10 @@ export default function Profile() {
                 ))
               )}
             </div>
-          ) : (
+          )}
+
+          {/* Onglet Adresses */}
+          {activeTab === 'addresses' && (
             <div className="space-y-4 sm:space-y-6">
               <form onSubmit={handleAddressSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-white p-4 sm:p-6 rounded shadow mb-4 sm:mb-6">
                 <div>
