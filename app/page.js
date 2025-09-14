@@ -194,8 +194,16 @@ export default function Home() {
   };
 
   const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
-    const matchesSearch = restaurant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         restaurant.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      restaurant.nom?.toLowerCase().includes(searchLower) ||
+      restaurant.description?.toLowerCase().includes(searchLower) ||
+      restaurant.cuisine_type?.toLowerCase().includes(searchLower) ||
+      restaurant.adresse?.toLowerCase().includes(searchLower) ||
+      restaurant.ville?.toLowerCase().includes(searchLower);
+    
     return matchesSearch;
   }).sort((a, b) => {
     switch (sortBy) {

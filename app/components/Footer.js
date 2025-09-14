@@ -27,6 +27,11 @@ export default function Footer() {
                   Devenir partenaire
                 </Link>
               </li>
+              <li>
+                <Link href="/favorites" className="text-gray-400 hover:text-white">
+                  Mes favoris
+                </Link>
+              </li>
             </ul>
           </div>
 
