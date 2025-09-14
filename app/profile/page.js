@@ -8,6 +8,7 @@ import LoyaltyProgram from '../components/LoyaltyProgram';
 import PushNotificationService from '../components/PushNotificationService';
 import PageHeader from '@/components/PageHeader';
 import DarkModeToggle from '../components/DarkModeToggle';
+import TestComponent from '../components/TestComponent';
 
 export default function Profile() {
   const router = useRouter();
@@ -567,9 +568,9 @@ export default function Profile() {
                 </div>
               </div>
 
-              <LoyaltyProgram userPoints={user?.points_fidelite || 0} />
+              <TestComponent />
 
-              <PushNotificationService />
+              <TestComponent />
 
               <div className="bg-red-50 border border-red-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-red-900 mb-4">Zone de danger</h3>
