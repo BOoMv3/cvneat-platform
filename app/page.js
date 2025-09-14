@@ -33,6 +33,7 @@ import {
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
+import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 
 
 // Desactiver le rendu statique pour cette page
@@ -506,17 +507,12 @@ export default function Home() {
                   <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
                     <div className="flex flex-col sm:flex-row">
                       {/* Image du restaurant */}
-                      <div className="relative h-48 sm:h-64 lg:h-auto lg:w-1/3 overflow-hidden">
-                        <Image
-                          src={restaurant.image_url || restaurant.imageUrl || restaurant.profile_image || restaurant.banner_image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'}
-                          alt={restaurant.nom}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
-                          unoptimized
-                          onError={(e) => {
-                            console.log('Erreur image restaurant:', restaurant.nom, 'URL:', e.target.src);
-                            e.target.src = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop';
-                          }}
+                      <div className="relative h-48 sm:h-64 md:h-72 lg:h-auto lg:w-1/3 overflow-hidden">
+                        <OptimizedRestaurantImage
+                          restaurant={restaurant}
+                          className="h-full w-full"
+                          priority={false}
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         />
                         
                         {/* Overlay avec gradient */}

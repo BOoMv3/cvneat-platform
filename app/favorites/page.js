@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { FaHeart, FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt } from 'react-icons/fa';
 import FavoriteButton from '../components/FavoriteButton';
+import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 
 export default function FavoritesPage() {
   const router = useRouter();
@@ -148,17 +149,12 @@ export default function FavoritesPage() {
                 >
                   {/* Image du restaurant */}
                   <div className="relative h-48 bg-gray-200">
-                    {restaurant.image_url ? (
-                      <img
-                        src={restaurant.image_url}
-                        alt={restaurant.nom}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <span className="text-4xl">🍽️</span>
-                      </div>
-                    )}
+                    <OptimizedRestaurantImage
+                      restaurant={restaurant}
+                      className="h-full w-full"
+                      priority={false}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
                     
                     {/* Bouton favori */}
                     <div className="absolute top-3 right-3">
