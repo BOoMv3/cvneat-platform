@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt } from 'react-icons/fa';
+import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog } from 'react-icons/fa';
 
 export default function Profile() {
   const router = useRouter();
@@ -342,6 +342,28 @@ export default function Profile() {
               <FaMapMarkerAlt className="inline-block mr-2" />
               Mes adresses
             </button>
+            <button
+              onClick={() => setActiveTab('favorites')}
+              className={`px-3 sm:px-4 py-2 rounded-lg min-h-[44px] touch-manipulation text-sm sm:text-base ${
+                activeTab === 'favorites'
+                  ? 'bg-black text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FaHeart className="inline-block mr-2" />
+              Mes favoris
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-3 sm:px-4 py-2 rounded-lg min-h-[44px] touch-manipulation text-sm sm:text-base ${
+                activeTab === 'settings'
+                  ? 'bg-black text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FaCog className="inline-block mr-2" />
+              Paramètres
+            </button>
           </div>
 
           {error && (
@@ -472,6 +494,109 @@ export default function Profile() {
                   </div>
                 ))
               )}
+            </div>
+          )}
+
+          {/* Onglet Favoris */}
+          {activeTab === 'favorites' && (
+            <div className="space-y-4">
+              <div className="text-center py-8">
+                <FaHeart className="text-4xl text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Mes Favoris</h3>
+                <p className="text-gray-600 mb-6">Retrouvez vos restaurants préférés</p>
+                <button
+                  onClick={() => router.push('/favorites')}
+                  className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  Voir mes favoris
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Onglet Paramètres */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Paramètres du compte</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Notifications par email</h4>
+                      <p className="text-sm text-gray-600">Recevoir des mises à jour sur vos commandes</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" defaultChecked />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Notifications push</h4>
+                      <p className="text-sm text-gray-600">Recevoir des notifications sur votre appareil</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Mode sombre</h4>
+                      <p className="text-sm text-gray-600">Interface sombre pour économiser la batterie</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Programme de fidélité</h3>
+                
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <FaGift className="text-orange-500 text-2xl mr-3" />
+                    <div>
+                      <h4 className="font-medium text-gray-900">Points de fidélité</h4>
+                      <p className="text-sm text-gray-600">Gagnez des points à chaque commande</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-orange-600">{user?.points_fidelite || 0}</p>
+                    <p className="text-sm text-gray-600">points</p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-100 rounded-lg p-4">
+                  <h5 className="font-medium text-gray-900 mb-2">Comment gagner des points ?</h5>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• 1 point par euro dépensé</li>
+                    <li>• 10 points bonus pour votre première commande</li>
+                    <li>• 50 points pour chaque avis laissé</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-red-900 mb-4">Zone de danger</h3>
+                <button
+                  onClick={() => {
+                    if (confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
+                      // Logique de suppression du compte
+                      alert('Fonctionnalité à implémenter');
+                    }
+                  }}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Supprimer mon compte
+                </button>
+              </div>
             </div>
           )}
         </div>

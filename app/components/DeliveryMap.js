@@ -1,13 +1,19 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect } from 'react';
 import { FaMapMarkerAlt, FaRoute, FaClock } from 'react-icons/fa';
 
-export default function DeliveryMap({ currentOrder, deliveryAddress }) {
+export default function DeliveryMap({ 
+  restaurantCoordinates, 
+  deliveryCoordinates, 
+  distance, 
+  estimatedTime,
+  className = '' 
+}) {
   const [mapLoaded, setMapLoaded] = useState(false);
-  const mapRef = useRef(null);
 
   useEffect(() => {
-    // Simuler le chargement de la carte
+    // Simulation du chargement de la carte
     const timer = setTimeout(() => {
       setMapLoaded(true);
     }, 1000);
@@ -15,97 +21,94 @@ export default function DeliveryMap({ currentOrder, deliveryAddress }) {
     return () => clearTimeout(timer);
   }, []);
 
-  if (!currentOrder) {
+  if (!restaurantCoordinates || !deliveryCoordinates) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <FaMapMarkerAlt className="h-5 w-5 text-gray-400" />
-          <h3 className="text-lg font-semibold text-gray-900">Carte de livraison</h3>
-        </div>
-        <div className="text-center py-8 text-gray-500">
-          <FaMapMarkerAlt className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <p>Aucune livraison en cours</p>
-          <p className="text-sm">La carte s'affichera ici quand vous aurez une commande</p>
-        </div>
+      <div className={`bg-gray-100 rounded-lg p-8 text-center ${className}`}>
+        <FaMapMarkerAlt className="text-4xl text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600">Carte de livraison non disponible</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <FaMapMarkerAlt className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Carte de livraison</h3>
-        </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <FaClock className="h-4 w-4" />
-          <span>Est. 15-20 min</span>
-        </div>
+    <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
+      <div className="p-4 border-b">
+        <h3 className="font-semibold text-gray-900 flex items-center">
+          <FaRoute className="mr-2 text-blue-500" />
+          Itinéraire de livraison
+        </h3>
       </div>
 
-      {/* Carte simulée */}
-      <div className="relative bg-gray-100 rounded-lg h-64 mb-4 overflow-hidden">
+      {/* Zone de la carte (simulation) */}
+      <div className="relative h-64 bg-gradient-to-br from-blue-100 to-green-100 overflow-hidden">
         {!mapLoaded ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+              <p className="text-gray-600 text-sm">Chargement de la carte...</p>
+            </div>
           </div>
         ) : (
-          <div className="relative h-full">
+          <>
             {/* Restaurant marker */}
-            <div className="absolute top-4 left-4 bg-green-500 text-white p-2 rounded-full shadow-lg">
-              <FaMapMarkerAlt className="h-4 w-4" />
-            </div>
-            
-            {/* Delivery address marker */}
-            <div className="absolute bottom-4 right-4 bg-red-500 text-white p-2 rounded-full shadow-lg">
-              <FaMapMarkerAlt className="h-4 w-4" />
-            </div>
-            
-            {/* Route line */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-full h-1 bg-blue-500 opacity-50 relative">
-                <div className="absolute top-0 left-0 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+            <div 
+              className="absolute transform -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: '30%',
+                top: '40%'
+              }}
+            >
+              <div className="bg-red-500 text-white p-2 rounded-full shadow-lg">
+                <FaMapMarkerAlt className="text-sm" />
+              </div>
+              <div className="bg-white px-2 py-1 rounded text-xs font-medium shadow-sm mt-1">
+                Restaurant
               </div>
             </div>
-          </div>
+
+            {/* Delivery marker */}
+            <div 
+              className="absolute transform -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: '70%',
+                top: '60%'
+              }}
+            >
+              <div className="bg-blue-500 text-white p-2 rounded-full shadow-lg">
+                <FaMapMarkerAlt className="text-sm" />
+              </div>
+              <div className="bg-white px-2 py-1 rounded text-xs font-medium shadow-sm mt-1">
+                Livraison
+              </div>
+            </div>
+
+            {/* Route line */}
+            <svg className="absolute inset-0 w-full h-full">
+              <path
+                d="M 30% 40% Q 50% 50% 70% 60%"
+                stroke="#3B82F6"
+                strokeWidth="3"
+                fill="none"
+                strokeDasharray="5,5"
+              />
+            </svg>
+          </>
         )}
       </div>
 
       {/* Informations de livraison */}
-      <div className="space-y-3">
-        <div className="flex items-start space-x-3">
-          <div className="bg-green-100 p-2 rounded-full">
-            <FaMapMarkerAlt className="h-4 w-4 text-green-600" />
+      <div className="p-4 bg-gray-50">
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center text-gray-600">
+            <FaRoute className="mr-2 text-blue-500" />
+            <span>{distance} km</span>
           </div>
-          <div className="flex-1">
-            <p className="font-medium text-gray-900">Restaurant</p>
-            <p className="text-sm text-gray-600">{currentOrder.restaurant_nom}</p>
-            <p className="text-xs text-gray-500">{currentOrder.restaurant_adresse}</p>
-          </div>
-        </div>
-
-        <div className="flex items-start space-x-3">
-          <div className="bg-red-100 p-2 rounded-full">
-            <FaMapMarkerAlt className="h-4 w-4 text-red-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-gray-900">Adresse de livraison</p>
-            <p className="text-sm text-gray-600">{currentOrder.delivery_address}</p>
-            <p className="text-xs text-gray-500">Client: {currentOrder.customer_name}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3 pt-3 border-t">
-          <div className="bg-blue-100 p-2 rounded-full">
-            <FaRoute className="h-4 w-4 text-blue-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-gray-900">Distance estimée</p>
-            <p className="text-sm text-gray-600">2.5 km • 15-20 minutes</p>
+          <div className="flex items-center text-gray-600">
+            <FaClock className="mr-2 text-green-500" />
+            <span>~{estimatedTime} min</span>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
