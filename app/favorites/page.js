@@ -154,7 +154,7 @@ export default function FavoritesPage() {
                   onClick={() => handleRestaurantClick(restaurant)}
                 >
                   {/* Image du restaurant */}
-                  <div className="relative h-48 bg-gray-200">
+                  <div className="relative h-56 sm:h-48 bg-gray-200">
                     <OptimizedRestaurantImage
                       restaurant={restaurant}
                       className="h-full w-full"

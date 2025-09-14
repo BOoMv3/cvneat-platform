@@ -354,51 +354,55 @@ export default function Profile() {
             </form>
           </section>
 
-          {/* Onglets */}
-          <div className="flex flex-wrap gap-2 sm:gap-4 mb-6 sm:mb-8">
+          {/* Onglets - Version mobile optimisée */}
+          <div className="grid grid-cols-2 gap-2 mb-6 sm:mb-8 sm:flex sm:flex-wrap sm:gap-4">
             <button
               onClick={() => setActiveTab('orders')}
-              className={`px-3 sm:px-4 py-2 rounded-lg min-h-[44px] touch-manipulation text-sm sm:text-base ${
+              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
                 activeTab === 'orders'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaShoppingBag className="inline-block mr-2" />
-              Mes commandes
+              <FaShoppingBag className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <span className="hidden xs:inline">Mes commandes</span>
+              <span className="xs:hidden">Commandes</span>
             </button>
             <button
               onClick={() => setActiveTab('addresses')}
-              className={`px-3 sm:px-4 py-2 rounded-lg min-h-[44px] touch-manipulation text-sm sm:text-base ${
+              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
                 activeTab === 'addresses'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaMapMarkerAlt className="inline-block mr-2" />
-              Mes adresses
+              <FaMapMarkerAlt className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <span className="hidden xs:inline">Mes adresses</span>
+              <span className="xs:hidden">Adresses</span>
             </button>
             <button
               onClick={() => setActiveTab('favorites')}
-              className={`px-3 sm:px-4 py-2 rounded-lg min-h-[44px] touch-manipulation text-sm sm:text-base ${
+              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
                 activeTab === 'favorites'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaHeart className="inline-block mr-2" />
-              Mes favoris
+              <FaHeart className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <span className="hidden xs:inline">Mes favoris</span>
+              <span className="xs:hidden">Favoris</span>
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`px-3 sm:px-4 py-2 rounded-lg min-h-[44px] touch-manipulation text-sm sm:text-base ${
+              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
                 activeTab === 'settings'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaCog className="inline-block mr-2" />
-              Paramètres
+              <FaCog className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <span className="hidden xs:inline">Paramètres</span>
+              <span className="xs:hidden">Réglages</span>
             </button>
           </div>
 
