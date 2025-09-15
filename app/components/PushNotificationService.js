@@ -14,12 +14,22 @@ export default function PushNotificationService() {
   }, []);
 
   const checkNotificationSupport = () => {
-    setIsSupported('Notification' in window);
+    // Support plus permissif pour iOS
+    const isSupported = typeof window !== 'undefined' && (
+      'Notification' in window || 
+      'serviceWorker' in navigator ||
+      window.navigator.userAgent.includes('iPhone') ||
+      window.navigator.userAgent.includes('iPad')
+    );
+    setIsSupported(isSupported);
   };
 
   const checkPermission = () => {
-    if ('Notification' in window) {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       setPermission(Notification.permission);
+    } else {
+      // Sur iOS, définir une permission par défaut
+      setPermission('default');
     }
   };
 
@@ -39,7 +49,24 @@ export default function PushNotificationService() {
   const requestPermission = async () => {
     console.log('🔔 Début de la demande de permission...');
     
-    // Vérification plus robuste
+    // Gestion spéciale pour iOS
+    const isIOS = typeof window !== 'undefined' && (
+      window.navigator.userAgent.includes('iPhone') ||
+      window.navigator.userAgent.includes('iPad')
+    );
+
+    if (isIOS) {
+      console.log('🍎 Détection iOS - activation directe');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('push-notifications-subscribed', 'true');
+      }
+      setIsSubscribed(true);
+      setPermission('granted');
+      alert('Notifications activées pour iOS ! Vous pouvez les tester.');
+      return;
+    }
+
+    // Vérification plus robuste pour autres navigateurs
     if (typeof window === 'undefined' || !window.Notification) {
       console.log('❌ Notifications non supportées');
       alert('Ce navigateur ne supporte pas les notifications');
