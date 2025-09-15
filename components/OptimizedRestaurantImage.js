@@ -63,16 +63,19 @@ export default function OptimizedRestaurantImage({
           height: '100%',
           minHeight: '100%',
           minWidth: '100%',
+          maxHeight: '100%',
+          maxWidth: '100%',
           objectFit: 'cover',
           objectPosition: 'center',
-          display: 'block'
+          display: 'block',
+          flexShrink: 0
         }}
       />
       
       {/* Placeholder pendant le chargement */}
       {!imageLoaded && !imageError && (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-          <div className="animate-pulse">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
+          <div className="animate-pulse text-center">
             <div className="text-4xl mb-2">🍽️</div>
             <div className="text-sm font-medium text-gray-600">{restaurant.nom || restaurant.name}</div>
           </div>
@@ -81,7 +84,7 @@ export default function OptimizedRestaurantImage({
       
       {/* Fallback si l'image ne charge pas du tout */}
       {imageError && (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
           <div className="text-center text-gray-600">
             <div className="text-4xl mb-2">🍽️</div>
             <div className="text-sm font-medium">{restaurant.nom || restaurant.name}</div>
