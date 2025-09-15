@@ -39,11 +39,7 @@ CREATE TABLE IF NOT EXISTS complaints (
     resolved_at TIMESTAMP WITH TIME ZONE,
     
     -- Contraintes
-    CONSTRAINT valid_refund_amount CHECK (requested_refund_amount > 0),
-    CONSTRAINT valid_complaint_window CHECK (
-        created_at >= (SELECT created_at FROM orders WHERE orders.id = order_id) + INTERVAL '1 hour'
-        AND created_at <= (SELECT created_at FROM orders WHERE orders.id = order_id) + INTERVAL '48 hours'
-    )
+    CONSTRAINT valid_refund_amount CHECK (requested_refund_amount > 0)
 );
 
 -- Index pour les performances
@@ -106,6 +102,38 @@ CREATE TABLE IF NOT EXISTS complaint_evidence (
     validation_notes TEXT
 );
 
+-- Fonction pour valider la fenêtre de temps des réclamations
+CREATE OR REPLACE FUNCTION validate_complaint_window()
+RETURNS TRIGGER AS $$
+DECLARE
+    order_created_at TIMESTAMP WITH TIME ZONE;
+    hours_diff NUMERIC;
+BEGIN
+    -- Récupérer la date de création de la commande
+    SELECT created_at INTO order_created_at
+    FROM orders 
+    WHERE id = NEW.order_id;
+    
+    IF order_created_at IS NULL THEN
+        RAISE EXCEPTION 'Commande non trouvée pour l''ID: %', NEW.order_id;
+    END IF;
+    
+    -- Calculer la différence en heures
+    hours_diff := EXTRACT(EPOCH FROM (NEW.created_at - order_created_at)) / 3600;
+    
+    -- Vérifier la fenêtre de temps (1h minimum, 48h maximum)
+    IF hours_diff < 1 THEN
+        RAISE EXCEPTION 'Réclamation trop tôt: minimum 1 heure après la livraison';
+    END IF;
+    
+    IF hours_diff > 48 THEN
+        RAISE EXCEPTION 'Réclamation trop tardive: maximum 48 heures après la livraison';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Fonction pour mettre à jour l'historique des réclamations
 CREATE OR REPLACE FUNCTION update_customer_complaint_history()
 RETURNS TRIGGER AS $$
@@ -152,6 +180,12 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Trigger pour valider la fenêtre de temps des réclamations
+CREATE TRIGGER trigger_validate_complaint_window
+    BEFORE INSERT ON complaints
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_complaint_window();
 
 -- Trigger pour mettre à jour automatiquement l'historique
 CREATE TRIGGER trigger_update_complaint_history

@@ -74,13 +74,18 @@ export default function ComplaintForm({ params }) {
         return;
       }
 
-      // Vérifier le délai de réclamation (48h max)
+      // Vérifier le délai de réclamation (1h min, 48h max)
       const orderTime = new Date(orderData.created_at);
       const now = new Date();
       const hoursDiff = (now - orderTime) / (1000 * 60 * 60);
 
       if (hoursDiff > 48) {
         setError('Délai de réclamation dépassé (48h maximum après la livraison)');
+        return;
+      }
+
+      if (hoursDiff < 1) {
+        setError('Réclamation trop tôt (minimum 1 heure après la livraison)');
         return;
       }
 

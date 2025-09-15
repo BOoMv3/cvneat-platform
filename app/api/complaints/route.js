@@ -166,6 +166,13 @@ export async function POST(request) {
       );
     }
 
+    if (hoursDiff < 1) {
+      return NextResponse.json(
+        { error: 'Réclamation trop tôt (minimum 1 heure après la livraison)' },
+        { status: 400 }
+      );
+    }
+
     // Vérifier l'historique du client (anti-fraude)
     const { data: customerHistory } = await supabase
       .from('customer_complaint_history')
