@@ -65,10 +65,7 @@ export default function OptimizedRestaurantImage({
           minWidth: '100%',
           objectFit: 'cover',
           objectPosition: 'center',
-          display: 'block',
-          position: 'absolute',
-          top: 0,
-          left: 0
+          display: 'block'
         }}
       />
       
