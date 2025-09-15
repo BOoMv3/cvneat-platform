@@ -124,7 +124,7 @@ function generateDeliveryEmailContent(customer, order) {
     <body>
       <div class="header">
         <h1>🎉 Commande livrée avec succès !</h1>
-        <p>Merci d'avoir choisi CVNeat</p>
+        <p>Merci d'avoir choisi CVNeat - Bon appétit !</p>
       </div>
       
       <div class="content">
@@ -141,14 +141,15 @@ function generateDeliveryEmailContent(customer, order) {
           <p><strong>Montant total :</strong> ${totalAmount}€</p>
         </div>
         
-        <div class="warning">
-          <h4>⚠️ Important</h4>
-          <p>Si vous rencontrez un problème avec votre commande, vous avez <strong>48 heures</strong> pour nous le signaler.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${orderUrl}" class="button">Voir ma commande</a>
+          <a href="/restaurants/${order.restaurant_id}/reviews" class="button">Noter le restaurant</a>
         </div>
         
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${complaintUrl}" class="button button-complaint">Signaler un problème</a>
-          <a href="${orderUrl}" class="button">Voir ma commande</a>
+        <div style="background: #f0f9ff; border: 1px solid #0ea5e9; padding: 15px; border-radius: 6px; margin: 20px 0;">
+          <h4>💡 Besoin d'aide ?</h4>
+          <p>Si vous rencontrez un problème avec votre commande, notre équipe support est là pour vous aider.</p>
+          <p><strong>Contact :</strong> support@cvneat.com</p>
         </div>
         
         <p>Nous espérons que vous avez apprécié votre commande !</p>

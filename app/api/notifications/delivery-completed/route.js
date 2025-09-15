@@ -33,18 +33,20 @@ export async function POST(request) {
       );
     }
 
-    // Créer la notification
+    // Créer la notification (sans mentionner les réclamations)
     const notification = {
       user_id: customerId,
       type: 'delivery_completed',
       title: 'Commande livrée avec succès ! 🎉',
-      message: `Votre commande #${order.order_number} de ${order.restaurant?.name || 'le restaurant'} a été livrée.`,
+      message: `Votre commande #${order.order_number} de ${order.restaurant?.name || 'le restaurant'} a été livrée. Bon appétit !`,
       data: {
         order_id: orderId,
         order_number: order.order_number,
         restaurant_name: order.restaurant?.name,
         total_amount: order.total_amount,
-        complaint_url: `/complaint/${orderId}`,
+        order_url: `/orders/${orderId}`,
+        feedback_url: `/orders/${orderId}/feedback`, // Approche positive
+        complaint_url: `/complaint/${orderId}`, // Disponible mais pas promu
         complaint_available_until: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // 48h
       },
       read: false,
@@ -78,8 +80,8 @@ export async function POST(request) {
           data: notification.data,
           actions: [
             {
-              action: 'complaint',
-              title: 'Signaler un problème',
+              action: 'feedback',
+              title: 'Donner mon avis',
               icon: '/icon-192x192.png'
             },
             {
@@ -88,7 +90,7 @@ export async function POST(request) {
               icon: '/icon-192x192.png'
             }
           ],
-          requireInteraction: true,
+          requireInteraction: false, // Moins intrusif
           silent: false
         });
       }

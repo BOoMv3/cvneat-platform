@@ -85,10 +85,12 @@ export default function PushNotificationService() {
   const handleNotificationAction = (data) => {
     console.log('🔔 Action de notification:', data);
     
-    if (data.action === 'complaint' && data.notificationData?.complaint_url) {
-      window.location.href = data.notificationData.complaint_url;
+    if (data.action === 'feedback' && data.notificationData?.feedback_url) {
+      window.location.href = data.notificationData.feedback_url;
     } else if (data.action === 'view' && data.notificationData?.order_id) {
       window.location.href = `/orders/${data.notificationData.order_id}`;
+    } else if (data.action === 'complaint' && data.notificationData?.complaint_url) {
+      window.location.href = data.notificationData.complaint_url;
     }
   };
 
