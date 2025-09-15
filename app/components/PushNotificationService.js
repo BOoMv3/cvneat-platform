@@ -37,27 +37,55 @@ export default function PushNotificationService() {
   };
 
   const requestPermission = async () => {
+    console.log('🔔 Début de la demande de permission...');
+    
     if (!('Notification' in window)) {
+      console.log('❌ Notifications non supportées');
       alert('Ce navigateur ne supporte pas les notifications');
       return;
     }
 
+    console.log('✅ Notifications supportées');
+    console.log('📱 Permission actuelle:', Notification.permission);
+
     try {
       const permission = await Notification.requestPermission();
+      console.log('📱 Nouvelle permission:', permission);
       setPermission(permission);
       
       if (permission === 'granted') {
-        // Attendre un peu avant de créer la notification
-        setTimeout(() => {
-          subscribeToNotifications();
-        }, 100);
+        console.log('✅ Permission accordée, activation des notifications...');
+        alert('Permission accordée ! Activation des notifications...');
+        
+        // Créer immédiatement une notification de test
+        try {
+          const notification = new Notification('CVN\'Eat - Test', {
+            body: 'Notifications activées avec succès !',
+            icon: '/icon-192x192.png',
+            tag: 'test-success'
+          });
+          console.log('✅ Notification de test créée');
+          
+          // Marquer comme abonné
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('push-notifications-subscribed', 'true');
+          }
+          setIsSubscribed(true);
+          
+        } catch (notifError) {
+          console.error('❌ Erreur création notification:', notifError);
+          alert('Erreur lors de la création de la notification: ' + notifError.message);
+        }
+        
       } else if (permission === 'denied') {
+        console.log('❌ Permission refusée');
         alert('Les notifications ont été refusées. Vous pouvez les activer dans les paramètres de votre navigateur.');
       } else {
+        console.log('⚠️ Permission non accordée');
         alert('Permission non accordée. Veuillez réessayer.');
       }
     } catch (error) {
-      console.error('Erreur lors de la demande de permission:', error);
+      console.error('❌ Erreur lors de la demande de permission:', error);
       alert('Erreur lors de la demande de permission: ' + error.message);
     }
   };
@@ -140,12 +168,27 @@ export default function PushNotificationService() {
         </div>
 
         {permission === 'default' && (
-          <button
-            onClick={requestPermission}
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors touch-manipulation"
-          >
-            Activer les notifications
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={requestPermission}
+              className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors touch-manipulation"
+            >
+              Activer les notifications
+            </button>
+            <button
+              onClick={() => {
+                console.log('🔍 Diagnostic notifications:');
+                console.log('- Support:', 'Notification' in window);
+                console.log('- Permission actuelle:', Notification?.permission);
+                console.log('- LocalStorage disponible:', typeof localStorage !== 'undefined');
+                console.log('- User Agent:', navigator.userAgent);
+                alert('Diagnostic envoyé dans la console (F12)');
+              }}
+              className="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors touch-manipulation text-sm"
+            >
+              🔍 Diagnostic
+            </button>
+          </div>
         )}
 
         {permission === 'granted' && isSubscribed && (
