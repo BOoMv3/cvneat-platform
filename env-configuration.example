@@ -1,0 +1,83 @@
+# ========================================
+# CONFIGURATION CVNEAT - VARIABLES D'ENVIRONNEMENT
+# ========================================
+# Copier ce fichier vers .env.local et remplir les valeurs
+
+# ========================================
+# SUPABASE
+# ========================================
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# ========================================
+# EMAIL SERVICE
+# ========================================
+# Provider: 'sendgrid', 'mailgun', ou 'smtp'
+EMAIL_PROVIDER=sendgrid
+EMAIL_FROM=noreply@cvneat.com
+
+# SendGrid (recommandé)
+SENDGRID_API_KEY=your_sendgrid_api_key
+
+# Mailgun
+MAILGUN_API_KEY=your_mailgun_api_key
+MAILGUN_DOMAIN=your_domain.mailgun.org
+
+# SMTP (Gmail, etc.)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
+# ========================================
+# STRIPE
+# ========================================
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# ========================================
+# SITE CONFIGURATION
+# ========================================
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
+NEXT_PUBLIC_SITE_NAME=CVNeat
+
+# ========================================
+# NOTIFICATIONS PUSH
+# ========================================
+# VAPID Keys pour les notifications push (optionnel)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_vapid_public_key
+VAPID_PRIVATE_KEY=your_vapid_private_key
+
+# ========================================
+# SECURITY
+# ========================================
+NEXTAUTH_SECRET=your_nextauth_secret_key
+NEXTAUTH_URL=https://your-domain.com
+
+# ========================================
+# ANALYTICS (optionnel)
+# ========================================
+NEXT_PUBLIC_GOOGLE_ANALYTICS=GA_MEASUREMENT_ID
+NEXT_PUBLIC_HOTJAR_ID=your_hotjar_id
+
+# ========================================
+# STORAGE
+# ========================================
+# Configuration du stockage des fichiers
+UPLOAD_MAX_SIZE=5242880
+ALLOWED_FILE_TYPES=image/jpeg,image/png,image/webp,application/pdf
+
+# ========================================
+# RATE LIMITING
+# ========================================
+RATE_LIMIT_MAX=100
+RATE_LIMIT_WINDOW=900000
+
+# ========================================
+# DEVELOPMENT
+# ========================================
+NODE_ENV=development
+DEBUG=false
