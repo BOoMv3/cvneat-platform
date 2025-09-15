@@ -131,15 +131,37 @@ export default function PushNotificationService() {
   };
 
   const sendTestNotification = () => {
+    console.log('🧪 Test de notification...');
+    console.log('Permission actuelle:', permission);
+    
     if (permission === 'granted') {
-      new Notification('CVN\'Eat', {
-        body: 'Test de notification - Votre commande est prête !',
-        icon: '/icon-192x192.png',
-        badge: '/icon-192x192.png',
-        tag: 'test-notification'
-      });
+      try {
+        console.log('✅ Création de la notification...');
+        const notification = new Notification('CVN\'Eat - Test', {
+          body: 'Test de notification - Votre commande est prête !',
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          tag: 'test-notification',
+          requireInteraction: true,
+          silent: false
+        });
+        
+        console.log('✅ Notification créée:', notification);
+        
+        // Fermer automatiquement après 5 secondes
+        setTimeout(() => {
+          notification.close();
+        }, 5000);
+        
+        alert('Notification de test envoyée ! Vérifiez votre barre de notifications.');
+        
+      } catch (error) {
+        console.error('❌ Erreur création notification:', error);
+        alert('Erreur lors de la création de la notification: ' + error.message);
+      }
     } else {
-      alert('Veuillez d\'abord autoriser les notifications');
+      console.log('❌ Permission non accordée');
+      alert('Veuillez d\'abord autoriser les notifications en cliquant sur "Activer les notifications"');
     }
   };
 

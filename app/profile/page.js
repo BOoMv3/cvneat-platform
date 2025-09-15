@@ -355,52 +355,52 @@ export default function Profile() {
           </section>
 
           {/* Onglets - Version mobile optimisée */}
-          <div className="grid grid-cols-2 gap-2 mb-6 sm:mb-8 sm:flex sm:flex-wrap sm:gap-4">
+          <div className="grid grid-cols-2 gap-1 mb-4 sm:mb-8 sm:flex sm:flex-wrap sm:gap-4">
             <button
               onClick={() => setActiveTab('orders')}
-              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
+              className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'orders'
                   ? 'bg-black text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaShoppingBag className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <FaShoppingBag className="inline-block mr-1 text-xs" />
               <span className="hidden xs:inline">Mes commandes</span>
               <span className="xs:hidden">Commandes</span>
             </button>
             <button
               onClick={() => setActiveTab('addresses')}
-              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
+              className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'addresses'
                   ? 'bg-black text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaMapMarkerAlt className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <FaMapMarkerAlt className="inline-block mr-1 text-xs" />
               <span className="hidden xs:inline">Mes adresses</span>
               <span className="xs:hidden">Adresses</span>
             </button>
             <button
               onClick={() => setActiveTab('favorites')}
-              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
+              className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'favorites'
                   ? 'bg-black text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaHeart className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <FaHeart className="inline-block mr-1 text-xs" />
               <span className="hidden xs:inline">Mes favoris</span>
               <span className="xs:hidden">Favoris</span>
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`px-3 py-3 rounded-lg min-h-[48px] touch-manipulation text-sm sm:text-base flex items-center justify-center ${
+              className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'settings'
                   ? 'bg-black text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <FaCog className="inline-block mr-1 sm:mr-2 text-xs sm:text-sm" />
+              <FaCog className="inline-block mr-1 text-xs" />
               <span className="hidden xs:inline">Paramètres</span>
               <span className="xs:hidden">Réglages</span>
             </button>
@@ -560,8 +560,8 @@ export default function Profile() {
           {/* Onglet Paramètres */}
           {activeTab === 'settings' && (
             <div className="space-y-6">
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Paramètres du compte</h3>
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Paramètres du compte</h3>
                 
                 <div className="space-y-4">
                   <NotificationToggle
