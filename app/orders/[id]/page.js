@@ -332,22 +332,44 @@ export default function OrderStatus({ params }) {
         </div>
 
         {/* Actions */}
-        <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+        <div className="mt-8 space-y-4">
           {order.status === 'delivered' && (
-            <button
-              onClick={() => router.push(`/complaint/${params.id}`)}
-              className="bg-orange-600 text-white px-8 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center"
-            >
-              <FaExclamationTriangle className="mr-2" />
-              Signaler un problème
-            </button>
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
+                    Commande livrée avec succès !
+                  </h3>
+                  <div className="mt-2 text-sm text-green-700 dark:text-green-300">
+                    <p>Votre commande a été livrée. Si vous rencontrez un problème, vous pouvez nous le signaler dans les 48h.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
-          <button
-            onClick={() => router.push('/')}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Retour à l'accueil
-          </button>
+          
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            {order.status === 'delivered' && (
+              <button
+                onClick={() => router.push(`/complaint/${params.id}`)}
+                className="bg-orange-600 text-white px-8 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center font-semibold shadow-lg"
+              >
+                <FaExclamationTriangle className="mr-2" />
+                Signaler un problème
+              </button>
+            )}
+            <button
+              onClick={() => router.push('/')}
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retour à l'accueil
+            </button>
+          </div>
         </div>
       </div>
     </div>

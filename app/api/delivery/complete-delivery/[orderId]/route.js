@@ -92,6 +92,29 @@ export async function POST(request, { params }) {
     
     console.log('✅ Commande livrée avec succès');
 
+    // Envoyer une notification au client
+    try {
+      const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/delivery-completed`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          orderId: orderId,
+          customerId: order.customer_id
+        })
+      });
+
+      if (notificationResponse.ok) {
+        console.log('✅ Notification de livraison envoyée');
+      } else {
+        console.warn('⚠️ Erreur envoi notification:', await notificationResponse.text());
+      }
+    } catch (notificationError) {
+      console.warn('⚠️ Erreur notification livraison:', notificationError);
+      // Ne pas faire échouer la livraison si la notification échoue
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Livraison finalisée avec succès',

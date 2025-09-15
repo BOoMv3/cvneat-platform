@@ -496,6 +496,24 @@ export default function Profile() {
                           <p className="text-base sm:text-lg font-bold">{order.total.toFixed(2)}€</p>
                         </div>
                       </div>
+                      
+                      {/* Bouton signaler un problème pour les commandes livrées */}
+                      {order.status === 'delivered' && (
+                        <div className="mt-3 pt-3 border-t">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/complaint/${order.id}`);
+                            }}
+                            className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            Signaler un problème
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

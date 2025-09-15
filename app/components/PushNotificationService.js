@@ -11,6 +11,7 @@ export default function PushNotificationService() {
     checkNotificationSupport();
     checkPermission();
     checkExistingSubscription();
+    setupNotificationClickHandlers();
   }, []);
 
   const checkNotificationSupport = () => {
@@ -43,6 +44,51 @@ export default function PushNotificationService() {
         console.error('Erreur localStorage:', error);
         setIsSubscribed(false);
       }
+    }
+  };
+
+  const setupNotificationClickHandlers = () => {
+    if (typeof window !== 'undefined') {
+      // Gérer les clics sur les notifications
+      navigator.serviceWorker?.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'NOTIFICATION_CLICK') {
+          handleNotificationClick(event.data);
+        }
+      });
+
+      // Gérer les actions des notifications
+      navigator.serviceWorker?.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'NOTIFICATION_ACTION') {
+          handleNotificationAction(event.data);
+        }
+      });
+    }
+  };
+
+  const handleNotificationClick = (data) => {
+    console.log('🔔 Notification cliquée:', data);
+    
+    // Rediriger vers la page appropriée selon le type de notification
+    if (data.notificationData) {
+      const { type, order_id, complaint_url } = data.notificationData;
+      
+      if (type === 'delivery_completed' && complaint_url) {
+        // Rediriger vers la page de réclamation ou de commande
+        window.location.href = complaint_url;
+      } else if (order_id) {
+        // Rediriger vers la page de commande
+        window.location.href = `/orders/${order_id}`;
+      }
+    }
+  };
+
+  const handleNotificationAction = (data) => {
+    console.log('🔔 Action de notification:', data);
+    
+    if (data.action === 'complaint' && data.notificationData?.complaint_url) {
+      window.location.href = data.notificationData.complaint_url;
+    } else if (data.action === 'view' && data.notificationData?.order_id) {
+      window.location.href = `/orders/${data.notificationData.order_id}`;
     }
   };
 
