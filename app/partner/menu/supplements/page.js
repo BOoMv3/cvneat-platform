@@ -40,7 +40,7 @@ export default function MenuSupplements() {
       .eq('id', user.id)
       .single();
 
-    if (userData?.role !== 'partner') {
+    if (userData?.role !== 'restaurant') {
       router.push('/');
       return;
     }

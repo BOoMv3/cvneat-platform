@@ -23,7 +23,7 @@ export async function GET(request) {
       .eq('id', user.id)
       .single();
 
-    if (partnerError || partnerUser.role !== 'partner') {
+    if (partnerError || partnerUser.role !== 'restaurant') {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 

@@ -19,7 +19,7 @@ export default function RestaurantSettings() {
   useEffect(() => {
     const checkUserAndFetchSettings = async () => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user || user.user_metadata.role !== 'partner') {
+        if (!user || user.user_metadata.role !== 'restaurant') {
             router.push('/login');
             return;
         }

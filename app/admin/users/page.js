@@ -206,6 +206,7 @@ export default function AdminUsers() {
                     >
                       <option value="user">Utilisateur</option>
                       <option value="restaurant">Restaurant</option>
+                      <option value="delivery">Livreur</option>
                       <option value="admin">Administrateur</option>
                     </select>
                   </div>
@@ -270,9 +271,11 @@ export default function AdminUsers() {
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                         ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
                           user.role === 'restaurant' ? 'bg-blue-100 text-blue-800' :
+                          user.role === 'delivery' ? 'bg-orange-100 text-orange-800' :
                           'bg-green-100 text-green-800'}`}>
                         {user.role === 'admin' ? 'Administrateur' :
                          user.role === 'restaurant' ? 'Restaurant' :
+                         user.role === 'delivery' ? 'Livreur' :
                          'Utilisateur'}
                       </span>
                     </td>

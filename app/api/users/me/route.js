@@ -49,7 +49,7 @@ export async function GET(request) {
             code_postal: user.user_metadata?.postal_code || '00000',
             ville: user.user_metadata?.city || 'Ville non renseignée',
             password: 'password123', // Mot de passe par défaut
-            role: user.email.includes('livreur') ? 'delivery' : 'user'
+            role: 'user'
           })
           .select()
           .single();
