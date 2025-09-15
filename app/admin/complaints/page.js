@@ -96,11 +96,22 @@ export default function AdminComplaints() {
         query = query.eq('complaint_type', filters.complaintType);
       }
 
-      const { data, error } = await query;
+    const { data, error } = await query;
 
-      if (error) {
+    if (error) {
+      console.error('Erreur récupération réclamations:', error);
+      
+      // Gestion spécifique des erreurs
+      if (error.message.includes('relation "complaints" does not exist')) {
+        throw new Error('Table des réclamations non créée. Veuillez exécuter le script SQL.');
+      } else if (error.message.includes('permission denied')) {
+        throw new Error('Permissions insuffisantes. Vérifiez votre rôle admin.');
+      } else if (error.message.includes('foreign key constraint')) {
+        throw new Error('Erreur de contrainte de clé étrangère. Vérifiez la structure de la base.');
+      } else {
         throw error;
       }
+    }
 
       // Filtrer par terme de recherche
       let filteredData = data;
@@ -289,7 +300,32 @@ export default function AdminComplaints() {
 
           {error && (
             <div className="p-6 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-              <p className="text-red-700 dark:text-red-400">{error}</p>
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                    Erreur lors du chargement des réclamations
+                  </h3>
+                  <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                    <p>{error}</p>
+                    {error.includes('non créée') && (
+                      <div className="mt-3">
+                        <p className="font-medium">Solution :</p>
+                        <ol className="list-decimal list-inside mt-1 space-y-1">
+                          <li>Copier le contenu de <code className="bg-red-100 px-1 rounded">create-complaints-table.sql</code></li>
+                          <li>Aller sur Supabase Dashboard → SQL Editor</li>
+                          <li>Coller et exécuter le script SQL</li>
+                          <li>Recharger cette page</li>
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
