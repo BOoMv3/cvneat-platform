@@ -1,7 +1,7 @@
 -- Table des réclamations post-livraison
 CREATE TABLE IF NOT EXISTS complaints (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     customer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
     
