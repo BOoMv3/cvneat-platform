@@ -5,21 +5,28 @@ import { useState, useEffect } from 'react';
 export default function PushNotificationService() {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState('default');
-  const [subscription, setSubscription] = useState(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     checkNotificationSupport();
     checkPermission();
+    checkExistingSubscription();
   }, []);
 
   const checkNotificationSupport = () => {
-    setIsSupported('Notification' in window && 'serviceWorker' in navigator);
+    setIsSupported('Notification' in window);
   };
 
   const checkPermission = () => {
     if ('Notification' in window) {
       setPermission(Notification.permission);
     }
+  };
+
+  const checkExistingSubscription = () => {
+    // Vérifier si l'utilisateur est déjà abonné (stocké en localStorage)
+    const subscribed = localStorage.getItem('push-notifications-subscribed') === 'true';
+    setIsSubscribed(subscribed);
   };
 
   const requestPermission = async () => {
@@ -33,44 +40,49 @@ export default function PushNotificationService() {
     
     if (permission === 'granted') {
       await subscribeToNotifications();
+    } else {
+      alert('Les notifications ont été refusées. Vous pouvez les activer dans les paramètres de votre navigateur.');
     }
   };
 
   const subscribeToNotifications = async () => {
     try {
-      // Enregistrer le service worker
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      // Marquer comme abonné
+      localStorage.setItem('push-notifications-subscribed', 'true');
+      setIsSubscribed(true);
       
-      // Obtenir l'abonnement
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      // Tester une notification
+      new Notification('CVN\'Eat', {
+        body: 'Notifications activées avec succès ! Vous recevrez des mises à jour sur vos commandes.',
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png',
+        tag: 'welcome'
       });
 
-      setSubscription(subscription);
-
-      // Envoyer l'abonnement au serveur
-      await fetch('/api/notifications/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(subscription),
-      });
-
+      console.log('Notifications activées avec succès !');
+      
     } catch (error) {
       console.error('Erreur lors de l\'abonnement:', error);
+      alert('Erreur lors de l\'activation des notifications');
     }
+  };
+
+  const unsubscribeFromNotifications = () => {
+    localStorage.removeItem('push-notifications-subscribed');
+    setIsSubscribed(false);
+    alert('Notifications désactivées');
   };
 
   const sendTestNotification = () => {
     if (permission === 'granted') {
-      new Notification('CVNeat', {
+      new Notification('CVN\'Eat', {
         body: 'Test de notification - Votre commande est prête !',
         icon: '/icon-192x192.png',
         badge: '/icon-192x192.png',
         tag: 'test-notification'
       });
+    } else {
+      alert('Veuillez d\'abord autoriser les notifications');
     }
   };
 
@@ -87,13 +99,13 @@ export default function PushNotificationService() {
           <div>
             <h4 className="font-medium text-gray-900">Statut des notifications</h4>
             <p className="text-sm text-gray-600">
-              {permission === 'granted' ? 'Activées' : 
+              {isSubscribed && permission === 'granted' ? 'Activées' : 
                permission === 'denied' ? 'Désactivées' : 
                'Non configurées'}
             </p>
           </div>
           <div className={`w-3 h-3 rounded-full ${
-            permission === 'granted' ? 'bg-green-500' :
+            isSubscribed && permission === 'granted' ? 'bg-green-500' :
             permission === 'denied' ? 'bg-red-500' : 'bg-yellow-500'
           }`}></div>
         </div>
@@ -101,22 +113,37 @@ export default function PushNotificationService() {
         {permission === 'default' && (
           <button
             onClick={requestPermission}
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors touch-manipulation"
           >
             Activer les notifications
           </button>
         )}
 
-        {permission === 'granted' && (
+        {permission === 'granted' && isSubscribed && (
           <div className="space-y-2">
             <p className="text-sm text-green-600">✓ Notifications activées</p>
             <button
               onClick={sendTestNotification}
-              className="w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors"
+              className="w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors touch-manipulation mr-2"
             >
               Tester les notifications
             </button>
+            <button
+              onClick={unsubscribeFromNotifications}
+              className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors touch-manipulation"
+            >
+              Désactiver les notifications
+            </button>
           </div>
+        )}
+
+        {permission === 'granted' && !isSubscribed && (
+          <button
+            onClick={subscribeToNotifications}
+            className="w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors touch-manipulation"
+          >
+            S'abonner aux notifications
+          </button>
         )}
 
         {permission === 'denied' && (

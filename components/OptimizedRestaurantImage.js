@@ -51,13 +51,19 @@ export default function OptimizedRestaurantImage({
       <img
         src={currentSrc}
         alt={restaurant.nom || restaurant.name || 'Restaurant'}
-        className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${
+        className={`w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500 ${
           imageLoaded ? 'opacity-100' : 'opacity-0'
         }`}
         onError={handleImageError}
         onLoad={handleImageLoad}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
+        style={{
+          minHeight: '100%',
+          minWidth: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center'
+        }}
       />
       
       {/* Placeholder pendant le chargement */}
