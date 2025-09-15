@@ -55,40 +55,14 @@ export default function PushNotificationService() {
       
       if (permission === 'granted') {
         console.log('✅ Permission accordée, activation des notifications...');
-        alert('Permission accordée ! Activation des notifications...');
         
-        // Créer immédiatement une notification de test
-        try {
-          // Vérifier si Notification est disponible et constructible
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            const notification = new Notification('CVN\'Eat - Test', {
-              body: 'Notifications activées avec succès !',
-              icon: '/icon-192x192.png',
-              tag: 'test-success'
-            });
-            console.log('✅ Notification de test créée');
-          } else {
-            console.log('⚠️ Notification non disponible, utilisation d\'alert');
-            alert('Notifications activées avec succès !');
-          }
-          
-          // Marquer comme abonné
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('push-notifications-subscribed', 'true');
-          }
-          setIsSubscribed(true);
-          
-        } catch (notifError) {
-          console.error('❌ Erreur création notification:', notifError);
-          // Fallback vers alert si Notification ne fonctionne pas
-          alert('Notifications activées avec succès ! (Mode compatibilité)');
-          
-          // Marquer comme abonné quand même
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('push-notifications-subscribed', 'true');
-          }
-          setIsSubscribed(true);
+        // Marquer comme abonné sans créer de notification immédiate
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('push-notifications-subscribed', 'true');
         }
+        setIsSubscribed(true);
+        
+        alert('Notifications activées avec succès ! Vous pouvez maintenant les tester.');
         
       } else if (permission === 'denied') {
         console.log('❌ Permission refusée');

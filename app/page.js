@@ -507,7 +507,7 @@ export default function Home() {
                   <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
                     <div className="flex flex-col sm:flex-row">
                       {/* Image du restaurant */}
-                      <div className="relative h-64 sm:h-64 md:h-72 lg:h-auto lg:w-1/3 overflow-hidden">
+                      <div className="relative h-64 sm:h-64 md:h-72 lg:h-auto lg:w-1/3 overflow-hidden" style={{ minHeight: '256px' }}>
                         <OptimizedRestaurantImage
                           restaurant={restaurant}
                           className="h-full w-full"
