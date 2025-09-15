@@ -36,6 +36,26 @@ export default function Profile() {
     }
   }, [activeTab, authChecked, user]);
 
+  // Charger les préférences sauvegardées
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedEmailNotifications = localStorage.getItem('email-notifications');
+        const savedPushNotifications = localStorage.getItem('push-notifications');
+        
+        if (savedEmailNotifications !== null) {
+          setEmailNotifications(savedEmailNotifications === 'true');
+        }
+        
+        if (savedPushNotifications !== null) {
+          setPushNotifications(savedPushNotifications === 'true');
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des préférences:', error);
+      }
+    }
+  }, []);
+
   const checkAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -137,9 +157,11 @@ export default function Profile() {
 
   const handleEmailNotificationChange = async (enabled) => {
     setEmailNotifications(enabled);
-    // Ici on pourrait sauvegarder la préférence en base de données
+    // Sauvegarder en localStorage
     try {
-      // API call pour sauvegarder la préférence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('email-notifications', enabled.toString());
+      }
       console.log('Email notifications:', enabled ? 'activées' : 'désactivées');
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de la préférence:', error);
@@ -148,8 +170,11 @@ export default function Profile() {
 
   const handlePushNotificationChange = async (enabled) => {
     setPushNotifications(enabled);
-    // Ici on pourrait gérer l'abonnement aux notifications push
+    // Sauvegarder en localStorage
     try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('push-notifications', enabled.toString());
+      }
       console.log('Push notifications:', enabled ? 'activées' : 'désactivées');
     } catch (error) {
       console.error('Erreur lors de la gestion des notifications push:', error);

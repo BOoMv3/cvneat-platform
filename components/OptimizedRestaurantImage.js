@@ -59,10 +59,11 @@ export default function OptimizedRestaurantImage({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         style={{
-          minHeight: '100%',
-          minWidth: '100%',
+          width: '100%',
+          height: '100%',
           objectFit: 'cover',
-          objectPosition: 'center'
+          objectPosition: 'center',
+          display: 'block'
         }}
       />
       
