@@ -16,8 +16,9 @@ export default function DarkModeToggle({ className = '' }) {
   return (
     <button
       onClick={toggleTheme}
-      className={`relative inline-flex items-center justify-center w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${className}`}
+      className={`relative inline-flex items-center justify-center w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${className}`}
       aria-label={`Basculer vers le mode ${theme === 'light' ? 'sombre' : 'clair'}`}
+      type="button"
     >
       {/* Track */}
       <div className={`w-12 h-6 rounded-full transition-colors duration-200 ${
