@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaArrowLeft, FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaUtensils, FaBox, FaTruck } from 'react-icons/fa';
+import { FaArrowLeft, FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaUtensils, FaBox, FaTruck, FaExclamationTriangle } from 'react-icons/fa';
 import NotificationPermission from '../../components/NotificationPermission';
 import { sendOrderStatusNotification, saveNotificationPreferences } from '../../utils/notifications';
 
@@ -332,7 +332,16 @@ export default function OrderStatus({ params }) {
         </div>
 
         {/* Actions */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+          {order.status === 'delivered' && (
+            <button
+              onClick={() => router.push(`/complaint/${params.id}`)}
+              className="bg-orange-600 text-white px-8 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center"
+            >
+              <FaExclamationTriangle className="mr-2" />
+              Signaler un problème
+            </button>
+          )}
           <button
             onClick={() => router.push('/')}
             className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors"

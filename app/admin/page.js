@@ -447,6 +447,12 @@ export default function AdminPage() {
                   🤝 Valider les Partenaires
                 </button>
                 <button 
+                  onClick={() => router.push('/admin/complaints')}
+                  className="p-3 sm:p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
+                >
+                  ⚠️ Gérer les Réclamations
+                </button>
+                <button 
                   onClick={() => router.push('/admin/restaurants')}
                   className="p-3 sm:p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
