@@ -281,6 +281,7 @@ export default function Profile() {
       <PageHeader 
         title="Mon Profil" 
         icon={FaUser}
+        showBackButton={false}
         rightContent={
           <button
             onClick={handleLogout}
