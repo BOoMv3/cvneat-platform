@@ -25,8 +25,15 @@ export default function PushNotificationService() {
 
   const checkExistingSubscription = () => {
     // Vérifier si l'utilisateur est déjà abonné (stocké en localStorage)
-    const subscribed = localStorage.getItem('push-notifications-subscribed') === 'true';
-    setIsSubscribed(subscribed);
+    if (typeof window !== 'undefined') {
+      try {
+        const subscribed = localStorage.getItem('push-notifications-subscribed') === 'true';
+        setIsSubscribed(subscribed);
+      } catch (error) {
+        console.error('Erreur localStorage:', error);
+        setIsSubscribed(false);
+      }
+    }
   };
 
   const requestPermission = async () => {
@@ -35,42 +42,64 @@ export default function PushNotificationService() {
       return;
     }
 
-    const permission = await Notification.requestPermission();
-    setPermission(permission);
-    
-    if (permission === 'granted') {
-      await subscribeToNotifications();
-    } else {
-      alert('Les notifications ont été refusées. Vous pouvez les activer dans les paramètres de votre navigateur.');
+    try {
+      const permission = await Notification.requestPermission();
+      setPermission(permission);
+      
+      if (permission === 'granted') {
+        // Attendre un peu avant de créer la notification
+        setTimeout(() => {
+          subscribeToNotifications();
+        }, 100);
+      } else if (permission === 'denied') {
+        alert('Les notifications ont été refusées. Vous pouvez les activer dans les paramètres de votre navigateur.');
+      } else {
+        alert('Permission non accordée. Veuillez réessayer.');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la demande de permission:', error);
+      alert('Erreur lors de la demande de permission: ' + error.message);
     }
   };
 
   const subscribeToNotifications = async () => {
     try {
-      // Marquer comme abonné
-      localStorage.setItem('push-notifications-subscribed', 'true');
+      // Vérifier que localStorage est disponible
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('push-notifications-subscribed', 'true');
+      }
       setIsSubscribed(true);
       
-      // Tester une notification
-      new Notification('CVN\'Eat', {
-        body: 'Notifications activées avec succès ! Vous recevrez des mises à jour sur vos commandes.',
-        icon: '/icon-192x192.png',
-        badge: '/icon-192x192.png',
-        tag: 'welcome'
-      });
-
+      // Vérifier que les notifications sont autorisées
+      if (Notification.permission === 'granted') {
+        // Tester une notification
+        new Notification('CVN\'Eat', {
+          body: 'Notifications activées avec succès ! Vous recevrez des mises à jour sur vos commandes.',
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          tag: 'welcome'
+        });
+      }
+      
       console.log('Notifications activées avec succès !');
       
     } catch (error) {
       console.error('Erreur lors de l\'abonnement:', error);
-      alert('Erreur lors de l\'activation des notifications');
+      alert('Erreur lors de l\'activation des notifications: ' + error.message);
     }
   };
 
   const unsubscribeFromNotifications = () => {
-    localStorage.removeItem('push-notifications-subscribed');
-    setIsSubscribed(false);
-    alert('Notifications désactivées');
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('push-notifications-subscribed');
+      }
+      setIsSubscribed(false);
+      alert('Notifications désactivées');
+    } catch (error) {
+      console.error('Erreur lors de la désactivation:', error);
+      alert('Erreur lors de la désactivation des notifications');
+    }
   };
 
   const sendTestNotification = () => {
