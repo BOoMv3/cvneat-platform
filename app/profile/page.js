@@ -284,10 +284,10 @@ export default function Profile() {
         rightContent={
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            className="flex items-center space-x-1 sm:space-x-2 bg-red-600 text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-red-700 transition-colors"
           >
-            <FaSignOutAlt className="text-sm" />
-            <span>Déconnexion</span>
+            <FaSignOutAlt className="text-xs sm:text-sm" />
+            <span className="hidden xs:inline text-xs sm:text-sm">Déconnexion</span>
           </button>
         }
       />
