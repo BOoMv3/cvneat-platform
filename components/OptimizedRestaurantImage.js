@@ -46,7 +46,7 @@ export default function OptimizedRestaurantImage({
   };
 
   return (
-    <div className={`relative overflow-hidden ${className}`}>
+    <div className={`relative overflow-hidden ${className}`} style={{ width: '100%', height: '256px' }}>
       {/* Image normale pour la compatibilité mobile */}
       <img
         src={currentSrc}
@@ -59,16 +59,14 @@ export default function OptimizedRestaurantImage({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
           width: '100%',
-          height: '100%',
-          minHeight: '100%',
-          minWidth: '100%',
-          maxHeight: '100%',
-          maxWidth: '100%',
+          height: '256px',
           objectFit: 'cover',
           objectPosition: 'center',
-          display: 'block',
-          flexShrink: 0
+          display: 'block'
         }}
       />
       

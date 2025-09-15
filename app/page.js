@@ -505,9 +505,9 @@ export default function Home() {
                   onClick={() => handleRestaurantClick(restaurant)}
                 >
                   <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
-                    <div className="flex flex-col sm:flex-row">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
                       {/* Image du restaurant */}
-                      <div className="relative h-64 sm:h-64 md:h-72 lg:h-auto lg:w-1/3 overflow-hidden" style={{ height: '256px', minHeight: '256px', maxHeight: '256px' }}>
+                      <div className="relative sm:col-span-1 overflow-hidden" style={{ height: '256px', minHeight: '256px', maxHeight: '256px' }}>
                         <OptimizedRestaurantImage
                           restaurant={restaurant}
                           className="h-full w-full"
@@ -553,7 +553,7 @@ export default function Home() {
                       </div>
                       
                       {/* Contenu de la carte */}
-                      <div className="flex-1 p-4 sm:p-6 lg:p-8 flex flex-col justify-between">
+                      <div className="sm:col-span-2 p-4 sm:p-6 lg:p-8 flex flex-col justify-between">
                         <div>
                           <div className="flex items-start justify-between mb-3 sm:mb-4">
                             <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
