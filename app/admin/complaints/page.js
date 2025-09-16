@@ -75,7 +75,7 @@ export default function AdminComplaints() {
           customer:users!customer_id(
             id,
             email,
-            full_name,
+            nom,
             telephone
           ),
           restaurant:restaurants!restaurant_id(
@@ -371,7 +371,7 @@ export default function AdminComplaints() {
                         <FaUser className="text-gray-400 mr-2" />
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {complaint.customer.full_name}
+                            {complaint.customer.nom}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             {complaint.customer.email}
@@ -459,7 +459,7 @@ export default function AdminComplaints() {
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Informations client</h4>
                   <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Nom:</span> {selectedComplaint.customer.full_name}</p>
+                    <p><span className="font-medium">Nom:</span> {selectedComplaint.customer.nom}</p>
                     <p><span className="font-medium">Email:</span> {selectedComplaint.customer.email}</p>
                     <p><span className="font-medium">Téléphone:</span> {selectedComplaint.customer.telephone}</p>
                   </div>
