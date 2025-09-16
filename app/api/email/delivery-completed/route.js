@@ -33,8 +33,7 @@ export async function POST(request) {
       .from('orders')
       .select(`
         id,
-        order_number,
-        total_amount,
+        montant_total,
         created_at,
         delivery_address,
         delivery_city,
@@ -53,9 +52,9 @@ export async function POST(request) {
     // Utiliser le service d'email configuré
     const template = emailService.getTemplates().deliveryCompleted({
       customerName: customer.full_name || 'Cher client',
-      orderNumber: order.order_number,
+      orderNumber: order.id,
       restaurantName: order.restaurant?.name || 'le restaurant',
-      totalAmount: order.total_amount.toFixed(2),
+      totalAmount: order.montant_total.toFixed(2),
       orderUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.com'}/orders/${order.id}`,
       feedbackUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.com'}/orders/${order.id}/feedback`
     });

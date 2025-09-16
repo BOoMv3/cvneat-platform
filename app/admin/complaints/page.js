@@ -69,8 +69,7 @@ export default function AdminComplaints() {
           *,
           order:orders(
             id,
-            order_number,
-            total_amount,
+            montant_total,
             created_at
           ),
           customer:users!customer_id(
@@ -120,7 +119,7 @@ export default function AdminComplaints() {
           complaint.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           complaint.customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
           complaint.restaurant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (complaint.order.order_number && complaint.order.order_number.toLowerCase().includes(searchTerm.toLowerCase()))
+          (complaint.order_id && complaint.order_id.toString().toLowerCase().includes(searchTerm.toLowerCase()))
         );
       }
 
@@ -470,8 +469,8 @@ export default function AdminComplaints() {
                   <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Informations commande</h4>
                   <div className="space-y-2 text-sm">
                     <p><span className="font-medium">Restaurant:</span> {selectedComplaint.restaurant.nom}</p>
-                    <p><span className="font-medium">Commande:</span> #{selectedComplaint.order.order_number || selectedComplaint.order.id}</p>
-                    <p><span className="font-medium">Total:</span> {selectedComplaint.order.total_amount}€</p>
+                    <p><span className="font-medium">Commande:</span> #{selectedComplaint.order_id}</p>
+                    <p><span className="font-medium">Total:</span> {selectedComplaint.order?.montant_total?.toFixed(2)}€</p>
                     <p><span className="font-medium">Date:</span> {new Date(selectedComplaint.order.created_at).toLocaleDateString('fr-FR')}</p>
                   </div>
                 </div>
