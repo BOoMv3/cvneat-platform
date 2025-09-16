@@ -69,7 +69,7 @@ export default function AdminComplaints() {
           *,
           order:orders(
             id,
-            montant_total,
+            total_amount,
             created_at
           ),
           customer:users!customer_id(
@@ -470,7 +470,7 @@ export default function AdminComplaints() {
                   <div className="space-y-2 text-sm">
                     <p><span className="font-medium">Restaurant:</span> {selectedComplaint.restaurant.nom}</p>
                     <p><span className="font-medium">Commande:</span> #{selectedComplaint.order_id}</p>
-                    <p><span className="font-medium">Total:</span> {selectedComplaint.order?.montant_total?.toFixed(2)}€</p>
+                    <p><span className="font-medium">Total:</span> {selectedComplaint.order?.total_amount?.toFixed(2)}€</p>
                     <p><span className="font-medium">Date:</span> {new Date(selectedComplaint.order.created_at).toLocaleDateString('fr-FR')}</p>
                   </div>
                 </div>
