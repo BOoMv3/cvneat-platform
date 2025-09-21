@@ -159,7 +159,7 @@ export default function OrderStatus({ params }) {
   const statusSteps = getStatusStep(order.status);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Notification de changement de statut */}
       {statusNotification && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce">
@@ -182,14 +182,15 @@ export default function OrderStatus({ params }) {
         {/* En-tête */}
         <div className="flex items-center mb-8">
           <button
-            onClick={() => router.push('/')}
-            className="mr-4 p-2 hover:bg-gray-200 rounded-full transition-colors"
+            onClick={() => router.back()}
+            className="mr-4 p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-full transition-colors shadow-sm"
+            title="Retour"
           >
-            <FaArrowLeft className="h-5 w-5" />
+            <FaArrowLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold">Suivi de commande</h1>
-            <p className="text-gray-600">Commande #{order.id}</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Suivi de commande</h1>
+            <p className="text-gray-600 dark:text-gray-400">Commande #{order.id}</p>
           </div>
         </div>
 
