@@ -32,10 +32,12 @@ export async function POST(request) {
 
     // Tarification simplifiée
     const baseFee = 2.50; // Frais de base
-    const distanceFee = 0.50; // 0.50€ par km
+    const distanceFee = 0.80; // 0.80€ par km
     
     // Calculer les frais totaux
-    const totalDeliveryFee = baseFee + (estimatedDistance * distanceFee);
+    const calculatedFee = baseFee + (estimatedDistance * distanceFee);
+    // Plafonner à 10€ maximum
+    const totalDeliveryFee = Math.min(calculatedFee, 10.00);
     
     // Vérifier si la livraison est possible (distance max 10km)
     const maxDistance = 10;
