@@ -242,55 +242,27 @@ export default function Checkout() {
 
       // Créer la commande
       const { data: order, error: orderError } = await supabase
-        .from('commandes')
+        .from('orders')
         .insert({
-          user_id: user.id,
+          customer_id: user.id,
           restaurant_id: restaurant.id,
-          total: totalAvecLivraison,
-          frais_livraison: fraisLivraison,
-          adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
-          statut: 'en_attente'
+          items: cart,
+          total_amount: totalAvecLivraison,
+          delivery_fee: fraisLivraison,
+          delivery_address: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
+          delivery_city: selectedAddress.city,
+          delivery_postal_code: selectedAddress.postal_code,
+          delivery_instructions: orderDetails.instructions,
+          status: 'pending'
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // Ajouter les détails de commande
-      console.log('Ajout des détails pour la commande:', order.id);
-      console.log('Articles dans le panier:', cart);
-      
-      for (const item of cart) {
-        console.log('Ajout détail pour item:', item);
-        console.log('Valeur de item.prix:', item.prix);
-        console.log('Valeur de item.price:', item.price);
-        console.log('Valeur calculée prix_unitaire:', item.prix || item.price);
-        
-        const prixUnitaire = item.prix || item.price;
-        console.log('prixUnitaire final:', prixUnitaire);
-        
-        const { data: detailData, error: detailError } = await supabase
-          .from('details_commande')
-          .insert({
-            commande_id: order.id,
-            plat_id: item.id,
-            quantite: item.quantity,
-            prix_unitaire: prixUnitaire
-          })
-          .select();
-
-        if (detailError) {
-          console.error('Erreur ajout détail commande:', detailError);
-          console.error('Données tentées:', {
-            commande_id: order.id,
-            plat_id: item.id,
-            quantite: item.quantity,
-            prix_unitaire: prixUnitaire
-          });
-        } else {
-          console.log('Détail ajouté avec succès:', detailData);
-        }
-      }
+      // Ajouter les détails de commande (stockage JSON dans orders)
+      console.log('Commande créée avec succès:', order.id);
+      console.log('Articles stockés dans la commande:', cart);
 
       // Vider le panier
       safeLocalStorage.removeItem('cart');
