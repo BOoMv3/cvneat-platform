@@ -285,7 +285,7 @@ export default function Checkout() {
             commande_id: order.id,
             plat_id: item.id,
             quantite: item.quantity,
-            prix_unitaire: item.price
+            prix_unitaire: prixUnitaire
           });
         } else {
           console.log('Détail ajouté avec succès:', detailData);
