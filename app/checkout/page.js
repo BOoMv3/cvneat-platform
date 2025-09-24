@@ -257,18 +257,32 @@ export default function Checkout() {
       if (orderError) throw orderError;
 
       // Ajouter les détails de commande
+      console.log('Ajout des détails pour la commande:', order.id);
+      console.log('Articles dans le panier:', cart);
+      
       for (const item of cart) {
-        const { error: detailError } = await supabase
+        console.log('Ajout détail pour item:', item);
+        
+        const { data: detailData, error: detailError } = await supabase
           .from('details_commande')
           .insert({
             commande_id: order.id,
             plat_id: item.id,
             quantite: item.quantity,
             prix_unitaire: item.price
-          });
+          })
+          .select();
 
         if (detailError) {
           console.error('Erreur ajout détail commande:', detailError);
+          console.error('Données tentées:', {
+            commande_id: order.id,
+            plat_id: item.id,
+            quantite: item.quantity,
+            prix_unitaire: item.price
+          });
+        } else {
+          console.log('Détail ajouté avec succès:', detailData);
         }
       }
 
