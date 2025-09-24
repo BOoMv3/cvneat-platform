@@ -242,23 +242,35 @@ export default function Checkout() {
 
       // Créer la commande
       const { data: order, error: orderError } = await supabase
-        .from('orders')
+        .from('commandes')
         .insert({
-          customer_id: user.id,
+          user_id: user.id,
           restaurant_id: restaurant.id,
-          items: cart,
-          total_amount: totalAvecLivraison,
-          delivery_fee: fraisLivraison,
-          delivery_address: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
-          delivery_city: selectedAddress.city,
-          delivery_postal_code: selectedAddress.postal_code,
-          delivery_instructions: orderDetails.instructions,
-          status: 'pending'
+          montant_total: totalAvecLivraison,
+          frais_livraison: fraisLivraison,
+          adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
+          status: 'en_attente'
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
+
+      // Ajouter les détails de commande
+      for (const item of cart) {
+        const { error: detailError } = await supabase
+          .from('details_commande')
+          .insert({
+            commande_id: order.id,
+            plat_id: item.id,
+            quantite: item.quantity,
+            prix_unitaire: item.price
+          });
+
+        if (detailError) {
+          console.error('Erreur ajout détail commande:', detailError);
+        }
+      }
 
       // Vider le panier
       safeLocalStorage.removeItem('cart');
