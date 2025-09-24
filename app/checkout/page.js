@@ -262,6 +262,12 @@ export default function Checkout() {
       
       for (const item of cart) {
         console.log('Ajout détail pour item:', item);
+        console.log('Valeur de item.prix:', item.prix);
+        console.log('Valeur de item.price:', item.price);
+        console.log('Valeur calculée prix_unitaire:', item.prix || item.price);
+        
+        const prixUnitaire = item.prix || item.price;
+        console.log('prixUnitaire final:', prixUnitaire);
         
         const { data: detailData, error: detailError } = await supabase
           .from('details_commande')
@@ -269,7 +275,7 @@ export default function Checkout() {
             commande_id: order.id,
             plat_id: item.id,
             quantite: item.quantity,
-            prix_unitaire: item.prix || item.price
+            prix_unitaire: prixUnitaire
           })
           .select();
 
