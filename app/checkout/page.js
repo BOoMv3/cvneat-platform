@@ -249,7 +249,7 @@ export default function Checkout() {
           montant_total: totalAvecLivraison,
           frais_livraison: fraisLivraison,
           adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
-          status: 'en_attente'
+          statut: 'en_attente'
         })
         .select()
         .single();
