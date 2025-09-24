@@ -242,20 +242,18 @@ export default function Checkout() {
 
       // Créer la commande
       const { data: order, error: orderError } = await supabase
-        .from('commandes')
+        .from('orders')
         .insert({
-          user_id: user.id,
+          customer_id: user.id,
           restaurant_id: restaurant.id,
           items: cart,
-          total: totalAvecLivraison,
-          frais_livraison: fraisLivraison,
-          adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
-          nom: orderDetails.nom,
-          prenom: orderDetails.prenom,
-          telephone: orderDetails.telephone,
-          email: orderDetails.email,
-          instructions: orderDetails.instructions,
-          statut: 'en_attente'
+          total_amount: totalAvecLivraison,
+          delivery_fee: fraisLivraison,
+          delivery_address: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
+          delivery_city: selectedAddress.city,
+          delivery_postal_code: selectedAddress.postal_code,
+          delivery_instructions: orderDetails.instructions,
+          status: 'pending'
         })
         .select()
         .single();
@@ -267,7 +265,7 @@ export default function Checkout() {
       setCart([]);
 
       // Rediriger vers la confirmation
-      router.push(`/order-confirmation/${order.id}`);
+      router.push(`/orders/${order.id}`);
     } catch (error) {
       console.error('Erreur création commande:', error);
       alert('Erreur lors de la création de la commande');
