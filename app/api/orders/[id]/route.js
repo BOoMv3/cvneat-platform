@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
 
     // Récupérer la commande
     const { data: order, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('id', id)
       .single();
@@ -43,26 +43,10 @@ export async function GET(request, { params }) {
     }
 
     // Vérifier l'appartenance de la commande
-    // Pour l'instant, on vérifie par email du client (customer_name)
-    // Dans un vrai système, on aurait une relation user_id dans la commande
-    const { data: userData, error: userDataError } = await supabase
-      .from('users')
-      .select('nom, prenom, email')
-      .eq('id', user.id)
-      .single();
-
-    if (userDataError || !userData) {
-      console.error('❌ Erreur récupération données utilisateur:', userDataError);
-      return NextResponse.json({ error: 'Erreur utilisateur' }, { status: 500 });
-    }
-
-    // Vérifier si la commande appartient à cet utilisateur
-    // On compare le nom du client avec le nom de l'utilisateur connecté
-    const fullUserName = `${userData.prenom} ${userData.nom}`;
-    if (order.customer_name !== fullUserName) {
+    if (order.user_id !== user.id) {
       console.error('❌ Commande ne appartient pas à l\'utilisateur:', {
-        commande_client: order.customer_name,
-        utilisateur: fullUserName
+        commande_user_id: order.user_id,
+        utilisateur_id: user.id
       });
       return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
     }
@@ -105,11 +89,9 @@ export async function PUT(request, { params }) {
 
     // Mettre à jour la commande
     const { data, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
-        status: body.status,
-        rejection_reason: body.reason || null,
-        preparation_time: body.preparation_time || null,
+        statut: body.status,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
