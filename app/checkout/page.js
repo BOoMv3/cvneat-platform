@@ -246,7 +246,7 @@ export default function Checkout() {
         .insert({
           user_id: user.id,
           restaurant_id: restaurant.id,
-          montant_total: totalAvecLivraison,
+          total: totalAvecLivraison,
           frais_livraison: fraisLivraison,
           adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
           statut: 'en_attente'
