@@ -8,19 +8,12 @@ export async function GET(request, { params }) {
     console.log('=== RÉCUPÉRATION COMMANDE PAR ID ===');
     console.log('ID demandé:', id);
 
-    // Vérifier l'authentification
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('❌ Pas de token d\'authentification');
-      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Vérifier l'authentification via les cookies
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
       console.error('❌ Erreur authentification:', userError);
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     console.log('✅ Utilisateur authentifié:', user.email);
@@ -68,21 +61,11 @@ export async function PUT(request, { params }) {
     console.log('ID commande:', id);
     console.log('Données reçues:', body);
 
-    // Récupérer le token d'authentification
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('❌ Pas de token d\'authentification');
-      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    // Token vérifié (non loggé pour des raisons de sécurité)
-
-    // Vérifier l'authentification
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Vérifier l'authentification via les cookies
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       console.error('❌ Erreur authentification:', userError);
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     console.log('✅ Utilisateur authentifié:', user.email);
