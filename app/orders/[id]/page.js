@@ -59,13 +59,29 @@ export default function OrderStatus({ params }) {
 
   const fetchOrder = async () => {
     try {
-      const response = await fetch(`/api/orders/${params.id}`);
-      if (!response.ok) {
+      console.log('🔍 Récupération directe de la commande:', params.id);
+      
+      // Récupération directe depuis Supabase
+      const { data: order, error } = await supabase
+        .from('commandes')
+        .select('*')
+        .eq('id', params.id)
+        .single();
+
+      if (error) {
+        console.error('❌ Erreur récupération commande:', error);
         throw new Error('Commande non trouvée');
       }
-      const data = await response.json();
-      setOrder(data);
+
+      if (!order) {
+        console.log('❌ Aucune commande trouvée pour l\'ID:', params.id);
+        throw new Error('Commande non trouvée');
+      }
+
+      console.log('✅ Commande trouvée:', order);
+      setOrder(order);
     } catch (err) {
+      console.error('❌ Erreur fetchOrder:', err);
       setError(err.message);
     } finally {
       setLoading(false);
