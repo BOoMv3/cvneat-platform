@@ -11,7 +11,7 @@ export async function GET(request, { params }) {
     // Récupérer la commande directement (sans authentification pour le test)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     );
 
     const { data: order, error } = await supabase
@@ -50,7 +50,7 @@ export async function PUT(request, { params }) {
     // Mettre à jour la commande
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     );
 
     const { data, error } = await supabase
