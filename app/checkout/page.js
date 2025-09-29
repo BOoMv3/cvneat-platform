@@ -24,6 +24,7 @@ export default function Checkout() {
   const [cartTotal, setCartTotal] = useState(0);
   const [fraisLivraison, setFraisLivraison] = useState(2.50);
   const [totalAvecLivraison, setTotalAvecLivraison] = useState(0);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [userAddresses, setUserAddresses] = useState([]);
@@ -103,10 +104,10 @@ export default function Checkout() {
       const price = typeof item.prix === 'number' ? item.prix : Number(item.prix);
       return sum + (price * item.quantity);
     }, 0);
-    console.log('Recalcul total - cart total:', total, 'frais livraison:', fraisLivraison, 'total avec livraison:', total + fraisLivraison);
+    console.log('Recalcul total - cart total:', total, 'frais livraison:', fraisLivraison, 'total avec livraison:', total + fraisLivraison, 'forceUpdate:', forceUpdate);
     setCartTotal(total);
     setTotalAvecLivraison(total + fraisLivraison);
-  }, [cart, fraisLivraison]);
+  }, [cart, fraisLivraison, forceUpdate]);
 
   // Recalcul automatique des frais de livraison à chaque changement d'adresse ou de panier
   useEffect(() => {
@@ -208,7 +209,10 @@ export default function Checkout() {
           const newTotal = cartTotal + data.frais_livraison;
           setTotalAvecLivraison(newTotal);
           
-          console.log('Frais mis à jour:', data.frais_livraison, 'Total:', newTotal);
+          // Forcer le re-render
+          setForceUpdate(prev => prev + 1);
+          
+          console.log('Frais mis à jour:', data.frais_livraison, 'Total:', newTotal, 'Force update:', forceUpdate + 1);
         } else {
           console.error('Livraison impossible:', data.message);
           alert(`Livraison impossible : ${data.message}`);
@@ -511,6 +515,10 @@ export default function Checkout() {
                   Frais de livraison
                 </span>
                 <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
+              </div>
+              {/* Debug affichage */}
+              <div className="text-xs text-gray-400">
+                Debug: fraisLivraison={fraisLivraison}, forceUpdate={forceUpdate}
               </div>
               <div className="border-t pt-2 sm:pt-3">
                 <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600">
