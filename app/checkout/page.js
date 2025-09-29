@@ -181,14 +181,29 @@ export default function Checkout() {
     console.log('Adresse complète:', fullAddress);
 
     try {
+      console.log('📡 Appel API /api/delivery/calculate...');
+      
       const response = await fetch('/api/delivery/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: fullAddress })
       });
 
-      const data = await response.json();
-      console.log('Réponse API:', data);
+      console.log('📡 Réponse HTTP:', response.status, response.statusText);
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status} ${response.statusText}`);
+      }
+
+      const responseText = await response.text();
+      console.log('📡 Réponse brute:', responseText);
+
+      if (!responseText || responseText.trim() === '') {
+        throw new Error('Réponse vide du serveur');
+      }
+
+      const data = JSON.parse(responseText);
+      console.log('📡 Données parsées:', data);
 
       if (!data.success || !data.livrable) {
         console.log('❌ Livraison refusée:', data.message);
@@ -205,8 +220,13 @@ export default function Checkout() {
       setForceUpdate(prev => prev + 1);
 
     } catch (error) {
-      console.error('❌ Erreur:', error);
-      alert('❌ Erreur calcul frais. Réessayez.');
+      console.error('❌ Erreur détaillée:', error);
+      
+      if (error instanceof SyntaxError) {
+        alert('❌ Erreur de communication avec le serveur. Réessayez.');
+      } else {
+        alert(`❌ Erreur: ${error.message}`);
+      }
     }
   };
 
