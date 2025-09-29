@@ -1,126 +1,125 @@
 import { NextResponse } from 'next/server';
 
-// Fonction pour calculer la distance entre deux points (formule de Haversine)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Rayon de la Terre en km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const distance = R * c;
-  return distance;
-}
-
-// Fonction pour obtenir les coordonnées d'une adresse (géocodage simple)
-async function getCoordinatesFromAddress(address) {
-  try {
-    // Pour une vraie implémentation, utilisez Google Maps API ou OpenStreetMap
-    // Ici on simule avec des coordonnées par défaut pour Paris
-    const defaultCoords = {
-      latitude: 48.8566,
-      longitude: 2.3522
-    };
-    
-    // Simulation basée sur l'adresse
-    if (address.toLowerCase().includes('paris')) {
-      return defaultCoords;
-    }
-    
-    // Pour d'autres villes, on pourrait avoir une base de données
-    return defaultCoords;
-  } catch (error) {
-    console.error('Erreur de géocodage:', error);
-    return null;
-  }
-}
-
 export async function POST(request) {
   try {
     const { 
-      restaurantAddress, 
       deliveryAddress, 
-      restaurantCoordinates,
-      deliveryCoordinates,
       orderAmount 
     } = await request.json();
 
-    if (!restaurantAddress && !restaurantCoordinates) {
-      return NextResponse.json({ 
-        error: 'Adresse du restaurant requise' 
-      }, { status: 400 });
-    }
-
-    if (!deliveryAddress && !deliveryCoordinates) {
+    if (!deliveryAddress) {
       return NextResponse.json({ 
         error: 'Adresse de livraison requise' 
       }, { status: 400 });
     }
 
-    let restaurantCoords = restaurantCoordinates;
-    let deliveryCoords = deliveryCoordinates;
+    console.log('=== CALCUL FRAIS LIVRAISON ===');
+    console.log('Adresse:', deliveryAddress);
+    console.log('Montant commande:', orderAmount);
 
-    // Si on n'a pas les coordonnées, essayer de les obtenir
-    if (!restaurantCoords && restaurantAddress) {
-      restaurantCoords = await getCoordinatesFromAddress(restaurantAddress);
-    }
-
-    if (!deliveryCoords && deliveryAddress) {
-      deliveryCoords = await getCoordinatesFromAddress(deliveryAddress);
-    }
-
-    if (!restaurantCoords || !deliveryCoords) {
-      return NextResponse.json({ 
-        error: 'Impossible de déterminer les coordonnées' 
-      }, { status: 400 });
+    // Extraire le code postal
+    const postalCode = extractPostalCode(deliveryAddress);
+    
+    if (!postalCode) {
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: 'Code postal non trouvé'
+      });
     }
 
     // Calculer la distance
-    const distance = calculateDistance(
-      restaurantCoords.latitude,
-      restaurantCoords.longitude,
-      deliveryCoords.latitude,
-      deliveryCoords.longitude
-    );
-
-    // Calculer les frais de livraison
-    let deliveryFee = 2.50; // Frais de base
-
-    // Augmenter les frais selon la distance
-    if (distance > 5) {
-      deliveryFee += (distance - 5) * 0.5; // +0.50€ par km au-delà de 5km
+    const distance = calculateDistanceFromPostalCode(postalCode);
+    
+    // Vérifier si livrable (max 10km)
+    const livrable = distance <= 10;
+    
+    if (!livrable) {
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: `Livraison impossible au-delà de 10km (distance: ${distance.toFixed(2)}km)`
+      });
     }
 
-    // Frais maximum
+    // Calculer les frais
+    let deliveryFee = 2.50; // Frais de base
+
+    // Augmenter selon la distance
+    if (distance > 5) {
+      deliveryFee += (distance - 5) * 0.80; // +0.80€ par km au-delà de 5km
+    }
+
+    // Plafond à 10€
     deliveryFee = Math.min(deliveryFee, 10.00);
 
-    // Réduction pour les commandes importantes
+    // Réduction pour commandes importantes
     if (orderAmount && orderAmount >= 25) {
       deliveryFee *= 0.8; // 20% de réduction
     }
 
-    // Livraison gratuite pour les commandes importantes
+    // Livraison gratuite pour commandes >= 50€
     const isFreeDelivery = orderAmount && orderAmount >= 50;
 
-    // Vérifier si la livraison est possible
-    const isDeliverable = distance <= 15; // Zone de livraison de 15km max
+    console.log('=== RÉSULTAT FRAIS ===');
+    console.log('Distance:', distance);
+    console.log('Frais calculés:', deliveryFee);
+    console.log('Livraison gratuite:', isFreeDelivery);
 
     return NextResponse.json({
-      distance: Math.round(distance * 10) / 10,
+      success: true,
+      livrable: true,
       deliveryFee: isFreeDelivery ? 0 : Math.round(deliveryFee * 100) / 100,
-      isDeliverable,
+      distance: Math.round(distance * 100) / 100,
       isFreeDelivery,
-      estimatedTime: Math.round(distance * 3 + 15), // Estimation basée sur la distance
-      restaurantCoordinates: restaurantCoords,
-      deliveryCoordinates: deliveryCoords
+      details: {
+        code_postal: postalCode,
+        distance_calculée: distance.toFixed(2),
+        frais_brut: deliveryFee.toFixed(2),
+        reduction_appliquee: orderAmount >= 25,
+        livraison_gratuite: isFreeDelivery
+      }
     });
 
   } catch (error) {
-    console.error('Erreur lors du calcul des frais de livraison:', error);
-    return NextResponse.json({ 
-      error: 'Erreur interne du serveur' 
-    }, { status: 500 });
+    console.error('Erreur calcul frais:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
+}
+
+// Extraire le code postal d'une adresse française
+function extractPostalCode(address) {
+  const postalCodeMatch = address.match(/\b(\d{5})\b/);
+  return postalCodeMatch ? postalCodeMatch[1] : null;
+}
+
+// Calculer la distance basée sur le code postal
+function calculateDistanceFromPostalCode(postalCode) {
+  // Codes postaux de référence pour Ganges et environs
+  const referencePostalCodes = {
+    '34190': 0, // Ganges - centre
+    '34150': 5, // Gignac
+    '34160': 8, // Castries
+    '34000': 15, // Montpellier
+    '34070': 12, // Montpellier
+    '34080': 10, // Montpellier
+    '34090': 8, // Montpellier
+    '34790': 6, // Grabels
+    '34820': 4, // Teyran
+    '34830': 3, // Jacou
+    '34880': 2, // Lavérune
+  };
+
+  if (referencePostalCodes[postalCode] !== undefined) {
+    return referencePostalCodes[postalCode];
+  }
+
+  // Estimation basée sur les 2 premiers chiffres
+  const firstTwoDigits = postalCode.substring(0, 2);
+  
+  if (firstTwoDigits === '34') return 5; // Hérault
+  if (firstTwoDigits === '30') return 8; // Gard
+  if (firstTwoDigits === '11') return 12; // Aude
+  
+  return 15; // Autres départements
 }
