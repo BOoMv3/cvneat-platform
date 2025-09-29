@@ -103,6 +103,7 @@ export default function Checkout() {
       const price = typeof item.prix === 'number' ? item.prix : Number(item.prix);
       return sum + (price * item.quantity);
     }, 0);
+    console.log('Recalcul total - cart total:', total, 'frais livraison:', fraisLivraison, 'total avec livraison:', total + fraisLivraison);
     setCartTotal(total);
     setTotalAvecLivraison(total + fraisLivraison);
   }, [cart, fraisLivraison]);
@@ -193,7 +194,10 @@ export default function Checkout() {
           console.log('Réponse API frais livraison:', data);
           
           if (data.livrable) {
+            console.log('AVANT setFraisLivraison:', fraisLivraison);
+            console.log('Nouvelle valeur à définir:', data.frais_livraison);
             setFraisLivraison(data.frais_livraison);
+            console.log('APRÈS setFraisLivraison - valeur définie');
             console.log(`Frais de livraison mis à jour: ${data.frais_livraison}€ pour ${address.city}`);
           } else {
             alert(`Livraison impossible : ${data.message}`);
