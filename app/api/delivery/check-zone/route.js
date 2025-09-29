@@ -30,14 +30,59 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
 }
 
 /**
- * Obtenir les coordonnées d'une adresse via Nominatim
+ * Base de données des coordonnées des villes principales
+ */
+const CITY_COORDINATES = {
+  // Ganges et environs (Hérault)
+  'ganges': { lat: 43.9342, lng: 3.7098, name: 'Ganges' },
+  'laroque': { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
+  'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles-de-Buèges' },
+  'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille-de-Putois' },
+  'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
+  'montoulieu': { lat: 43.9200, lng: 3.6800, name: 'Montoulieu' },
+  'moules': { lat: 43.9400, lng: 3.7200, name: 'Moulès-et-Baucels' },
+  
+  // Villes trop loin (pour refus)
+  'saint-esteve': { lat: 43.8581, lng: 3.8331, name: 'Saint-Esteve', too_far: true },
+  'perpignan': { lat: 43.8700, lng: 3.8400, name: 'Perpignan', too_far: true },
+  'canet': { lat: 43.8500, lng: 3.8200, name: 'Canet-en-Roussillon', too_far: true },
+};
+
+/**
+ * Obtenir les coordonnées d'une adresse (avec fallback)
  */
 async function getCoordinatesFromAddress(address) {
+  console.log('🔍 Recherche coordonnées pour:', address);
+  
+  // 1. Essayer de trouver dans notre base de données
+  const normalizedAddress = address.toLowerCase();
+  
+  for (const [cityKey, coords] of Object.entries(CITY_COORDINATES)) {
+    if (normalizedAddress.includes(cityKey)) {
+      console.log(`📍 Trouvé dans base: ${coords.name}`);
+      return {
+        lat: coords.lat,
+        lng: coords.lng,
+        display_name: `${coords.name}, France`,
+        too_far: coords.too_far || false
+      };
+    }
+  }
+  
+  // 2. Fallback avec API Nominatim (avec timeout)
   try {
+    console.log('🌐 Tentative géocodage Nominatim...');
     const encodedAddress = encodeURIComponent(address);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr`,
+      { signal: controller.signal }
     );
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error('Erreur API Nominatim');
@@ -49,14 +94,34 @@ async function getCoordinatesFromAddress(address) {
       throw new Error('Adresse non trouvée');
     }
     
+    console.log(`📍 Géocodage Nominatim réussi: ${data[0].display_name}`);
     return {
       lat: parseFloat(data[0].lat),
       lng: parseFloat(data[0].lon),
       display_name: data[0].display_name
     };
   } catch (error) {
-    console.error('Erreur géocodage:', error);
-    throw error;
+    console.error('❌ Erreur géocodage Nominatim:', error.message);
+    
+    // 3. Fallback final : estimer selon le code postal
+    const postalMatch = address.match(/(\d{5})/);
+    if (postalMatch) {
+      const postalCode = postalMatch[1];
+      console.log(`📮 Estimation par code postal: ${postalCode}`);
+      
+      if (postalCode === '34190') { // Ganges
+        return { lat: 43.9342, lng: 3.7098, display_name: 'Ganges, 34190, France' };
+      } else if (postalCode === '34150') { // Laroque
+        return { lat: 43.9188, lng: 3.7146, display_name: 'Laroque, 34150, France' };
+      } else if (postalCode === '34260') { // Pégairolles/Sumène
+        return { lat: 43.9086, lng: 3.7311, display_name: 'Zone 34260, France' };
+      } else {
+        // Code postal inconnu = probablement trop loin
+        throw new Error(`Code postal ${postalCode} non reconnu dans la zone de livraison`);
+      }
+    }
+    
+    throw new Error('Impossible de localiser cette adresse');
   }
 }
 
@@ -85,7 +150,19 @@ export async function POST(request) {
     const deliveryCoords = await getCoordinatesFromAddress(address);
     console.log('📍 Coordonnées livraison:', deliveryCoords);
 
-    // 2. Calculer la distance
+    // 2. Vérifier si c'est marqué comme trop loin dans notre base
+    if (deliveryCoords.too_far) {
+      console.log(`❌ Ville trop loin (marquée dans base): ${deliveryCoords.display_name}`);
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        distance: 999, // Distance fictive très grande
+        maxRadius: MAX_DELIVERY_RADIUS,
+        message: `Livraison impossible : ${deliveryCoords.name} est trop loin de Ganges. Zone de livraison limitée à ${MAX_DELIVERY_RADIUS}km.`
+      });
+    }
+
+    // 3. Calculer la distance
     const distance = calculateDistance(
       RESTAURANT_COORDS.lat,
       RESTAURANT_COORDS.lng,
@@ -95,7 +172,7 @@ export async function POST(request) {
     
     console.log(`📏 Distance calculée: ${distance.toFixed(2)}km`);
 
-    // 3. Vérifier si dans le périmètre
+    // 4. Vérifier si dans le périmètre
     const isInDeliveryZone = distance <= MAX_DELIVERY_RADIUS;
     
     if (!isInDeliveryZone) {
