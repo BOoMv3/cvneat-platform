@@ -155,39 +155,19 @@ export async function POST(request) {
       });
     }
 
-    // 2. Essayer de trouver dans notre base locale d'abord
-    const lowerAddress = address.toLowerCase();
-    let clientCoords = null;
-    
-    // Chercher dans notre base de données locale
-    for (const [cityKey, coords] of Object.entries(COORDINATES_DB)) {
-      if (lowerAddress.includes(cityKey) || lowerAddress.includes(coords.name.toLowerCase())) {
-        clientCoords = coords;
-        console.log(`📍 Trouvé dans base locale: ${coords.name}`);
-        break;
-      }
-    }
-    
-    // Si c'est Ganges mais pas trouvé de zone spécifique, utiliser le centre
-    if (!clientCoords && lowerAddress.includes('ganges')) {
-      clientCoords = COORDINATES_DB['ganges-centre'];
-      console.log(`📍 Ganges par défaut: Centre Ganges`);
-    }
-    
-    // Si pas trouvé localement, utiliser Nominatim
-    if (!clientCoords) {
-      console.log('🌐 Pas trouvé localement, tentative Nominatim...');
-      try {
-        clientCoords = await geocodeAddress(address);
-        console.log('📍 Coordonnées Nominatim:', clientCoords);
-      } catch (error) {
-        console.error('❌ Nominatim échoué:', error.message);
-        return NextResponse.json({
-          success: false,
-          livrable: false,
-          message: 'Impossible de localiser cette adresse'
-        });
-      }
+    // 2. Géocoder TOUJOURS avec Nominatim pour avoir les VRAIES coordonnées
+    console.log('🌐 Géocodage Nominatim pour adresse EXACTE...');
+    let clientCoords;
+    try {
+      clientCoords = await geocodeAddress(address);
+      console.log('📍 Coordonnées EXACTES:', clientCoords);
+    } catch (error) {
+      console.error('❌ Nominatim échoué:', error.message);
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: 'Impossible de localiser cette adresse exacte'
+      });
     }
 
     // 3. Calculer la distance entre restaurant et client
