@@ -13,15 +13,14 @@ const FEE_PER_KM = 0.80;
 const MAX_FEE = 10.00;
 const MAX_DISTANCE = 10; // km
 
-// Villes connues avec coordonnées exactes
-const CITIES = {
-  'ganges': { lat: 43.9342, lng: 3.7098, name: 'Ganges' },
-  'laroque': { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
-  'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' },
-  'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
-  'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' },
-  'montoulieu': { lat: 43.9200, lng: 3.6800, name: 'Montoulieu' }
-};
+// VILLES AUTORISÉES (pour vérifier si on livre dans cette zone)
+const AUTHORIZED_CITIES = [
+  'ganges', 'laroque', 'saint-bauzille', 'sumene', 'pegairolles', 'montoulieu',
+  'saint-bauzille-de-putois', 'pegairolles-de-bueges', 'sumene', 'montoulieu'
+];
+
+// Codes postaux autorisés
+const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
 
 // Calcul distance (Haversine)
 function getDistance(lat1, lng1, lat2, lng2) {
@@ -35,17 +34,60 @@ function getDistance(lat1, lng1, lat2, lng2) {
   return R * c;
 }
 
-// Trouver la ville dans l'adresse
-function findCityInAddress(address) {
+// Vérifier si l'adresse est dans une ville autorisée
+function isAuthorizedCity(address) {
   const lowerAddress = address.toLowerCase();
   
-  for (const [key, city] of Object.entries(CITIES)) {
-    if (lowerAddress.includes(key) || lowerAddress.includes(city.name.toLowerCase())) {
-      return city;
+  // Vérifier par code postal
+  for (const postalCode of AUTHORIZED_POSTAL_CODES) {
+    if (address.includes(postalCode)) {
+      return true;
     }
   }
   
-  return null;
+  // Vérifier par nom de ville
+  for (const city of AUTHORIZED_CITIES) {
+    if (lowerAddress.includes(city)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Géocoder l'adresse avec Nominatim (VRAIE géolocalisation)
+async function geocodeAddress(address) {
+  try {
+    console.log('🌐 Géocodage de:', address);
+    
+    const encodedAddress = encodeURIComponent(address);
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr&addressdetails=1`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Erreur API Nominatim');
+    }
+    
+    const data = await response.json();
+    
+    if (!data || data.length === 0) {
+      throw new Error('Adresse non trouvée');
+    }
+    
+    const result = data[0];
+    console.log('📍 Géocodage réussi:', result.display_name);
+    
+    return {
+      lat: parseFloat(result.lat),
+      lng: parseFloat(result.lon),
+      display_name: result.display_name
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur géocodage:', error);
+    throw error;
+  }
 }
 
 // Calculer les frais
@@ -62,51 +104,54 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Adresse requise' }, { status: 400 });
     }
 
-    console.log('🚚 Calcul frais pour:', address);
+    console.log('🚚 === CALCUL FRAIS 4.0 (VRAIE GÉOLOCALISATION) ===');
+    console.log('Adresse:', address);
 
-    // 1. Trouver la ville dans l'adresse
-    const city = findCityInAddress(address);
-    
-    if (!city) {
-      console.log('❌ Ville non reconnue:', address);
+    // 1. Vérifier si c'est dans une zone autorisée
+    if (!isAuthorizedCity(address)) {
+      console.log('❌ Zone non autorisée:', address);
       return NextResponse.json({
         success: false,
-        message: 'Ville non reconnue dans notre zone de livraison',
+        message: 'Livraison non disponible dans cette zone',
         livrable: false
       });
     }
 
-    // 2. Calculer la distance
+    // 2. Géocoder l'adresse EXACTE du client
+    const clientCoords = await geocodeAddress(address);
+    console.log('📍 Coordonnées client:', clientCoords);
+
+    // 3. Calculer la distance EXACTE entre restaurant et adresse client
     const distance = getDistance(
       RESTAURANT.lat, RESTAURANT.lng,
-      city.lat, city.lng
+      clientCoords.lat, clientCoords.lng
     );
 
-    console.log(`📍 ${city.name}: ${distance.toFixed(2)}km`);
+    console.log(`📏 Distance EXACTE: ${distance.toFixed(2)}km`);
 
-    // 3. Vérifier la distance max
+    // 4. Vérifier la distance max
     if (distance > MAX_DISTANCE) {
       console.log(`❌ Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
         success: false,
-        message: `Livraison impossible: ${city.name} est à ${distance.toFixed(1)}km (max ${MAX_DISTANCE}km)`,
+        message: `Livraison impossible: ${distance.toFixed(1)}km (max ${MAX_DISTANCE}km)`,
         livrable: false,
         distance: distance
       });
     }
 
-    // 4. Calculer les frais
+    // 5. Calculer les frais selon la VRAIE distance
     const fee = calculateFee(distance);
 
-    console.log(`✅ Frais calculés: ${fee.toFixed(2)}€`);
+    console.log(`💰 Frais EXACTS: 2.50€ + (${distance.toFixed(2)}km × 0.80€) = ${fee.toFixed(2)}€`);
 
     return NextResponse.json({
       success: true,
       livrable: true,
       distance: distance,
       fee: fee,
-      city: city.name,
-      message: `Livraison possible: ${fee.toFixed(2)}€`
+      address: clientCoords.display_name,
+      message: `Livraison possible: ${fee.toFixed(2)}€ (${distance.toFixed(1)}km)`
     });
 
   } catch (error) {
