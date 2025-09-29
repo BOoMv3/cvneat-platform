@@ -177,13 +177,15 @@ export default function Checkout() {
     console.log('=== CALCUL FRAIS DISTANCE ===');
     console.log('Adresse sélectionnée:', address);
 
-    // Coordonnées fixes pour les principales villes
+    // Coordonnées fixes pour les villes dans un rayon de 10km de Ganges
     const cityCoordinates = {
       '34190': { lat: 43.9342, lng: 3.7098, name: 'Ganges' }, // Ganges
       '34150': { lat: 43.9188, lng: 3.7146, name: 'Laroque' }, // Laroque
       '34260': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' }, // Pégairolles
       '34150': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' }, // Saint-Bauzille
       '34260': { lat: 43.8994, lng: 3.7194, name: 'Sumène' }, // Sumène
+      '34260': { lat: 43.9200, lng: 3.6800, name: 'Montoulieu' }, // Montoulieu
+      '34150': { lat: 43.9400, lng: 3.7200, name: 'Moulès' }, // Moulès
     };
 
     // Restaurant à Ganges (coordonnées fixes)
@@ -210,6 +212,13 @@ export default function Checkout() {
         distance = 5; // Distance par défaut
       }
       console.log(`Distance estimée ${address.city}: ${distance}km`);
+    }
+
+    // Vérifier si la livraison est possible (max 10km de Ganges)
+    if (distance > 10) {
+      console.log(`❌ Livraison impossible: ${distance.toFixed(2)}km > 10km max`);
+      alert(`Livraison impossible : ${address.city} est trop loin de Ganges (${distance.toFixed(1)}km). Zone de livraison limitée à 10km.`);
+      return;
     }
 
     // Calcul des frais : 2.50€ + 0.80€/km (max 10€)
