@@ -40,31 +40,49 @@ async function geocodeAddress(address) {
     const encodedAddress = encodeURIComponent(address);
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr`;
     
+    console.log('🌐 URL Nominatim:', url);
+    
+    // Timeout de 10 secondes
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'CVNeat-Delivery/1.0'
-      }
+      },
+      signal: controller.signal
     });
     
+    clearTimeout(timeoutId);
+    
+    console.log('🌐 Réponse Nominatim:', response.status, response.statusText);
+    
     if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
+      throw new Error(`Erreur Nominatim HTTP: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
+    console.log('🌐 Données Nominatim:', data);
     
     if (!data || data.length === 0) {
-      throw new Error('Adresse non trouvée');
+      throw new Error('Adresse non trouvée dans Nominatim');
     }
     
     const result = data[0];
-    return {
+    const coords = {
       lat: parseFloat(result.lat),
       lng: parseFloat(result.lon),
       display_name: result.display_name
     };
     
+    console.log('🌐 Coordonnées extraites:', coords);
+    return coords;
+    
   } catch (error) {
-    console.error('❌ Erreur géocodage:', error);
+    console.error('❌ Erreur géocodage détaillée:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('Timeout lors du géocodage');
+    }
     throw error;
   }
 }
@@ -79,10 +97,31 @@ function calculateDeliveryFee(distance) {
 
 export async function POST(request) {
   try {
-    const { address } = await request.json();
+    console.log('🚚 === API DELIVERY CALCULATE START ===');
+    
+    // Parser le body avec gestion d'erreur
+    let body;
+    try {
+      body = await request.json();
+      console.log('📦 Body reçu:', body);
+    } catch (parseError) {
+      console.error('❌ Erreur parsing JSON:', parseError);
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Données invalides',
+        message: 'Format de données incorrect'
+      }, { status: 400 });
+    }
+    
+    const { address } = body;
     
     if (!address) {
-      return NextResponse.json({ error: 'Adresse requise' }, { status: 400 });
+      console.log('❌ Adresse manquante');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Adresse requise',
+        message: 'Adresse de livraison requise'
+      }, { status: 400 });
     }
 
     console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
@@ -101,6 +140,7 @@ export async function POST(request) {
     }
 
     // 2. Géocoder l'adresse du client
+    console.log('🌐 Début géocodage...');
     const clientCoords = await geocodeAddress(address);
     console.log('📍 Coordonnées client:', clientCoords);
 
@@ -139,11 +179,14 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('❌ Erreur calcul livraison:', error);
+    console.error('❌ ERREUR API DELIVERY CALCULATE:', error);
+    console.error('❌ Stack trace:', error.stack);
+    
     return NextResponse.json({
       success: false,
       error: error.message,
-      message: 'Erreur lors du calcul des frais de livraison'
+      message: 'Erreur lors du calcul des frais de livraison',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }, { status: 500 });
   }
 }
