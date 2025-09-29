@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
@@ -509,35 +509,23 @@ export default function Checkout() {
                 <span>Sous-total</span>
                 <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
               </div>
-              {useMemo(() => {
-                console.log('RENDU frais livraison - fraisLivraison:', fraisLivraison, 'forceUpdate:', forceUpdate);
-                return (
-                  <>
-                    <div className="flex justify-between text-gray-600 text-sm sm:text-base">
-                      <span className="flex items-center">
-                        <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                        Frais de livraison
-                      </span>
-                      <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
-                    </div>
-                    {/* Debug affichage */}
-                    <div className="text-xs text-gray-400">
-                      Debug: fraisLivraison={fraisLivraison}, forceUpdate={forceUpdate}
-                    </div>
-                  </>
-                );
-              }, [fraisLivraison, forceUpdate])}
-              {useMemo(() => {
-                console.log('RENDU total - totalAvecLivraison:', totalAvecLivraison, 'forceUpdate:', forceUpdate);
-                return (
-                  <div className="border-t pt-2 sm:pt-3">
-                    <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600">
-                      <span>Total</span>
-                      <span>{totalAvecLivraison.toFixed(2)}€</span>
-                    </div>
-                  </div>
-                );
-              }, [totalAvecLivraison, forceUpdate])}
+              <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 text-sm sm:text-base">
+                <span className="flex items-center">
+                  <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  Frais de livraison
+                </span>
+                <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
+              </div>
+              {/* Debug affichage */}
+              <div key={`debug-${forceUpdate}`} className="text-xs text-gray-400">
+                Debug: fraisLivraison={fraisLivraison}, forceUpdate={forceUpdate}
+              </div>
+              <div key={`total-${forceUpdate}`} className="border-t pt-2 sm:pt-3">
+                <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600">
+                  <span>Total</span>
+                  <span>{totalAvecLivraison.toFixed(2)}€</span>
+                </div>
+              </div>
             </div>
 
             <button
