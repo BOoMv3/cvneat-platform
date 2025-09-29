@@ -208,8 +208,12 @@ export default function Checkout() {
         distance = 2;
       } else if (cityName.includes('sumène')) {
         distance = 3;
+      } else if (cityName.includes('saint-esteve') || cityName.includes('saint esteve')) {
+        distance = 80; // Saint-Esteve est très loin (Pyrénées-Orientales)
+      } else if (cityName.includes('perpignan') || cityName.includes('canet')) {
+        distance = 75; // Trop loin aussi
       } else {
-        distance = 5; // Distance par défaut
+        distance = 5; // Distance par défaut pour villes proches
       }
       console.log(`Distance estimée ${address.city}: ${distance}km`);
     }
