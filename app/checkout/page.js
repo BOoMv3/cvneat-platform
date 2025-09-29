@@ -174,13 +174,50 @@ export default function Checkout() {
       return;
     }
 
-    console.log('=== CALCUL FRAIS GANGES ===');
+    console.log('=== CALCUL FRAIS DISTANCE ===');
     console.log('Adresse sélectionnée:', address);
 
-    // Frais fixe pour Ganges et alentours (10km max)
-    const newFrais = 2.50; // Prix unique pour toute la zone
+    // Coordonnées fixes pour les principales villes
+    const cityCoordinates = {
+      '34190': { lat: 43.9342, lng: 3.7098, name: 'Ganges' }, // Ganges
+      '34150': { lat: 43.9188, lng: 3.7146, name: 'Laroque' }, // Laroque
+      '34260': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' }, // Pégairolles
+      '34150': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' }, // Saint-Bauzille
+      '34260': { lat: 43.8994, lng: 3.7194, name: 'Sumène' }, // Sumène
+    };
 
-    console.log('Frais Ganges:', newFrais, 'pour code postal:', address.postal_code);
+    // Restaurant à Ganges (coordonnées fixes)
+    const restaurantCoords = { lat: 43.9342, lng: 3.7098 };
+    
+    // Calculer la distance
+    let distance = 0;
+    const postalCode = address.postal_code;
+    
+    if (cityCoordinates[postalCode]) {
+      const cityCoords = cityCoordinates[postalCode];
+      distance = calculateDistance(restaurantCoords, cityCoords);
+      console.log(`Distance ${cityCoords.name}: ${distance.toFixed(2)}km`);
+    } else {
+      // Si code postal inconnu, estimer selon la ville
+      const cityName = address.city.toLowerCase();
+      if (cityName.includes('ganges')) {
+        distance = 0;
+      } else if (cityName.includes('laroque')) {
+        distance = 2;
+      } else if (cityName.includes('sumène')) {
+        distance = 3;
+      } else {
+        distance = 5; // Distance par défaut
+      }
+      console.log(`Distance estimée ${address.city}: ${distance}km`);
+    }
+
+    // Calcul des frais : 2.50€ + 0.80€/km (max 10€)
+    const fraisBase = 2.50;
+    const fraisKm = distance * 0.80;
+    const newFrais = Math.min(fraisBase + fraisKm, 10.00);
+
+    console.log(`Calcul: ${fraisBase}€ + (${distance}km × 0.80€) = ${newFrais.toFixed(2)}€`);
 
     // Mettre à jour immédiatement
     setFraisLivraison(newFrais);
@@ -193,7 +230,19 @@ export default function Checkout() {
     setForceUpdate(prev => prev + 1);
     
     console.log('Frais mis à jour:', newFrais, 'Total:', newTotal, 'Force update:', forceUpdate + 1);
-    console.log('=== FIN CALCUL FRAIS GANGES ===');
+    console.log('=== FIN CALCUL FRAIS DISTANCE ===');
+  };
+
+  // Fonction pour calculer la distance entre deux points (formule de Haversine)
+  const calculateDistance = (coord1, coord2) => {
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
+    const dLng = (coord2.lng - coord1.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   };
 
   const handleAddressSelect = async (address) => {
