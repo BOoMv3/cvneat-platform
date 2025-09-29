@@ -18,7 +18,14 @@ const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
 
 // Base de données simple pour éviter Nominatim
 const COORDINATES_DB = {
-  'ganges': { lat: 43.9342, lng: 3.7098, name: 'Ganges' },
+  // Ganges avec zones différentes pour tester les distances
+  'ganges-centre': { lat: 43.9342, lng: 3.7098, name: 'Centre Ganges' },
+  'ganges-nord': { lat: 43.9450, lng: 3.7100, name: 'Nord Ganges' },
+  'ganges-sud': { lat: 43.9250, lng: 3.7080, name: 'Sud Ganges' },
+  'ganges-est': { lat: 43.9350, lng: 3.7200, name: 'Est Ganges' },
+  'ganges-ouest': { lat: 43.9340, lng: 3.7000, name: 'Ouest Ganges' },
+  
+  // Autres villes
   'laroque': { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
   'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' },
   'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
@@ -159,6 +166,12 @@ export async function POST(request) {
         console.log(`📍 Trouvé dans base locale: ${coords.name}`);
         break;
       }
+    }
+    
+    // Si c'est Ganges mais pas trouvé de zone spécifique, utiliser le centre
+    if (!clientCoords && lowerAddress.includes('ganges')) {
+      clientCoords = COORDINATES_DB['ganges-centre'];
+      console.log(`📍 Ganges par défaut: Centre Ganges`);
     }
     
     // Si pas trouvé localement, utiliser Nominatim
