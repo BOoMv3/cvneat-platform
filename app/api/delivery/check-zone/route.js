@@ -56,10 +56,16 @@ async function getCoordinatesFromAddress(address) {
   
   // 1. Essayer de trouver dans notre base de données
   const normalizedAddress = address.toLowerCase();
+  console.log('🔍 Recherche dans base pour:', normalizedAddress);
   
   for (const [cityKey, coords] of Object.entries(CITY_COORDINATES)) {
-    if (normalizedAddress.includes(cityKey)) {
-      console.log(`📍 Trouvé dans base: ${coords.name}`);
+    // Recherche plus flexible : ville, code postal, ou partie du nom
+    if (normalizedAddress.includes(cityKey) || 
+        normalizedAddress.includes(coords.name.toLowerCase()) ||
+        address.includes('34190') && cityKey === 'ganges' ||
+        address.includes('34150') && cityKey === 'laroque' ||
+        address.includes('34260') && (cityKey === 'pegairolles' || cityKey === 'sumene')) {
+      console.log(`📍 Trouvé dans base: ${coords.name} (clé: ${cityKey})`);
       return {
         lat: coords.lat,
         lng: coords.lng,
@@ -69,39 +75,13 @@ async function getCoordinatesFromAddress(address) {
     }
   }
   
-  // 2. Fallback avec API Nominatim (avec timeout)
+  console.log('❌ Aucune correspondance trouvée dans la base locale');
+  
+  // 2. Fallback avec API Nominatim (TEMPORAIREMENT DÉSACTIVÉ)
+  console.log('⚠️ Nominatim temporairement désactivé pour éviter les erreurs');
+  
+  // Sauter directement au fallback par code postal
   try {
-    console.log('🌐 Tentative géocodage Nominatim...');
-    const encodedAddress = encodeURIComponent(address);
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-    
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr`,
-      { signal: controller.signal }
-    );
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error('Erreur API Nominatim');
-    }
-    
-    const data = await response.json();
-    
-    if (!data || data.length === 0) {
-      throw new Error('Adresse non trouvée');
-    }
-    
-    console.log(`📍 Géocodage Nominatim réussi: ${data[0].display_name}`);
-    return {
-      lat: parseFloat(data[0].lat),
-      lng: parseFloat(data[0].lon),
-      display_name: data[0].display_name
-    };
-  } catch (error) {
-    console.error('❌ Erreur géocodage Nominatim:', error.message);
     
     // 3. Fallback final : estimer selon le code postal
     const postalMatch = address.match(/(\d{5})/);
@@ -122,6 +102,9 @@ async function getCoordinatesFromAddress(address) {
     }
     
     throw new Error('Impossible de localiser cette adresse');
+  } catch (error) {
+    console.error('❌ Erreur fallback:', error.message);
+    throw error;
   }
 }
 
