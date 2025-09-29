@@ -16,6 +16,15 @@ const MAX_DISTANCE = 10;      // Maximum 10km
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
 
+// Base de données simple pour éviter Nominatim
+const COORDINATES_DB = {
+  'ganges': { lat: 43.9342, lng: 3.7098, name: 'Ganges' },
+  'laroque': { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
+  'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' },
+  'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
+  'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' }
+};
+
 /**
  * Calculer la distance entre deux points (Haversine)
  */
@@ -139,10 +148,34 @@ export async function POST(request) {
       });
     }
 
-    // 2. Géocoder l'adresse du client
-    console.log('🌐 Début géocodage...');
-    const clientCoords = await geocodeAddress(address);
-    console.log('📍 Coordonnées client:', clientCoords);
+    // 2. Essayer de trouver dans notre base locale d'abord
+    const lowerAddress = address.toLowerCase();
+    let clientCoords = null;
+    
+    // Chercher dans notre base de données locale
+    for (const [cityKey, coords] of Object.entries(COORDINATES_DB)) {
+      if (lowerAddress.includes(cityKey) || lowerAddress.includes(coords.name.toLowerCase())) {
+        clientCoords = coords;
+        console.log(`📍 Trouvé dans base locale: ${coords.name}`);
+        break;
+      }
+    }
+    
+    // Si pas trouvé localement, utiliser Nominatim
+    if (!clientCoords) {
+      console.log('🌐 Pas trouvé localement, tentative Nominatim...');
+      try {
+        clientCoords = await geocodeAddress(address);
+        console.log('📍 Coordonnées Nominatim:', clientCoords);
+      } catch (error) {
+        console.error('❌ Nominatim échoué:', error.message);
+        return NextResponse.json({
+          success: false,
+          livrable: false,
+          message: 'Impossible de localiser cette adresse'
+        });
+      }
+    }
 
     // 3. Calculer la distance entre restaurant et client
     const distance = calculateDistance(
