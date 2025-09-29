@@ -17,20 +17,28 @@ export async function POST(request) {
     console.log('Adresse:', deliveryAddress);
     console.log('Montant commande:', orderAmount);
 
-    // Extraire le code postal
-    const postalCode = extractPostalCode(deliveryAddress);
+    // Géocoder l'adresse pour obtenir la distance
+    const deliveryCoords = await geocodeAddress(deliveryAddress);
     
-    if (!postalCode) {
+    if (!deliveryCoords) {
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: 'Code postal non trouvé'
+        message: 'Impossible de localiser l\'adresse'
       });
     }
 
-    // Calculer la distance
-    const distance = calculateDistanceFromPostalCode(postalCode);
-    
+    // Distance depuis Ganges (centre de livraison)
+    const gangesCoords = { lat: 43.9333, lon: 3.7167 };
+    const distance = calculateDistance(
+      gangesCoords.lat,
+      gangesCoords.lon,
+      deliveryCoords.lat,
+      deliveryCoords.lon
+    );
+
+    console.log('Distance calculée:', distance);
+
     // Vérifier si livrable (max 10km)
     const livrable = distance <= 10;
     
@@ -42,42 +50,33 @@ export async function POST(request) {
       });
     }
 
-    // Calculer les frais
-    let deliveryFee = 2.50; // Frais de base
-
-    // Augmenter selon la distance
-    if (distance > 5) {
-      deliveryFee += (distance - 5) * 0.80; // +0.80€ par km au-delà de 5km
-    }
-
-    // Plafond à 10€
+    // Votre système de tarification original
+    let deliveryFee = 2.50; // 2.50€ de base
+    deliveryFee += distance * 0.80; // +0.80€ par km
+    
+    // Plafond à 10€ maximum
     deliveryFee = Math.min(deliveryFee, 10.00);
 
-    // Réduction pour commandes importantes
-    if (orderAmount && orderAmount >= 25) {
-      deliveryFee *= 0.8; // 20% de réduction
+    // Réduction pour commandes importantes (optionnel)
+    if (orderAmount && orderAmount >= 50) {
+      deliveryFee = 0; // Livraison gratuite pour commandes >= 50€
+    } else if (orderAmount && orderAmount >= 25) {
+      deliveryFee *= 0.8; // 20% de réduction pour commandes >= 25€
     }
-
-    // Livraison gratuite pour commandes >= 50€
-    const isFreeDelivery = orderAmount && orderAmount >= 50;
 
     console.log('=== RÉSULTAT FRAIS ===');
     console.log('Distance:', distance);
     console.log('Frais calculés:', deliveryFee);
-    console.log('Livraison gratuite:', isFreeDelivery);
 
     return NextResponse.json({
       success: true,
       livrable: true,
-      deliveryFee: isFreeDelivery ? 0 : Math.round(deliveryFee * 100) / 100,
+      deliveryFee: Math.round(deliveryFee * 100) / 100,
       distance: Math.round(distance * 100) / 100,
-      isFreeDelivery,
       details: {
-        code_postal: postalCode,
         distance_calculée: distance.toFixed(2),
         frais_brut: deliveryFee.toFixed(2),
-        reduction_appliquee: orderAmount >= 25,
-        livraison_gratuite: isFreeDelivery
+        formule: `2.50€ + (${distance.toFixed(2)}km × 0.80€) = ${deliveryFee.toFixed(2)}€`
       }
     });
 
@@ -87,39 +86,71 @@ export async function POST(request) {
   }
 }
 
-// Extraire le code postal d'une adresse française
-function extractPostalCode(address) {
-  const postalCodeMatch = address.match(/\b(\d{5})\b/);
-  return postalCodeMatch ? postalCodeMatch[1] : null;
+// Fonction de géocodage (même que dans calculate)
+async function geocodeAddress(address) {
+  try {
+    console.log(`Géocodage de: ${address}`);
+    
+    const cleanAddress = address.trim() + ', France';
+    const encodedAddress = encodeURIComponent(cleanAddress);
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'CVNeat-Delivery-Calculator/1.0'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erreur géocodage: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+        display_name: data[0].display_name
+      };
+    }
+    
+    // Fallback pour Ganges
+    if (address.toLowerCase().includes('ganges')) {
+      return {
+        lat: 43.9333,
+        lon: 3.7167,
+        display_name: 'Ganges, France (fallback)'
+      };
+    }
+    
+    return null;
+    
+  } catch (error) {
+    console.error('Erreur géocodage:', error);
+    
+    // Fallback pour Ganges
+    if (address.toLowerCase().includes('ganges')) {
+      return {
+        lat: 43.9333,
+        lon: 3.7167,
+        display_name: 'Ganges, France (fallback)'
+      };
+    }
+    
+    return null;
+  }
 }
 
-// Calculer la distance basée sur le code postal
-function calculateDistanceFromPostalCode(postalCode) {
-  // Codes postaux de référence pour Ganges et environs
-  const referencePostalCodes = {
-    '34190': 0, // Ganges - centre
-    '34150': 5, // Gignac
-    '34160': 8, // Castries
-    '34000': 15, // Montpellier
-    '34070': 12, // Montpellier
-    '34080': 10, // Montpellier
-    '34090': 8, // Montpellier
-    '34790': 6, // Grabels
-    '34820': 4, // Teyran
-    '34830': 3, // Jacou
-    '34880': 2, // Lavérune
-  };
-
-  if (referencePostalCodes[postalCode] !== undefined) {
-    return referencePostalCodes[postalCode];
-  }
-
-  // Estimation basée sur les 2 premiers chiffres
-  const firstTwoDigits = postalCode.substring(0, 2);
-  
-  if (firstTwoDigits === '34') return 5; // Hérault
-  if (firstTwoDigits === '30') return 8; // Gard
-  if (firstTwoDigits === '11') return 12; // Aude
-  
-  return 15; // Autres départements
+// Fonction de calcul de distance (formule de Haversine)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Rayon de la Terre en km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
