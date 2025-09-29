@@ -173,32 +173,32 @@ export default function Checkout() {
       return;
     }
 
-    console.log('🚚 === CALCUL FRAIS 3.0 ===');
+    console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
     console.log('Adresse:', address);
 
     // Construire l'adresse complète
-    const fullAddress = `${address.address}, ${address.postal_code} ${address.city}`;
+    const fullAddress = `${address.address}, ${address.postal_code} ${address.city}, France`;
     console.log('Adresse complète:', fullAddress);
 
     try {
-      const response = await fetch('/api/delivery/fee', {
+      const response = await fetch('/api/delivery/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: fullAddress })
       });
 
       const data = await response.json();
-      console.log('Réponse:', data);
+      console.log('Réponse API:', data);
 
       if (!data.success || !data.livrable) {
-        console.log('❌ Refusé:', data.message);
+        console.log('❌ Livraison refusée:', data.message);
         alert(`❌ ${data.message}`);
         return;
       }
 
       // SUCCÈS - Mettre à jour les frais
-      const newFrais = data.fee;
-      console.log(`✅ ${data.city}: ${data.distance.toFixed(1)}km = ${newFrais.toFixed(2)}€`);
+      const newFrais = data.frais_livraison;
+      console.log(`✅ ${data.distance.toFixed(1)}km = ${newFrais.toFixed(2)}€`);
 
       setFraisLivraison(newFrais);
       setTotalAvecLivraison(cartTotal + newFrais);
