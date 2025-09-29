@@ -110,7 +110,9 @@ export default function Checkout() {
 
   // Recalcul automatique des frais de livraison à chaque changement d'adresse ou de panier
   useEffect(() => {
+    console.log('useEffect déclenché - selectedAddress:', selectedAddress, 'cart.length:', cart.length);
     if (selectedAddress && cart.length > 0) {
+      console.log('Appel calculateDeliveryFee depuis useEffect');
       calculateDeliveryFee(selectedAddress);
     }
   }, [selectedAddress, cart]);
@@ -166,55 +168,62 @@ export default function Checkout() {
   };
 
   const calculateDeliveryFee = async (address) => {
-    if (!cart.length || !address) return;
+    if (!cart.length || !address) {
+      console.log('Pas de calcul - cart:', cart.length, 'address:', address);
+      return;
+    }
+
+    console.log('=== DÉBUT CALCUL FRAIS LIVRAISON ===');
+    console.log('Adresse sélectionnée:', address);
 
     try {
-      const savedCart = safeLocalStorage.getJSON('cart');
-      const restaurantAddress = savedCart?.restaurant?.adresse || savedCart?.restaurant?.address;
+      // Adresse de livraison
+      const deliveryAddress = `${address.address}, ${address.postal_code} ${address.city}`;
+      console.log('Adresse de livraison formatée:', deliveryAddress);
 
-      console.log('Calcul frais livraison pour:', {
-        restaurantAddress,
-        deliveryAddress: `${address.address}, ${address.postal_code} ${address.city}`,
-        cartTotal
+      // Appel API simplifié
+      const response = await fetch('/api/delivery/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurantAddress: 'Ganges, France', // Fixe pour simplifier
+          deliveryAddress: deliveryAddress,
+          orderAmount: cartTotal
+        })
       });
 
-      if (restaurantAddress) {
-        const response = await fetch('/api/delivery/calculate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            restaurantAddress: restaurantAddress,
-            deliveryAddress: `${address.address}, ${address.postal_code} ${address.city}`,
-            orderAmount: cartTotal
-          })
-        });
+      console.log('Réponse API reçue:', response.status, response.ok);
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Réponse API frais livraison:', data);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Données API:', data);
+        
+        if (data.livrable) {
+          console.log('Livraison possible - nouveau prix:', data.frais_livraison);
           
-          if (data.livrable) {
-            console.log('AVANT setFraisLivraison:', fraisLivraison);
-            console.log('Nouvelle valeur à définir:', data.frais_livraison);
-            setFraisLivraison(data.frais_livraison);
-            console.log('APRÈS setFraisLivraison - valeur définie');
-            console.log(`Frais de livraison mis à jour: ${data.frais_livraison}€ pour ${address.city}`);
-          } else {
-            alert(`Livraison impossible : ${data.message}`);
-            console.error('Livraison impossible:', data.message);
-          }
+          // Mettre à jour immédiatement
+          setFraisLivraison(data.frais_livraison);
+          
+          // Forcer le recalcul du total
+          const newTotal = cartTotal + data.frais_livraison;
+          setTotalAvecLivraison(newTotal);
+          
+          console.log('Frais mis à jour:', data.frais_livraison, 'Total:', newTotal);
         } else {
-          const errorData = await response.json();
-          console.error('Erreur API frais livraison:', errorData);
-          alert('Erreur lors du calcul des frais de livraison');
+          console.error('Livraison impossible:', data.message);
+          alert(`Livraison impossible : ${data.message}`);
         }
       } else {
-        console.warn('Adresse restaurant non trouvée dans le panier');
+        const errorData = await response.json();
+        console.error('Erreur API:', errorData);
+        alert('Erreur lors du calcul des frais de livraison');
       }
     } catch (error) {
       console.error('Erreur calcul frais livraison:', error);
       alert('Erreur lors du calcul des frais de livraison');
     }
+    
+    console.log('=== FIN CALCUL FRAIS LIVRAISON ===');
   };
 
   const handleAddressSelect = async (address) => {
