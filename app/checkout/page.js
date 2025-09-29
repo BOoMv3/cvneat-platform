@@ -174,27 +174,13 @@ export default function Checkout() {
       return;
     }
 
-    console.log('=== CALCUL FRAIS SIMPLE ===');
+    console.log('=== CALCUL FRAIS GANGES ===');
     console.log('Adresse sélectionnée:', address);
 
-    // Calcul simple basé sur le code postal
-    const postalCode = address.postal_code;
-    let newFrais = 2.50; // Base
+    // Frais fixe pour Ganges et alentours (10km max)
+    const newFrais = 2.50; // Prix unique pour toute la zone
 
-    // Frais selon code postal
-    if (postalCode === '34190') { // Ganges
-      newFrais = 2.50;
-    } else if (postalCode.startsWith('34')) { // Hérault
-      newFrais = 3.50;
-    } else if (postalCode.startsWith('66')) { // Pyrénées-Orientales
-      newFrais = 8.00;
-    } else if (postalCode.startsWith('30')) { // Gard
-      newFrais = 6.00;
-    } else {
-      newFrais = 10.00; // Maximum
-    }
-
-    console.log('Nouveau frais calculé:', newFrais, 'pour code postal:', postalCode);
+    console.log('Frais Ganges:', newFrais, 'pour code postal:', address.postal_code);
 
     // Mettre à jour immédiatement
     setFraisLivraison(newFrais);
@@ -207,7 +193,7 @@ export default function Checkout() {
     setForceUpdate(prev => prev + 1);
     
     console.log('Frais mis à jour:', newFrais, 'Total:', newTotal, 'Force update:', forceUpdate + 1);
-    console.log('=== FIN CALCUL FRAIS SIMPLE ===');
+    console.log('=== FIN CALCUL FRAIS GANGES ===');
   };
 
   const handleAddressSelect = async (address) => {
