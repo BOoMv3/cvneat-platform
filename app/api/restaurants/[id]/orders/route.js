@@ -14,14 +14,14 @@ export async function GET(request, { params }) {
     console.log('Statut filtré:', status);
 
     let query = supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('restaurant_id', id)
       .order('created_at', { ascending: false });
 
     // Filtrer par statut si spécifié
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq('statut', status);
     }
 
     const { data: orders, error } = await query;

@@ -100,7 +100,7 @@ export default function RestaurantOrders() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'orders',
+          table: 'commandes',
           filter: `restaurant_id=eq.${restaurantId}`
         },
         (payload) => {
@@ -116,7 +116,7 @@ export default function RestaurantOrders() {
           // Notification du navigateur
           if (Notification.permission === 'granted') {
             new Notification('Nouvelle commande !', {
-              body: `Commande de ${payload.new.customer_name} - ${payload.new.total_amount}€`,
+              body: `Commande de ${payload.new.user_id} - ${payload.new.total}€`,
               icon: '/favicon.ico'
             });
           }
@@ -130,13 +130,13 @@ export default function RestaurantOrders() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'orders',
+          table: 'commandes',
           filter: `restaurant_id=eq.${restaurantId}`
         },
         (payload) => {
           console.log('Commande mise à jour:', payload.new);
-          console.log('Ancien statut:', payload.old.status);
-          console.log('Nouveau statut:', payload.new.status);
+          console.log('Ancien statut:', payload.old.statut);
+          console.log('Nouveau statut:', payload.new.statut);
           fetchOrders(); // Rafraîchir la liste
         }
       )

@@ -17,8 +17,8 @@ export default function RestaurantOrderAlert() {
         { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'orders',
-          filter: 'status=eq.pending'
+          table: 'commandes',
+          filter: 'statut=eq.en_attente'
         }, 
         (payload) => {
           console.log('Nouvelle commande reçue:', payload.new);
@@ -29,8 +29,8 @@ export default function RestaurantOrderAlert() {
         { 
           event: 'UPDATE', 
           schema: 'public', 
-          table: 'orders',
-          filter: 'status=eq.pending'
+          table: 'commandes',
+          filter: 'statut=eq.en_attente'
         }, 
         (payload) => {
           console.log('Commande mise à jour:', payload.new);
@@ -47,9 +47,9 @@ export default function RestaurantOrderAlert() {
   const fetchPendingOrders = async () => {
     try {
       const { data, error } = await supabase
-        .from('orders')
+        .from('commandes')
         .select('*')
-        .eq('status', 'pending')
+        .eq('statut', 'en_attente')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -64,9 +64,9 @@ export default function RestaurantOrderAlert() {
   const handleAcceptOrder = async (orderId) => {
     try {
       const { error } = await supabase
-        .from('orders')
+        .from('commandes')
         .update({ 
-          status: 'accepted',
+          statut: 'en_preparation',
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
@@ -92,9 +92,9 @@ export default function RestaurantOrderAlert() {
       
       // Mettre à jour le statut de la commande
       const { error } = await supabase
-        .from('orders')
+        .from('commandes')
         .update({ 
-          status: 'rejected',
+          statut: 'annulee',
           rejection_reason: reason,
           updated_at: new Date().toISOString()
         })
