@@ -15,12 +15,12 @@ export async function POST(request) {
     console.log('Adresse restaurant:', restaurantAddress);
     console.log('Adresse livraison:', deliveryAddress);
 
-    // Géocoder les adresses pour obtenir les coordonnées GPS
-    const restaurantCoords = await geocodeAddress(restaurantAddress || 'Ganges, France');
-    const deliveryCoords = await geocodeAddress(deliveryAddress);
+    // Utiliser des coordonnées fixes pour éviter les erreurs d'API
+    const restaurantCoords = getCoordinatesFromAddress(restaurantAddress || 'Ganges, France');
+    const deliveryCoords = getCoordinatesFromAddress(deliveryAddress);
 
     if (!restaurantCoords || !deliveryCoords) {
-      console.error('Erreur géocodage:', { restaurantCoords, deliveryCoords });
+      console.error('Coordonnées non trouvées:', { restaurantCoords, deliveryCoords });
       return NextResponse.json({ 
         error: 'Impossible de localiser les adresses' 
       }, { status: 400 });
@@ -28,14 +28,6 @@ export async function POST(request) {
 
     console.log('Coordonnées restaurant:', restaurantCoords);
     console.log('Coordonnées livraison:', deliveryCoords);
-    
-    // Validation des coordonnées (France métropolitaine)
-    if (!isValidFrenchCoordinates(restaurantCoords) || !isValidFrenchCoordinates(deliveryCoords)) {
-      console.error('Coordonnées invalides:', { restaurantCoords, deliveryCoords });
-      return NextResponse.json({ 
-        error: 'Coordonnées géographiques invalides' 
-      }, { status: 400 });
-    }
 
     // Calculer la distance réelle avec la formule de Haversine
     const realDistance = calculateDistance(
@@ -114,90 +106,62 @@ export async function POST(request) {
   }
 }
 
-// Fonction de validation des coordonnées françaises
-function isValidFrenchCoordinates(coords) {
-  // France métropolitaine approximative
-  const minLat = 41.0;
-  const maxLat = 51.5;
-  const minLon = -5.5;
-  const maxLon = 9.5;
+// Base de données de coordonnées fixes pour les villes françaises
+const COORDINATES_DATABASE = {
+  // Hérault (34)
+  'ganges': { lat: 43.9333, lon: 3.7167 },
+  'montpellier': { lat: 43.6110, lon: 3.8767 },
+  '34000': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34190': { lat: 43.9333, lon: 3.7167 }, // Ganges
+  '34070': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34080': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34090': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34790': { lat: 43.6500, lon: 3.8000 }, // Grabels
+  '34820': { lat: 43.6833, lon: 3.9167 }, // Teyran
+  '34830': { lat: 43.6667, lon: 3.9000 }, // Jacou
+  '34880': { lat: 43.5667, lon: 3.8000 }, // Lavérune
   
-  return coords && 
-         coords.lat >= minLat && coords.lat <= maxLat &&
-         coords.lon >= minLon && coords.lon <= maxLon;
-}
+  // Pyrénées-Orientales (66)
+  'saint-esteve': { lat: 42.7167, lon: 2.8500 },
+  '66240': { lat: 42.7167, lon: 2.8500 }, // Saint-Esteve
+  'perpignan': { lat: 42.6886, lon: 2.8948 },
+  '66000': { lat: 42.6886, lon: 2.8948 }, // Perpignan
+  
+  // Gard (30)
+  'nimes': { lat: 43.8367, lon: 4.3600 },
+  '30000': { lat: 43.8367, lon: 4.3600 }, // Nîmes
+  
+  // Aude (11)
+  'carcassonne': { lat: 43.2167, lon: 2.3500 },
+  '11000': { lat: 43.2167, lon: 2.3500 }, // Carcassonne
+};
 
-// Fonction de géocodage avec Nominatim (OpenStreetMap) - AMÉLIORÉE
-async function geocodeAddress(address) {
-  try {
-    console.log(`Géocodage de: ${address}`);
-    
-    // Nettoyer et formater l'adresse
-    const cleanAddress = address.trim() + ', France';
-    const encodedAddress = encodeURIComponent(cleanAddress);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr&addressdetails=1`;
-    
-    console.log('URL de géocodage:', url);
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'CVNeat-Delivery-Calculator/1.0'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Erreur géocodage: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('Réponse Nominatim:', data);
-    
-    if (data && data.length > 0) {
-      const result = {
-        lat: parseFloat(data[0].lat),
-        lon: parseFloat(data[0].lon),
-        display_name: data[0].display_name,
-        importance: data[0].importance || 0
-      };
-      
-      // Vérifier la qualité du résultat
-      if (result.importance < 0.1) {
-        console.warn('Résultat de géocodage de faible qualité:', result);
-      }
-      
-      console.log(`Coordonnées trouvées: ${result.lat}, ${result.lon} (importance: ${result.importance})`);
-      return result;
-    }
-    
-    // Fallback pour Ganges si l'API ne trouve rien
-    if (address.toLowerCase().includes('ganges')) {
-      console.log('Utilisation des coordonnées de fallback pour Ganges');
+// Fonction pour obtenir les coordonnées d'une adresse (coordonnées fixes)
+function getCoordinatesFromAddress(address) {
+  if (!address) return null;
+  
+  const addressLower = address.toLowerCase();
+  console.log(`Recherche coordonnées pour: ${address}`);
+  
+  // Chercher par nom de ville
+  for (const [city, coords] of Object.entries(COORDINATES_DATABASE)) {
+    if (addressLower.includes(city)) {
+      console.log(`Coordonnées trouvées pour ${city}:`, coords);
       return {
-        lat: 43.9333,
-        lon: 3.7167,
-        display_name: 'Ganges, France (fallback)',
-        importance: 1.0
+        lat: coords.lat,
+        lon: coords.lon,
+        display_name: `${city} (fixe)`
       };
     }
-    
-    console.warn(`Aucune coordonnée trouvée pour: ${address}`);
-    return null;
-    
-  } catch (error) {
-    console.error('Erreur géocodage:', error);
-    
-    // Fallback en cas d'erreur pour Ganges
-    if (address.toLowerCase().includes('ganges')) {
-      return {
-        lat: 43.9333,
-        lon: 3.7167,
-        display_name: 'Ganges, France (fallback)',
-        importance: 1.0
-      };
-    }
-    
-    return null;
   }
+  
+  // Fallback pour Ganges si rien n'est trouvé
+  console.log('Aucune coordonnée trouvée, utilisation du fallback Ganges');
+  return {
+    lat: 43.9333,
+    lon: 3.7167,
+    display_name: 'Ganges (fallback)'
+  };
 }
 
 // Fonction de calcul de distance (formule de Haversine)

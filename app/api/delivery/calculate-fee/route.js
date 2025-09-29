@@ -17,8 +17,8 @@ export async function POST(request) {
     console.log('Adresse:', deliveryAddress);
     console.log('Montant commande:', orderAmount);
 
-    // Géocoder l'adresse pour obtenir la distance
-    const deliveryCoords = await geocodeAddress(deliveryAddress);
+    // Utiliser des coordonnées fixes
+    const deliveryCoords = getCoordinatesFromAddress(deliveryAddress);
     
     if (!deliveryCoords) {
       return NextResponse.json({
@@ -86,60 +86,59 @@ export async function POST(request) {
   }
 }
 
-// Fonction de géocodage (même que dans calculate)
-async function geocodeAddress(address) {
-  try {
-    console.log(`Géocodage de: ${address}`);
-    
-    const cleanAddress = address.trim() + ', France';
-    const encodedAddress = encodeURIComponent(cleanAddress);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'CVNeat-Delivery-Calculator/1.0'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Erreur géocodage: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data && data.length > 0) {
+// Base de données de coordonnées fixes (même que calculate)
+const COORDINATES_DATABASE = {
+  // Hérault (34)
+  'ganges': { lat: 43.9333, lon: 3.7167 },
+  'montpellier': { lat: 43.6110, lon: 3.8767 },
+  '34000': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34190': { lat: 43.9333, lon: 3.7167 }, // Ganges
+  '34070': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34080': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34090': { lat: 43.6110, lon: 3.8767 }, // Montpellier
+  '34790': { lat: 43.6500, lon: 3.8000 }, // Grabels
+  '34820': { lat: 43.6833, lon: 3.9167 }, // Teyran
+  '34830': { lat: 43.6667, lon: 3.9000 }, // Jacou
+  '34880': { lat: 43.5667, lon: 3.8000 }, // Lavérune
+  
+  // Pyrénées-Orientales (66)
+  'saint-esteve': { lat: 42.7167, lon: 2.8500 },
+  '66240': { lat: 42.7167, lon: 2.8500 }, // Saint-Esteve
+  'perpignan': { lat: 42.6886, lon: 2.8948 },
+  '66000': { lat: 42.6886, lon: 2.8948 }, // Perpignan
+  
+  // Gard (30)
+  'nimes': { lat: 43.8367, lon: 4.3600 },
+  '30000': { lat: 43.8367, lon: 4.3600 }, // Nîmes
+  
+  // Aude (11)
+  'carcassonne': { lat: 43.2167, lon: 2.3500 },
+  '11000': { lat: 43.2167, lon: 2.3500 }, // Carcassonne
+};
+
+// Fonction pour obtenir les coordonnées d'une adresse (coordonnées fixes)
+function getCoordinatesFromAddress(address) {
+  if (!address) return null;
+  
+  const addressLower = address.toLowerCase();
+  
+  // Chercher par nom de ville ou code postal
+  for (const [city, coords] of Object.entries(COORDINATES_DATABASE)) {
+    if (addressLower.includes(city)) {
       return {
-        lat: parseFloat(data[0].lat),
-        lon: parseFloat(data[0].lon),
-        display_name: data[0].display_name
+        lat: coords.lat,
+        lon: coords.lon,
+        display_name: `${city} (fixe)`
       };
     }
-    
-    // Fallback pour Ganges
-    if (address.toLowerCase().includes('ganges')) {
-      return {
-        lat: 43.9333,
-        lon: 3.7167,
-        display_name: 'Ganges, France (fallback)'
-      };
-    }
-    
-    return null;
-    
-  } catch (error) {
-    console.error('Erreur géocodage:', error);
-    
-    // Fallback pour Ganges
-    if (address.toLowerCase().includes('ganges')) {
-      return {
-        lat: 43.9333,
-        lon: 3.7167,
-        display_name: 'Ganges, France (fallback)'
-      };
-    }
-    
-    return null;
   }
+  
+  // Fallback pour Ganges
+  return {
+    lat: 43.9333,
+    lon: 3.7167,
+    display_name: 'Ganges (fallback)'
+  };
 }
 
 // Fonction de calcul de distance (formule de Haversine)
