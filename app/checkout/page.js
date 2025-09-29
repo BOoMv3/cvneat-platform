@@ -174,60 +174,40 @@ export default function Checkout() {
       return;
     }
 
-    console.log('=== DÉBUT CALCUL FRAIS LIVRAISON ===');
+    console.log('=== CALCUL FRAIS SIMPLE ===');
     console.log('Adresse sélectionnée:', address);
 
-    try {
-      // Adresse de livraison
-      const deliveryAddress = `${address.address}, ${address.postal_code} ${address.city}`;
-      console.log('Adresse de livraison formatée:', deliveryAddress);
+    // Calcul simple basé sur le code postal
+    const postalCode = address.postal_code;
+    let newFrais = 2.50; // Base
 
-      // Appel API simplifié
-      const response = await fetch('/api/delivery/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurantAddress: 'Ganges, France', // Fixe pour simplifier
-          deliveryAddress: deliveryAddress,
-          orderAmount: cartTotal
-        })
-      });
-
-      console.log('Réponse API reçue:', response.status, response.ok);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Données API:', data);
-        
-        if (data.livrable) {
-          console.log('Livraison possible - nouveau prix:', data.frais_livraison);
-          
-          // Mettre à jour immédiatement
-          setFraisLivraison(data.frais_livraison);
-          
-          // Forcer le recalcul du total
-          const newTotal = cartTotal + data.frais_livraison;
-          setTotalAvecLivraison(newTotal);
-          
-          // Forcer le re-render
-          setForceUpdate(prev => prev + 1);
-          
-          console.log('Frais mis à jour:', data.frais_livraison, 'Total:', newTotal, 'Force update:', forceUpdate + 1);
-        } else {
-          console.error('Livraison impossible:', data.message);
-          alert(`Livraison impossible : ${data.message}`);
-        }
-      } else {
-        const errorData = await response.json();
-        console.error('Erreur API:', errorData);
-        alert('Erreur lors du calcul des frais de livraison');
-      }
-    } catch (error) {
-      console.error('Erreur calcul frais livraison:', error);
-      alert('Erreur lors du calcul des frais de livraison');
+    // Frais selon code postal
+    if (postalCode === '34190') { // Ganges
+      newFrais = 2.50;
+    } else if (postalCode.startsWith('34')) { // Hérault
+      newFrais = 3.50;
+    } else if (postalCode.startsWith('66')) { // Pyrénées-Orientales
+      newFrais = 8.00;
+    } else if (postalCode.startsWith('30')) { // Gard
+      newFrais = 6.00;
+    } else {
+      newFrais = 10.00; // Maximum
     }
+
+    console.log('Nouveau frais calculé:', newFrais, 'pour code postal:', postalCode);
+
+    // Mettre à jour immédiatement
+    setFraisLivraison(newFrais);
     
-    console.log('=== FIN CALCUL FRAIS LIVRAISON ===');
+    // Forcer le recalcul du total
+    const newTotal = cartTotal + newFrais;
+    setTotalAvecLivraison(newTotal);
+    
+    // Forcer le re-render
+    setForceUpdate(prev => prev + 1);
+    
+    console.log('Frais mis à jour:', newFrais, 'Total:', newTotal, 'Force update:', forceUpdate + 1);
+    console.log('=== FIN CALCUL FRAIS SIMPLE ===');
   };
 
   const handleAddressSelect = async (address) => {
