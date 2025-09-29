@@ -170,58 +170,43 @@ export default function Checkout() {
 
   const calculateDeliveryFee = async (address) => {
     if (!cart.length || !address) {
-      console.log('Pas de calcul - cart:', cart.length, 'address:', address);
       return;
     }
 
-    console.log('=== CALCUL FRAIS LIVRAISON 2.0 ===');
-    console.log('Adresse sélectionnée:', address);
+    console.log('🚚 === CALCUL FRAIS 3.0 ===');
+    console.log('Adresse:', address);
 
     // Construire l'adresse complète
-    const fullAddress = `${address.address}, ${address.postal_code} ${address.city}, France`;
+    const fullAddress = `${address.address}, ${address.postal_code} ${address.city}`;
     console.log('Adresse complète:', fullAddress);
 
     try {
-      // Appel API de vérification de zone
-      const response = await fetch('/api/delivery/check-zone', {
+      const response = await fetch('/api/delivery/fee', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          address: fullAddress
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: fullAddress })
       });
 
       const data = await response.json();
-      console.log('Réponse API:', data);
+      console.log('Réponse:', data);
 
       if (!data.success || !data.livrable) {
-        console.log('❌ Livraison refusée:', data.message);
+        console.log('❌ Refusé:', data.message);
         alert(`❌ ${data.message}`);
         return;
       }
 
-      // Livraison possible - mettre à jour les frais
-      const newFrais = data.frais_livraison;
-      console.log(`✅ Livraison possible: ${data.distance.toFixed(1)}km - Frais: ${newFrais.toFixed(2)}€`);
+      // SUCCÈS - Mettre à jour les frais
+      const newFrais = data.fee;
+      console.log(`✅ ${data.city}: ${data.distance.toFixed(1)}km = ${newFrais.toFixed(2)}€`);
 
-      // Mettre à jour immédiatement
       setFraisLivraison(newFrais);
-      
-      // Forcer le recalcul du total
-      const newTotal = cartTotal + newFrais;
-      setTotalAvecLivraison(newTotal);
-      
-      // Forcer le re-render
+      setTotalAvecLivraison(cartTotal + newFrais);
       setForceUpdate(prev => prev + 1);
-      
-      console.log('Frais mis à jour:', newFrais, 'Total:', newTotal, 'Force update:', forceUpdate + 1);
-      console.log('=== FIN CALCUL FRAIS LIVRAISON 2.0 ===');
 
     } catch (error) {
-      console.error('❌ Erreur calcul frais livraison:', error);
-      alert('❌ Erreur lors du calcul des frais de livraison. Veuillez réessayer.');
+      console.error('❌ Erreur:', error);
+      alert('❌ Erreur calcul frais. Réessayez.');
     }
   };
 
