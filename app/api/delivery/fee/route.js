@@ -13,11 +13,27 @@ const FEE_PER_KM = 0.80;
 const MAX_FEE = 10.00;
 const MAX_DISTANCE = 10; // km
 
-// VILLES AUTORISÉES (pour vérifier si on livre dans cette zone)
-const AUTHORIZED_CITIES = [
-  'ganges', 'laroque', 'saint-bauzille', 'sumene', 'pegairolles', 'montoulieu',
-  'saint-bauzille-de-putois', 'pegairolles-de-bueges', 'sumene', 'montoulieu'
-];
+// BASE DE DONNÉES DES ADRESSES PRÉCISES
+const ADDRESS_DATABASE = {
+  // Ganges - Coordonnées précises selon la zone
+  'ganges-centre': { lat: 43.9342, lng: 3.7098, name: 'Centre Ganges' },
+  'ganges-nord': { lat: 43.9450, lng: 3.7100, name: 'Nord Ganges' },
+  'ganges-sud': { lat: 43.9250, lng: 3.7080, name: 'Sud Ganges' },
+  'ganges-est': { lat: 43.9350, lng: 3.7200, name: 'Est Ganges' },
+  'ganges-ouest': { lat: 43.9340, lng: 3.7000, name: 'Ouest Ganges' },
+  
+  // Laroque
+  'laroque': { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
+  
+  // Saint-Bauzille
+  'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' },
+  
+  // Sumène
+  'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
+  
+  // Pégairolles
+  'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' }
+};
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
@@ -34,25 +50,54 @@ function getDistance(lat1, lng1, lat2, lng2) {
   return R * c;
 }
 
-// Vérifier si l'adresse est dans une ville autorisée
+// Vérifier si l'adresse est dans une zone autorisée
 function isAuthorizedCity(address) {
-  const lowerAddress = address.toLowerCase();
-  
   // Vérifier par code postal
   for (const postalCode of AUTHORIZED_POSTAL_CODES) {
     if (address.includes(postalCode)) {
       return true;
     }
   }
+  return false;
+}
+
+// Trouver la zone la plus proche dans notre base de données
+function findClosestZone(address) {
+  const lowerAddress = address.toLowerCase();
   
-  // Vérifier par nom de ville
-  for (const city of AUTHORIZED_CITIES) {
-    if (lowerAddress.includes(city)) {
-      return true;
+  // Si c'est Ganges, déterminer la zone selon la rue
+  if (address.includes('34190') || lowerAddress.includes('ganges')) {
+    if (lowerAddress.includes('olivette') || lowerAddress.includes('centre') || lowerAddress.includes('place')) {
+      return ADDRESS_DATABASE['ganges-centre'];
+    } else if (lowerAddress.includes('nord') || lowerAddress.includes('haut')) {
+      return ADDRESS_DATABASE['ganges-nord'];
+    } else if (lowerAddress.includes('sud') || lowerAddress.includes('bas')) {
+      return ADDRESS_DATABASE['ganges-sud'];
+    } else if (lowerAddress.includes('est')) {
+      return ADDRESS_DATABASE['ganges-est'];
+    } else if (lowerAddress.includes('ouest')) {
+      return ADDRESS_DATABASE['ganges-ouest'];
+    } else {
+      // Par défaut, centre de Ganges
+      return ADDRESS_DATABASE['ganges-centre'];
     }
   }
   
-  return false;
+  // Autres villes
+  if (lowerAddress.includes('laroque')) {
+    return ADDRESS_DATABASE['laroque'];
+  }
+  if (lowerAddress.includes('saint-bauzille')) {
+    return ADDRESS_DATABASE['saint-bauzille'];
+  }
+  if (lowerAddress.includes('sumene')) {
+    return ADDRESS_DATABASE['sumene'];
+  }
+  if (lowerAddress.includes('pegairolles')) {
+    return ADDRESS_DATABASE['pegairolles'];
+  }
+  
+  return null;
 }
 
 // Géocoder l'adresse avec Nominatim (VRAIE géolocalisation)
@@ -117,19 +162,35 @@ export async function POST(request) {
       });
     }
 
-    // 2. Géocoder l'adresse EXACTE du client
-    const clientCoords = await geocodeAddress(address);
-    console.log('📍 Coordonnées client:', clientCoords);
+    // 2. Essayer de trouver dans notre base de données locale (RAPIDE)
+    let clientCoords = findClosestZone(address);
+    
+    if (clientCoords) {
+      console.log(`📍 Trouvé dans base locale: ${clientCoords.name}`);
+    } else {
+      // 3. Fallback: Géocoder avec Nominatim (LENT)
+      console.log('⚠️ Pas trouvé localement, tentative Nominatim...');
+      try {
+        clientCoords = await geocodeAddress(address);
+      } catch (error) {
+        console.error('❌ Nominatim échoué:', error.message);
+        return NextResponse.json({
+          success: false,
+          message: 'Impossible de localiser cette adresse',
+          livrable: false
+        });
+      }
+    }
 
-    // 3. Calculer la distance EXACTE entre restaurant et adresse client
+    // 4. Calculer la distance EXACTE
     const distance = getDistance(
       RESTAURANT.lat, RESTAURANT.lng,
       clientCoords.lat, clientCoords.lng
     );
 
-    console.log(`📏 Distance EXACTE: ${distance.toFixed(2)}km`);
+    console.log(`📏 Distance: ${distance.toFixed(2)}km`);
 
-    // 4. Vérifier la distance max
+    // 5. Vérifier la distance max
     if (distance > MAX_DISTANCE) {
       console.log(`❌ Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
@@ -140,18 +201,18 @@ export async function POST(request) {
       });
     }
 
-    // 5. Calculer les frais selon la VRAIE distance
+    // 6. Calculer les frais: 2.50€ + (distance × 0.80€)
     const fee = calculateFee(distance);
 
-    console.log(`💰 Frais EXACTS: 2.50€ + (${distance.toFixed(2)}km × 0.80€) = ${fee.toFixed(2)}€`);
+    console.log(`💰 Frais: 2.50€ + (${distance.toFixed(2)}km × 0.80€) = ${fee.toFixed(2)}€`);
 
     return NextResponse.json({
       success: true,
       livrable: true,
       distance: distance,
       fee: fee,
-      address: clientCoords.display_name,
-      message: `Livraison possible: ${fee.toFixed(2)}€ (${distance.toFixed(1)}km)`
+      zone: clientCoords.name,
+      message: `Livraison: ${fee.toFixed(2)}€ (${distance.toFixed(1)}km)`
     });
 
   } catch (error) {
