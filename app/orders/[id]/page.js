@@ -90,11 +90,10 @@ export default function OrderStatus({ params }) {
 
   const getStatusStep = (status) => {
     const steps = [
-      { key: 'pending', label: 'En attente', icon: FaClock, color: 'text-yellow-500' },
-      { key: 'accepted', label: 'Acceptée', icon: FaCheckCircle, color: 'text-green-500' },
-      { key: 'preparing', label: 'En préparation', icon: FaUtensils, color: 'text-blue-500' },
-      { key: 'ready', label: 'Prête', icon: FaBox, color: 'text-purple-500' },
-      { key: 'delivered', label: 'Livrée', icon: FaTruck, color: 'text-gray-500' }
+      { key: 'en_attente', label: 'En attente', icon: FaClock, color: 'text-yellow-500' },
+      { key: 'en_preparation', label: 'En préparation', icon: FaUtensils, color: 'text-blue-500' },
+      { key: 'en_livraison', label: 'En livraison', icon: FaTruck, color: 'text-purple-500' },
+      { key: 'livree', label: 'Livrée', icon: FaCheckCircle, color: 'text-green-600' }
     ];
     
     const currentIndex = steps.findIndex(step => step.key === status);
@@ -107,18 +106,16 @@ export default function OrderStatus({ params }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
+      case 'en_attente':
         return 'bg-yellow-100 text-yellow-800';
-      case 'accepted':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'preparing':
+      case 'en_preparation':
         return 'bg-blue-100 text-blue-800';
-      case 'ready':
+      case 'en_livraison':
         return 'bg-purple-100 text-purple-800';
-      case 'delivered':
-        return 'bg-gray-100 text-gray-800';
+      case 'livree':
+        return 'bg-green-100 text-green-800';
+      case 'annulee':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -172,7 +169,7 @@ export default function OrderStatus({ params }) {
     );
   }
 
-  const statusSteps = getStatusStep(order.status);
+  const statusSteps = getStatusStep(order.statut);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -217,13 +214,12 @@ export default function OrderStatus({ params }) {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold">Statut de votre commande</h2>
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-              {order.status === 'pending' && 'En attente'}
-              {order.status === 'accepted' && 'Acceptée'}
-              {order.status === 'rejected' && 'Refusée'}
-              {order.status === 'preparing' && 'En préparation'}
-              {order.status === 'ready' && 'Prête'}
-              {order.status === 'delivered' && 'Livrée'}
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.statut)}`}>
+              {order.statut === 'en_attente' && 'En attente'}
+              {order.statut === 'en_preparation' && 'En préparation'}
+              {order.statut === 'en_livraison' && 'En livraison'}
+              {order.statut === 'livree' && 'Livrée'}
+              {order.statut === 'annulee' && 'Annulée'}
             </span>
           </div>
 
@@ -281,7 +277,7 @@ export default function OrderStatus({ params }) {
               
               <div>
                 <p className="text-sm text-gray-600">Total</p>
-                <p className="font-medium text-lg">{order.total_amount.toFixed(2)}€</p>
+                <p className="font-medium text-lg">{order.total.toFixed(2)}€</p>
               </div>
             </div>
 
@@ -299,11 +295,11 @@ export default function OrderStatus({ params }) {
               <div className="border-t mt-3 pt-3">
                 <div className="flex justify-between text-sm">
                   <span>Frais de livraison</span>
-                  <span>{order.delivery_fee.toFixed(2)}€</span>
+                  <span>{order.frais_livraison.toFixed(2)}€</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>Total</span>
-                  <span>{order.total_amount.toFixed(2)}€</span>
+                  <span>{order.total.toFixed(2)}€</span>
                 </div>
               </div>
             </div>
@@ -326,8 +322,7 @@ export default function OrderStatus({ params }) {
               
               <div>
                 <p className="text-sm text-gray-600">Adresse de livraison</p>
-                <p className="font-medium">{order.delivery_address}</p>
-                <p className="font-medium">{order.delivery_city} {order.delivery_postal_code}</p>
+                <p className="font-medium">{order.adresse_livraison}</p>
               </div>
               
               {order.delivery_instructions && (
