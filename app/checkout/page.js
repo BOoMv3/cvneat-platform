@@ -295,6 +295,28 @@ export default function Checkout() {
         }
       }
 
+      // Notifier le restaurant
+      try {
+        const restaurantNotification = await fetch('/api/partner/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurantId: restaurant.id,
+            type: 'new_order',
+            message: `Nouvelle commande #${order.id} - ${totalAvecLivraison.toFixed(2)}€`,
+            orderId: order.id
+          })
+        });
+        
+        if (restaurantNotification.ok) {
+          console.log('✅ Notification restaurant envoyée');
+        } else {
+          console.warn('⚠️ Erreur notification restaurant:', await restaurantNotification.text());
+        }
+      } catch (notificationError) {
+        console.warn('⚠️ Erreur notification restaurant:', notificationError);
+      }
+
       // Vider le panier
       safeLocalStorage.removeItem('cart');
       setCart([]);

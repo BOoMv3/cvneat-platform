@@ -46,7 +46,7 @@ export async function PUT(request, { params }) {
 
     // Vérifier que la commande existe
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('id', id)
       .single();
@@ -81,18 +81,18 @@ export async function PUT(request, { params }) {
     console.log('✅ Commande appartient au restaurant');
 
     // Vérifier si la commande a déjà été acceptée par un livreur
-    if (order.delivery_id && status !== 'delivered') {
-      console.log('⚠️ Commande déjà acceptée par un livreur:', order.delivery_id);
+    if (order.livreur_id && status !== 'livree') {
+      console.log('⚠️ Commande déjà acceptée par un livreur:', order.livreur_id);
       return NextResponse.json({ 
         error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être modifiée',
-        current_status: order.status,
-        delivery_id: order.delivery_id
+        current_status: order.statut,
+        delivery_id: order.livreur_id
       }, { status: 400 });
     }
 
     // Mettre à jour la commande
     const updateData = {
-      status,
+      statut: status,
       updated_at: new Date().toISOString()
     };
 
@@ -107,7 +107,7 @@ export async function PUT(request, { params }) {
     console.log('📤 Données de mise à jour:', updateData);
 
     const { data: updatedOrder, error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -119,6 +119,19 @@ export async function PUT(request, { params }) {
     }
 
     console.log('✅ Commande mise à jour avec succès:', updatedOrder.id);
+
+    // Notifier les livreurs si la commande est prête à livrer
+    if (status === 'pret_a_livrer') {
+      try {
+        console.log('🔔 Notification aux livreurs pour commande prête');
+        // La notification sera automatiquement détectée par le SSE des livreurs
+        // qui surveillent les commandes avec statut 'pret_a_livrer' et livreur_id null
+      } catch (notificationError) {
+        console.warn('⚠️ Erreur notification livreurs:', notificationError);
+        // Ne pas faire échouer la mise à jour pour une erreur de notification
+      }
+    }
+
     return NextResponse.json({
       success: true,
       order: updatedOrder,

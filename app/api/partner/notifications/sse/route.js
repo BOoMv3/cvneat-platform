@@ -70,7 +70,7 @@ export async function GET(request) {
             { 
               event: 'INSERT', 
               schema: 'public', 
-              table: 'orders',
+              table: 'commandes',
               filter: `restaurant_id=eq.${restaurantId}`
             }, 
             (payload) => {
@@ -84,7 +84,7 @@ export async function GET(request) {
             {
               event: 'UPDATE',
               schema: 'public',
-              table: 'orders',
+              table: 'commandes',
               filter: `restaurant_id=eq.${restaurantId}`
             },
             (payload) => {
