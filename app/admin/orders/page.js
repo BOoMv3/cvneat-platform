@@ -20,11 +20,7 @@ export default function AdminOrders() {
     try {
       let query = supabase
         .from('commandes')
-        .select(`
-          *,
-          user:users(nom, email),
-          restaurant:restaurants(nom, adresse)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (filterStatus !== 'all') {
@@ -222,12 +218,12 @@ export default function AdminOrders() {
                     <div className="text-sm font-medium text-gray-900">#{order.id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{order.user?.nom || 'Client anonyme'}</div>
-                    <div className="text-sm text-gray-500">{order.user?.email || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">Client #{order.user_id || 'Anonyme'}</div>
+                    <div className="text-sm text-gray-500">ID: {order.user_id || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{order.restaurant?.nom || 'Restaurant #' + order.restaurant_id}</div>
-                    <div className="text-sm text-gray-500">{order.restaurant?.adresse || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">Restaurant #{order.restaurant_id}</div>
+                    <div className="text-sm text-gray-500">ID: {order.restaurant_id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">

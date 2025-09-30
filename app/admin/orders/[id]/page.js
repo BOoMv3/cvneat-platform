@@ -23,15 +23,7 @@ export default function AdminOrderDetail() {
     try {
       const { data, error } = await supabase
         .from('commandes')
-        .select(`
-          *,
-          user:users(nom, email, telephone),
-          restaurant:restaurants(nom, adresse, telephone),
-          details_commande(
-            *,
-            menu:menus(nom, description, prix)
-          )
-        `)
+        .select('*')
         .eq('id', params.id)
         .single();
 
