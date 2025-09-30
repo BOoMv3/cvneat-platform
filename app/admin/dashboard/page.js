@@ -380,10 +380,10 @@ export default function AdminDashboard() {
                       )}
                     </div>
                     <div className="text-right">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order?.status)}`}>
-                        {getStatusText(order?.status)}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order?.statut)}`}>
+                        {getStatusText(order?.statut)}
                       </span>
-                      <p className="text-sm font-medium mt-1">{order?.total_amount || 0}€</p>
+                      <p className="text-sm font-medium mt-1">{order?.total || 0}€</p>
                     </div>
                   </div>
                 ))}

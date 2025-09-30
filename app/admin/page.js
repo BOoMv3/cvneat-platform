@@ -120,8 +120,8 @@ export default function AdminPage() {
 
       // Fallback avec données de test si la base est vide
       const recentOrders = (orders?.length > 0 ? orders : [
-        { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', user_id: '11111111-1111-1111-1111-111111111111', restaurant_id: '11111111-1111-1111-1111-111111111111', total_amount: 25.50, status: 'pending', created_at: new Date().toISOString() },
-        { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', user_id: '22222222-2222-2222-2222-222222222222', restaurant_id: '22222222-2222-2222-2222-222222222222', total_amount: 18.90, status: 'accepted', created_at: new Date(Date.now() - 3600000).toISOString() },
+        { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', user_id: '11111111-1111-1111-1111-111111111111', restaurant_id: '11111111-1111-1111-1111-111111111111', total: 25.50, statut: 'en_attente', created_at: new Date().toISOString() },
+        { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', user_id: '22222222-2222-2222-2222-222222222222', restaurant_id: '22222222-2222-2222-2222-222222222222', total: 18.90, statut: 'acceptee', created_at: new Date(Date.now() - 3600000).toISOString() },
       ])?.slice(0, 5) || [];
 
       const recentRestaurants = (restaurants?.length > 0 ? restaurants : [
@@ -519,11 +519,11 @@ export default function AdminPage() {
                           {restaurant?.nom || 'Restaurant inconnu'}
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                          {formatPrice(order.total_amount)}
+                          {formatPrice(order.total)}
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                            {getStatusText(order.status)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.statut)}`}>
+                            {getStatusText(order.statut)}
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">

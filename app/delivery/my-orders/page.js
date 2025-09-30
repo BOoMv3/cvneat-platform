@@ -126,7 +126,7 @@ export default function MyOrdersPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-green-600">
-                      {order.total_amount}€
+                      {order.total}€
                     </div>
                     <div className="text-sm text-gray-500">
                       Frais: {order.delivery_fee}€

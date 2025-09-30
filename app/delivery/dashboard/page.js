@@ -275,7 +275,7 @@ export default function DeliveryDashboard() {
     // Notification du navigateur
     if (Notification.permission === 'granted') {
       new Notification('Nouvelle commande disponible !', {
-        body: `Commande #${order.id} - ${order.customer_name} - ${order.total_amount}€`,
+        body: `Commande #${order.id} - ${order.customer_name} - ${order.total}€`,
         icon: '/icon-192x192.png',
         tag: 'new-order'
       });
@@ -479,7 +479,7 @@ export default function DeliveryDashboard() {
               <div>
                 <h3 className="font-bold text-lg">🔔 Nouvelle commande !</h3>
                 <p className="text-sm">Commande #{alertOrder.id}</p>
-                <p className="text-sm">{alertOrder.customer_name} - {alertOrder.total_amount}€</p>
+                <p className="text-sm">{alertOrder.customer_name} - {alertOrder.total}€</p>
                 <p className="text-xs">{alertOrder.delivery_address}</p>
               </div>
               <button
@@ -816,7 +816,7 @@ export default function DeliveryDashboard() {
                             </div>
                             
                             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                              <span>Total: {order.total_amount || order.total || 'N/A'}€</span>
+                              <span>Total: {order.total || 'N/A'}€</span>
                               <span>Frais: {order.delivery_fee || 'N/A'}€</span>
                               <span>Est. {order.estimated_time || 'N/A'} min</span>
                             </div>

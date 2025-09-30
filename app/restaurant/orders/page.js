@@ -465,7 +465,7 @@ export default function RestaurantOrders() {
                       
                       <div className="space-y-2">
                         <p><span className="font-medium">Client :</span> {order.customer_name}</p>
-                        <p><span className="font-medium">Total :</span> {order.total_amount.toFixed(2)}€</p>
+                        <p><span className="font-medium">Total :</span> {order.total.toFixed(2)}€</p>
                         <p><span className="font-medium">Articles :</span> {order.items?.length || 0}</p>
                       </div>
                     </div>
