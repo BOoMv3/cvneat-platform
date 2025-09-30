@@ -15,7 +15,10 @@ export async function GET(request, { params }) {
 
     let query = supabase
       .from('commandes')
-      .select('*')
+      .select(`
+        *,
+        user:users(nom, email, telephone)
+      `)
       .eq('restaurant_id', id)
       .order('created_at', { ascending: false });
 

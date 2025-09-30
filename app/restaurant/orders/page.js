@@ -273,17 +273,17 @@ export default function RestaurantOrders() {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending':
+      case 'en_attente':
         return 'En attente';
-      case 'accepted':
+      case 'acceptee':
         return 'Acceptée';
-      case 'rejected':
+      case 'refusee':
         return 'Refusée';
-      case 'preparing':
+      case 'en_preparation':
         return 'En préparation';
-      case 'ready':
+      case 'pret_a_livrer':
         return 'Prête';
-      case 'delivered':
+      case 'livree':
         return 'Livrée';
       default:
         return status;
@@ -292,17 +292,17 @@ export default function RestaurantOrders() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
+      case 'en_attente':
         return 'bg-yellow-100 text-yellow-800';
-      case 'accepted':
+      case 'acceptee':
         return 'bg-green-100 text-green-800';
-      case 'rejected':
+      case 'refusee':
         return 'bg-red-100 text-red-800';
-      case 'preparing':
+      case 'en_preparation':
         return 'bg-blue-100 text-blue-800';
-      case 'ready':
+      case 'pret_a_livrer':
         return 'bg-purple-100 text-purple-800';
-      case 'delivered':
+      case 'livree':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -450,7 +450,7 @@ export default function RestaurantOrders() {
                       key={order.id}
                       className={`p-6 hover:bg-gray-50 cursor-pointer transition-colors ${
                         selectedOrder?.id === order.id ? 'bg-blue-50' : ''
-                      } ${order.status === 'pending' ? 'border-l-4 border-yellow-400' : ''}`}
+                      } ${order.statut === 'en_attente' ? 'border-l-4 border-yellow-400' : ''}`}
                       onClick={() => setSelectedOrder(order)}
                     >
                       <div className="flex justify-between items-start mb-4">
@@ -458,13 +458,13 @@ export default function RestaurantOrders() {
                           <h3 className="font-semibold">Commande #{order.id}</h3>
                           <p className="text-sm text-gray-600">{formatDate(order.created_at)}</p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                          {getStatusText(order.status)}
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statut)}`}>
+                          {getStatusText(order.statut)}
                         </span>
                       </div>
                       
                       <div className="space-y-2">
-                        <p><span className="font-medium">Client :</span> {order.customer_name}</p>
+                        <p><span className="font-medium">Client :</span> {order.user?.nom || 'Client anonyme'}</p>
                         <p><span className="font-medium">Total :</span> {order.total.toFixed(2)}€</p>
                         <p><span className="font-medium">Articles :</span> {order.items?.length || 0}</p>
                       </div>
@@ -484,17 +484,17 @@ export default function RestaurantOrders() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <h3 className="font-medium mb-2">Informations client</h3>
-                    <p><span className="font-medium">Nom :</span> {selectedOrder.customer_name}</p>
-                    <p><span className="font-medium">Téléphone :</span> {selectedOrder.customer_phone}</p>
+                    <p><span className="font-medium">Nom :</span> {selectedOrder.user?.nom || 'Client anonyme'}</p>
+                    <p><span className="font-medium">Téléphone :</span> {selectedOrder.user?.telephone || 'Non disponible'}</p>
                   </div>
                   
                   <div>
                     <h3 className="font-medium mb-2">Adresse de livraison</h3>
-                    <p>{selectedOrder.delivery_address}</p>
-                    <p>{selectedOrder.delivery_city} {selectedOrder.delivery_postal_code}</p>
-                    {selectedOrder.delivery_instructions && (
+                    <p>{selectedOrder.adresse_livraison}</p>
+                    <p>{selectedOrder.ville || 'Ville non spécifiée'} {selectedOrder.code_postal || ''}</p>
+                    {selectedOrder.instructions && (
                       <p className="text-sm text-gray-600 mt-1">
-                        Instructions : {selectedOrder.delivery_instructions}
+                        Instructions : {selectedOrder.instructions}
                       </p>
                     )}
                   </div>
