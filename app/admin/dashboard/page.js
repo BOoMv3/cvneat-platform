@@ -53,7 +53,7 @@ export default function AdminDashboard() {
     try {
       // Recuperer toutes les commandes
       const { data: orders, error: ordersError } = await supabase
-        .from('orders')
+        .from('commandes')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -75,10 +75,10 @@ export default function AdminDashboard() {
 
       // Calculer les statistiques
       const totalOrders = orders?.length || 0;
-      const pendingOrders = orders?.filter(o => o.status === 'pending').length || 0;
-      const validatedOrders = orders?.filter(o => ['accepted', 'preparing', 'ready', 'delivered'].includes(o.status)).length || 0;
-      const totalRevenue = orders?.filter(o => ['accepted', 'preparing', 'ready', 'delivered'].includes(o.status))
-        .reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+      const pendingOrders = orders?.filter(o => o.statut === 'en_attente').length || 0;
+      const validatedOrders = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut)).length || 0;
+      const totalRevenue = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut))
+        .reduce((sum, order) => sum + (order.total || 0), 0) || 0;
       const totalRestaurants = restaurants?.length || 0;
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
       const recentOrders = orders?.slice(0, 5) || [];

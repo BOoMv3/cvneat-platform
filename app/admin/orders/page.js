@@ -19,12 +19,26 @@ export default function AdminOrders() {
   const fetchOrders = async () => {
     try {
       let query = supabase
-        .from('orders')
-        .select('*')
+        .from('commandes')
+        .select(`
+          *,
+          user:users(nom, email),
+          restaurant:restaurants(nom, adresse)
+        `)
         .order('created_at', { ascending: false });
 
       if (filterStatus !== 'all') {
-        query = query.eq('status', filterStatus);
+        // Mapper les statuts anglais vers français
+        const statusMap = {
+          'pending': 'en_attente',
+          'accepted': 'acceptee', 
+          'rejected': 'refusee',
+          'preparing': 'en_preparation',
+          'ready': 'pret_a_livrer',
+          'delivered': 'livree'
+        };
+        const frenchStatus = statusMap[filterStatus] || filterStatus;
+        query = query.eq('statut', frenchStatus);
       }
 
       const { data, error } = await query;
@@ -40,17 +54,17 @@ export default function AdminOrders() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
+      case 'en_attente':
         return 'bg-yellow-100 text-yellow-800';
-      case 'accepted':
+      case 'acceptee':
         return 'bg-green-100 text-green-800';
-      case 'rejected':
+      case 'refusee':
         return 'bg-red-100 text-red-800';
-      case 'preparing':
+      case 'en_preparation':
         return 'bg-blue-100 text-blue-800';
-      case 'ready':
+      case 'pret_a_livrer':
         return 'bg-purple-100 text-purple-800';
-      case 'delivered':
+      case 'livree':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -59,17 +73,17 @@ export default function AdminOrders() {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending':
+      case 'en_attente':
         return 'En attente';
-      case 'accepted':
+      case 'acceptee':
         return 'Acceptée';
-      case 'rejected':
+      case 'refusee':
         return 'Refusée';
-      case 'preparing':
+      case 'en_preparation':
         return 'En préparation';
-      case 'ready':
+      case 'pret_a_livrer':
         return 'Prête';
-      case 'delivered':
+      case 'livree':
         return 'Livrée';
       default:
         return status;
@@ -183,12 +197,12 @@ export default function AdminOrders() {
                     <div className="text-sm font-medium text-gray-900">#{order.id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{order.customer_name}</div>
-                    <div className="text-sm text-gray-500">{order.customer_phone}</div>
+                    <div className="text-sm text-gray-900">{order.user?.nom || 'Client anonyme'}</div>
+                    <div className="text-sm text-gray-500">{order.user?.email || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">Restaurant #{order.restaurant_id}</div>
-                    <div className="text-sm text-gray-500">{order.delivery_city}</div>
+                    <div className="text-sm text-gray-900">{order.restaurant?.nom || 'Restaurant #' + order.restaurant_id}</div>
+                    <div className="text-sm text-gray-500">{order.restaurant?.adresse || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
@@ -199,16 +213,16 @@ export default function AdminOrders() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                      {getStatusText(order.status)}
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.statut)}`}>
+                      {getStatusText(order.statut)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {order.total_amount.toFixed(2)}€
+                      {order.total.toFixed(2)}€
                     </div>
                     <div className="text-xs text-gray-500">
-                      Dont {order.delivery_fee}€ de livraison
+                      Dont {order.frais_livraison}€ de livraison
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
