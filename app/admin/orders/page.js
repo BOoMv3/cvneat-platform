@@ -46,6 +46,8 @@ export default function AdminOrders() {
       console.log('🔍 Filtre actuel:', filterStatus);
       if (data && data.length > 0) {
         console.log('🔍 Statuts des commandes:', data.map(o => ({ id: o.id, statut: o.statut })));
+        console.log('🔍 Exemple commande complète:', data[0]);
+        console.log('🔍 Colonnes total disponibles:', Object.keys(data[0]).filter(k => k.includes('total') || k.includes('montant')));
       }
       
       setOrders(data || []);
@@ -133,6 +135,13 @@ export default function AdminOrders() {
                 {[...new Set(orders.map(o => o.statut))].map(statut => (
                   <li key={statut}>- {statut}</li>
                 ))}
+              </ul>
+              <p className="mt-2">Première commande (valeurs total):</p>
+              <ul className="text-sm text-gray-600">
+                <li>total: {orders[0]?.total}</li>
+                <li>montant_total: {orders[0]?.montant_total}</li>
+                <li>total_amount: {orders[0]?.total_amount}</li>
+                <li>frais_livraison: {orders[0]?.frais_livraison}</li>
               </ul>
             </div>
           )}
