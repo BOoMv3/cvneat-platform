@@ -44,6 +44,14 @@ export default function AdminOrders() {
       const { data, error } = await query;
 
       if (error) throw error;
+      
+      // DEBUG: Afficher toutes les commandes et leurs statuts
+      console.log('🔍 Commandes récupérées:', data?.length || 0);
+      console.log('🔍 Filtre actuel:', filterStatus);
+      if (data && data.length > 0) {
+        console.log('🔍 Statuts des commandes:', data.map(o => ({ id: o.id, statut: o.statut })));
+      }
+      
       setOrders(data || []);
     } catch (err) {
       setError(err.message);
@@ -116,6 +124,23 @@ export default function AdminOrders() {
             {error}
           </div>
         )}
+
+        {/* Debug info */}
+        <div className="mb-4 p-4 bg-gray-100 rounded-lg">
+          <h3 className="font-semibold mb-2">Debug Info:</h3>
+          <p>Nombre de commandes trouvées: {orders.length}</p>
+          <p>Filtre actuel: {filterStatus}</p>
+          {orders.length > 0 && (
+            <div className="mt-2">
+              <p>Statuts présents:</p>
+              <ul className="text-sm text-gray-600">
+                {[...new Set(orders.map(o => o.statut))].map(statut => (
+                  <li key={statut}>- {statut}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
 
         {/* Filtres */}
         <div className="mb-6">

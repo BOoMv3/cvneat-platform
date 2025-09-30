@@ -22,8 +22,16 @@ export default function AdminOrderDetail() {
   const fetchOrder = async () => {
     try {
       const { data, error } = await supabase
-        .from('orders')
-        .select('*')
+        .from('commandes')
+        .select(`
+          *,
+          user:users(nom, email, telephone),
+          restaurant:restaurants(nom, adresse, telephone),
+          details_commande(
+            *,
+            menu:menus(nom, description, prix)
+          )
+        `)
         .eq('id', params.id)
         .single();
 
@@ -40,8 +48,8 @@ export default function AdminOrderDetail() {
     setUpdating(true);
     try {
       const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
+        .from('commandes')
+        .update({ statut: newStatus })
         .eq('id', params.id);
 
       if (error) throw error;
