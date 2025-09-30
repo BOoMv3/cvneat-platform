@@ -35,7 +35,7 @@ export async function GET(request) {
     const offset = parseInt(searchParams.get('offset')) || 0;
 
     let query = supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse)
@@ -44,13 +44,13 @@ export async function GET(request) {
       .range(offset, offset + limit - 1);
 
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq('statut', status);
     }
     if (restaurant_id) {
       query = query.eq('restaurant_id', restaurant_id);
     }
     if (user_id) {
-      query = query.eq('customer_id', user_id);
+      query = query.eq('user_id', user_id);
     }
 
     const { data: orders, error } = await query;
@@ -114,20 +114,15 @@ export async function POST(request) {
 
     // Créer la commande
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .insert([{
-        customer_name,
-        customer_phone: customer_phone || '0123456789',
+        user_id: null, // Commande manuelle admin
         restaurant_id,
-        delivery_address,
-        delivery_city: delivery_city || 'Ganges',
-        delivery_postal_code: delivery_postal_code || '34190',
-        delivery_instructions: delivery_instructions || '',
-        delivery_fee: delivery_fee || 0,
-        total_amount,
-        items: items, // Stocker comme JSON
-        status,
-        security_code: securityCode
+        adresse_livraison: `${delivery_address}, ${delivery_postal_code || '34190'} ${delivery_city || 'Ganges'}`,
+        total: total_amount,
+        frais_livraison: delivery_fee || 0,
+        statut: status,
+        created_at: new Date().toISOString()
       }])
       .select(`
         *,

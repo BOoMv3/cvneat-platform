@@ -28,16 +28,16 @@ export async function GET(request, { params }) {
     }
 
     const { data: order, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
-        user:users(email, full_name, telephone),
+        user:users(email, nom, telephone),
         restaurant:restaurants(nom, adresse, telephone),
-        order_items(
+        details_commande(
           *,
           menu:menus(nom, description, prix)
         ),
-        delivery:users!delivery_id(email, full_name, telephone)
+        delivery:users!livreur_id(email, nom, telephone)
       `)
       .eq('id', params.id)
       .single();
@@ -80,26 +80,26 @@ export async function PUT(request, { params }) {
     const { status, delivery_id, notes } = await request.json();
 
     const updateData = {};
-    if (status !== undefined) updateData.status = status;
-    if (delivery_id !== undefined) updateData.delivery_id = delivery_id;
+    if (status !== undefined) updateData.statut = status;
+    if (delivery_id !== undefined) updateData.livreur_id = delivery_id;
     if (notes !== undefined) updateData.notes = notes;
 
     const { data: updatedOrder, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .update(updateData)
       .eq('id', params.id)
       .select(`
         *,
-        user:users(email, full_name),
+        user:users(email, nom),
         restaurant:restaurants(nom),
-        delivery:users!delivery_id(email, full_name)
+        delivery:users!livreur_id(email, nom)
       `)
       .single();
 
     if (error) throw error;
 
     // Envoyer email de notification au client
-    if (status && status !== updatedOrder.status) {
+    if (status && status !== updatedOrder.statut) {
       try {
         await fetch('/api/notifications/send', {
           method: 'POST',
