@@ -81,12 +81,18 @@ export default function AdminPage() {
       setError(null);
 
       // Récupérer toutes les commandes
+      console.log('🔍 Tentative de récupération des commandes...');
       const { data: orders, error: ordersError } = await supabase
         .from('commandes')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (ordersError) throw ordersError;
+      console.log('🔍 Résultat commandes:', { orders: orders?.length || 0, error: ordersError });
+      
+      if (ordersError) {
+        console.error('❌ Erreur commandes:', ordersError);
+        throw ordersError;
+      }
 
       // Récupérer tous les restaurants
       const { data: restaurants, error: restaurantsError } = await supabase

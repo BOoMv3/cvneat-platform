@@ -52,12 +52,18 @@ export default function AdminDashboard() {
   const fetchDashboardStats = async () => {
     try {
       // Recuperer toutes les commandes
+      console.log('🔍 Dashboard: Tentative de récupération des commandes...');
       const { data: orders, error: ordersError } = await supabase
         .from('commandes')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (ordersError) throw ordersError;
+      console.log('🔍 Dashboard: Résultat commandes:', { orders: orders?.length || 0, error: ordersError });
+      
+      if (ordersError) {
+        console.error('❌ Dashboard: Erreur commandes:', ordersError);
+        throw ordersError;
+      }
 
       // Recuperer tous les restaurants
       const { data: restaurants, error: restaurantsError } = await supabase
