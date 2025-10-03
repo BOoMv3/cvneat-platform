@@ -38,13 +38,13 @@ export async function GET(request) {
 
     // Récupérer les commandes acceptées par ce livreur
     const { data: orders, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
       `)
-      .eq('delivery_id', user.id) // Commandes assignées à ce livreur
-      .in('status', ['accepted', 'delivered']) // Commandes acceptées ou livrées
+      .eq('livreur_id', user.id) // Commandes assignées à ce livreur
+      .in('statut', ['acceptee', 'livree']) // Commandes acceptées ou livrées
       .order('created_at', { ascending: false });
 
     if (error) {

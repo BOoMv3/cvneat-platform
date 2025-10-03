@@ -26,15 +26,26 @@ export default function RestaurantOrders() {
     // Charger les commandes au démarrage
     fetchOrders();
     
-    if (!showAllOrders) {
-      setupRealtimeSubscription();
-    }
-    
     return () => {
       // Nettoyer la subscription
       supabase.removeAllChannels();
     };
   }, [showAllOrders]);
+
+  // Démarrer les subscriptions quand restaurantId est défini
+  useEffect(() => {
+    if (restaurantId && !showAllOrders) {
+      console.log('🏪 Restaurant ID défini, démarrage des subscriptions:', restaurantId);
+      setupRealtimeSubscription();
+    }
+    
+    return () => {
+      if (restaurantId) {
+        console.log('🏪 Nettoyage des subscriptions pour restaurant:', restaurantId);
+        supabase.removeAllChannels();
+      }
+    };
+  }, [restaurantId, showAllOrders]);
 
   // Polling séparé pour éviter les conflits
   useEffect(() => {

@@ -39,13 +39,13 @@ export async function GET(request) {
     // Récupérer les commandes disponibles pour livraison
     // Les livreurs voient les commandes prêtes ET en préparation (pour voir le décompte)
     const { data: orders, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
       `)
-      .in('status', ['ready', 'preparing']) // Commandes prêtes ET en préparation
-      .is('delivery_id', null) // Pas encore assignées à un livreur
+      .in('statut', ['pret_a_livrer', 'en_preparation']) // Commandes prêtes ET en préparation
+      .is('livreur_id', null) // Pas encore assignées à un livreur
       .order('created_at', { ascending: true });
 
     if (error) {
