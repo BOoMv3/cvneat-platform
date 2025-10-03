@@ -19,9 +19,6 @@ export default function RestaurantOrders() {
   // En production, cela viendrait de l'authentification
   const [restaurantId, setRestaurantId] = useState(null);
   
-  // DEBUG: Afficher toutes les commandes pour diagnostiquer
-  const [showAllOrders, setShowAllOrders] = useState(false);
-
   useEffect(() => {
     // Charger les commandes au démarrage
     fetchOrders();
@@ -30,11 +27,11 @@ export default function RestaurantOrders() {
       // Nettoyer la subscription
       supabase.removeAllChannels();
     };
-  }, [showAllOrders]);
+  }, []);
 
   // Démarrer les subscriptions quand restaurantId est défini
   useEffect(() => {
-    if (restaurantId && !showAllOrders) {
+    if (restaurantId) {
       console.log('🏪 Restaurant ID défini, démarrage des subscriptions:', restaurantId);
       setupRealtimeSubscription();
     }
@@ -45,32 +42,17 @@ export default function RestaurantOrders() {
         supabase.removeAllChannels();
       }
     };
-  }, [restaurantId, showAllOrders]);
+  }, [restaurantId]);
 
-  // Polling séparé pour éviter les conflits
+  // Polling automatique toutes les 15 secondes
   useEffect(() => {
-    if (showAllOrders) return; // Pas de polling en mode debug
-    
     const interval = setInterval(() => {
       console.log('🔄 Polling automatique des commandes');
       fetchOrders();
-    }, 15000); // Vérifier toutes les 15 secondes
+    }, 15000);
     
     return () => clearInterval(interval);
-  }, [showAllOrders]);
-
-  // Effet séparé pour gérer les changements de showAllOrders
-  useEffect(() => {
-    if (showAllOrders) {
-      // En mode debug, nettoyer les subscriptions
-      supabase.removeAllChannels();
-      console.log('🔍 Mode debug activé - subscriptions désactivées');
-    } else {
-      // En mode normal, réactiver les subscriptions
-      setupRealtimeSubscription();
-      console.log('🔍 Mode normal activé - subscriptions réactivées');
-    }
-  }, [showAllOrders]);
+  }, []);
 
   // Fonction pour jouer un son de notification
   const playNotificationSound = () => {
@@ -158,9 +140,7 @@ export default function RestaurantOrders() {
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Erreur de subscription, retry dans 5s...');
           setTimeout(() => {
-            if (!showAllOrders) {
-              setupRealtimeSubscription();
-            }
+            setupRealtimeSubscription();
           }, 5000);
         }
       });
@@ -169,16 +149,6 @@ export default function RestaurantOrders() {
   const fetchOrders = async () => {
     try {
       console.log('=== RÉCUPÉRATION COMMANDES RESTAURANT ===');
-      
-      // Si mode debug, récupérer toutes les commandes
-      if (showAllOrders) {
-        console.log('Mode debug activé - récupération de toutes les commandes');
-        const response = await fetch('/api/debug/orders');
-        const data = await response.json();
-        console.log('Commandes reçues (debug):', data);
-        setOrders(data);
-        return;
-      }
       
       // Récupérer l'utilisateur connecté
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -372,56 +342,11 @@ export default function RestaurantOrders() {
               {audioEnabled ? '🔊 Audio' : '🔇 Audio'}
             </button>
             <button
-              onClick={() => {
-                console.log('🔄 Bouton cliqué ! showAllOrders avant:', showAllOrders);
-                setShowAllOrders(!showAllOrders);
-                console.log('🔄 showAllOrders après:', !showAllOrders);
-                // Attendre que l'état soit mis à jour
-                setTimeout(() => {
-                  console.log('🔄 fetchOrders appelé avec showAllOrders:', !showAllOrders);
-                  fetchOrders();
-                }, 100);
-              }}
-              className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                showAllOrders 
-                  ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              {showAllOrders ? '🔍 Debug' : '🔍 Toutes'}
-            </button>
-            <button
               onClick={requestNotificationPermission}
               className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               🔔 Notif
             </button>
-            <button
-              onClick={() => {
-                console.log('🧪 TEST: Récupération directe de toutes les commandes');
-                fetch('/api/debug/orders')
-                  .then(response => response.json())
-                  .then(data => {
-                    console.log('🧪 TEST: Commandes reçues:', data);
-                    setOrders(data);
-                  })
-                  .catch(error => console.error('🧪 TEST: Erreur:', error));
-              }}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              🧪 TEST DIRECT
-            </button>
-            {showAllOrders && (
-              <button
-                onClick={() => {
-                  console.log('🔄 Rafraîchissement forcé en mode debug');
-                  fetchOrders();
-                }}
-                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-              >
-                🔄 Rafraîchir
-              </button>
-            )}
             <button
               onClick={() => router.push('/')}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
