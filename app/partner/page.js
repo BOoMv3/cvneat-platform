@@ -192,8 +192,13 @@ export default function PartnerDashboard() {
     if (!confirm('Etes-vous sur de vouloir supprimer ce plat ?')) return;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const token = session.access_token;
       const response = await fetch(`/api/partner/menu?id=${menuId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
@@ -206,9 +211,16 @@ export default function PartnerDashboard() {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const token = session.access_token;
       const response = await fetch('/api/partner/orders', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ orderId, status })
       });
 
@@ -268,7 +280,13 @@ export default function PartnerDashboard() {
 
   const fetchOrders = async (restaurantId) => {
     try {
-      const response = await fetch(`/api/partner/orders?restaurantId=${restaurantId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const token = session.access_token;
+      const response = await fetch(`/api/partner/orders?restaurantId=${restaurantId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
       if (response.ok) {
         setOrders(data);

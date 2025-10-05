@@ -28,9 +28,14 @@ async function getUserFromRequest(request) {
 
 export async function GET(request) {
   try {
+    console.log('=== API PARTNER ORDERS GET ===');
+    console.log('Headers:', request.headers.get('authorization') ? 'Token présent' : 'Token manquant');
+    
     const user = await getUserFromRequest(request);
+    console.log('User récupéré:', user ? user.id : 'Aucun utilisateur');
 
     if (!user) {
+      console.error('❌ Aucun utilisateur trouvé');
       return NextResponse.json({ error: 'Token invalide ou expiré' }, { status: 401 });
     }
 
