@@ -281,9 +281,16 @@ export default function PartnerDashboard() {
   const fetchOrders = async (restaurantId) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      console.log('🔍 DEBUG fetchOrders - Session:', session ? 'Présente' : 'Absente');
+      if (!session) {
+        console.error('❌ Aucune session trouvée');
+        return;
+      }
       
       const token = session.access_token;
+      console.log('🔍 DEBUG fetchOrders - Token:', token ? 'Présent' : 'Absent');
+      console.log('🔍 DEBUG fetchOrders - RestaurantId:', restaurantId);
+      
       const response = await fetch(`/api/partner/orders?restaurantId=${restaurantId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });

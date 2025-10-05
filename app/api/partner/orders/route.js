@@ -3,12 +3,26 @@ import { supabase } from '../../../../lib/supabase';
 
 async function getUserFromRequest(request) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) return null;
+    const authHeader = request.headers.get('authorization');
+    console.log('🔍 DEBUG getUserFromRequest - AuthHeader:', authHeader ? 'Présent' : 'Absent');
+    
+    const token = authHeader?.split(' ')[1];
+    console.log('🔍 DEBUG getUserFromRequest - Token:', token ? 'Présent' : 'Absent');
+    
+    if (!token) {
+      console.error('❌ Aucun token trouvé');
+      return null;
+    }
     
     // Vérifier le token avec Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
+    console.log('🔍 DEBUG getUserFromRequest - User:', user ? user.id : 'Aucun utilisateur');
+    console.log('🔍 DEBUG getUserFromRequest - Error:', error);
+    
+    if (error || !user) {
+      console.error('❌ Erreur ou utilisateur manquant:', error);
+      return null;
+    }
 
     // Vérifier le rôle dans la table users
     const { data: userData, error: userError } = await supabase
@@ -17,11 +31,17 @@ async function getUserFromRequest(request) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData) return null;
+    console.log('🔍 DEBUG getUserFromRequest - UserData:', userData);
+    console.log('🔍 DEBUG getUserFromRequest - UserError:', userError);
+
+    if (userError || !userData) {
+      console.error('❌ Erreur récupération rôle:', userError);
+      return null;
+    }
 
     return { ...user, role: userData.role };
   } catch (error) {
-    console.error('Erreur authentification:', error);
+    console.error('❌ Erreur authentification:', error);
     return null;
   }
 }
