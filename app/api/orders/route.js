@@ -214,8 +214,8 @@ export async function POST(request) {
       adresse_livraison: `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`,
       total: total,
       frais_livraison: fraisLivraison,
-      statut: 'en_attente', // En attente d'acceptation par le restaurant
-      user_id: null // Pour les commandes sans utilisateur connecté
+      statut: 'en_attente' // En attente d'acceptation par le restaurant
+      // user_id sera NULL par défaut pour les commandes sans utilisateur connecté
     };
 
     console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
