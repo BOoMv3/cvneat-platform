@@ -81,13 +81,12 @@ export async function GET(request) {
 
     // Récupérer les commandes pour la période
     const { data: orders, error: ordersError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
-        user:users(email, full_name),
-        order_items(
+        details_commande(
           *,
-          menu:menus(nom, prix, category)
+          menus(nom, prix)
         )
       `)
       .eq('restaurant_id', restaurant.id)
@@ -99,13 +98,13 @@ export async function GET(request) {
 
     // Calculer les statistiques du rapport
     const totalOrders = orders?.length || 0;
-    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
+    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
     const commissionEarned = totalRevenue * (restaurant.commission_rate / 100);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Commandes livrées vs annulées
-    const deliveredOrders = orders?.filter(order => order.status === 'delivered').length || 0;
-    const cancelledOrders = orders?.filter(order => order.status === 'cancelled').length || 0;
+    const deliveredOrders = orders?.filter(order => order.statut === 'livree').length || 0;
+    const cancelledOrders = orders?.filter(order => order.statut === 'annulee').length || 0;
     const deliveryRate = totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0;
 
     // Analyse des produits

@@ -45,13 +45,12 @@ export async function GET(request) {
 
     // Commandes du restaurant
     const { data: orders, error: ordersError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
-        user:users(email, full_name),
-        order_items(
+        details_commande(
           *,
-          menu:menus(nom, prix)
+          menus(nom, prix)
         )
       `)
       .eq('restaurant_id', restaurant.id)
@@ -62,30 +61,30 @@ export async function GET(request) {
 
     // Statistiques générales
     const totalOrders = orders?.length || 0;
-    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
+    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
     const commissionEarned = totalRevenue * (restaurant.commission_rate / 100);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Commandes par statut
     const ordersByStatus = orders?.reduce((acc, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1;
+      acc[order.statut] = (acc[order.statut] || 0) + 1;
       return acc;
     }, {}) || {};
 
     // Produits les plus vendus
     const menuStats = {};
     orders?.forEach(order => {
-      order.order_items?.forEach(item => {
-        const menuId = item.menu_id;
+      order.details_commande?.forEach(item => {
+        const menuId = item.plat_id;
         if (!menuStats[menuId]) {
           menuStats[menuId] = {
-            name: item.menu?.nom || 'Inconnu',
+            name: item.menus?.nom || 'Inconnu',
             quantity: 0,
             revenue: 0
           };
         }
-        menuStats[menuId].quantity += item.quantity;
-        menuStats[menuId].revenue += parseFloat(item.total_price);
+        menuStats[menuId].quantity += item.quantite;
+        menuStats[menuId].revenue += parseFloat(item.prix_unitaire * item.quantite);
       });
     });
 
@@ -100,7 +99,7 @@ export async function GET(request) {
         acc[date] = { orders: 0, revenue: 0 };
       }
       acc[date].orders += 1;
-      acc[date].revenue += parseFloat(order.total_amount);
+      acc[date].revenue += parseFloat(order.total);
       return acc;
     }, {}) || {};
 

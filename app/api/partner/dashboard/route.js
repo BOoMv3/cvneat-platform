@@ -55,29 +55,29 @@ export async function GET(request) {
     const today = new Date().toISOString().slice(0, 10); // Format YYYY-MM-DD
 
     const { count: today_orders, error: todayOrdersError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id', { count: 'exact', head: true })
       .eq('restaurant_id', restaurantId)
       .gte('created_at', `${today}T00:00:00.000Z`);
 
     const { count: pending_orders, error: pendingOrdersError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id', { count: 'exact', head: true })
       .eq('restaurant_id', restaurantId)
-      .in('status', ['pending', 'accepted', 'preparing']);
+      .in('statut', ['en_attente', 'en_preparation']);
 
     const { data: revenueData, error: revenueError } = await supabase
-      .from('orders')
-      .select('total_amount')
+      .from('commandes')
+      .select('total')
       .eq('restaurant_id', restaurantId)
-      .eq('status', 'delivered');
+      .eq('statut', 'livree');
       
     if (todayOrdersError || pendingOrdersError || revenueError) {
         console.error({todayOrdersError, pendingOrdersError, revenueError});
         return NextResponse.json({ error: 'Erreur lors du calcul des statistiques' }, { status: 500 });
     }
 
-    const total_revenue = revenueData ? revenueData.reduce((sum, order) => sum + (order.total_amount || 0), 0) : 0;
+    const total_revenue = revenueData ? revenueData.reduce((sum, order) => sum + (order.total || 0), 0) : 0;
 
     return NextResponse.json({
       today_orders: today_orders || 0,
