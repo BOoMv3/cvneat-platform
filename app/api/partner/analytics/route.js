@@ -36,7 +36,7 @@ export async function GET(request) {
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('*')
-      .eq('partner_id', user.id)
+      .eq('user_id', user.id)
       .single();
 
     if (restaurantError || !restaurant) {

@@ -116,7 +116,13 @@ export default function PartnerDashboard() {
 
   const fetchDashboardData = async (restaurantId) => {
     try {
-      const response = await fetch(`/api/partner/dashboard?restaurantId=${restaurantId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const token = session.access_token;
+      const response = await fetch(`/api/partner/dashboard?restaurantId=${restaurantId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
       if (response.ok) {
         setStats(data);
@@ -128,7 +134,13 @@ export default function PartnerDashboard() {
 
   const fetchMenu = async (restaurantId) => {
     try {
-      const response = await fetch(`/api/partner/menu?restaurantId=${restaurantId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const token = session.access_token;
+      const response = await fetch(`/api/partner/menu?restaurantId=${restaurantId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
       if (response.ok) {
         setMenu(data);
