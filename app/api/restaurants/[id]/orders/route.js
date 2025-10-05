@@ -24,7 +24,19 @@ export async function GET(request, { params }) {
 
     let query = supabase
       .from('commandes')
-      .select('*')
+      .select(`
+        *,
+        details_commande (
+          id,
+          plat_id,
+          quantite,
+          prix_unitaire,
+          menus (
+            nom,
+            prix
+          )
+        )
+      `)
       .eq('restaurant_id', id)
       .order('created_at', { ascending: false });
 

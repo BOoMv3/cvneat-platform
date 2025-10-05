@@ -211,22 +211,17 @@ export async function POST(request) {
     console.log('Tentative de creation de la commande...');
     const orderData = {
       restaurant_id: restaurantId,
-      customer_name: deliveryInfo.name,
-      customer_phone: deliveryInfo.phone,
-      delivery_address: deliveryInfo.address,
-      delivery_city: deliveryInfo.city,
-      delivery_postal_code: deliveryInfo.postalCode,
-      delivery_instructions: deliveryInfo.instructions || '',
-      total_amount: total,
-      delivery_fee: fraisLivraison,
-      status: 'pending', // En attente d'acceptation par le restaurant
-      items: items // Stocker les articles comme JSON
+      adresse_livraison: `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`,
+      total: total,
+      frais_livraison: fraisLivraison,
+      statut: 'en_attente', // En attente d'acceptation par le restaurant
+      user_id: null // Pour les commandes sans utilisateur connecté
     };
 
     console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
 
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .insert([orderData])
       .select()
       .single();
@@ -241,11 +236,31 @@ export async function POST(request) {
 
     console.log('Commande créée avec succès:', order.id);
 
+    // Créer les détails de commande
+    console.log('Création des détails de commande...');
+    const orderDetails = items.map(item => ({
+      commande_id: order.id,
+      plat_id: item.id,
+      quantite: item.quantity,
+      prix_unitaire: item.price
+    }));
+
+    const { error: detailsError } = await supabase
+      .from('details_commande')
+      .insert(orderDetails);
+
+    if (detailsError) {
+      console.error('Erreur création détails commande:', detailsError);
+      // Ne pas échouer la commande pour ça, juste logger
+    } else {
+      console.log('Détails de commande créés avec succès');
+    }
+
     return NextResponse.json({
       message: 'Commande créée avec succès',
       orderId: order.id,
       total: total,
-      status: 'pending'
+      status: 'en_attente'
     });
 
   } catch (error) {

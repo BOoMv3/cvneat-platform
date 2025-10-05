@@ -57,8 +57,20 @@ export async function GET(request) {
     // Récupérer les commandes du restaurant
     console.log('🔍 Recherche commandes pour restaurant_id:', restaurantId);
     const { data: orders, error: ordersError } = await supabase
-      .from('orders')
-      .select('*')
+      .from('commandes')
+      .select(`
+        *,
+        details_commande (
+          id,
+          plat_id,
+          quantite,
+          prix_unitaire,
+          menus (
+            nom,
+            prix
+          )
+        )
+      `)
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false });
 
