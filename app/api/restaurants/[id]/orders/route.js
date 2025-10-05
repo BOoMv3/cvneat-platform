@@ -12,13 +12,19 @@ export async function GET(request, { params }) {
     console.log('Restaurant ID demandé:', id);
     console.log('Type du restaurant ID:', typeof id);
     console.log('Statut filtré:', status);
+    
+    // Vérifier que l'ID est valide
+    if (!id) {
+      console.error('❌ Restaurant ID manquant');
+      return NextResponse.json(
+        { error: 'Restaurant ID requis' },
+        { status: 400 }
+      );
+    }
 
     let query = supabase
       .from('commandes')
-      .select(`
-        *,
-        user:users(nom, email, telephone)
-      `)
+      .select('*')
       .eq('restaurant_id', id)
       .order('created_at', { ascending: false });
 
@@ -35,14 +41,49 @@ export async function GET(request, { params }) {
     console.log('- Commandes:', orders);
 
     if (error) {
-      console.error('Erreur lors de la récupération des commandes:', error);
+      console.error('❌ Erreur lors de la récupération des commandes:', error);
+      console.error('❌ Détails erreur:', JSON.stringify(error, null, 2));
       return NextResponse.json(
-        { error: 'Erreur lors de la récupération des commandes' },
+        { 
+          error: 'Erreur lors de la récupération des commandes',
+          details: error.message,
+          code: error.code
+        },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(orders);
+    // Récupérer les données utilisateur pour chaque commande
+    const ordersWithUsers = [];
+    for (const order of orders || []) {
+      if (order.user_id) {
+        try {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('nom, email, telephone')
+            .eq('id', order.user_id)
+            .single();
+          
+          ordersWithUsers.push({
+            ...order,
+            user: userData || null
+          });
+        } catch (userError) {
+          console.warn('Erreur récupération utilisateur:', userError);
+          ordersWithUsers.push({
+            ...order,
+            user: null
+          });
+        }
+      } else {
+        ordersWithUsers.push({
+          ...order,
+          user: null
+        });
+      }
+    }
+
+    return NextResponse.json(ordersWithUsers);
   } catch (error) {
     console.error('Erreur lors de la récupération des commandes:', error);
     return NextResponse.json(
