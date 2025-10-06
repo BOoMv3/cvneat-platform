@@ -28,14 +28,41 @@ async function getUserFromRequest(request) {
 
 export async function GET(request) {
   try {
-    const user = await getUserFromRequest(request);
-
-    if (!user) {
-      return NextResponse.json({ error: 'Token invalide ou expiré' }, { status: 401 });
+    // Pour SSE, on accepte le token en paramètre d'URL car EventSource ne supporte pas les headers
+    const { searchParams } = new URL(request.url);
+    const token = searchParams.get('token');
+    const restaurantId = searchParams.get('restaurantId');
+    
+    console.log('🔍 DEBUG SSE - Token:', token ? 'Présent' : 'Absent');
+    console.log('🔍 DEBUG SSE - RestaurantId:', restaurantId);
+    
+    if (!token) {
+      console.error('❌ Aucun token fourni pour SSE');
+      return NextResponse.json({ error: 'Token requis' }, { status: 401 });
     }
-
-    if (user.role !== 'restaurant') {
-      return NextResponse.json({ error: 'Accès non autorisé - Rôle restaurant requis' }, { status: 403 });
+    
+    // Vérifier le token avec Supabase
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    console.log('🔍 DEBUG SSE - User:', user ? user.id : 'Aucun utilisateur');
+    console.log('🔍 DEBUG SSE - AuthError:', authError);
+    
+    if (authError || !user) {
+      console.error('❌ Token invalide pour SSE:', authError);
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+    
+    // Vérifier le rôle
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    
+    console.log('🔍 DEBUG SSE - UserData:', userData);
+    
+    if (userError || !userData || userData.role !== 'restaurant') {
+      console.error('❌ Rôle invalide pour SSE:', userError);
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
     // Récupérer l'ID du restaurant associé à l'utilisateur partenaire

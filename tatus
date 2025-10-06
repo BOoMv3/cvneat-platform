@@ -1,0 +1,5 @@
+[33me00a0d0[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m DEBUG: Ajout logs detailles pour diagnostiquer erreur 401
+[33m85c709c[m URGENCE FINALE: Correction complete authentification - Tous les appels fetch ont maintenant le token Authorization - Logs de debug ajoutes
+[33m1f36caf[m URGENCE CRITIQUE: Correction authentification partner - Ajout token Authorization dans toutes les requetes - Correction partner_id vers user_id
+[33mb60cf3c[m URGENCE: Correction MAJEURE - Toutes les APIs partner utilisent maintenant la table commandes - Dashboard, Analytics, Reports corriges
+[33m09ad45f[m URGENCE: Correction contrainte user_id NOT NULL - Permet commandes sans compte client

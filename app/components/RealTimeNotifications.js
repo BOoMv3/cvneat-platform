@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { FaBell, FaTimes, FaShoppingCart, FaEuroSign, FaExclamationCircle } from 'react-icons/fa';
+import { supabase } from '../../lib/supabase';
 
 export default function RealTimeNotifications({ restaurantId }) {
   const [notifications, setNotifications] = useState([]);
@@ -10,50 +11,78 @@ export default function RealTimeNotifications({ restaurantId }) {
   useEffect(() => {
     if (!restaurantId) return;
 
-    // Connexion SSE pour les notifications en temps réel
-    const eventSource = new EventSource(`/api/partner/notifications/sse?restaurantId=${restaurantId}`);
-
-    eventSource.onopen = () => {
-      setIsConnected(true);
-      console.log('Connecté aux notifications en temps réel');
-    };
-
-    eventSource.onmessage = (event) => {
+    const setupSSE = async () => {
       try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'new_order') {
-          // Ajouter la notification avec un effet visuel
-          const newNotification = {
-            id: Date.now(),
-            type: 'new_order',
-            message: data.message,
-            data: data.order,
-            timestamp: data.timestamp,
-            isNew: true
-          };
-          
-          setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
-          
-          // Supprimer l'effet "nouveau" après 5 secondes
-          setTimeout(() => {
-            setNotifications(prev => 
-              prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
-            );
-          }, 5000);
+        // Récupérer le token d'authentification
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.error('❌ Aucune session pour SSE');
+          return;
         }
+
+        const token = session.access_token;
+        console.log('🔍 DEBUG SSE Frontend - Token:', token ? 'Présent' : 'Absent');
+
+        // Connexion SSE avec le token en paramètre d'URL
+        const eventSource = new EventSource(`/api/partner/notifications/sse?restaurantId=${restaurantId}&token=${token}`);
+
+        eventSource.onopen = () => {
+          setIsConnected(true);
+          console.log('✅ Connecté aux notifications en temps réel');
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('🔔 Notification SSE reçue:', data);
+            
+            if (data.type === 'new_order') {
+              // Ajouter la notification avec un effet visuel
+              const newNotification = {
+                id: Date.now(),
+                type: 'new_order',
+                message: data.message,
+                data: data.order,
+                timestamp: data.timestamp,
+                isNew: true
+              };
+              
+              setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
+              
+              // Supprimer l'effet "nouveau" après 5 secondes
+              setTimeout(() => {
+                setNotifications(prev => 
+                  prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
+                );
+              }, 5000);
+            }
+          } catch (error) {
+            console.error('Erreur parsing notification SSE:', error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('❌ Erreur SSE:', error);
+          setIsConnected(false);
+        };
+
+        // Stocker l'eventSource pour pouvoir le fermer
+        return eventSource;
       } catch (error) {
-        console.error('Erreur parsing notification SSE:', error);
+        console.error('❌ Erreur setup SSE:', error);
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error('Erreur SSE:', error);
-      setIsConnected(false);
-    };
+    // Appeler setupSSE et gérer le nettoyage
+    let eventSource = null;
+    setupSSE().then(es => {
+      eventSource = es;
+    });
 
     return () => {
-      eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+      }
     };
   }, [restaurantId]);
 
