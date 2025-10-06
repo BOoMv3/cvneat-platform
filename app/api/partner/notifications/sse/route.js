@@ -76,7 +76,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Restaurant non trouvé pour ce partenaire' }, { status: 404 });
     }
 
-    const restaurantId = restaurantData.id;
+    const userRestaurantId = restaurantData.id;
 
     // Configuration SSE
     const encoder = new TextEncoder();
@@ -92,13 +92,13 @@ export async function GET(request) {
 
         // Écouter les nouvelles commandes
         const channel = supabase
-          .channel(`restaurant_${restaurantId}_orders`)
+          .channel(`restaurant_${userRestaurantId}_orders`)
           .on('postgres_changes', 
             { 
               event: 'INSERT', 
               schema: 'public', 
               table: 'commandes',
-              filter: `restaurant_id=eq.${restaurantId}`
+              filter: `restaurant_id=eq.${userRestaurantId}`
             }, 
             (payload) => {
               sendNotification({
@@ -112,7 +112,7 @@ export async function GET(request) {
               event: 'UPDATE',
               schema: 'public',
               table: 'commandes',
-              filter: `restaurant_id=eq.${restaurantId}`
+              filter: `restaurant_id=eq.${userRestaurantId}`
             },
             (payload) => {
               sendNotification({
