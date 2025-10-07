@@ -60,6 +60,10 @@ export async function POST(request) {
         .update({ is_default: false })
         .eq('user_id', user.id);
     }
+    // DEBUG : Log du user_id utilisé
+    console.log('🔍 DEBUG - User ID utilisé:', user.id);
+    console.log('🔍 DEBUG - User email:', user.email);
+    
     const { data: newAddress, error } = await supabaseAdmin
       .from('user_addresses')
       .insert([
