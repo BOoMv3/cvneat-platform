@@ -28,7 +28,7 @@ export async function GET(request) {
 
     // Récupérer les commandes en préparation qui approchent de la fin pour ce livreur
     const { data: orders, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
@@ -42,7 +42,7 @@ export async function GET(request) {
     
     // Debug : Vérifier toutes les commandes en préparation
     const { data: allPreparingOrders } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id, customer_name, status, delivery_id, preparation_time')
       .eq('status', 'preparing')
       .not('preparation_time', 'is', null);
@@ -51,7 +51,7 @@ export async function GET(request) {
     
     // Debug : Vérifier la commande #2013 spécifiquement
     const { data: order2013 } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('id', 2013);
     

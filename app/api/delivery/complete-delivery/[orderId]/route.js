@@ -49,7 +49,7 @@ export async function POST(request, { params }) {
 
     // Vérifier que la commande existe et n'est pas déjà livrée
     const { data: order, error: checkError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('id', orderId)
       .not('status', 'eq', 'delivered')
@@ -75,7 +75,7 @@ export async function POST(request, { params }) {
 
     // Marquer la commande comme livrée
     const { error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
         status: 'delivered',
         updated_at: new Date().toISOString()

@@ -29,7 +29,7 @@ export async function GET(request, { params }) {
 
     // Vérifier que la commande appartient au livreur
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('id', params.orderId)
       .eq('delivery_id', user.id)
@@ -92,7 +92,7 @@ export async function POST(request, { params }) {
 
     // Vérifier que la commande appartient au livreur
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         user:users(email, full_name)

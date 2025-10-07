@@ -30,7 +30,7 @@ export async function POST(request) {
 
     // Récupérer les détails de la commande
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         id,
         montant_total,

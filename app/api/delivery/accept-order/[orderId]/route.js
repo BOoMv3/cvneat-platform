@@ -31,7 +31,7 @@ export async function POST(request, { params }) {
 
     // Vérifier que la commande existe et est disponible
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('id', orderId)
       .single();
@@ -64,7 +64,7 @@ export async function POST(request, { params }) {
 
     // Accepter la commande
     const { error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
         delivery_id: user.id,
         status: 'accepted', // Le livreur accepte, mais la commande reste visible

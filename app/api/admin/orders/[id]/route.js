@@ -180,7 +180,7 @@ export async function DELETE(request, { params }) {
 
     // Récupérer les infos de la commande avant annulation
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         user:users(email, full_name),
@@ -193,8 +193,8 @@ export async function DELETE(request, { params }) {
 
     // Annuler la commande
     const { data: cancelledOrder, error } = await supabase
-      .from('orders')
-      .update({ status: 'cancelled' })
+      .from('commandes')
+      .update({ statut: 'annulee' })
       .eq('id', params.id)
       .select()
       .single();

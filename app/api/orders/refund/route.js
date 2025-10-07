@@ -18,7 +18,7 @@ export async function POST(request) {
 
     // Récupérer la commande
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*, payment_intent_id, total_amount')
       .eq('id', orderId)
       .single();
@@ -64,9 +64,9 @@ export async function POST(request) {
 
     // Mettre à jour la commande
     const { error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
-        status: 'cancelled',
+        statut: 'annulee',
         cancellation_reason: reason,
         refund_amount: refundAmount,
         refund_id: refund?.id || null,
@@ -124,7 +124,7 @@ async function notifyCustomerRefund(orderId, amount, reason) {
   try {
     // Récupérer les infos du client
     const { data: order } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('customer_email, customer_name, customer_phone')
       .eq('id', orderId)
       .single();

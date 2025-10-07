@@ -44,7 +44,7 @@ export async function GET(request) {
     
     // Récupérer toutes les commandes avec le statut 'delivered' pour ce livreur
     const { data: orders, error: ordersError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('status', 'delivered')
       .eq('delivery_id', user.id);
@@ -59,7 +59,7 @@ export async function GET(request) {
     
     // Debug: vérifier toutes les commandes
     const { data: allOrders, error: allOrdersError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id, status, delivery_fee, total_amount');
     
     console.log('🔍 Toutes les commandes:', allOrders);

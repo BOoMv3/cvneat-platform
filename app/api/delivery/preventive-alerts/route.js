@@ -28,7 +28,7 @@ export async function GET(request) {
 
     // Récupérer les commandes en préparation qui ne sont pas encore acceptées par ce livreur
     const { data: orders, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)

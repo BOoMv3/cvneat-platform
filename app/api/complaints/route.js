@@ -137,7 +137,7 @@ export async function POST(request) {
 
     // Vérifier que la commande existe et appartient au client
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         restaurant:restaurants(id, user_id)

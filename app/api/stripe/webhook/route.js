@@ -82,7 +82,7 @@ async function handlePaymentSucceeded(paymentIntent) {
   try {
     // Mettre à jour le statut de la commande si nécessaire
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id, order_number, customer_id')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .single();
@@ -94,7 +94,7 @@ async function handlePaymentSucceeded(paymentIntent) {
 
     // Mettre à jour le statut de la commande
     const { error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
         payment_status: 'paid',
         updated_at: new Date().toISOString()
@@ -118,7 +118,7 @@ async function handlePaymentFailed(paymentIntent) {
   
   try {
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id, order_number, customer_id')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .single();
@@ -130,10 +130,10 @@ async function handlePaymentFailed(paymentIntent) {
 
     // Mettre à jour le statut de la commande
     const { error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
         payment_status: 'failed',
-        status: 'cancelled',
+        statut: 'annulee',
         updated_at: new Date().toISOString()
       })
       .eq('id', order.id);
@@ -156,7 +156,7 @@ async function handleDisputeCreated(dispute) {
   try {
     // Trouver la commande liée au litige
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id, order_number, customer_id, restaurant_id')
       .eq('stripe_charge_id', dispute.charge)
       .single();
@@ -199,7 +199,7 @@ async function handlePaymentCanceled(paymentIntent) {
   
   try {
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id, order_number, customer_id')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .single();
@@ -211,10 +211,10 @@ async function handlePaymentCanceled(paymentIntent) {
 
     // Mettre à jour le statut de la commande
     const { error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
         payment_status: 'cancelled',
-        status: 'cancelled',
+        statut: 'annulee',
         updated_at: new Date().toISOString()
       })
       .eq('id', order.id);
@@ -237,7 +237,7 @@ async function handleRefundCreated(refund) {
   try {
     // Trouver la commande liée au remboursement
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('id, order_number, customer_id')
       .eq('stripe_payment_intent_id', refund.payment_intent)
       .single();

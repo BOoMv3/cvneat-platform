@@ -193,9 +193,9 @@ export async function PUT(request, { params }) {
 
         // Mettre à jour le statut de la commande
         await supabase
-          .from('orders')
+          .from('commandes')
           .update({
-            status: 'cancelled',
+            statut: 'annulee',
             cancellation_reason: `Réclamation approuvée: ${adminResponse || 'Remboursement effectué'}`,
             refund_amount: refundAmount,
             refund_id: stripeRefund?.id || null,

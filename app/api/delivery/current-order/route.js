@@ -38,7 +38,7 @@ export async function GET(request) {
 
     // Récupérer la commande actuelle acceptée par ce livreur (statut 'accepted')
     const { data: order, error } = await supabase
-      .from('orders')
+      .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)

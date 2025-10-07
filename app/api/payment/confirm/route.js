@@ -21,7 +21,7 @@ export async function POST(request) {
     if (paymentIntent.status === 'succeeded') {
       // Mettre à jour le statut de la commande
       const { error } = await supabase
-        .from('orders')
+        .from('commandes')
         .update({ 
           status: 'confirmed',
           payment_status: 'paid',
