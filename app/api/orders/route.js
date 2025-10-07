@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
-import { createClient } from '@supabase/supabase-js';
-
-// Créer un client avec le service role pour contourner RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
 // GET /api/orders - Récupérer les commandes de l'utilisateur
@@ -27,7 +20,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les commandes de l'utilisateur (temporaire sans service role)
+    // Récupérer les commandes de l'utilisateur
     const { data: orders, error: ordersError } = await supabase
       .from('commandes')
       .select('*')
