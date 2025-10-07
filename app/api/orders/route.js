@@ -218,7 +218,9 @@ export async function POST(request) {
       );
     }
 
-    console.log('Commande créée avec succès:', order.id);
+    console.log('✅ Commande créée avec succès:', order.id);
+    console.log('📊 Statut initial de la commande:', order.statut);
+    console.log('📅 Heure de création:', order.created_at);
 
     // Créer les détails de commande
     console.log('Création des détails de commande...');
@@ -240,11 +242,18 @@ export async function POST(request) {
       console.log('Détails de commande créés avec succès');
     }
 
+    console.log('🎯 RETOUR DE LA RÉPONSE - Commande créée avec statut:', order.statut);
+    
     return NextResponse.json({
       message: 'Commande créée avec succès',
       orderId: order.id,
       total: total,
-      status: 'en_attente'
+      status: order.statut, // Utiliser le statut réel de la commande
+      debug: {
+        orderCreatedAt: order.created_at,
+        orderStatus: order.statut,
+        orderId: order.id
+      }
     });
 
   } catch (error) {

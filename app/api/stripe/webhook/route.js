@@ -128,15 +128,17 @@ async function handlePaymentFailed(paymentIntent) {
       return;
     }
 
-    // Mettre à jour le statut de la commande
-    const { error: updateError } = await supabase
-      .from('commandes')
-      .update({
-        payment_status: 'failed',
-        statut: 'annulee',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', order.id);
+    // Mettre à jour le statut de la commande - DÉSACTIVÉ POUR DEBUG
+    console.log('⚠️ STRIPE WEBHOOK DÉSACTIVÉ - Ne pas annuler la commande pour paiement échoué');
+    
+    // const { error: updateError } = await supabase
+    //   .from('commandes')
+    //   .update({
+    //     payment_status: 'failed',
+    //     statut: 'annulee',
+    //     updated_at: new Date().toISOString()
+    //   })
+    //   .eq('id', order.id);
 
     if (updateError) {
       console.error('❌ Erreur mise à jour commande:', updateError);
@@ -209,15 +211,17 @@ async function handlePaymentCanceled(paymentIntent) {
       return;
     }
 
-    // Mettre à jour le statut de la commande
-    const { error: updateError } = await supabase
-      .from('commandes')
-      .update({
-        payment_status: 'cancelled',
-        statut: 'annulee',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', order.id);
+    // Mettre à jour le statut de la commande - DÉSACTIVÉ POUR DEBUG
+    console.log('⚠️ STRIPE WEBHOOK DÉSACTIVÉ - Ne pas annuler la commande pour paiement annulé');
+    
+    // const { error: updateError } = await supabase
+    //   .from('commandes')
+    //   .update({
+    //     payment_status: 'cancelled',
+    //     statut: 'annulee',
+    //     updated_at: new Date().toISOString()
+    //   })
+    //   .eq('id', order.id);
 
     if (updateError) {
       console.error('❌ Erreur mise à jour commande:', updateError);
