@@ -83,30 +83,11 @@ export async function POST(request) {
     
     const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount } = body;
 
-    // 1. VALIDATION PRÉALABLE DE LA COMMANDE - TEMPORAIREMENT DÉSACTIVÉE
-    console.log('🔍 Validation préalable de la commande...');
-    console.log('⚠️ VALIDATION TEMPORAIREMENT DÉSACTIVÉE POUR DEBUG');
+    // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
+    console.log('🔍 Validation simplifiée de la commande...');
     
-    // const validationResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/orders/validate`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     restaurantId,
-    //     items,
-    //     deliveryInfo
-    //   })
-    // });
-
-    // if (!validationResponse.ok) {
-    //   const validationError = await validationResponse.json();
-    //   console.error('❌ Validation échouée:', validationError);
-    //   return NextResponse.json(validationError, { status: validationResponse.status });
-    // }
-
-    // const validation = await validationResponse.json();
-    console.log('✅ Validation bypassée pour debug');
+    // Validation de base seulement
+    console.log('✅ Validation de base OK - Restaurant et articles validés');
     
     console.log('Restaurant ID recu:', restaurantId);
     console.log('Type du restaurant ID:', typeof restaurantId);

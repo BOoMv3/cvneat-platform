@@ -29,7 +29,7 @@ export default function OrderStatus({ params }) {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'orders',
+          table: 'commandes',
           filter: `id=eq.${params.id}`
         },
         (payload) => {
@@ -45,12 +45,12 @@ export default function OrderStatus({ params }) {
             'rejected': 'Votre commande a été refusée ❌'
           };
           
-          if (statusMessages[payload.new.status]) {
-            setStatusNotification(statusMessages[payload.new.status]);
+          if (statusMessages[payload.new.statut]) {
+            setStatusNotification(statusMessages[payload.new.statut]);
             setTimeout(() => setStatusNotification(null), 5000);
             
             // Envoyer une notification push
-            sendOrderStatusNotification(payload.new.id, payload.new.status, payload.new);
+            sendOrderStatusNotification(payload.new.id, payload.new.statut, payload.new);
           }
         }
       )
