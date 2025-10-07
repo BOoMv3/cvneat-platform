@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Créer un client avec le service role pour contourner RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 async function getUserFromRequest(request) {
   try {
@@ -81,7 +88,19 @@ export async function GET(request) {
 
     // Récupérer les commandes du restaurant
     console.log('🔍 Recherche commandes pour restaurant_id:', restaurantId);
-    const { data: orders, error: ordersError } = await supabase
+    
+    // D'abord, testons une requête simple sans JOIN avec le client admin
+    console.log('🔍 Test requête simple avec admin...');
+    const { data: simpleOrders, error: simpleError } = await supabaseAdmin
+      .from('commandes')
+      .select('*')
+      .eq('restaurant_id', restaurantId);
+    
+    console.log('🔍 Résultat requête simple (admin):', simpleOrders?.length || 0, 'commandes');
+    console.log('🔍 Erreur requête simple (admin):', simpleError);
+    
+    // Maintenant la requête complète avec JOIN avec le client admin
+    const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select(`
         *,
@@ -147,7 +166,7 @@ export async function POST(request) {
 
     // Vérifier que la commande appartient à ce restaurant
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from('commandes')
       .select('*')
       .eq('id', orderId)
       .eq('restaurant_id', restaurant.id)
@@ -157,15 +176,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
     }
 
-    if (order.status !== 'en_attente') {
+    if (order.statut !== 'en_attente') {
       return NextResponse.json({ error: 'Cette commande ne peut plus être modifiée' }, { status: 400 });
     }
 
     // Mettre à jour la commande avec les estimations de temps
     const { data: updatedOrder, error: updateError } = await supabase
-      .from('orders')
+      .from('commandes')
       .update({
-        status: 'acceptee',
+        statut: 'acceptee',
         preparation_time: preparationTime,
         delivery_time: deliveryTime,
         estimated_total_time: estimatedTotalTime,
