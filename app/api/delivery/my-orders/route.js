@@ -43,8 +43,8 @@ export async function GET(request) {
 
     console.log('✅ Rôle livreur confirmé');
 
-    // Récupérer les commandes acceptées par ce livreur avec le service role
-    const { data: orders, error } = await supabaseAdmin
+    // Récupérer les commandes acceptées par ce livreur (temporaire sans service role)
+    const { data: orders, error } = await supabase
       .from('commandes')
       .select(`
         *,

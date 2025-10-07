@@ -27,8 +27,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les commandes de l'utilisateur avec le service role
-    const { data: orders, error: ordersError } = await supabaseAdmin
+    // Récupérer les commandes de l'utilisateur (temporaire sans service role)
+    const { data: orders, error: ordersError } = await supabase
       .from('commandes')
       .select('*')
       .eq('user_id', user.id)
