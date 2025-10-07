@@ -225,10 +225,10 @@ async function checkRestaurantCapacity(restaurantId) {
   try {
     // Compter les commandes en cours
     const { data: activeOrders, error } = await supabase
-      .from('orders')
-      .select('id, status, created_at')
+      .from('commandes')
+      .select('id, statut, created_at')
       .eq('restaurant_id', restaurantId)
-      .in('status', ['pending', 'accepted', 'preparing', 'ready']);
+      .in('statut', ['en_attente', 'acceptee', 'en_preparation', 'prete']);
 
     if (error) {
       console.error('Erreur vérification capacité:', error);
