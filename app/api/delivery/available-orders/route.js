@@ -49,7 +49,7 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone)
+        restaurant:restaurants(nom, adresse, telephone, frais_livraison)
       `)
       .in('statut', ['pret_a_livrer', 'en_preparation']) // Commandes prêtes ET en préparation
       .is('livreur_id', null) // Pas encore assignées à un livreur

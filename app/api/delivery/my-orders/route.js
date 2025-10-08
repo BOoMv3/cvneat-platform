@@ -48,10 +48,10 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone)
+        restaurant:restaurants(nom, adresse, telephone, frais_livraison)
       `)
       .eq('livreur_id', user.id) // Commandes assignées à ce livreur
-      .in('statut', ['en_preparation', 'livree']) // Commandes en préparation ou livrées
+      .in('statut', ['en_livraison', 'livree']) // Commandes en livraison ou livrées
       .order('created_at', { ascending: false });
 
     if (error) {

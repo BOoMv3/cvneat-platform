@@ -36,15 +36,21 @@ export async function GET(request) {
 
     console.log('✅ Rôle livreur confirmé');
 
-    // Récupérer la commande actuelle acceptée par ce livreur (statut 'accepted')
-    const { data: order, error } = await supabase
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Récupérer la commande actuelle acceptée par ce livreur (statut 'en_livraison')
+    const { data: order, error } = await supabaseAdmin
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone)
+        restaurant:restaurants(nom, adresse, telephone, frais_livraison)
       `)
-      .eq('delivery_id', user.id) // Commandes assignées à ce livreur
-      .eq('status', 'accepted') // Seulement les commandes acceptées (pas encore livrées)
+      .eq('livreur_id', user.id) // Commandes assignées à ce livreur
+      .eq('statut', 'en_livraison') // Seulement les commandes en livraison (pas encore livrées)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,12 +43,18 @@ export async function GET(request) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Récupérer toutes les commandes avec le statut 'delivered' pour ce livreur
-    const { data: orders, error: ordersError } = await supabase
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Récupérer toutes les commandes avec le statut 'livree' pour ce livreur
+    const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select('*')
-      .eq('status', 'delivered')
-      .eq('delivery_id', user.id);
+      .eq('statut', 'livree')
+      .eq('livreur_id', user.id);
 
     if (ordersError) {
       console.error('Erreur récupération commandes:', ordersError);
@@ -55,18 +62,18 @@ export async function GET(request) {
     }
 
     console.log('📦 Commandes trouvées:', orders?.length || 0);
-    console.log('📦 Détails commandes:', orders?.map(o => ({ id: o.id, status: o.status, delivery_fee: o.delivery_fee, total_amount: o.total_amount })));
+    console.log('📦 Détails commandes:', orders?.map(o => ({ id: o.id, statut: o.statut, frais_livraison: o.frais_livraison, total: o.total })));
     
     // Debug: vérifier toutes les commandes
-    const { data: allOrders, error: allOrdersError } = await supabase
+    const { data: allOrders, error: allOrdersError } = await supabaseAdmin
       .from('commandes')
-      .select('id, status, delivery_fee, total_amount');
+      .select('id, statut, frais_livraison, total');
     
     console.log('🔍 Toutes les commandes:', allOrders);
 
     // Calculer les statistiques
     const totalDeliveries = orders?.length || 0;
-    const totalEarnings = orders?.reduce((sum, order) => sum + (order.delivery_fee || 0), 0) || 0;
+    const totalEarnings = orders?.reduce((sum, order) => sum + (order.frais_livraison || 0), 0) || 0;
     
     // Commandes d'aujourd'hui
     const todayOrders = orders?.filter(order => {
