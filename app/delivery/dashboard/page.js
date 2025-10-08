@@ -672,7 +672,7 @@ export default function DeliveryDashboard() {
                       #{currentOrder.id}
                     </span>
                     <span className="px-2 sm:px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs sm:text-sm font-medium">
-                      {currentOrder.status === 'en_livraison' ? 'En livraison' : 'Prêt à livrer'}
+                      {currentOrder.statut === 'en_livraison' ? 'En livraison' : 'Prêt à livrer'}
                     </span>
                   </div>
                 </div>
@@ -681,23 +681,23 @@ export default function DeliveryDashboard() {
                   <div className="space-y-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-gray-900 mb-2">🍽️ Restaurant</h3>
-                      <p className="text-gray-700 font-medium">{currentOrder.restaurant_nom}</p>
-                      <p className="text-gray-600 text-sm">{currentOrder.restaurant_adresse}</p>
+                      <p className="text-gray-700 font-medium">{currentOrder.restaurant?.nom}</p>
+                      <p className="text-gray-600 text-sm">{currentOrder.restaurant?.adresse}</p>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-gray-900 mb-2">👤 Client</h3>
-                      <p className="text-gray-700 font-medium">{currentOrder.customer_name}</p>
-                      <p className="text-gray-600 text-sm">{currentOrder.customer_phone}</p>
+                      <p className="text-gray-700 font-medium">{currentOrder.users?.prenom} {currentOrder.users?.nom}</p>
+                      <p className="text-gray-600 text-sm">{currentOrder.users?.telephone}</p>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-gray-900 mb-2">🏠 Adresse de livraison</h3>
-                      <p className="text-gray-700">{currentOrder.delivery_address}</p>
+                      <p className="text-gray-700">{currentOrder.user_addresses?.address}</p>
                     </div>
                     
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                      {(currentOrder.status === 'accepted' || currentOrder.status === 'ready') && (
+                      {(currentOrder.statut === 'en_livraison' || currentOrder.statut === 'pret_a_livrer') && (
                         <button
                           onClick={() => completeDelivery(currentOrder.id)}
                           className="flex-1 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold min-h-[44px] touch-manipulation text-sm sm:text-base"
@@ -914,7 +914,7 @@ export default function DeliveryDashboard() {
         {currentOrder && (
           <DeliveryChat
             orderId={currentOrder.id}
-            customerName={currentOrder.customer_name}
+            customerName={`${currentOrder.users?.prenom} ${currentOrder.users?.nom}`}
             isOpen={chatOpen}
             onClose={() => setChatOpen(false)}
           />
