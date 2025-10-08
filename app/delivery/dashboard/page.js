@@ -791,7 +791,7 @@ export default function DeliveryDashboard() {
                                 #{order.id || 'N/A'}
                               </span>
                               <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                {order.delivery_fee || 'N/A'}€
+                                {order.frais_livraison || 'N/A'}€
                               </span>
                               <span className="text-sm text-gray-500">
                                 {order.created_at ? new Date(order.created_at).toLocaleTimeString('fr-FR', { 
@@ -817,12 +817,12 @@ export default function DeliveryDashboard() {
                             
                             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
                               <span>Total: {order.total || 'N/A'}€</span>
-                              <span>Frais: {order.delivery_fee || 'N/A'}€</span>
-                              <span>Est. {order.estimated_time || 'N/A'} min</span>
+                              <span>Frais: {order.frais_livraison || 'N/A'}€</span>
+                              <span>Est. {order.preparation_time || 'N/A'} min</span>
                             </div>
                           
                           {/* Décompte en temps réel */}
-                          {order.status === 'preparing' && order.preparation_time && (
+                          {order.statut === 'en_preparation' && order.preparation_time && (
                             <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                               <div className="flex items-center justify-between">
                                 <div>
@@ -843,7 +843,7 @@ export default function DeliveryDashboard() {
                         </div>
                         
                         <div className="mt-4 lg:mt-0 lg:ml-6 flex flex-col gap-2">
-                          {(order.status === 'ready' || order.status === 'preparing') ? (
+                          {(order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') ? (
                             // Commande prête ou en préparation, livreur peut accepter
                             <button
                               onClick={() => acceptOrder(order.id)}
@@ -851,7 +851,7 @@ export default function DeliveryDashboard() {
                             >
                               ✅ Accepter
                             </button>
-                          ) : order.status === 'accepted' && order.delivery_id === user?.id ? (
+                          ) : order.statut === 'en_livraison' && order.livreur_id === user?.id ? (
                             // Commande acceptée par ce livreur - SEUL ce livreur peut la livrer
                             <div className="flex flex-col gap-2">
                               <span className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg font-semibold text-xs text-center">
@@ -864,12 +864,12 @@ export default function DeliveryDashboard() {
                                 🚚 Livrer
                               </button>
                             </div>
-                          ) : order.status === 'accepted' && order.delivery_id !== user?.id ? (
+                          ) : order.statut === 'en_livraison' && order.livreur_id !== user?.id ? (
                             // Commande acceptée par un autre livreur - AUCUNE action possible
                             <span className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-xs text-center">
                               👤 Autre livreur
                             </span>
-                          ) : order.status === 'delivered' ? (
+                          ) : order.statut === 'livree' ? (
                             // Commande déjà livrée
                             <span className="px-3 py-2 bg-green-100 text-green-800 rounded-lg font-semibold text-xs text-center">
                               ✅ Livrée
