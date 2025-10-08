@@ -120,7 +120,8 @@ export async function PUT(request, { params }) {
       updateData.rejection_reason = reason;
     }
 
-    if (preparation_time !== null && preparation_time !== undefined) {
+    // Ajouter preparation_time seulement si fourni et valide
+    if (preparation_time !== null && preparation_time !== undefined && preparation_time > 0) {
       updateData.preparation_time = preparation_time;
     }
 
