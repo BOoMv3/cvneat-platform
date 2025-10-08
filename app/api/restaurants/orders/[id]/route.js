@@ -110,17 +110,21 @@ export async function PUT(request, { params }) {
       }, { status: 400 });
     }
 
-    // Mettre à jour la commande - CORRIGER LE STATUT
+    // Mettre à jour la commande - UTILISER LES VALEURS DE LA BASE
     let correctedStatus = status;
-    if (status === 'accepted') {
-      correctedStatus = 'acceptee';
-    } else if (status === 'rejected') {
-      correctedStatus = 'refusee';
-    } else if (status === 'ready') {
-      correctedStatus = 'pret_a_livrer';
+    
+    // MAPPING DES STATUTS FRANÇAIS VERS ANGLAIS (selon la contrainte CHECK)
+    const statusMapping = {
+      'acceptee': 'en_preparation',     // Commande acceptée = en préparation
+      'refusee': 'annulee',            // Commande refusée = annulée  
+      'pret_a_livrer': 'pret_a_livrer' // Prêt à livrer reste pareil
+    };
+    
+    if (statusMapping[status]) {
+      correctedStatus = statusMapping[status];
     }
     
-    console.log('🔄 Statut corrigé:', { original: status, corrected: correctedStatus });
+    console.log('🔄 Statut mappé:', { original: status, mapped: correctedStatus });
     
     const updateData = {
       statut: correctedStatus,
