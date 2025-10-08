@@ -538,6 +538,11 @@ export default function RestaurantOrders() {
                   </div>
                 )}
 
+                {/* DEBUG : Afficher le statut actuel */}
+                <div className="bg-gray-100 p-2 rounded text-sm">
+                  <strong>DEBUG :</strong> Statut = "{selectedOrder.statut}", Delivery ID = {selectedOrder.delivery_id || 'null'}
+                </div>
+                
                 {selectedOrder.statut === 'acceptee' && !selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <button
@@ -545,6 +550,18 @@ export default function RestaurantOrders() {
                       className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
                     >
                       📦 Marquer comme prête
+                    </button>
+                  </div>
+                )}
+                
+                {/* Afficher le bouton pour TOUS les statuts acceptee */}
+                {selectedOrder.statut === 'acceptee' && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'pret_a_livrer')}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      🔧 FORCE: Marquer comme prête
                     </button>
                   </div>
                 )}
