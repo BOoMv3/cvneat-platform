@@ -99,6 +99,14 @@ export async function GET(request) {
     console.log('🔍 Résultat requête simple (admin):', simpleOrders?.length || 0, 'commandes');
     console.log('🔍 Erreur requête simple (admin):', simpleError);
     
+    // DEBUG : Afficher les statuts des commandes trouvées
+    if (simpleOrders && simpleOrders.length > 0) {
+      console.log('📊 STATUTS DES COMMANDES TROUVÉES:');
+      simpleOrders.forEach(order => {
+        console.log(`  - Commande ${order.id}: statut = "${order.statut}"`);
+      });
+    }
+    
     // Maintenant la requête complète avec JOIN avec le client admin
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')

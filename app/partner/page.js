@@ -305,7 +305,7 @@ export default function PartnerDashboard() {
         );
         
         const pendingOrders = data.filter(order => 
-          order.status === 'en_attente'
+          order.statut === 'en_attente'
         );
         
         const totalRevenue = data.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
@@ -512,12 +512,12 @@ export default function PartnerDashboard() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            order.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
-                            order.status === 'ready' ? 'bg-green-100 text-green-800' :
+                            order.statut === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            order.statut === 'accepted' ? 'bg-blue-100 text-blue-800' :
+                            order.statut === 'ready' ? 'bg-green-100 text-green-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {order.status}
+                            {order.statut}
                           </span>
                           <button
                             onClick={() => updateOrderStatus(order.id, 'accepted')}
@@ -652,22 +652,22 @@ export default function PartnerDashboard() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                                  order.status === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
-                                  order.status === 'acceptee' ? 'bg-blue-100 text-blue-800' :
-                                  order.status === 'pret' ? 'bg-green-100 text-green-800' :
-                                  order.status === 'livree' ? 'bg-gray-100 text-gray-800' :
+                                  order.statut === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
+                                  order.statut === 'acceptee' ? 'bg-blue-100 text-blue-800' :
+                                  order.statut === 'pret' ? 'bg-green-100 text-green-800' :
+                                  order.statut === 'livree' ? 'bg-gray-100 text-gray-800' :
                                   'bg-red-100 text-red-800'
                                 }`}>
-                                  {order.status === 'en_attente' ? 'En attente' :
-                                   order.status === 'acceptee' ? 'Acceptée' :
-                                   order.status === 'pret' ? 'Prête' :
-                                   order.status === 'livree' ? 'Livrée' :
+                                  {order.statut === 'en_attente' ? 'En attente' :
+                                   order.statut === 'acceptee' ? 'Acceptée' :
+                                   order.statut === 'pret' ? 'Prête' :
+                                   order.statut === 'livree' ? 'Livrée' :
                                    'Annulée'}
                                 </span>
                               </div>
                               
                               <div className="flex flex-wrap gap-2 justify-end">
-                                {order.status === 'en_attente' && (
+                                {order.statut === 'en_attente' && (
                                   <>
                                     <button
                                       onClick={() => updateOrderStatus(order.id, 'acceptee')}
@@ -683,7 +683,7 @@ export default function PartnerDashboard() {
                                     </button>
                                   </>
                                 )}
-                                {order.status === 'acceptee' && (
+                                {order.statut === 'acceptee' && (
                                   <button
                                     onClick={() => updateOrderStatus(order.id, 'pret')}
                                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
