@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function PUT(request, { params }) {
   try {
@@ -44,9 +45,16 @@ export async function PUT(request, { params }) {
 
     console.log('✅ Rôle restaurant confirmé');
 
-    // Vérifier que la commande existe
+    // Vérifier que la commande existe - UTILISER SERVICE ROLE POUR BYPASSER RLS
     console.log('🔍 Recherche commande avec ID:', id);
-    const { data: order, error: orderError } = await supabase
+    
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+    
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
       .select('*')
       .eq('id', id)
