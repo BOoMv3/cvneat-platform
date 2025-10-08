@@ -487,7 +487,7 @@ export default function RestaurantOrders() {
                       />
                     </div>
                     <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'accepted', '', preparationTime)}
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'acceptee', '', preparationTime)}
                       className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
                     >
                       ✅ Accepter la commande ({preparationTime} min)
@@ -502,7 +502,7 @@ export default function RestaurantOrders() {
                         rows="3"
                       />
                       <button
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'rejected', rejectionReason)}
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'refusee', rejectionReason)}
                         className="w-full mt-2 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
                       >
                         ❌ Refuser la commande
@@ -536,7 +536,7 @@ export default function RestaurantOrders() {
                 {selectedOrder.status === 'preparing' && !selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'pret_a_livrer')}
                       className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
                     >
                       📦 Marquer comme prête
