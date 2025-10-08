@@ -70,21 +70,36 @@ export async function POST(request, { params }) {
     }
 
     // Accepter la commande
-    const { error: updateError } = await supabaseAdmin
+    console.log('📤 Mise à jour commande:', {
+      orderId,
+      livreur_id: user.id,
+      statut: 'en_livraison'
+    });
+    
+    const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
       .update({
         livreur_id: user.id,
         statut: 'en_livraison', // Le livreur accepte, statut passe en livraison
         updated_at: new Date().toISOString()
       })
-      .eq('id', orderId);
+      .eq('id', orderId)
+      .select()
+      .single();
 
     if (updateError) {
       console.error('❌ Erreur acceptation commande:', updateError);
+      console.error('❌ Détails erreur:', JSON.stringify(updateError, null, 2));
       return NextResponse.json({ error: 'Erreur acceptation commande' }, { status: 500 });
     }
 
     console.log('✅ Commande acceptée par livreur:', user.email);
+    console.log('✅ Commande mise à jour:', {
+      id: updatedOrder.id,
+      statut: updatedOrder.statut,
+      livreur_id: updatedOrder.livreur_id
+    });
+    
     return NextResponse.json({ success: true, message: 'Commande acceptée avec succès' });
   } catch (error) {
     console.error('❌ Erreur API accept-order:', error);
