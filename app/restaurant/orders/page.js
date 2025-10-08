@@ -246,10 +246,15 @@ export default function RestaurantOrders() {
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
-            ? { ...order, status: status, preparation_time: prepTime || order.preparation_time }
+            ? { ...order, statut: status, preparation_time: prepTime || order.preparation_time }
             : order
         )
       );
+      
+      // Mettre à jour aussi la commande sélectionnée si c'est la même
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder(prev => ({ ...prev, statut: status, preparation_time: prepTime || prev.preparation_time }));
+      }
       
       setSelectedOrder(null);
       setRejectionReason('');
@@ -533,7 +538,7 @@ export default function RestaurantOrders() {
                   </div>
                 )}
 
-                {selectedOrder.status === 'preparing' && !selectedOrder.delivery_id && (
+                {selectedOrder.statut === 'acceptee' && !selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.id, 'pret_a_livrer')}
@@ -544,7 +549,7 @@ export default function RestaurantOrders() {
                   </div>
                 )}
 
-                {selectedOrder.status === 'ready' && !selectedOrder.delivery_id && (
+                {selectedOrder.statut === 'pret_a_livrer' && !selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                       <p className="text-blue-800 font-medium">Commande prête !</p>
@@ -555,7 +560,7 @@ export default function RestaurantOrders() {
                   </div>
                 )}
 
-                {selectedOrder.status === 'ready' && selectedOrder.delivery_id && (
+                {selectedOrder.statut === 'pret_a_livrer' && selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                       <p className="text-green-800 font-medium">Commande acceptée par un livreur !</p>
@@ -577,7 +582,7 @@ export default function RestaurantOrders() {
                   </div>
                 )}
 
-                {selectedOrder.status === 'preparing' && selectedOrder.delivery_id && (
+                {selectedOrder.statut === 'acceptee' && selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
                       <p className="text-orange-800 font-medium">Commande acceptée par un livreur !</p>

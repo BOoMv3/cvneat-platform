@@ -110,21 +110,11 @@ export async function PUT(request, { params }) {
       }, { status: 400 });
     }
 
-    // Mettre à jour la commande - UTILISER LES VALEURS DE LA BASE
+    // Mettre à jour la commande - LES STATUTS FRANÇAIS SONT AUTORISÉS !
     let correctedStatus = status;
     
-    // MAPPING DES STATUTS FRANÇAIS VERS ANGLAIS (selon la contrainte CHECK)
-    const statusMapping = {
-      'acceptee': 'en_preparation',     // Commande acceptée = en préparation
-      'refusee': 'annulee',            // Commande refusée = annulée  
-      'pret_a_livrer': 'pret_a_livrer' // Prêt à livrer reste pareil
-    };
-    
-    if (statusMapping[status]) {
-      correctedStatus = statusMapping[status];
-    }
-    
-    console.log('🔄 Statut mappé:', { original: status, mapped: correctedStatus });
+    console.log('✅ Statut accepté directement:', status);
+    console.log('📋 Valeurs autorisées: en_attente, acceptee, refusee, en_preparation, pret_a_livrer, en_livraison, livree, annulee');
     
     const updateData = {
       statut: correctedStatus,
