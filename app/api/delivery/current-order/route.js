@@ -95,12 +95,21 @@ export async function GET(request) {
       
       if (detailsError) {
         console.error('❌ Erreur récupération détails:', detailsError);
+        console.error('❌ Code erreur détails:', detailsError.code);
+        console.error('❌ Message erreur détails:', detailsError.message);
         // Retourner la commande basique si les détails échouent
         return NextResponse.json({
           hasOrder: true,
           order: order
         });
       }
+      
+      console.log('✅ Détails récupérés avec succès:', {
+        id: orderDetails.id,
+        restaurant: orderDetails.restaurant,
+        users: orderDetails.users,
+        user_addresses: orderDetails.user_addresses
+      });
       
       return NextResponse.json({
         hasOrder: true,
