@@ -43,6 +43,8 @@ export async function GET(request) {
 
     console.log('✅ Rôle livreur confirmé');
 
+    console.log('🔍 Recherche commande pour livreur:', user.id);
+    
     // Récupérer la commande actuelle acceptée par ce livreur (statut 'en_livraison')
     const { data: order, error } = await supabaseAdmin
       .from('commandes')
@@ -67,10 +69,19 @@ export async function GET(request) {
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
       console.error('❌ Erreur récupération commande actuelle:', error);
+      console.error('❌ Code erreur:', error.code);
+      console.error('❌ Message erreur:', error.message);
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
-    console.log('✅ Commande actuelle trouvée:', !!order);
+    console.log('✅ Résultat requête:');
+    console.log('- Erreur:', error);
+    console.log('- Commande trouvée:', !!order);
+    if (order) {
+      console.log('- ID commande:', order.id);
+      console.log('- Statut:', order.statut);
+      console.log('- Livreur ID:', order.livreur_id);
+    }
     
     if (order) {
       return NextResponse.json({
