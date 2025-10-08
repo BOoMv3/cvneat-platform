@@ -445,32 +445,32 @@ export default function RestaurantOrders() {
                   <div>
                     <h3 className="font-medium mb-2">Articles commandés</h3>
                     <div className="space-y-2">
-                      {selectedOrder.items?.map((item, index) => (
+                      {selectedOrder.details_commande?.map((item, index) => (
                         <div key={index} className="flex justify-between text-sm">
-                          <span>{item.name} x{item.quantity}</span>
-                          <span>{(item.price * item.quantity).toFixed(2)}€</span>
+                          <span>{item.menus?.nom || 'Article'} x{item.quantite}</span>
+                          <span>{(item.prix_unitaire * item.quantite).toFixed(2)}€</span>
                         </div>
                       ))}
                     </div>
                     <div className="border-t mt-2 pt-2">
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>Sous-total</span>
-                        <span>{selectedOrder.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2) || '0.00'}€</span>
+                        <span>{selectedOrder.details_commande?.reduce((sum, item) => sum + (item.prix_unitaire * item.quantite), 0).toFixed(2) || '0.00'}€</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>Frais de livraison</span>
-                        <span>{selectedOrder.delivery_fee.toFixed(2)}€</span>
+                        <span>{(selectedOrder.frais_livraison || 0).toFixed(2)}€</span>
                       </div>
                       <div className="flex justify-between font-bold text-lg border-t pt-2">
                         <span>Total</span>
-                        <span>{(selectedOrder.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) + selectedOrder.delivery_fee).toFixed(2)}€</span>
+                        <span>{(selectedOrder.details_commande?.reduce((sum, item) => sum + (item.prix_unitaire * item.quantite), 0) + (selectedOrder.frais_livraison || 0)).toFixed(2)}€</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Actions selon le statut */}
-                {selectedOrder.status === 'pending' && (
+                {selectedOrder.statut === 'en_attente' && (
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -45,18 +45,21 @@ export async function PUT(request, { params }) {
     console.log('✅ Rôle restaurant confirmé');
 
     // Vérifier que la commande existe
+    console.log('🔍 Recherche commande avec ID:', id);
     const { data: order, error: orderError } = await supabase
       .from('commandes')
       .select('*')
       .eq('id', id)
       .single();
 
+    console.log('🔍 Résultat recherche commande:', { order: order?.id, error: orderError });
+
     if (orderError || !order) {
       console.error('❌ Commande non trouvée:', orderError);
       return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
     }
 
-    console.log('✅ Commande trouvée:', order.id);
+    console.log('✅ Commande trouvée:', order.id, 'restaurant_id:', order.restaurant_id);
 
     // Vérifier que la commande appartient à ce restaurant
     const { data: restaurant, error: restaurantError } = await supabase
@@ -69,6 +72,12 @@ export async function PUT(request, { params }) {
       console.error('❌ Restaurant non trouvé pour cet utilisateur:', restaurantError);
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
+
+    console.log('🔍 Vérification appartenance:', {
+      commande_restaurant: order.restaurant_id,
+      restaurant_utilisateur: restaurant.id,
+      match: order.restaurant_id === restaurant.id
+    });
 
     if (order.restaurant_id !== restaurant.id) {
       console.error('❌ Commande ne appartient pas à ce restaurant:', {
