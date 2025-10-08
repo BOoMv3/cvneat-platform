@@ -110,9 +110,20 @@ export async function PUT(request, { params }) {
       }, { status: 400 });
     }
 
-    // Mettre à jour la commande
+    // Mettre à jour la commande - CORRIGER LE STATUT
+    let correctedStatus = status;
+    if (status === 'accepted') {
+      correctedStatus = 'acceptee';
+    } else if (status === 'rejected') {
+      correctedStatus = 'refusee';
+    } else if (status === 'ready') {
+      correctedStatus = 'pret_a_livrer';
+    }
+    
+    console.log('🔄 Statut corrigé:', { original: status, corrected: correctedStatus });
+    
     const updateData = {
-      statut: status,
+      statut: correctedStatus,
       updated_at: new Date().toISOString()
     };
 
@@ -150,7 +161,7 @@ export async function PUT(request, { params }) {
     console.log('✅ Commande mise à jour avec succès:', updatedOrder.id);
 
     // Notifier les livreurs si la commande est prête à livrer
-    if (status === 'pret_a_livrer') {
+    if (correctedStatus === 'pret_a_livrer') {
       try {
         console.log('🔔 Notification aux livreurs pour commande prête');
         // La notification sera automatiquement détectée par le SSE des livreurs
