@@ -45,22 +45,10 @@ export async function GET(request) {
 
     console.log('🔍 Recherche commande pour livreur:', user.id);
     
-    // Récupérer la commande actuelle acceptée par ce livreur (statut 'en_livraison')
+    // D'abord, récupérer la commande sans jointures pour éviter les problèmes
     const { data: order, error } = await supabaseAdmin
       .from('commandes')
-      .select(`
-        *,
-        restaurant:restaurants(nom, adresse, telephone, frais_livraison),
-        users(prenom, nom, telephone),
-        user_addresses(address, city, postal_code),
-        details_commande(
-          id,
-          plat_id,
-          quantite,
-          prix_unitaire,
-          menus(nom, prix)
-        )
-      `)
+      .select('*')
       .eq('livreur_id', user.id) // Commandes assignées à ce livreur
       .eq('statut', 'en_livraison') // Seulement les commandes en livraison (pas encore livrées)
       .order('created_at', { ascending: false })
@@ -84,9 +72,39 @@ export async function GET(request) {
     }
     
     if (order) {
+      console.log('✅ Commande trouvée, récupération des détails...');
+      
+      // Récupérer les détails complets de la commande
+      const { data: orderDetails, error: detailsError } = await supabaseAdmin
+        .from('commandes')
+        .select(`
+          *,
+          restaurant:restaurants(nom, adresse, telephone, frais_livraison),
+          users(prenom, nom, telephone),
+          user_addresses(address, city, postal_code),
+          details_commande(
+            id,
+            plat_id,
+            quantite,
+            prix_unitaire,
+            menus(nom, prix)
+          )
+        `)
+        .eq('id', order.id)
+        .single();
+      
+      if (detailsError) {
+        console.error('❌ Erreur récupération détails:', detailsError);
+        // Retourner la commande basique si les détails échouent
+        return NextResponse.json({
+          hasOrder: true,
+          order: order
+        });
+      }
+      
       return NextResponse.json({
         hasOrder: true,
-        order: order
+        order: orderDetails
       });
     } else {
       return NextResponse.json({
