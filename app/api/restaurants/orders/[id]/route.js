@@ -124,19 +124,27 @@ export async function PUT(request, { params }) {
       updateData.preparation_time = preparation_time;
     }
 
-    console.log('📤 Données de mise à jour:', updateData);
+        console.log('📤 Données de mise à jour:', updateData);
 
-    const { data: updatedOrder, error: updateError } = await supabase
-      .from('commandes')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+        // Utiliser le service role pour la mise à jour aussi
+        const { data: updatedOrder, error: updateError } = await supabaseAdmin
+          .from('commandes')
+          .update(updateData)
+          .eq('id', id)
+          .select()
+          .single();
 
-    if (updateError) {
-      console.error('❌ Erreur mise à jour commande:', updateError);
-      return NextResponse.json({ error: 'Erreur lors de la mise à jour de la commande' }, { status: 500 });
-    }
+        if (updateError) {
+          console.error('❌ Erreur mise à jour commande:', updateError);
+          console.error('❌ Détails erreur:', JSON.stringify(updateError, null, 2));
+          console.error('❌ ID commande tentée:', id);
+          console.error('❌ Données tentées:', JSON.stringify(updateData, null, 2));
+          return NextResponse.json({ 
+            error: 'Erreur lors de la mise à jour de la commande',
+            details: updateError.message,
+            orderId: id
+          }, { status: 500 });
+        }
 
     console.log('✅ Commande mise à jour avec succès:', updatedOrder.id);
 
