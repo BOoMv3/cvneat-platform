@@ -155,33 +155,57 @@ export default function DeliveryDashboard() {
 
   const fetchAvailableOrders = async () => {
     try {
-      const response = await fetchWithAuth('/api/delivery/available-orders');
+      console.log('🔍 Récupération des commandes disponibles...');
+      
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('❌ Pas de token d\'authentification');
+        setAvailableOrders([]);
+        return;
+      }
+      
+      const response = await fetch('/api/delivery/available-orders', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
       
       
       // S'assurer que data est un tableau
-      if (Array.isArray(data)) {
+      if (response.ok) {
+        console.log('✅ Commandes reçues:', data.length);
         
-        // Détecter les nouvelles commandes
-        if (data.length > previousOrderCount) {
-          const newOrders = data.slice(previousOrderCount);
-          // Afficher une alerte pour chaque nouvelle commande
-          newOrders.forEach(order => {
-            showNewOrderAlert(order);
-          });
+        // S'assurer que data est un tableau
+        if (Array.isArray(data)) {
+          // Détecter les nouvelles commandes
+          if (data.length > previousOrderCount) {
+            const newOrders = data.slice(previousOrderCount);
+            console.log('🔔 Nouvelles commandes détectées:', newOrders.length);
+            // Afficher une alerte pour chaque nouvelle commande
+            newOrders.forEach(order => {
+              showNewOrderAlert(order);
+            });
+          }
+          
+          // Si c'est le premier chargement et qu'il y a des commandes, afficher une alerte
+          if (previousOrderCount === 0 && data.length > 0) {
+            console.log('🔔 Premier chargement avec commandes disponibles');
+            data.forEach(order => {
+              showNewOrderAlert(order);
+            });
+          }
+          
+          setAvailableOrders(data);
+          setPreviousOrderCount(data.length);
+        } else {
+          console.error("❌ Les données ne sont pas un tableau:", data);
+          setAvailableOrders([]);
         }
-        
-        // Si c'est le premier chargement et qu'il y a des commandes, afficher une alerte
-        if (previousOrderCount === 0 && data.length > 0) {
-          data.forEach(order => {
-            showNewOrderAlert(order);
-          });
-        }
-        
-        setAvailableOrders(data);
-        setPreviousOrderCount(data.length);
       } else {
-        console.error("❌ Les données ne sont pas un tableau:", data);
+        console.error('❌ Erreur API:', data.error);
         setAvailableOrders([]);
       }
     } catch (error) {
