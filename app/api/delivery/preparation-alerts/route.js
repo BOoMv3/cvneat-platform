@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // API pour récupérer les alertes de préparation pour les livreurs
 export async function GET(request) {
