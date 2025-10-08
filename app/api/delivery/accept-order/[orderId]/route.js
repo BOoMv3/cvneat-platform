@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request, { params }) {
   try {
@@ -29,8 +30,14 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
     }
 
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     // Vérifier que la commande existe et est disponible
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
       .select('*')
       .eq('id', orderId)
@@ -43,31 +50,31 @@ export async function POST(request, { params }) {
 
     console.log('✅ Commande trouvée:', {
       id: order.id,
-      status: order.status,
-      delivery_id: order.delivery_id,
+      statut: order.statut,
+      livreur_id: order.livreur_id,
       restaurant_id: order.restaurant_id
     });
 
     // Vérifier que la commande n'est pas déjà acceptée par un autre livreur
-    if (order.delivery_id && order.delivery_id !== user.id) {
+    if (order.livreur_id && order.livreur_id !== user.id) {
       return NextResponse.json({ error: 'Commande déjà acceptée par un autre livreur' }, { status: 409 });
     }
 
     // Vérifier que la commande est dans un statut acceptable
-    if (!['pending', 'accepted', 'ready', 'preparing'].includes(order.status)) {
-      console.log('❌ Statut commande non acceptable:', order.status);
+    if (!['en_attente', 'acceptee', 'pret_a_livrer', 'en_preparation'].includes(order.statut)) {
+      console.log('❌ Statut commande non acceptable:', order.statut);
       return NextResponse.json({ 
         error: 'Commande non disponible', 
-        details: `Statut actuel: ${order.status}` 
+        details: `Statut actuel: ${order.statut}` 
       }, { status: 400 });
     }
 
     // Accepter la commande
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('commandes')
       .update({
-        delivery_id: user.id,
-        status: 'accepted', // Le livreur accepte, mais la commande reste visible
+        livreur_id: user.id,
+        statut: 'en_livraison', // Le livreur accepte, statut passe en livraison
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId);
