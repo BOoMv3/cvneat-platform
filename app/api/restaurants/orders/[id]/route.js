@@ -115,7 +115,7 @@ export async function PUT(request, { params }) {
     
     // MAPPING POUR CORRESPONDRE EXACTEMENT À LA CONTRAINTE CHECK
     const statusMapping = {
-      // 'pret_a_livrer': 'en_preparation'  // DÉSACTIVÉ : pret_a_livrer est autorisé !
+      'pret_a_livrer': 'en_preparation'  // Temporaire : utiliser en_preparation au lieu de pret_a_livrer
     };
     
     if (statusMapping[status]) {

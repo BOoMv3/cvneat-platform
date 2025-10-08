@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request) {
   try {
@@ -36,9 +37,15 @@ export async function GET(request) {
 
     console.log('✅ Rôle livreur confirmé');
 
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     // Récupérer les commandes disponibles pour livraison
     // Les livreurs voient les commandes prêtes ET en préparation (pour voir le décompte)
-    const { data: orders, error } = await supabase
+    const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
         *,
