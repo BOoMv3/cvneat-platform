@@ -13,6 +13,8 @@ export async function GET(request) {
                   request.cookies.get('sb-access-token')?.value ||
                   request.cookies.get('supabase-auth-token')?.value;
     
+    console.log('🔑 Token présent:', !!token);
+    
     const { data: { user } } = await supabase.auth.getUser(token);
     
     if (!user) {

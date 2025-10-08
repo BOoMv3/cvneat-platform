@@ -48,7 +48,16 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone, frais_livraison)
+        restaurant:restaurants(nom, adresse, telephone, frais_livraison),
+        users(prenom, nom, telephone),
+        user_addresses(address, city, postal_code),
+        details_commande(
+          id,
+          plat_id,
+          quantite,
+          prix_unitaire,
+          menus(nom, prix)
+        )
       `)
       .eq('livreur_id', user.id) // Commandes assignées à ce livreur
       .eq('statut', 'en_livraison') // Seulement les commandes en livraison (pas encore livrées)
