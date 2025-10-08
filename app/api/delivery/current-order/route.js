@@ -74,35 +74,43 @@ export async function GET(request) {
     if (order) {
       console.log('✅ Commande trouvée, récupération des détails...');
       
-      // Récupérer les détails complets de la commande
-      const { data: orderDetails, error: detailsError } = await supabaseAdmin
-        .from('commandes')
-        .select(`
-          *,
-          restaurant:restaurants(nom, adresse, telephone, frais_livraison),
-          users(prenom, nom, telephone),
-          user_addresses(address, city, postal_code),
-          details_commande(
-            id,
-            plat_id,
-            quantite,
-            prix_unitaire,
-            menus(nom, prix)
-          )
-        `)
-        .eq('id', order.id)
+      // Récupérer les détails séparément pour éviter les problèmes RLS
+      console.log('🔍 Récupération détails séparés...');
+      
+      // 1. Restaurant
+      const { data: restaurant, error: restaurantError } = await supabaseAdmin
+        .from('restaurants')
+        .select('nom, adresse, telephone, frais_livraison')
+        .eq('id', order.restaurant_id)
         .single();
       
-      if (detailsError) {
-        console.error('❌ Erreur récupération détails:', detailsError);
-        console.error('❌ Code erreur détails:', detailsError.code);
-        console.error('❌ Message erreur détails:', detailsError.message);
-        // Retourner la commande basique si les détails échouent
-        return NextResponse.json({
-          hasOrder: true,
-          order: order
-        });
-      }
+      // 2. Utilisateur
+      const { data: user, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('prenom, nom, telephone')
+        .eq('id', order.user_id)
+        .single();
+      
+      // 3. Adresse utilisateur
+      const { data: address, error: addressError } = await supabaseAdmin
+        .from('user_addresses')
+        .select('address, city, postal_code')
+        .eq('user_id', order.user_id)
+        .single();
+      
+      console.log('📊 Résultats détails:', {
+        restaurant: restaurant || 'null',
+        user: user || 'null', 
+        address: address || 'null'
+      });
+      
+      // Construire l'objet de réponse
+      const orderDetails = {
+        ...order,
+        restaurant: restaurant,
+        users: user,
+        user_addresses: address
+      };
       
       console.log('✅ Détails récupérés avec succès:', {
         id: orderDetails.id,
