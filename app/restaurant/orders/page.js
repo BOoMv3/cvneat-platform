@@ -543,7 +543,7 @@ export default function RestaurantOrders() {
                   <strong>DEBUG :</strong> Statut = "{selectedOrder.statut}", Delivery ID = {selectedOrder.delivery_id || 'null'}
                 </div>
                 
-                {selectedOrder.statut === 'acceptee' && !selectedOrder.delivery_id && (
+                {selectedOrder.statut === 'en_preparation' && !selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.id, 'pret_a_livrer')}
@@ -554,8 +554,8 @@ export default function RestaurantOrders() {
                   </div>
                 )}
                 
-                {/* Afficher le bouton pour TOUS les statuts acceptee */}
-                {selectedOrder.statut === 'acceptee' && (
+                {/* Afficher le bouton pour TOUS les statuts en_preparation */}
+                {selectedOrder.statut === 'en_preparation' && (
                   <div className="space-y-2">
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.id, 'pret_a_livrer')}
@@ -599,7 +599,7 @@ export default function RestaurantOrders() {
                   </div>
                 )}
 
-                {selectedOrder.statut === 'acceptee' && selectedOrder.delivery_id && (
+                {selectedOrder.statut === 'en_preparation' && selectedOrder.delivery_id && (
                   <div className="space-y-2">
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
                       <p className="text-orange-800 font-medium">Commande acceptée par un livreur !</p>
