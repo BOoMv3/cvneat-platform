@@ -211,24 +211,40 @@ export default function PartnerDashboard() {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
+      console.log('🔄 Mise à jour commande:', { orderId, status });
+      
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        console.error('❌ Aucune session trouvée');
+        return;
+      }
       
       const token = session.access_token;
-      const response = await fetch('/api/partner/orders', {
-        method: 'PATCH',
+      console.log('🔑 Token présent:', token ? 'Oui' : 'Non');
+      
+      // Utiliser l'API correcte pour mettre à jour le statut
+      const response = await fetch(`/api/restaurants/orders/${orderId}`, {
+        method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ orderId, status })
+        body: JSON.stringify({ status })
       });
 
+      console.log('📤 Réponse API:', response.status, response.statusText);
+      
       if (response.ok) {
+        console.log('✅ Commande mise à jour avec succès');
+        // Recharger les données
+        await fetchOrders(restaurant.id);
         await fetchDashboardData(restaurant.id);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Erreur API:', errorData);
       }
     } catch (error) {
-      console.error('Erreur mise a jour commande:', error);
+      console.error('❌ Erreur mise à jour commande:', error);
     }
   };
 

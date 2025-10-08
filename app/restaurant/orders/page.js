@@ -176,8 +176,15 @@ export default function RestaurantOrders() {
       // Mettre à jour l'ID du restaurant pour les subscriptions
       setRestaurantId(restaurant.id);
       
-      // Récupérer les commandes du restaurant
-      const response = await fetch(`/api/restaurants/${restaurant.id}/orders`);
+      // Récupérer les commandes du restaurant via l'API partenaire
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Session non trouvée');
+      }
+      
+      const response = await fetch('/api/partner/orders', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
       console.log('Statut de la réponse:', response.status);
       
       if (!response.ok) {
