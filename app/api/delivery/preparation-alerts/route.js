@@ -27,36 +27,43 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     // Récupérer les commandes en préparation qui approchent de la fin pour ce livreur
-    const { data: orders, error } = await supabase
+    const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
       `)
-      .eq('status', 'preparing')
-      .eq('delivery_id', deliveryId)
+      .eq('statut', 'en_preparation')
+      .eq('livreur_id', deliveryId)
       .not('preparation_time', 'is', null);
 
     console.log(`🔍 Requête SQL exécutée pour delivery_id: ${deliveryId}`);
     console.log(`🔍 ${orders?.length || 0} commandes trouvées en base`);
     
     // Debug : Vérifier toutes les commandes en préparation
-    const { data: allPreparingOrders } = await supabase
+    const { data: allPreparingOrders } = await supabaseAdmin
       .from('commandes')
-      .select('id, customer_name, status, delivery_id, preparation_time')
-      .eq('status', 'preparing')
+      .select('id, statut, livreur_id, preparation_time')
+      .eq('statut', 'en_preparation')
       .not('preparation_time', 'is', null);
     
     console.log(`🔍 Toutes les commandes en préparation:`, allPreparingOrders);
     
-    // Debug : Vérifier la commande #2013 spécifiquement
-    const { data: order2013 } = await supabase
+    // Debug : Vérifier les commandes récentes
+    const { data: recentOrders } = await supabaseAdmin
       .from('commandes')
-      .select('*')
-      .eq('id', 2013);
+      .select('id, statut, livreur_id, preparation_time')
+      .order('created_at', { ascending: false })
+      .limit(5);
     
-    console.log(`🔍 Commande #2013:`, order2013);
+    console.log(`🔍 Commandes récentes:`, recentOrders);
 
     if (error) {
       console.error('❌ Erreur récupération commandes en préparation:', error);
@@ -86,14 +93,12 @@ export async function GET(request) {
         console.log(`🚨 Alerte déclenchée pour commande ${order.id}`);
         alerts.push({
           order_id: order.id,
-          customer_name: order.customer_name,
           restaurant_name: order.restaurant?.nom,
           restaurant_address: order.restaurant?.adresse,
           preparation_time: order.preparation_time,
           time_remaining_minutes: Math.ceil(timeRemaining / (60 * 1000)),
-          total_price: order.total_amount,
-          security_code: order.security_code,
-          items: order.items
+          total_price: order.total,
+          items: order.details_commande
         });
       }
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // API pour récupérer les alertes préventives pour les livreurs
 export async function GET(request) {
@@ -26,15 +27,21 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     // Récupérer les commandes en préparation qui ne sont pas encore acceptées par ce livreur
-    const { data: orders, error } = await supabase
+    const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone)
       `)
-      .eq('status', 'preparing')
-      .is('delivery_id', null) // Pas encore acceptées par un livreur
+      .eq('statut', 'en_preparation')
+      .is('livreur_id', null) // Pas encore acceptées par un livreur
       .not('preparation_time', 'is', null);
 
     console.log(`🔍 Requête SQL exécutée pour delivery_id: ${deliveryId}`);
@@ -69,16 +76,14 @@ export async function GET(request) {
         alerts.push({
           id: order.id,
           order_id: order.id,
-          customer_name: order.customer_name,
           restaurant_name: order.restaurant?.nom,
           restaurant_address: order.restaurant?.adresse,
           preparation_time: order.preparation_time,
           time_remaining_minutes: Math.ceil(timeRemaining / (60 * 1000)),
-          total_price: order.total_amount,
-          delivery_fee: order.delivery_fee,
-          security_code: order.security_code,
-          items: order.items,
-          delivery_address: order.delivery_address
+          total_price: order.total,
+          delivery_fee: order.frais_livraison,
+          items: order.details_commande,
+          delivery_address: order.adresse_livraison
         });
       }
     }

@@ -492,7 +492,7 @@ export default function RestaurantOrders() {
                       />
                     </div>
                     <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'acceptee', '', preparationTime)}
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'en_preparation', '', preparationTime)}
                       className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
                     >
                       ✅ Accepter la commande ({preparationTime} min)
