@@ -7,6 +7,7 @@ import DeliveryMap from '@/components/DeliveryMap';
 import DeliveryChat from '@/components/DeliveryChat';
 import OrderCountdown from '@/components/OrderCountdown';
 import PreventiveAlert from '@/components/PreventiveAlert';
+import SafeGeolocationButton from '@/components/SafeGeolocationButton';
 import { useRouter } from 'next/navigation';
 import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments } from 'react-icons/fa';
 import { createClient } from '@supabase/supabase-js';
@@ -743,12 +744,26 @@ export default function DeliveryDashboard() {
                       });
                       
                       return (
-                        <DeliveryMap
-                          restaurantCoordinates={restaurantCoords}
-                          deliveryCoordinates={deliveryCoords}
-                          distance="2.5"
-                          estimatedTime="15"
-                        />
+                        <div>
+                          <DeliveryMap
+                            restaurantCoordinates={restaurantCoords}
+                            deliveryCoordinates={deliveryCoords}
+                            distance="2.5"
+                            estimatedTime="15"
+                          />
+                          <div className="mt-4 flex justify-center">
+                            <SafeGeolocationButton
+                              onLocationFound={(location) => {
+                                console.log('🚀 Position reçue:', location);
+                                alert(`Position: ${location.latitude}, ${location.longitude}`);
+                              }}
+                              onError={(error) => {
+                                console.log('❌ Erreur géolocalisation:', error);
+                                alert(`Erreur: ${error}`);
+                              }}
+                            />
+                          </div>
+                        </div>
                       );
                     })()}
                     {currentOrder && (!currentOrder.restaurant || !currentOrder.user_addresses) && (

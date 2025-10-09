@@ -12,69 +12,35 @@ export default function DeliveryMap({
 }) {
   const [mapLoaded, setMapLoaded] = useState(false);
   
-  // Protection contre les props undefined
-  const safeRestaurantCoordinates = restaurantCoordinates || {};
-  const safeDeliveryCoordinates = deliveryCoordinates || {};
-  const safeDistance = distance || "0";
-  const safeEstimatedTime = estimatedTime || "0";
+  // Protection maximale contre undefined
+  const safeRestaurantCoordinates = restaurantCoordinates || { lat: 43.9333, lng: 3.7167, address: 'Restaurant' };
+  const safeDeliveryCoordinates = deliveryCoordinates || { lat: 43.9333, lng: 3.7167, address: 'Livraison' };
+  const safeDistance = distance || "2.5";
+  const safeEstimatedTime = estimatedTime || "15";
   
-  console.log('🗺️ DeliveryMap reçu:', {
+  console.log('🚀 NOUVEAU DeliveryMap - DEBUG COMPLET:', {
     restaurantCoordinates: safeRestaurantCoordinates,
     deliveryCoordinates: safeDeliveryCoordinates,
     distance: safeDistance,
-    estimatedTime: safeEstimatedTime
+    estimatedTime: safeEstimatedTime,
+    restaurantLat: safeRestaurantCoordinates.lat,
+    restaurantLng: safeRestaurantCoordinates.lng,
+    deliveryLat: safeDeliveryCoordinates.lat,
+    deliveryLng: safeDeliveryCoordinates.lng
   });
 
   useEffect(() => {
-    // Simulation du chargement de la carte
+    console.log('🚀 DeliveryMap useEffect - Chargement carte');
     const timer = setTimeout(() => {
+      console.log('🚀 DeliveryMap - Carte chargée');
       setMapLoaded(true);
     }, 1000);
 
     return () => clearTimeout(timer);
   }, []);
 
-  // FORCER l'affichage de la carte pour debug
-  console.log('🔍 Vérification coordonnées:', {
-    restaurantCoordinates: safeRestaurantCoordinates,
-    deliveryCoordinates: safeDeliveryCoordinates,
-    restaurantLat: safeRestaurantCoordinates?.lat,
-    restaurantLng: safeRestaurantCoordinates?.lng,
-    deliveryLat: safeDeliveryCoordinates?.lat,
-    deliveryLng: safeDeliveryCoordinates?.lng
-  });
-  
-  // Vérifier si les coordonnées sont valides (plus permissif)
-  const hasValidCoordinates = safeRestaurantCoordinates?.lat != null && safeRestaurantCoordinates?.lng != null && 
-                             safeDeliveryCoordinates?.lat != null && safeDeliveryCoordinates?.lng != null;
-  
-  console.log('🔍 Validation coordonnées détaillée:', {
-    hasValidCoordinates,
-    restaurantLat: safeRestaurantCoordinates?.lat,
-    restaurantLng: safeRestaurantCoordinates?.lng,
-    deliveryLat: safeDeliveryCoordinates?.lat,
-    deliveryLng: safeDeliveryCoordinates?.lng,
-    restaurantLatType: typeof safeRestaurantCoordinates?.lat,
-    restaurantLngType: typeof safeRestaurantCoordinates?.lng,
-    deliveryLatType: typeof safeDeliveryCoordinates?.lat,
-    deliveryLngType: typeof safeDeliveryCoordinates?.lng,
-    restaurantCoordsExists: !!safeRestaurantCoordinates,
-    deliveryCoordsExists: !!safeDeliveryCoordinates
-  });
-  
-  // FORCER l'affichage pour debug - temporaire
-  console.log('🔧 FORCE AFFICHAGE CARTE - DEBUG MODE ACTIF');
-  console.log('🔧 COORDONNÉES REÇUES:', {
-    restaurant: safeRestaurantCoordinates,
-    delivery: safeDeliveryCoordinates
-  });
-  
-  // TOUJOURS AFFICHER LA CARTE POUR DEBUG
-  console.log('🔧 AFFICHAGE FORCÉ DE LA CARTE');
-  
-  console.log('✅ DeliveryMap: Affichage de la carte FORCÉ');
+  console.log('🚀 DeliveryMap - RENDU DE LA CARTE FORCÉ');
 
-  // SUPPRIMER TOUTE CONDITION - AFFICHER TOUJOURS LA CARTE
   return (
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       <div className="p-4 border-b">
@@ -152,6 +118,12 @@ export default function DeliveryMap({
             <FaClock className="mr-2 text-green-500" />
             <span>~{safeEstimatedTime} min</span>
           </div>
+        </div>
+        
+        {/* Debug info */}
+        <div className="mt-2 text-xs text-gray-500">
+          <p>Debug: Restaurant ({safeRestaurantCoordinates.lat}, {safeRestaurantCoordinates.lng})</p>
+          <p>Debug: Livraison ({safeDeliveryCoordinates.lat}, {safeDeliveryCoordinates.lng})</p>
         </div>
       </div>
     </div>
