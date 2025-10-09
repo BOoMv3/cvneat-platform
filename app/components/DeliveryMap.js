@@ -63,20 +63,18 @@ export default function DeliveryMap({
   });
   
   // FORCER l'affichage pour debug - temporaire
-  console.log('🔧 FORCE AFFICHAGE CARTE - DEBUG MODE');
+  console.log('🔧 FORCE AFFICHAGE CARTE - DEBUG MODE ACTIF');
+  console.log('🔧 COORDONNÉES REÇUES:', {
+    restaurant: safeRestaurantCoordinates,
+    delivery: safeDeliveryCoordinates
+  });
   
-  if (false) { // Désactiver temporairement la validation
-    console.log('❌ DeliveryMap: Coordonnées manquantes ou invalides');
-    return (
-      <div className={`bg-gray-100 rounded-lg p-8 text-center ${className}`}>
-        <FaMapMarkerAlt className="text-4xl text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">Aucune commande active</p>
-      </div>
-    );
-  }
+  // TOUJOURS AFFICHER LA CARTE POUR DEBUG
+  console.log('🔧 AFFICHAGE FORCÉ DE LA CARTE');
   
-  console.log('✅ DeliveryMap: Affichage de la carte');
+  console.log('✅ DeliveryMap: Affichage de la carte FORCÉ');
 
+  // SUPPRIMER TOUTE CONDITION - AFFICHER TOUJOURS LA CARTE
   return (
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       <div className="p-4 border-b">
