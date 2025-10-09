@@ -11,6 +11,13 @@ export default function DeliveryMap({
   className = '' 
 }) {
   const [mapLoaded, setMapLoaded] = useState(false);
+  
+  console.log('🗺️ DeliveryMap reçu:', {
+    restaurantCoordinates,
+    deliveryCoordinates,
+    distance,
+    estimatedTime
+  });
 
   useEffect(() => {
     // Simulation du chargement de la carte
@@ -22,6 +29,10 @@ export default function DeliveryMap({
   }, []);
 
   if (!restaurantCoordinates || !deliveryCoordinates) {
+    console.log('❌ DeliveryMap: Coordonnées manquantes', {
+      restaurantCoordinates: !!restaurantCoordinates,
+      deliveryCoordinates: !!deliveryCoordinates
+    });
     return (
       <div className={`bg-gray-100 rounded-lg p-8 text-center ${className}`}>
         <FaMapMarkerAlt className="text-4xl text-gray-400 mx-auto mb-4" />
@@ -29,6 +40,8 @@ export default function DeliveryMap({
       </div>
     );
   }
+  
+  console.log('✅ DeliveryMap: Affichage de la carte');
 
   return (
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
