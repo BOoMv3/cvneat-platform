@@ -716,7 +716,14 @@ export default function DeliveryDashboard() {
                   </div>
                   
                   <div>
-                    {currentOrder && (() => {
+                    {currentOrder && currentOrder.restaurant && currentOrder.user_addresses && (() => {
+                      console.log('🔍 currentOrder détails:', {
+                        hasRestaurant: !!currentOrder.restaurant,
+                        hasUserAddresses: !!currentOrder.user_addresses,
+                        restaurantAdresse: currentOrder.restaurant?.adresse,
+                        userAddress: currentOrder.user_addresses?.address
+                      });
+                      
                       const restaurantCoords = {
                         lat: 43.9333,
                         lng: 3.7167,
@@ -744,6 +751,15 @@ export default function DeliveryDashboard() {
                         />
                       );
                     })()}
+                    {currentOrder && (!currentOrder.restaurant || !currentOrder.user_addresses) && (
+                      <div className="bg-gray-100 rounded-lg p-8 text-center">
+                        <p className="text-gray-600">Données de commande incomplètes</p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Restaurant: {currentOrder.restaurant ? '✓' : '✗'} | 
+                          Adresse: {currentOrder.user_addresses ? '✓' : '✗'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

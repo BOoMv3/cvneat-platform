@@ -12,11 +12,17 @@ export default function DeliveryMap({
 }) {
   const [mapLoaded, setMapLoaded] = useState(false);
   
+  // Protection contre les props undefined
+  const safeRestaurantCoordinates = restaurantCoordinates || {};
+  const safeDeliveryCoordinates = deliveryCoordinates || {};
+  const safeDistance = distance || "0";
+  const safeEstimatedTime = estimatedTime || "0";
+  
   console.log('🗺️ DeliveryMap reçu:', {
-    restaurantCoordinates,
-    deliveryCoordinates,
-    distance,
-    estimatedTime
+    restaurantCoordinates: safeRestaurantCoordinates,
+    deliveryCoordinates: safeDeliveryCoordinates,
+    distance: safeDistance,
+    estimatedTime: safeEstimatedTime
   });
 
   useEffect(() => {
@@ -30,23 +36,32 @@ export default function DeliveryMap({
 
   // FORCER l'affichage de la carte pour debug
   console.log('🔍 Vérification coordonnées:', {
-    restaurantCoordinates,
-    deliveryCoordinates,
-    restaurantLat: restaurantCoordinates?.lat,
-    restaurantLng: restaurantCoordinates?.lng,
-    deliveryLat: deliveryCoordinates?.lat,
-    deliveryLng: deliveryCoordinates?.lng
+    restaurantCoordinates: safeRestaurantCoordinates,
+    deliveryCoordinates: safeDeliveryCoordinates,
+    restaurantLat: safeRestaurantCoordinates?.lat,
+    restaurantLng: safeRestaurantCoordinates?.lng,
+    deliveryLat: safeDeliveryCoordinates?.lat,
+    deliveryLng: safeDeliveryCoordinates?.lng
   });
   
-  // Temporairement forcer l'affichage
-  const forceDisplay = true;
+  // Vérifier si les coordonnées sont valides
+  const hasValidCoordinates = safeRestaurantCoordinates?.lat && safeRestaurantCoordinates?.lng && 
+                             safeDeliveryCoordinates?.lat && safeDeliveryCoordinates?.lng;
   
-  if (!forceDisplay && (!restaurantCoordinates || !deliveryCoordinates)) {
-    console.log('❌ DeliveryMap: Coordonnées manquantes');
+  console.log('🔍 Validation coordonnées:', {
+    hasValidCoordinates,
+    restaurantLat: safeRestaurantCoordinates?.lat,
+    restaurantLng: safeRestaurantCoordinates?.lng,
+    deliveryLat: safeDeliveryCoordinates?.lat,
+    deliveryLng: safeDeliveryCoordinates?.lng
+  });
+  
+  if (!hasValidCoordinates) {
+    console.log('❌ DeliveryMap: Coordonnées manquantes ou invalides');
     return (
       <div className={`bg-gray-100 rounded-lg p-8 text-center ${className}`}>
         <FaMapMarkerAlt className="text-4xl text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">Carte de livraison non disponible</p>
+        <p className="text-gray-600">Aucune commande active</p>
       </div>
     );
   }
@@ -124,11 +139,11 @@ export default function DeliveryMap({
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center text-gray-600">
             <FaRoute className="mr-2 text-blue-500" />
-            <span>{distance} km</span>
+            <span>{safeDistance} km</span>
           </div>
           <div className="flex items-center text-gray-600">
             <FaClock className="mr-2 text-green-500" />
-            <span>~{estimatedTime} min</span>
+            <span>~{safeEstimatedTime} min</span>
           </div>
         </div>
       </div>
