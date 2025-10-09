@@ -717,12 +717,18 @@ export default function DeliveryDashboard() {
                   
                   <div>
                     <DeliveryMap
-                      currentOrder={currentOrder}
-                      deliveryLocation={{
+                      restaurantCoordinates={{
                         lat: 43.9333,
                         lng: 3.7167,
-                        address: 'Position du livreur'
+                        address: currentOrder.restaurant?.adresse || 'Restaurant'
                       }}
+                      deliveryCoordinates={{
+                        lat: 43.9333,
+                        lng: 3.7167,
+                        address: currentOrder.user_addresses?.address || 'Adresse de livraison'
+                      }}
+                      distance="2.5"
+                      estimatedTime="15"
                     />
                   </div>
                 </div>
