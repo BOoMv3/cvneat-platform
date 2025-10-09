@@ -28,10 +28,16 @@ export default function DeliveryMap({
     return () => clearTimeout(timer);
   }, []);
 
-  if (!restaurantCoordinates || !deliveryCoordinates) {
-    console.log('❌ DeliveryMap: Coordonnées manquantes', {
-      restaurantCoordinates: !!restaurantCoordinates,
-      deliveryCoordinates: !!deliveryCoordinates
+  // Vérifier que les coordonnées existent et ont les propriétés nécessaires
+  const hasValidCoords = restaurantCoordinates && deliveryCoordinates && 
+                        restaurantCoordinates.lat && restaurantCoordinates.lng &&
+                        deliveryCoordinates.lat && deliveryCoordinates.lng;
+                        
+  if (!hasValidCoords) {
+    console.log('❌ DeliveryMap: Coordonnées invalides', {
+      restaurantCoordinates,
+      deliveryCoordinates,
+      hasValidCoords
     });
     return (
       <div className={`bg-gray-100 rounded-lg p-8 text-center ${className}`}>
