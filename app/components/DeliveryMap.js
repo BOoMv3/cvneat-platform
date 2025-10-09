@@ -28,17 +28,21 @@ export default function DeliveryMap({
     return () => clearTimeout(timer);
   }, []);
 
-  // Vérifier que les coordonnées existent et ont les propriétés nécessaires
-  const hasValidCoords = restaurantCoordinates && deliveryCoordinates && 
-                        restaurantCoordinates.lat && restaurantCoordinates.lng &&
-                        deliveryCoordinates.lat && deliveryCoordinates.lng;
-                        
-  if (!hasValidCoords) {
-    console.log('❌ DeliveryMap: Coordonnées invalides', {
-      restaurantCoordinates,
-      deliveryCoordinates,
-      hasValidCoords
-    });
+  // FORCER l'affichage de la carte pour debug
+  console.log('🔍 Vérification coordonnées:', {
+    restaurantCoordinates,
+    deliveryCoordinates,
+    restaurantLat: restaurantCoordinates?.lat,
+    restaurantLng: restaurantCoordinates?.lng,
+    deliveryLat: deliveryCoordinates?.lat,
+    deliveryLng: deliveryCoordinates?.lng
+  });
+  
+  // Temporairement forcer l'affichage
+  const forceDisplay = true;
+  
+  if (!forceDisplay && (!restaurantCoordinates || !deliveryCoordinates)) {
+    console.log('❌ DeliveryMap: Coordonnées manquantes');
     return (
       <div className={`bg-gray-100 rounded-lg p-8 text-center ${className}`}>
         <FaMapMarkerAlt className="text-4xl text-gray-400 mx-auto mb-4" />
