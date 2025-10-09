@@ -716,20 +716,34 @@ export default function DeliveryDashboard() {
                   </div>
                   
                   <div>
-                    <DeliveryMap
-                      restaurantCoordinates={{
+                    {currentOrder && (() => {
+                      const restaurantCoords = {
                         lat: 43.9333,
                         lng: 3.7167,
                         address: currentOrder.restaurant?.adresse || 'Restaurant'
-                      }}
-                      deliveryCoordinates={{
+                      };
+                      const deliveryCoords = {
                         lat: 43.9333,
                         lng: 3.7167,
                         address: currentOrder.user_addresses?.address || 'Adresse de livraison'
-                      }}
-                      distance="2.5"
-                      estimatedTime="15"
-                    />
+                      };
+                      
+                      console.log('🗺️ Props DeliveryMap:', {
+                        restaurantCoords,
+                        deliveryCoords,
+                        distance: "2.5",
+                        estimatedTime: "15"
+                      });
+                      
+                      return (
+                        <DeliveryMap
+                          restaurantCoordinates={restaurantCoords}
+                          deliveryCoordinates={deliveryCoords}
+                          distance="2.5"
+                          estimatedTime="15"
+                        />
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
