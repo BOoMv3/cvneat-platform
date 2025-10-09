@@ -101,7 +101,10 @@ export async function GET(request) {
       console.log('📊 Résultats détails:', {
         restaurant: restaurant || 'null',
         user: user || 'null', 
-        address: address || 'null'
+        address: address || 'null',
+        orderUserId: order.user_id,
+        userError: userError,
+        addressError: addressError
       });
       
       // Construire l'objet de réponse

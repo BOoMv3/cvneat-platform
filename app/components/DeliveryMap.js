@@ -44,19 +44,28 @@ export default function DeliveryMap({
     deliveryLng: safeDeliveryCoordinates?.lng
   });
   
-  // Vérifier si les coordonnées sont valides
-  const hasValidCoordinates = safeRestaurantCoordinates?.lat && safeRestaurantCoordinates?.lng && 
-                             safeDeliveryCoordinates?.lat && safeDeliveryCoordinates?.lng;
+  // Vérifier si les coordonnées sont valides (plus permissif)
+  const hasValidCoordinates = safeRestaurantCoordinates?.lat != null && safeRestaurantCoordinates?.lng != null && 
+                             safeDeliveryCoordinates?.lat != null && safeDeliveryCoordinates?.lng != null;
   
-  console.log('🔍 Validation coordonnées:', {
+  console.log('🔍 Validation coordonnées détaillée:', {
     hasValidCoordinates,
     restaurantLat: safeRestaurantCoordinates?.lat,
     restaurantLng: safeRestaurantCoordinates?.lng,
     deliveryLat: safeDeliveryCoordinates?.lat,
-    deliveryLng: safeDeliveryCoordinates?.lng
+    deliveryLng: safeDeliveryCoordinates?.lng,
+    restaurantLatType: typeof safeRestaurantCoordinates?.lat,
+    restaurantLngType: typeof safeRestaurantCoordinates?.lng,
+    deliveryLatType: typeof safeDeliveryCoordinates?.lat,
+    deliveryLngType: typeof safeDeliveryCoordinates?.lng,
+    restaurantCoordsExists: !!safeRestaurantCoordinates,
+    deliveryCoordsExists: !!safeDeliveryCoordinates
   });
   
-  if (!hasValidCoordinates) {
+  // FORCER l'affichage pour debug - temporaire
+  console.log('🔧 FORCE AFFICHAGE CARTE - DEBUG MODE');
+  
+  if (false) { // Désactiver temporairement la validation
     console.log('❌ DeliveryMap: Coordonnées manquantes ou invalides');
     return (
       <div className={`bg-gray-100 rounded-lg p-8 text-center ${className}`}>
