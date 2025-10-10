@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import AuthGuard from '@/components/AuthGuard';
 import DeliveryNotifications from '@/components/DeliveryNotifications';
-import DeliveryMap from '@/components/DeliveryMap';
+import SimpleDeliveryMap from '@/components/SimpleDeliveryMap';
 import DeliveryChat from '@/components/DeliveryChat';
 import OrderCountdown from '@/components/OrderCountdown';
 import PreventiveAlert from '@/components/PreventiveAlert';
@@ -726,47 +726,14 @@ export default function DeliveryDashboard() {
                   </div>
                   
                   <div>
-                    {/* Toujours afficher la carte si on a une commande */}
-                    {currentOrder && (() => {
-                      console.log('🔍 currentOrder détails:', {
-                        hasRestaurant: !!currentOrder.restaurant,
-                        hasUserAddresses: !!currentOrder.user_addresses,
-                        hasUsers: !!currentOrder.users,
-                        restaurantAdresse: currentOrder.restaurant?.adresse,
-                        userAddress: currentOrder.user_addresses?.address,
-                        userInfo: currentOrder.users
-                      });
-                      
-                      const restaurantCoords = {
-                        lat: 43.9333,
-                        lng: 3.7167,
-                        address: currentOrder.restaurant?.adresse || 'Restaurant'
-                      };
-                      const deliveryCoords = {
-                        lat: 43.9333,
-                        lng: 3.7167,
-                        address: currentOrder.user_addresses?.address || 'Adresse de livraison'
-                      };
-                      
-                      console.log('🗺️ Props DeliveryMap:', {
-                        restaurantCoords,
-                        deliveryCoords,
-                        distance: "2.5",
-                        estimatedTime: "15"
-                      });
-                      
-                      return (
-                        <div>
-                          <DeliveryMap
-                            restaurantCoordinates={restaurantCoords}
-                            deliveryCoordinates={deliveryCoords}
-                            distance="2.5"
-                            estimatedTime="15"
-                          />
-                        </div>
-                      );
-                    })()}
-                    {!currentOrder && (
+                    {/* Carte simple et fonctionnelle */}
+                    {currentOrder ? (
+                      <SimpleDeliveryMap
+                        restaurantAddress={currentOrder.restaurant?.adresse || 'Restaurant'}
+                        deliveryAddress={currentOrder.user_addresses?.address || 'Adresse de livraison'}
+                        className="w-full"
+                      />
+                    ) : (
                       <div className="bg-gray-100 rounded-lg p-8 text-center">
                         <p className="text-gray-600">Aucune commande active</p>
                       </div>
