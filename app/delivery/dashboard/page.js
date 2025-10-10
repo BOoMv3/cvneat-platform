@@ -324,6 +324,9 @@ export default function DeliveryDashboard() {
       
       // Vérifier si une commande existe
       if (data.hasOrder && data.order) {
+        console.log('🔍 Commande reçue dans fetchCurrentOrder:', data.order);
+        console.log('🔍 Users dans la commande:', data.order.users);
+        console.log('🔍 User addresses dans la commande:', data.order.user_addresses);
         setCurrentOrder(data.order);
       } else {
         setCurrentOrder(null);
@@ -688,8 +691,14 @@ export default function DeliveryDashboard() {
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-gray-900 mb-2">👤 Client</h3>
-                      <p className="text-gray-700 font-medium">{currentOrder.users?.prenom} {currentOrder.users?.nom}</p>
-                      <p className="text-gray-600 text-sm">{currentOrder.users?.telephone}</p>
+                      <p className="text-gray-700 font-medium">
+                        {currentOrder.users?.prenom ? `${currentOrder.users.prenom} ${currentOrder.users.nom}` : 'Client non trouvé'}
+                      </p>
+                      <p className="text-gray-600 text-sm">{currentOrder.users?.telephone || 'Téléphone non disponible'}</p>
+                      {/* Debug info */}
+                      <div className="mt-2 text-xs text-gray-500">
+                        <p>Debug users: {JSON.stringify(currentOrder.users)}</p>
+                      </div>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
@@ -717,12 +726,15 @@ export default function DeliveryDashboard() {
                   </div>
                   
                   <div>
-                    {currentOrder && currentOrder.restaurant && currentOrder.user_addresses && (() => {
+                    {/* Toujours afficher la carte si on a une commande */}
+                    {currentOrder && (() => {
                       console.log('🔍 currentOrder détails:', {
                         hasRestaurant: !!currentOrder.restaurant,
                         hasUserAddresses: !!currentOrder.user_addresses,
+                        hasUsers: !!currentOrder.users,
                         restaurantAdresse: currentOrder.restaurant?.adresse,
-                        userAddress: currentOrder.user_addresses?.address
+                        userAddress: currentOrder.user_addresses?.address,
+                        userInfo: currentOrder.users
                       });
                       
                       const restaurantCoords = {
@@ -765,13 +777,9 @@ export default function DeliveryDashboard() {
                         </div>
                       );
                     })()}
-                    {currentOrder && (!currentOrder.restaurant || !currentOrder.user_addresses) && (
+                    {!currentOrder && (
                       <div className="bg-gray-100 rounded-lg p-8 text-center">
-                        <p className="text-gray-600">Données de commande incomplètes</p>
-                        <p className="text-sm text-gray-500 mt-2">
-                          Restaurant: {currentOrder.restaurant ? '✓' : '✗'} | 
-                          Adresse: {currentOrder.user_addresses ? '✓' : '✗'}
-                        </p>
+                        <p className="text-gray-600">Aucune commande active</p>
                       </div>
                     )}
                   </div>
