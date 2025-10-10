@@ -7,7 +7,7 @@ import DeliveryMap from '@/components/DeliveryMap';
 import DeliveryChat from '@/components/DeliveryChat';
 import OrderCountdown from '@/components/OrderCountdown';
 import PreventiveAlert from '@/components/PreventiveAlert';
-import SafeGeolocationButton from '@/components/SafeGeolocationButton';
+// import SafeGeolocationButton from '@/components/SafeGeolocationButton';
 import { useRouter } from 'next/navigation';
 import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments } from 'react-icons/fa';
 import { createClient } from '@supabase/supabase-js';
@@ -752,16 +752,15 @@ export default function DeliveryDashboard() {
                             estimatedTime="15"
                           />
                           <div className="mt-4 flex justify-center">
-                            <SafeGeolocationButton
-                              onLocationFound={(location) => {
-                                console.log('🚀 Position reçue:', location);
-                                alert(`Position: ${location.latitude}, ${location.longitude}`);
+                            <button
+                              onClick={() => {
+                                console.log('🚀 Test bouton position');
+                                alert('Test bouton position - géolocalisation désactivée temporairement');
                               }}
-                              onError={(error) => {
-                                console.log('❌ Erreur géolocalisation:', error);
-                                alert(`Erreur: ${error}`);
-                              }}
-                            />
+                              className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                              <span>Ma position (Test)</span>
+                            </button>
                           </div>
                         </div>
                       );
