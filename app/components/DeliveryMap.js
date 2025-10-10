@@ -11,14 +11,38 @@ export default function DeliveryMap({
   className = '' 
 }) {
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(null);
+  const [positionError, setPositionError] = useState(null);
   
-  // Protection maximale contre undefined
-  const safeRestaurantCoordinates = restaurantCoordinates || { lat: 43.9333, lng: 3.7167, address: 'Restaurant' };
-  const safeDeliveryCoordinates = deliveryCoordinates || { lat: 43.9333, lng: 3.7167, address: 'Livraison' };
+  // Protection maximale contre undefined avec validation stricte
+  const safeRestaurantCoordinates = (() => {
+    if (!restaurantCoordinates || typeof restaurantCoordinates !== 'object') {
+      console.log('⚠️ restaurantCoordinates invalide, utilisation des coordonnées par défaut');
+      return { lat: 43.9333, lng: 3.7167, address: 'Restaurant' };
+    }
+    if (typeof restaurantCoordinates.lat !== 'number' || typeof restaurantCoordinates.lng !== 'number') {
+      console.log('⚠️ Coordonnées restaurant invalides, utilisation des coordonnées par défaut');
+      return { lat: 43.9333, lng: 3.7167, address: 'Restaurant' };
+    }
+    return restaurantCoordinates;
+  })();
+  
+  const safeDeliveryCoordinates = (() => {
+    if (!deliveryCoordinates || typeof deliveryCoordinates !== 'object') {
+      console.log('⚠️ deliveryCoordinates invalide, utilisation des coordonnées par défaut');
+      return { lat: 43.9333, lng: 3.7167, address: 'Livraison' };
+    }
+    if (typeof deliveryCoordinates.lat !== 'number' || typeof deliveryCoordinates.lng !== 'number') {
+      console.log('⚠️ Coordonnées livraison invalides, utilisation des coordonnées par défaut');
+      return { lat: 43.9333, lng: 3.7167, address: 'Livraison' };
+    }
+    return deliveryCoordinates;
+  })();
+  
   const safeDistance = distance || "2.5";
   const safeEstimatedTime = estimatedTime || "15";
   
-  console.log('🚀 NOUVEAU DeliveryMap - DEBUG COMPLET:', {
+  console.log('🚀 DeliveryMap - COORDONNÉES SÉCURISÉES:', {
     restaurantCoordinates: safeRestaurantCoordinates,
     deliveryCoordinates: safeDeliveryCoordinates,
     distance: safeDistance,
@@ -28,6 +52,52 @@ export default function DeliveryMap({
     deliveryLat: safeDeliveryCoordinates.lat,
     deliveryLng: safeDeliveryCoordinates.lng
   });
+
+  // Fonction de géolocalisation sécurisée
+  const getCurrentPosition = () => {
+    console.log('🌍 Demande de géolocalisation...');
+    setPositionError(null);
+    
+    if (!navigator.geolocation) {
+      console.log('❌ Géolocalisation non supportée par ce navigateur');
+      setPositionError('Géolocalisation non supportée');
+      return;
+    }
+
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log('✅ Position obtenue:', position.coords);
+        setCurrentPosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+      },
+      (error) => {
+        console.log('❌ Erreur géolocalisation:', error);
+        let errorMessage = 'Erreur de géolocalisation';
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Permission de géolocalisation refusée';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Position indisponible';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Délai dépassé';
+            break;
+        }
+        setPositionError(errorMessage);
+      },
+      options
+    );
+  };
 
   useEffect(() => {
     console.log('🚀 DeliveryMap useEffect - Chargement carte');
@@ -120,10 +190,42 @@ export default function DeliveryMap({
           </div>
         </div>
         
+        {/* Position actuelle */}
+        {currentPosition && (
+          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+            <p className="text-xs text-green-700">
+              📍 Ma position: ({currentPosition.lat.toFixed(6)}, {currentPosition.lng.toFixed(6)})
+            </p>
+            <p className="text-xs text-green-600">
+              Précision: ±{currentPosition.accuracy}m
+            </p>
+          </div>
+        )}
+        
+        {/* Erreur de géolocalisation */}
+        {positionError && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+            <p className="text-xs text-red-700">
+              ❌ {positionError}
+            </p>
+          </div>
+        )}
+        
+        {/* Bouton de géolocalisation */}
+        <div className="mt-3">
+          <button
+            onClick={getCurrentPosition}
+            className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+          >
+            🌍 Ma position
+          </button>
+        </div>
+        
         {/* Debug info */}
         <div className="mt-2 text-xs text-gray-500">
           <p>Debug: Restaurant ({safeRestaurantCoordinates.lat}, {safeRestaurantCoordinates.lng})</p>
           <p>Debug: Livraison ({safeDeliveryCoordinates.lat}, {safeDeliveryCoordinates.lng})</p>
+          <p>Debug: Position actuelle: {currentPosition ? `(${currentPosition.lat}, ${currentPosition.lng})` : 'Non définie'}</p>
         </div>
       </div>
     </div>

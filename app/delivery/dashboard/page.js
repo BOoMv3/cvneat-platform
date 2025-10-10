@@ -763,17 +763,6 @@ export default function DeliveryDashboard() {
                             distance="2.5"
                             estimatedTime="15"
                           />
-                          <div className="mt-4 flex justify-center">
-                            <button
-                              onClick={() => {
-                                console.log('🚀 Test bouton position');
-                                alert('Test bouton position - géolocalisation désactivée temporairement');
-                              }}
-                              className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                            >
-                              <span>Ma position (Test)</span>
-                            </button>
-                          </div>
                         </div>
                       );
                     })()}

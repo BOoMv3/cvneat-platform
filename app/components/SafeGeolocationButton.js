@@ -1,90 +1,94 @@
 'use client';
 
 import { useState } from 'react';
-import { FaMapMarkerAlt, FaSpinner } from 'react-icons/fa';
 
-export default function SafeGeolocationButton({ onLocationFound, onError, className = '' }) {
-  const [loading, setLoading] = useState(false);
+export default function SafeGeolocationButton({ onPositionUpdate, className = '' }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const getCurrentLocation = () => {
-    console.log('🚀 SafeGeolocationButton - Début géolocalisation');
+  const getCurrentPosition = async () => {
+    console.log('🌍 SafeGeolocationButton - Demande de géolocalisation...');
+    setIsLoading(true);
+    setError(null);
     
-    if (!navigator.geolocation) {
-      console.log('❌ SafeGeolocationButton - Géolocalisation non supportée');
-      onError?.('La géolocalisation n\'est pas supportée par votre navigateur');
-      return;
-    }
-
-    setLoading(true);
-    console.log('🚀 SafeGeolocationButton - Demande position...');
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log('✅ SafeGeolocationButton - Position reçue:', position);
-        
-        // Protection maximale contre undefined
-        if (!position || !position.coords) {
-          console.log('❌ SafeGeolocationButton - Position ou coords undefined');
-          onError?.('Position non valide');
-          setLoading(false);
-          return;
-        }
-        
-        const { latitude, longitude } = position.coords;
-        console.log('✅ SafeGeolocationButton - Coordonnées:', { latitude, longitude });
-        
-        onLocationFound?.({
-          latitude,
-          longitude,
-          accuracy: position.coords.accuracy || 0
-        });
-        setLoading(false);
-      },
-      (error) => {
-        console.log('❌ SafeGeolocationButton - Erreur géolocalisation:', error);
-        
-        let errorMessage = 'Erreur de géolocalisation';
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Permission de géolocalisation refusée';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Position non disponible';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Timeout de géolocalisation';
-            break;
-          default:
-            errorMessage = 'Erreur inconnue';
-            break;
-        }
-        
-        onError?.(errorMessage);
-        setLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
+    try {
+      if (!navigator.geolocation) {
+        throw new Error('Géolocalisation non supportée par ce navigateur');
       }
-    );
+
+      const position = await new Promise((resolve, reject) => {
+        const options = {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        };
+
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+      });
+
+      console.log('✅ SafeGeolocationButton - Position obtenue:', position.coords);
+      
+      const positionData = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: position.timestamp
+      };
+
+      if (onPositionUpdate) {
+        onPositionUpdate(positionData);
+      }
+
+    } catch (error) {
+      console.error('❌ SafeGeolocationButton - Erreur géolocalisation:', error);
+      
+      let errorMessage = 'Erreur de géolocalisation';
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = 'Permission de géolocalisation refusée';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = 'Position indisponible';
+          break;
+        case error.TIMEOUT:
+          errorMessage = 'Délai dépassé';
+          break;
+        default:
+          errorMessage = error.message || 'Erreur inconnue';
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <button
-      onClick={getCurrentLocation}
-      disabled={loading}
-      className={`flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
-    >
-      {loading ? (
-        <FaSpinner className="animate-spin" />
-      ) : (
-        <FaMapMarkerAlt />
+    <div className={className}>
+      <button
+        onClick={getCurrentPosition}
+        disabled={isLoading}
+        className={`w-full px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+          isLoading 
+            ? 'bg-gray-400 text-white cursor-not-allowed' 
+            : 'bg-blue-500 text-white hover:bg-blue-600'
+        }`}
+      >
+        {isLoading ? (
+          <span className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            Géolocalisation...
+          </span>
+        ) : (
+          '🌍 Ma position'
+        )}
+      </button>
+      
+      {error && (
+        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+          ❌ {error}
+        </div>
       )}
-      <span>
-        {loading ? 'Localisation...' : 'Ma position'}
-      </span>
-    </button>
+    </div>
   );
 }
