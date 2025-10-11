@@ -37,6 +37,24 @@ export default function DeliveryDashboard() {
   const [preparationAlerts, setPreparationAlerts] = useState([]);
   const [preventiveAlerts, setPreventiveAlerts] = useState([]);
 
+  // Fonction pour calculer la distance entre deux points (formule de Haversine)
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Fonction pour calculer un temps réaliste (en vélo/scooter en ville)
+  const calculateRealisticTime = (distance) => {
+    const averageSpeed = 20; // km/h en vélo/scooter en ville (réaliste)
+    return Math.round((distance / averageSpeed) * 60); // en minutes
+  };
+
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -753,15 +771,21 @@ export default function DeliveryDashboard() {
                             </div>
                           </div>
 
-                          {/* Ligne de trajet */}
+                          {/* Itinéraire réaliste avec plusieurs points */}
                           <svg className="absolute inset-0 w-full h-full">
+                            {/* Route principale */}
                             <path
-                              d="M 20% 30% Q 45% 45% 70% 60%"
+                              d="M 20% 30% L 30% 35% L 40% 40% L 50% 45% L 60% 50% L 70% 60%"
                               stroke="#3B82F6"
                               strokeWidth="4"
                               fill="none"
-                              strokeDasharray="8,4"
+                              strokeDasharray="6,3"
                             />
+                            {/* Points intermédiaires */}
+                            <circle cx="30%" cy="35%" r="3" fill="#2563EB" />
+                            <circle cx="40%" cy="40%" r="3" fill="#2563EB" />
+                            <circle cx="50%" cy="45%" r="3" fill="#2563EB" />
+                            <circle cx="60%" cy="50%" r="3" fill="#2563EB" />
                           </svg>
                         </div>
 
@@ -777,26 +801,59 @@ export default function DeliveryDashboard() {
                           </div>
                         </div>
 
-                        {/* Bouton GPS */}
+                        {/* Bouton GPS avec vraie géolocalisation */}
                         <button
                           onClick={() => {
-                            console.log('🌍 Bouton GPS cliqué');
-                            alert('GPS activé ! Position détectée.');
+                            console.log('🌍 Bouton GPS cliqué - Géolocalisation réelle');
+                            
+                            if (!navigator.geolocation) {
+                              alert('Géolocalisation non supportée par votre navigateur');
+                              return;
+                            }
+
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                console.log('✅ Position obtenue:', position.coords);
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                
+                                // Calculer la distance réelle (exemple avec coordonnées fixes)
+                                const restaurantLat = 43.9333;
+                                const restaurantLng = 3.7167;
+                                const deliveryLat = 43.9334;
+                                const deliveryLng = 3.7168;
+                                
+                                // Distance du livreur au restaurant et au client
+                                const distanceToRestaurant = calculateDistance(lat, lng, restaurantLat, restaurantLng);
+                                const distanceToDelivery = calculateDistance(lat, lng, deliveryLat, deliveryLng);
+                                
+                                alert(`📍 Votre position: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n\n🏪 Distance au restaurant: ${distanceToRestaurant.toFixed(2)} km\n🏠 Distance au client: ${distanceToDelivery.toFixed(2)} km\n\n⏱️ Temps estimé: ${calculateRealisticTime(distanceToDelivery)} min`);
+                              },
+                              (error) => {
+                                console.error('❌ Erreur géolocalisation:', error);
+                                alert('Erreur de géolocalisation: ' + error.message);
+                              },
+                              {
+                                enableHighAccuracy: true,
+                                timeout: 10000,
+                                maximumAge: 60000
+                              }
+                            );
                           }}
                           className="w-full py-3 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
                         >
-                          🌍 Ma position
+                          🌍 Localiser ma position
                         </button>
 
-                        {/* Distance et temps */}
+                        {/* Distance et temps réalistes */}
                         <div className="grid grid-cols-2 gap-4 text-center mt-4">
                           <div className="bg-blue-50 p-3 rounded">
-                            <div className="font-semibold text-blue-800">Distance</div>
+                            <div className="font-semibold text-blue-800">Distance totale</div>
                             <div className="text-blue-600">2.5 km</div>
                           </div>
                           <div className="bg-green-50 p-3 rounded">
-                            <div className="font-semibold text-green-800">Temps</div>
-                            <div className="text-green-600">~15 min</div>
+                            <div className="font-semibold text-green-800">Temps estimé</div>
+                            <div className="text-green-600">~8 min</div>
                           </div>
                         </div>
                       </div>
