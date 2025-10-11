@@ -749,17 +749,28 @@ export default function DeliveryDashboard() {
                       <div className="bg-white rounded-lg shadow-sm border p-4">
                         <h3 className="font-semibold text-gray-900 mb-4">🗺️ Navigation de livraison</h3>
                         
-                        {/* Carte Google Maps intégrée */}
+                        {/* Vraie carte OpenStreetMap */}
                         <div className="mb-4">
                           <iframe
-                            src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyBvOkBw6m5gKjKjKjKjKjKjKjKjKjKjKjKj&origin=${currentOrder.restaurant?.adresse || 'Restaurant'}&destination=${currentOrder.user_addresses?.address || 'Adresse de livraison'}&mode=driving`}
+                            src="https://www.openstreetmap.org/export/embed.html?bbox=3.7107%2C43.9283%2C3.7227%2C43.9383&layer=mapnik&marker=43.9333%2C3.7167"
                             width="100%"
                             height="256"
+                            style={{ border: 0, borderRadius: '8px' }}
+                            title="Carte OpenStreetMap"
+                          />
+                        </div>
+                        
+                        {/* Carte Google Maps de secours */}
+                        <div className="mb-4">
+                          <iframe
+                            src="https://www.google.com/maps/embed/v1/view?key=AIzaSyBvOkBw6m5gKjKjKjKjKjKjKjKjKjKjKjKj&center=43.9333,3.7167&zoom=15"
+                            width="100%"
+                            height="200"
                             style={{ border: 0, borderRadius: '8px' }}
                             allowFullScreen=""
                             loading="lazy"
                             referrerPolicy="no-referrer-when-downgrade"
-                            title="Itinéraire de livraison"
+                            title="Carte Google Maps"
                           />
                         </div>
 
