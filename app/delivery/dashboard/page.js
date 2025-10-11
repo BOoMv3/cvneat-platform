@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import AuthGuard from '@/components/AuthGuard';
 import DeliveryNotifications from '@/components/DeliveryNotifications';
-import DeliveryMap from '@/components/DeliveryMap';
+import RealDeliveryMap from '@/components/RealDeliveryMap';
 import DeliveryChat from '@/components/DeliveryChat';
 import OrderCountdown from '@/components/OrderCountdown';
 import PreventiveAlert from '@/components/PreventiveAlert';
@@ -744,119 +744,13 @@ export default function DeliveryDashboard() {
                   </div>
                   
                   <div>
-                    {/* Carte de livraison */}
+                    {/* Vraie carte de navigation */}
                     {currentOrder ? (
-                      <div className="bg-white rounded-lg shadow-sm border p-4">
-                        <h3 className="font-semibold text-gray-900 mb-4">🗺️ Carte de livraison</h3>
-                        
-                        {/* Carte simple */}
-                        <div className="relative h-64 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg mb-4 overflow-hidden">
-                          {/* Restaurant */}
-                          <div className="absolute" style={{ left: '20%', top: '30%' }}>
-                            <div className="bg-red-500 text-white p-3 rounded-full shadow-lg">
-                              🍽️
-                            </div>
-                            <div className="bg-white px-2 py-1 rounded text-xs font-medium shadow-sm mt-1">
-                              Restaurant
-                            </div>
-                          </div>
-
-                          {/* Livraison */}
-                          <div className="absolute" style={{ left: '70%', top: '60%' }}>
-                            <div className="bg-blue-500 text-white p-3 rounded-full shadow-lg">
-                              🏠
-                            </div>
-                            <div className="bg-white px-2 py-1 rounded text-xs font-medium shadow-sm mt-1">
-                              Livraison
-                            </div>
-                          </div>
-
-                          {/* Itinéraire réaliste avec plusieurs points */}
-                          <svg className="absolute inset-0 w-full h-full">
-                            {/* Route principale */}
-                            <path
-                              d="M 20% 30% L 30% 35% L 40% 40% L 50% 45% L 60% 50% L 70% 60%"
-                              stroke="#3B82F6"
-                              strokeWidth="4"
-                              fill="none"
-                              strokeDasharray="6,3"
-                            />
-                            {/* Points intermédiaires */}
-                            <circle cx="30%" cy="35%" r="3" fill="#2563EB" />
-                            <circle cx="40%" cy="40%" r="3" fill="#2563EB" />
-                            <circle cx="50%" cy="45%" r="3" fill="#2563EB" />
-                            <circle cx="60%" cy="50%" r="3" fill="#2563EB" />
-                          </svg>
-                        </div>
-
-                        {/* Informations */}
-                        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                          <div className="bg-gray-50 p-3 rounded">
-                            <div className="font-semibold text-gray-700">📍 Restaurant</div>
-                            <div className="text-gray-600 text-xs">{currentOrder.restaurant?.adresse || 'Restaurant'}</div>
-                          </div>
-                          <div className="bg-gray-50 p-3 rounded">
-                            <div className="font-semibold text-gray-700">🏠 Livraison</div>
-                            <div className="text-gray-600 text-xs">{currentOrder.user_addresses?.address || 'Adresse de livraison'}</div>
-                          </div>
-                        </div>
-
-                        {/* Bouton GPS avec vraie géolocalisation */}
-                        <button
-                          onClick={() => {
-                            console.log('🌍 Bouton GPS cliqué - Géolocalisation réelle');
-                            
-                            if (!navigator.geolocation) {
-                              alert('Géolocalisation non supportée par votre navigateur');
-                              return;
-                            }
-
-                            navigator.geolocation.getCurrentPosition(
-                              (position) => {
-                                console.log('✅ Position obtenue:', position.coords);
-                                const lat = position.coords.latitude;
-                                const lng = position.coords.longitude;
-                                
-                                // Calculer la distance réelle (exemple avec coordonnées fixes)
-                                const restaurantLat = 43.9333;
-                                const restaurantLng = 3.7167;
-                                const deliveryLat = 43.9334;
-                                const deliveryLng = 3.7168;
-                                
-                                // Distance du livreur au restaurant et au client
-                                const distanceToRestaurant = calculateDistance(lat, lng, restaurantLat, restaurantLng);
-                                const distanceToDelivery = calculateDistance(lat, lng, deliveryLat, deliveryLng);
-                                
-                                alert(`📍 Votre position: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n\n🏪 Distance au restaurant: ${distanceToRestaurant.toFixed(2)} km\n🏠 Distance au client: ${distanceToDelivery.toFixed(2)} km\n\n⏱️ Temps estimé: ${calculateRealisticTime(distanceToDelivery)} min`);
-                              },
-                              (error) => {
-                                console.error('❌ Erreur géolocalisation:', error);
-                                alert('Erreur de géolocalisation: ' + error.message);
-                              },
-                              {
-                                enableHighAccuracy: true,
-                                timeout: 10000,
-                                maximumAge: 60000
-                              }
-                            );
-                          }}
-                          className="w-full py-3 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
-                        >
-                          🌍 Localiser ma position
-                        </button>
-
-                        {/* Distance et temps réalistes */}
-                        <div className="grid grid-cols-2 gap-4 text-center mt-4">
-                          <div className="bg-blue-50 p-3 rounded">
-                            <div className="font-semibold text-blue-800">Distance totale</div>
-                            <div className="text-blue-600">2.5 km</div>
-                          </div>
-                          <div className="bg-green-50 p-3 rounded">
-                            <div className="font-semibold text-green-800">Temps estimé</div>
-                            <div className="text-green-600">~8 min</div>
-                          </div>
-                        </div>
-                      </div>
+                      <RealDeliveryMap
+                        restaurantAddress={currentOrder.restaurant?.adresse || 'Restaurant'}
+                        deliveryAddress={currentOrder.user_addresses?.address || 'Adresse de livraison'}
+                        className="w-full"
+                      />
                     ) : (
                       <div className="bg-gray-100 rounded-lg p-8 text-center">
                         <p className="text-gray-600">Aucune commande active</p>
