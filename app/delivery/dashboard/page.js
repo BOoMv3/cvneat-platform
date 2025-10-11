@@ -85,6 +85,66 @@ export default function DeliveryDashboard() {
     checkUser();
   }, [router]);
 
+  // Système de géolocalisation en temps réel
+  useEffect(() => {
+    if (!currentOrder || currentOrder.statut !== 'en_livraison') {
+      return;
+    }
+
+    let watchId = null;
+
+    const updatePosition = async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        console.log('📍 Position GPS mise à jour:', { latitude, longitude });
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch('/api/delivery/update-position', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            latitude,
+            longitude,
+            orderId: currentOrder.id
+          })
+        });
+
+        if (!response.ok) {
+          console.error('❌ Erreur mise à jour position');
+        }
+      } catch (error) {
+        console.error('❌ Erreur envoi position:', error);
+      }
+    };
+
+    // Démarrer le suivi GPS
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        updatePosition,
+        (error) => {
+          console.error('❌ Erreur géolocalisation:', error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 5000
+        }
+      );
+    }
+
+    // Nettoyage
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [currentOrder]);
+
   // Rechargement automatique des commandes pour détecter les nouvelles
   useEffect(() => {
     const interval = setInterval(() => {

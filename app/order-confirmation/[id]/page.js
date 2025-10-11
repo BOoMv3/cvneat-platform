@@ -456,8 +456,19 @@ export default function OrderConfirmation() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions rapides</h3>
                 
                 <div className="space-y-3">
-            <button
-              onClick={() => router.push('/')}
+                  {/* Bouton de suivi GPS en temps réel */}
+                  {orderData?.status && ['acceptee', 'en_preparation', 'pret_a_livrer', 'en_livraison'].includes(orderData.status) && (
+                    <button
+                      onClick={() => router.push(`/track/${id}`)}
+                      className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 transform hover:scale-105 font-semibold flex items-center justify-center space-x-2"
+                    >
+                      <FaMapMarkerAlt />
+                      <span>Suivre en temps réel 🗺️</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => router.push('/')}
                     className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 font-semibold"
                   >
                     Commander à nouveau
