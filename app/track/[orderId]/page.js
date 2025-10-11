@@ -81,13 +81,19 @@ export default function TrackOrder() {
     if (!trackingData) return null;
 
     const { driver, delivery, restaurant } = trackingData;
+    const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+    
+    if (!googleMapsKey) {
+      console.error('❌ NEXT_PUBLIC_GOOGLE_MAPS_KEY non configurée');
+      return null;
+    }
     
     // Si le livreur est en route et a une position
     if (driver?.currentPosition && delivery?.latitude && delivery?.longitude) {
       const origin = `${driver.currentPosition.latitude},${driver.currentPosition.longitude}`;
       const destination = `${delivery.latitude},${delivery.longitude}`;
       
-      return `https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dkkjMVQbOM2AII&origin=${origin}&destination=${destination}&mode=driving`;
+      return `https://www.google.com/maps/embed/v1/directions?key=${googleMapsKey}&origin=${origin}&destination=${destination}&mode=driving`;
     }
     
     // Si la commande est prête mais pas encore en livraison, montrer le restaurant
@@ -95,12 +101,12 @@ export default function TrackOrder() {
       const origin = `${restaurant.latitude},${restaurant.longitude}`;
       const destination = `${delivery.latitude},${delivery.longitude}`;
       
-      return `https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dkkjMVQbOM2AII&origin=${origin}&destination=${destination}&mode=driving`;
+      return `https://www.google.com/maps/embed/v1/directions?key=${googleMapsKey}&origin=${origin}&destination=${destination}&mode=driving`;
     }
     
     // Sinon, montrer juste l'adresse de livraison
     if (delivery?.latitude && delivery?.longitude) {
-      return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dkkjMVQbOM2AII&q=${delivery.latitude},${delivery.longitude}&zoom=15`;
+      return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${delivery.latitude},${delivery.longitude}&zoom=15`;
     }
 
     return null;
