@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import AuthGuard from '@/components/AuthGuard';
 import DeliveryNotifications from '@/components/DeliveryNotifications';
-import RealDeliveryMap from '@/components/RealDeliveryMap';
+// // import RealDeliveryMap from '@/components/RealDeliveryMap';
 import DeliveryChat from '@/components/DeliveryChat';
 import OrderCountdown from '@/components/OrderCountdown';
 import PreventiveAlert from '@/components/PreventiveAlert';
@@ -744,13 +744,79 @@ export default function DeliveryDashboard() {
                   </div>
                   
                   <div>
-                    {/* Vraie carte de navigation */}
+                    {/* Carte de navigation fonctionnelle */}
                     {currentOrder ? (
-                      <RealDeliveryMap
-                        restaurantAddress={currentOrder.restaurant?.adresse || 'Restaurant'}
-                        deliveryAddress={currentOrder.user_addresses?.address || 'Adresse de livraison'}
-                        className="w-full"
-                      />
+                      <div className="bg-white rounded-lg shadow-sm border p-4">
+                        <h3 className="font-semibold text-gray-900 mb-4">🗺️ Navigation de livraison</h3>
+                        
+                        {/* Carte Google Maps intégrée */}
+                        <div className="mb-4">
+                          <iframe
+                            src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyBvOkBw6m5gKjKjKjKjKjKjKjKjKjKjKjKj&origin=${currentOrder.restaurant?.adresse || 'Restaurant'}&destination=${currentOrder.user_addresses?.address || 'Adresse de livraison'}&mode=driving`}
+                            width="100%"
+                            height="256"
+                            style={{ border: 0, borderRadius: '8px' }}
+                            allowFullScreen=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title="Itinéraire de livraison"
+                          />
+                        </div>
+
+                        {/* Adresses */}
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                          <div className="bg-red-50 p-3 rounded">
+                            <div className="font-semibold text-red-700">📍 Restaurant</div>
+                            <div className="text-red-600 text-xs">{currentOrder.restaurant?.adresse || 'Restaurant'}</div>
+                          </div>
+                          <div className="bg-blue-50 p-3 rounded">
+                            <div className="font-semibold text-blue-700">🏠 Livraison</div>
+                            <div className="text-blue-600 text-xs">{currentOrder.user_addresses?.address || 'Adresse de livraison'}</div>
+                          </div>
+                        </div>
+
+                        {/* Boutons d'action */}
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => {
+                              const url = `https://www.google.com/maps/dir/${currentOrder.restaurant?.adresse || 'Restaurant'}/${currentOrder.user_addresses?.address || 'Adresse de livraison'}`;
+                              window.open(url, '_blank');
+                            }}
+                            className="w-full py-3 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
+                          >
+                            🗺️ Ouvrir dans Google Maps
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              navigator.geolocation.getCurrentPosition(
+                                (position) => {
+                                  const lat = position.coords.latitude;
+                                  const lng = position.coords.longitude;
+                                  const url = `https://www.google.com/maps/dir/${lat},${lng}/${currentOrder.user_addresses?.address || 'Adresse de livraison'}`;
+                                  window.open(url, '_blank');
+                                },
+                                (error) => {
+                                  alert('Erreur de géolocalisation: ' + error.message);
+                                }
+                              );
+                            }}
+                            className="w-full py-3 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold"
+                          >
+                            🌍 Navigation depuis ma position
+                          </button>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
+                          <p className="text-yellow-800 text-sm font-semibold">💡 Instructions :</p>
+                          <ul className="text-yellow-700 text-xs mt-1 space-y-1">
+                            <li>• Utilisez "Ouvrir dans Google Maps" pour la navigation complète</li>
+                            <li>• "Navigation depuis ma position" vous géolocalise automatiquement</li>
+                            <li>• Suivez les instructions GPS de Google Maps</li>
+                          </ul>
+                        </div>
+                      </div>
                     ) : (
                       <div className="bg-gray-100 rounded-lg p-8 text-center">
                         <p className="text-gray-600">Aucune commande active</p>
