@@ -749,29 +749,33 @@ export default function DeliveryDashboard() {
                       <div className="bg-white rounded-lg shadow-sm border p-4">
                         <h3 className="font-semibold text-gray-900 mb-4">🗺️ Navigation de livraison</h3>
                         
-                        {/* Vraie carte OpenStreetMap */}
-                        <div className="mb-4">
-                          <iframe
-                            src="https://www.openstreetmap.org/export/embed.html?bbox=3.7107%2C43.9283%2C3.7227%2C43.9383&layer=mapnik&marker=43.9333%2C3.7167"
-                            width="100%"
-                            height="256"
-                            style={{ border: 0, borderRadius: '8px' }}
-                            title="Carte OpenStreetMap"
-                          />
-                        </div>
-                        
-                        {/* Carte Google Maps de secours */}
-                        <div className="mb-4">
-                          <iframe
-                            src="https://www.google.com/maps/embed/v1/view?key=AIzaSyBvOkBw6m5gKjKjKjKjKjKjKjKjKjKjKjKj&center=43.9333,3.7167&zoom=15"
-                            width="100%"
-                            height="200"
-                            style={{ border: 0, borderRadius: '8px' }}
-                            allowFullScreen=""
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                            title="Carte Google Maps"
-                          />
+                        {/* Carte de navigation - Liens directs */}
+                        <div className="mb-4 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg p-6 text-center">
+                          <div className="mb-4">
+                            <div className="text-4xl mb-2">🗺️</div>
+                            <h4 className="font-semibold text-gray-800">Navigation GPS</h4>
+                            <p className="text-gray-600 text-sm">Cliquez sur les boutons ci-dessous pour ouvrir la navigation</p>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-white rounded p-3 shadow-sm">
+                              <div className="text-red-500 text-2xl mb-1">🍽️</div>
+                              <div className="text-xs font-semibold">Restaurant</div>
+                              <div className="text-xs text-gray-600">{currentOrder.restaurant?.adresse || 'Restaurant'}</div>
+                            </div>
+                            <div className="bg-white rounded p-3 shadow-sm">
+                              <div className="text-blue-500 text-2xl mb-1">🏠</div>
+                              <div className="text-xs font-semibold">Livraison</div>
+                              <div className="text-xs text-gray-600">{currentOrder.user_addresses?.address || 'Adresse'}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="text-sm text-gray-700">
+                            <div className="flex items-center justify-center space-x-4">
+                              <span>📏 Distance: 2.5 km</span>
+                              <span>⏱️ Temps: ~8 min</span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Adresses */}
@@ -786,35 +790,70 @@ export default function DeliveryDashboard() {
                           </div>
                         </div>
 
-                        {/* Boutons d'action */}
-                        <div className="space-y-2">
+                        {/* Boutons de navigation GPS */}
+                        <div className="space-y-3">
+                          {/* Navigation complète Restaurant → Livraison */}
                           <button
                             onClick={() => {
-                              const url = `https://www.google.com/maps/dir/${currentOrder.restaurant?.adresse || 'Restaurant'}/${currentOrder.user_addresses?.address || 'Adresse de livraison'}`;
+                              const restaurant = encodeURIComponent(currentOrder.restaurant?.adresse || 'Restaurant Test');
+                              const delivery = encodeURIComponent(currentOrder.user_addresses?.address || '10 place des cèdres');
+                              const url = `https://www.google.com/maps/dir/${restaurant}/${delivery}`;
                               window.open(url, '_blank');
+                              console.log('🗺️ Ouverture Google Maps:', url);
                             }}
-                            className="w-full py-3 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
+                            className="w-full py-4 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold text-lg"
                           >
-                            🗺️ Ouvrir dans Google Maps
+                            🗺️ Navigation complète (Restaurant → Livraison)
                           </button>
                           
+                          {/* Navigation depuis position actuelle */}
                           <button
                             onClick={() => {
+                              console.log('🌍 Demande de géolocalisation...');
+                              
+                              if (!navigator.geolocation) {
+                                alert('Géolocalisation non supportée par votre navigateur');
+                                return;
+                              }
+
                               navigator.geolocation.getCurrentPosition(
                                 (position) => {
+                                  console.log('✅ Position obtenue:', position.coords);
                                   const lat = position.coords.latitude;
                                   const lng = position.coords.longitude;
-                                  const url = `https://www.google.com/maps/dir/${lat},${lng}/${currentOrder.user_addresses?.address || 'Adresse de livraison'}`;
+                                  const delivery = encodeURIComponent(currentOrder.user_addresses?.address || '10 place des cèdres');
+                                  const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
+                                  
                                   window.open(url, '_blank');
+                                  alert(`📍 Position détectée !\n\nCoordonnées: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n\n🗺️ Ouverture de Google Maps pour la navigation vers la livraison.`);
                                 },
                                 (error) => {
-                                  alert('Erreur de géolocalisation: ' + error.message);
+                                  console.error('❌ Erreur géolocalisation:', error);
+                                  alert('Erreur de géolocalisation: ' + error.message + '\n\nVous pouvez utiliser le bouton "Navigation complète" à la place.');
+                                },
+                                {
+                                  enableHighAccuracy: true,
+                                  timeout: 10000,
+                                  maximumAge: 60000
                                 }
                               );
                             }}
-                            className="w-full py-3 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold"
+                            className="w-full py-4 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold text-lg"
                           >
                             🌍 Navigation depuis ma position
+                          </button>
+
+                          {/* Bouton de secours pour Waze */}
+                          <button
+                            onClick={() => {
+                              const delivery = encodeURIComponent(currentOrder.user_addresses?.address || '10 place des cèdres');
+                              const url = `https://waze.com/ul?q=${delivery}`;
+                              window.open(url, '_blank');
+                              console.log('🚗 Ouverture Waze:', url);
+                            }}
+                            className="w-full py-3 px-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold"
+                          >
+                            🚗 Ouvrir dans Waze
                           </button>
                         </div>
 
