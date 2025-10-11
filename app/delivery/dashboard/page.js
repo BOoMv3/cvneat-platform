@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import Navbar from '@/components/Navbar';
+import DeliveryNavbar from '@/components/DeliveryNavbar';
 import AuthGuard from '@/components/AuthGuard';
 import DeliveryNotifications from '@/components/DeliveryNotifications';
 // // import RealDeliveryMap from '@/components/RealDeliveryMap';
@@ -516,7 +516,7 @@ export default function DeliveryDashboard() {
   return (
     <AuthGuard allowedRoles={['delivery']}>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4">
-        <Navbar />
+        <DeliveryNavbar />
         
         {/* Alerte de nouvelle commande */}
         {showAlert && alertOrder && (
