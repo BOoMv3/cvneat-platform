@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import DeliveryNavbar from '../../../components/DeliveryNavbar';
+import DeliveryNavbar from '../../components/DeliveryNavbar';
 import AuthGuard from '@/components/AuthGuard';
 import DeliveryNotifications from '@/components/DeliveryNotifications';
 // // import RealDeliveryMap from '@/components/RealDeliveryMap';
