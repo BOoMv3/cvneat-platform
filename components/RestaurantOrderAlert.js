@@ -46,16 +46,53 @@ export default function RestaurantOrderAlert() {
 
   const fetchPendingOrders = async () => {
     try {
+      // Récupérer l'utilisateur connecté et son restaurant
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        console.error('❌ Aucune session trouvée');
+        setLoading(false);
+        return;
+      }
+
+      // Récupérer le restaurant de l'utilisateur
+      const { data: restaurant, error: restoError } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (restoError || !restaurant) {
+        console.error('❌ Restaurant non trouvé:', restoError);
+        setLoading(false);
+        return;
+      }
+
+      // Récupérer les commandes en attente pour ce restaurant
       const { data, error } = await supabase
         .from('commandes')
-        .select('*')
+        .select(`
+          *,
+          details_commande (
+            id,
+            plat_id,
+            quantite,
+            prix_unitaire,
+            menus (
+              nom,
+              prix
+            )
+          )
+        `)
         .eq('statut', 'en_attente')
+        .eq('restaurant_id', restaurant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('✅ Commandes récupérées:', data?.length || 0);
       setOrders(data || []);
     } catch (error) {
-      console.error('Erreur récupération commandes:', error);
+      console.error('❌ Erreur récupération commandes:', error);
     } finally {
       setLoading(false);
     }
@@ -187,6 +224,9 @@ export default function RestaurantOrderAlert() {
 
   const calculateEstimatedTime = (items) => {
     // Estimation basée sur le nombre d'articles
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return 15; // Temps par défaut
+    }
     const baseTime = 15; // 15 minutes de base
     const itemTime = items.length * 5; // 5 minutes par article
     return baseTime + itemTime;
@@ -227,16 +267,16 @@ export default function RestaurantOrderAlert() {
             </div>
             <div className="text-right">
               <p className="text-lg font-bold text-gray-800">
-                Total: {order.total_amount + (order.delivery_fee || 0)}€
+                Total: {(parseFloat(order.total_amount || order.total || 0) + parseFloat(order.delivery_fee || order.frais_livraison || 0)).toFixed(2)}€
               </p>
               <p className="text-sm font-semibold text-green-600">
-                Votre gain: {(order.total_amount * 0.80).toFixed(2)}€
+                Votre gain: {(parseFloat(order.total_amount || order.total || 0) * 0.80).toFixed(2)}€
               </p>
               <p className="text-xs text-gray-500">
-                (Commission 20%: {(order.total_amount * 0.20).toFixed(2)}€)
+                (Commission 20%: {(parseFloat(order.total_amount || order.total || 0) * 0.20).toFixed(2)}€)
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                Temps estimé: {calculateEstimatedTime(order.items)} min
+                Temps estimé: {calculateEstimatedTime(order.items || order.details_commande || [])} min
               </p>
             </div>
           </div>
@@ -244,14 +284,14 @@ export default function RestaurantOrderAlert() {
           <div className="mb-4">
             <h4 className="font-semibold text-gray-700 mb-2">Client:</h4>
             <p className="text-gray-600">
-              {order.customer_name} - {order.customer_phone}
+              {order.customer_name || order.users?.nom || 'N/A'} - {order.customer_phone || order.users?.telephone || 'N/A'}
             </p>
             <p className="text-gray-600">
-              {order.delivery_address}, {order.delivery_city} {order.delivery_postal_code}
+              {order.delivery_address || order.adresse_livraison || 'N/A'}, {order.delivery_city || 'N/A'} {order.delivery_postal_code || 'N/A'}
             </p>
-            {order.delivery_instructions && (
+            {(order.delivery_instructions || order.instructions) && (
               <p className="text-gray-600 italic">
-                Instructions: {order.delivery_instructions}
+                Instructions: {order.delivery_instructions || order.instructions}
               </p>
             )}
           </div>
@@ -280,15 +320,15 @@ export default function RestaurantOrderAlert() {
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between text-sm">
                 <span>Sous-total:</span>
-                <span>{order.total_amount}€</span>
+                <span>{parseFloat(order.total_amount || order.total || 0).toFixed(2)}€</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Frais de livraison:</span>
-                <span>{order.delivery_fee}€</span>
+                <span>{parseFloat(order.delivery_fee || order.frais_livraison || 0).toFixed(2)}€</span>
               </div>
               <div className="flex justify-between font-semibold">
                 <span>Total:</span>
-                <span>{order.total_amount + order.delivery_fee}€</span>
+                <span>{(parseFloat(order.total_amount || order.total || 0) + parseFloat(order.delivery_fee || order.frais_livraison || 0)).toFixed(2)}€</span>
               </div>
             </div>
           </div>
