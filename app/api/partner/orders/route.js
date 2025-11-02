@@ -89,22 +89,18 @@ export async function GET(request) {
     // Récupérer les commandes du restaurant
     console.log('🔍 Recherche commandes pour restaurant_id:', restaurantId);
     
-    // D'abord, testons une requête simple sans JOIN avec le client admin
+    // DEBUG : Tester d'abord une requête simple pour voir les colonnes disponibles
     console.log('🔍 Test requête simple avec admin...');
     const { data: simpleOrders, error: simpleError } = await supabaseAdmin
       .from('commandes')
-      .select('*')
-      .eq('restaurant_id', restaurantId);
+      .select('id, statut, total, frais_livraison')
+      .eq('restaurant_id', restaurantId)
+      .limit(1);
     
     console.log('🔍 Résultat requête simple (admin):', simpleOrders?.length || 0, 'commandes');
     console.log('🔍 Erreur requête simple (admin):', simpleError);
-    
-    // DEBUG : Afficher les statuts des commandes trouvées
     if (simpleOrders && simpleOrders.length > 0) {
-      console.log('📊 STATUTS DES COMMANDES TROUVÉES:');
-      simpleOrders.forEach(order => {
-        console.log(`  - Commande ${order.id}: statut = "${order.statut}"`);
-      });
+      console.log('📊 Exemple commande:', JSON.stringify(simpleOrders[0], null, 2));
     }
     
     // Maintenant la requête complète avec JOIN avec le client admin
@@ -115,27 +111,21 @@ export async function GET(request) {
     let ordersError = null;
     
     try {
+      // Requête simplifiée - commencer avec les colonnes de base seulement
+      // Éviter les colonnes qui pourraient ne pas exister (customer_*, delivery_*)
       const { data: ordersData, error: ordersErrorData } = await supabaseAdmin
         .from('commandes')
         .select(`
           id,
           created_at,
           updated_at,
-        statut,
-        total,
-        frais_livraison,
+          statut,
+          total,
+          frais_livraison,
           restaurant_id,
           user_id,
           livreur_id,
-          customer_name,
-          customer_phone,
-          customer_email,
-          delivery_address,
-          delivery_city,
-          delivery_postal_code,
-          delivery_instructions,
           adresse_livraison,
-          instructions,
           preparation_time,
           details_commande (
             id,
