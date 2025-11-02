@@ -110,20 +110,24 @@ export async function PUT(request, { params }) {
       }, { status: 400 });
     }
 
-    // Mettre à jour la commande - CORRIGER LE STATUT SELON LA CONTRAINTE
+    // Mettre à jour la commande - CORRIGER LE STATUT SELON LA CONTRAINTE CHECK
     let correctedStatus = status;
     
-    // MAPPING POUR CORRESPONDRE EXACTEMENT À LA CONTRAINTE CHECK
+    // MAPPING POUR CORRESPONDRE EXACTEMENT À LA CONTRAINTE CHECK DE LA BASE DE DONNÉES
+    // La contrainte CHECK accepte: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
+    // Nous devons mapper les statuts métier vers ces valeurs
     const statusMapping = {
-      'pret_a_livrer': 'en_preparation'  // Temporaire : utiliser en_preparation au lieu de pret_a_livrer
+      'acceptee': 'en_preparation',     // Quand restaurant accepte, passe directement en préparation
+      'refusee': 'annulee',             // Refus = annulée
+      'pret_a_livrer': 'en_preparation' // Prêt à livrer reste en préparation (livreur prend en charge ensuite)
     };
     
     if (statusMapping[status]) {
       correctedStatus = statusMapping[status];
+      console.log('🔄 Statut mappé:', { original: status, final: correctedStatus, raison: 'Contrainte CHECK base de données' });
     }
     
-    console.log('🔄 Statut mappé:', { original: status, final: correctedStatus });
-    console.log('📋 Valeurs autorisées: en_attente, acceptee, refusee, en_preparation, pret_a_livrer, en_livraison, livree, annulee');
+    console.log('📋 Statuts autorisés par CHECK: en_attente, en_preparation, en_livraison, livree, annulee');
     
     const updateData = {
       statut: correctedStatus,
