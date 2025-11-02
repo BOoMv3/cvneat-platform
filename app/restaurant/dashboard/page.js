@@ -18,11 +18,24 @@ export default function RestaurantDashboard() {
 
   useEffect(() => {
     const checkUserAndFetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.user_metadata.role !== 'restaurant') {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         router.push('/login');
         return;
       }
+
+      // Vérifier le rôle dans la table users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userError || !userData || userData.role !== 'restaurant') {
+        router.push('/login');
+        return;
+      }
+
       fetchRestaurantData();
     };
     checkUserAndFetchData();
