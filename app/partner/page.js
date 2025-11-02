@@ -267,6 +267,7 @@ export default function PartnerDashboard() {
       }
     } catch (error) {
       console.error('❌ Erreur mise à jour commande:', error);
+      alert(`Erreur: ${error.message || 'Impossible de mettre à jour la commande'}`);
     }
   };
 
@@ -393,35 +394,50 @@ export default function PartnerDashboard() {
       }
         
       // Calculer les statistiques seulement si data est un tableau valide
-      const today = new Date().toDateString();
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       
-      const todayOrders = data.filter(order => 
-        order && order.created_at && new Date(order.created_at).toDateString() === today
-      );
+      // Filtrer les commandes d'aujourd'hui
+      const todayOrders = data.filter(order => {
+        if (!order || !order.created_at) return false;
+        const orderDate = new Date(order.created_at);
+        return orderDate >= todayStart;
+      });
       
       const pendingOrders = data.filter(order => 
         order && order.statut === 'en_attente'
       );
       
       // Calculer le chiffre d'affaires en excluant les commandes annulées
+      // Inclure toutes les commandes non annulées (en_preparation, en_livraison, livree)
       const totalRevenue = data.reduce((sum, order) => {
         if (!order) return sum;
-        // Exclure les commandes annulées du calcul du chiffre d'affaires
+        // Exclure uniquement les commandes annulées ou refusées du calcul du chiffre d'affaires
         if (order.statut === 'annulee' || order.statut === 'refusee') {
           return sum;
         }
         const amount = parseFloat(order.total || 0) || 0;
         return sum + amount;
       }, 0);
+      
+      // Calculer le chiffre d'affaires d'aujourd'hui
       const todayRevenue = todayOrders.reduce((sum, order) => {
         if (!order) return sum;
-        // Exclure les commandes annulées du calcul du chiffre d'affaires
+        // Exclure uniquement les commandes annulées ou refusées du calcul
         if (order.statut === 'annulee' || order.statut === 'refusee') {
           return sum;
         }
         const amount = parseFloat(order.total || 0) || 0;
         return sum + amount;
       }, 0);
+      
+      console.log('🔍 DEBUG - Calcul chiffre d\'affaires:', {
+        totalOrders: data.length,
+        todayOrders: todayOrders.length,
+        totalRevenue,
+        todayRevenue,
+        ordersWithRevenue: data.filter(o => o && o.total && o.statut !== 'annulee' && o.statut !== 'refusee').length
+      });
       
       setStats({
         todayOrders: todayOrders.length || 0,
@@ -819,13 +835,18 @@ export default function PartnerDashboard() {
                                     </button>
                                   </>
                                 )}
-                                {order.statut === 'en_preparation' && !order.livreur_id && (
+                                {order.statut === 'en_preparation' && !order.livreur_id && !order.ready_for_delivery && (
                                   <button
                                     onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
                                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
                                   >
                                     Marquer comme prête
                                   </button>
+                                )}
+                                {order.statut === 'en_preparation' && order.ready_for_delivery && !order.livreur_id && (
+                                  <span className="text-sm text-green-600 px-3 py-2 font-medium">
+                                    ✓ Prête pour livraison
+                                  </span>
                                 )}
                                 {order.statut === 'en_preparation' && order.livreur_id && (
                                   <span className="text-sm text-gray-600 px-3 py-2">
