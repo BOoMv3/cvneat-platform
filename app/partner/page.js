@@ -360,12 +360,25 @@ export default function PartnerDashboard() {
       console.log('🔍 DEBUG fetchOrders - Statuts des commandes:', 
         data.map(o => ({ 
           id: o.id?.slice(0, 8), 
-          statut: o.statut, 
+          statut: o.statut,
+          statut_type: typeof o.statut,
+          statut_length: o.statut?.length,
+          statut_raw: JSON.stringify(o.statut), // Pour voir les caractères invisibles
           ready_for_delivery: o.ready_for_delivery,
           created_at: o.created_at,
           updated_at: o.updated_at
         }))
       );
+      
+      // DEBUG: Vérifier spécifiquement les commandes en_preparation
+      const prepOrders = data.filter(o => o.statut === 'en_preparation' || (o.statut && o.statut.includes('preparation')));
+      if (prepOrders.length > 0) {
+        console.log('✅ Commandes trouvées avec statut en_preparation:', prepOrders.map(o => ({
+          id: o.id?.slice(0, 8),
+          statut: o.statut,
+          statut_raw: JSON.stringify(o.statut)
+        })));
+      }
       
       // DEBUG: Vérifier spécifiquement les commandes qui devraient être en_preparation
       const ordersWithIssues = data.filter(o => 
