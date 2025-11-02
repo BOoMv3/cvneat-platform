@@ -108,10 +108,31 @@ export async function GET(request) {
     }
     
     // Maintenant la requête complète avec JOIN avec le client admin
+    // IMPORTANT: Inclure explicitement total_amount, total, delivery_fee pour éviter les valeurs undefined
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select(`
-        *,
+        id,
+        created_at,
+        updated_at,
+        statut,
+        total_amount,
+        total,
+        delivery_fee,
+        frais_livraison,
+        restaurant_id,
+        user_id,
+        livreur_id,
+        customer_name,
+        customer_phone,
+        customer_email,
+        delivery_address,
+        delivery_city,
+        delivery_postal_code,
+        delivery_instructions,
+        adresse_livraison,
+        instructions,
+        preparation_time,
         details_commande (
           id,
           plat_id,
@@ -121,6 +142,13 @@ export async function GET(request) {
             nom,
             prix
           )
+        ),
+        users (
+          id,
+          nom,
+          prenom,
+          telephone,
+          email
         )
       `)
       .eq('restaurant_id', restaurantId)

@@ -236,12 +236,20 @@ export default function PartnerDashboard() {
       
       if (response.ok) {
         console.log('✅ Commande mise à jour avec succès');
-        // Recharger les données
-        await fetchOrders(restaurant.id);
-        await fetchDashboardData(restaurant.id);
+        // Recharger les données de manière sécurisée
+        try {
+          await fetchOrders(restaurant?.id);
+          if (restaurant?.id) {
+            await fetchDashboardData(restaurant.id);
+          }
+        } catch (refreshError) {
+          console.error('⚠️ Erreur lors du rafraîchissement:', refreshError);
+          // Ne pas bloquer l'utilisateur, juste loguer l'erreur
+        }
       } else {
         const errorData = await response.json();
         console.error('❌ Erreur API:', errorData);
+        alert(`Erreur: ${errorData.error || 'Impossible de mettre à jour la commande'}`);
       }
     } catch (error) {
       console.error('❌ Erreur mise à jour commande:', error);
@@ -324,8 +332,14 @@ export default function PartnerDashboard() {
           order.statut === 'en_attente'
         );
         
-        const totalRevenue = data.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
-        const todayRevenue = todayOrders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
+        const totalRevenue = data.reduce((sum, order) => {
+          const amount = parseFloat(order.total_amount || order.total || 0) || 0;
+          return sum + amount;
+        }, 0);
+        const todayRevenue = todayOrders.reduce((sum, order) => {
+          const amount = parseFloat(order.total_amount || order.total || 0) || 0;
+          return sum + amount;
+        }, 0);
         
         setStats({
           todayOrders: todayOrders.length,
@@ -340,7 +354,12 @@ export default function PartnerDashboard() {
   };
 
   const calculateCommission = (totalAmount) => {
-    const amount = parseFloat(totalAmount || 0);
+    // S'assurer que totalAmount est un nombre valide
+    const amount = parseFloat(totalAmount || 0) || 0;
+    if (isNaN(amount) || amount < 0) {
+      console.warn('⚠️ calculateCommission: totalAmount invalide:', totalAmount);
+      return { commission: 0, restaurantRevenue: 0 };
+    }
     const commission = amount * 0.20; // 20% pour CVN'EAT
     const restaurantRevenue = amount - commission;
     return { commission, restaurantRevenue };
@@ -504,7 +523,9 @@ export default function PartnerDashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Revenus aujourd'hui</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.totalRevenue.toFixed(2)} €</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {(stats.totalRevenue || 0).toFixed(2)} €
+                    </p>
                   </div>
                 </div>
               </div>
@@ -524,7 +545,9 @@ export default function PartnerDashboard() {
                       <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <p className="font-medium">Commande #{order.id}</p>
-                          <p className="text-sm text-gray-600">{order.total_amount} €</p>
+                          <p className="text-sm text-gray-600">
+                            {(parseFloat(order.total_amount || order.total || 0) || 0).toFixed(2)} €
+                          </p>
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={`px-2 py-1 rounded-full text-xs ${
@@ -586,7 +609,9 @@ export default function PartnerDashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Chiffre d'affaires</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.totalRevenue.toFixed(2)} €</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {(stats.totalRevenue || 0).toFixed(2)} €
+                    </p>
                   </div>
                 </div>
               </div>
@@ -599,7 +624,7 @@ export default function PartnerDashboard() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Vos gains (80%)</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      {(stats.totalRevenue * 0.8).toFixed(2)} €
+                      {((stats.totalRevenue || 0) * 0.8).toFixed(2)} €
                     </p>
                   </div>
                 </div>
@@ -620,29 +645,41 @@ export default function PartnerDashboard() {
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
                     {orders.map((order) => {
-                      const { commission, restaurantRevenue } = calculateCommission(order.total_amount);
+                      // Récupérer total_amount avec fallback sur total, puis 0
+                      const totalAmount = parseFloat(order.total_amount || order.total || 0) || 0;
+                      const deliveryFee = parseFloat(order.delivery_fee || order.frais_livraison || 0) || 0;
+                      const total = totalAmount + deliveryFee;
+                      
+                      const { commission, restaurantRevenue } = calculateCommission(totalAmount);
+                      
                       return (
                         <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <h3 className="font-medium text-gray-900 text-lg">Commande #{order.id}</h3>
+                              <h3 className="font-medium text-gray-900 text-lg">Commande #{order.id?.slice(0, 8) || order.id}</h3>
                               <p className="text-sm text-gray-600">
-                                {new Date(order.created_at).toLocaleString('fr-FR')}
+                                {order.created_at ? new Date(order.created_at).toLocaleString('fr-FR') : 'Date non disponible'}
                               </p>
                               <p className="text-sm text-gray-600">
-                                Client: {order.users?.nom} {order.users?.prenom}
+                                Client: {order.users?.nom || order.customer_name || 'N/A'} {order.users?.prenom || ''}
                               </p>
                             </div>
                             <div className="text-right">
-                              <p className="text-lg font-semibold text-gray-900">
-                                {order.total_amount} €
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Commission CVN'EAT: {commission.toFixed(2)} €
-                              </p>
-                              <p className="text-sm font-medium text-green-600">
-                                Votre gain: {restaurantRevenue.toFixed(2)} €
-                              </p>
+                              {totalAmount > 0 ? (
+                                <>
+                                  <p className="text-lg font-semibold text-gray-900">
+                                    {total.toFixed(2)} €
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Commission CVN'EAT: {commission.toFixed(2)} €
+                                  </p>
+                                  <p className="text-sm font-medium text-green-600">
+                                    Votre gain: {restaurantRevenue.toFixed(2)} €
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-sm text-gray-500">Prix non disponible</p>
+                              )}
                             </div>
                           </div>
                           
