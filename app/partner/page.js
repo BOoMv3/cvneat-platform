@@ -344,33 +344,32 @@ export default function PartnerDashboard() {
         
       // Calculer les statistiques seulement si data est un tableau valide
       const today = new Date().toDateString();
-        
-        const todayOrders = data.filter(order => 
-          order && order.created_at && new Date(order.created_at).toDateString() === today
-        );
-        
-        const pendingOrders = data.filter(order => 
-          order && order.statut === 'en_attente'
-        );
-        
-        const totalRevenue = data.reduce((sum, order) => {
-          if (!order) return sum;
-          const amount = parseFloat(order.total_amount || order.total || 0) || 0;
-          return sum + amount;
-        }, 0);
-        const todayRevenue = todayOrders.reduce((sum, order) => {
-          if (!order) return sum;
-          const amount = parseFloat(order.total_amount || order.total || 0) || 0;
-          return sum + amount;
-        }, 0);
-        
-        setStats({
-          todayOrders: todayOrders.length || 0,
-          pendingOrders: pendingOrders.length || 0,
-          totalRevenue: todayRevenue || 0,
-          recentOrders: Array.isArray(data) ? data.slice(0, 5) : []
-        });
-      }
+      
+      const todayOrders = data.filter(order => 
+        order && order.created_at && new Date(order.created_at).toDateString() === today
+      );
+      
+      const pendingOrders = data.filter(order => 
+        order && order.statut === 'en_attente'
+      );
+      
+      const totalRevenue = data.reduce((sum, order) => {
+        if (!order) return sum;
+        const amount = parseFloat(order.total_amount || order.total || 0) || 0;
+        return sum + amount;
+      }, 0);
+      const todayRevenue = todayOrders.reduce((sum, order) => {
+        if (!order) return sum;
+        const amount = parseFloat(order.total_amount || order.total || 0) || 0;
+        return sum + amount;
+      }, 0);
+      
+      setStats({
+        todayOrders: todayOrders.length || 0,
+        pendingOrders: pendingOrders.length || 0,
+        totalRevenue: todayRevenue || 0,
+        recentOrders: Array.isArray(data) ? data.slice(0, 5) : []
+      });
     } catch (error) {
       console.error('Erreur récupération commandes:', error);
     }
