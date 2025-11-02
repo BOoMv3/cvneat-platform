@@ -12,7 +12,10 @@ export default function DeliveryOrderAlert() {
     // Vérifier l'authentification
     checkAuth();
     
-    // Écouter les nouvelles commandes
+    // Écouter les nouvelles commandes - SEULEMENT celles en_preparation avec livreur_id null
+    // Note: La contrainte CHECK n'autorise pas 'pret_a_livrer', donc on utilise 'en_preparation'
+    // Le filtre dans Supabase Realtime ne peut pas filtrer sur livreur_id IS NULL,
+    // donc on filtre sur statut=eq.en_preparation et on filtre côté client
     const channel = supabase
       .channel('delivery-orders')
       .on('postgres_changes', 
@@ -20,11 +23,14 @@ export default function DeliveryOrderAlert() {
           event: 'INSERT', 
           schema: 'public', 
           table: 'commandes',
-          filter: 'statut=in.(en_attente,pret_a_livrer)'
+          filter: 'statut=eq.en_preparation'
         }, 
         (payload) => {
-          console.log('Nouvelle commande disponible:', payload.new);
-          fetchAvailableOrders();
+          // Vérifier que livreur_id est null côté client
+          if (!payload.new.livreur_id) {
+            console.log('Nouvelle commande disponible (en_preparation):', payload.new);
+            fetchAvailableOrders();
+          }
         }
       )
       .on('postgres_changes', 
@@ -32,11 +38,14 @@ export default function DeliveryOrderAlert() {
           event: 'UPDATE', 
           schema: 'public', 
           table: 'commandes',
-          filter: 'statut=in.(en_attente,pret_a_livrer)'
+          filter: 'statut=eq.en_preparation'
         }, 
         (payload) => {
-          console.log('Commande mise à jour:', payload.new);
-          fetchAvailableOrders();
+          // Vérifier que livreur_id est null côté client
+          if (!payload.new.livreur_id) {
+            console.log('Commande disponible mise à jour (en_preparation):', payload.new);
+            fetchAvailableOrders();
+          }
         }
       )
       .subscribe();
@@ -161,12 +170,22 @@ export default function DeliveryOrderAlert() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-green-600">
-                {order.total_amount + order.delivery_fee}€
-              </p>
-              <p className="text-sm text-gray-500">
-                Gain: {order.delivery_fee}€
-              </p>
+              {(() => {
+                const totalAmount = parseFloat(order.total_amount || order.total || 0);
+                const deliveryFee = parseFloat(order.delivery_fee || order.frais_livraison || 0);
+                const total = totalAmount + deliveryFee;
+                
+                return (
+                  <>
+                    <p className="text-lg font-bold text-green-600">
+                      {total.toFixed(2)}€
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Gain: {deliveryFee.toFixed(2)}€
+                    </p>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

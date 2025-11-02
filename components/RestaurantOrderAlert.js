@@ -68,10 +68,30 @@ export default function RestaurantOrderAlert() {
       }
 
       // Récupérer les commandes en attente pour ce restaurant
+      // IMPORTANT: Inclure total_amount, delivery_fee, et tous les champs nécessaires
       const { data, error } = await supabase
         .from('commandes')
         .select(`
-          *,
+          id,
+          created_at,
+          updated_at,
+          statut,
+          total_amount,
+          total,
+          delivery_fee,
+          frais_livraison,
+          restaurant_id,
+          user_id,
+          customer_name,
+          customer_phone,
+          customer_email,
+          delivery_address,
+          delivery_city,
+          delivery_postal_code,
+          delivery_instructions,
+          adresse_livraison,
+          instructions,
+          items,
           details_commande (
             id,
             plat_id,
@@ -81,6 +101,11 @@ export default function RestaurantOrderAlert() {
               nom,
               prix
             )
+          ),
+          users (
+            nom,
+            prenom,
+            telephone
           )
         `)
         .eq('statut', 'en_attente')
@@ -266,18 +291,34 @@ export default function RestaurantOrderAlert() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-gray-800">
-                Total: {(parseFloat(order.total_amount || order.total || 0) + parseFloat(order.delivery_fee || order.frais_livraison || 0)).toFixed(2)}€
-              </p>
-              <p className="text-sm font-semibold text-green-600">
-                Votre gain: {(parseFloat(order.total_amount || order.total || 0) * 0.80).toFixed(2)}€
-              </p>
-              <p className="text-xs text-gray-500">
-                (Commission 20%: {(parseFloat(order.total_amount || order.total || 0) * 0.20).toFixed(2)}€)
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Temps estimé: {calculateEstimatedTime(order.items || order.details_commande || [])} min
-              </p>
+              {(() => {
+                const totalAmount = parseFloat(order.total_amount || order.total || 0);
+                const deliveryFee = parseFloat(order.delivery_fee || order.frais_livraison || 0);
+                const total = totalAmount + deliveryFee;
+                const restaurantGain = totalAmount * 0.80;
+                const commission = totalAmount * 0.20;
+                
+                return (
+                  <>
+                    <p className="text-lg font-bold text-gray-800">
+                      Total: {total.toFixed(2)}€
+                    </p>
+                    {totalAmount > 0 && (
+                      <>
+                        <p className="text-sm font-semibold text-green-600">
+                          Votre gain: {restaurantGain.toFixed(2)}€
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          (Commission 20%: {commission.toFixed(2)}€)
+                        </p>
+                      </>
+                    )}
+                    <p className="text-sm text-gray-500 mt-1">
+                      Temps estimé: {calculateEstimatedTime(order.items || order.details_commande || [])} min
+                    </p>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -307,30 +348,42 @@ export default function RestaurantOrderAlert() {
                   </div>
                 ))
               ) : order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0 ? (
-                order.details_commande.map((item, index) => (
-                  <div key={index} className="flex justify-between text-sm">
-                    <span>{item.quantite}x {item.menus?.nom || 'Plat'}</span>
-                    <span>{(item.prix_unitaire * item.quantite).toFixed(2)}€</span>
-                  </div>
-                ))
+                order.details_commande.map((item, index) => {
+                  const prixUnitaire = parseFloat(item.prix_unitaire || 0);
+                  const quantite = parseInt(item.quantite || 0, 10);
+                  return (
+                    <div key={index} className="flex justify-between text-sm">
+                      <span>{quantite}x {item.menus?.nom || 'Plat'}</span>
+                      <span>{(prixUnitaire * quantite).toFixed(2)}€</span>
+                    </div>
+                  );
+                })
               ) : (
                 <p className="text-sm text-gray-500">Aucun article trouvé</p>
               )}
             </div>
-            <div className="border-t pt-2 mt-2">
-              <div className="flex justify-between text-sm">
-                <span>Sous-total:</span>
-                <span>{parseFloat(order.total_amount || order.total || 0).toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Frais de livraison:</span>
-                <span>{parseFloat(order.delivery_fee || order.frais_livraison || 0).toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span>Total:</span>
-                <span>{(parseFloat(order.total_amount || order.total || 0) + parseFloat(order.delivery_fee || order.frais_livraison || 0)).toFixed(2)}€</span>
-              </div>
-            </div>
+            {(() => {
+              const totalAmount = parseFloat(order.total_amount || order.total || 0);
+              const deliveryFee = parseFloat(order.delivery_fee || order.frais_livraison || 0);
+              const total = totalAmount + deliveryFee;
+              
+              return (
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Sous-total:</span>
+                    <span>{totalAmount.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Frais de livraison:</span>
+                    <span>{deliveryFee.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <span>Total:</span>
+                    <span>{total.toFixed(2)}€</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex space-x-3">
