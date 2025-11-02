@@ -180,13 +180,20 @@ export async function PUT(request, { params }) {
         }
 
     console.log('✅ Commande mise à jour avec succès:', updatedOrder.id);
+    console.log('📋 Statut final de la commande:', {
+      id: updatedOrder.id,
+      statut: updatedOrder.statut,
+      ready_for_delivery: updatedOrder.ready_for_delivery,
+      original_status: status,
+      corrected_status: correctedStatus
+    });
 
     // Notifier les livreurs si la commande est prête à livrer
-    if (correctedStatus === 'pret_a_livrer') {
+    if (status === 'pret_a_livrer' || readyForDelivery === true) {
       try {
         console.log('🔔 Notification aux livreurs pour commande prête');
         // La notification sera automatiquement détectée par le SSE des livreurs
-        // qui surveillent les commandes avec statut 'pret_a_livrer' et livreur_id null
+        // qui surveillent les commandes avec statut 'en_preparation' et ready_for_delivery=true
       } catch (notificationError) {
         console.warn('⚠️ Erreur notification livreurs:', notificationError);
         // Ne pas faire échouer la mise à jour pour une erreur de notification

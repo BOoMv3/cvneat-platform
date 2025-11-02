@@ -235,9 +235,12 @@ export default function PartnerDashboard() {
       console.log('📤 Réponse API:', response.status, response.statusText);
       
       if (response.ok) {
+        const responseData = await response.json().catch(() => null);
         console.log('✅ Commande mise à jour avec succès');
-        // Recharger les données de manière sécurisée
+        console.log('📋 Données retournées par l\'API:', responseData);
+        // Recharger les données de manière sécurisée avec un petit délai pour laisser la base se mettre à jour
         try {
+          await new Promise(resolve => setTimeout(resolve, 500));
           await fetchOrders(restaurant?.id);
           if (restaurant?.id) {
             await fetchDashboardData(restaurant.id);
@@ -247,7 +250,7 @@ export default function PartnerDashboard() {
           // Ne pas bloquer l'utilisateur, juste loguer l'erreur
         }
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
         console.error('❌ Erreur API:', errorData);
         alert(`Erreur: ${errorData.error || 'Impossible de mettre à jour la commande'}`);
       }
@@ -341,6 +344,11 @@ export default function PartnerDashboard() {
       }
       
       setOrders(data);
+      
+      // DEBUG: Afficher les statuts des commandes pour diagnostiquer
+      console.log('🔍 DEBUG fetchOrders - Statuts des commandes:', 
+        data.map(o => ({ id: o.id?.slice(0, 8), statut: o.statut, ready_for_delivery: o.ready_for_delivery }))
+      );
         
       // Calculer les statistiques seulement si data est un tableau valide
       const today = new Date().toDateString();
@@ -353,14 +361,23 @@ export default function PartnerDashboard() {
         order && order.statut === 'en_attente'
       );
       
+      // Calculer le chiffre d'affaires en excluant les commandes annulées
       const totalRevenue = data.reduce((sum, order) => {
         if (!order) return sum;
-          const amount = parseFloat(order.total || 0) || 0;
+        // Exclure les commandes annulées du calcul du chiffre d'affaires
+        if (order.statut === 'annulee' || order.statut === 'refusee') {
+          return sum;
+        }
+        const amount = parseFloat(order.total || 0) || 0;
         return sum + amount;
       }, 0);
       const todayRevenue = todayOrders.reduce((sum, order) => {
         if (!order) return sum;
-          const amount = parseFloat(order.total || 0) || 0;
+        // Exclure les commandes annulées du calcul du chiffre d'affaires
+        if (order.statut === 'annulee' || order.statut === 'refusee') {
+          return sum;
+        }
+        const amount = parseFloat(order.total || 0) || 0;
         return sum + amount;
       }, 0);
       
