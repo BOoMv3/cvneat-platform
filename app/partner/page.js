@@ -318,34 +318,57 @@ export default function PartnerDashboard() {
       const response = await fetch(`/api/partner/orders?restaurantId=${restaurantId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        console.error('❌ Erreur API récupération commandes:', response.status, errorData);
+        setOrders([]); // Définir un tableau vide en cas d'erreur
+        return;
+      }
+      
       const data = await response.json();
-      if (response.ok) {
-        setOrders(data);
+      // S'assurer que data est un tableau
+      if (!Array.isArray(data)) {
+        console.warn('⚠️ Données API invalides (pas un tableau):', data);
+        setOrders([]);
+        setStats({
+          todayOrders: 0,
+          pendingOrders: 0,
+          totalRevenue: 0,
+          recentOrders: []
+        });
+        return;
+      }
+      
+      setOrders(data);
         
-        // Calculer les statistiques
-        const today = new Date().toDateString();
+      // Calculer les statistiques seulement si data est un tableau valide
+      const today = new Date().toDateString();
+        
         const todayOrders = data.filter(order => 
-          new Date(order.created_at).toDateString() === today
+          order && order.created_at && new Date(order.created_at).toDateString() === today
         );
         
         const pendingOrders = data.filter(order => 
-          order.statut === 'en_attente'
+          order && order.statut === 'en_attente'
         );
         
         const totalRevenue = data.reduce((sum, order) => {
+          if (!order) return sum;
           const amount = parseFloat(order.total_amount || order.total || 0) || 0;
           return sum + amount;
         }, 0);
         const todayRevenue = todayOrders.reduce((sum, order) => {
+          if (!order) return sum;
           const amount = parseFloat(order.total_amount || order.total || 0) || 0;
           return sum + amount;
         }, 0);
         
         setStats({
-          todayOrders: todayOrders.length,
-          pendingOrders: pendingOrders.length,
-          totalRevenue: todayRevenue,
-          recentOrders: data.slice(0, 5)
+          todayOrders: todayOrders.length || 0,
+          pendingOrders: pendingOrders.length || 0,
+          totalRevenue: todayRevenue || 0,
+          recentOrders: Array.isArray(data) ? data.slice(0, 5) : []
         });
       }
     } catch (error) {
@@ -537,7 +560,7 @@ export default function PartnerDashboard() {
                 <h2 className="text-lg font-semibold">Commandes recentes</h2>
               </div>
               <div className="p-6">
-                {stats.recentOrders.length === 0 ? (
+                {!Array.isArray(stats?.recentOrders) || stats.recentOrders.length === 0 ? (
                   <p className="text-gray-500 text-center">Aucune commande recente</p>
                 ) : (
                   <div className="space-y-4">
@@ -585,7 +608,7 @@ export default function PartnerDashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total commandes</p>
-                    <p className="text-2xl font-semibold text-gray-900">{orders.length}</p>
+                    <p className="text-2xl font-semibold text-gray-900">{Array.isArray(orders) ? orders.length : 0}</p>
                   </div>
                 </div>
               </div>
@@ -640,7 +663,7 @@ export default function PartnerDashboard() {
                 </p>
               </div>
               <div className="p-6">
-                {orders.length === 0 ? (
+                {!Array.isArray(orders) || orders.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">Aucune commande pour le moment</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
@@ -771,7 +794,7 @@ export default function PartnerDashboard() {
 
             <div className="bg-white rounded-lg shadow-sm">
               <div className="p-6">
-                {menu.length === 0 ? (
+                {!Array.isArray(menu) || menu.length === 0 ? (
                   <p className="text-gray-500 text-center">Aucun plat dans le menu</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">

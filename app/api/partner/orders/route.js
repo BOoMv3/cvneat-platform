@@ -109,58 +109,92 @@ export async function GET(request) {
     
     // Maintenant la requête complète avec JOIN avec le client admin
     // IMPORTANT: Inclure explicitement total_amount, total, delivery_fee pour éviter les valeurs undefined
-    const { data: orders, error: ordersError } = await supabaseAdmin
-      .from('commandes')
-      .select(`
-        id,
-        created_at,
-        updated_at,
-        statut,
-        total_amount,
-        total,
-        delivery_fee,
-        frais_livraison,
-        restaurant_id,
-        user_id,
-        livreur_id,
-        customer_name,
-        customer_phone,
-        customer_email,
-        delivery_address,
-        delivery_city,
-        delivery_postal_code,
-        delivery_instructions,
-        adresse_livraison,
-        instructions,
-        preparation_time,
-        details_commande (
+    // Note: La relation users peut échouer si la foreign key n'existe pas, donc on la rend optionnelle
+    let orders = [];
+    let ordersError = null;
+    
+    try {
+      const { data: ordersData, error: ordersErrorData } = await supabaseAdmin
+        .from('commandes')
+        .select(`
           id,
-          plat_id,
-          quantite,
-          prix_unitaire,
-          menus (
-            nom,
-            prix
+          created_at,
+          updated_at,
+          statut,
+          total_amount,
+          total,
+          delivery_fee,
+          frais_livraison,
+          restaurant_id,
+          user_id,
+          livreur_id,
+          customer_name,
+          customer_phone,
+          customer_email,
+          delivery_address,
+          delivery_city,
+          delivery_postal_code,
+          delivery_instructions,
+          adresse_livraison,
+          instructions,
+          preparation_time,
+          details_commande (
+            id,
+            plat_id,
+            quantite,
+            prix_unitaire,
+            menus (
+              nom,
+              prix
+            )
           )
-        ),
-        users (
-          id,
-          nom,
-          prenom,
-          telephone,
-          email
-        )
-      `)
-      .eq('restaurant_id', restaurantId)
-      .order('created_at', { ascending: false });
+        `)
+        .eq('restaurant_id', restaurantId)
+        .order('created_at', { ascending: false });
+
+      ordersError = ordersErrorData;
+      orders = ordersData || [];
+
+      // Essayer de récupérer les infos users séparément pour éviter les erreurs de relation
+      if (orders.length > 0 && !ordersError) {
+        const userIds = [...new Set(orders.map(o => o.user_id).filter(Boolean))];
+        if (userIds.length > 0) {
+          try {
+            const { data: usersData } = await supabaseAdmin
+              .from('users')
+              .select('id, nom, prenom, telephone, email')
+              .in('id', userIds);
+            
+            // Mapper les users aux commandes
+            if (usersData && usersData.length > 0) {
+              const usersMap = new Map(usersData.map(u => [u.id, u]));
+              orders = orders.map(order => ({
+                ...order,
+                users: usersMap.get(order.user_id) || null
+              }));
+            }
+          } catch (userError) {
+            console.warn('⚠️ Erreur récupération users (non bloquant):', userError);
+            // Continuer sans les données users
+          }
+        }
+      }
+    } catch (queryError) {
+      console.error('❌ Erreur lors de la requête commandes:', queryError);
+      ordersError = queryError;
+    }
 
     if (ordersError) {
       console.error('❌ Erreur récupération commandes:', ordersError);
-      return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
+      console.error('❌ Détails erreur:', JSON.stringify(ordersError, null, 2));
+      return NextResponse.json({ 
+        error: 'Erreur lors de la récupération des commandes',
+        details: ordersError.message 
+      }, { status: 500 });
     }
 
     console.log('✅ Commandes trouvées:', orders?.length || 0);
-    return NextResponse.json(orders || []);
+    return NextResponse.json(Array.isArray(orders) ? orders : []);
 
   } catch (error) {
     console.error('Erreur API (orders partner):', error);
