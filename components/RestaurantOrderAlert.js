@@ -63,25 +63,47 @@ export default function RestaurantOrderAlert() {
 
   const handleAcceptOrder = async (orderId) => {
     try {
-      const { error } = await supabase
-        .from('commandes')
-        .update({ 
-          statut: 'en_preparation',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+      console.log('🔄 Acceptation commande:', orderId);
+      
+      // Récupérer la session pour l'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Vous devez être connecté pour accepter une commande');
+        return;
+      }
 
-      if (error) throw error;
+      const token = session.access_token;
+      
+      // Utiliser l'API route pour accepter la commande
+      const response = await fetch(`/api/restaurants/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: 'acceptee',
+          preparation_time: 20 // Temps par défaut, peut être modifié plus tard
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'acceptation');
+      }
+
+      console.log('✅ Commande acceptée:', data);
       
       // Retirer la commande de la liste
       setOrders(prev => prev.filter(order => order.id !== orderId));
       
-      // Notifier les livreurs
-      await notifyDeliveryDrivers(orderId);
+      // Afficher un message de succès
+      alert('Commande acceptée avec succès !');
       
     } catch (error) {
-      console.error('Erreur acceptation commande:', error);
-      alert('Erreur lors de l\'acceptation de la commande');
+      console.error('❌ Erreur acceptation commande:', error);
+      alert(`Erreur lors de l'acceptation de la commande: ${error.message}`);
     }
   };
 
@@ -162,22 +184,6 @@ export default function RestaurantOrderAlert() {
     }
   };
 
-  const notifyDeliveryDrivers = async (orderId) => {
-    try {
-      // Mettre à jour le statut pour notifier les livreurs
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'ready',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Erreur notification livreurs:', error);
-    }
-  };
 
   const calculateEstimatedTime = (items) => {
     // Estimation basée sur le nombre d'articles
@@ -253,12 +259,23 @@ export default function RestaurantOrderAlert() {
           <div className="mb-4">
             <h4 className="font-semibold text-gray-700 mb-2">Articles:</h4>
             <div className="space-y-1">
-              {order.items.map((item, index) => (
-                <div key={index} className="flex justify-between text-sm">
-                  <span>{item.quantity}x {item.name}</span>
-                  <span>{item.price}€</span>
-                </div>
-              ))}
+              {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
+                order.items.map((item, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{item.quantity}x {item.name}</span>
+                    <span>{item.price}€</span>
+                  </div>
+                ))
+              ) : order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0 ? (
+                order.details_commande.map((item, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{item.quantite}x {item.menus?.nom || 'Plat'}</span>
+                    <span>{(item.prix_unitaire * item.quantite).toFixed(2)}€</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">Aucun article trouvé</p>
+              )}
             </div>
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between text-sm">
