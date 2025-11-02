@@ -355,12 +355,12 @@ export default function PartnerDashboard() {
       
       const totalRevenue = data.reduce((sum, order) => {
         if (!order) return sum;
-        const amount = parseFloat(order.total_amount || order.total || 0) || 0;
+          const amount = parseFloat(order.total || 0) || 0;
         return sum + amount;
       }, 0);
       const todayRevenue = todayOrders.reduce((sum, order) => {
         if (!order) return sum;
-        const amount = parseFloat(order.total_amount || order.total || 0) || 0;
+          const amount = parseFloat(order.total || 0) || 0;
         return sum + amount;
       }, 0);
       
@@ -568,7 +568,7 @@ export default function PartnerDashboard() {
                         <div>
                           <p className="font-medium">Commande #{order.id}</p>
                           <p className="text-sm text-gray-600">
-                            {(parseFloat(order.total_amount || order.total || 0) || 0).toFixed(2)} €
+                            {(parseFloat(order.total || 0) || 0).toFixed(2)} €
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -667,9 +667,9 @@ export default function PartnerDashboard() {
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
                     {orders.map((order) => {
-                      // Récupérer total_amount avec fallback sur total, puis 0
-                      const totalAmount = parseFloat(order.total_amount || order.total || 0) || 0;
-                      const deliveryFee = parseFloat(order.delivery_fee || order.frais_livraison || 0) || 0;
+                      // Récupérer total (colonne réelle dans la base) avec fallback, puis 0
+                      const totalAmount = parseFloat(order.total || 0) || 0;
+                      const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
                       const total = totalAmount + deliveryFee;
                       
                       const { commission, restaurantRevenue } = calculateCommission(totalAmount);

@@ -108,7 +108,8 @@ export async function GET(request) {
     }
     
     // Maintenant la requête complète avec JOIN avec le client admin
-    // IMPORTANT: Inclure explicitement total_amount, total, delivery_fee pour éviter les valeurs undefined
+    // IMPORTANT: La colonne s'appelle 'total' (pas total_amount) dans la table commandes
+    // Utiliser total et frais_livraison uniquement
     // Note: La relation users peut échouer si la foreign key n'existe pas, donc on la rend optionnelle
     let orders = [];
     let ordersError = null;
@@ -120,11 +121,9 @@ export async function GET(request) {
           id,
           created_at,
           updated_at,
-          statut,
-          total_amount,
-          total,
-          delivery_fee,
-          frais_livraison,
+        statut,
+        total,
+        frais_livraison,
           restaurant_id,
           user_id,
           livreur_id,
