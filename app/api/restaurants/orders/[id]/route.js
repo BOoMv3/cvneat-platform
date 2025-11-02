@@ -112,6 +112,7 @@ export async function PUT(request, { params }) {
 
     // Mettre à jour la commande - CORRIGER LE STATUT SELON LA CONTRAINTE CHECK
     let correctedStatus = status;
+    let readyForDelivery = null;
     
     // MAPPING POUR CORRESPONDRE EXACTEMENT À LA CONTRAINTE CHECK DE LA BASE DE DONNÉES
     // La contrainte CHECK accepte: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
@@ -127,12 +128,25 @@ export async function PUT(request, { params }) {
       console.log('🔄 Statut mappé:', { original: status, final: correctedStatus, raison: 'Contrainte CHECK base de données' });
     }
     
+    // Si le restaurant marque "prêt à livrer", on met ready_for_delivery = true
+    // Sinon, si c'est "acceptee", on met ready_for_delivery = false
+    if (status === 'pret_a_livrer') {
+      readyForDelivery = true;
+    } else if (status === 'acceptee') {
+      readyForDelivery = false;
+    }
+    
     console.log('📋 Statuts autorisés par CHECK: en_attente, en_preparation, en_livraison, livree, annulee');
     
     const updateData = {
       statut: correctedStatus,
       updated_at: new Date().toISOString()
     };
+
+    // Ajouter ready_for_delivery si on a une valeur
+    if (readyForDelivery !== null) {
+      updateData.ready_for_delivery = readyForDelivery;
+    }
 
     if (reason) {
       updateData.rejection_reason = reason;

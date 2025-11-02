@@ -127,6 +127,7 @@ export async function GET(request) {
           livreur_id,
           adresse_livraison,
           preparation_time,
+          ready_for_delivery,
           details_commande (
             id,
             plat_id,

@@ -12,10 +12,9 @@ export default function DeliveryOrderAlert() {
     // Vérifier l'authentification
     checkAuth();
     
-    // Écouter les nouvelles commandes - SEULEMENT celles en_preparation avec livreur_id null
-    // Note: La contrainte CHECK n'autorise pas 'pret_a_livrer', donc on utilise 'en_preparation'
-    // Le filtre dans Supabase Realtime ne peut pas filtrer sur livreur_id IS NULL,
-    // donc on filtre sur statut=eq.en_preparation et on filtre côté client
+    // Écouter les nouvelles commandes - SEULEMENT celles en_preparation avec ready_for_delivery=true
+    // Le filtre dans Supabase Realtime peut filtrer sur statut et ready_for_delivery
+    // On filtre aussi côté client pour vérifier livreur_id IS NULL
     const channel = supabase
       .channel('delivery-orders')
       .on('postgres_changes', 
@@ -26,9 +25,9 @@ export default function DeliveryOrderAlert() {
           filter: 'statut=eq.en_preparation'
         }, 
         (payload) => {
-          // Vérifier que livreur_id est null côté client
-          if (!payload.new.livreur_id) {
-            console.log('Nouvelle commande disponible (en_preparation):', payload.new);
+          // Vérifier que ready_for_delivery est true et livreur_id est null
+          if (payload.new.ready_for_delivery === true && !payload.new.livreur_id) {
+            console.log('Nouvelle commande disponible (prête pour livraison):', payload.new);
             fetchAvailableOrders();
           }
         }
@@ -41,9 +40,9 @@ export default function DeliveryOrderAlert() {
           filter: 'statut=eq.en_preparation'
         }, 
         (payload) => {
-          // Vérifier que livreur_id est null côté client
-          if (!payload.new.livreur_id) {
-            console.log('Commande disponible mise à jour (en_preparation):', payload.new);
+          // Vérifier que ready_for_delivery est true et livreur_id est null
+          if (payload.new.ready_for_delivery === true && !payload.new.livreur_id) {
+            console.log('Commande disponible mise à jour (prête pour livraison):', payload.new);
             fetchAvailableOrders();
           }
         }

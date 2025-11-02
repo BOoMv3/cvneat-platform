@@ -45,15 +45,18 @@ export async function GET(request) {
 
     // Récupérer les commandes disponibles pour livraison
     // IMPORTANT: La contrainte CHECK n'autorise que: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
-    // Donc 'pret_a_livrer' n'existe pas. Les livreurs voient les commandes 'en_preparation' avec livreur_id null
-    // Cela signifie que le restaurant a accepté la commande et la prépare/prépare pour la livraison
+    // Les livreurs voient uniquement les commandes:
+    // - avec statut='en_preparation' (restaurant a accepté et marqué comme prête)
+    // - avec ready_for_delivery=true (restaurant a marqué "prêt à livrer")
+    // - avec livreur_id null (pas encore assignées)
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse, telephone, frais_livraison)
       `)
-      .eq('statut', 'en_preparation') // Commandes en préparation (restaurant a accepté)
+      .eq('statut', 'en_preparation') // Commandes en préparation
+      .eq('ready_for_delivery', true) // SEULEMENT celles marquées comme prêtes par le restaurant
       .is('livreur_id', null) // Pas encore assignées à un livreur
       .order('created_at', { ascending: true });
 

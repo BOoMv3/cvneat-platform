@@ -62,12 +62,21 @@ export async function POST(request, { params }) {
 
     // Vérifier que la commande est dans un statut acceptable
     // Les statuts autorisés par la contrainte CHECK sont: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
-    // Les livreurs peuvent accepter les commandes 'en_preparation' (restaurant a accepté)
+    // Les livreurs peuvent accepter les commandes 'en_preparation' avec ready_for_delivery=true (restaurant a marqué comme prête)
     if (!['en_preparation'].includes(order.statut)) {
       console.log('❌ Statut commande non acceptable pour livreur:', order.statut);
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
         details: `Statut actuel: ${order.statut}. Seules les commandes en préparation peuvent être acceptées.` 
+      }, { status: 400 });
+    }
+
+    // Vérifier que la commande est marquée comme prête pour livraison
+    if (order.ready_for_delivery !== true) {
+      console.log('❌ Commande non prête pour livraison:', { orderId, ready_for_delivery: order.ready_for_delivery });
+      return NextResponse.json({ 
+        error: 'Commande non prête pour livraison', 
+        details: 'Le restaurant n\'a pas encore marqué cette commande comme prête.' 
       }, { status: 400 });
     }
 
