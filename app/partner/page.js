@@ -237,10 +237,21 @@ export default function PartnerDashboard() {
       if (response.ok) {
         const responseData = await response.json().catch(() => null);
         console.log('✅ Commande mise à jour avec succès');
-        console.log('📋 Données retournées par l\'API:', responseData);
+        console.log('📋 Données retournées par l\'API:', JSON.stringify(responseData, null, 2));
+        
+        // Vérifier le statut retourné par l'API
+        if (responseData && responseData.order) {
+          console.log('🔍 Statut dans la réponse API:', {
+            orderId: responseData.order.id,
+            statut: responseData.order.statut,
+            ready_for_delivery: responseData.order.ready_for_delivery,
+            original_status_sent: status
+          });
+        }
+        
         // Recharger les données de manière sécurisée avec un petit délai pour laisser la base se mettre à jour
         try {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Augmenter le délai à 1 seconde
           await fetchOrders(restaurant?.id);
           if (restaurant?.id) {
             await fetchDashboardData(restaurant.id);
@@ -347,8 +358,26 @@ export default function PartnerDashboard() {
       
       // DEBUG: Afficher les statuts des commandes pour diagnostiquer
       console.log('🔍 DEBUG fetchOrders - Statuts des commandes:', 
-        data.map(o => ({ id: o.id?.slice(0, 8), statut: o.statut, ready_for_delivery: o.ready_for_delivery }))
+        data.map(o => ({ 
+          id: o.id?.slice(0, 8), 
+          statut: o.statut, 
+          ready_for_delivery: o.ready_for_delivery,
+          created_at: o.created_at,
+          updated_at: o.updated_at
+        }))
       );
+      
+      // DEBUG: Vérifier spécifiquement les commandes qui devraient être en_preparation
+      const ordersWithIssues = data.filter(o => 
+        o.statut === 'annulee' && o.created_at && new Date(o.created_at).getTime() > Date.now() - 3600000 // Dernière heure
+      );
+      if (ordersWithIssues.length > 0) {
+        console.warn('⚠️ Commandes récemment créées mais marquées comme annulées:', ordersWithIssues.map(o => ({
+          id: o.id?.slice(0, 8),
+          statut: o.statut,
+          created_at: o.created_at
+        })));
+      }
         
       // Calculer les statistiques seulement si data est un tableau valide
       const today = new Date().toDateString();

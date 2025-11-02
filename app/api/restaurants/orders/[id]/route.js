@@ -185,8 +185,35 @@ export async function PUT(request, { params }) {
       statut: updatedOrder.statut,
       ready_for_delivery: updatedOrder.ready_for_delivery,
       original_status: status,
-      corrected_status: correctedStatus
+      corrected_status: correctedStatus,
+      updateData_sent: updateData
     });
+    
+    // VÉRIFICATION CRITIQUE: Vérifier immédiatement après la mise à jour que le statut est bien sauvegardé
+    const { data: verifyOrder, error: verifyError } = await supabaseAdmin
+      .from('commandes')
+      .select('id, statut, ready_for_delivery, updated_at')
+      .eq('id', id)
+      .single();
+    
+    if (verifyError) {
+      console.error('❌ Erreur lors de la vérification:', verifyError);
+    } else {
+      console.log('🔍 VÉRIFICATION POST-UPDATE:', {
+        id: verifyOrder.id,
+        statut: verifyOrder.statut,
+        ready_for_delivery: verifyOrder.ready_for_delivery,
+        updated_at: verifyOrder.updated_at,
+        match_expected: verifyOrder.statut === correctedStatus
+      });
+      
+      if (verifyOrder.statut !== correctedStatus) {
+        console.error('⚠️ ALERTE: Le statut sauvegardé ne correspond PAS au statut attendu!', {
+          expected: correctedStatus,
+          actual: verifyOrder.statut
+        });
+      }
+    }
 
     // Notifier les livreurs si la commande est prête à livrer
     if (status === 'pret_a_livrer' || readyForDelivery === true) {
