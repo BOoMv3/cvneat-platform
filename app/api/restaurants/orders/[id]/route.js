@@ -157,7 +157,8 @@ export async function PUT(request, { params }) {
       updateData.preparation_time = preparation_time;
     }
 
-        console.log('📤 Données de mise à jour:', updateData);
+        console.log('📤 Données de mise à jour:', JSON.stringify(updateData, null, 2));
+        console.log('📤 ID commande à mettre à jour:', id);
 
         // Utiliser le service role pour la mise à jour aussi
         const { data: updatedOrder, error: updateError } = await supabaseAdmin
@@ -166,6 +167,12 @@ export async function PUT(request, { params }) {
           .eq('id', id)
           .select()
           .single();
+        
+        console.log('📤 Résultat de la mise à jour Supabase:', {
+          success: !!updatedOrder && !updateError,
+          error: updateError ? updateError.message : null,
+          rows_affected: updatedOrder ? 1 : 0
+        });
 
         if (updateError) {
           console.error('❌ Erreur mise à jour commande:', updateError);
