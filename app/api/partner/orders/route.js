@@ -184,6 +184,19 @@ export async function GET(request) {
     }
 
     console.log('✅ Commandes trouvées:', orders?.length || 0);
+    
+    // DEBUG: Afficher les statuts des commandes retournées par l'API
+    if (orders && orders.length > 0) {
+      console.log('🔍 DEBUG API - Statuts des commandes retournées:', 
+        orders.map(o => ({
+          id: o.id?.slice(0, 8),
+          statut: o.statut,
+          statut_type: typeof o.statut,
+          statut_raw: JSON.stringify(o.statut)
+        }))
+      );
+    }
+    
     return NextResponse.json(Array.isArray(orders) ? orders : []);
 
   } catch (error) {
