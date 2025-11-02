@@ -21,7 +21,7 @@ export default function OrderStatusNotification({ orderId }) {
         { 
           event: 'UPDATE', 
           schema: 'public', 
-          table: 'orders',
+          table: 'commandes',
           filter: `id=eq.${orderId}`
         }, 
         (payload) => {
@@ -43,7 +43,7 @@ export default function OrderStatusNotification({ orderId }) {
   const fetchOrderDetails = async () => {
     try {
       const { data, error } = await supabase
-        .from('orders')
+        .from('commandes')
         .select('*')
         .eq('id', orderId)
         .single();
@@ -57,18 +57,26 @@ export default function OrderStatusNotification({ orderId }) {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (statut) => {
+    // Normaliser les statuts (accepter les deux formats)
+    const status = statut || order?.statut;
     switch (status) {
+      case 'acceptee':
       case 'accepted':
         return <FaCheckCircle className="text-green-500" />;
+      case 'refusee':
       case 'rejected':
         return <FaTimesCircle className="text-red-500" />;
+      case 'en_preparation':
       case 'preparing':
         return <FaClock className="text-yellow-500" />;
+      case 'pret_a_livrer':
       case 'ready':
         return <FaCheckCircle className="text-blue-500" />;
+      case 'livree':
       case 'delivered':
         return <FaCheckCircle className="text-green-600" />;
+      case 'annulee':
       case 'cancelled':
         return <FaTimesCircle className="text-gray-500" />;
       default:
@@ -76,20 +84,31 @@ export default function OrderStatusNotification({ orderId }) {
     }
   };
 
-  const getStatusMessage = (status, rejectionReason) => {
+  const getStatusMessage = (statut, rejectionReason) => {
+    // Normaliser les statuts
+    const status = statut || order?.statut;
     switch (status) {
+      case 'en_attente':
       case 'pending':
         return 'Votre commande est en attente de confirmation...';
+      case 'acceptee':
       case 'accepted':
         return 'Votre commande a été acceptée et est en préparation !';
+      case 'refusee':
       case 'rejected':
         return `Votre commande a été refusée. ${rejectionReason ? `Raison: ${rejectionReason}` : ''}`;
+      case 'en_preparation':
       case 'preparing':
         return 'Votre commande est en cours de préparation...';
+      case 'pret_a_livrer':
       case 'ready':
         return 'Votre commande est prête ! Un livreur va la récupérer.';
+      case 'en_livraison':
+        return 'Votre commande est en cours de livraison...';
+      case 'livree':
       case 'delivered':
         return 'Votre commande a été livrée ! Bon appétit !';
+      case 'annulee':
       case 'cancelled':
         return 'Votre commande a été annulée et remboursée.';
       default:
@@ -97,19 +116,30 @@ export default function OrderStatusNotification({ orderId }) {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (statut) => {
+    // Normaliser les statuts
+    const status = statut || order?.statut;
     switch (status) {
+      case 'acceptee':
       case 'accepted':
+      case 'livree':
       case 'delivered':
         return 'bg-green-100 border-green-500 text-green-800';
+      case 'refusee':
       case 'rejected':
+      case 'annulee':
       case 'cancelled':
         return 'bg-red-100 border-red-500 text-red-800';
+      case 'en_preparation':
       case 'preparing':
+      case 'pret_a_livrer':
       case 'ready':
         return 'bg-yellow-100 border-yellow-500 text-yellow-800';
+      case 'en_attente':
       case 'pending':
         return 'bg-blue-100 border-blue-500 text-blue-800';
+      case 'en_livraison':
+        return 'bg-purple-100 border-purple-500 text-purple-800';
       default:
         return 'bg-gray-100 border-gray-500 text-gray-800';
     }
@@ -132,13 +162,13 @@ export default function OrderStatusNotification({ orderId }) {
       {/* Notification toast */}
       {showNotification && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in">
-          <div className={`p-4 rounded-lg shadow-lg border-l-4 ${getStatusColor(order.status)} max-w-sm`}>
+          <div className={`p-4 rounded-lg shadow-lg border-l-4 ${getStatusColor(order.statut)} max-w-sm`}>
             <div className="flex items-center space-x-3">
-              {getStatusIcon(order.status)}
+              {getStatusIcon(order.statut)}
               <div className="flex-1">
                 <h4 className="font-semibold">Commande #{order.id}</h4>
-                <p className="text-sm">{getStatusMessage(order.status, order.rejection_reason)}</p>
-                {order.status === 'rejected' && order.refund_amount && (
+                <p className="text-sm">{getStatusMessage(order.statut, order.rejection_reason)}</p>
+                {(order.statut === 'refusee' || order.statut === 'rejected') && order.refund_amount && (
                   <p className="text-xs mt-1">
                     💰 Remboursement de {order.refund_amount}€ en cours...
                   </p>
@@ -159,7 +189,7 @@ export default function OrderStatusNotification({ orderId }) {
       <div className="fixed bottom-4 right-4 z-40">
         <div className="bg-white p-4 rounded-lg shadow-lg border max-w-sm">
           <div className="flex items-center space-x-3 mb-2">
-            {getStatusIcon(order.status)}
+            {getStatusIcon(order.statut)}
             <div>
               <h4 className="font-semibold text-sm">Commande #{order.id}</h4>
               <p className="text-xs text-gray-600">
@@ -169,17 +199,17 @@ export default function OrderStatusNotification({ orderId }) {
           </div>
           
           <div className="text-sm">
-            <p className={getStatusColor(order.status).split(' ')[2]}>
-              {getStatusMessage(order.status, order.rejection_reason)}
+            <p className={getStatusColor(order.statut).split(' ')[2]}>
+              {getStatusMessage(order.statut, order.rejection_reason)}
             </p>
             
-            {order.status === 'preparing' && order.preparation_time && (
+            {(order.statut === 'en_preparation' || order.statut === 'preparing') && order.preparation_time && (
               <p className="text-xs text-gray-600 mt-1">
                 ⏱️ Temps estimé: {order.preparation_time} minutes
               </p>
             )}
             
-            {order.status === 'rejected' && order.refund_amount && (
+            {(order.statut === 'refusee' || order.statut === 'rejected') && order.refund_amount && (
               <div className="mt-2 p-2 bg-red-50 rounded text-xs">
                 <p className="text-red-800">
                   💰 Remboursement de {order.refund_amount}€ en cours...

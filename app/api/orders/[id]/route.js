@@ -56,7 +56,7 @@ export async function PUT(request, { params }) {
     const { data, error } = await supabase
       .from('commandes')
       .update({
-        statut: body.status,
+        statut: body.statut || body.status, // Accepter les deux pour compatibilité
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

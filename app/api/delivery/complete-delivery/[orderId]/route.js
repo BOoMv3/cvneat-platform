@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request, { params }) {
   try {
@@ -47,12 +48,18 @@ export async function POST(request, { params }) {
     
     console.log('✅ Rôle livreur confirmé');
 
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     // Vérifier que la commande existe et n'est pas déjà livrée
-    const { data: order, error: checkError } = await supabase
+    const { data: order, error: checkError } = await supabaseAdmin
       .from('commandes')
       .select('*')
       .eq('id', orderId)
-      .not('status', 'eq', 'delivered')
+      .neq('statut', 'livree')
       .single();
 
     if (checkError || !order) {
@@ -63,10 +70,18 @@ export async function POST(request, { params }) {
       );
     }
     
-    console.log('✅ Commande trouvée:', order.id, 'statut:', order.status);
+    // Vérifier que le livreur est bien assigné à cette commande
+    if (order.livreur_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Vous n\'êtes pas assigné à cette commande' },
+        { status: 403 }
+      );
+    }
+    
+    console.log('✅ Commande trouvée:', order.id, 'statut:', order.statut);
 
-    // Vérifier le code de sécurité
-    if (order.security_code !== securityCode) {
+    // Vérifier le code de sécurité (si présent)
+    if (order.security_code && order.security_code !== securityCode) {
       console.error('❌ Code de sécurité incorrect:', securityCode, 'attendu:', order.security_code);
       return NextResponse.json({ error: 'Code de sécurité incorrect' }, { status: 400 });
     }
@@ -74,10 +89,10 @@ export async function POST(request, { params }) {
     console.log('✅ Code de sécurité validé');
 
     // Marquer la commande comme livrée
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('commandes')
       .update({
-        status: 'delivered',
+        statut: 'livree',
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId);
@@ -101,7 +116,7 @@ export async function POST(request, { params }) {
         },
         body: JSON.stringify({
           orderId: orderId,
-          customerId: order.customer_id
+          customerId: order.user_id
         })
       });
 

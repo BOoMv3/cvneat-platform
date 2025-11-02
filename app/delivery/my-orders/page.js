@@ -152,18 +152,22 @@ export default function MyOrdersPage() {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-2">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      order.status === 'accepted' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'preparing' ? 'bg-orange-100 text-orange-800' :
-                      order.status === 'ready' ? 'bg-green-100 text-green-800' :
+                      order.statut === 'acceptee' || order.statut === 'accepted' ? 'bg-yellow-100 text-yellow-800' :
+                      order.statut === 'en_preparation' || order.statut === 'preparing' ? 'bg-orange-100 text-orange-800' :
+                      order.statut === 'pret_a_livrer' || order.statut === 'ready' ? 'bg-green-100 text-green-800' :
+                      order.statut === 'en_livraison' ? 'bg-blue-100 text-blue-800' :
+                      order.statut === 'livree' ? 'bg-gray-100 text-gray-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {order.status === 'accepted' ? 'Acceptée' :
-                       order.status === 'preparing' ? 'En préparation' :
-                       order.status === 'ready' ? 'Prête' : order.status}
+                      {order.statut === 'acceptee' || order.statut === 'accepted' ? 'Acceptée' :
+                       order.statut === 'en_preparation' || order.statut === 'preparing' ? 'En préparation' :
+                       order.statut === 'pret_a_livrer' || order.statut === 'ready' ? 'Prête' : 
+                       order.statut === 'en_livraison' ? 'En livraison' :
+                       order.statut === 'livree' ? 'Livrée' : order.statut || 'Inconnu'}
                     </span>
                   </div>
                   
-                  {order.status === 'ready' && (
+                  {(order.statut === 'pret_a_livrer' || order.statut === 'ready' || order.statut === 'en_livraison') && (
                     <button
                       onClick={() => completeOrder(order.id)}
                       className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"

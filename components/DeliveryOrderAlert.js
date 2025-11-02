@@ -19,8 +19,8 @@ export default function DeliveryOrderAlert() {
         { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'orders',
-          filter: 'status=in.(pending,ready)'
+          table: 'commandes',
+          filter: 'statut=in.(en_attente,pret_a_livrer)'
         }, 
         (payload) => {
           console.log('Nouvelle commande disponible:', payload.new);
@@ -31,8 +31,8 @@ export default function DeliveryOrderAlert() {
         { 
           event: 'UPDATE', 
           schema: 'public', 
-          table: 'orders',
-          filter: 'status=in.(pending,ready)'
+          table: 'commandes',
+          filter: 'statut=in.(en_attente,pret_a_livrer)'
         }, 
         (payload) => {
           console.log('Commande mise à jour:', payload.new);
@@ -82,44 +82,27 @@ export default function DeliveryOrderAlert() {
 
   const handleAcceptOrder = async (orderId) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'in_delivery',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+      // Utiliser l'API pour accepter la commande
+      const response = await fetch(`/api/delivery/accept-order/${orderId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de l\'acceptation');
+      }
       
       // Retirer la commande de la liste
       setOrders(prev => prev.filter(order => order.id !== orderId));
-      
-      // Notifier le restaurant
-      await notifyRestaurant(orderId);
       
       alert('Commande acceptée avec succès !');
       
     } catch (error) {
       console.error('Erreur acceptation commande:', error);
-      alert('Erreur lors de l\'acceptation de la commande');
-    }
-  };
-
-  const notifyRestaurant = async (orderId) => {
-    try {
-      // Mettre à jour le statut pour notifier le restaurant
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'in_delivery',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Erreur notification restaurant:', error);
+      alert(error.message || 'Erreur lors de l\'acceptation de la commande');
     }
   };
 

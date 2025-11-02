@@ -60,37 +60,63 @@ export default function OrderConfirmation() {
     }
   };
 
-  const getStatusText = (status) => {
+  // Helper pour obtenir le statut (normaliser statut/status)
+  const getStatus = () => {
+    return orderData?.statut || orderData?.status;
+  };
+
+  const getStatusText = (statut) => {
+    const status = statut || getStatus();
     switch (status) {
+      case 'en_attente':
       case 'pending':
         return 'En attente d\'acceptation';
+      case 'acceptee':
       case 'accepted':
         return 'Commande acceptée';
+      case 'refusee':
       case 'rejected':
         return 'Commande refusée';
+      case 'en_preparation':
       case 'preparing':
         return 'En cours de préparation';
+      case 'pret_a_livrer':
       case 'ready':
         return 'Prête pour la livraison';
+      case 'en_livraison':
+        return 'En cours de livraison';
+      case 'livree':
       case 'delivered':
         return 'Livrée';
+      case 'annulee':
+      case 'cancelled':
+        return 'Annulée';
       default:
-        return status;
+        return status || 'Inconnu';
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (statut) => {
+    const status = statut || getStatus();
     switch (status) {
+      case 'en_attente':
       case 'pending':
         return <FaClock className="h-5 w-5" />;
+      case 'acceptee':
       case 'accepted':
         return <FaCheck className="h-5 w-5" />;
+      case 'refusee':
       case 'rejected':
         return <FaCheck className="h-5 w-5" />;
+      case 'en_preparation':
       case 'preparing':
         return <FaUtensils className="h-5 w-5" />;
+      case 'pret_a_livrer':
       case 'ready':
         return <FaMotorcycle className="h-5 w-5" />;
+      case 'en_livraison':
+        return <FaTruck className="h-5 w-5" />;
+      case 'livree':
       case 'delivered':
         return <FaHome className="h-5 w-5" />;
       default:
@@ -98,18 +124,27 @@ export default function OrderConfirmation() {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (statut) => {
+    const status = statut || getStatus();
     switch (status) {
+      case 'en_attente':
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'acceptee':
       case 'accepted':
         return 'bg-green-100 text-green-800 border-green-200';
+      case 'refusee':
       case 'rejected':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'en_preparation':
       case 'preparing':
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'pret_a_livrer':
       case 'ready':
         return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'en_livraison':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'livree':
       case 'delivered':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
@@ -119,14 +154,18 @@ export default function OrderConfirmation() {
 
   const getEstimatedTime = () => {
     if (!orderData) return 30;
-    
-    switch (orderData.status) {
+    const status = getStatus();
+    switch (status) {
+      case 'en_attente':
       case 'pending':
         return 35;
+      case 'acceptee':
       case 'accepted':
         return 30;
+      case 'en_preparation':
       case 'preparing':
         return 20;
+      case 'pret_a_livrer':
       case 'ready':
         return 10;
       default:
@@ -275,9 +314,9 @@ export default function OrderConfirmation() {
               </p>
               
               {/* Statut de la commande */}
-              <div className={`inline-flex items-center space-x-2 px-6 py-3 rounded-full text-sm font-semibold border ${getStatusColor(orderData.status)}`}>
-                {getStatusIcon(orderData.status)}
-                <span>{getStatusText(orderData.status)}</span>
+              <div className={`inline-flex items-center space-x-2 px-6 py-3 rounded-full text-sm font-semibold border ${getStatusColor()}`}>
+                {getStatusIcon()}
+                <span>{getStatusText()}</span>
               </div>
             </div>
 
@@ -304,16 +343,29 @@ export default function OrderConfirmation() {
                 {/* Étapes de la commande */}
                 <div className="space-y-4">
                   {[
-                    { status: 'pending', label: 'Commande reçue', icon: FaCheck },
-                    { status: 'accepted', label: 'Restaurant accepte', icon: FaUtensils },
-                    { status: 'preparing', label: 'En préparation', icon: FaUtensils },
-                    { status: 'ready', label: 'Prêt pour livraison', icon: FaMotorcycle },
-                    { status: 'delivered', label: 'Livré', icon: FaHome }
+                    { status: 'en_attente', label: 'Commande reçue', icon: FaCheck },
+                    { status: 'acceptee', label: 'Restaurant accepte', icon: FaUtensils },
+                    { status: 'en_preparation', label: 'En préparation', icon: FaUtensils },
+                    { status: 'pret_a_livrer', label: 'Prêt pour livraison', icon: FaMotorcycle },
+                    { status: 'livree', label: 'Livré', icon: FaHome }
                   ].map((step, index) => {
-                    const isActive = orderData.status === step.status;
-                    const isCompleted = ['accepted', 'preparing', 'ready', 'delivered'].includes(orderData.status) && 
-                                      ['pending', 'accepted', 'preparing', 'ready', 'delivered'].indexOf(step.status) <= 
-                                      ['pending', 'accepted', 'preparing', 'ready', 'delivered'].indexOf(orderData.status);
+                    const currentStatus = getStatus();
+                    const statusMap = {
+                      'en_attente': 0, 'pending': 0,
+                      'acceptee': 1, 'accepted': 1,
+                      'en_preparation': 2, 'preparing': 2,
+                      'pret_a_livrer': 3, 'ready': 3,
+                      'en_livraison': 4,
+                      'livree': 5, 'delivered': 5
+                    };
+                    const stepIndex = statusMap[step.status] || 0;
+                    const currentIndex = statusMap[currentStatus] || 0;
+                    const isActive = currentStatus === step.status || 
+                                   (step.status === 'en_attente' && (currentStatus === 'pending' || currentStatus === 'en_attente')) ||
+                                   (step.status === 'acceptee' && (currentStatus === 'accepted' || currentStatus === 'acceptee')) ||
+                                   (step.status === 'en_preparation' && (currentStatus === 'preparing' || currentStatus === 'en_preparation')) ||
+                                   (step.status === 'pret_a_livrer' && (currentStatus === 'ready' || currentStatus === 'pret_a_livrer'));
+                    const isCompleted = currentIndex > stepIndex;
                     
                     return (
                       <div key={step.status} className="flex items-center space-x-4">
@@ -457,7 +509,10 @@ export default function OrderConfirmation() {
                 
                 <div className="space-y-3">
                   {/* Bouton de suivi GPS en temps réel */}
-                  {orderData?.status && ['acceptee', 'en_preparation', 'pret_a_livrer', 'en_livraison'].includes(orderData.status) && (
+                  {(() => {
+                    const status = getStatus();
+                    return status && ['acceptee', 'accepted', 'en_preparation', 'preparing', 'pret_a_livrer', 'ready', 'en_livraison'].includes(status);
+                  })() && (
                     <button
                       onClick={() => router.push(`/track/${id}`)}
                       className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 transform hover:scale-105 font-semibold flex items-center justify-center space-x-2"

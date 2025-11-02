@@ -107,8 +107,11 @@ export default function TrackOrder() {
       icon: '📝'
     });
 
+    // Normaliser le statut
+    const status = orderData.statut || orderData.status;
+    
     // Notification d'acceptation
-    if (['accepted', 'preparing', 'ready', 'delivered'].includes(orderData.status)) {
+    if (['acceptee', 'accepted', 'en_preparation', 'preparing', 'pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
       notifs.push({
         id: 2,
         title: 'Commande acceptée',
@@ -120,7 +123,7 @@ export default function TrackOrder() {
     }
 
     // Notification de préparation
-    if (['preparing', 'ready', 'delivered'].includes(orderData.status)) {
+    if (['en_preparation', 'preparing', 'pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
       notifs.push({
         id: 3,
         title: 'Préparation en cours',
@@ -132,7 +135,7 @@ export default function TrackOrder() {
     }
 
     // Notification prête
-    if (['ready', 'delivered'].includes(orderData.status)) {
+    if (['pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
       notifs.push({
         id: 4,
         title: 'Commande prête',
@@ -144,7 +147,7 @@ export default function TrackOrder() {
     }
 
     // Notification en cours de livraison
-    if (orderData.status === 'delivered' && orderData.delivery_id) {
+    if ((status === 'en_livraison' || status === 'livree' || status === 'delivered') && (orderData.livreur_id || orderData.delivery_id)) {
       notifs.push({
         id: 5,
         title: 'En cours de livraison',
@@ -156,7 +159,7 @@ export default function TrackOrder() {
     }
 
     // Notification livrée
-    if (orderData.status === 'delivered') {
+    if (status === 'livree' || status === 'delivered') {
       notifs.push({
         id: 6,
         title: 'Commande livrée',
@@ -170,22 +173,34 @@ export default function TrackOrder() {
     setNotifications(notifs);
   };
 
-  const getStatusText = (status) => {
+  const getStatusText = (statut) => {
+    const status = statut || order?.statut || order?.status;
     switch (status) {
+      case 'en_attente':
       case 'pending':
         return 'En attente';
+      case 'acceptee':
       case 'accepted':
         return 'Acceptée';
+      case 'refusee':
       case 'rejected':
         return 'Refusée';
+      case 'en_preparation':
       case 'preparing':
         return 'En préparation';
+      case 'pret_a_livrer':
       case 'ready':
         return 'Prête';
+      case 'en_livraison':
+        return 'En livraison';
+      case 'livree':
       case 'delivered':
         return 'Livrée';
+      case 'annulee':
+      case 'cancelled':
+        return 'Annulée';
       default:
-        return status;
+        return status || 'Inconnu';
     }
   };
 
@@ -235,29 +250,34 @@ export default function TrackOrder() {
           const data = await response.json();
           
           // Vérifier si le statut a changé
-          if (data.status !== lastStatus) {
-            console.log('🔄 Statut changé:', lastStatus, '→', data.status);
+          const currentStatus = data.statut || data.status;
+          if (currentStatus !== lastStatus) {
+            console.log('🔄 Statut changé:', lastStatus, '→', currentStatus);
             setOrder(data);
-            setLastStatus(data.status);
+            setLastStatus(currentStatus);
             generateNotifications(data);
             
             // Afficher une notification du navigateur
             if (Notification.permission === 'granted') {
               const statusMessages = {
+                'acceptee': 'Votre commande a été acceptée !',
                 'accepted': 'Votre commande a été acceptée !',
+                'en_preparation': 'Votre commande est en cours de préparation',
                 'preparing': 'Votre commande est en cours de préparation',
+                'pret_a_livrer': 'Votre commande est prête !',
                 'ready': 'Votre commande est prête !',
+                'livree': 'Votre commande a été livrée !',
                 'delivered': 'Votre commande a été livrée !'
               };
               
               new Notification('CVN\'EAT - Mise à jour commande', {
-                body: statusMessages[data.status] || 'Statut de votre commande mis à jour',
+                body: statusMessages[currentStatus] || 'Statut de votre commande mis à jour',
                 icon: '/favicon.ico'
               });
             }
             
             // Arrêter le suivi si la commande est terminée
-            if (data.status === 'delivered' || data.status === 'rejected') {
+            if (currentStatus === 'livree' || currentStatus === 'delivered' || currentStatus === 'refusee' || currentStatus === 'rejected' || currentStatus === 'annulee' || currentStatus === 'cancelled') {
               setIsTracking(false);
             }
           }
@@ -316,8 +336,8 @@ export default function TrackOrder() {
                     <h2 className="text-lg sm:text-xl lg:text-2xl font-bold">Commande #{order.id}</h2>
                     <p className="text-sm sm:text-base text-gray-600">Créée le {formatDate(order.created_at)}</p>
                   </div>
-                  <span className={`px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(order.status)}`}>
-                    {getStatusText(order.status)}
+                  <span className={`px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(order.statut || order.status)}`}>
+                    {getStatusText(order.statut || order.status)}
                   </span>
                 </div>
 
