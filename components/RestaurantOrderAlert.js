@@ -220,10 +220,16 @@ export default function RestaurantOrderAlert() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-green-600">
-                {order.total_amount + order.delivery_fee}€
+              <p className="text-lg font-bold text-gray-800">
+                Total: {order.total_amount + (order.delivery_fee || 0)}€
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm font-semibold text-green-600">
+                Votre gain: {(order.total_amount * 0.80).toFixed(2)}€
+              </p>
+              <p className="text-xs text-gray-500">
+                (Commission 20%: {(order.total_amount * 0.20).toFixed(2)}€)
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
                 Temps estimé: {calculateEstimatedTime(order.items)} min
               </p>
             </div>

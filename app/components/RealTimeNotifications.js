@@ -189,7 +189,8 @@ export default function RealTimeNotifications({ restaurantId }) {
                           {notification.data && (
                             <div className="mt-2 text-xs text-gray-600">
                               <p>Commande #{notification.data.id}</p>
-                              <p>{notification.data.total}€</p>
+                              <p className="text-gray-500">Total: {notification.data.total_amount || notification.data.total}€</p>
+                              <p className="text-green-600 font-semibold">Votre gain: {((notification.data.total_amount || notification.data.total || 0) * 0.80).toFixed(2)}€</p>
                             </div>
                           )}
                         </div>
