@@ -204,7 +204,33 @@ export default function PartnerDashboard() {
       });
       const data = await response.json();
       if (response.ok) {
-        setMenu(data);
+        // Parser les suppléments JSONB si nécessaire
+        const parsedMenu = data.map(item => {
+          let parsedSupplements = [];
+          if (item.supplements) {
+            if (typeof item.supplements === 'string') {
+              try {
+                parsedSupplements = JSON.parse(item.supplements);
+              } catch (e) {
+                console.error('Erreur parsing suppléments pour item', item.id, ':', e);
+                parsedSupplements = [];
+              }
+            } else if (Array.isArray(item.supplements)) {
+              parsedSupplements = item.supplements;
+            }
+          }
+          return {
+            ...item,
+            supplements: parsedSupplements
+          };
+        });
+        console.log('🔍 DEBUG fetchMenu - Menu parsé:', parsedMenu.map(item => ({
+          id: item.id,
+          nom: item.nom,
+          supplements: item.supplements,
+          supplementsCount: item.supplements?.length || 0
+        })));
+        setMenu(parsedMenu);
       }
     } catch (error) {
       console.error('Erreur recuperation menu:', error);
@@ -1133,9 +1159,30 @@ export default function PartnerDashboard() {
                             <button
                               onClick={() => {
                                 setEditingMenu(item);
+                                // Parser les suppléments si c'est une chaîne JSON
+                                let parsedSupplements = [];
+                                if (item.supplements) {
+                                  if (typeof item.supplements === 'string') {
+                                    try {
+                                      parsedSupplements = JSON.parse(item.supplements);
+                                    } catch (e) {
+                                      console.error('Erreur parsing suppléments:', e);
+                                      parsedSupplements = [];
+                                    }
+                                  } else if (Array.isArray(item.supplements)) {
+                                    parsedSupplements = item.supplements;
+                                  }
+                                }
+                                console.log('🔍 DEBUG - Édition menu:', {
+                                  itemId: item.id,
+                                  itemSupplements: item.supplements,
+                                  parsedSupplements: parsedSupplements,
+                                  supplementsType: typeof item.supplements,
+                                  isArray: Array.isArray(item.supplements)
+                                });
                                 setMenuForm({
                                   ...item,
-                                  supplements: item.supplements || [],
+                                  supplements: parsedSupplements,
                                   boisson_taille: item.boisson_taille || '',
                                   prix_taille: item.prix_taille || ''
                                 });
