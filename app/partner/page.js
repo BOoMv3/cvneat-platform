@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -474,7 +474,7 @@ export default function PartnerDashboard() {
         console.warn('⚠️ Rate limit atteint, attente avant prochaine requête');
       }
     } finally {
-      isFetching = false;
+      isFetchingRef.current = false;
     }
   };
 
