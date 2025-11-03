@@ -41,12 +41,12 @@ export default function UserOrders() {
     try {
       const response = await fetchWithAuth('/api/orders');
       if (!response.ok) {
-        throw new Error('Failed to fetch orders');
+        throw new Error('Impossible de récupérer les commandes');
       }
       const data = await response.json();
       setOrders(data);
     } catch (error) {
-      console.error(error);
+      // Erreur silencieuse - l'utilisateur verra "Aucune commande trouvée"
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,11 @@ export default function UserOrders() {
 
           <div className="space-y-4">
             {orders.map((order) => (
-              <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <div 
+                key={order.id} 
+                onClick={() => router.push(`/profile/orders/${order.id}`)}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow"
+              >
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white">Commande #{order.id}</h3>

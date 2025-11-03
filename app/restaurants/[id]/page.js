@@ -165,10 +165,6 @@ export default function RestaurantDetail({ params }) {
       const restaurantData = await restaurantResponse.json();
       const menuData = await menuResponse.json();
       
-      console.log('Données du restaurant:', restaurantData);
-      console.log('Données du menu:', menuData);
-      console.log('Premier plat du menu:', menuData[0]);
-      console.log('Champs disponibles dans le premier plat:', menuData[0] ? Object.keys(menuData[0]) : 'Aucun plat');
       
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
@@ -180,31 +176,77 @@ export default function RestaurantDetail({ params }) {
     }
   };
 
-  const addToCart = (item) => {
+  const addToCart = (item, supplements = [], size = null) => {
     setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
-      if (existingItem) {
-        return prevCart.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+      // Créer un identifiant unique basé sur l'ID, les suppléments et la taille
+      const itemKey = JSON.stringify({
+        id: item.id,
+        supplements: supplements || [],
+        size: size
+      });
+      
+      // Vérifier si l'article avec ces mêmes suppléments et taille existe déjà
+      const existingItemIndex = prevCart.findIndex(cartItem => {
+        const cartItemKey = JSON.stringify({
+          id: cartItem.id,
+          supplements: cartItem.supplements || [],
+          size: cartItem.size || null
+        });
+        return cartItemKey === itemKey;
+      });
+      
+      if (existingItemIndex !== -1) {
+        // Incrémenter la quantité si l'article existe déjà avec les mêmes suppléments/taille
+        return prevCart.map((cartItem, index) =>
+          index === existingItemIndex
+            ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 }
             : cartItem
         );
+      } else {
+        // Ajouter un nouvel article avec suppléments et taille
+        const newItem = {
+          ...item,
+          quantity: 1,
+          supplements: supplements || [],
+          size: size || null
+        };
+        return [...prevCart, newItem];
       }
-      return [...prevCart, { ...item, quantity: 1 }];
     });
     setLastAddedItem(item);
     setShowCartNotification(true);
     setTimeout(() => setShowCartNotification(false), 3000);
   };
 
-  const removeFromCart = (itemId) => {
+  const removeFromCart = (itemId, supplements = [], size = null) => {
     setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => cartItem.id === itemId);
+      // Créer un identifiant unique basé sur l'ID, les suppléments et la taille
+      const itemKey = JSON.stringify({
+        id: itemId,
+        supplements: supplements || [],
+        size: size
+      });
+      
+      // Trouver l'article exact avec ces mêmes suppléments et taille
+      const existingItemIndex = prevCart.findIndex(cartItem => {
+        const cartItemKey = JSON.stringify({
+          id: cartItem.id,
+          supplements: cartItem.supplements || [],
+          size: cartItem.size || null
+        });
+        return cartItemKey === itemKey;
+      });
+      
+      if (existingItemIndex === -1) return prevCart;
+      
+      const existingItem = prevCart[existingItemIndex];
       if (existingItem.quantity === 1) {
-        return prevCart.filter(cartItem => cartItem.id !== itemId);
+        // Retirer complètement l'article
+        return prevCart.filter((_, index) => index !== existingItemIndex);
       }
-      return prevCart.map(cartItem =>
-        cartItem.id === itemId
+      // Décrémenter la quantité
+      return prevCart.map((cartItem, index) =>
+        index === existingItemIndex
           ? { ...cartItem, quantity: cartItem.quantity - 1 }
           : cartItem
       );
@@ -364,14 +406,14 @@ export default function RestaurantDetail({ params }) {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.id, item.supplements || [], item.size || null)}
                           className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation active:scale-95"
                         >
                           <FaMinus className="text-xs text-gray-900 dark:text-white" />
                         </button>
                         <span className="text-sm sm:text-base font-medium min-w-[20px] text-center text-gray-900 dark:text-white">{item.quantity}</span>
                         <button
-                          onClick={() => addToCart(item)}
+                          onClick={() => addToCart(item, item.supplements || [], item.size || null)}
                           className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation active:scale-95"
                         >
                           <FaPlus className="text-xs text-gray-900 dark:text-white" />

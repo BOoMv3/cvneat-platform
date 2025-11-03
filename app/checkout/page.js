@@ -203,29 +203,24 @@ export default function Checkout() {
       }
 
       const data = JSON.parse(responseText);
-      console.log('📡 Données parsées:', data);
 
       if (!data.success || !data.livrable) {
-        console.log('❌ Livraison refusée:', data.message);
-        alert(`❌ ${data.message}`);
+        const message = data.message || 'Livraison non disponible à cette adresse';
+        alert(message);
         return;
       }
 
       // SUCCÈS - Mettre à jour les frais
       const newFrais = data.frais_livraison;
-      console.log(`✅ ${data.distance.toFixed(1)}km = ${newFrais.toFixed(2)}€`);
-
       setFraisLivraison(newFrais);
       setTotalAvecLivraison(cartTotal + newFrais);
       setForceUpdate(prev => prev + 1);
 
     } catch (error) {
-      console.error('❌ Erreur détaillée:', error);
-      
       if (error instanceof SyntaxError) {
-        alert('❌ Erreur de communication avec le serveur. Réessayez.');
+        alert('Erreur de communication avec le serveur. Réessayez.');
       } else {
-        alert(`❌ Erreur: ${error.message}`);
+        alert(`Erreur: ${error.message || 'Impossible de calculer les frais de livraison'}`);
       }
     }
   };
@@ -284,30 +279,24 @@ export default function Checkout() {
       if (orderError) throw orderError;
 
       // Ajouter les détails de commande
-      console.log('Commande créée avec succès:', order.id);
-      console.log('Ajout des détails pour les articles:', cart);
-      
       for (const item of cart) {
-        const { data: detailData, error: detailError } = await supabase
+        const { error: detailError } = await supabase
           .from('details_commande')
           .insert({
             commande_id: order.id,
             plat_id: item.id,
-            quantite: item.quantity,
-            prix_unitaire: item.prix || item.price
-          })
-          .select();
+            quantite: item.quantity || 1,
+            prix_unitaire: item.prix || item.price || 0
+          });
 
         if (detailError) {
-          console.error('Erreur ajout détail commande:', detailError);
-        } else {
-          console.log('Détail ajouté avec succès:', detailData);
+          throw new Error(`Erreur lors de l'ajout des détails de commande: ${detailError.message}`);
         }
       }
 
-      // Notifier le restaurant
+      // Notifier le restaurant (ne pas bloquer la commande si la notification échoue)
       try {
-        const restaurantNotification = await fetch('/api/partner/notifications', {
+        await fetch('/api/partner/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -317,14 +306,8 @@ export default function Checkout() {
             orderId: order.id
           })
         });
-        
-        if (restaurantNotification.ok) {
-          console.log('✅ Notification restaurant envoyée');
-        } else {
-          console.warn('⚠️ Erreur notification restaurant:', await restaurantNotification.text());
-        }
       } catch (notificationError) {
-        console.warn('⚠️ Erreur notification restaurant:', notificationError);
+        // Ne pas bloquer la commande si la notification échoue
       }
 
       // Vider le panier
@@ -334,8 +317,21 @@ export default function Checkout() {
       // Rediriger vers la page de suivi de commande
       router.push(`/track-order?orderId=${order.id}`);
     } catch (error) {
-      console.error('Erreur création commande:', error);
-      alert('Erreur lors de la création de la commande');
+      // Traduire les erreurs en français
+      let errorMessage = 'Erreur lors de la création de la commande';
+      if (error.message) {
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.';
+        } else if (error.message.includes('permission') || error.message.includes('auth')) {
+          errorMessage = 'Erreur d\'authentification. Veuillez vous reconnecter.';
+        } else if (error.message.includes('duplicate') || error.message.includes('unique')) {
+          errorMessage = 'Cette commande existe déjà. Vérifiez votre historique.';
+        } else {
+          errorMessage = `Erreur: ${error.message}`;
+        }
+      }
+      alert(errorMessage);
+      setSubmitting(false);
     } finally {
       setSubmitting(false);
     }

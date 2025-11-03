@@ -4,10 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import Head from 'next/head';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -24,7 +27,18 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setError(error.message);
+        // Traduire les messages d'erreur en français
+        let errorMessage = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email ou mot de passe incorrect';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
+        } else if (error.message.includes('User not found')) {
+          errorMessage = 'Aucun compte trouvé avec cet email';
+        }
+        setError(errorMessage);
         return;
       }
 
@@ -94,18 +108,29 @@ export default function LoginPage() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Mot de passe
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   placeholder="Votre mot de passe"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showPassword ? (
+                    <FaEyeSlash className="h-5 w-5" />
+                  ) : (
+                    <FaEye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -126,6 +151,14 @@ export default function LoginPage() {
             </div>
           </form>
 
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Vous n'avez pas de compte ?{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
+                Créer un compte
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
       </div>
