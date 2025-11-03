@@ -1369,6 +1369,65 @@ export default function PartnerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal pour sélectionner le temps de préparation */}
+      {showPreparationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Temps de préparation estimé
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              Sélectionnez le temps de préparation estimé pour cette commande. Le client sera informé et pourra annuler si c'est trop long.
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Temps de préparation
+              </label>
+              <select
+                value={preparationTime}
+                onChange={(e) => setPreparationTime(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value={5}>5 minutes</option>
+                <option value={10}>10 minutes</option>
+                <option value={15}>15 minutes</option>
+                <option value={20}>20 minutes</option>
+                <option value={25}>25 minutes</option>
+                <option value={30}>30 minutes</option>
+                <option value={35}>35 minutes</option>
+                <option value={40}>40 minutes</option>
+                <option value={45}>45 minutes</option>
+                <option value={50}>50 minutes</option>
+                <option value={60}>60 minutes</option>
+              </select>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  updateOrderStatus(selectedOrderId, 'acceptee', preparationTime);
+                  setShowPreparationModal(false);
+                  setSelectedOrderId(null);
+                }}
+                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+              >
+                Confirmer ({preparationTime} min)
+              </button>
+              <button
+                onClick={() => {
+                  setShowPreparationModal(false);
+                  setSelectedOrderId(null);
+                }}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-gray-300"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
