@@ -195,17 +195,37 @@ export default function Home() {
   };
 
   const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
-    if (!searchTerm) return true;
+    // Filtre par catégorie
+    if (selectedCategory !== 'all') {
+      const restaurantCategory = restaurant.cuisine_type?.toLowerCase() || '';
+      const categoryMap = {
+        'pizza': ['pizza', 'italien', 'italian'],
+        'burger': ['burger', 'hamburger', 'fast food', 'fast-food'],
+        'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery'],
+        'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream'],
+        'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic'],
+        'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick']
+      };
+      
+      const validCategories = categoryMap[selectedCategory] || [];
+      const matchesCategory = validCategories.some(cat => restaurantCategory.includes(cat));
+      if (!matchesCategory) return false;
+    }
     
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = 
-      restaurant.nom?.toLowerCase().includes(searchLower) ||
-      restaurant.description?.toLowerCase().includes(searchLower) ||
-      restaurant.cuisine_type?.toLowerCase().includes(searchLower) ||
-      restaurant.adresse?.toLowerCase().includes(searchLower) ||
-      restaurant.ville?.toLowerCase().includes(searchLower);
+    // Filtre par recherche textuelle
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        restaurant.nom?.toLowerCase().includes(searchLower) ||
+        restaurant.description?.toLowerCase().includes(searchLower) ||
+        restaurant.cuisine_type?.toLowerCase().includes(searchLower) ||
+        restaurant.adresse?.toLowerCase().includes(searchLower) ||
+        restaurant.ville?.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
     
-    return matchesSearch;
+    return true;
   }).sort((a, b) => {
     switch (sortBy) {
       case 'rating':

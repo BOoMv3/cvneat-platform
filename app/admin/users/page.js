@@ -23,10 +23,23 @@ export default function AdminUsers() {
   useEffect(() => {
     const checkUserAndFetchUsers = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.user_metadata.role !== 'admin') {
+      if (!user) {
         router.push('/login');
         return;
       }
+      
+      // Vérifier le rôle dans la table users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (userError || !userData || userData.role !== 'admin') {
+        router.push('/');
+        return;
+      }
+      
       fetchUsers();
     };
     checkUserAndFetchUsers();

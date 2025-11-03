@@ -368,10 +368,6 @@ export default function RestaurantDetail({ params }) {
               Le prix de livraison s'adapte automatiquement à votre adresse.
             </p>
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            <p>{restaurant.adresse}</p>
-            <p>{restaurant.ville}, {restaurant.code_postal}</p>
-          </div>
         </div>
 
         {/* Menu */}

@@ -132,7 +132,12 @@ export async function POST(request) {
 
     // Ajouter les suppléments si fournis (stocker en JSONB)
     if (supplements && Array.isArray(supplements) && supplements.length > 0) {
-      menuData.supplements = supplements;
+      // Nettoyer les suppléments : s'assurer que chaque supplément a nom et prix
+      const cleanedSupplements = supplements.map(sup => ({
+        nom: sup.nom || sup.name || '',
+        prix: parseFloat(sup.prix || sup.price || 0)
+      })).filter(sup => sup.nom && sup.prix >= 0);
+      menuData.supplements = cleanedSupplements;
     }
 
     // Ajouter l'image si fournie
@@ -214,7 +219,14 @@ export async function PUT(request) {
 
     // Ajouter les suppléments si fournis (stocker en JSONB)
     if (supplements !== undefined) {
-      updateData.supplements = Array.isArray(supplements) ? supplements : [];
+      // Nettoyer les suppléments : s'assurer que chaque supplément a nom et prix
+      const cleanedSupplements = Array.isArray(supplements) 
+        ? supplements.map(sup => ({
+            nom: sup.nom || sup.name || '',
+            prix: parseFloat(sup.prix || sup.price || 0)
+          })).filter(sup => sup.nom && sup.prix >= 0)
+        : [];
+      updateData.supplements = cleanedSupplements;
     }
 
     // Ajouter les tailles de boisson si fournies

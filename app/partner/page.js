@@ -700,14 +700,6 @@ export default function PartnerDashboard() {
                 <span className="hidden sm:inline">Paramètres</span>
                 <span className="sm:hidden">Config</span>
               </button>
-              <button
-                onClick={() => router.push('/partner/delivery-zones')}
-                className="bg-blue-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
-              >
-                <FaMapMarkerAlt className="h-4 w-4 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Zones</span>
-                <span className="sm:hidden">Zones</span>
-              </button>
               <div className="flex justify-center">
                 <RealTimeNotifications 
                   restaurantId={restaurant?.id} 
