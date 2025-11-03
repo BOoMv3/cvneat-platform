@@ -300,6 +300,12 @@ export default function PartnerDashboard() {
       const token = session.access_token;
       console.log('🔑 Token présent:', token ? 'Oui' : 'Non');
       
+      // Préparer le body avec status et preparation_time si fourni
+      const requestBody = { status };
+      if (prepTime !== null && prepTime > 0) {
+        requestBody.preparation_time = prepTime;
+      }
+
       // Utiliser l'API correcte pour mettre à jour le statut
       const response = await fetch(`/api/restaurants/orders/${orderId}`, {
         method: 'PUT',
@@ -307,7 +313,7 @@ export default function PartnerDashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify(requestBody)
       });
 
       console.log('📤 Réponse API:', response.status, response.statusText);
