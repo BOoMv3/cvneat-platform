@@ -220,7 +220,11 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     // Afficher une notification du navigateur
     if (Notification.permission === 'granted') {
       new Notification('🎉 NOUVELLE COMMANDE !', {
-        body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(parseFloat(order.total || 0)).toFixed(2)}€`,
+        body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
+          const totalAmount = parseFloat(order.total || 0) || 0;
+          const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+          return (totalAmount + deliveryFee).toFixed(2);
+        })()}€`,
         icon: '/icon-192x192.png',
         tag: `order-${order.id}`,
         requireInteraction: true,
@@ -234,7 +238,11 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     const newNotification = {
       id: Date.now(),
       type: 'new_order',
-      message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${(parseFloat(order.total || 0)).toFixed(2)}€`,
+      message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
+        const totalAmount = parseFloat(order.total || 0) || 0;
+        const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+        return (totalAmount + deliveryFee).toFixed(2);
+      })()}€`,
       data: order,
       timestamp: new Date().toISOString(),
       isNew: true
@@ -465,7 +473,15 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
-                  <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 dark:text-red-400 animate-bounce' : 'text-green-600 dark:text-green-400'}`}>{(parseFloat(alertOrder.total || 0)).toFixed(2)}€</p>
+                  <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 dark:text-red-400 animate-bounce' : 'text-green-600 dark:text-green-400'}`}>
+                    {(() => {
+                      // Calculer le total correctement : total des articles + frais de livraison
+                      const totalAmount = parseFloat(alertOrder.total || 0) || 0;
+                      const deliveryFee = parseFloat(alertOrder.frais_livraison || 0) || 0;
+                      const totalWithDelivery = totalAmount + deliveryFee;
+                      return totalWithDelivery.toFixed(2);
+                    })()}€
+                  </p>
                 </div>
               </div>
               {alertOrder.adresse_livraison && (
