@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FaArrowLeft } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 
 export default function TrackOrder() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [orderId, setOrderId] = useState('');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -292,6 +296,25 @@ export default function TrackOrder() {
     return () => clearInterval(interval);
   }, [isTracking, orderId, lastStatus]);
 
+  // Charger l'orderId depuis les query params si présent
+  useEffect(() => {
+    const orderIdParam = searchParams?.get('orderId');
+    if (orderIdParam) {
+      setOrderId(orderIdParam);
+    }
+  }, [searchParams]);
+
+  // Auto-rechercher la commande quand orderId est défini depuis l'URL
+  useEffect(() => {
+    if (orderId && searchParams?.get('orderId') === orderId) {
+      // Attendre un peu pour que l'état soit bien mis à jour
+      const timer = setTimeout(() => {
+        fetchOrder();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [orderId]);
+
   // Demander la permission pour les notifications
   useEffect(() => {
     if (Notification.permission === 'default') {
@@ -300,10 +323,21 @@ export default function TrackOrder() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto px-3 sm:px-4">
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-center mb-6 sm:mb-8">Suivi de commande</h1>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
+          {/* Bouton retour */}
+          <div className="mb-4 sm:mb-6">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base"
+            >
+              <FaArrowLeft className="mr-2" />
+              Retour
+            </button>
+          </div>
+          
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 text-gray-900 dark:text-white">Suivi de commande</h1>
           
           {/* Formulaire de recherche */}
           <div className="mb-6 sm:mb-8">
@@ -313,7 +347,7 @@ export default function TrackOrder() {
                 value={orderId}
                 onChange={(e) => setOrderId(e.target.value)}
                 placeholder="Entrez votre numéro de commande (ex: 52)"
-                className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm sm:text-base"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 min-h-[44px] touch-manipulation text-sm sm:text-base"
               />
               <button
                 onClick={fetchOrder}
@@ -324,7 +358,7 @@ export default function TrackOrder() {
               </button>
             </div>
             {error && (
-              <p className="text-red-600 mt-2 text-sm sm:text-base">{error}</p>
+              <p className="text-red-600 dark:text-red-400 mt-2 text-sm sm:text-base">{error}</p>
             )}
           </div>
 
@@ -332,11 +366,11 @@ export default function TrackOrder() {
           {order && (
             <div className="space-y-4 sm:space-y-6">
               {/* Informations de base */}
-              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 sm:mb-4 space-y-2 sm:space-y-0">
                   <div>
-                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold">Commande #{order.id}</h2>
-                    <p className="text-sm sm:text-base text-gray-600">Créée le {formatDate(order.created_at)}</p>
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Commande #{order.id}</h2>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Créée le {formatDate(order.created_at)}</p>
                   </div>
                   <span className={`px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(order.statut || order.status)}`}>
                     {getStatusText(order.statut || order.status)}
@@ -345,13 +379,13 @@ export default function TrackOrder() {
 
                 {/* Code de sécurité */}
                 {order.security_code && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                  <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                       <div>
-                        <h3 className="font-semibold text-blue-800 text-sm sm:text-base">🔐 Code de sécurité</h3>
-                        <p className="text-xs sm:text-sm text-blue-600">Donnez ce code au livreur pour récupérer votre commande</p>
+                        <h3 className="font-semibold text-blue-800 dark:text-blue-200 text-sm sm:text-base">🔐 Code de sécurité</h3>
+                        <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-300">Donnez ce code au livreur pour récupérer votre commande</p>
                       </div>
-                      <div className="text-2xl sm:text-3xl font-mono font-bold text-blue-800 bg-white px-3 sm:px-4 py-2 rounded-lg border-2 border-blue-300 text-center">
+                      <div className="text-2xl sm:text-3xl font-mono font-bold text-blue-800 dark:text-blue-200 bg-white dark:bg-gray-700 px-3 sm:px-4 py-2 rounded-lg border-2 border-blue-300 dark:border-blue-600 text-center">
                         {order.security_code}
                       </div>
                     </div>
@@ -359,11 +393,11 @@ export default function TrackOrder() {
                 )}
 
                 {/* Chat */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                     <div>
-                      <h3 className="font-semibold text-green-800 text-sm sm:text-base">💬 Chat</h3>
-                      <p className="text-xs sm:text-sm text-green-600">Communiquez avec le restaurant/livreur</p>
+                      <h3 className="font-semibold text-green-800 dark:text-green-200 text-sm sm:text-base">💬 Chat</h3>
+                      <p className="text-xs sm:text-sm text-green-600 dark:text-green-300">Communiquez avec le restaurant/livreur</p>
                     </div>
                     <a
                       href={`/chat/${order.id}`}
@@ -376,17 +410,17 @@ export default function TrackOrder() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Informations client</h3>
-                    <p className="text-xs sm:text-sm"><span className="font-medium">Nom :</span> {order.customer_name}</p>
-                    <p className="text-xs sm:text-sm"><span className="font-medium">Téléphone :</span> {order.customer_phone}</p>
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base text-gray-900 dark:text-white">Informations client</h3>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300"><span className="font-medium">Nom :</span> {order.customer_name}</p>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300"><span className="font-medium">Téléphone :</span> {order.customer_phone}</p>
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Adresse de livraison</h3>
-                    <p className="text-xs sm:text-sm">{order.delivery_address}</p>
-                    <p className="text-xs sm:text-sm">{order.delivery_city} {order.delivery_postal_code}</p>
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base text-gray-900 dark:text-white">Adresse de livraison</h3>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{order.delivery_address}</p>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{order.delivery_city} {order.delivery_postal_code}</p>
                     {order.delivery_instructions && (
-                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                         Instructions : {order.delivery_instructions}
                       </p>
                     )}
@@ -395,23 +429,23 @@ export default function TrackOrder() {
               </div>
 
               {/* Articles commandés */}
-              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
-                <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Articles commandés</h3>
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 sm:p-6">
+                <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base text-gray-900 dark:text-white">Articles commandés</h3>
                 <div className="space-y-1 sm:space-y-2">
                   {(order.items || order.details_commande || []).map((item, index) => {
                     const itemName = item.name || item.menus?.nom || 'Article';
                     const itemPrice = parseFloat(item.price || item.prix_unitaire || 0) || 0;
                     const itemQuantity = parseFloat(item.quantity || item.quantite || 0) || 0;
                     return (
-                      <div key={index} className="flex justify-between text-xs sm:text-sm">
+                      <div key={index} className="flex justify-between text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                         <span className="truncate flex-1 min-w-0">{itemName} x{itemQuantity}</span>
                         <span className="ml-2">{(itemPrice * itemQuantity).toFixed(2)}€</span>
                       </div>
                     );
                   })}
                 </div>
-                <div className="border-t mt-3 sm:mt-4 pt-3 sm:pt-4">
-                  <div className="flex justify-between text-xs sm:text-sm text-gray-600">
+                <div className="border-t border-gray-200 dark:border-gray-600 mt-3 sm:mt-4 pt-3 sm:pt-4">
+                  <div className="flex justify-between text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                     <span>Sous-total</span>
                     <span>{(() => {
                       const items = order.items || order.details_commande || [];
@@ -422,11 +456,11 @@ export default function TrackOrder() {
                       }, 0) || 0).toFixed(2);
                     })()}€</span>
                   </div>
-                  <div className="flex justify-between text-xs sm:text-sm text-gray-600">
+                  <div className="flex justify-between text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                     <span>Frais de livraison</span>
                     <span>{(parseFloat(order.frais_livraison || order.delivery_fee || 0) || 0).toFixed(2)}€</span>
                   </div>
-                  <div className="flex justify-between font-bold text-sm sm:text-base lg:text-lg border-t pt-2">
+                  <div className="flex justify-between font-bold text-sm sm:text-base lg:text-lg border-t border-gray-200 dark:border-gray-600 pt-2 text-gray-900 dark:text-white">
                     <span>Total</span>
                     <span>{(parseFloat(order.total || 0) || 
                       ((order.items?.reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseFloat(item.quantity || 0)), 0) || 0) + 
@@ -437,11 +471,11 @@ export default function TrackOrder() {
               </div>
 
               {/* Timeline des notifications */}
-              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
-                  <h3 className="font-semibold text-sm sm:text-base">Suivi de votre commande</h3>
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">Suivi de votre commande</h3>
                   {isTracking && (
-                    <div className="flex items-center space-x-2 text-green-600">
+                    <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                       <span className="text-xs sm:text-sm font-medium">Suivi en temps réel</span>
                     </div>
@@ -451,16 +485,16 @@ export default function TrackOrder() {
                   {notifications.map((notif, index) => (
                     <div key={notif.id} className="flex items-start space-x-3 sm:space-x-4">
                       <div className="flex-shrink-0">
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
                           <span className="text-sm sm:text-lg">{notif.icon}</span>
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-1 sm:space-y-0">
-                          <h4 className="font-medium text-sm sm:text-base">{notif.title}</h4>
-                          <span className="text-xs sm:text-sm text-gray-500">{formatDate(notif.time)}</span>
+                          <h4 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">{notif.title}</h4>
+                          <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{formatDate(notif.time)}</span>
                         </div>
-                        <p className="text-gray-600 text-xs sm:text-sm mt-1">{notif.message}</p>
+                        <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm mt-1">{notif.message}</p>
                       </div>
                     </div>
                   ))}
@@ -471,12 +505,12 @@ export default function TrackOrder() {
 
           {/* Message d'aide */}
           {!order && (
-            <div className="text-center text-gray-500">
+            <div className="text-center text-gray-500 dark:text-gray-400">
               <div className="text-4xl sm:text-6xl mb-3 sm:mb-4">📱</div>
               <p className="text-base sm:text-lg">Entrez votre numéro de commande pour suivre votre livraison</p>
               <p className="text-xs sm:text-sm mt-2">Vous recevrez des notifications en temps réel sur l'avancement</p>
-              <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs sm:text-sm text-blue-800">
+              <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
                   <strong>🔒 Sécurité :</strong> Vous devez être connecté pour suivre une commande. 
                   Vous ne pouvez voir que vos propres commandes.
                 </p>
@@ -487,7 +521,7 @@ export default function TrackOrder() {
                   >
                     Se connecter
                   </a>
-                  <span className="mx-2 text-gray-400 text-sm">ou</span>
+                  <span className="mx-2 text-gray-400 dark:text-gray-500 text-sm">ou</span>
                   <a 
                     href="/register" 
                     className="inline-block bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base"

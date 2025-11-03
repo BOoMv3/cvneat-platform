@@ -257,6 +257,9 @@ export default function Checkout() {
         return;
       }
 
+      // Générer un code de sécurité à 6 chiffres pour la livraison
+      const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
       // Créer la commande
       const { data: order, error: orderError } = await supabase
         .from('commandes')
@@ -266,7 +269,8 @@ export default function Checkout() {
           total: totalAvecLivraison,
           frais_livraison: fraisLivraison,
           adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
-          statut: 'en_attente'
+          statut: 'en_attente',
+          security_code: securityCode
         })
         .select()
         .single();
@@ -321,8 +325,8 @@ export default function Checkout() {
       safeLocalStorage.removeItem('cart');
       setCart([]);
 
-      // Rediriger vers la confirmation
-      router.push(`/orders/${order.id}`);
+      // Rediriger vers la page de suivi de commande
+      router.push(`/track-order?orderId=${order.id}`);
     } catch (error) {
       console.error('Erreur création commande:', error);
       alert('Erreur lors de la création de la commande');

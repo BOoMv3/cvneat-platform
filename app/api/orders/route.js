@@ -216,6 +216,18 @@ export async function POST(request) {
     const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
     console.log('🔐 Code de sécurité généré pour la commande');
 
+    // Récupérer l'utilisateur si connecté
+    const authHeader = request.headers.get('authorization');
+    let userId = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (!authError && user) {
+        userId = user.id;
+        console.log('✅ Utilisateur connecté pour la commande:', user.email);
+      }
+    }
+
     // Creer la commande dans Supabase
     console.log('Tentative de creation de la commande...');
     const orderData = {
@@ -225,8 +237,12 @@ export async function POST(request) {
       frais_livraison: fraisLivraison,
       statut: 'en_attente', // En attente d'acceptation par le restaurant
       security_code: securityCode // Code de sécurité pour la livraison
-      // user_id sera NULL par défaut pour les commandes sans utilisateur connecté
     };
+    
+    // Ajouter user_id si l'utilisateur est connecté
+    if (userId) {
+      orderData.user_id = userId;
+    }
 
     console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
 
