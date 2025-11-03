@@ -129,8 +129,8 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           const latestOrder = orders[0];
           const latestOrderId = latestOrder.id;
 
-          // Si c'est une nouvelle commande que nous n'avons pas encore vue
-          if (latestOrderId !== lastOrderCheckRef.current) {
+          // Si c'est une nouvelle commande que nous n'avons pas encore vue ET qu'elle est toujours en attente
+          if (latestOrderId !== lastOrderCheckRef.current && latestOrder.statut === 'en_attente') {
             console.log('🔔 NOUVELLE COMMANDE DÉTECTÉE via polling:', latestOrderId);
             
             // Récupérer les détails complets de la commande
@@ -140,11 +140,31 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               .eq('id', latestOrderId)
               .single();
 
-            if (!orderError && fullOrder) {
+            if (!orderError && fullOrder && fullOrder.statut === 'en_attente') {
               triggerNewOrderAlert(fullOrder);
               lastOrderCheckRef.current = latestOrderId;
             }
+          } else if (latestOrderId === pendingOrderId && latestOrder.statut !== 'en_attente') {
+            // Si la commande en attente n'est plus en attente, arrêter les alertes
+            console.log('✅ Commande traitée, arrêt des alertes:', latestOrder.statut);
+            if (soundIntervalRef.current) {
+              clearInterval(soundIntervalRef.current);
+              soundIntervalRef.current = null;
+            }
+            setShowAlert(false);
+            setIsBlinking(false);
+            setPendingOrderId(null);
           }
+        } else if (pendingOrderId) {
+          // Plus de commandes en attente, arrêter les alertes
+          console.log('✅ Plus de commandes en attente, arrêt des alertes');
+          if (soundIntervalRef.current) {
+            clearInterval(soundIntervalRef.current);
+            soundIntervalRef.current = null;
+          }
+          setShowAlert(false);
+          setIsBlinking(false);
+          setPendingOrderId(null);
         }
       } catch (pollingError) {
         console.warn('⚠️ Erreur polling:', pollingError);
