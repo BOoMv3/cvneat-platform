@@ -1318,8 +1318,8 @@ export default function PartnerDashboard() {
                 {menuForm.supplements.length > 0 && (
                   <div className="space-y-2">
                     {menuForm.supplements.map((supp, index) => (
-                      <div key={supp.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className="text-sm">{supp.nom} - {supp.prix}€</span>
+                      <div key={supp.id || index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-sm text-gray-900 dark:text-white">{supp.nom} - {supp.prix}€</span>
                         <button
                           type="button"
                           onClick={() => removeSupplement(index)}
