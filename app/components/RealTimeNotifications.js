@@ -231,9 +231,10 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     if (Notification.permission === 'granted') {
       new Notification('🎉 NOUVELLE COMMANDE !', {
         body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
+          // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
+          // order.total contient uniquement le montant des articles
           const totalAmount = parseFloat(order.total || 0) || 0;
-          const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
-          return (totalAmount + deliveryFee).toFixed(2);
+          return totalAmount.toFixed(2);
         })()}€`,
         icon: '/icon-192x192.png',
         tag: `order-${order.id}`,
@@ -249,9 +250,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       id: Date.now(),
       type: 'new_order',
       message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
+        // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
         const totalAmount = parseFloat(order.total || 0) || 0;
-        const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
-        return (totalAmount + deliveryFee).toFixed(2);
+        return totalAmount.toFixed(2);
       })()}€`,
       data: order,
       timestamp: new Date().toISOString(),
@@ -312,12 +313,27 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       
       // Reprendre le contexte s'il est suspendu (peut arriver après inactivité)
       if (audioContext.state === 'suspended') {
-        audioContext.resume().catch(() => {
+        audioContext.resume().then(() => {
+          // Continuer avec la lecture du son après la reprise
+          playSoundWithContext(audioContext);
+        }).catch(() => {
           console.warn('Contexte audio suspendu, utilisation du fallback');
           playFallbackSound();
-          return;
         });
+        return;
       }
+      
+      // Si le contexte est actif, jouer le son directement
+      playSoundWithContext(audioContext);
+    } catch (error) {
+      console.warn('Impossible de jouer le son avec AudioContext:', error);
+      playFallbackSound();
+    }
+  };
+
+  // Fonction helper pour jouer le son avec un contexte audio actif
+  const playSoundWithContext = (audioContext) => {
+    try {
       
       // Créer un oscillateur pour générer un son
       const oscillator = audioContext.createOscillator();
