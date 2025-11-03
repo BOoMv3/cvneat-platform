@@ -121,7 +121,9 @@ export async function GET(request) {
               console.log('🔄 Commande mise à jour via SSE:', payload.new.id);
               sendNotification({
                 type: 'order_updated',
-                order: payload.new
+                message: `Commande #${payload.new.id?.slice(0, 8) || 'N/A'} mise à jour`,
+                order: payload.new,
+                timestamp: new Date().toISOString()
               });
             }
           )
