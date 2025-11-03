@@ -250,10 +250,10 @@ export default function Profile() {
   // Affichage de chargement initial
   if (!authChecked || loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
           </div>
         </div>
       </div>
@@ -263,11 +263,11 @@ export default function Profile() {
   // Affichage d'erreur d'authentification
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-white p-8 rounded shadow text-center">
-              <p className="text-red-600 font-bold">Utilisateur non trouvé ou non connecté.</p>
+            <div className="bg-white dark:bg-gray-800 p-8 rounded shadow text-center">
+              <p className="text-red-600 dark:text-red-400 font-bold">Utilisateur non trouvé ou non connecté.</p>
               <button onClick={() => router.push('/login')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Se connecter</button>
             </div>
           </div>
@@ -335,10 +335,10 @@ export default function Profile() {
                   setLoading(false);
                 }
               }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded shadow mb-6"
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-800 p-4 rounded shadow mb-6"
             >
               <div>
-                <label className="block text-sm font-medium">Nom</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nom</label>
                 <input
                   type="text"
                   value={user.name || ''}
@@ -348,7 +348,7 @@ export default function Profile() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
                 <input
                   type="email"
                   value={user.email || ''}
@@ -358,7 +358,7 @@ export default function Profile() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium">Téléphone</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Téléphone</label>
                 <input
                   type="text"
                   value={user.phone || ''}
@@ -387,7 +387,7 @@ export default function Profile() {
               className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'orders'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
               }`}
             >
               <FaShoppingBag className="inline-block mr-1 text-xs" />
@@ -399,7 +399,7 @@ export default function Profile() {
               className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'addresses'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
               }`}
             >
               <FaMapMarkerAlt className="inline-block mr-1 text-xs" />
@@ -411,7 +411,7 @@ export default function Profile() {
               className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'favorites'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
               }`}
             >
               <FaHeart className="inline-block mr-1 text-xs" />
@@ -423,7 +423,7 @@ export default function Profile() {
               className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'settings'
                   ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
               }`}
             >
               <FaCog className="inline-block mr-1 text-xs" />
@@ -443,19 +443,19 @@ export default function Profile() {
             <div className="space-y-4 sm:space-y-6">
               {orders.length === 0 ? (
                 <div className="text-center py-6 sm:py-8">
-                  <p className="text-gray-500 text-sm sm:text-base">Vous n'avez pas encore de commandes</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Vous n'avez pas encore de commandes</p>
                 </div>
               ) : (
                 orders.map((order) => (
                   <div
                     key={order.id}
                     onClick={() => router.push(`/profile/orders/${order.id}`)}
-                    className="bg-white rounded-lg shadow-sm p-4 sm:p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[44px] touch-manipulation"
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 cursor-pointer hover:shadow-md transition-shadow min-h-[44px] touch-manipulation"
                   >
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 sm:mb-4 space-y-2 sm:space-y-0">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base sm:text-lg font-bold truncate">{order.restaurantName}</h3>
-                        <p className="text-xs sm:text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                           {new Date(order.createdAt).toLocaleDateString('fr-FR', {
                             day: 'numeric',
                             month: 'long',
@@ -478,7 +478,7 @@ export default function Profile() {
                         </div>
                       ))}
                       {order.items.length > 2 && (
-                        <p className="text-xs sm:text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                           +{order.items.length - 2} autres articles
                         </p>
                       )}
@@ -486,14 +486,14 @@ export default function Profile() {
 
                     <div className="border-t pt-3 sm:pt-4">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                        <div className="text-xs sm:text-sm text-gray-500">
+                        <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                           <p>Adresse de livraison</p>
                           <p className="truncate">{order.deliveryAddress}</p>
                           <p>{order.deliveryCity}, {order.deliveryPostalCode}</p>
                         </div>
                         <div className="text-left sm:text-right">
-                          <p className="font-medium text-sm sm:text-base">Total</p>
-                          <p className="text-base sm:text-lg font-bold">{(parseFloat(order.total || 0)).toFixed(2)}€</p>
+                          <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Total</p>
+                          <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">{(parseFloat(order.total || 0)).toFixed(2)}€</p>
                         </div>
                       </div>
                       
@@ -524,25 +524,25 @@ export default function Profile() {
           {/* Onglet Adresses */}
           {activeTab === 'addresses' && (
             <div className="space-y-4 sm:space-y-6">
-              <form onSubmit={handleAddressSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-white p-4 sm:p-6 rounded shadow mb-4 sm:mb-6">
+              <form onSubmit={handleAddressSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded shadow mb-4 sm:mb-6">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nom</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nom</label>
                   <input type="text" value={addressForm.name} onChange={e => setAddressForm(f => ({ ...f, name: e.target.value }))} className="input-primary min-h-[44px] touch-manipulation" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Adresse</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Adresse</label>
                   <input type="text" value={addressForm.address} onChange={e => setAddressForm(f => ({ ...f, address: e.target.value }))} className="input-primary min-h-[44px] touch-manipulation" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Ville</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Ville</label>
                   <input type="text" value={addressForm.city} onChange={e => setAddressForm(f => ({ ...f, city: e.target.value }))} className="input-primary min-h-[44px] touch-manipulation" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Code postal</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Code postal</label>
                   <input type="text" value={addressForm.postalCode} onChange={e => setAddressForm(f => ({ ...f, postalCode: e.target.value }))} className="input-primary min-h-[44px] touch-manipulation" required />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium mb-1">Instructions (optionnel)</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Instructions (optionnel)</label>
                   <input type="text" value={addressForm.instructions} onChange={e => setAddressForm(f => ({ ...f, instructions: e.target.value }))} className="input-primary min-h-[44px] touch-manipulation" />
                 </div>
                 <div className="sm:col-span-2 flex flex-col sm:flex-row justify-end gap-2">
@@ -550,7 +550,7 @@ export default function Profile() {
                     {editAddressId ? 'Modifier' : 'Ajouter'}
                   </button>
                   {editAddressId && (
-                    <button type="button" onClick={() => { setAddressForm({ name: '', address: '', city: '', postalCode: '', instructions: '' }); setEditAddressId(null); }} className="bg-gray-300 text-gray-800 px-4 sm:px-6 py-2 rounded min-h-[44px] touch-manipulation text-sm sm:text-base">Annuler</button>
+                    <button type="button" onClick={() => { setAddressForm({ name: '', address: '', city: '', postalCode: '', instructions: '' }); setEditAddressId(null); }} className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 sm:px-6 py-2 rounded min-h-[44px] touch-manipulation text-sm sm:text-base">Annuler</button>
                   )}
                 </div>
                 {error && <div className="col-span-2 p-2 bg-red-100 text-red-700 rounded mt-2">{error}</div>}
@@ -558,20 +558,20 @@ export default function Profile() {
               </form>
               {addresses.length === 0 ? (
                 <div className="text-center py-6 sm:py-8">
-                  <p className="text-gray-500 text-sm sm:text-base">Vous n'avez pas encore d'adresses</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Vous n'avez pas encore d'adresses</p>
                 </div>
               ) : (
                 addresses.map((address) => (
                   <div
                     key={address.id}
-                    className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0"
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0"
                   >
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base sm:text-lg font-bold mb-1 sm:mb-2 truncate">{address.name}</h3>
-                      <p className="text-sm sm:text-base truncate">{address.address}</p>
-                      <p className="text-sm sm:text-base">{address.city}, {address.postalCode}</p>
+                      <h3 className="text-base sm:text-lg font-bold mb-1 sm:mb-2 truncate text-gray-900 dark:text-white">{address.name}</h3>
+                      <p className="text-sm sm:text-base truncate text-gray-900 dark:text-white">{address.address}</p>
+                      <p className="text-sm sm:text-base text-gray-900 dark:text-white">{address.city}, {address.postalCode}</p>
                       {address.instructions && (
-                        <p className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">Instructions : {address.instructions}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Instructions : {address.instructions}</p>
                       )}
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -588,9 +588,9 @@ export default function Profile() {
           {activeTab === 'favorites' && (
             <div className="space-y-4">
               <div className="text-center py-8">
-                <FaHeart className="text-4xl text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Mes Favoris</h3>
-                <p className="text-gray-600 mb-6">Retrouvez vos restaurants préférés</p>
+                <FaHeart className="text-4xl text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Mes Favoris</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">Retrouvez vos restaurants préférés</p>
                 <button
                   onClick={() => router.push('/favorites')}
                   className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors"
