@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaBell, FaTimes, FaShoppingCart, FaEuroSign, FaExclamationCircle } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 
@@ -7,6 +7,9 @@ export default function RealTimeNotifications({ restaurantId }) {
   const [notifications, setNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertOrder, setAlertOrder] = useState(null);
+  const audioContextRef = useRef(null);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -37,15 +40,20 @@ export default function RealTimeNotifications({ restaurantId }) {
             console.log('🔔 Notification SSE reçue:', data);
             
             if (data.type === 'new_order') {
+              // Afficher une pop-up d'alerte
+              setAlertOrder(data.order);
+              setShowAlert(true);
+              
               // Jouer une alerte sonore
               playNotificationSound();
               
               // Afficher une notification du navigateur
               if (Notification.permission === 'granted') {
                 new Notification('Nouvelle commande !', {
-                  body: data.message || 'Vous avez reçu une nouvelle commande',
+                  body: data.message || `Commande #${data.order?.id?.slice(0, 8) || 'N/A'} - ${data.order?.total || 0}€`,
                   icon: '/icon-192x192.png',
-                  tag: 'new-order'
+                  tag: 'new-order',
+                  requireInteraction: false
                 });
               }
               
@@ -60,6 +68,11 @@ export default function RealTimeNotifications({ restaurantId }) {
               };
               
               setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
+              
+              // Auto-fermer la pop-up après 10 secondes
+              setTimeout(() => {
+                setShowAlert(false);
+              }, 10000);
               
               // Supprimer l'effet "nouveau" après 5 secondes
               setTimeout(() => {
@@ -105,8 +118,21 @@ export default function RealTimeNotifications({ restaurantId }) {
   // Fonction pour jouer une alerte sonore
   const playNotificationSound = () => {
     try {
-      // Créer un contexte audio
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      // Initialiser ou réutiliser le contexte audio (nécessite une interaction utilisateur pour la première fois)
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      const audioContext = audioContextRef.current;
+      
+      // Reprendre le contexte s'il est suspendu (peut arriver après inactivité)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {
+          console.warn('Contexte audio suspendu, utilisation du fallback');
+          playFallbackSound();
+          return;
+        });
+      }
       
       // Créer un oscillateur pour générer un son
       const oscillator = audioContext.createOscillator();
@@ -123,9 +149,9 @@ export default function RealTimeNotifications({ restaurantId }) {
       // Enveloppe ADSR (Attack, Decay, Sustain, Release)
       const now = audioContext.currentTime;
       gainNode.gain.setValueAtTime(0, now);
-      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // Attack
-      gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1); // Decay
-      gainNode.gain.linearRampToValueAtTime(0.2, now + 0.2); // Sustain
+      gainNode.gain.linearRampToValueAtTime(0.5, now + 0.01); // Attack - volume plus élevé
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.1); // Decay
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.2); // Sustain
       gainNode.gain.linearRampToValueAtTime(0, now + 0.3); // Release
       
       // Jouer le son
@@ -134,32 +160,58 @@ export default function RealTimeNotifications({ restaurantId }) {
       
       // Répéter une deuxième fois après un court délai (double bip)
       setTimeout(() => {
-        const oscillator2 = audioContext.createOscillator();
-        const gainNode2 = audioContext.createGain();
-        oscillator2.connect(gainNode2);
-        gainNode2.connect(audioContext.destination);
-        oscillator2.frequency.value = 1000;
-        oscillator2.type = 'sine';
-        
-        const now2 = audioContext.currentTime;
-        gainNode2.gain.setValueAtTime(0, now2);
-        gainNode2.gain.linearRampToValueAtTime(0.3, now2 + 0.01);
-        gainNode2.gain.linearRampToValueAtTime(0.2, now2 + 0.1);
-        gainNode2.gain.linearRampToValueAtTime(0.2, now2 + 0.2);
-        gainNode2.gain.linearRampToValueAtTime(0, now2 + 0.3);
-        
-        oscillator2.start(now2);
-        oscillator2.stop(now2 + 0.3);
+        try {
+          const oscillator2 = audioContext.createOscillator();
+          const gainNode2 = audioContext.createGain();
+          oscillator2.connect(gainNode2);
+          gainNode2.connect(audioContext.destination);
+          oscillator2.frequency.value = 1000;
+          oscillator2.type = 'sine';
+          
+          const now2 = audioContext.currentTime;
+          gainNode2.gain.setValueAtTime(0, now2);
+          gainNode2.gain.linearRampToValueAtTime(0.5, now2 + 0.01);
+          gainNode2.gain.linearRampToValueAtTime(0.3, now2 + 0.1);
+          gainNode2.gain.linearRampToValueAtTime(0.3, now2 + 0.2);
+          gainNode2.gain.linearRampToValueAtTime(0, now2 + 0.3);
+          
+          oscillator2.start(now2);
+          oscillator2.stop(now2 + 0.3);
+        } catch (e) {
+          console.warn('Erreur deuxième bip:', e);
+        }
       }, 150);
     } catch (error) {
-      console.warn('Impossible de jouer le son (peut nécessiter une interaction utilisateur):', error);
-      // Fallback: utiliser un fichier audio si disponible
-      try {
-        const audio = new Audio('/notification.mp3');
-        audio.play().catch(e => console.warn('Fichier audio non disponible:', e));
-      } catch (e) {
-        console.warn('Aucune méthode audio disponible');
-      }
+      console.warn('Impossible de jouer le son avec AudioContext:', error);
+      playFallbackSound();
+    }
+  };
+
+  // Fallback pour le son (utilise un élément audio HTML5)
+  const playFallbackSound = () => {
+    try {
+      // Créer un élément audio temporaire pour jouer un bip
+      const audio = document.createElement('audio');
+      // Générer un bip simple avec Web Audio API en fallback
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.frequency.value = 800;
+      osc.type = 'sine';
+      
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.5, now + 0.01);
+      gain.gain.linearRampToValueAtTime(0, now + 0.2);
+      
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch (error) {
+      console.warn('Impossible de jouer le son de fallback:', error);
     }
   };
 
@@ -205,7 +257,71 @@ export default function RealTimeNotifications({ restaurantId }) {
   if (!restaurantId) return null;
 
   return (
-    <div className="relative">
+    <>
+      {/* Pop-up d'alerte pour nouvelle commande */}
+      {showAlert && alertOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-pulse">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <FaShoppingCart className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">🎉 Nouvelle commande !</h3>
+                  <p className="text-sm text-gray-600">Une nouvelle commande vient d'arriver</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAlert(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="bg-blue-50 rounded-lg p-4 mb-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-gray-600">Commande #</p>
+                  <p className="text-lg font-bold text-gray-900">{alertOrder.id?.slice(0, 8) || 'N/A'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-lg font-bold text-green-600">{(parseFloat(alertOrder.total || 0)).toFixed(2)}€</p>
+                </div>
+              </div>
+              {alertOrder.adresse_livraison && (
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <p className="text-xs text-gray-600">Adresse de livraison</p>
+                  <p className="text-sm font-medium text-gray-900">{alertOrder.adresse_livraison}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowAlert(false);
+                  // Optionnel: rediriger vers la page des commandes
+                  window.location.href = '/partner?tab=orders';
+                }}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Voir la commande
+              </button>
+              <button
+                onClick={() => setShowAlert(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="relative">
       {/* Bouton notifications */}
       <button
         onClick={() => setShowNotifications(!showNotifications)}
@@ -306,6 +422,7 @@ export default function RealTimeNotifications({ restaurantId }) {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 } 

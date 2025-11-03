@@ -71,11 +71,25 @@ export default function PartnerAnalytics() {
 
   const fetchAnalytics = async (restaurantId) => {
     try {
-      const response = await fetch(`/api/partner/analytics?restaurantId=${restaurantId}&timeRange=${timeRange}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('❌ Aucune session pour analytics');
+        return;
+      }
+      
+      const response = await fetch(`/api/partner/analytics?restaurantId=${restaurantId}&timeRange=${timeRange}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
       const data = await response.json();
       
       if (response.ok) {
+        console.log('✅ Analytics reçues:', data);
         setAnalytics(data);
+      } else {
+        console.error('❌ Erreur API analytics:', data);
       }
     } catch (error) {
       console.error('Erreur récupération analytics:', error);

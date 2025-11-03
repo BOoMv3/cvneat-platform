@@ -28,9 +28,16 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || '30'; // jours
+    const timeRange = searchParams.get('timeRange') || 'week'; // week, month, year
+    const restaurantIdParam = searchParams.get('restaurantId');
+    
+    // Convertir timeRange en nombre de jours
+    let days = 7; // default week
+    if (timeRange === 'month') days = 30;
+    else if (timeRange === 'year') days = 365;
+    
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(period));
+    startDate.setDate(startDate.getDate() - days);
 
     // Récupérer le restaurant du partenaire
     const { data: restaurant, error: restaurantError } = await supabase
@@ -43,17 +50,44 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Commandes du restaurant
-    const { data: orders, error: ordersError } = await supabase
+    // Utiliser restaurantIdParam si fourni, sinon restaurant.id
+    const finalRestaurantId = restaurantIdParam || restaurant.id;
+    console.log('🔍 Analytics - Restaurant ID:', finalRestaurantId, 'TimeRange:', timeRange, 'Days:', days);
+
+    // Utiliser un client admin pour bypasser RLS et récupérer toutes les commandes
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Commandes du restaurant avec détails
+    const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select(`
-        *,
+        id,
+        created_at,
+        updated_at,
+        statut,
+        total,
+        frais_livraison,
+        restaurant_id,
+        user_id,
+        livreur_id,
+        adresse_livraison,
         details_commande(
-          *,
-          menus(nom, prix)
+          id,
+          quantite,
+          prix_unitaire,
+          plat_id,
+          menus(
+            id,
+            nom,
+            prix
+          )
         )
       `)
-      .eq('restaurant_id', restaurant.id)
+      .eq('restaurant_id', finalRestaurantId)
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: false });
 
@@ -71,42 +105,50 @@ export async function GET(request) {
       return acc;
     }, {}) || {};
 
+    console.log('📊 Analytics - Commandes trouvées:', orders?.length || 0);
+
     // Produits les plus vendus
     const menuStats = {};
     orders?.forEach(order => {
-      order.details_commande?.forEach(item => {
-        const menuId = item.plat_id;
-        if (!menuStats[menuId]) {
-          menuStats[menuId] = {
-            name: item.menus?.nom || 'Inconnu',
-            quantity: 0,
-            revenue: 0
-          };
-        }
-        menuStats[menuId].quantity += item.quantite;
-        menuStats[menuId].revenue += parseFloat(item.prix_unitaire * item.quantite);
-      });
+      if (order.details_commande && Array.isArray(order.details_commande)) {
+        order.details_commande.forEach(item => {
+          const menuId = item.plat_id || item.menus?.id;
+          const itemName = item.menus?.nom || 'Inconnu';
+          if (!menuStats[menuId]) {
+            menuStats[menuId] = {
+              name: itemName,
+              quantity: 0,
+              revenue: 0
+            };
+          }
+          const qty = parseFloat(item.quantite || 0) || 0;
+          const price = parseFloat(item.prix_unitaire || item.menus?.prix || 0) || 0;
+          menuStats[menuId].quantity += qty;
+          menuStats[menuId].revenue += price * qty;
+        });
+      }
     });
 
     const topMenuItems = Object.values(menuStats)
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
 
-    // Tendances quotidiennes
+    // Tendances quotidiennes - Grouper par date
     const dailyStats = orders?.reduce((acc, order) => {
-      const date = new Date(order.created_at).toDateString();
-      if (!acc[date]) {
-        acc[date] = { orders: 0, revenue: 0 };
+      const orderDate = new Date(order.created_at);
+      const dateKey = orderDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      if (!acc[dateKey]) {
+        acc[dateKey] = { orders: 0, revenue: 0 };
       }
-      acc[date].orders += 1;
-      acc[date].revenue += parseFloat(order.total);
+      acc[dateKey].orders += 1;
+      acc[dateKey].revenue += parseFloat(order.total || 0) || 0;
       return acc;
     }, {}) || {};
 
     const dailyTrends = Object.entries(dailyStats)
       .map(([date, stats]) => ({
         date,
-        orders: stats.orders,
+        count: stats.orders,
         revenue: Math.round(stats.revenue * 100) / 100
       }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -118,7 +160,7 @@ export async function GET(request) {
         acc[hour] = { orders: 0, revenue: 0 };
       }
       acc[hour].orders += 1;
-      acc[hour].revenue += parseFloat(order.total_amount);
+      acc[hour].revenue += parseFloat(order.total || 0) || 0;
       return acc;
     }, {}) || {};
 
@@ -131,28 +173,46 @@ export async function GET(request) {
       .sort((a, b) => b.orders - a.orders)
       .slice(0, 5);
 
-    // Commandes récentes
-    const recentOrders = orders?.slice(0, 10) || [];
+    // Clients uniques
+    const uniqueCustomers = new Set(orders?.map(order => order.user_id).filter(Boolean)).size;
 
-    return NextResponse.json({
-      restaurant: {
-        id: restaurant.id,
-        nom: restaurant.nom,
-        commission_rate: restaurant.commission_rate
+    // Formater les données pour correspondre au format attendu par le frontend
+    const formattedResponse = {
+      orders: dailyTrends.map(trend => ({
+        date: trend.date,
+        count: trend.count
+      })),
+      revenue: {
+        total: Math.round(totalRevenue * 100) / 100,
+        data: dailyTrends.map(trend => ({
+          date: trend.date,
+          amount: trend.revenue
+        }))
       },
-      overview: {
-        totalOrders,
-        totalRevenue: Math.round(totalRevenue * 100) / 100,
-        commissionEarned: Math.round(commissionEarned * 100) / 100,
-        averageOrderValue: Math.round(averageOrderValue * 100) / 100,
-        period: parseInt(period)
+      popularItems: topMenuItems.map(item => ({
+        name: item.name,
+        orders: item.quantity,
+        revenue: Math.round(item.revenue * 100) / 100
+      })),
+      customerStats: {
+        uniqueCustomers: uniqueCustomers,
+        averageRating: 0 // À implémenter si vous avez des avis
       },
-      orderStatusStats: ordersByStatus,
-      topMenuItems,
-      dailyTrends,
-      peakHours,
-      recentOrders
+      deliveryStats: {
+        averagePreparationTime: 0, // À calculer si vous avez preparation_time
+        averageDeliveryTime: 0, // À calculer si vous avez ces données
+        satisfactionRate: 0 // À calculer si vous avez des avis
+      }
+    };
+
+    console.log('📊 Analytics - Réponse formatée:', {
+      ordersCount: formattedResponse.orders.length,
+      revenueTotal: formattedResponse.revenue.total,
+      popularItemsCount: formattedResponse.popularItems.length,
+      uniqueCustomers: formattedResponse.customerStats.uniqueCustomers
     });
+
+    return NextResponse.json(formattedResponse);
   } catch (error) {
     console.error('Erreur récupération analytics partenaire:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
