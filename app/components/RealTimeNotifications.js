@@ -18,132 +18,98 @@ export default function RealTimeNotifications({ restaurantId }) {
     }
 
     console.log('🔍 RealTimeNotifications - Initialisation pour restaurantId:', restaurantId);
+    setIsConnected(true);
 
-    const setupSSE = async () => {
-      try {
-        // Récupérer le token d'authentification
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          console.error('❌ Aucune session pour SSE');
-          return;
-        }
-
-        const token = session.access_token;
-        console.log('🔍 DEBUG SSE Frontend - Token:', token ? 'Présent' : 'Absent');
-        console.log('🔍 DEBUG SSE Frontend - RestaurantId:', restaurantId);
-        console.log('🔍 DEBUG SSE Frontend - URL SSE:', `/api/partner/notifications/sse?restaurantId=${restaurantId}&token=${token ? '***' : 'MANQUANT'}`);
-
-        // Connexion SSE avec le token en paramètre d'URL
-        const eventSource = new EventSource(`/api/partner/notifications/sse?restaurantId=${restaurantId}&token=${token}`);
-        
-        console.log('🔍 EventSource créé, état initial:', eventSource.readyState);
-
-        eventSource.onopen = () => {
-          setIsConnected(true);
-          console.log('✅ Connecté aux notifications en temps réel');
-          console.log('✅ SSE EventSource ouvert pour restaurantId:', restaurantId);
-        };
-
-        eventSource.onerror = (error) => {
-          console.error('❌ Erreur EventSource SSE:', error);
-          console.error('❌ État EventSource:', eventSource.readyState);
-          console.error('❌ URL EventSource:', eventSource.url);
-          setIsConnected(false);
+    // Utiliser Supabase Realtime directement côté client
+    console.log('🔍 Configuration Supabase Realtime côté client...');
+    const channel = supabase
+      .channel(`restaurant_${restaurantId}_orders`)
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'commandes',
+          filter: `restaurant_id=eq.${restaurantId}`
+        }, 
+        (payload) => {
+          console.log('🔔 NOUVELLE COMMANDE DÉTECTÉE via Supabase Realtime:', payload.new.id);
+          console.log('🔔 Détails commande:', {
+            id: payload.new.id,
+            restaurant_id: payload.new.restaurant_id,
+            statut: payload.new.statut,
+            total: payload.new.total
+          });
           
-          // Si la connexion est fermée, tenter une reconnexion
-          if (eventSource.readyState === EventSource.CLOSED) {
-            console.log('🔄 Connexion fermée, tentative de reconnexion dans 5 secondes...');
-            setTimeout(() => {
-              console.log('🔄 Reconnexion SSE...');
-              eventSource.close();
-              setupSSE();
-            }, 5000);
+          // Afficher une pop-up d'alerte
+          setAlertOrder(payload.new);
+          setShowAlert(true);
+          
+          // Jouer une alerte sonore
+          playNotificationSound();
+          
+          // Afficher une notification du navigateur
+          if (Notification.permission === 'granted') {
+            new Notification('Nouvelle commande !', {
+              body: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
+              icon: '/icon-192x192.png',
+              tag: 'new-order',
+              requireInteraction: false
+            });
           }
-        };
+          
+          // Ajouter la notification avec un effet visuel
+          const newNotification = {
+            id: Date.now(),
+            type: 'new_order',
+            message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
+            data: payload.new,
+            timestamp: new Date().toISOString(),
+            isNew: true
+          };
+          
+          setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
+          
+          // Auto-fermer la pop-up après 10 secondes
+          setTimeout(() => {
+            setShowAlert(false);
+          }, 10000);
+          
+          // Supprimer l'effet "nouveau" après 5 secondes
+          setTimeout(() => {
+            setNotifications(prev => 
+              prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
+            );
+          }, 5000);
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'commandes',
+          filter: `restaurant_id=eq.${restaurantId}`
+        },
+        (payload) => {
+          console.log('🔄 Commande mise à jour via Supabase Realtime:', payload.new.id);
+          // Optionnel : afficher une notification pour les mises à jour
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔍 Statut abonnement Supabase Realtime:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Abonnement Supabase Realtime actif pour restaurant:', restaurantId);
+          setIsConnected(true);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Erreur abonnement Supabase Realtime');
+          setIsConnected(false);
+        }
+      });
 
-        eventSource.onmessage = (event) => {
-          try {
-            console.log('📨 Message SSE brut reçu:', event.data);
-            const data = JSON.parse(event.data);
-            console.log('🔔 Notification SSE parsée:', data);
-            console.log('🔔 Type de notification:', data.type);
-            
-            // Gérer le message de connexion
-            if (data.type === 'connected') {
-              console.log('✅ Message de connexion SSE reçu:', data.message);
-              setIsConnected(true);
-              return;
-            }
-            
-            if (data.type === 'new_order') {
-              console.log('🎉 NOUVELLE COMMANDE DÉTECTÉE - Affichage pop-up et son');
-              // Afficher une pop-up d'alerte
-              setAlertOrder(data.order);
-              setShowAlert(true);
-              
-              // Jouer une alerte sonore
-              playNotificationSound();
-              
-              // Afficher une notification du navigateur
-              if (Notification.permission === 'granted') {
-                new Notification('Nouvelle commande !', {
-                  body: data.message || `Commande #${data.order?.id?.slice(0, 8) || 'N/A'} - ${data.order?.total || 0}€`,
-                  icon: '/icon-192x192.png',
-                  tag: 'new-order',
-                  requireInteraction: false
-                });
-              }
-              
-              // Ajouter la notification avec un effet visuel
-              const newNotification = {
-                id: Date.now(),
-                type: 'new_order',
-                message: data.message,
-                data: data.order,
-                timestamp: data.timestamp,
-                isNew: true
-              };
-              
-              setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
-              
-              // Auto-fermer la pop-up après 10 secondes
-              setTimeout(() => {
-                setShowAlert(false);
-              }, 10000);
-              
-              // Supprimer l'effet "nouveau" après 5 secondes
-              setTimeout(() => {
-                setNotifications(prev => 
-                  prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
-                );
-              }, 5000);
-            } else if (data.type === 'order_updated') {
-              // Rafraîchir la page si une commande est mise à jour
-              console.log('🔄 Commande mise à jour, rafraîchissement nécessaire');
-              // Optionnel : jouer un son différent ou afficher une notification
-            }
-          } catch (error) {
-            console.error('❌ Erreur parsing notification SSE:', error);
-          }
-        };
-
-        // Stocker l'eventSource pour pouvoir le fermer
-        return eventSource;
-      } catch (error) {
-        console.error('❌ Erreur setup SSE:', error);
-      }
-    };
-
-    // Appeler setupSSE et gérer le nettoyage
-    let eventSource = null;
-    setupSSE().then(es => {
-      eventSource = es;
-    });
-
+    // Nettoyer la connexion
     return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
+      console.log('🧹 Nettoyage connexion Supabase Realtime');
+      channel.unsubscribe();
+      setIsConnected(false);
     };
   }, [restaurantId]);
 
