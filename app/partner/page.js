@@ -877,7 +877,7 @@ export default function PartnerDashboard() {
                       const { commission, restaurantRevenue } = calculateCommission(totalAmount);
                       
                       return (
-                        <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
+                        <div key={order.id} className="border dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50 dark:bg-gray-800">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <h3 className="font-medium text-gray-900 dark:text-white text-lg">Commande #{order.id?.slice(0, 8) || order.id}</h3>
@@ -1295,7 +1295,7 @@ export default function PartnerDashboard() {
               {menuForm.category === 'boisson' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Taille
                     </label>
                     <input
@@ -1362,7 +1362,7 @@ export default function PartnerDashboard() {
             <h4 className="text-lg font-semibold mb-4">Ajouter un supplément</h4>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Nom du supplément
                 </label>
                 <input
