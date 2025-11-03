@@ -727,7 +727,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
               <button
                 onClick={() => setShowNotifications(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <FaTimes className="h-4 w-4" />
               </button>
@@ -736,7 +736,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
                 isConnected ? 'bg-green-500' : 'bg-red-500'
               }`}></span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 {isConnected ? 'Connecté' : 'Déconnecté'}
               </span>
             </div>
@@ -744,12 +744,12 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
                 <p>Aucune notification</p>
               </div>
             ) : (
-              <div className="divide-y">
+              <div className="divide-y dark:divide-gray-700">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
@@ -763,24 +763,24 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                           {getNotificationIcon(notification.type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {new Date(notification.timestamp).toLocaleTimeString('fr-FR')}
                           </p>
                           {notification.data && (
-                            <div className="mt-2 text-xs text-gray-600">
+                            <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
                               <p>Commande #{notification.data.id}</p>
-                              <p className="text-gray-500">Total: {notification.data.total_amount || notification.data.total}€</p>
-                              <p className="text-green-600 font-semibold">Votre gain: {((notification.data.total_amount || notification.data.total || 0) * 0.80).toFixed(2)}€</p>
+                              <p className="text-gray-500 dark:text-gray-400">Total: {notification.data.total_amount || notification.data.total}€</p>
+                              <p className="text-green-600 dark:text-green-400 font-semibold">Votre gain: {((notification.data.total_amount || notification.data.total || 0) * 0.80).toFixed(2)}€</p>
                             </div>
                           )}
                         </div>
                       </div>
                       <button
                         onClick={() => removeNotification(notification.id)}
-                        className="text-gray-400 hover:text-gray-600 ml-2"
+                        className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-2"
                       >
                         <FaTimes className="h-3 w-3" />
                       </button>
@@ -792,10 +792,10 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           </div>
           
           {notifications.length > 0 && (
-            <div className="p-3 border-t bg-gray-50">
+            <div className="p-3 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
               <button
                 onClick={() => setNotifications([])}
-                className="w-full text-sm text-gray-600 hover:text-gray-800"
+                className="w-full text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white"
               >
                 Effacer toutes les notifications
               </button>
