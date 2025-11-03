@@ -51,7 +51,11 @@ export async function POST(request) {
       description,
       prix,
       category = 'Autres',
-      user_email // Ajout de l'email de l'utilisateur
+      user_email, // Ajout de l'email de l'utilisateur
+      supplements = [], // Ajout des suppléments
+      image_url, // Ajout de l'image
+      boisson_taille,
+      prix_taille
     } = await request.json();
 
     if (!restaurant_id || !nom || !prix || !user_email) {
@@ -116,18 +120,40 @@ export async function POST(request) {
     
     console.log('✅ DEBUG API MENU - Restaurant confirmé comme propriétaire');
 
+    // Préparer les données à insérer
+    const menuData = {
+      restaurant_id,
+      nom: sanitizedData.nom,
+      description: sanitizedData.description,
+      prix: parseFloat(prix),
+      category: sanitizedData.category,
+      disponible: true
+    };
+
+    // Ajouter les suppléments si fournis (stocker en JSONB)
+    if (supplements && Array.isArray(supplements) && supplements.length > 0) {
+      menuData.supplements = supplements;
+    }
+
+    // Ajouter l'image si fournie
+    if (image_url) {
+      menuData.image_url = image_url;
+    }
+
+    // Ajouter les tailles de boisson si fournies
+    if (boisson_taille) {
+      menuData.boisson_taille = boisson_taille;
+    }
+    if (prix_taille) {
+      menuData.prix_taille = parseFloat(prix_taille);
+    }
+
+    console.log('📦 DEBUG API MENU - Données à insérer:', JSON.stringify(menuData, null, 2));
+    console.log('📦 DEBUG API MENU - Suppléments:', JSON.stringify(supplements, null, 2));
+
     const { data: menuItem, error: menuError } = await supabase
       .from('menus')
-      .insert([
-        {
-          restaurant_id,
-          nom: sanitizedData.nom,
-          description: sanitizedData.description,
-          prix: parseFloat(prix),
-          category: sanitizedData.category,
-          disponible: true
-        }
-      ])
+      .insert([menuData])
       .select()
       .single();
 
@@ -155,22 +181,56 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
-    const { id, nom, description, prix, image_url, disponible, category } = await request.json();
+    const { 
+      id, 
+      nom, 
+      description, 
+      prix, 
+      image_url, 
+      disponible, 
+      category,
+      supplements = [],
+      boisson_taille,
+      prix_taille
+    } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'Menu ID requis' }, { status: 400 });
     }
 
+    // Préparer les données à mettre à jour
+    const updateData = {
+      nom,
+      description,
+      prix: parseFloat(prix),
+      disponible,
+      category
+    };
+
+    // Ajouter l'image si fournie
+    if (image_url !== undefined) {
+      updateData.image_url = image_url;
+    }
+
+    // Ajouter les suppléments si fournis (stocker en JSONB)
+    if (supplements !== undefined) {
+      updateData.supplements = Array.isArray(supplements) ? supplements : [];
+    }
+
+    // Ajouter les tailles de boisson si fournies
+    if (boisson_taille !== undefined) {
+      updateData.boisson_taille = boisson_taille;
+    }
+    if (prix_taille !== undefined) {
+      updateData.prix_taille = parseFloat(prix_taille);
+    }
+
+    console.log('📦 DEBUG API MENU PUT - Données à mettre à jour:', JSON.stringify(updateData, null, 2));
+    console.log('📦 DEBUG API MENU PUT - Suppléments:', JSON.stringify(supplements, null, 2));
+
     const { data, error } = await supabase
       .from('menus')
-      .update({
-        nom,
-        description,
-        prix: parseFloat(prix),
-        image_url,
-        disponible,
-        category
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

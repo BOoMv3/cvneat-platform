@@ -218,9 +218,38 @@ export default function PartnerDashboard() {
     try {
       const url = editingMenu ? '/api/partner/menu' : '/api/partner/menu';
       const method = editingMenu ? 'PUT' : 'POST';
+      
+      // Préparer le body avec tous les champs, y compris les suppléments
       const body = editingMenu 
-        ? { id: editingMenu.id, ...menuForm, user_email: userData.email }
-        : { restaurant_id: restaurant.id, ...menuForm, user_email: userData.email };
+        ? { 
+            id: editingMenu.id, 
+            nom: menuForm.nom,
+            description: menuForm.description || '',
+            prix: menuForm.prix,
+            category: menuForm.category || 'Autres',
+            disponible: menuForm.disponible !== false,
+            image_url: menuForm.image_url || null,
+            supplements: Array.isArray(menuForm.supplements) ? menuForm.supplements : [],
+            boisson_taille: menuForm.boisson_taille || null,
+            prix_taille: menuForm.prix_taille || null,
+            user_email: userData.email
+          }
+        : { 
+            restaurant_id: restaurant.id,
+            nom: menuForm.nom,
+            description: menuForm.description || '',
+            prix: menuForm.prix,
+            category: menuForm.category || 'Autres',
+            disponible: menuForm.disponible !== false,
+            image_url: menuForm.image_url || null,
+            supplements: Array.isArray(menuForm.supplements) ? menuForm.supplements : [],
+            boisson_taille: menuForm.boisson_taille || null,
+            prix_taille: menuForm.prix_taille || null,
+            user_email: userData.email
+          };
+
+      console.log('📤 DEBUG - Envoi menu avec suppléments:', JSON.stringify(body, null, 2));
+      console.log('📤 DEBUG - Suppléments dans le formulaire:', JSON.stringify(menuForm.supplements, null, 2));
 
       const response = await fetch(url, {
         method,
