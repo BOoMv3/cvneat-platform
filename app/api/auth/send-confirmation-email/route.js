@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 
 // Cette route est appelée après l'inscription pour envoyer un email de confirmation personnalisé en français
 export async function POST(request) {
