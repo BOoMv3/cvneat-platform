@@ -462,10 +462,20 @@ export default function TrackOrder() {
                   </div>
                   <div className="flex justify-between font-bold text-sm sm:text-base lg:text-lg border-t border-gray-200 dark:border-gray-600 pt-2 text-gray-900 dark:text-white">
                     <span>Total</span>
-                    <span>{(parseFloat(order.total || 0) || 
-                      ((order.items?.reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseFloat(item.quantity || 0)), 0) || 0) + 
-                       (parseFloat(order.frais_livraison || order.delivery_fee || 0) || 0))
-                    ).toFixed(2)}€</span>
+                    <span>{(() => {
+                      // Calculer le total correctement : sous-total des articles + frais de livraison
+                      // Le champ 'total' dans la BD peut contenir soit juste les articles, soit articles + frais
+                      // On recalcule toujours depuis les articles pour être sûr
+                      const items = order.items || order.details_commande || [];
+                      const subtotal = items.reduce((sum, item) => {
+                        const price = parseFloat(item.price || item.prix_unitaire || 0) || 0;
+                        const quantity = parseFloat(item.quantity || item.quantite || 0) || 0;
+                        return sum + (price * quantity);
+                      }, 0);
+                      const deliveryFee = parseFloat(order.frais_livraison || order.delivery_fee || 0) || 0;
+                      const totalWithDelivery = subtotal + deliveryFee;
+                      return totalWithDelivery.toFixed(2);
+                    })()}€</span>
                   </div>
                 </div>
               </div>
