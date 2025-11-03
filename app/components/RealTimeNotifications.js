@@ -3,15 +3,17 @@ import { useState, useEffect, useRef } from 'react';
 import { FaBell, FaTimes, FaShoppingCart, FaEuroSign, FaExclamationCircle } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 
-export default function RealTimeNotifications({ restaurantId }) {
+export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const [notifications, setNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertOrder, setAlertOrder] = useState(null);
   const [isBlinking, setIsBlinking] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState(null);
   const audioContextRef = useRef(null);
   const lastOrderCheckRef = useRef(null);
+  const soundIntervalRef = useRef(null);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -154,34 +156,57 @@ export default function RealTimeNotifications({ restaurantId }) {
       console.log('🧹 Nettoyage connexion Supabase Realtime et polling');
       channel.unsubscribe();
       clearInterval(pollingInterval);
+      if (soundIntervalRef.current) {
+        clearInterval(soundIntervalRef.current);
+      }
       setIsConnected(false);
     };
   }, [restaurantId]); // Retirer lastOrderId des dépendances pour éviter la boucle infinie
 
   // Fonction pour déclencher l'alerte de nouvelle commande
   const triggerNewOrderAlert = (order) => {
+    // Ne déclencher l'alerte que pour les commandes en attente
+    if (order.statut !== 'en_attente') {
+      console.log('⚠️ Commande non en attente, alerte ignorée:', order.statut);
+      return;
+    }
+
+    // Si c'est la même commande qui est encore en attente, ne pas redéclencher l'alerte
+    if (pendingOrderId === order.id && showAlert) {
+      return;
+    }
+
     console.log('🎉 DÉCLENCHEMENT ALERTE - Nouvelle commande:', order.id);
     
     // Afficher une pop-up d'alerte
     setAlertOrder(order);
     setShowAlert(true);
     setIsBlinking(true);
+    setPendingOrderId(order.id);
     
-    // Jouer une alerte sonore (plusieurs fois)
+    // Jouer une alerte sonore initiale (plusieurs fois)
     playNotificationSound();
     setTimeout(() => playNotificationSound(), 500); // Double bip
+    
+    // Démarrer un intervalle pour jouer le son toutes les 4 secondes
+    if (soundIntervalRef.current) {
+      clearInterval(soundIntervalRef.current);
+    }
+    soundIntervalRef.current = setInterval(() => {
+      // Vérifier que la commande est toujours en attente avant de jouer le son
+      checkOrderStatusAndPlaySound(order.id);
+    }, 4000); // Toutes les 4 secondes
     
     // Afficher une notification du navigateur
     if (Notification.permission === 'granted') {
       new Notification('🎉 NOUVELLE COMMANDE !', {
         body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(parseFloat(order.total || 0)).toFixed(2)}€`,
         icon: '/icon-192x192.png',
-        tag: 'new-order',
-        requireInteraction: true, // Nécessite interaction pour être plus visible
+        tag: `order-${order.id}`,
+        requireInteraction: true,
         badge: '/icon-192x192.png'
       });
     } else if (Notification.permission === 'default') {
-      // Demander la permission si pas encore demandée
       Notification.requestPermission();
     }
     
@@ -201,19 +226,40 @@ export default function RealTimeNotifications({ restaurantId }) {
     setTimeout(() => {
       setIsBlinking(false);
     }, 10000);
-    
-    // Auto-fermer la pop-up après 30 secondes (augmenté)
-    setTimeout(() => {
-      setShowAlert(false);
-      setIsBlinking(false);
-    }, 30000);
-    
-    // Supprimer l'effet "nouveau" après 5 secondes
-    setTimeout(() => {
-      setNotifications(prev => 
-        prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
-      );
-    }, 5000);
+  };
+
+  // Fonction pour vérifier le statut de la commande et jouer le son si toujours en attente
+  const checkOrderStatusAndPlaySound = async (orderId) => {
+    try {
+      const { data: order, error } = await supabase
+        .from('commandes')
+        .select('statut')
+        .eq('id', orderId)
+        .single();
+
+      if (error) {
+        console.warn('⚠️ Erreur vérification statut commande:', error);
+        return;
+      }
+
+      // Si la commande n'est plus en attente, arrêter le son et fermer la pop-up
+      if (order.statut !== 'en_attente') {
+        console.log('✅ Commande traitée, arrêt des alertes:', order.statut);
+        if (soundIntervalRef.current) {
+          clearInterval(soundIntervalRef.current);
+          soundIntervalRef.current = null;
+        }
+        setShowAlert(false);
+        setIsBlinking(false);
+        setPendingOrderId(null);
+        return;
+      }
+
+      // La commande est toujours en attente, jouer le son
+      playNotificationSound();
+    } catch (error) {
+      console.warn('⚠️ Erreur vérification statut:', error);
+    }
   };
 
   // Fonction pour jouer une alerte sonore
@@ -361,44 +407,51 @@ export default function RealTimeNotifications({ restaurantId }) {
     <>
       {/* Pop-up d'alerte pour nouvelle commande */}
       {showAlert && alertOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`bg-white rounded-lg shadow-xl max-w-md w-full p-6 ${isBlinking ? 'animate-pulse ring-4 ring-yellow-400' : ''}`} style={{
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 ${isBlinking ? 'animate-pulse ring-4 ring-yellow-400 dark:ring-yellow-500' : ''}`} style={{
             animation: isBlinking ? 'blink 0.5s infinite' : 'none',
             boxShadow: isBlinking ? '0 0 20px rgba(251, 191, 36, 0.8)' : ''
           }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <FaShoppingCart className="h-6 w-6 text-green-600" />
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                  <FaShoppingCart className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">🎉 Nouvelle commande !</h3>
-                  <p className="text-sm text-gray-600">Une nouvelle commande vient d'arriver</p>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">🎉 Nouvelle commande !</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Une nouvelle commande vient d'arriver</p>
                 </div>
               </div>
               <button
-                onClick={() => setShowAlert(false)}
-                className="text-gray-400 hover:text-gray-600"
+                onClick={() => {
+                  setShowAlert(false);
+                  setIsBlinking(false);
+                  if (soundIntervalRef.current) {
+                    clearInterval(soundIntervalRef.current);
+                    soundIntervalRef.current = null;
+                  }
+                }}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <FaTimes className="h-5 w-5" />
               </button>
             </div>
             
-            <div className={`bg-blue-50 rounded-lg p-4 mb-4 ${isBlinking ? 'bg-yellow-100 border-2 border-yellow-400' : ''}`}>
+            <div className={`bg-blue-50 dark:bg-blue-900 rounded-lg p-4 mb-4 ${isBlinking ? 'bg-yellow-100 dark:bg-yellow-900 border-2 border-yellow-400 dark:border-yellow-500' : ''}`}>
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm text-gray-600">Commande #</p>
-                  <p className={`text-lg font-bold ${isBlinking ? 'text-red-600' : 'text-gray-900'}`}>{alertOrder.id?.slice(0, 8) || 'N/A'}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Commande #</p>
+                  <p className={`text-lg font-bold ${isBlinking ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{alertOrder.id?.slice(0, 8) || 'N/A'}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">Total</p>
-                  <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 animate-bounce' : 'text-green-600'}`}>{(parseFloat(alertOrder.total || 0)).toFixed(2)}€</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
+                  <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 dark:text-red-400 animate-bounce' : 'text-green-600 dark:text-green-400'}`}>{(parseFloat(alertOrder.total || 0)).toFixed(2)}€</p>
                 </div>
               </div>
               {alertOrder.adresse_livraison && (
-                <div className="mt-3 pt-3 border-t border-blue-200">
-                  <p className="text-xs text-gray-600">Adresse de livraison</p>
-                  <p className="text-sm font-medium text-gray-900">{alertOrder.adresse_livraison}</p>
+                <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                  <p className="text-xs text-gray-600 dark:text-gray-300">Adresse de livraison</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{alertOrder.adresse_livraison}</p>
                 </div>
               )}
             </div>
@@ -408,10 +461,25 @@ export default function RealTimeNotifications({ restaurantId }) {
                 onClick={() => {
                   setShowAlert(false);
                   setIsBlinking(false);
-                  // Optionnel: rediriger vers la page des commandes
-                  window.location.href = '/partner?tab=orders';
+                  // Arrêter le son répétitif
+                  if (soundIntervalRef.current) {
+                    clearInterval(soundIntervalRef.current);
+                    soundIntervalRef.current = null;
+                  }
+                  // Utiliser le callback pour changer d'onglet dans la page parente
+                  if (onOrderClick) {
+                    onOrderClick();
+                  } else {
+                    // Fallback: rediriger vers l'onglet commandes
+                    const dashboardTab = document.querySelector('[data-tab="orders"]');
+                    if (dashboardTab) {
+                      dashboardTab.click();
+                    } else {
+                      window.location.href = '/partner';
+                    }
+                  }
                 }}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg dark:bg-blue-500 dark:hover:bg-blue-600"
               >
                 📦 Voir la commande
               </button>
@@ -419,8 +487,13 @@ export default function RealTimeNotifications({ restaurantId }) {
                 onClick={() => {
                   setShowAlert(false);
                   setIsBlinking(false);
+                  // Arrêter le son répétitif
+                  if (soundIntervalRef.current) {
+                    clearInterval(soundIntervalRef.current);
+                    soundIntervalRef.current = null;
+                  }
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-gray-300"
               >
                 Fermer
               </button>

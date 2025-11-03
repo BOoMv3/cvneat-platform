@@ -578,7 +578,10 @@ export default function PartnerDashboard() {
                 <span className="sm:hidden">Zones</span>
               </button>
               <div className="flex justify-center">
-                <RealTimeNotifications restaurantId={restaurant?.id} />
+                <RealTimeNotifications 
+                  restaurantId={restaurant?.id} 
+                  onOrderClick={() => setActiveTab('orders')}
+                />
               </div>
             </div>
           </div>
