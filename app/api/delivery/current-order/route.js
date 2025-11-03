@@ -46,11 +46,12 @@ export async function GET(request) {
     console.log('🔍 Recherche commande pour livreur:', user.id);
     
     // D'abord, récupérer la commande sans jointures pour éviter les problèmes
+    // Inclure explicitement security_code pour que le livreur puisse le voir
     const { data: order, error } = await supabaseAdmin
       .from('commandes')
-      .select('*')
+      .select('id, created_at, updated_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, security_code, preparation_time')
       .eq('livreur_id', user.id) // Commandes assignées à ce livreur
-      .eq('statut', 'en_livraison') // Seulement les commandes en livraison (pas encore livrées)
+      .in('statut', ['en_livraison', 'en_preparation']) // Commandes en livraison ou en préparation (livreur peut voir avant livraison)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { FaArrowLeft } from 'react-icons/fa';
 import { supabase } from '../../../lib/supabase';
 
 export default function UserOrders() {
@@ -38,7 +39,7 @@ export default function UserOrders() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await fetchWithAuth('/api/users/me/orders');
+      const response = await fetchWithAuth('/api/orders');
       if (!response.ok) {
         throw new Error('Failed to fetch orders');
       }
@@ -52,23 +53,27 @@ export default function UserOrders() {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'preparing': return 'bg-blue-100 text-blue-800';
-      case 'ready': return 'bg-green-100 text-green-800';
-      case 'delivered': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    // Support des statuts français et anglais
+    const statut = status || '';
+    if (statut === 'en_attente' || statut === 'pending') return 'bg-yellow-100 text-yellow-800';
+    if (statut === 'en_preparation' || statut === 'preparing') return 'bg-blue-100 text-blue-800';
+    if (statut === 'pret_a_livrer' || statut === 'ready') return 'bg-green-100 text-green-800';
+    if (statut === 'en_livraison' || statut === 'in_delivery') return 'bg-purple-100 text-purple-800';
+    if (statut === 'livree' || statut === 'delivered') return 'bg-gray-100 text-gray-800';
+    if (statut === 'annulee' || statut === 'cancelled') return 'bg-red-100 text-red-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   const getStatusText = (status) => {
-    switch (status) {
-      case 'pending': return 'En attente';
-      case 'preparing': return 'En préparation';
-      case 'ready': return 'Prêt';
-      case 'delivered': return 'Livré';
-      default: return status;
-    }
+    // Support des statuts français et anglais
+    const statut = status || '';
+    if (statut === 'en_attente' || statut === 'pending') return 'En attente';
+    if (statut === 'en_preparation' || statut === 'preparing') return 'En préparation';
+    if (statut === 'pret_a_livrer' || statut === 'ready') return 'Prêt à livrer';
+    if (statut === 'en_livraison' || statut === 'in_delivery') return 'En livraison';
+    if (statut === 'livree' || statut === 'delivered') return 'Livré';
+    if (statut === 'annulee' || statut === 'cancelled') return 'Annulé';
+    return statut;
   };
 
   if (loading) {
@@ -144,15 +149,15 @@ export default function UserOrders() {
                 <div className="flex justify-between items-center border-t pt-4">
                   <div>
                     <p className="text-sm text-gray-500">Sous-total</p>
-                    <p className="text-lg font-medium">{order.totalAmount}€</p>
+                    <p className="text-lg font-medium">{((order.total || 0) - (order.deliveryFee || 0)).toFixed(2)}€</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Frais de livraison</p>
-                    <p className="text-lg font-medium">{order.deliveryFee}€</p>
+                    <p className="text-lg font-medium">{(parseFloat(order.deliveryFee || 0)).toFixed(2)}€</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Total</p>
-                    <p className="text-lg font-medium">{order.totalAmount + order.deliveryFee}€</p>
+                    <p className="text-lg font-medium">{(parseFloat(order.total || 0)).toFixed(2)}€</p>
                   </div>
                 </div>
               </div>

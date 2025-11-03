@@ -20,10 +20,34 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les commandes de l'utilisateur
+    // Récupérer les commandes de l'utilisateur avec les détails
     const { data: orders, error: ordersError } = await supabase
       .from('commandes')
-      .select('*')
+      .select(`
+        id,
+        created_at,
+        updated_at,
+        statut,
+        total,
+        frais_livraison,
+        adresse_livraison,
+        restaurant_id,
+        details_commande (
+          id,
+          quantite,
+          prix_unitaire,
+          menus (
+            nom,
+            prix
+          )
+        ),
+        restaurants (
+          id,
+          nom,
+          adresse,
+          ville
+        )
+      `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -32,36 +56,33 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
     }
 
-    // Récupérer les restaurants séparément
-    const { data: restaurants, error: restaurantsError } = await supabase
-      .from('restaurants')
-      .select('id, nom, adresse, ville');
-
-    if (restaurantsError) {
-      console.error('Erreur lors de la récupération des restaurants:', restaurantsError);
-    }
-
-    // Créer un map des restaurants pour un accès rapide
-    const restaurantsMap = {};
-    if (restaurants) {
-      restaurants.forEach(restaurant => {
-        restaurantsMap[restaurant.id] = restaurant;
-      });
-    }
-
     // Formater les données pour le frontend
-    const formattedOrders = orders.map(order => {
-      const restaurant = restaurantsMap[order.restaurant_id];
+    const formattedOrders = (orders || []).map(order => {
+      const restaurant = order.restaurants;
+      const items = (order.details_commande || []).map(detail => ({
+        id: detail.id,
+        name: detail.menus?.nom || 'Article',
+        quantity: detail.quantite || 0,
+        price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0
+      }));
+
+      // Extraire l'adresse de livraison
+      const addressParts = (order.adresse_livraison || '').split(',').map(s => s.trim());
+      const deliveryAddress = addressParts[0] || '';
+      const deliveryCity = addressParts.length > 2 ? addressParts[1] : (addressParts[1] || '');
+      const deliveryPostalCode = addressParts.length > 2 ? addressParts[2]?.split(' ')[0] : '';
+
       return {
         id: order.id,
         restaurantName: restaurant?.nom || 'Restaurant inconnu',
-        status: order.status,
-        total: order.total_amount,
-        deliveryAddress: order.delivery_address,
-        deliveryCity: order.delivery_city,
-        deliveryPostalCode: order.delivery_postal_code,
+        status: order.statut, // Utiliser statut (français)
+        total: parseFloat(order.total || 0) || 0,
+        deliveryFee: parseFloat(order.frais_livraison || 0) || 0,
+        deliveryAddress: deliveryAddress,
+        deliveryCity: deliveryCity,
+        deliveryPostalCode: deliveryPostalCode,
         createdAt: order.created_at,
-        items: order.items || []
+        items: items
       };
     });
 
@@ -191,6 +212,10 @@ export async function POST(request) {
     console.log('Total utilise:', total);
     console.log('Frais de livraison utilises:', fraisLivraison);
 
+    // Générer un code de sécurité à 6 chiffres pour la livraison
+    const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('🔐 Code de sécurité généré pour la commande');
+
     // Creer la commande dans Supabase
     console.log('Tentative de creation de la commande...');
     const orderData = {
@@ -198,7 +223,8 @@ export async function POST(request) {
       adresse_livraison: `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`,
       total: total,
       frais_livraison: fraisLivraison,
-      statut: 'en_attente' // En attente d'acceptation par le restaurant
+      statut: 'en_attente', // En attente d'acceptation par le restaurant
+      security_code: securityCode // Code de sécurité pour la livraison
       // user_id sera NULL par défaut pour les commandes sans utilisateur connecté
     };
 

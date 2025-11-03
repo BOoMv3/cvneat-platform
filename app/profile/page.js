@@ -465,8 +465,8 @@ export default function Profile() {
                           })}
                         </p>
                       </div>
-                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(order.status)}`}>
-                        {getStatusText(order.status)}
+                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(order.status || order.statut)}`}>
+                        {getStatusText(order.status || order.statut)}
                       </span>
                     </div>
 
@@ -493,12 +493,12 @@ export default function Profile() {
                         </div>
                         <div className="text-left sm:text-right">
                           <p className="font-medium text-sm sm:text-base">Total</p>
-                          <p className="text-base sm:text-lg font-bold">{order.total.toFixed(2)}€</p>
+                          <p className="text-base sm:text-lg font-bold">{(parseFloat(order.total || 0)).toFixed(2)}€</p>
                         </div>
                       </div>
                       
                       {/* Bouton signaler un problème pour les commandes livrées */}
-                      {order.status === 'delivered' && (
+                      {(order.status === 'delivered' || order.status === 'livree' || order.statut === 'livree' || order.statut === 'delivered') && (
                         <div className="mt-3 pt-3 border-t">
                           <button
                             onClick={(e) => {

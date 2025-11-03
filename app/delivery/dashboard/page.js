@@ -495,11 +495,18 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const completeDelivery = async (orderId) => {
+  const completeDelivery = async (orderId, providedCode = null) => {
     try {
+      // Si le code n'est pas fourni, utiliser celui de la commande actuelle ou demander via prompt
+      let securityCode = providedCode;
       
-      // Demander le code de sécurité au livreur
-      const securityCode = prompt('🔐 Entrez le code de sécurité donné par le client:');
+      if (!securityCode && currentOrder?.security_code) {
+        // Utiliser le code de la commande actuelle
+        securityCode = currentOrder.security_code;
+      } else if (!securityCode) {
+        // Fallback: demander le code via prompt si non disponible
+        securityCode = prompt('🔐 Entrez le code de sécurité donné par le client:');
+      }
       
       if (!securityCode) {
         alert('Code de sécurité requis pour finaliser la livraison');
@@ -783,6 +790,21 @@ export default function DeliveryDashboard() {
                       <h3 className="font-semibold text-gray-900 mb-2">🏠 Adresse de livraison</h3>
                       <p className="text-gray-700">{currentOrder.user_addresses?.address}</p>
                     </div>
+                    
+                    {/* Code de sécurité */}
+                    {currentOrder.security_code && (
+                      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold text-blue-800 mb-1">🔐 Code de sécurité</h3>
+                            <p className="text-xs text-blue-600">Code à demander au client pour valider la livraison</p>
+                          </div>
+                          <div className="text-3xl sm:text-4xl font-mono font-bold text-blue-800 bg-white px-4 py-2 rounded-lg border-2 border-blue-400 shadow-md">
+                            {currentOrder.security_code}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       {(currentOrder.statut === 'en_livraison' || currentOrder.statut === 'pret_a_livrer') && (
