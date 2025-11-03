@@ -648,11 +648,18 @@ export default function PartnerDashboard() {
                 <RealTimeNotifications 
                   restaurantId={restaurant?.id} 
                   onOrderClick={() => {
-                    setActiveTab('orders');
+                    // Ne pas réinitialiser les commandes, juste changer l'onglet
+                    if (activeTab !== 'orders') {
+                      setActiveTab('orders');
+                    }
                     // Forcer le scroll vers le haut pour voir l'onglet
                     setTimeout(() => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }, 100);
+                    // Rafraîchir les commandes pour s'assurer qu'elles sont à jour
+                    if (restaurant?.id) {
+                      fetchOrders(restaurant.id);
+                    }
                   }}
                 />
               </div>

@@ -533,14 +533,11 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                   }
                   
                   // Fallback supplémentaire: utiliser window.location avec hash
+                  // Ne pas utiliser pushState car cela peut causer des problèmes de navigation
                   setTimeout(() => {
                     const dashboardTab = document.querySelector('[data-tab="orders"]');
                     if (dashboardTab) {
                       dashboardTab.click();
-                    }
-                    // Aussi essayer de changer l'URL pour forcer la navigation
-                    if (window.location.pathname === '/partner') {
-                      window.history.pushState({}, '', '/partner#orders');
                     }
                   }, 100);
                 }}
