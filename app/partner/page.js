@@ -114,19 +114,23 @@ export default function PartnerDashboard() {
     fetchData();
   }, [router]);
 
-  // Rafraîchir automatiquement les commandes toutes les 10 secondes
-  useEffect(() => {
-    if (!restaurant?.id) return;
-    
-    const ordersInterval = setInterval(() => {
-      fetchOrders(restaurant.id);
-    }, 10000); // 10 secondes
-    
-    // Nettoyer l'intervalle lors du démontage
-    return () => {
-      clearInterval(ordersInterval);
-    };
-  }, [restaurant?.id]);
+    // Rafraîchir automatiquement les commandes toutes les 60 secondes (réduit pour éviter rate limiting)
+    // Note: Le rafraîchissement réel se fait via Supabase Realtime dans RealTimeNotifications
+    useEffect(() => {
+      if (!restaurant?.id) return;
+      
+      const ordersInterval = setInterval(() => {
+        // Vérifier que l'onglet est actif avant de rafraîchir
+        if (document.visibilityState === 'visible') {
+          fetchOrders(restaurant.id);
+        }
+      }, 60000); // 60 secondes (augmenté pour éviter rate limiting)
+      
+      // Nettoyer l'intervalle lors du démontage
+      return () => {
+        clearInterval(ordersInterval);
+      };
+    }, [restaurant?.id]);
 
   const fetchDashboardData = async (restaurantId) => {
     try {
@@ -465,6 +469,12 @@ export default function PartnerDashboard() {
       });
     } catch (error) {
       console.error('Erreur récupération commandes:', error);
+      // Si erreur 429, attendre avant de réessayer
+      if (error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
+        console.warn('⚠️ Rate limit atteint, attente avant prochaine requête');
+      }
+    } finally {
+      isFetching = false;
     }
   };
 
