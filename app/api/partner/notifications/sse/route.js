@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import sseBroadcaster from '../../../../../lib/sse-broadcast';
 
 async function getUserFromRequest(request) {
   try {
@@ -107,63 +108,68 @@ export async function GET(request) {
           }
         };
 
-        // Écouter les nouvelles commandes avec Supabase Realtime
-        console.log('🔍 SSE - Configuration Supabase Realtime pour restaurant:', userRestaurantId);
-        const channel = supabase
-          .channel(`restaurant_${userRestaurantId}_orders`)
-          .on('postgres_changes', 
-            { 
-              event: 'INSERT', 
-              schema: 'public', 
-              table: 'commandes',
-              filter: `restaurant_id=eq.${userRestaurantId}`
-            }, 
-            (payload) => {
-              console.log('🔔 Nouvelle commande détectée via Supabase Realtime:', payload.new.id);
-              console.log('🔔 Détails commande:', {
-                id: payload.new.id,
-                restaurant_id: payload.new.restaurant_id,
-                statut: payload.new.statut,
-                total: payload.new.total
-              });
-              sendNotification({
-                type: 'new_order',
-                message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
-                order: payload.new,
-                timestamp: new Date().toISOString()
-              });
-            }
-          )
-          .on('postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'commandes',
-              filter: `restaurant_id=eq.${userRestaurantId}`
-            },
-            (payload) => {
-              console.log('🔄 Commande mise à jour via SSE:', payload.new.id);
-              sendNotification({
-                type: 'order_updated',
-                message: `Commande #${payload.new.id?.slice(0, 8) || 'N/A'} mise à jour`,
-                order: payload.new,
-                timestamp: new Date().toISOString()
-              });
-            }
-          )
-          .subscribe((status) => {
-            console.log('🔍 SSE - Statut abonnement Supabase:', status);
-            if (status === 'SUBSCRIBED') {
-              console.log('✅ Abonnement Supabase Realtime actif');
-            } else if (status === 'CHANNEL_ERROR') {
-              console.error('❌ Erreur abonnement Supabase Realtime');
-            }
-          });
+        // Enregistrer ce client dans le broadcaster
+        const removeClient = sseBroadcaster.addClient(userRestaurantId, controller);
+        console.log(`✅ Client SSE enregistré dans broadcaster pour restaurant ${userRestaurantId}`);
+
+        // Optionnel : Essayer aussi Supabase Realtime (peut ne pas fonctionner en serverless)
+        try {
+          console.log('🔍 SSE - Tentative configuration Supabase Realtime pour restaurant:', userRestaurantId);
+          const channel = supabase
+            .channel(`restaurant_${userRestaurantId}_orders`)
+            .on('postgres_changes', 
+              { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'commandes',
+                filter: `restaurant_id=eq.${userRestaurantId}`
+              }, 
+              (payload) => {
+                console.log('🔔 Nouvelle commande détectée via Supabase Realtime:', payload.new.id);
+                sendNotification({
+                  type: 'new_order',
+                  message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
+                  order: payload.new,
+                  timestamp: new Date().toISOString()
+                });
+              }
+            )
+            .on('postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'commandes',
+                filter: `restaurant_id=eq.${userRestaurantId}`
+              },
+              (payload) => {
+                console.log('🔄 Commande mise à jour via SSE:', payload.new.id);
+                sendNotification({
+                  type: 'order_updated',
+                  message: `Commande #${payload.new.id?.slice(0, 8) || 'N/A'} mise à jour`,
+                  order: payload.new,
+                  timestamp: new Date().toISOString()
+                });
+              }
+            )
+            .subscribe((status) => {
+              console.log('🔍 SSE - Statut abonnement Supabase:', status);
+              if (status === 'SUBSCRIBED') {
+                console.log('✅ Abonnement Supabase Realtime actif');
+              } else if (status === 'CHANNEL_ERROR') {
+                console.warn('⚠️ Supabase Realtime non disponible (normal en serverless), utilisation du broadcaster');
+              }
+            });
+        } catch (realtimeError) {
+          console.warn('⚠️ Erreur Supabase Realtime (normal en serverless):', realtimeError.message);
+        }
 
         // Nettoyer la connexion
         request.signal.addEventListener('abort', () => {
           console.log('🧹 SSE - Nettoyage connexion');
-          channel.unsubscribe();
+          removeClient(); // Supprimer du broadcaster
+          if (typeof channel !== 'undefined' && channel) {
+            channel.unsubscribe();
+          }
           controller.close();
         });
       }

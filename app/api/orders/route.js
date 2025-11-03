@@ -281,6 +281,20 @@ export async function POST(request) {
     }
 
     console.log('✅ Commande créée avec succès:', order.id);
+    
+    // Envoyer une notification SSE au restaurant via le broadcaster
+    try {
+      const notificationSent = sseBroadcaster.broadcast(restaurantId, {
+        type: 'new_order',
+        message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${order.total || 0}€`,
+        order: order,
+        timestamp: new Date().toISOString()
+      });
+      console.log('🔔 Notification SSE envoyée:', notificationSent ? 'Oui' : 'Non (aucun client connecté)');
+    } catch (broadcastError) {
+      console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
+      // Ne pas faire échouer la création de commande si le broadcast échoue
+    }
     console.log('📊 Statut initial de la commande:', order.statut);
     console.log('📅 Heure de création:', order.created_at);
 
