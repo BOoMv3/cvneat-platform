@@ -768,9 +768,9 @@ export default function PartnerDashboard() {
             </div>
 
             {/* Recent Orders */}
-            <div className="bg-white rounded-lg shadow-sm">
-              <div className="p-6 border-b">
-                <h2 className="text-lg font-semibold">Commandes recentes</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <div className="p-6 border-b dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Commandes recentes</h2>
               </div>
               <div className="p-6">
                 {!Array.isArray(stats?.recentOrders) || stats.recentOrders.length === 0 ? (
@@ -778,9 +778,9 @@ export default function PartnerDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {stats.recentOrders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={order.id} className="flex items-center justify-between p-4 border dark:border-gray-700 rounded-lg">
                         <div>
-                          <p className="font-medium">Commande #{order.id}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">Commande #{order.id}</p>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
                             {(parseFloat(order.total || 0) || 0).toFixed(2)} €
                           </p>
@@ -1046,14 +1046,14 @@ export default function PartnerDashboard() {
               </button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
               <div className="p-6">
                 {!Array.isArray(menu) || menu.length === 0 ? (
                   <p className="text-gray-500 dark:text-gray-400 text-center">Aucun plat dans le menu</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                     {menu.map((item) => (
-                      <div key={item.id} className="border rounded-lg p-2 sm:p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+                      <div key={item.id} className="border dark:border-gray-700 rounded-lg p-2 sm:p-3 bg-white dark:bg-gray-700 shadow-sm hover:shadow-md transition-shadow">
                         {/* Image du plat */}
                         <div className="mb-2">
                           {item.image_url ? (
@@ -1141,7 +1141,7 @@ export default function PartnerDashboard() {
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Suppléments :</p>
                             <div className="flex flex-wrap gap-1">
                               {item.supplements.map((supp, index) => (
-                                <span key={index} className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
+                                <span key={index} className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1 py-0.5 rounded">
                                   {supp.nom} (+{supp.prix}€)
                                 </span>
                               ))}
@@ -1400,7 +1400,7 @@ export default function PartnerDashboard() {
                     const value = e.target.value;
                     setSupplementForm({...supplementForm, prix: value === '' ? 0 : parseFloat(value) || 0});
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div className="flex space-x-3">
@@ -1414,7 +1414,7 @@ export default function PartnerDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowSupplementModal(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
                 >
                   Annuler
                 </button>
