@@ -419,6 +419,14 @@ export default function Profile() {
               <span className="xs:hidden">Favoris</span>
             </button>
             <button
+              onClick={() => router.push('/profile/advertising')}
+              className="px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
+            >
+              <FaImage className="inline-block mr-1 text-xs" />
+              <span className="hidden xs:inline">Mes publicités</span>
+              <span className="xs:hidden">Pub</span>
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'settings'
