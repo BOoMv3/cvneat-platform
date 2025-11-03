@@ -205,6 +205,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
     console.log('🎉 DÉCLENCHEMENT ALERTE - Nouvelle commande:', order.id);
     
+    // Mettre à jour lastOrderCheckRef immédiatement pour éviter les doublons
+    lastOrderCheckRef.current = order.id;
+    
     // Afficher une pop-up d'alerte
     setAlertOrder(order);
     setShowAlert(true);
