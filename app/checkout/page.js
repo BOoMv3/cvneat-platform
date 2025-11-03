@@ -261,12 +261,18 @@ export default function Checkout() {
       const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
       
       // Créer la commande
+      // IMPORTANT: Le champ 'total' doit contenir UNIQUEMENT le montant des articles (sans frais de livraison)
+      // Les frais de livraison sont stockés séparément dans 'frais_livraison'
+      const cartTotal = savedCart.items?.reduce((sum, item) => {
+        return sum + ((item.prix || item.price || 0) * (item.quantity || 0));
+      }, 0) || 0;
+      
       const { data: order, error: orderError } = await supabase
         .from('commandes')
         .insert({
           user_id: user.id,
           restaurant_id: restaurant.id,
-          total: totalAvecLivraison,
+          total: cartTotal, // UNIQUEMENT les articles, sans frais de livraison
           frais_livraison: fraisLivraison,
           adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
           statut: 'en_attente',
