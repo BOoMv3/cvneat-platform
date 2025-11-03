@@ -1,6 +1,28 @@
 -- Script SQL pour créer les tables nécessaires pour le système de publicité
 -- À exécuter dans Supabase SQL Editor
 
+-- Table principale pour les publicités actives
+CREATE TABLE IF NOT EXISTS advertisements (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  image_url VARCHAR(255),
+  link_url VARCHAR(255),
+  position VARCHAR(50) CHECK (position IN ('banner_top', 'banner_middle', 'sidebar_left', 'sidebar_right', 'footer', 'popup')),
+  start_date DATE,
+  end_date DATE,
+  is_active BOOLEAN DEFAULT FALSE,
+  clicks INTEGER DEFAULT 0,
+  impressions INTEGER DEFAULT 0,
+  price DECIMAL(10,2) DEFAULT 0,
+  advertiser_name TEXT,
+  advertiser_email TEXT,
+  advertiser_phone TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
 -- Table pour les demandes de publicité
 CREATE TABLE IF NOT EXISTS advertising_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -39,10 +61,6 @@ CREATE TABLE IF NOT EXISTS delivery_applications (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
-
--- S'assurer que la table advertisements a une colonne user_id pour lier aux clients
-ALTER TABLE advertisements 
-ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_advertising_requests_user_id ON advertising_requests(user_id);
