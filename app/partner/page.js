@@ -57,6 +57,9 @@ export default function PartnerDashboard() {
     prix_taille: ''
   });
   const [editingMenu, setEditingMenu] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [preparationTime, setPreparationTime] = useState(15);
+  const [showPreparationModal, setShowPreparationModal] = useState(false);
   const router = useRouter();
 
   const [supplementForm, setSupplementForm] = useState({
@@ -267,8 +270,25 @@ export default function PartnerDashboard() {
     }
   };
 
-  const updateOrderStatus = async (orderId, status) => {
+  const updateOrderStatus = async (orderId, status, prepTime = null) => {
     try {
+      // Si on accepte la commande, prepTime doit être fourni
+      if (status === 'acceptee' && !prepTime) {
+        // Ouvrir le modal pour sélectionner le temps de préparation
+        setSelectedOrderId(orderId);
+        setPreparationTime(15);
+        setShowPreparationModal(true);
+        return;
+      }
+
+      const updateData = {
+        status: status
+      };
+
+      // Si un temps de préparation est fourni, l'inclure dans la requête
+      if (prepTime !== null && prepTime > 0) {
+        updateData.preparation_time = prepTime;
+      }
       console.log('🔄 Mise à jour commande:', { orderId, status });
       
       const { data: { session } } = await supabase.auth.getSession();

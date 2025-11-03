@@ -392,6 +392,64 @@ export default function TrackOrder() {
                   </div>
                 )}
 
+                {/* Temps de préparation et annulation */}
+                {order.preparation_time && order.statut === 'en_preparation' && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                      <div>
+                        <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 text-sm sm:text-base">
+                          ⏱️ Temps de préparation estimé
+                        </h3>
+                        <p className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-300">
+                          Le restaurant a estimé un temps de préparation de <strong>{order.preparation_time} minutes</strong>
+                        </p>
+                        {order.preparation_time > 30 && (
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1 font-medium">
+                            ⚠️ Temps de préparation élevé
+                          </p>
+                        )}
+                      </div>
+                      {order.preparation_time > 30 && (
+                        <button
+                          onClick={async () => {
+                            if (confirm(`Êtes-vous sûr de vouloir annuler cette commande ? Le temps de préparation de ${order.preparation_time} minutes est trop long pour vous ?`)) {
+                              try {
+                                const { data: { session } } = await supabase.auth.getSession();
+                                if (!session) {
+                                  alert('Vous devez être connecté pour annuler une commande');
+                                  return;
+                                }
+                                
+                                const response = await fetch(`/api/orders/${order.id}/cancel`, {
+                                  method: 'POST',
+                                  headers: {
+                                    'Authorization': `Bearer ${session.access_token}`,
+                                    'Content-Type': 'application/json'
+                                  }
+                                });
+                                
+                                if (response.ok) {
+                                  alert('Commande annulée avec succès');
+                                  fetchOrder(); // Recharger les données
+                                } else {
+                                  const error = await response.json();
+                                  alert(`Erreur: ${error.error || 'Impossible d\'annuler la commande'}`);
+                                }
+                              } catch (error) {
+                                console.error('Erreur annulation:', error);
+                                alert('Erreur lors de l\'annulation de la commande');
+                              }
+                            }
+                          }}
+                          className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base text-center"
+                        >
+                          Annuler la commande
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Chat */}
                 <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
