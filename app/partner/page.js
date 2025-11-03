@@ -698,7 +698,7 @@ export default function PartnerDashboard() {
               className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
                 activeTab === 'menu'
                   ? 'border-blue-500 text-blue-600 bg-blue-50'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               Menu
@@ -881,15 +881,15 @@ export default function PartnerDashboard() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <h3 className="font-medium text-gray-900 dark:text-white text-lg">Commande #{order.id?.slice(0, 8) || order.id}</h3>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
                                 {order.created_at ? new Date(order.created_at).toLocaleString('fr-FR') : 'Date non disponible'}
                               </p>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
                                 Client: {order.users?.nom || order.customer_name || 'N/A'} {order.users?.prenom || ''}
                               </p>
                               {/* Afficher les frais de livraison séparément (pour info, mais pas dans le total) */}
                               {deliveryFee > 0 && (
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                   Frais de livraison: {deliveryFee.toFixed(2)} € (livreur)
                                 </p>
                               )}
@@ -897,21 +897,21 @@ export default function PartnerDashboard() {
                             <div className="text-right">
                               {totalAmount > 0 ? (
                                 <>
-                                  <p className="text-lg font-semibold text-gray-900">
+                                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
                                     {totalAmount.toFixed(2)} €
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
                                     Commission CVN'EAT (20%): {commission.toFixed(2)} €
                                   </p>
-                                  <p className="text-sm font-medium text-green-600">
+                                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
                                     Votre gain (80%): {restaurantRevenue.toFixed(2)} €
                                   </p>
-                                  <p className="text-xs text-gray-400 mt-1">
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                     Total client: {(totalAmount + deliveryFee).toFixed(2)} €
                                   </p>
                                 </>
                               ) : (
-                                <p className="text-sm text-gray-500">Prix non disponible</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Prix non disponible</p>
                               )}
                             </div>
                           </div>
@@ -958,9 +958,9 @@ export default function PartnerDashboard() {
                                   order.statut === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
                                   order.statut === 'en_preparation' ? 'bg-blue-100 text-blue-800' :
                                   order.statut === 'en_livraison' ? 'bg-purple-100 text-purple-800' :
-                                  order.statut === 'livree' ? 'bg-gray-100 text-gray-800' :
-                                  order.statut === 'annulee' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
+                                  order.statut === 'livree' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200' :
+                                  order.statut === 'annulee' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' :
+                                  'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                                 }`}>
                                   {order.statut === 'en_attente' ? 'En attente' :
                                    order.statut === 'en_preparation' ? 'En préparation' :
@@ -1260,7 +1260,7 @@ export default function PartnerDashboard() {
               {/* Gestion des suppléments */}
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Suppléments disponibles
                   </label>
                   <button
@@ -1307,7 +1307,7 @@ export default function PartnerDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Prix pour cette taille (€)
                     </label>
                     <input
@@ -1374,7 +1374,7 @@ export default function PartnerDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Prix (€)
                 </label>
                 <input
