@@ -91,7 +91,26 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         },
         (payload) => {
           console.log('🔄 Commande mise à jour via Supabase Realtime:', payload.new.id);
-          // Optionnel : afficher une notification pour les mises à jour
+          console.log('🔄 Nouveau statut:', payload.new.statut);
+          console.log('🔄 Ancien statut:', payload.old?.statut);
+          
+          // Si la commande en attente est mise à jour (acceptée/refusée), arrêter les alertes
+          if (pendingOrderId === payload.new.id && payload.new.statut !== 'en_attente') {
+            console.log('✅ Commande traitée via Realtime, arrêt des alertes:', payload.new.statut);
+            if (soundIntervalRef.current) {
+              clearInterval(soundIntervalRef.current);
+              soundIntervalRef.current = null;
+            }
+            setShowAlert(false);
+            setIsBlinking(false);
+            setPendingOrderId(null);
+          }
+          
+          // Si la commande est annulée, déclencher une alerte
+          if (payload.new.statut === 'annulee' && payload.old?.statut !== 'annulee') {
+            console.log('⚠️ COMMANDE ANNULÉE détectée via Supabase Realtime:', payload.new.id);
+            triggerCancellationAlert(payload.new);
+          }
         }
       )
       .subscribe((status) => {
@@ -144,17 +163,36 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               triggerNewOrderAlert(fullOrder);
               lastOrderCheckRef.current = latestOrderId;
             }
-          } else if (latestOrderId === pendingOrderId && latestOrder.statut !== 'en_attente') {
-            // Si la commande en attente n'est plus en attente, arrêter les alertes
-            console.log('✅ Commande traitée, arrêt des alertes:', latestOrder.statut);
-            if (soundIntervalRef.current) {
-              clearInterval(soundIntervalRef.current);
-              soundIntervalRef.current = null;
-            }
-            setShowAlert(false);
-            setIsBlinking(false);
-            setPendingOrderId(null);
-          }
+              } else if (latestOrderId === pendingOrderId && latestOrder.statut !== 'en_attente') {
+                // Si la commande en attente n'est plus en attente, arrêter les alertes
+                console.log('✅ Commande traitée, arrêt des alertes:', latestOrder.statut);
+                if (soundIntervalRef.current) {
+                  clearInterval(soundIntervalRef.current);
+                  soundIntervalRef.current = null;
+                }
+                setShowAlert(false);
+                setIsBlinking(false);
+                setPendingOrderId(null);
+              }
+              
+              // Vérifier si une commande a été annulée (en comparant avec la dernière vérification)
+              // Pour cela, on récupère toutes les commandes récentes et on vérifie les changements de statut
+              if (latestOrder.statut === 'annulee') {
+                // Récupérer les détails complets pour vérifier si c'est une nouvelle annulation
+                const { data: fullOrder, error: orderError } = await supabase
+                  .from('commandes')
+                  .select('*')
+                  .eq('id', latestOrderId)
+                  .single();
+
+                if (!orderError && fullOrder) {
+                  // Vérifier si on n'a pas déjà alerté pour cette annulation
+                  if (lastOrderCheckRef.current !== latestOrderId || !showAlert) {
+                    triggerCancellationAlert(fullOrder);
+                    lastOrderCheckRef.current = latestOrderId;
+                  }
+                }
+              }
         } else if (pendingOrderId) {
           // Plus de commandes en attente, arrêter les alertes
           console.log('✅ Plus de commandes en attente, arrêt des alertes');
@@ -265,6 +303,106 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     setTimeout(() => {
       setIsBlinking(false);
     }, 10000);
+  };
+
+  // Fonction pour déclencher l'alerte de commande annulée
+  const triggerCancellationAlert = (order) => {
+    console.log('🚨 DÉCLENCHEMENT ALERTE - Commande annulée:', order.id);
+    
+    // Afficher une pop-up d'alerte pour annulation
+    setAlertOrder(order);
+    setShowAlert(true);
+    setIsBlinking(true);
+    
+    // Jouer une alerte sonore (triple bip pour différencier d'une nouvelle commande)
+    playCancellationSound();
+    setTimeout(() => playCancellationSound(), 300);
+    setTimeout(() => playCancellationSound(), 600);
+    
+    // Afficher une notification du navigateur
+    if (Notification.permission === 'granted') {
+      new Notification('⚠️ COMMANDE ANNULÉE', {
+        body: `La commande #${order.id?.slice(0, 8) || 'N/A'} a été annulée par le client`,
+        icon: '/icon-192x192.png',
+        tag: `order-cancelled-${order.id}`,
+        requireInteraction: true,
+        badge: '/icon-192x192.png'
+      });
+    }
+    
+    // Ajouter la notification avec un effet visuel
+    const newNotification = {
+      id: Date.now(),
+      type: 'order_cancelled',
+      message: `Commande #${order.id?.slice(0, 8) || 'N/A'} annulée par le client`,
+      data: order,
+      timestamp: new Date().toISOString(),
+      isNew: true
+    };
+    
+    setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
+    
+    // Arrêter le clignotement après 15 secondes
+    setTimeout(() => {
+      setIsBlinking(false);
+    }, 15000);
+    
+    // Auto-fermer la pop-up après 30 secondes
+    setTimeout(() => {
+      setShowAlert(false);
+    }, 30000);
+  };
+
+  // Fonction pour jouer une alerte sonore d'annulation (son différent)
+  const playCancellationSound = () => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      const audioContext = audioContextRef.current;
+      
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+          playCancellationSoundWithContext(audioContext);
+        }).catch(() => {
+          console.warn('Contexte audio suspendu pour annulation');
+        });
+        return;
+      }
+      
+      playCancellationSoundWithContext(audioContext);
+    } catch (error) {
+      console.warn('Impossible de jouer le son d\'annulation:', error);
+    }
+  };
+
+  // Fonction helper pour jouer le son d'annulation avec un contexte audio actif
+  const playCancellationSoundWithContext = (audioContext) => {
+    try {
+      // Son plus grave et plus long pour différencier d'une nouvelle commande
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Son plus grave et plus long
+      oscillator.frequency.value = 400; // Plus grave que le son de nouvelle commande
+      oscillator.type = 'sine';
+      
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.6, now + 0.02); // Attack plus fort
+      gainNode.gain.linearRampToValueAtTime(0.4, now + 0.15);
+      gainNode.gain.linearRampToValueAtTime(0.4, now + 0.4);
+      gainNode.gain.linearRampToValueAtTime(0, now + 0.5); // Plus long
+      
+      oscillator.start(now);
+      oscillator.stop(now + 0.5);
+    } catch (error) {
+      console.warn('Impossible de jouer le son d\'annulation avec AudioContext:', error);
+    }
   };
 
   // Fonction pour vérifier le statut de la commande et jouer le son si toujours en attente

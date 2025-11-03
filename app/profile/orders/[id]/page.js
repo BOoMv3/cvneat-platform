@@ -57,15 +57,25 @@ export default function OrderDetail({ params }) {
   
   const fetchOrder = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetchWithAuth(`/api/users/me/orders/${id}`);
+      // Utiliser l'API correcte pour récupérer une commande par ID
+      const response = await fetchWithAuth(`/api/orders/${id}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch order details');
+        if (response.status === 404) {
+          setError('Commande non trouvée');
+        } else if (response.status === 403) {
+          setError('Vous n\'êtes pas autorisé à voir cette commande');
+        } else {
+          setError('Erreur lors du chargement de la commande');
+        }
+        return;
       }
       const data = await response.json();
       setOrder(data);
     } catch (error) {
-      console.error(error);
+      console.error('Erreur fetchOrder:', error);
+      setError('Erreur lors du chargement de la commande');
     } finally {
       setLoading(false);
     }
@@ -232,6 +242,50 @@ export default function OrderDetail({ params }) {
             </div>
 
             <div className="border-t pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <p className="text-sm text-gray-500">Sous-total (articles)</p>
+                  <p className="text-lg font-medium">
+                    {(() => {
+                      // Calculer le sous-total depuis les détails
+                      if (order.details_commande && Array.isArray(order.details_commande)) {
+                        const subtotal = order.details_commande.reduce((sum, detail) => {
+                          const prix = detail.prix_unitaire || detail.menus?.prix || 0;
+                          const qty = detail.quantite || 1;
+                          return sum + (prix * qty);
+                        }, 0);
+                        return subtotal.toFixed(2);
+                      }
+                      // Fallback
+                      const subtotal = parseFloat(order.total || 0) - parseFloat(order.frais_livraison || order.deliveryFee || 0);
+                      return subtotal.toFixed(2);
+                    })()}€
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Frais de livraison</p>
+                  <p className="text-lg font-medium">
+                    {(parseFloat(order.frais_livraison || order.deliveryFee || 0)).toFixed(2)}€
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total</p>
+                  <p className="text-lg font-medium">
+                    {(() => {
+                      // Calculer le total correctement
+                      const subtotal = order.details_commande && Array.isArray(order.details_commande) 
+                        ? order.details_commande.reduce((sum, detail) => {
+                            const prix = detail.prix_unitaire || detail.menus?.prix || 0;
+                            const qty = detail.quantite || 1;
+                            return sum + (prix * qty);
+                          }, 0)
+                        : (parseFloat(order.total || 0) - parseFloat(order.frais_livraison || order.deliveryFee || 0));
+                      const deliveryFee = parseFloat(order.frais_livraison || order.deliveryFee || 0);
+                      return (subtotal + deliveryFee).toFixed(2);
+                    })()}€
+                  </p>
+                </div>
+              </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <p className="text-gray-600">Sous-total</p>
