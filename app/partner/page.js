@@ -34,7 +34,16 @@ export default function PartnerDashboard() {
   const [showOrdersTab, setShowOrdersTab] = useState(false);
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Initialiser activeTab depuis l'URL hash si présent
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard') {
+        return hash;
+      }
+    }
+    return 'dashboard';
+  });
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [menuForm, setMenuForm] = useState({
     nom: '',
@@ -59,6 +68,34 @@ export default function PartnerDashboard() {
 
   // Variable pour éviter les requêtes simultanées (utiliser useRef pour persister entre renders)
   const isFetchingRef = useRef(false);
+
+  // Synchroniser activeTab avec l'URL hash
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard') {
+        setActiveTab(hash);
+      }
+    };
+    
+    // Vérifier le hash initial au chargement
+    if (typeof window !== 'undefined') {
+      handleHashChange();
+    }
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Mettre à jour l'URL hash quand activeTab change (mais seulement si ce n'est pas déjà le bon)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeTab) {
+      const currentHash = window.location.hash.replace('#', '');
+      if (currentHash !== activeTab) {
+        window.history.replaceState({}, '', `#${activeTab}`);
+      }
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -511,24 +548,24 @@ export default function PartnerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex flex-col space-y-4 py-4 sm:py-4">
             {/* Bouton retour et titre */}
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => router.push('/')}
-                className="bg-blue-600 text-white p-3 sm:p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                className="bg-blue-600 dark:bg-blue-700 text-white p-3 sm:p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center space-x-2"
                 title="Retour à l'accueil"
               >
                 <FaHome className="h-6 w-6 sm:h-5 sm:w-5" />
                 <span className="text-base sm:text-sm font-medium">Accueil</span>
               </button>
               <div>
-                <h1 className="text-2xl sm:text-2xl font-bold text-gray-900">Dashboard Partenaire</h1>
-                <p className="text-base sm:text-base text-gray-600">{restaurant?.nom}</p>
+                <h1 className="text-2xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard Partenaire</h1>
+                <p className="text-base sm:text-base text-gray-600 dark:text-gray-300">{restaurant?.nom}</p>
               </div>
             </div>
             
@@ -580,7 +617,13 @@ export default function PartnerDashboard() {
               <div className="flex justify-center">
                 <RealTimeNotifications 
                   restaurantId={restaurant?.id} 
-                  onOrderClick={() => setActiveTab('orders')}
+                  onOrderClick={() => {
+                    setActiveTab('orders');
+                    // Forcer le scroll vers le haut pour voir l'onglet
+                    setTimeout(() => {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 100);
+                  }}
                 />
               </div>
             </div>
@@ -589,25 +632,26 @@ export default function PartnerDashboard() {
       </div>
 
       {/* Navigation */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <nav className="flex space-x-1 sm:space-x-4 lg:space-x-8 overflow-x-auto pb-2">
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
                 activeTab === 'dashboard'
-                  ? 'border-blue-500 text-blue-600 bg-blue-50'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  ? 'border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               Dashboard
             </button>
             <button
               onClick={() => setActiveTab('orders')}
+              data-tab="orders"
               className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
                 activeTab === 'orders'
-                  ? 'border-blue-500 text-blue-600 bg-blue-50'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  ? 'border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               Commandes
@@ -632,38 +676,38 @@ export default function PartnerDashboard() {
           <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <FaUtensils className="h-6 w-6 text-blue-600" />
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <FaUtensils className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Commandes aujourd'hui</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.todayOrders}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Commandes aujourd'hui</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats.todayOrders}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <FaClock className="h-6 w-6 text-yellow-600" />
+                  <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                    <FaClock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">En attente</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.pendingOrders}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">En attente</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats.pendingOrders}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <FaEuroSign className="h-6 w-6 text-green-600" />
+                  <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <FaEuroSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Revenus aujourd'hui</p>
-                    <p className="text-2xl font-semibold text-gray-900">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Revenus aujourd'hui</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                       {(stats.totalRevenue || 0).toFixed(2)} €
                     </p>
                   </div>

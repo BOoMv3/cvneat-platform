@@ -489,15 +489,19 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                   // Utiliser le callback pour changer d'onglet dans la page parente
                   if (onOrderClick) {
                     onOrderClick();
-                  } else {
-                    // Fallback: rediriger vers l'onglet commandes
+                  }
+                  
+                  // Fallback supplémentaire: utiliser window.location avec hash
+                  setTimeout(() => {
                     const dashboardTab = document.querySelector('[data-tab="orders"]');
                     if (dashboardTab) {
                       dashboardTab.click();
-                    } else {
-                      window.location.href = '/partner';
                     }
-                  }
+                    // Aussi essayer de changer l'URL pour forcer la navigation
+                    if (window.location.pathname === '/partner') {
+                      window.history.pushState({}, '', '/partner#orders');
+                    }
+                  }, 100);
                 }}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg dark:bg-blue-500 dark:hover:bg-blue-600"
               >
