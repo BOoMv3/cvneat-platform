@@ -722,9 +722,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           {/* Panneau notifications */}
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 z-50">
-          <div className="p-4 border-b">
+          <div className="p-4 border-b dark:border-gray-700">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
               <button
                 onClick={() => setShowNotifications(false)}
                 className="text-gray-400 hover:text-gray-600"
