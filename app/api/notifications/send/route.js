@@ -93,6 +93,53 @@ const emailTemplates = {
         <p>Bienvenue dans la famille CVN'Eat !</p>
       </div>
     `
+  }),
+
+  accountConfirmation: (data) => ({
+    subject: 'Confirmez votre compte CVN\'Eat',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+          .button { display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 5px; }
+          .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Bienvenue sur CVN'Eat !</h1>
+        </div>
+        <div class="content">
+          <p>Bonjour,</p>
+          <p>Merci de vous être inscrit sur CVN'Eat ! Pour activer votre compte, veuillez cliquer sur le bouton ci-dessous.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.confirmationUrl || '#'}" class="button">
+              Confirmer mon compte
+            </a>
+          </div>
+          
+          <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
+          <p style="word-break: break-all; color: #2563eb;">${data.confirmationUrl || ''}</p>
+          
+          <p>Ce lien expire dans 24 heures.</p>
+          
+          <p>Si vous n'avez pas créé de compte, vous pouvez ignorer cet email.</p>
+          
+          <p>Bienvenue dans la communauté CVN'Eat !</p>
+          <p>L'équipe CVN'Eat</p>
+        </div>
+        <div class="footer">
+          <p>CVN'Eat - Livraison de repas à domicile</p>
+        </div>
+      </body>
+      </html>
+    `
   })
 };
 
@@ -117,11 +164,14 @@ export async function POST(request) {
     
     const emailContent = template(data);
     
+    // Si le template a déjà un HTML personnalisé, l'utiliser
+    const htmlContent = data.html || emailContent.html;
+    
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'cvneat@gmail.com',
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@cvneat.com',
       to: recipientEmail,
       subject: emailContent.subject,
-      html: emailContent.html
+      html: htmlContent
     };
     
     await transporter.sendMail(mailOptions);

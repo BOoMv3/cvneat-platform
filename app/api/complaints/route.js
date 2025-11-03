@@ -143,8 +143,8 @@ export async function POST(request) {
         restaurant:restaurants(id, user_id)
       `)
       .eq('id', orderId)
-      .eq('customer_id', user.id)
-      .eq('status', 'delivered')
+      .eq('user_id', user.id)
+      .eq('statut', 'livree')
       .single();
 
     if (orderError || !order) {

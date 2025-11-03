@@ -59,14 +59,14 @@ export default function ComplaintForm({ params }) {
 
       // Récupérer la commande
       const { data: orderData, error: orderError } = await supabase
-        .from('orders')
+        .from('commandes')
         .select(`
           *,
           restaurant:restaurants(nom, adresse)
         `)
         .eq('id', params.orderId)
-        .eq('customer_id', session.user.id)
-        .eq('status', 'delivered')
+        .eq('user_id', session.user.id)
+        .eq('statut', 'livree')
         .single();
 
       if (orderError || !orderData) {
@@ -94,7 +94,7 @@ export default function ComplaintForm({ params }) {
       // Initialiser le montant de remboursement
       setFormData(prev => ({
         ...prev,
-        requestedRefundAmount: orderData.total_amount.toString()
+        requestedRefundAmount: (orderData.total || 0).toString()
       }));
 
     } catch (err) {

@@ -186,51 +186,46 @@ export async function PUT(request, { params }) {
           }, { status: 500 });
         }
 
-    console.log('✅ Commande mise à jour avec succès:', updatedOrder.id);
-    console.log('📋 Statut final de la commande:', {
-      id: updatedOrder.id,
-      statut: updatedOrder.statut,
-      ready_for_delivery: updatedOrder.ready_for_delivery,
-      original_status: status,
-      corrected_status: correctedStatus,
-      updateData_sent: updateData
-    });
-    
-    // VÉRIFICATION CRITIQUE: Vérifier immédiatement après la mise à jour que le statut est bien sauvegardé
-    const { data: verifyOrder, error: verifyError } = await supabaseAdmin
-      .from('commandes')
-      .select('id, statut, ready_for_delivery, updated_at')
-      .eq('id', id)
-      .single();
-    
-    if (verifyError) {
-      console.error('❌ Erreur lors de la vérification:', verifyError);
-    } else {
-      console.log('🔍 VÉRIFICATION POST-UPDATE:', {
-        id: verifyOrder.id,
-        statut: verifyOrder.statut,
-        ready_for_delivery: verifyOrder.ready_for_delivery,
-        updated_at: verifyOrder.updated_at,
-        match_expected: verifyOrder.statut === correctedStatus
-      });
+    // Envoyer les notifications par email/WhatsApp au client
+    try {
+      // Récupérer les infos du restaurant et du client
+      const { data: restaurantInfo } = await supabaseAdmin
+        .from('restaurants')
+        .select('nom')
+        .eq('id', updatedOrder.restaurant_id)
+        .single();
       
-      if (verifyOrder.statut !== correctedStatus) {
-        console.error('⚠️ ALERTE: Le statut sauvegardé ne correspond PAS au statut attendu!', {
-          expected: correctedStatus,
-          actual: verifyOrder.statut
+      const { data: clientInfo } = await supabaseAdmin
+        .from('users')
+        .select('email, telephone, nom, prenom')
+        .eq('id', updatedOrder.user_id)
+        .single();
+
+      if (clientInfo) {
+        // Appeler l'API de notification
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/order-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: updatedOrder.id,
+            status: correctedStatus,
+            restaurantName: restaurantInfo?.nom,
+            rejectionReason: reason,
+            preparationTime: preparation_time
+          })
         });
       }
+    } catch (notificationError) {
+      console.warn('⚠️ Erreur notification client:', notificationError);
+      // Ne pas faire échouer la mise à jour pour une erreur de notification
     }
 
     // Notifier les livreurs si la commande est prête à livrer
     if (status === 'pret_a_livrer' || readyForDelivery === true) {
       try {
-        console.log('🔔 Notification aux livreurs pour commande prête');
         // La notification sera automatiquement détectée par le SSE des livreurs
-        // qui surveillent les commandes avec statut 'en_preparation' et ready_for_delivery=true
       } catch (notificationError) {
         console.warn('⚠️ Erreur notification livreurs:', notificationError);
-        // Ne pas faire échouer la mise à jour pour une erreur de notification
       }
     }
 

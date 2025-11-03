@@ -350,26 +350,6 @@ export default function RestaurantDetail({ params }) {
           onToggleFavorite={handleToggleFavorite}
         />
 
-        {/* Section adresse de livraison - Optimisée mobile */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-              <FaMapMarkerAlt className="mr-2 h-4 w-4" />
-              Adresse de livraison :
-            </label>
-            <input
-              type="text"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base min-h-[48px] touch-manipulation"
-              placeholder="Votre adresse complète"
-              value={deliveryAddress}
-              onChange={e => setDeliveryAddress(e.target.value)}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              Le prix de livraison s'adapte automatiquement à votre adresse.
-            </p>
-          </div>
-        </div>
-
         {/* Menu */}
         <div className="space-y-12">
           {menu.length === 0 ? (

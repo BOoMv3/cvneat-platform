@@ -29,7 +29,9 @@ import {
   FaCoffee,
   FaIceCream,
   FaSignOutAlt,
-  FaTruck
+  FaTruck,
+  FaStore,
+  FaImage
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
@@ -197,14 +199,22 @@ export default function Home() {
   const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
-      const restaurantCategory = restaurant.cuisine_type?.toLowerCase() || '';
+      // Vérifier plusieurs champs possibles pour la catégorie
+      const restaurantCategory = (
+        restaurant.cuisine_type?.toLowerCase() || 
+        restaurant.category?.toLowerCase() || 
+        restaurant.type?.toLowerCase() ||
+        restaurant.description?.toLowerCase() ||
+        ''
+      );
+      
       const categoryMap = {
-        'pizza': ['pizza', 'italien', 'italian'],
-        'burger': ['burger', 'hamburger', 'fast food', 'fast-food'],
-        'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery'],
-        'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream'],
-        'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic'],
-        'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick']
+        'pizza': ['pizza', 'italien', 'italian', 'pizzeria'],
+        'burger': ['burger', 'hamburger', 'fast food', 'fast-food', 'sandwich'],
+        'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery', 'boulanger'],
+        'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream', 'sucré'],
+        'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic', 'végétarien', 'vegan'],
+        'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick', 'snack']
       };
       
       const validCategories = categoryMap[selectedCategory] || [];
@@ -219,6 +229,7 @@ export default function Home() {
         restaurant.nom?.toLowerCase().includes(searchLower) ||
         restaurant.description?.toLowerCase().includes(searchLower) ||
         restaurant.cuisine_type?.toLowerCase().includes(searchLower) ||
+        restaurant.category?.toLowerCase().includes(searchLower) ||
         restaurant.adresse?.toLowerCase().includes(searchLower) ||
         restaurant.ville?.toLowerCase().includes(searchLower);
       
@@ -280,6 +291,21 @@ export default function Home() {
         
           {/* Actions utilisateur en haut à droite - Design compact avec icônes */}
         <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1 sm:space-x-2">
+          {/* Bouton Devenir Partenaire */}
+          <Link href="/restaurant-request" className="bg-blue-600/90 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
+            <FaStore className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="hidden sm:inline">Partenaire</span>
+          </Link>
+          {/* Bouton Devenir Livreur */}
+          <Link href="/become-delivery" className="bg-green-600/90 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-green-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
+            <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="hidden sm:inline">Livreur</span>
+          </Link>
+          {/* Bouton Publicité */}
+          <Link href="/advertising/request" className="bg-purple-600/90 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-purple-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
+            <FaImage className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="hidden sm:inline">Pub</span>
+          </Link>
           {/* Bouton Suivre ma commande - Compact avec icône */}
           <Link href="/track-order" className="bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
             <FaTruck className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
