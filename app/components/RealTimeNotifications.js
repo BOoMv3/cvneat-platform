@@ -67,6 +67,10 @@ export default function RealTimeNotifications({ restaurantId }) {
                   prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
                 );
               }, 5000);
+            } else if (data.type === 'order_updated') {
+              // Rafraîchir la page si une commande est mise à jour
+              console.log('🔄 Commande mise à jour, rafraîchissement nécessaire');
+              // Optionnel : jouer un son différent ou afficher une notification
             }
           } catch (error) {
             console.error('Erreur parsing notification SSE:', error);
