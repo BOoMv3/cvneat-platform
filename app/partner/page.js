@@ -408,27 +408,28 @@ export default function PartnerDashboard() {
         order && order.statut === 'en_attente'
       );
       
-      // Calculer le chiffre d'affaires en excluant les commandes annulées
-      // Inclure toutes les commandes non annulées (en_preparation, en_livraison, livree)
+      // Calculer le chiffre d'affaires - SEULEMENT les commandes livrées (comptabilisées)
+      // Logique métier : Le chiffre d'affaires ne compte que les commandes réellement livrées et payées
       const totalRevenue = data.reduce((sum, order) => {
         if (!order) return sum;
-        // Exclure uniquement les commandes annulées ou refusées du calcul du chiffre d'affaires
-        if (order.statut === 'annulee' || order.statut === 'refusee') {
-          return sum;
+        // Compter uniquement les commandes livrées (statut = 'livree')
+        // Les commandes en préparation ou en livraison ne sont pas encore comptabilisées
+        if (order.statut === 'livree') {
+          const amount = parseFloat(order.total || 0) || 0;
+          return sum + amount;
         }
-        const amount = parseFloat(order.total || 0) || 0;
-        return sum + amount;
+        return sum;
       }, 0);
       
-      // Calculer le chiffre d'affaires d'aujourd'hui
+      // Calculer le chiffre d'affaires d'aujourd'hui (seulement les livrées)
       const todayRevenue = todayOrders.reduce((sum, order) => {
         if (!order) return sum;
-        // Exclure uniquement les commandes annulées ou refusées du calcul
-        if (order.statut === 'annulee' || order.statut === 'refusee') {
-          return sum;
+        // Compter uniquement les commandes livrées aujourd'hui
+        if (order.statut === 'livree') {
+          const amount = parseFloat(order.total || 0) || 0;
+          return sum + amount;
         }
-        const amount = parseFloat(order.total || 0) || 0;
-        return sum + amount;
+        return sum;
       }, 0);
       
       console.log('🔍 DEBUG - Calcul chiffre d\'affaires:', {
@@ -436,7 +437,10 @@ export default function PartnerDashboard() {
         todayOrders: todayOrders.length,
         totalRevenue,
         todayRevenue,
-        ordersWithRevenue: data.filter(o => o && o.total && o.statut !== 'annulee' && o.statut !== 'refusee').length
+        ordersLivrees: data.filter(o => o && o.statut === 'livree').length,
+        ordersEnPreparation: data.filter(o => o && o.statut === 'en_preparation').length,
+        ordersEnLivraison: data.filter(o => o && o.statut === 'en_livraison').length,
+        ordersAnnulees: data.filter(o => o && o.statut === 'annulee').length
       });
       
       setStats({
