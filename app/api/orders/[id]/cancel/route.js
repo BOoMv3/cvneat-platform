@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabase } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
 // Créer un client admin pour bypasser RLS
