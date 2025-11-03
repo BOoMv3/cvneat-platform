@@ -356,14 +356,29 @@ export default function PartnerDashboard() {
   };
 
   const addSupplement = () => {
-    if (supplementForm.nom && supplementForm.prix > 0) {
-      setMenuForm(prev => ({
-        ...prev,
-        supplements: [...prev.supplements, { ...supplementForm, id: Date.now() }]
-      }));
-      setSupplementForm({ nom: '', prix: 0 });
-      setShowSupplementModal(false);
+    // Vérifier que le nom et le prix sont valides
+    if (!supplementForm.nom || !supplementForm.nom.trim()) {
+      alert('Veuillez entrer un nom pour le supplément');
+      return;
     }
+    
+    const prix = parseFloat(supplementForm.prix);
+    if (isNaN(prix) || prix <= 0) {
+      alert('Veuillez entrer un prix valide supérieur à 0');
+      return;
+    }
+    
+    // S'assurer que supplements est un tableau
+    setMenuForm(prev => ({
+      ...prev,
+      supplements: Array.isArray(prev.supplements) 
+        ? [...prev.supplements, { ...supplementForm, id: Date.now(), prix: prix }]
+        : [{ ...supplementForm, id: Date.now(), prix: prix }]
+    }));
+    
+    // Réinitialiser le formulaire
+    setSupplementForm({ nom: '', prix: 0 });
+    setShowSupplementModal(false);
   };
 
   const removeSupplement = (index) => {
@@ -759,14 +774,14 @@ export default function PartnerDashboard() {
               </div>
               <div className="p-6">
                 {!Array.isArray(stats?.recentOrders) || stats.recentOrders.length === 0 ? (
-                  <p className="text-gray-500 text-center">Aucune commande recente</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center">Aucune commande recente</p>
                 ) : (
                   <div className="space-y-4">
                     {stats.recentOrders.map((order) => (
                       <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <p className="font-medium">Commande #{order.id}</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
                             {(parseFloat(order.total || 0) || 0).toFixed(2)} €
                           </p>
                         </div>
@@ -775,13 +790,13 @@ export default function PartnerDashboard() {
                             order.statut === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                             order.statut === 'accepted' ? 'bg-blue-100 text-blue-800' :
                             order.statut === 'ready' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
+                            'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                           }`}>
                             {order.statut}
                           </span>
                           <button
                             onClick={() => updateOrderStatus(order.id, 'accepted')}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                           >
                             <FaCheck className="h-4 w-4" />
                           </button>
@@ -799,52 +814,52 @@ export default function PartnerDashboard() {
           <div className="space-y-6">
             {/* Statistiques des commandes */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <FaUtensils className="h-6 w-6 text-blue-600" />
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <FaUtensils className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total commandes</p>
-                    <p className="text-2xl font-semibold text-gray-900">{Array.isArray(orders) ? orders.length : 0}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total commandes</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">{Array.isArray(orders) ? orders.length : 0}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <FaClock className="h-6 w-6 text-yellow-600" />
+                  <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                    <FaClock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">En attente</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.pendingOrders}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">En attente</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats.pendingOrders}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <FaEuroSign className="h-6 w-6 text-green-600" />
+                  <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <FaEuroSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Chiffre d'affaires</p>
-                    <p className="text-2xl font-semibold text-gray-900">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Chiffre d'affaires</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                       {(stats.totalRevenue || 0).toFixed(2)} €
                     </p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <FaEuroSign className="h-6 w-6 text-purple-600" />
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <FaEuroSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Vos gains (80%)</p>
-                    <p className="text-2xl font-semibold text-gray-900">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Vos gains (80%)</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                       {((stats.totalRevenue || 0) * 0.8).toFixed(2)} €
                     </p>
                   </div>
@@ -853,16 +868,16 @@ export default function PartnerDashboard() {
             </div>
 
             {/* Liste des commandes */}
-            <div className="bg-white rounded-lg shadow-sm">
-              <div className="p-6 border-b">
-                <h2 className="text-lg font-semibold">Gestion des commandes</h2>
-                <p className="text-sm text-gray-600 mt-1">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <div className="p-6 border-b dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Gestion des commandes</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                   Gérez vos commandes et calculez vos gains (CVN'EAT prélève 20% de commission)
                 </p>
               </div>
               <div className="p-6">
                 {!Array.isArray(orders) || orders.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">Aucune commande pour le moment</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">Aucune commande pour le moment</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
                     {orders.map((order) => {
@@ -1002,7 +1017,7 @@ export default function PartnerDashboard() {
                                   </span>
                                 )}
                                 {order.statut === 'en_preparation' && order.livreur_id && (
-                                  <span className="text-sm text-gray-600 px-3 py-2">
+                                  <span className="text-sm text-gray-600 dark:text-gray-300 px-3 py-2">
                                     En attente du livreur
                                   </span>
                                 )}
@@ -1034,7 +1049,7 @@ export default function PartnerDashboard() {
             <div className="bg-white rounded-lg shadow-sm">
               <div className="p-6">
                 {!Array.isArray(menu) || menu.length === 0 ? (
-                  <p className="text-gray-500 text-center">Aucun plat dans le menu</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center">Aucun plat dans le menu</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                     {menu.map((item) => (
@@ -1049,7 +1064,7 @@ export default function PartnerDashboard() {
                             />
                           ) : (
                             <div className="w-full h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                              <span className="text-gray-500 text-xs">Pas d'image</span>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Pas d'image</span>
                             </div>
                           )}
                           
@@ -1110,12 +1125,12 @@ export default function PartnerDashboard() {
                           </div>
                         </div>
                         
-                        <p className="text-xs text-gray-600 mb-1 line-clamp-2">{item.description}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-1 line-clamp-2">{item.description}</p>
                         
                         {/* Prix et catégorie */}
                         <div className="flex justify-between items-center mb-1">
                           <p className="font-semibold text-sm text-green-600">{item.prix} €</p>
-                          <span className="text-xs text-gray-500 bg-gray-100 px-1 py-0.5 rounded-full">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded-full">
                             {item.category}
                           </span>
                         </div>
@@ -1123,7 +1138,7 @@ export default function PartnerDashboard() {
                         {/* Suppléments */}
                         {item.supplements && item.supplements.length > 0 && (
                           <div className="mb-1">
-                            <p className="text-xs text-gray-500 mb-1">Suppléments :</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Suppléments :</p>
                             <div className="flex flex-wrap gap-1">
                               {item.supplements.map((supp, index) => (
                                 <span key={index} className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
@@ -1357,9 +1372,9 @@ export default function PartnerDashboard() {
 
       {/* Modal pour ajouter un supplément */}
       {showSupplementModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-md">
-            <h4 className="text-lg font-semibold mb-4">Ajouter un supplément</h4>
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-md">
+            <h4 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Ajouter un supplément</h4>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1369,7 +1384,7 @@ export default function PartnerDashboard() {
                   type="text"
                   value={supplementForm.nom}
                   onChange={(e) => setSupplementForm({...supplementForm, nom: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="ex: Extra fromage, Bacon, etc."
                 />
               </div>
@@ -1380,8 +1395,11 @@ export default function PartnerDashboard() {
                 <input
                   type="number"
                   step="0.01"
-                  value={supplementForm.prix}
-                  onChange={(e) => setSupplementForm({...supplementForm, prix: parseFloat(e.target.value)})}
+                  value={supplementForm.prix || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSupplementForm({...supplementForm, prix: value === '' ? 0 : parseFloat(value) || 0});
+                  }}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
