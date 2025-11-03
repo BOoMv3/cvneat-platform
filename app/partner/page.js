@@ -57,6 +57,9 @@ export default function PartnerDashboard() {
 
   const [showSupplementModal, setShowSupplementModal] = useState(false);
 
+  // Variable pour éviter les requêtes simultanées (utiliser useRef pour persister entre renders)
+  const isFetchingRef = useRef(false);
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -336,11 +339,20 @@ export default function PartnerDashboard() {
   };
 
   const fetchOrders = async (restaurantId) => {
+    // Éviter les requêtes simultanées
+    if (isFetchingRef.current) {
+      console.log('⏳ fetchOrders: Requête déjà en cours, ignorée');
+      return;
+    }
+
+    isFetchingRef.current = true;
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('🔍 DEBUG fetchOrders - Session:', session ? 'Présente' : 'Absente');
       if (!session) {
         console.error('❌ Aucune session trouvée');
+        isFetchingRef.current = false;
         return;
       }
       
