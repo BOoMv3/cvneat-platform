@@ -5,15 +5,11 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     
-    console.log('=== RÉCUPÉRATION COMMANDE PAR ID ===');
-    console.log('ID demandé:', id);
-
     // Récupérer le token d'authentification
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '') || null;
 
     if (!token) {
-      console.error('❌ Token manquant');
       return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
     }
 
@@ -34,11 +30,8 @@ export async function GET(request, { params }) {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
-      console.error('❌ Erreur authentification:', userError);
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
-
-    console.log('✅ Utilisateur authentifié:', user.email);
 
     // Créer aussi un client admin pour bypasser RLS si nécessaire
     const supabaseAdmin = createClient(
@@ -59,6 +52,13 @@ export async function GET(request, { params }) {
             nom,
             prix
           )
+        ),
+        restaurants (
+          id,
+          nom,
+          adresse,
+          ville,
+          code_postal
         )
       `)
       .eq('id', id)
@@ -66,8 +66,6 @@ export async function GET(request, { params }) {
 
     // Si erreur RLS ou pas de résultat, essayer avec admin pour vérifier l'existence
     if (error || !order) {
-      console.log('⚠️ Erreur avec client utilisateur, tentative avec admin pour vérifier existence:', error?.message);
-      
       const { data: orderAdmin, error: adminError } = await supabaseAdmin
         .from('commandes')
         .select('id, user_id, restaurant_id')
@@ -75,16 +73,11 @@ export async function GET(request, { params }) {
         .single();
 
       if (adminError || !orderAdmin) {
-        console.error('❌ Commande non trouvée dans la base:', adminError);
         return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
       // Vérifier que la commande appartient à l'utilisateur
       if (orderAdmin.user_id !== user.id) {
-        console.error('❌ Commande n\'appartient pas à l\'utilisateur:', {
-          commande_user_id: orderAdmin.user_id,
-          current_user_id: user.id
-        });
         return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
       }
 
@@ -101,23 +94,63 @@ export async function GET(request, { params }) {
               nom,
               prix
             )
+          ),
+          restaurants (
+            id,
+            nom,
+            adresse,
+            ville,
+            code_postal
           )
         `)
         .eq('id', id)
         .single();
 
       if (orderError || !orderFull) {
-        console.error('❌ Erreur récupération complète:', orderError);
         return NextResponse.json({ error: 'Erreur lors de la récupération' }, { status: 500 });
       }
 
       order = orderFull;
     }
 
-    console.log('✅ Commande trouvée:', order.id);
-    return NextResponse.json(order);
+    // Formater les données pour le frontend
+    const restaurant = order.restaurants;
+    const items = (order.details_commande || []).map(detail => ({
+      id: detail.id,
+      name: detail.menus?.nom || 'Article',
+      quantity: detail.quantite || 0,
+      price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0
+    }));
+
+    // Extraire l'adresse de livraison
+    const addressParts = (order.adresse_livraison || '').split(',').map(s => s.trim());
+    const deliveryAddress = addressParts[0] || '';
+    const deliveryCity = addressParts.length > 2 ? addressParts[1] : (addressParts[1] || '');
+    const deliveryPostalCode = addressParts.length > 2 ? addressParts[2]?.split(' ')[0] : '';
+    const deliveryPhone = order.telephone || order.phone || '';
+
+    const formattedOrder = {
+      id: order.id,
+      status: order.statut || order.status,
+      createdAt: order.created_at,
+      restaurant: {
+        id: restaurant?.id,
+        name: restaurant?.nom || 'Restaurant inconnu',
+        address: restaurant?.adresse || '',
+        city: restaurant?.ville || ''
+      },
+      deliveryAddress: deliveryAddress,
+      deliveryCity: deliveryCity,
+      deliveryPostalCode: deliveryPostalCode,
+      deliveryPhone: deliveryPhone,
+      total: parseFloat(order.total || 0) || 0,
+      deliveryFee: parseFloat(order.frais_livraison || 0) || 0,
+      items: items,
+      details_commande: order.details_commande || []
+    };
+
+    return NextResponse.json(formattedOrder);
   } catch (error) {
-    console.error('❌ Erreur API commande:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
@@ -126,10 +159,6 @@ export async function PUT(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
-    
-    console.log('=== MISE À JOUR COMMANDE ===');
-    console.log('ID commande:', id);
-    console.log('Données reçues:', body);
 
     // Mettre à jour la commande
     const supabase = createClient(
@@ -148,14 +177,11 @@ export async function PUT(request, { params }) {
       .single();
 
     if (error) {
-      console.error('❌ Erreur mise à jour:', error);
       return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
     }
 
-    console.log('✅ Commande mise à jour:', data);
     return NextResponse.json(data);
   } catch (error) {
-    console.error('❌ Erreur API mise à jour:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
