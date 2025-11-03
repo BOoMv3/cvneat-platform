@@ -240,10 +240,10 @@ export default function RestaurantDetail({ params }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
           </div>
         </div>
       </div>
@@ -252,15 +252,15 @@ export default function RestaurantDetail({ params }) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-24 h-24 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-4xl">⚠️</span>
             </div>
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Une erreur est survenue</h1>
-            <p className="text-gray-600 mb-2">Erreur: {error}</p>
-            <p className="text-sm text-gray-500 mb-6">ID du restaurant: {params.id}</p>
+            <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Une erreur est survenue</h1>
+            <p className="text-gray-600 dark:text-gray-300 mb-2">Erreur: {error}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">ID du restaurant: {params.id}</p>
             <button onClick={() => router.push('/')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Retour à l'accueil</button>
           </div>
         </div>
@@ -270,10 +270,10 @@ export default function RestaurantDetail({ params }) {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <p className="text-red-600 font-bold">Restaurant non trouvé ou erreur de chargement.</p>
+            <p className="text-red-600 dark:text-red-400 font-bold">Restaurant non trouvé ou erreur de chargement.</p>
             <button onClick={() => router.push('/')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Retour à l'accueil</button>
           </div>
         </div>
@@ -282,13 +282,13 @@ export default function RestaurantDetail({ params }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header avec bouton de retour */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="container mx-auto px-4 py-4">
           <button 
             onClick={() => router.push('/')}
-            className="flex items-center space-x-2 text-gray-600 hover:text-orange-600 transition-colors"
+            className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -307,24 +307,24 @@ export default function RestaurantDetail({ params }) {
         />
 
         {/* Section adresse de livraison - Optimisée mobile */}
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
               <FaMapMarkerAlt className="mr-2 h-4 w-4" />
               Adresse de livraison :
             </label>
             <input
               type="text"
-              className="w-full border rounded-lg px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base min-h-[48px] touch-manipulation"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base min-h-[48px] touch-manipulation"
               placeholder="Votre adresse complète"
               value={deliveryAddress}
               onChange={e => setDeliveryAddress(e.target.value)}
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               Le prix de livraison s'adapte automatiquement à votre adresse.
             </p>
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             <p>{restaurant.adresse}</p>
             <p>{restaurant.ville}, {restaurant.code_postal}</p>
           </div>
@@ -333,7 +333,7 @@ export default function RestaurantDetail({ params }) {
         {/* Menu */}
         <div className="space-y-12">
           {menu.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
               <p>Aucun plat disponible pour ce restaurant.</p>
             </div>
           ) : (
@@ -349,47 +349,47 @@ export default function RestaurantDetail({ params }) {
 
         {/* Panier - Optimisé mobile */}
         <div className="w-full lg:w-96">
-          <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 sticky top-8">
-            <h2 className="text-lg lg:text-xl font-bold mb-4">Votre commande</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 lg:p-6 sticky top-8">
+            <h2 className="text-lg lg:text-xl font-bold mb-4 text-gray-900 dark:text-white">Votre commande</h2>
             {cart.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Votre panier est vide</p>
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">Votre panier est vide</p>
             ) : (
               <>
                 <div className="space-y-3 sm:space-y-4 mb-4">
                   {cart.map((item) => (
                     <div key={item.id} className="flex items-center justify-between">
                       <div className="flex-1 pr-2">
-                        <p className="font-medium text-sm sm:text-base">{item.nom || item.name}</p>
-                        <p className="text-xs sm:text-sm text-gray-500">{(item.prix || item.price || 0).toFixed(2)}€</p>
+                        <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">{item.nom || item.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{(item.prix || item.price || 0).toFixed(2)}€</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => removeFromCart(item.id)}
-                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border flex items-center justify-center hover:bg-gray-100 touch-manipulation active:scale-95"
+                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation active:scale-95"
                         >
-                          <FaMinus className="text-xs" />
+                          <FaMinus className="text-xs text-gray-900 dark:text-white" />
                         </button>
-                        <span className="text-sm sm:text-base font-medium min-w-[20px] text-center">{item.quantity}</span>
+                        <span className="text-sm sm:text-base font-medium min-w-[20px] text-center text-gray-900 dark:text-white">{item.quantity}</span>
                         <button
                           onClick={() => addToCart(item)}
-                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border flex items-center justify-center hover:bg-gray-100 touch-manipulation active:scale-95"
+                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation active:scale-95"
                         >
-                          <FaPlus className="text-xs" />
+                          <FaPlus className="text-xs text-gray-900 dark:text-white" />
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-2 text-sm sm:text-base">
+                <div className="border-t dark:border-gray-700 pt-4">
+                  <div className="flex justify-between items-center mb-2 text-sm sm:text-base text-gray-900 dark:text-white">
                     <p>Sous-total</p>
                     <p>{getSubtotal().toFixed(2)}€</p>
                   </div>
-                  <div className="flex justify-between items-center mb-4 text-sm sm:text-base">
+                  <div className="flex justify-between items-center mb-4 text-sm sm:text-base text-gray-900 dark:text-white">
                     <p>Frais de livraison</p>
                     <p>{deliveryFee !== null ? `${deliveryFee.toFixed(2)}€` : 'À calculer après sélection de l\'adresse'}</p>
                   </div>
-                  <div className="flex justify-between items-center font-bold text-base sm:text-lg mb-4">
+                  <div className="flex justify-between items-center font-bold text-base sm:text-lg mb-4 text-gray-900 dark:text-white">
                     <p>Total</p>
                     <p>{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</p>
                   </div>

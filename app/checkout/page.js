@@ -351,11 +351,11 @@ export default function Checkout() {
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <FaShoppingCart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Panier vide</h1>
-          <p className="text-gray-600 mb-4">Votre panier est vide. Ajoutez des articles pour continuer.</p>
+          <FaShoppingCart className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Panier vide</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">Votre panier est vide. Ajoutez des articles pour continuer.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -368,22 +368,22 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto px-3 sm:px-4">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Finaliser votre commande</h1>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8">Finaliser votre commande</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {/* Informations de livraison */}
-          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 flex items-center">
-              <FaMapMarkerAlt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mr-2" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 flex items-center text-gray-900 dark:text-white">
+              <FaMapMarkerAlt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mr-2" />
               Adresse de livraison
             </h2>
 
             {/* Adresses existantes */}
             {userAddresses.length > 0 && (
               <div className="mb-4 sm:mb-6">
-                <h3 className="font-medium text-gray-900 mb-3 text-sm sm:text-base">Adresses enregistrées</h3>
+                <h3 className="font-medium text-gray-900 dark:text-white mb-3 text-sm sm:text-base">Adresses enregistrées</h3>
                 <div className="space-y-2 sm:space-y-3">
                   {userAddresses.map((address) => (
                     <div
@@ -391,17 +391,17 @@ export default function Checkout() {
                       onClick={() => handleAddressSelect(address)}
                       className={`p-3 sm:p-4 border rounded-lg cursor-pointer transition-colors min-h-[44px] touch-manipulation ${
                         selectedAddress?.id === address.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 text-sm sm:text-base">{address.address}</p>
-                          <p className="text-xs sm:text-sm text-gray-600">{address.postal_code} {address.city}</p>
+                          <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{address.address}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{address.postal_code} {address.city}</p>
                         </div>
                         {selectedAddress?.id === address.id && (
-                          <FaCheck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                          <FaCheck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
                         )}
                       </div>
                     </div>
@@ -412,15 +412,15 @@ export default function Checkout() {
 
             {/* Formulaire nouvelle adresse */}
             {showAddressForm && (
-              <div className="border-t pt-4 sm:pt-6">
-                <h3 className="font-medium text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Nouvelle adresse</h3>
+              <div className="border-t dark:border-gray-700 pt-4 sm:pt-6">
+                <h3 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Nouvelle adresse</h3>
                 <div className="space-y-3 sm:space-y-4">
                   <input
                     type="text"
                     placeholder="Adresse"
                     value={newAddress.address}
                     onChange={(e) => setNewAddress(prev => ({ ...prev, address: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <input
@@ -428,14 +428,14 @@ export default function Checkout() {
                       placeholder="Ville"
                       value={newAddress.city}
                       onChange={(e) => setNewAddress(prev => ({ ...prev, city: e.target.value }))}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                     />
                     <input
                       type="text"
                       placeholder="Code postal"
                       value={newAddress.postal_code}
                       onChange={(e) => setNewAddress(prev => ({ ...prev, postal_code: e.target.value }))}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                     />
                   </div>
                   <label className="flex items-center min-h-[44px] touch-manipulation">
@@ -445,7 +445,7 @@ export default function Checkout() {
                       onChange={(e) => setNewAddress(prev => ({ ...prev, is_default: e.target.checked }))}
                       className="mr-2 h-4 w-4"
                     />
-                    <span className="text-xs sm:text-sm text-gray-600">Définir comme adresse par défaut</span>
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Définir comme adresse par défaut</span>
                   </label>
                   <button
                     onClick={addNewAddress}
@@ -468,9 +468,9 @@ export default function Checkout() {
             )}
 
             {/* Informations de contact */}
-            <div className="border-t pt-4 sm:pt-6 mt-4 sm:mt-6">
-              <h3 className="font-medium text-gray-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
-                <FaUser className="h-4 w-4 text-blue-600 mr-2" />
+            <div className="border-t dark:border-gray-700 pt-4 sm:pt-6 mt-4 sm:mt-6">
+              <h3 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                <FaUser className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
                 Informations de contact
               </h3>
               <div className="space-y-3 sm:space-y-4">
@@ -480,14 +480,14 @@ export default function Checkout() {
                     placeholder="Prénom *"
                     value={orderDetails.prenom}
                     onChange={(e) => setOrderDetails(prev => ({ ...prev, prenom: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                   />
                   <input
                     type="text"
                     placeholder="Nom *"
                     value={orderDetails.nom}
                     onChange={(e) => setOrderDetails(prev => ({ ...prev, nom: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                   />
                 </div>
                 <input
@@ -495,30 +495,30 @@ export default function Checkout() {
                   placeholder="Téléphone *"
                   value={orderDetails.telephone}
                   onChange={(e) => setOrderDetails(prev => ({ ...prev, telephone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                 />
                 <input
                   type="email"
                   placeholder="Email"
                   value={orderDetails.email}
                   onChange={(e) => setOrderDetails(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                 />
                 <textarea
                   placeholder="Instructions spéciales (optionnel)"
                   value={orderDetails.instructions}
                   onChange={(e) => setOrderDetails(prev => ({ ...prev, instructions: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                 />
               </div>
             </div>
           </div>
 
           {/* Résumé de la commande */}
-          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 h-fit">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 flex items-center">
-              <FaShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mr-2" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 h-fit">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 flex items-center text-gray-900 dark:text-white">
+              <FaShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mr-2" />
               Résumé de la commande
             </h2>
 
@@ -526,22 +526,22 @@ export default function Checkout() {
               {cart.map((item) => (
                 <div key={item.id} className="flex justify-between items-center">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{item.nom}</p>
-                    <p className="text-xs sm:text-sm text-gray-600">Quantité: {item.quantity}</p>
+                    <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">{item.nom}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Quantité: {item.quantity}</p>
                   </div>
-                  <p className="font-semibold text-gray-900 text-sm sm:text-base ml-2">
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base ml-2">
                     {((typeof item.prix === 'number' ? item.prix : Number(item.prix)) * item.quantity).toFixed(2)}€
                   </p>
                 </div>
               ))}
             </div>
 
-            <div className="border-t pt-3 sm:pt-4 space-y-2 sm:space-y-3">
-              <div className="flex justify-between text-gray-600 text-sm sm:text-base">
+            <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
+              <div className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                 <span>Sous-total</span>
                 <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
               </div>
-              <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 text-sm sm:text-base">
+              <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                 <span className="flex items-center">
                   <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Frais de livraison
@@ -549,11 +549,11 @@ export default function Checkout() {
                 <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
               </div>
               {/* Debug affichage */}
-              <div key={`debug-${forceUpdate}`} className="text-xs text-gray-400">
+              <div key={`debug-${forceUpdate}`} className="text-xs text-gray-400 dark:text-gray-500">
                 Debug: fraisLivraison={fraisLivraison}, forceUpdate={forceUpdate}
               </div>
-              <div key={`total-${forceUpdate}`} className="border-t pt-2 sm:pt-3">
-                <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600">
+              <div key={`total-${forceUpdate}`} className="border-t dark:border-gray-700 pt-2 sm:pt-3">
+                <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
                   <span>Total</span>
                   <span>{totalAvecLivraison.toFixed(2)}€</span>
                 </div>
