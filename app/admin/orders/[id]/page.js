@@ -125,8 +125,8 @@ export default function AdminOrderDetail() {
             </button>
             <h1 className="text-3xl font-bold">Commande #{order.id}</h1>
           </div>
-          <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-            {getStatusText(order.status)}
+          <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.statut || order.status)}`}>
+            {getStatusText(order.statut || order.status)}
           </span>
         </div>
 

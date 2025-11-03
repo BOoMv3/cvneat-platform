@@ -11,15 +11,17 @@ export default function DeliveryZones() {
   useEffect(() => {
     const fetchZones = async () => {
       try {
-        const response = await fetch('/api/delivery/calculate');
-        if (response.ok) {
-          const data = await response.json();
-          setZones(data.villes_desservies);
-        } else {
-          throw new Error('Erreur lors du chargement des zones');
-        }
+        // Zones de livraison fixes basées sur la configuration
+        const zonesData = [
+          { code: 'ganges', nom: 'Ganges', prix_base: 2.50 },
+          { code: 'laroque', nom: 'Laroque', prix_base: 3.50 },
+          { code: 'saint-bauzille', nom: 'Saint-Bauzille-de-Putois', prix_base: 3.50 },
+          { code: 'sumene', nom: 'Sumène', prix_base: 4.00 },
+          { code: 'pegairolles', nom: 'Pégairolles-de-Buèges', prix_base: 4.00 }
+        ];
+        setZones(zonesData);
       } catch (error) {
-        setError(error.message);
+        setError('Erreur lors du chargement des zones');
       } finally {
         setLoading(false);
       }

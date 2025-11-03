@@ -81,16 +81,12 @@ export default function AdminPage() {
       setError(null);
 
       // Récupérer toutes les commandes
-      console.log('🔍 Tentative de récupération des commandes...');
       const { data: orders, error: ordersError } = await supabase
         .from('commandes')
         .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('🔍 Résultat commandes:', { orders: orders?.length || 0, error: ordersError });
-      
       if (ordersError) {
-        console.error('❌ Erreur commandes:', ordersError);
         throw ordersError;
       }
 
@@ -141,8 +137,7 @@ export default function AdminPage() {
       });
 
     } catch (err) {
-      console.error('Erreur lors du chargement des statistiques:', err);
-      setError(err.message);
+      setError('Erreur lors du chargement des statistiques');
     } finally {
       setLoading(false);
     }
@@ -399,14 +394,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* DEBUG: Affichage des données brutes - Optimisé mobile */}
-        <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-3 rounded mb-6 sm:mb-8">
-          <h3 className="font-bold text-sm sm:text-base">DEBUG - Données récupérées :</h3>
-          <p className="text-xs sm:text-sm">Commandes récentes: {stats.recentOrders.length}</p>
-          <p className="text-xs sm:text-sm">Restaurants récents: {stats.recentRestaurants.length}</p>
-          <p className="text-xs sm:text-sm break-all">Première commande: {JSON.stringify(stats.recentOrders[0])}</p>
-          <p className="text-xs sm:text-sm break-all">Premier restaurant: {JSON.stringify(stats.recentRestaurants[0])}</p>
-        </div>
 
         {/* Statistiques détaillées - Optimisées mobile */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">

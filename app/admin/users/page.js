@@ -52,7 +52,7 @@ export default function AdminUsers() {
       const data = await response.json();
       setUsers(data);
     } catch (error) {
-      console.error(error);
+      setError('Erreur lors du chargement des utilisateurs');
     } finally {
       setLoading(false);
     }

@@ -113,9 +113,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   };
 
   const handleAddToCart = () => {
+    // Extraire les suppléments depuis selectedIngredients
+    const supplementsList = Array.from(selectedIngredients).map(ingId => {
+      const supplement = supplements.find(sup => sup.id === ingId);
+      return supplement ? { id: supplement.id, nom: supplement.name, prix: supplement.price } : null;
+    }).filter(Boolean);
+
     const customizedItem = {
       ...item,
-      quantity,
+      quantity: quantity, // Utiliser la quantité sélectionnée
+      supplements: supplementsList,
       customizations: {
         removedIngredients: Array.from(removedIngredients),
         addedIngredients: Array.from(selectedIngredients),

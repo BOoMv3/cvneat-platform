@@ -24,19 +24,22 @@ export default function Advertisement({ position, className = '' }) {
         .select('*')
         .eq('position', position)
         .eq('is_active', true)
-        .gte('start_date', new Date().toISOString().split('T')[0])
-        .lte('end_date', new Date().toISOString().split('T')[0])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Erreur lors du chargement de la publicité:', error);
-      } else if (data) {
-        setAd(data);
+      // Vérifier si la date est dans la plage valide
+      if (data) {
+        const today = new Date().toISOString().split('T')[0];
+        const startDate = data.start_date ? new Date(data.start_date).toISOString().split('T')[0] : null;
+        const endDate = data.end_date ? new Date(data.end_date).toISOString().split('T')[0] : null;
+        
+        if ((!startDate || today >= startDate) && (!endDate || today <= endDate)) {
+          setAd(data);
+        }
       }
     } catch (error) {
-      console.error('Erreur:', error);
+      // Erreur silencieuse - pas de publicité à afficher
     } finally {
       setLoading(false);
     }

@@ -40,7 +40,7 @@ export default function RestaurantDetail({ params }) {
   const fetchRestaurantOrders = async () => {
     try {
       const { data, error } = await supabase
-        .from('orders')
+        .from('commandes')
         .select('*')
         .eq('restaurant_id', params.id)
         .order('created_at', { ascending: false });
@@ -48,7 +48,7 @@ export default function RestaurantDetail({ params }) {
       if (error) throw error;
       setOrders(data || []);
     } catch (err) {
-      console.error('Erreur lors de la recuperation des commandes:', err);
+      // Erreur silencieuse
     }
   };
 
@@ -87,8 +87,8 @@ export default function RestaurantDetail({ params }) {
   const getStatusText = (status) => {
     switch (status) {
       case 'pending': return 'En attente';
-      case 'approved': return 'Approuve';
-      case 'rejected': return 'Refuse';
+      case 'approved': return 'Approuvé';
+      case 'rejected': return 'Refusé';
       case 'active': return 'Actif';
       case 'inactive': return 'Inactif';
       default: return status;

@@ -171,13 +171,20 @@ export default function RestaurantDetail({ params }) {
     }
   };
 
-  const addToCart = (item, supplements = [], size = null) => {
+  const addToCart = (item, supplements = [], size = null, quantityToAdd = 1) => {
     setCart(prevCart => {
+      // Si l'item a déjà une propriété quantity (venant de la modal), l'utiliser
+      const finalQuantity = item.quantity || quantityToAdd;
+      
+      // Extraire les suppléments si l'item les contient déjà
+      const itemSupplements = item.supplements || supplements || [];
+      const itemSize = item.size || size || null;
+      
       // Créer un identifiant unique basé sur l'ID, les suppléments et la taille
       const itemKey = JSON.stringify({
         id: item.id,
-        supplements: supplements || [],
-        size: size
+        supplements: itemSupplements,
+        size: itemSize
       });
       
       // Vérifier si l'article avec ces mêmes suppléments et taille existe déjà
@@ -194,16 +201,16 @@ export default function RestaurantDetail({ params }) {
         // Incrémenter la quantité si l'article existe déjà avec les mêmes suppléments/taille
         return prevCart.map((cartItem, index) =>
           index === existingItemIndex
-            ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 }
+            ? { ...cartItem, quantity: (cartItem.quantity || 1) + finalQuantity }
             : cartItem
         );
       } else {
         // Ajouter un nouvel article avec suppléments et taille
         const newItem = {
           ...item,
-          quantity: 1,
-          supplements: supplements || [],
-          size: size || null
+          quantity: finalQuantity,
+          supplements: itemSupplements,
+          size: itemSize
         };
         return [...prevCart, newItem];
       }
