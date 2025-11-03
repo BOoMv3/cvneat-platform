@@ -23,7 +23,7 @@ export default function RestaurantDetail({ params }) {
   const [error, setError] = useState(null);
   const [showCartModal, setShowCartModal] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [deliveryFee, setDeliveryFee] = useState(2.50);
+  const [deliveryFee, setDeliveryFee] = useState(null); // Pas de frais jusqu'à ce qu'une adresse soit sélectionnée
   const [deliveryInfoLoading, setDeliveryInfoLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [favorites, setFavorites] = useState([]);
@@ -387,11 +387,11 @@ export default function RestaurantDetail({ params }) {
                   </div>
                   <div className="flex justify-between items-center mb-4 text-sm sm:text-base">
                     <p>Frais de livraison</p>
-                    <p>{deliveryFee !== null ? deliveryFee.toFixed(2) : 'Calcul en cours'}€</p>
+                    <p>{deliveryFee !== null ? `${deliveryFee.toFixed(2)}€` : 'À calculer après sélection de l\'adresse'}</p>
                   </div>
                   <div className="flex justify-between items-center font-bold text-base sm:text-lg mb-4">
                     <p>Total</p>
-                    <p>{getTotal().toFixed(2)}€</p>
+                    <p>{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</p>
                   </div>
                   <button
                     onClick={handleCheckout}
@@ -418,8 +418,8 @@ export default function RestaurantDetail({ params }) {
               ))}
             </div>
             <div className="flex justify-between mb-2"><span>Sous-total</span><span>{getSubtotal().toFixed(2)}€</span></div>
-            <div className="flex justify-between mb-2"><span>Frais de livraison</span><span>{deliveryFee !== null ? deliveryFee.toFixed(2) : 'Calcul en cours'}€</span></div>
-            <div className="flex justify-between font-bold text-lg mb-4"><span>Total</span><span>{getTotal().toFixed(2)}€</span></div>
+            <div className="flex justify-between mb-2"><span>Frais de livraison</span><span>{deliveryFee !== null ? `${deliveryFee.toFixed(2)}€` : 'À calculer après sélection de l\'adresse'}</span></div>
+            <div className="flex justify-between font-bold text-lg mb-4"><span>Total</span><span>{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</span></div>
             <button onClick={() => router.push('/checkout')} className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600">Valider et payer</button>
           </Modal>
         )}
