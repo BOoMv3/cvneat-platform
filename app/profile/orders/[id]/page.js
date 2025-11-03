@@ -86,8 +86,8 @@ export default function OrderDetail({ params }) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'preparing': return 'bg-blue-100 text-blue-800';
       case 'ready': return 'bg-green-100 text-green-800';
-      case 'delivered': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'delivered': return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
     }
   };
 
@@ -189,7 +189,7 @@ export default function OrderDetail({ params }) {
             <h1 className="text-3xl font-bold">Détails de la commande #{order.id}</h1>
             <button
               onClick={() => router.push('/profile/orders')}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 flex items-center"
+              className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white flex items-center"
             >
               <FaArrowLeft className="mr-2" />
               Retour aux commandes

@@ -880,7 +880,7 @@ export default function PartnerDashboard() {
                         <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <h3 className="font-medium text-gray-900 text-lg">Commande #{order.id?.slice(0, 8) || order.id}</h3>
+                              <h3 className="font-medium text-gray-900 dark:text-white text-lg">Commande #{order.id?.slice(0, 8) || order.id}</h3>
                               <p className="text-sm text-gray-600">
                                 {order.created_at ? new Date(order.created_at).toLocaleString('fr-FR') : 'Date non disponible'}
                               </p>
@@ -1084,7 +1084,7 @@ export default function PartnerDashboard() {
                         </div>
                         
                         <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-medium text-gray-900 text-sm truncate">{item.nom}</h3>
+                          <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">{item.nom}</h3>
                           <div className="flex space-x-1">
                             <button
                               onClick={() => {

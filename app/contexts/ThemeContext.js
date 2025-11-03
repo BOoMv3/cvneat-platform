@@ -17,11 +17,13 @@ export const ThemeProvider = ({ children }) => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Vérifier le thème stocké dans localStorage ou la préférence système
+    // Vérifier le thème stocké dans localStorage
+    // IMPORTANT : Ne PAS appliquer automatiquement le thème système
+    // Le mode sombre doit être activé manuellement par l'utilisateur
     const storedTheme = localStorage.getItem('theme');
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     
-    setTheme(storedTheme || systemTheme);
+    // Utiliser uniquement le thème stocké, ou 'light' par défaut
+    setTheme(storedTheme || 'light');
     setMounted(true);
   }, []);
 

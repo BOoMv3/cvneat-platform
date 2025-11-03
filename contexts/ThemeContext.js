@@ -20,10 +20,13 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     setMounted(true);
     const savedTheme = safeLocalStorage.getItem('theme');
+    // IMPORTANT : Ne PAS appliquer automatiquement le thème système
+    // Le mode sombre doit être activé manuellement par l'utilisateur
     if (savedTheme) {
       setTheme(savedTheme);
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
+    } else {
+      // Par défaut, toujours utiliser 'light'
+      setTheme('light');
     }
   }, []);
 

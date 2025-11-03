@@ -706,7 +706,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       {/* Bouton notifications */}
       <button
         onClick={() => setShowNotifications(!showNotifications)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
+        className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
       >
         <FaBell className="h-5 w-5" />
         {notifications.length > 0 && (
@@ -719,9 +719,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         )}
       </button>
 
-      {/* Panneau notifications */}
-      {showNotifications && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
+          {/* Panneau notifications */}
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 z-50">
           <div className="p-4 border-b">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
