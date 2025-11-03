@@ -12,7 +12,12 @@ export default function RealTimeNotifications({ restaurantId }) {
   const audioContextRef = useRef(null);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId) {
+      console.warn('⚠️ RealTimeNotifications: restaurantId manquant');
+      return;
+    }
+
+    console.log('🔍 RealTimeNotifications - Initialisation pour restaurantId:', restaurantId);
 
     const setupSSE = async () => {
       try {
@@ -25,21 +30,53 @@ export default function RealTimeNotifications({ restaurantId }) {
 
         const token = session.access_token;
         console.log('🔍 DEBUG SSE Frontend - Token:', token ? 'Présent' : 'Absent');
+        console.log('🔍 DEBUG SSE Frontend - RestaurantId:', restaurantId);
+        console.log('🔍 DEBUG SSE Frontend - URL SSE:', `/api/partner/notifications/sse?restaurantId=${restaurantId}&token=${token ? '***' : 'MANQUANT'}`);
 
         // Connexion SSE avec le token en paramètre d'URL
         const eventSource = new EventSource(`/api/partner/notifications/sse?restaurantId=${restaurantId}&token=${token}`);
+        
+        console.log('🔍 EventSource créé, état initial:', eventSource.readyState);
 
         eventSource.onopen = () => {
           setIsConnected(true);
           console.log('✅ Connecté aux notifications en temps réel');
+          console.log('✅ SSE EventSource ouvert pour restaurantId:', restaurantId);
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('❌ Erreur EventSource SSE:', error);
+          console.error('❌ État EventSource:', eventSource.readyState);
+          console.error('❌ URL EventSource:', eventSource.url);
+          setIsConnected(false);
+          
+          // Si la connexion est fermée, tenter une reconnexion
+          if (eventSource.readyState === EventSource.CLOSED) {
+            console.log('🔄 Connexion fermée, tentative de reconnexion dans 5 secondes...');
+            setTimeout(() => {
+              console.log('🔄 Reconnexion SSE...');
+              eventSource.close();
+              setupSSE();
+            }, 5000);
+          }
         };
 
         eventSource.onmessage = (event) => {
           try {
+            console.log('📨 Message SSE brut reçu:', event.data);
             const data = JSON.parse(event.data);
-            console.log('🔔 Notification SSE reçue:', data);
+            console.log('🔔 Notification SSE parsée:', data);
+            console.log('🔔 Type de notification:', data.type);
+            
+            // Gérer le message de connexion
+            if (data.type === 'connected') {
+              console.log('✅ Message de connexion SSE reçu:', data.message);
+              setIsConnected(true);
+              return;
+            }
             
             if (data.type === 'new_order') {
+              console.log('🎉 NOUVELLE COMMANDE DÉTECTÉE - Affichage pop-up et son');
               // Afficher une pop-up d'alerte
               setAlertOrder(data.order);
               setShowAlert(true);
@@ -86,13 +123,8 @@ export default function RealTimeNotifications({ restaurantId }) {
               // Optionnel : jouer un son différent ou afficher une notification
             }
           } catch (error) {
-            console.error('Erreur parsing notification SSE:', error);
+            console.error('❌ Erreur parsing notification SSE:', error);
           }
-        };
-
-        eventSource.onerror = (error) => {
-          console.error('❌ Erreur SSE:', error);
-          setIsConnected(false);
         };
 
         // Stocker l'eventSource pour pouvoir le fermer

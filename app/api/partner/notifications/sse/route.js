@@ -77,20 +77,38 @@ export async function GET(request) {
     }
 
     const userRestaurantId = restaurantData.id;
+    console.log('✅ SSE - Restaurant ID trouvé:', userRestaurantId);
+    console.log('✅ SSE - Restaurant ID param:', restaurantId);
+
+    // Vérifier que restaurantId correspond
+    if (restaurantId && restaurantId !== userRestaurantId) {
+      console.warn('⚠️ SSE - Restaurant ID mismatch:', { param: restaurantId, user: userRestaurantId });
+    }
 
     // Configuration SSE
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
+        console.log('✅ SSE Stream démarré');
+        
         // Envoyer un message de connexion
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'connected', message: 'Connexion SSE établie' })}\n\n`));
+        const connectMessage = { type: 'connected', message: 'Connexion SSE établie', restaurantId: userRestaurantId };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(connectMessage)}\n\n`));
+        console.log('✅ Message de connexion SSE envoyé');
 
         // Fonction pour envoyer des notifications
         const sendNotification = (data) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          try {
+            const message = `data: ${JSON.stringify(data)}\n\n`;
+            controller.enqueue(encoder.encode(message));
+            console.log('✅ Notification SSE envoyée:', data.type);
+          } catch (error) {
+            console.error('❌ Erreur envoi notification SSE:', error);
+          }
         };
 
-        // Écouter les nouvelles commandes
+        // Écouter les nouvelles commandes avec Supabase Realtime
+        console.log('🔍 SSE - Configuration Supabase Realtime pour restaurant:', userRestaurantId);
         const channel = supabase
           .channel(`restaurant_${userRestaurantId}_orders`)
           .on('postgres_changes', 
@@ -101,7 +119,13 @@ export async function GET(request) {
               filter: `restaurant_id=eq.${userRestaurantId}`
             }, 
             (payload) => {
-              console.log('🔔 Nouvelle commande détectée via SSE:', payload.new.id);
+              console.log('🔔 Nouvelle commande détectée via Supabase Realtime:', payload.new.id);
+              console.log('🔔 Détails commande:', {
+                id: payload.new.id,
+                restaurant_id: payload.new.restaurant_id,
+                statut: payload.new.statut,
+                total: payload.new.total
+              });
               sendNotification({
                 type: 'new_order',
                 message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
@@ -127,10 +151,18 @@ export async function GET(request) {
               });
             }
           )
-          .subscribe();
+          .subscribe((status) => {
+            console.log('🔍 SSE - Statut abonnement Supabase:', status);
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Abonnement Supabase Realtime actif');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error('❌ Erreur abonnement Supabase Realtime');
+            }
+          });
 
         // Nettoyer la connexion
         request.signal.addEventListener('abort', () => {
+          console.log('🧹 SSE - Nettoyage connexion');
           channel.unsubscribe();
           controller.close();
         });
