@@ -910,19 +910,36 @@ export default function PartnerDashboard() {
                           </div>
                           
                           {/* Articles de la commande */}
-                          {order.order_items && order.order_items.length > 0 && (
-                            <div className="mt-4 p-3 bg-white rounded border">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Articles :</p>
+                          {order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0 && (
+                            <div className="mt-4 p-3 bg-white dark:bg-gray-700 rounded border dark:border-gray-600">
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Articles commandés :</p>
                               <div className="space-y-1">
-                                {order.order_items.map((item, index) => (
-                                  <div key={index} className="flex justify-between text-sm">
-                                    <span className="text-gray-600">
-                                      {item.quantity}x {item.nom}
-                                    </span>
-                                    <span className="text-gray-900">{item.prix} €</span>
-                                  </div>
-                                ))}
+                                {order.details_commande.map((detail, index) => {
+                                  const menu = detail.menus || {};
+                                  const nom = menu.nom || 'Article inconnu';
+                                  const quantite = detail.quantite || 1;
+                                  const prixUnitaire = detail.prix_unitaire || menu.prix || 0;
+                                  const prixTotal = prixUnitaire * quantite;
+                                  
+                                  return (
+                                    <div key={detail.id || index} className="flex justify-between text-sm">
+                                      <span className="text-gray-600 dark:text-gray-300">
+                                        {quantite}x {nom}
+                                      </span>
+                                      <span className="text-gray-900 dark:text-white font-medium">
+                                        {prixTotal.toFixed(2)} €
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
+                            </div>
+                          )}
+                          {(!order.details_commande || !Array.isArray(order.details_commande) || order.details_commande.length === 0) && (
+                            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 rounded border border-yellow-200 dark:border-yellow-700">
+                              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                                ⚠️ Détails de commande non disponibles
+                              </p>
                             </div>
                           )}
                           

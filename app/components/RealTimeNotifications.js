@@ -499,15 +499,14 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
-                  <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 dark:text-red-400 animate-bounce' : 'text-green-600 dark:text-green-400'}`}>
-                    {(() => {
-                      // Calculer le total correctement : total des articles + frais de livraison
-                      const totalAmount = parseFloat(alertOrder.total || 0) || 0;
-                      const deliveryFee = parseFloat(alertOrder.frais_livraison || 0) || 0;
-                      const totalWithDelivery = totalAmount + deliveryFee;
-                      return totalWithDelivery.toFixed(2);
-                    })()}€
-                  </p>
+                      <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 dark:text-red-400 animate-bounce' : 'text-green-600 dark:text-green-400'}`}>
+                        {(() => {
+                          // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
+                          // order.total contient uniquement le montant des articles (chiffre d'affaires du restaurant)
+                          const totalAmount = parseFloat(alertOrder.total || 0) || 0;
+                          return totalAmount.toFixed(2);
+                        })()}€
+                      </p>
                 </div>
               </div>
               {alertOrder.adresse_livraison && (
