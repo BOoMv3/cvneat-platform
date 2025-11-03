@@ -18,11 +18,8 @@ export async function GET(request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      console.error('❌ Erreur authentification:', authError);
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
-
-    console.log('✅ Utilisateur authentifié pour historique:', user.email, 'ID:', user.id);
 
     // Créer un client admin pour bypasser RLS si nécessaire
     const supabaseAdmin = createClient(
@@ -62,18 +59,7 @@ export async function GET(request) {
       .order('created_at', { ascending: false });
 
     if (ordersError) {
-      console.error('❌ Erreur lors de la récupération des commandes:', ordersError);
       return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
-    }
-
-    console.log('📊 Nombre de commandes trouvées:', orders?.length || 0);
-    if (orders && orders.length > 0) {
-      console.log('✅ Exemple de commande:', {
-        id: orders[0].id,
-        user_id: orders[0].user_id,
-        statut: orders[0].statut,
-        total: orders[0].total
-      });
     }
 
     // Formater les données pour le frontend

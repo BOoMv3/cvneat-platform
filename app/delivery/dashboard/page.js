@@ -96,7 +96,6 @@ export default function DeliveryDashboard() {
     const updatePosition = async (position) => {
       try {
         const { latitude, longitude } = position.coords;
-        console.log('📍 Position GPS mise à jour:', { latitude, longitude });
 
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
@@ -115,10 +114,10 @@ export default function DeliveryDashboard() {
         });
 
         if (!response.ok) {
-          console.error('❌ Erreur mise à jour position');
+          // Erreur silencieuse
         }
       } catch (error) {
-        console.error('❌ Erreur envoi position:', error);
+        // Erreur silencieuse
       }
     };
 
@@ -126,8 +125,8 @@ export default function DeliveryDashboard() {
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         updatePosition,
-        (error) => {
-          console.error('❌ Erreur géolocalisation:', error);
+        () => {
+          // Erreur géolocalisation silencieuse
         },
         {
           enableHighAccuracy: true,
@@ -205,7 +204,6 @@ export default function DeliveryDashboard() {
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.error('❌ Erreur session Supabase:', error);
         return fetch(url, { ...options, credentials: 'include' });
       }
       
@@ -227,19 +225,15 @@ export default function DeliveryDashboard() {
         credentials: 'include'
       });
     } catch (error) {
-      console.error('❌ Erreur fetchWithAuth:', error);
       return fetch(url, { ...options, credentials: 'include' });
     }
   };
 
   const fetchAvailableOrders = async () => {
     try {
-      console.log('🔍 Récupération des commandes disponibles...');
-      
       // Récupérer le token d'authentification
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        console.error('❌ Pas de token d\'authentification');
         setAvailableOrders([]);
         return;
       }
@@ -255,14 +249,11 @@ export default function DeliveryDashboard() {
       
       // S'assurer que data est un tableau
       if (response.ok) {
-        console.log('✅ Commandes reçues:', data.length);
-        
         // S'assurer que data est un tableau
         if (Array.isArray(data)) {
           // Détecter les nouvelles commandes
           if (data.length > previousOrderCount) {
             const newOrders = data.slice(previousOrderCount);
-            console.log('🔔 Nouvelles commandes détectées:', newOrders.length);
             // Afficher une alerte pour chaque nouvelle commande
             newOrders.forEach(order => {
               showNewOrderAlert(order);
@@ -271,7 +262,6 @@ export default function DeliveryDashboard() {
           
           // Si c'est le premier chargement et qu'il y a des commandes, afficher une alerte
           if (previousOrderCount === 0 && data.length > 0) {
-            console.log('🔔 Premier chargement avec commandes disponibles');
             data.forEach(order => {
               showNewOrderAlert(order);
             });
@@ -280,15 +270,12 @@ export default function DeliveryDashboard() {
           setAvailableOrders(data);
           setPreviousOrderCount(data.length);
         } else {
-          console.error("❌ Les données ne sont pas un tableau:", data);
           setAvailableOrders([]);
         }
       } else {
-        console.error('❌ Erreur API:', data.error);
         setAvailableOrders([]);
       }
     } catch (error) {
-      console.error("❌ Erreur lors de la récupération des commandes disponibles:", error);
       setAvailableOrders([]);
     }
   };
@@ -463,11 +450,9 @@ export default function DeliveryDashboard() {
         if (data.alerts && data.alerts.length > 0 && audioEnabledRef.current) {
           playNotificationSound();
         }
-      } else {
-        console.error('❌ Erreur API alertes préventives:', data);
       }
     } catch (error) {
-      console.error("❌ Erreur récupération alertes préventives:", error);
+      // Erreur silencieuse
     }
   };
 
@@ -486,11 +471,9 @@ export default function DeliveryDashboard() {
         fetchCurrentOrder();
       } else {
         const error = await response.json();
-        console.error('❌ Erreur API:', error);
         alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
-      console.error("❌ Erreur lors de l'acceptation de la commande:", error);
       alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
     }
   };
@@ -528,11 +511,9 @@ export default function DeliveryDashboard() {
         fetchCurrentOrder();
       } else {
         const error = await response.json();
-        console.error('❌ Erreur API:', error);
         alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
-      console.error("❌ Erreur finalisation livraison:", error);
       alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
     }
   };
@@ -552,7 +533,7 @@ export default function DeliveryDashboard() {
         alert(`Erreur: ${error.message}`);
       }
     } catch (error) {
-      console.error("Erreur lors du changement de disponibilité:", error);
+      alert('Erreur lors du changement de disponibilité');
     }
   };
 
@@ -572,7 +553,7 @@ export default function DeliveryDashboard() {
         alert("Erreur lors de l'exportation des gains.");
       }
     } catch (error) {
-      console.error("Erreur d'exportation:", error);
+      alert("Erreur lors de l'exportation des gains");
     }
   };
 
@@ -587,7 +568,7 @@ export default function DeliveryDashboard() {
         
         {/* Alerte de nouvelle commande */}
         {showAlert && alertOrder && (
-          <div className="fixed top-4 right-4 z-50 bg-green-500 text-white p-4 rounded-lg shadow-lg animate-pulse max-w-sm">
+          <div className="fixed top-2 left-2 right-2 sm:top-4 sm:right-4 sm:left-auto z-50 bg-green-500 text-white p-3 sm:p-4 rounded-lg shadow-lg animate-pulse max-w-sm mx-auto sm:mx-0">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-lg">🔔 Nouvelle commande !</h3>

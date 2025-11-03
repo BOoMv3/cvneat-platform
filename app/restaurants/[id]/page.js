@@ -124,10 +124,6 @@ export default function RestaurantDetail({ params }) {
     localStorage.setItem('favorites', JSON.stringify(newFavorites));
     setFavorites(newFavorites);
     setIsFavorite(newIsFavorite);
-    
-    console.log('Favoris mis à jour:', newFavorites);
-    console.log('Restaurant actuel est favori:', newIsFavorite);
-    console.log('ID du restaurant:', params.id);
   };
 
   const loadCartFromStorage = () => {
@@ -169,8 +165,7 @@ export default function RestaurantDetail({ params }) {
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
     } catch (err) {
-      console.error('Erreur lors du chargement du restaurant:', err);
-      setError(`Erreur lors du chargement: ${err.message}`);
+      setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
     }

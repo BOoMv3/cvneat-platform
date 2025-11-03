@@ -224,12 +224,6 @@ export default function PartnerDashboard() {
             supplements: parsedSupplements
           };
         });
-        console.log('🔍 DEBUG fetchMenu - Menu parsé:', parsedMenu.map(item => ({
-          id: item.id,
-          nom: item.nom,
-          supplements: item.supplements,
-          supplementsCount: item.supplements?.length || 0
-        })));
         setMenu(parsedMenu);
       }
     } catch (error) {
@@ -1173,13 +1167,6 @@ export default function PartnerDashboard() {
                                     parsedSupplements = item.supplements;
                                   }
                                 }
-                                console.log('🔍 DEBUG - Édition menu:', {
-                                  itemId: item.id,
-                                  itemSupplements: item.supplements,
-                                  parsedSupplements: parsedSupplements,
-                                  supplementsType: typeof item.supplements,
-                                  isArray: Array.isArray(item.supplements)
-                                });
                                 setMenuForm({
                                   ...item,
                                   supplements: parsedSupplements,

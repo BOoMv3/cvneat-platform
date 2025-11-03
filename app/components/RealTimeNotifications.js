@@ -17,15 +17,10 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   useEffect(() => {
     if (!restaurantId) {
-      console.warn('⚠️ RealTimeNotifications: restaurantId manquant');
       return;
     }
 
-    console.log('🔍 RealTimeNotifications - Initialisation pour restaurantId:', restaurantId);
     setIsConnected(true);
-
-    // Utiliser Supabase Realtime directement côté client
-    console.log('🔍 Configuration Supabase Realtime côté client...');
     const channel = supabase
       .channel(`restaurant_${restaurantId}_orders`)
       .on('postgres_changes', 
@@ -36,14 +31,6 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           filter: `restaurant_id=eq.${restaurantId}`
         }, 
         (payload) => {
-          console.log('🔔 NOUVELLE COMMANDE DÉTECTÉE via Supabase Realtime:', payload.new.id);
-          console.log('🔔 Détails commande:', {
-            id: payload.new.id,
-            restaurant_id: payload.new.restaurant_id,
-            statut: payload.new.statut,
-            total: payload.new.total
-          });
-          
           // Déclencher l'alerte pour nouvelle commande
           triggerNewOrderAlert(payload.new);
           
@@ -90,13 +77,8 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           filter: `restaurant_id=eq.${restaurantId}`
         },
         (payload) => {
-          console.log('🔄 Commande mise à jour via Supabase Realtime:', payload.new.id);
-          console.log('🔄 Nouveau statut:', payload.new.statut);
-          console.log('🔄 Ancien statut:', payload.old?.statut);
-          
           // Si la commande en attente est mise à jour (acceptée/refusée), arrêter les alertes
           if (pendingOrderId === payload.new.id && payload.new.statut !== 'en_attente') {
-            console.log('✅ Commande traitée via Realtime, arrêt des alertes:', payload.new.statut);
             if (soundIntervalRef.current) {
               clearInterval(soundIntervalRef.current);
               soundIntervalRef.current = null;
@@ -108,18 +90,14 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           
           // Si la commande est annulée, déclencher une alerte
           if (payload.new.statut === 'annulee' && payload.old?.statut !== 'annulee') {
-            console.log('⚠️ COMMANDE ANNULÉE détectée via Supabase Realtime:', payload.new.id);
             triggerCancellationAlert(payload.new);
           }
         }
       )
       .subscribe((status) => {
-        console.log('🔍 Statut abonnement Supabase Realtime:', status);
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Abonnement Supabase Realtime actif pour restaurant:', restaurantId);
           setIsConnected(true);
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Erreur abonnement Supabase Realtime');
           setIsConnected(false);
         }
       });
@@ -140,7 +118,6 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           .limit(1);
 
         if (error) {
-          console.warn('⚠️ Erreur polling commandes:', error);
           return;
         }
 
