@@ -101,9 +101,12 @@ export async function GET(request) {
               filter: `restaurant_id=eq.${userRestaurantId}`
             }, 
             (payload) => {
+              console.log('🔔 Nouvelle commande détectée via SSE:', payload.new.id);
               sendNotification({
                 type: 'new_order',
-                order: payload.new
+                message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
+                order: payload.new,
+                timestamp: new Date().toISOString()
               });
             }
           )
@@ -115,6 +118,7 @@ export async function GET(request) {
               filter: `restaurant_id=eq.${userRestaurantId}`
             },
             (payload) => {
+              console.log('🔄 Commande mise à jour via SSE:', payload.new.id);
               sendNotification({
                 type: 'order_updated',
                 order: payload.new

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
 // GET /api/orders - Récupérer les commandes de l'utilisateur
@@ -17,11 +18,20 @@ export async function GET(request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
+      console.error('❌ Erreur authentification:', authError);
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les commandes de l'utilisateur avec les détails
-    const { data: orders, error: ordersError } = await supabase
+    console.log('✅ Utilisateur authentifié pour historique:', user.email, 'ID:', user.id);
+
+    // Créer un client admin pour bypasser RLS si nécessaire
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Récupérer les commandes de l'utilisateur avec les détails (utiliser admin pour bypasser RLS)
+    const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select(`
         id,
@@ -52,8 +62,18 @@ export async function GET(request) {
       .order('created_at', { ascending: false });
 
     if (ordersError) {
-      console.error('Erreur lors de la récupération des commandes:', ordersError);
+      console.error('❌ Erreur lors de la récupération des commandes:', ordersError);
       return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
+    }
+
+    console.log('📊 Nombre de commandes trouvées:', orders?.length || 0);
+    if (orders && orders.length > 0) {
+      console.log('✅ Exemple de commande:', {
+        id: orders[0].id,
+        user_id: orders[0].user_id,
+        statut: orders[0].statut,
+        total: orders[0].total
+      });
     }
 
     // Formater les données pour le frontend

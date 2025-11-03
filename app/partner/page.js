@@ -109,9 +109,28 @@ export default function PartnerDashboard() {
       await fetchMenu(resto.id);
       await fetchOrders(resto.id);
       setLoading(false);
+      
+      // Rafraîchir automatiquement les commandes toutes les 10 secondes
+      const ordersInterval = setInterval(() => {
+        fetchOrders(resto.id);
+      }, 10000); // 10 secondes
+      
+      // Nettoyer l'intervalle lors du démontage
+      return () => {
+        clearInterval(ordersInterval);
+      };
     };
 
-    fetchData();
+    const cleanupPromise = fetchData();
+    
+    // Nettoyer si nécessaire
+    return () => {
+      cleanupPromise.then(cleanupFn => {
+        if (typeof cleanupFn === 'function') {
+          cleanupFn();
+        }
+      }).catch(() => {});
+    };
   }, [router]);
 
   const fetchDashboardData = async (restaurantId) => {

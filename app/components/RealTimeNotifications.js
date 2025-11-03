@@ -37,6 +37,18 @@ export default function RealTimeNotifications({ restaurantId }) {
             console.log('🔔 Notification SSE reçue:', data);
             
             if (data.type === 'new_order') {
+              // Jouer une alerte sonore
+              playNotificationSound();
+              
+              // Afficher une notification du navigateur
+              if (Notification.permission === 'granted') {
+                new Notification('Nouvelle commande !', {
+                  body: data.message || 'Vous avez reçu une nouvelle commande',
+                  icon: '/icon-192x192.png',
+                  tag: 'new-order'
+                });
+              }
+              
               // Ajouter la notification avec un effet visuel
               const newNotification = {
                 id: Date.now(),
@@ -85,6 +97,76 @@ export default function RealTimeNotifications({ restaurantId }) {
       }
     };
   }, [restaurantId]);
+
+  // Fonction pour jouer une alerte sonore
+  const playNotificationSound = () => {
+    try {
+      // Créer un contexte audio
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // Créer un oscillateur pour générer un son
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      // Connecter les nœuds
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Configurer le son (bip agréable)
+      oscillator.frequency.value = 800; // Fréquence en Hz
+      oscillator.type = 'sine';
+      
+      // Enveloppe ADSR (Attack, Decay, Sustain, Release)
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // Attack
+      gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1); // Decay
+      gainNode.gain.linearRampToValueAtTime(0.2, now + 0.2); // Sustain
+      gainNode.gain.linearRampToValueAtTime(0, now + 0.3); // Release
+      
+      // Jouer le son
+      oscillator.start(now);
+      oscillator.stop(now + 0.3);
+      
+      // Répéter une deuxième fois après un court délai (double bip)
+      setTimeout(() => {
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode2 = audioContext.createGain();
+        oscillator2.connect(gainNode2);
+        gainNode2.connect(audioContext.destination);
+        oscillator2.frequency.value = 1000;
+        oscillator2.type = 'sine';
+        
+        const now2 = audioContext.currentTime;
+        gainNode2.gain.setValueAtTime(0, now2);
+        gainNode2.gain.linearRampToValueAtTime(0.3, now2 + 0.01);
+        gainNode2.gain.linearRampToValueAtTime(0.2, now2 + 0.1);
+        gainNode2.gain.linearRampToValueAtTime(0.2, now2 + 0.2);
+        gainNode2.gain.linearRampToValueAtTime(0, now2 + 0.3);
+        
+        oscillator2.start(now2);
+        oscillator2.stop(now2 + 0.3);
+      }, 150);
+    } catch (error) {
+      console.warn('Impossible de jouer le son (peut nécessiter une interaction utilisateur):', error);
+      // Fallback: utiliser un fichier audio si disponible
+      try {
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(e => console.warn('Fichier audio non disponible:', e));
+      } catch (e) {
+        console.warn('Aucune méthode audio disponible');
+      }
+    }
+  };
+
+  // Demander la permission pour les notifications du navigateur
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Permission notification:', permission);
+      });
+    }
+  }, []);
 
   const removeNotification = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
