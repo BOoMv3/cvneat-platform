@@ -75,13 +75,15 @@ export default function TrackOrder() {
       console.log('✅ Commande récupérée:', data);
       
       setOrder(data);
-      setLastStatus(data.status);
+      // Utiliser statut (français) avec fallback sur status (anglais) pour compatibilité
+      setLastStatus(data.statut || data.status);
       
       // Simuler des notifications basées sur le statut
       generateNotifications(data);
       
       // Démarrer le suivi automatique si la commande n'est pas livrée
-      if (data.status !== 'delivered' && data.status !== 'rejected') {
+      const currentStatut = data.statut || data.status;
+      if (currentStatut !== 'livree' && currentStatut !== 'annulee' && currentStatut !== 'delivered' && currentStatut !== 'rejected') {
         setIsTracking(true);
       }
     } catch (err) {
