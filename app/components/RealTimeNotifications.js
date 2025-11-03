@@ -9,7 +9,10 @@ export default function RealTimeNotifications({ restaurantId }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertOrder, setAlertOrder] = useState(null);
+  const [lastOrderId, setLastOrderId] = useState(null);
+  const [isBlinking, setIsBlinking] = useState(false);
   const audioContextRef = useRef(null);
+  const lastOrderCheckRef = useRef(null);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -40,12 +43,8 @@ export default function RealTimeNotifications({ restaurantId }) {
             total: payload.new.total
           });
           
-          // Afficher une pop-up d'alerte
-          setAlertOrder(payload.new);
-          setShowAlert(true);
-          
-          // Jouer une alerte sonore
-          playNotificationSound();
+          // Déclencher l'alerte pour nouvelle commande
+          triggerNewOrderAlert(payload.new);
           
           // Afficher une notification du navigateur
           if (Notification.permission === 'granted') {
@@ -105,13 +104,119 @@ export default function RealTimeNotifications({ restaurantId }) {
         }
       });
 
+    // Système de polling en fallback (vérifie toutes les 5 secondes)
+    const pollingInterval = setInterval(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || !restaurantId) return;
+
+        // Récupérer la dernière commande
+        const { data: orders, error } = await supabase
+          .from('commandes')
+          .select('id, created_at, statut, restaurant_id')
+          .eq('restaurant_id', restaurantId)
+          .eq('statut', 'en_attente')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) {
+          console.warn('⚠️ Erreur polling commandes:', error);
+          return;
+        }
+
+        if (orders && orders.length > 0) {
+          const latestOrder = orders[0];
+          const latestOrderId = latestOrder.id;
+
+          // Si c'est une nouvelle commande que nous n'avons pas encore vue
+          if (latestOrderId !== lastOrderId && latestOrderId !== lastOrderCheckRef.current) {
+            console.log('🔔 NOUVELLE COMMANDE DÉTECTÉE via polling:', latestOrderId);
+            
+            // Récupérer les détails complets de la commande
+            const { data: fullOrder, error: orderError } = await supabase
+              .from('commandes')
+              .select('*')
+              .eq('id', latestOrderId)
+              .single();
+
+            if (!orderError && fullOrder) {
+              triggerNewOrderAlert(fullOrder);
+              setLastOrderId(latestOrderId);
+              lastOrderCheckRef.current = latestOrderId;
+            }
+          }
+        }
+      } catch (pollingError) {
+        console.warn('⚠️ Erreur polling:', pollingError);
+      }
+    }, 5000); // Toutes les 5 secondes
+
     // Nettoyer la connexion
     return () => {
-      console.log('🧹 Nettoyage connexion Supabase Realtime');
+      console.log('🧹 Nettoyage connexion Supabase Realtime et polling');
       channel.unsubscribe();
+      clearInterval(pollingInterval);
       setIsConnected(false);
     };
-  }, [restaurantId]);
+  }, [restaurantId, lastOrderId]);
+
+  // Fonction pour déclencher l'alerte de nouvelle commande
+  const triggerNewOrderAlert = (order) => {
+    console.log('🎉 DÉCLENCHEMENT ALERTE - Nouvelle commande:', order.id);
+    
+    // Afficher une pop-up d'alerte
+    setAlertOrder(order);
+    setShowAlert(true);
+    setIsBlinking(true);
+    
+    // Jouer une alerte sonore (plusieurs fois)
+    playNotificationSound();
+    setTimeout(() => playNotificationSound(), 500); // Double bip
+    
+    // Afficher une notification du navigateur
+    if (Notification.permission === 'granted') {
+      new Notification('🎉 NOUVELLE COMMANDE !', {
+        body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(parseFloat(order.total || 0)).toFixed(2)}€`,
+        icon: '/icon-192x192.png',
+        tag: 'new-order',
+        requireInteraction: true, // Nécessite interaction pour être plus visible
+        badge: '/icon-192x192.png'
+      });
+    } else if (Notification.permission === 'default') {
+      // Demander la permission si pas encore demandée
+      Notification.requestPermission();
+    }
+    
+    // Ajouter la notification avec un effet visuel
+    const newNotification = {
+      id: Date.now(),
+      type: 'new_order',
+      message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${(parseFloat(order.total || 0)).toFixed(2)}€`,
+      data: order,
+      timestamp: new Date().toISOString(),
+      isNew: true
+    };
+    
+    setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
+    
+    // Arrêter le clignotement après 10 secondes
+    setTimeout(() => {
+      setIsBlinking(false);
+    }, 10000);
+    
+    // Auto-fermer la pop-up après 30 secondes (augmenté)
+    setTimeout(() => {
+      setShowAlert(false);
+      setIsBlinking(false);
+    }, 30000);
+    
+    // Supprimer l'effet "nouveau" après 5 secondes
+    setTimeout(() => {
+      setNotifications(prev => 
+        prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
+      );
+    }, 5000);
+  };
 
   // Fonction pour jouer une alerte sonore
   const playNotificationSound = () => {
@@ -259,7 +364,10 @@ export default function RealTimeNotifications({ restaurantId }) {
       {/* Pop-up d'alerte pour nouvelle commande */}
       {showAlert && alertOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-pulse">
+          <div className={`bg-white rounded-lg shadow-xl max-w-md w-full p-6 ${isBlinking ? 'animate-pulse ring-4 ring-yellow-400' : ''}`} style={{
+            animation: isBlinking ? 'blink 0.5s infinite' : 'none',
+            boxShadow: isBlinking ? '0 0 20px rgba(251, 191, 36, 0.8)' : ''
+          }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -278,15 +386,15 @@ export default function RealTimeNotifications({ restaurantId }) {
               </button>
             </div>
             
-            <div className="bg-blue-50 rounded-lg p-4 mb-4">
+            <div className={`bg-blue-50 rounded-lg p-4 mb-4 ${isBlinking ? 'bg-yellow-100 border-2 border-yellow-400' : ''}`}>
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm text-gray-600">Commande #</p>
-                  <p className="text-lg font-bold text-gray-900">{alertOrder.id?.slice(0, 8) || 'N/A'}</p>
+                  <p className={`text-lg font-bold ${isBlinking ? 'text-red-600' : 'text-gray-900'}`}>{alertOrder.id?.slice(0, 8) || 'N/A'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Total</p>
-                  <p className="text-lg font-bold text-green-600">{(parseFloat(alertOrder.total || 0)).toFixed(2)}€</p>
+                  <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 animate-bounce' : 'text-green-600'}`}>{(parseFloat(alertOrder.total || 0)).toFixed(2)}€</p>
                 </div>
               </div>
               {alertOrder.adresse_livraison && (
@@ -301,15 +409,19 @@ export default function RealTimeNotifications({ restaurantId }) {
               <button
                 onClick={() => {
                   setShowAlert(false);
+                  setIsBlinking(false);
                   // Optionnel: rediriger vers la page des commandes
                   window.location.href = '/partner?tab=orders';
                 }}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
               >
-                Voir la commande
+                📦 Voir la commande
               </button>
               <button
-                onClick={() => setShowAlert(false)}
+                onClick={() => {
+                  setShowAlert(false);
+                  setIsBlinking(false);
+                }}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Fermer
