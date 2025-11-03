@@ -860,9 +860,12 @@ export default function PartnerDashboard() {
                   <div className="grid grid-cols-1 gap-4">
                     {orders.map((order) => {
                       // Récupérer total (colonne réelle dans la base) avec fallback, puis 0
+                      // IMPORTANT : order.total contient UNIQUEMENT le montant des articles (sans frais de livraison)
+                      // Les frais de livraison ne font PAS partie du chiffre d'affaires du restaurant
                       const totalAmount = parseFloat(order.total || 0) || 0;
                       const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
-                      const total = totalAmount + deliveryFee;
+                      // Ne PAS ajouter les frais de livraison pour l'affichage côté restaurant
+                      // Le total affiché est uniquement le montant des articles
                       
                       const { commission, restaurantRevenue } = calculateCommission(totalAmount);
                       
@@ -877,18 +880,27 @@ export default function PartnerDashboard() {
                               <p className="text-sm text-gray-600">
                                 Client: {order.users?.nom || order.customer_name || 'N/A'} {order.users?.prenom || ''}
                               </p>
+                              {/* Afficher les frais de livraison séparément (pour info, mais pas dans le total) */}
+                              {deliveryFee > 0 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Frais de livraison: {deliveryFee.toFixed(2)} € (livreur)
+                                </p>
+                              )}
                             </div>
                             <div className="text-right">
                               {totalAmount > 0 ? (
                                 <>
                                   <p className="text-lg font-semibold text-gray-900">
-                                    {total.toFixed(2)} €
+                                    {totalAmount.toFixed(2)} €
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    Commission CVN'EAT: {commission.toFixed(2)} €
+                                    Commission CVN'EAT (20%): {commission.toFixed(2)} €
                                   </p>
                                   <p className="text-sm font-medium text-green-600">
-                                    Votre gain: {restaurantRevenue.toFixed(2)} €
+                                    Votre gain (80%): {restaurantRevenue.toFixed(2)} €
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    Total client: {(totalAmount + deliveryFee).toFixed(2)} €
                                   </p>
                                 </>
                               ) : (

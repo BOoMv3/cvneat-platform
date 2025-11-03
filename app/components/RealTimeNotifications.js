@@ -193,6 +193,13 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
     // Si c'est la même commande qui est encore en attente, ne pas redéclencher l'alerte
     if (pendingOrderId === order.id && showAlert) {
+      console.log('⚠️ Alerte déjà active pour cette commande, ignorée:', order.id);
+      return;
+    }
+
+    // Vérifier si on a déjà alerté pour cette commande (éviter les doublons)
+    if (lastOrderCheckRef.current === order.id) {
+      console.log('⚠️ Commande déjà alertée précédemment, ignorée:', order.id);
       return;
     }
 
