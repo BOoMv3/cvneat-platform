@@ -398,25 +398,40 @@ export default function TrackOrder() {
               <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
                 <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Articles commandés</h3>
                 <div className="space-y-1 sm:space-y-2">
-                  {order.items?.map((item, index) => (
-                    <div key={index} className="flex justify-between text-xs sm:text-sm">
-                      <span className="truncate flex-1 min-w-0">{item.name} x{item.quantity}</span>
-                      <span className="ml-2">{(item.price * item.quantity).toFixed(2)}€</span>
-                    </div>
-                  ))}
+                  {(order.items || order.details_commande || []).map((item, index) => {
+                    const itemName = item.name || item.menus?.nom || 'Article';
+                    const itemPrice = parseFloat(item.price || item.prix_unitaire || 0) || 0;
+                    const itemQuantity = parseFloat(item.quantity || item.quantite || 0) || 0;
+                    return (
+                      <div key={index} className="flex justify-between text-xs sm:text-sm">
+                        <span className="truncate flex-1 min-w-0">{itemName} x{itemQuantity}</span>
+                        <span className="ml-2">{(itemPrice * itemQuantity).toFixed(2)}€</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="border-t mt-3 sm:mt-4 pt-3 sm:pt-4">
                   <div className="flex justify-between text-xs sm:text-sm text-gray-600">
                     <span>Sous-total</span>
-                    <span>{order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}€</span>
+                    <span>{(() => {
+                      const items = order.items || order.details_commande || [];
+                      return (items.reduce((sum, item) => {
+                        const price = parseFloat(item.price || item.prix_unitaire || 0) || 0;
+                        const quantity = parseFloat(item.quantity || item.quantite || 0) || 0;
+                        return sum + (price * quantity);
+                      }, 0) || 0).toFixed(2);
+                    })()}€</span>
                   </div>
                   <div className="flex justify-between text-xs sm:text-sm text-gray-600">
                     <span>Frais de livraison</span>
-                    <span>{order.delivery_fee.toFixed(2)}€</span>
+                    <span>{(parseFloat(order.frais_livraison || order.delivery_fee || 0) || 0).toFixed(2)}€</span>
                   </div>
                   <div className="flex justify-between font-bold text-sm sm:text-base lg:text-lg border-t pt-2">
                     <span>Total</span>
-                    <span>{(order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.delivery_fee).toFixed(2)}€</span>
+                    <span>{(parseFloat(order.total || 0) || 
+                      ((order.items?.reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseFloat(item.quantity || 0)), 0) || 0) + 
+                       (parseFloat(order.frais_livraison || order.delivery_fee || 0) || 0))
+                    ).toFixed(2)}€</span>
                   </div>
                 </div>
               </div>

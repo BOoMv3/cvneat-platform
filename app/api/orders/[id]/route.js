@@ -49,7 +49,18 @@ export async function GET(request, { params }) {
     // D'abord essayer avec le client utilisateur (respecte RLS)
     let { data: order, error } = await supabase
       .from('commandes')
-      .select('*')
+      .select(`
+        *,
+        details_commande (
+          id,
+          quantite,
+          prix_unitaire,
+          menus (
+            nom,
+            prix
+          )
+        )
+      `)
       .eq('id', id)
       .single();
 
@@ -80,7 +91,18 @@ export async function GET(request, { params }) {
       // Si la commande existe et appartient à l'utilisateur, récupérer avec admin
       const { data: orderFull, error: orderError } = await supabaseAdmin
         .from('commandes')
-        .select('*')
+        .select(`
+          *,
+          details_commande (
+            id,
+            quantite,
+            prix_unitaire,
+            menus (
+              nom,
+              prix
+            )
+          )
+        `)
         .eq('id', id)
         .single();
 
