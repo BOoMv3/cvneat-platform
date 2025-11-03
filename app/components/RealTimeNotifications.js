@@ -9,7 +9,6 @@ export default function RealTimeNotifications({ restaurantId }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertOrder, setAlertOrder] = useState(null);
-  const [lastOrderId, setLastOrderId] = useState(null);
   const [isBlinking, setIsBlinking] = useState(false);
   const audioContextRef = useRef(null);
   const lastOrderCheckRef = useRef(null);
@@ -129,7 +128,7 @@ export default function RealTimeNotifications({ restaurantId }) {
           const latestOrderId = latestOrder.id;
 
           // Si c'est une nouvelle commande que nous n'avons pas encore vue
-          if (latestOrderId !== lastOrderId && latestOrderId !== lastOrderCheckRef.current) {
+          if (latestOrderId !== lastOrderCheckRef.current) {
             console.log('🔔 NOUVELLE COMMANDE DÉTECTÉE via polling:', latestOrderId);
             
             // Récupérer les détails complets de la commande
@@ -141,7 +140,6 @@ export default function RealTimeNotifications({ restaurantId }) {
 
             if (!orderError && fullOrder) {
               triggerNewOrderAlert(fullOrder);
-              setLastOrderId(latestOrderId);
               lastOrderCheckRef.current = latestOrderId;
             }
           }
@@ -158,7 +156,7 @@ export default function RealTimeNotifications({ restaurantId }) {
       clearInterval(pollingInterval);
       setIsConnected(false);
     };
-  }, [restaurantId, lastOrderId]);
+  }, [restaurantId]); // Retirer lastOrderId des dépendances pour éviter la boucle infinie
 
   // Fonction pour déclencher l'alerte de nouvelle commande
   const triggerNewOrderAlert = (order) => {
