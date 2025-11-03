@@ -477,11 +477,15 @@ export default function PartnerDashboard() {
       
       // Calculer le chiffre d'affaires - SEULEMENT les commandes livrées (comptabilisées)
       // Logique métier : Le chiffre d'affaires ne compte que les commandes réellement livrées et payées
+      // IMPORTANT : Le chiffre d'affaires n'inclut PAS les frais de livraison (qui vont au livreur)
+      // On utilise uniquement order.total qui contient le montant des articles uniquement
       const totalRevenue = data.reduce((sum, order) => {
         if (!order) return sum;
         // Compter uniquement les commandes livrées (statut = 'livree')
         // Les commandes en préparation ou en livraison ne sont pas encore comptabilisées
         if (order.statut === 'livree') {
+          // order.total contient UNIQUEMENT le montant des articles (sans frais de livraison)
+          // Les frais de livraison ne font pas partie du chiffre d'affaires du restaurant
           const amount = parseFloat(order.total || 0) || 0;
           return sum + amount;
         }

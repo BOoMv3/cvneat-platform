@@ -66,6 +66,8 @@ export async function GET(request) {
       .eq('restaurant_id', restaurantId)
       .in('statut', ['en_attente', 'en_preparation']);
 
+    // IMPORTANT : Le chiffre d'affaires n'inclut PAS les frais de livraison (qui vont au livreur)
+    // On utilise uniquement order.total qui contient le montant des articles uniquement
     const { data: revenueData, error: revenueError } = await supabase
       .from('commandes')
       .select('total')
@@ -77,6 +79,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Erreur lors du calcul des statistiques' }, { status: 500 });
     }
 
+    // Le total contient uniquement les articles, pas les frais de livraison
     const total_revenue = revenueData ? revenueData.reduce((sum, order) => sum + (order.total || 0), 0) : 0;
 
     return NextResponse.json({

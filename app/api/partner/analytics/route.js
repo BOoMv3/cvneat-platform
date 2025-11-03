@@ -94,8 +94,16 @@ export async function GET(request) {
     if (ordersError) throw ordersError;
 
     // Statistiques générales
+    // IMPORTANT : Le chiffre d'affaires n'inclut PAS les frais de livraison (qui vont au livreur)
+    // On utilise uniquement order.total qui contient le montant des articles uniquement
     const totalOrders = orders?.length || 0;
-    const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
+    const totalRevenue = orders?.reduce((sum, order) => {
+      // Ne compter que les commandes livrées pour le chiffre d'affaires
+      if (order.statut === 'livree') {
+        return sum + parseFloat(order.total || 0);
+      }
+      return sum;
+    }, 0) || 0;
     const commissionEarned = totalRevenue * (restaurant.commission_rate / 100);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
