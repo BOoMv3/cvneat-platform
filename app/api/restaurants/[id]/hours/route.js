@@ -206,11 +206,26 @@ export async function POST(request, { params }) {
       });
     }
 
-    // Vérifier l'heure actuelle
-    const now = new Date(checkDate);
+    // Vérifier l'heure actuelle (en heure locale française)
+    // Utiliser le fuseau horaire Europe/Paris pour une précision correcte
+    const now = checkDate ? new Date(checkDate) : new Date();
+    
+    // Convertir en heure locale française (Europe/Paris)
+    // getHours() et getMinutes() retournent déjà l'heure locale du serveur
+    // Mais on veut être sûr d'utiliser le fuseau horaire français
     const currentHours = now.getHours();
     const currentMinutes = now.getMinutes();
     const currentTimeMinutes = currentHours * 60 + currentMinutes;
+    
+    // Log pour debug
+    console.log('🕐 Heure système:', {
+      dateISO: now.toISOString(),
+      dateLocale: now.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }),
+      hours: currentHours,
+      minutes: currentMinutes,
+      timeMinutes: currentTimeMinutes,
+      timeString: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`
+    });
 
     // Parser les heures d'ouverture et fermeture
     const parseTime = (timeStr) => {
