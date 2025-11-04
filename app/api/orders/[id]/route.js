@@ -60,13 +60,6 @@ export async function GET(request, { params }) {
           adresse,
           ville,
           code_postal
-        ),
-        users:users!user_id (
-          id,
-          prenom,
-          nom,
-          telephone,
-          email
         )
       `)
       .eq('id', id)
@@ -122,13 +115,6 @@ export async function GET(request, { params }) {
             adresse,
             ville,
             code_postal
-          ),
-          users:users!user_id (
-            id,
-            prenom,
-            nom,
-            telephone,
-            email
           )
         `)
         .eq('id', id)
@@ -154,13 +140,35 @@ export async function GET(request, { params }) {
 
     // Formater les données pour le frontend
     const restaurant = order.restaurants;
-    const customer = order.users || {};
     
-    // Extraire les informations client
-    const customerName = customer.prenom && customer.nom 
-      ? `${customer.prenom} ${customer.nom}` 
-      : customer.email || 'Client';
-    const customerPhone = customer.telephone || '';
+    // Récupérer les informations client depuis la table users si elle existe
+    let customerName = 'Client';
+    let customerPhone = '';
+    
+    try {
+      // Essayer de récupérer depuis la table users publique
+      const { data: customerData } = await supabaseAdmin
+        .from('users')
+        .select('prenom, nom, telephone, email')
+        .eq('id', order.user_id)
+        .single();
+      
+      if (customerData) {
+        customerName = customerData.prenom && customerData.nom 
+          ? `${customerData.prenom} ${customerData.nom}` 
+          : customerData.email || 'Client';
+        customerPhone = customerData.telephone || '';
+      } else {
+        // Fallback : utiliser l'email depuis auth.users si disponible
+        const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
+        if (authUser && authUser.email) {
+          customerName = authUser.email;
+        }
+      }
+    } catch (customerError) {
+      console.warn('⚠️ Impossible de récupérer les infos client:', customerError);
+      // Continuer avec les valeurs par défaut
+    }
     
     const items = (order.details_commande || []).map(detail => {
       // Récupérer les suppléments depuis le détail
