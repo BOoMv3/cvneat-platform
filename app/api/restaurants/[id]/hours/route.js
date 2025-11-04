@@ -17,7 +17,18 @@ export async function GET(request, { params }) {
     }
 
     // Convertir les horaires JSON en format lisible
-    const horaires = restaurant.horaires || {};
+    let horaires = restaurant.horaires || {};
+    
+    // Si horaires est une chaîne JSON, la parser
+    if (typeof horaires === 'string') {
+      try {
+        horaires = JSON.parse(horaires);
+      } catch (e) {
+        console.error('Erreur parsing horaires JSON:', e);
+        horaires = {};
+      }
+    }
+    
     const joursSemaine = [
       { key: 'lundi', label: 'Lundi', dayIndex: 1 },
       { key: 'mardi', label: 'Mardi', dayIndex: 2 },
@@ -28,15 +39,20 @@ export async function GET(request, { params }) {
       { key: 'dimanche', label: 'Dimanche', dayIndex: 0 }
     ];
 
-    const formattedHours = joursSemaine.map(jour => ({
-      day: jour.label,
-      day_key: jour.key,
-      day_of_week: jour.dayIndex,
-      ouvert: horaires[jour.key]?.ouvert || false,
-      ouverture: horaires[jour.key]?.ouverture || null,
-      fermeture: horaires[jour.key]?.fermeture || null,
-      is_closed: !horaires[jour.key]?.ouvert || false
-    }));
+    const formattedHours = joursSemaine.map(jour => {
+      const jourHoraire = horaires[jour.key];
+      return {
+        day: jour.label,
+        day_key: jour.key,
+        day_of_week: jour.dayIndex,
+        ouvert: jourHoraire?.ouvert || false,
+        ouverture: jourHoraire?.ouverture || null,
+        fermeture: jourHoraire?.fermeture || null,
+        is_closed: !jourHoraire?.ouvert || false
+      };
+    });
+    
+    console.log('Horaires formatées pour restaurant', id, ':', formattedHours);
 
     return NextResponse.json({
       hours: formattedHours,

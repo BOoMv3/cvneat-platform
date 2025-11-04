@@ -12,7 +12,13 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
     if (hours && hours.length > 0) {
       const today = new Date().getDay(); // 0 = dimanche, 1 = lundi, etc.
       const todayHours = hours.find(h => h.day_of_week === today);
-      setCurrentHours(todayHours);
+      setCurrentHours(todayHours || null);
+      console.log('Horaires reçues:', hours);
+      console.log('Jour actuel:', today);
+      console.log('Horaires d\'aujourd\'hui:', todayHours);
+    } else {
+      console.log('Aucune horaire reçue ou tableau vide');
+      setCurrentHours(null);
     }
   }, [hours]);
 
@@ -153,35 +159,43 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
         </div>
         
         {/* Horaires d'ouverture */}
-        {hours && hours.length > 0 && (
-          <div className="flex items-start gap-2 text-sm">
-            <FaClock className="text-gray-500 mt-1 flex-shrink-0" />
-            <div className="flex-1">
-              <div className="text-gray-800 font-medium mb-1">
-                {isManuallyClosed ? (
-                  <span className="text-red-600">🔴 Fermé manuellement</span>
-                ) : !isOpen ? (
-                  <span className="text-orange-600">🟡 Fermé maintenant</span>
-                ) : (
-                  <span className="text-green-600">🟢 Ouvert maintenant</span>
-                )}
-              </div>
-              {currentHours && currentHours.ouvert && !currentHours.is_closed && (
-                <div className="text-gray-600 text-xs">
-                  Aujourd'hui: {currentHours.ouverture} - {currentHours.fermeture}
-                </div>
+        <div className="flex items-start gap-2 text-sm">
+          <FaClock className="text-gray-500 mt-1 flex-shrink-0" />
+          <div className="flex-1">
+            <div className="text-gray-800 dark:text-gray-200 font-medium mb-1">
+              {isManuallyClosed ? (
+                <span className="text-red-600 dark:text-red-400">🔴 Fermé manuellement</span>
+              ) : !isOpen ? (
+                <span className="text-orange-600 dark:text-orange-400">🟡 Fermé maintenant</span>
+              ) : (
+                <span className="text-green-600 dark:text-green-400">🟢 Ouvert maintenant</span>
               )}
-              <details className="mt-1">
-                <summary className="text-gray-600 text-xs cursor-pointer hover:text-gray-800">Voir tous les horaires</summary>
-                <div className="mt-2 text-xs text-gray-600 space-y-1">
-                  {formatHours(hours).split(' | ').map((h, i) => (
-                    <div key={i}>{h}</div>
-                  ))}
-                </div>
-              </details>
             </div>
+            {hours && hours.length > 0 ? (
+              <>
+                {currentHours && currentHours.ouvert && !currentHours.is_closed && (
+                  <div className="text-gray-600 dark:text-gray-400 text-xs">
+                    Aujourd'hui: {currentHours.ouverture} - {currentHours.fermeture}
+                  </div>
+                )}
+                <details className="mt-1">
+                  <summary className="text-gray-600 dark:text-gray-400 text-xs cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">Voir tous les horaires</summary>
+                  <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    {hours.map((h, i) => (
+                      <div key={i}>
+                        {h.is_closed || !h.ouvert ? `${h.day}: Fermé` : `${h.day}: ${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </>
+            ) : (
+              <div className="text-gray-500 dark:text-gray-400 text-xs italic">
+                Horaires non définis
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
     </div>

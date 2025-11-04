@@ -168,14 +168,35 @@ export default function RestaurantDetail({ params }) {
       
       const restaurantData = await restaurantResponse.json();
       const menuData = await menuResponse.json();
-      const hoursData = hoursResponse.ok ? await hoursResponse.json() : { hours: [] };
-      const openStatusData = openStatusResponse.ok ? await openStatusResponse.json() : { isOpen: true };
+      let hoursData = { hours: [] };
+      if (hoursResponse.ok) {
+        try {
+          hoursData = await hoursResponse.json();
+        } catch (e) {
+          console.error('Erreur parsing heures:', e);
+        }
+      } else {
+        console.warn('Erreur récupération horaires:', hoursResponse.status);
+      }
+      
+      let openStatusData = { isOpen: true };
+      if (openStatusResponse.ok) {
+        try {
+          openStatusData = await openStatusResponse.json();
+        } catch (e) {
+          console.error('Erreur parsing statut:', e);
+        }
+      }
       
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
       setRestaurantHours(hoursData.hours || []);
       setIsRestaurantOpen(openStatusData.isOpen !== false);
       setIsManuallyClosed(hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
+      
+      // Debug: afficher les horaires récupérées
+      console.log('Horaires récupérées:', hoursData.hours);
+      console.log('Statut ouvert:', openStatusData);
     } catch (err) {
       setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
     } finally {
