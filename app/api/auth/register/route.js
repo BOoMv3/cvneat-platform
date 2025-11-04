@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 const { isValidEmail, validatePassword, sanitizeInput, isValidPhone, isValidPostalCode } = require('@/lib/validation');
+
+// Créer le client Supabase public
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Créer le client admin pour vérifier les utilisateurs Auth
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAdmin = supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
 
 export async function POST(request) {
   try {
@@ -58,7 +74,7 @@ export async function POST(request) {
       ville: sanitizeInput(ville)
     };
 
-    // Vérifier si l'utilisateur existe déjà
+    // Vérifier si l'utilisateur existe déjà dans la table users
     const { data: existingUser, error: userError } = await supabase
       .from('users')
       .select('id')
@@ -70,6 +86,10 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    // Vérifier aussi dans Supabase Auth (pour les utilisateurs non confirmés)
+    // Note: On utilise signUp qui retournera une erreur si l'email existe déjà
+    // La vérification dans la table users ci-dessus est suffisante pour la plupart des cas
 
     // Créer l'utilisateur dans Supabase Auth avec redirection email
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat-platform.vercel.app';
