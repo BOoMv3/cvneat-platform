@@ -24,9 +24,12 @@ export default function AdminPage() {
     totalOrders: 0,
     pendingOrders: 0,
     validatedOrders: 0,
-    totalRevenue: 0,
+    totalRevenue: 0, // CA total
+    cvneatRevenue: 0, // CA CVN'EAT (20%)
+    livreurRevenue: 0, // CA Livreur (frais de livraison)
     totalRestaurants: 0,
     pendingPartners: 0,
+    totalUsers: 0,
     recentOrders: [],
     recentRestaurants: []
   });
