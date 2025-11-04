@@ -69,8 +69,8 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
         )}
       </div>
 
-      {/* Overlay sombre */}
-      <div className="absolute inset-0 bg-black bg-opacity-40" />
+      {/* Overlay sombre - Plus sombre en bas pour améliorer la visibilité du texte */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/60" />
 
       {/* Header avec bouton favoris seulement */}
       <div className="relative z-20 flex justify-end items-start p-2 sm:p-3 md:p-4">
@@ -124,14 +124,20 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
           )}
         </div>
 
-        {/* Nom du restaurant - Optimisé pour mobile */}
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white text-center mb-1 sm:mb-2 drop-shadow-lg px-2 line-clamp-2 break-words">
+        {/* Nom du restaurant - Optimisé pour mobile avec meilleure visibilité */}
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white text-center mb-1 sm:mb-2 px-2 line-clamp-2 break-words relative z-10" style={{ 
+          textShadow: '2px 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 0, 0, 0.4)',
+          WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.3)'
+        }}>
           {restaurant.nom}
         </h1>
 
-        {/* Sous-titre - Masqué sur très petits écrans */}
+        {/* Sous-titre - Masqué sur très petits écrans avec meilleure visibilité */}
         {restaurant.description && (
-          <p className="text-white text-center text-xs sm:text-sm md:text-lg opacity-90 mb-2 sm:mb-3 md:mb-4 drop-shadow-lg px-2 line-clamp-2 hidden sm:block">
+          <p className="text-white text-center text-xs sm:text-sm md:text-lg mb-2 sm:mb-3 md:mb-4 px-2 line-clamp-2 hidden sm:block relative z-10" style={{ 
+            textShadow: '2px 2px 6px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 0, 0, 0.4)',
+            WebkitTextStroke: '0.3px rgba(0, 0, 0, 0.3)'
+          }}>
             {restaurant.description}
           </p>
         )}

@@ -59,18 +59,18 @@ export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = 
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300">
-      {/* Image de l'article */}
-      <div className="relative h-48 bg-gradient-to-br from-purple-100 to-orange-100">
+      {/* Image de l'article avec bords arrondis */}
+      <div className="relative h-48 bg-gradient-to-br from-purple-100 to-orange-100 rounded-t-2xl overflow-hidden">
         {item.image_url ? (
           <Image
             src={item.image_url}
             alt={item.nom}
             fill
-            className="object-cover"
+            className="object-cover rounded-t-2xl"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-purple-200 to-orange-200 flex items-center justify-center">
+          <div className="w-full h-full bg-gradient-to-br from-purple-200 to-orange-200 flex items-center justify-center rounded-t-2xl">
             <span className="text-4xl">🍽️</span>
           </div>
         )}
