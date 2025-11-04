@@ -573,8 +573,8 @@ export default function RestaurantDetail({ params }) {
           isManuallyClosed={isManuallyClosed}
         />
 
-        {/* Menu */}
-        <div className="space-y-12">
+        {/* Menu - Padding top pour compenser la bannière qui dépasse */}
+        <div className="space-y-8 sm:space-y-12 pt-20 sm:pt-24 md:pt-28">
           {menu.length === 0 ? (
             <div className="text-center text-gray-500 dark:text-gray-400 py-8">
               <p>Aucun plat disponible pour ce restaurant.</p>

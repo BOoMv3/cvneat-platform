@@ -65,49 +65,49 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Logo CVN'EAT */}
-          <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
-            <div className="relative">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                <div className="w-5 h-5 sm:w-8 sm:h-8 bg-white rounded-lg flex items-center justify-center">
-                  <FaUtensils className="h-3 w-3 sm:h-5 sm:w-5 text-orange-600" />
+    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-8">
+        <div className="flex items-center justify-between h-12 sm:h-14 md:h-16">
+          {/* Logo CVN'EAT - Optimisé mobile */}
+          <Link href="/" className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3 min-w-0 flex-shrink-0">
+            <div className="relative flex-shrink-0">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 bg-white rounded-lg flex items-center justify-center">
+                  <FaUtensils className="h-2.5 w-2.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-orange-600" />
                 </div>
               </div>
-              <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-5 sm:h-5 bg-green-500 rounded-full border-2 sm:border-3 border-white shadow-md animate-pulse"></div>
-              <div className="absolute -bottom-1 -left-1 w-2 h-2 sm:w-3 sm:h-3 bg-yellow-400 rounded-full border-2 border-white"></div>
+              <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-2 sm:border-2 md:border-3 border-white shadow-md animate-pulse"></div>
+              <div className="absolute -bottom-0.5 -left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border-1.5 sm:border-2 border-white"></div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-lg sm:text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight">
+            <div className="flex flex-col min-w-0">
+              <span className="text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight leading-tight">
                 CVN'EAT
               </span>
-              <span className="text-xs text-gray-500 -mt-1 font-medium hidden sm:block">Excellence culinaire</span>
+              <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 -mt-0.5 sm:-mt-1 font-medium hidden sm:block">Excellence culinaire</span>
             </div>
           </Link>
 
           {/* Navigation Links - Desktop */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="/restaurants" className="text-gray-700 hover:text-orange-600 transition-colors">
+          <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
+            <Link href="/restaurants" className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-sm lg:text-base">
               Restaurants
             </Link>
 
-            <Link href="/devenir-partenaire" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
+            <Link href="/devenir-partenaire" className="text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors font-medium text-sm lg:text-base">
               Devenir partenaire
             </Link>
-            <Link href="/advertise" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
+            <Link href="/advertise" className="text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors font-medium text-sm lg:text-base">
               Publicité
             </Link>
           </div>
 
           {/* Right Side - Desktop */}
-          <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
+          <div className="hidden md:flex items-center space-x-2 lg:space-x-3 xl:space-x-4">
             {/* Points de fidélité */}
             {user && (
-              <div className="flex items-center space-x-1 sm:space-x-2 bg-yellow-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg">
-                <FaGift className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-600" />
-                <span className="text-xs sm:text-sm font-medium text-yellow-800">{userPoints} pts</span>
+              <div className="flex items-center space-x-1 bg-yellow-100 dark:bg-yellow-900/30 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg">
+                <FaGift className="h-3 w-3 lg:h-4 lg:w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                <span className="text-xs lg:text-sm font-medium text-yellow-800 dark:text-yellow-200">{userPoints} pts</span>
               </div>
             )}
             
@@ -115,11 +115,11 @@ export default function Navbar() {
             {cartItemCount > 0 && (
               <button
                 onClick={() => router.push('/panier')}
-                className="relative bg-orange-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 hover:bg-orange-700 transition-colors"
+                className="relative bg-orange-600 text-white px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg flex items-center space-x-1 lg:space-x-2 hover:bg-orange-700 transition-colors text-xs lg:text-sm"
               >
-                <FaShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm">{cartItemCount} articles</span>
-                <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center">
+                <FaShoppingCart className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
+                <span className="hidden lg:inline">{cartItemCount} articles</span>
+                <span className="absolute -top-1 -right-1 lg:-top-2 lg:-right-2 bg-red-500 text-white text-[10px] lg:text-xs rounded-full h-4 w-4 lg:h-5 lg:w-5 flex items-center justify-center font-bold">
                   {cartItemCount}
                 </span>
               </button>
@@ -127,47 +127,48 @@ export default function Navbar() {
             
             {/* Boutons de connexion/inscription */}
             {user ? (
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <Link href="/profil" className="flex items-center space-x-1 sm:space-x-2 text-gray-600 hover:text-orange-600 transition-colors">
-                  <FaUser className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Profil</span>
+              <div className="flex items-center space-x-1.5 lg:space-x-2">
+                <Link href="/profile" className="flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-xs lg:text-sm">
+                  <FaUser className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
+                  <span className="hidden lg:inline">Profil</span>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center space-x-1 sm:space-x-2 text-gray-600 hover:text-red-600 transition-colors"
+                  className="flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors text-xs lg:text-sm"
                 >
-                  <FaSignOutAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Déconnexion</span>
+                  <FaSignOutAlt className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
+                  <span className="hidden lg:inline">Déconnexion</span>
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="flex items-center space-x-1.5 lg:space-x-2">
                 <Link 
                   href="/login" 
-                  className="flex items-center space-x-1 sm:space-x-2 bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center space-x-1 bg-blue-600 text-white px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs lg:text-sm"
                 >
-                  <FaSignInAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Connexion</span>
+                  <FaSignInAlt className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
+                  <span className="hidden lg:inline">Connexion</span>
                 </Link>
                 <Link 
                   href="/register" 
-                  className="flex items-center space-x-1 sm:space-x-2 bg-green-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  className="flex items-center space-x-1 bg-green-600 text-white px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg hover:bg-green-700 transition-colors text-xs lg:text-sm"
                 >
-                  <FaUserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Inscription</span>
+                  <FaUserPlus className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
+                  <span className="hidden lg:inline">Inscription</span>
                 </Link>
               </div>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button - Optimisé */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden text-gray-600 hover:text-orange-600"
+            className="md:hidden text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Menu"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5 sm:h-6 sm:w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -191,21 +192,21 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu - Optimisé pour Android */}
         {isMenuOpen && (
-          <div className="md:hidden py-3 sm:py-4 border-t">
-            <div className="flex flex-col space-y-3 sm:space-y-4">
+          <div className="md:hidden py-2 sm:py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div className="flex flex-col space-y-2 sm:space-y-3">
               {/* Points de fidélité mobile */}
               {user && (
-                <div className="flex items-center space-x-2 bg-yellow-100 px-3 py-2 rounded-lg">
-                  <FaGift className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-800">{userPoints} points de fidélité</span>
+                <div className="flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900/30 px-3 py-2 rounded-lg">
+                  <FaGift className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                  <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">{userPoints} points de fidélité</span>
                 </div>
               )}
 
               <Link
                 href="/restaurants"
-                className="text-gray-600 hover:text-orange-600 transition-colors py-1"
+                className="text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-2 text-sm sm:text-base"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Restaurants
@@ -213,14 +214,14 @@ export default function Navbar() {
 
               <Link
                 href="/devenir-partenaire"
-                className="text-gray-600 hover:text-orange-600 transition-colors py-1"
+                className="text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-2 text-sm sm:text-base"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Devenir partenaire
               </Link>
               <Link
                 href="/advertise"
-                className="text-gray-600 hover:text-orange-600 transition-colors py-1"
+                className="text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-2 text-sm sm:text-base"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Publicité
@@ -233,9 +234,9 @@ export default function Navbar() {
                     router.push('/panier');
                     setIsMenuOpen(false);
                   }}
-                  className="flex items-center space-x-2 text-gray-600 hover:text-orange-600 transition-colors py-1"
+                  className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-2 text-left text-sm sm:text-base"
                 >
-                  <FaShoppingCart className="h-4 w-4" />
+                  <FaShoppingCart className="h-4 w-4 flex-shrink-0" />
                   <span>Panier ({cartItemCount} articles)</span>
                 </button>
               )}
@@ -244,8 +245,8 @@ export default function Navbar() {
               {user ? (
                 <>
                   <Link
-                    href="/profil"
-                    className="text-gray-600 hover:text-orange-600 transition-colors py-1"
+                    href="/profile"
+                    className="text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-2 text-sm sm:text-base"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Mon profil
@@ -255,7 +256,7 @@ export default function Navbar() {
                       handleLogout();
                       setIsMenuOpen(false);
                     }}
-                    className="text-red-600 hover:text-red-700 transition-colors text-left py-1"
+                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-500 transition-colors text-left py-2 px-2 text-sm sm:text-base"
                   >
                     Déconnexion
                   </button>
@@ -264,14 +265,14 @@ export default function Navbar() {
                 <div className="flex flex-col space-y-2 pt-2">
                   <Link
                     href="/login"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center text-sm"
+                    className="bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors text-center text-sm sm:text-base font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Connexion
                   </Link>
                   <Link
                     href="/register"
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-center text-sm"
+                    className="bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 transition-colors text-center text-sm sm:text-base font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Inscription
