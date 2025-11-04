@@ -30,6 +30,8 @@ export default function Checkout() {
   const [userAddresses, setUserAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [deliveryError, setDeliveryError] = useState(null);
+  const [addressValidationMessage, setAddressValidationMessage] = useState(null);
   const [newAddress, setNewAddress] = useState({
     address: '',
     city: '',
@@ -233,7 +235,11 @@ export default function Checkout() {
         console.error('❌ Livraison refusée - success:', data.success, 'livrable:', data.livrable, 'message:', message);
         console.error('❌ Données complètes:', data);
         
-        // Afficher un message d'erreur clair
+        // Afficher le message d'erreur sur la page
+        setDeliveryError(message);
+        setAddressValidationMessage(message);
+        
+        // Afficher aussi un alert pour être sûr
         alert(`⚠️ ${message}`);
         
         // Réinitialiser les frais de livraison
@@ -259,6 +265,10 @@ export default function Checkout() {
         setTotalAvecLivraison(cartTotalCalc);
         return;
       }
+
+      // SUCCÈS - Réinitialiser les erreurs
+      setDeliveryError(null);
+      setAddressValidationMessage(null);
 
       // SUCCÈS - Mettre à jour les frais
       const newFrais = data.frais_livraison;
@@ -301,6 +311,8 @@ export default function Checkout() {
 
   const handleAddressSelect = async (address) => {
     setSelectedAddress(address);
+    setDeliveryError(null);
+    setAddressValidationMessage(null);
     await calculateDeliveryFee(address);
   };
 
@@ -586,6 +598,26 @@ export default function Checkout() {
               </div>
             )}
 
+            {/* Message d'erreur de livraison */}
+            {deliveryError && (
+              <div className="mb-4 sm:mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-700 rounded-lg">
+                <div className="flex items-start">
+                  <FaTimes className="h-5 w-5 text-red-600 dark:text-red-400 mr-3 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-red-800 dark:text-red-300 text-sm sm:text-base mb-1">
+                      ⚠️ Adresse non livrable
+                    </h3>
+                    <p className="text-red-700 dark:text-red-400 text-sm sm:text-base">
+                      {deliveryError}
+                    </p>
+                    <p className="text-red-600 dark:text-red-500 text-xs sm:text-sm mt-2">
+                      Veuillez sélectionner une autre adresse dans la zone de livraison.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Formulaire nouvelle adresse */}
             {showAddressForm && (
               <div className="border-t dark:border-gray-700 pt-4 sm:pt-6">
@@ -734,7 +766,7 @@ export default function Checkout() {
 
             <button
               onClick={submitOrder}
-              disabled={submitting || !selectedAddress}
+              disabled={submitting || !selectedAddress || deliveryError !== null}
               className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
             >
               {submitting ? (
