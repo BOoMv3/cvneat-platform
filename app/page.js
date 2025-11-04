@@ -138,9 +138,12 @@ export default function Home() {
             });
             if (statusResponse.ok) {
               const statusData = await statusResponse.json();
+              // Utiliser une comparaison stricte === true pour éviter les cas undefined/null
+              const isOpen = statusData.isOpen === true;
+              const isManuallyClosed = statusData.is_manually_closed === true || statusData.reason === 'manual';
               openStatusMap[restaurant.id] = {
-                isOpen: statusData.isOpen !== false,
-                isManuallyClosed: statusData.is_manually_closed || false
+                isOpen,
+                isManuallyClosed
               };
             } else {
               // Si erreur, vérifier au moins ferme_manuellement
@@ -150,7 +153,8 @@ export default function Home() {
               };
             }
           } catch (err) {
-            // Si erreur, considérer comme ouvert par défaut sauf si ferme_manuellement
+            console.error(`Erreur vérification statut restaurant ${restaurant.id}:`, err);
+            // Si erreur, considérer comme fermé par défaut sauf si pas de ferme_manuellement
             openStatusMap[restaurant.id] = {
               isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
               isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false

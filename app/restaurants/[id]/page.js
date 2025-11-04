@@ -218,10 +218,13 @@ export default function RestaurantDetail({ params }) {
       setMenu(Array.isArray(menuData) ? menuData : []);
       setRestaurantHours(hoursData.hours || []);
       
-      // Forcer le booléen strict
+      // Forcer le booléen strict - Par défaut FERMÉ si pas explicitement ouvert
       const isOpen = openStatusData.isOpen === true;
+      const isManuallyClosed = openStatusData.reason === 'manual' || 
+                               hoursData.is_manually_closed === true || 
+                               restaurantData.ferme_manuellement === true;
       setIsRestaurantOpen(isOpen);
-      setIsManuallyClosed(hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
+      setIsManuallyClosed(isManuallyClosed);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
