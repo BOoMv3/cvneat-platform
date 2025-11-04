@@ -47,25 +47,37 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const fetchSupplements = async () => {
     setLoading(true);
     try {
-      // Essayer d'abord l'API spécifique au menu item
-      let response = await fetch(`/api/menu/${item.id}/supplements`);
-      if (!response.ok || (await response.json()).length === 0) {
-        // Si pas de suppléments spécifiques, essayer l'API du restaurant
-        response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+      console.log('🔍 Récupération suppléments pour restaurant:', restaurantId);
+      
+      // Essayer d'abord l'API du restaurant (plus fiable)
+      let response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+      
+      if (!response.ok) {
+        console.warn('⚠️ API restaurant supplements non disponible, essai menu item');
+        // Fallback : essayer l'API spécifique au menu item
+        response = await fetch(`/api/menu/${item.id}/supplements`);
       }
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Suppléments récupérés:', data);
+        
         // Formater les données pour correspondre au format attendu
-        const formattedData = data.map((sup, idx) => ({
+        const formattedData = (data || []).map((sup, idx) => ({
           id: sup.id || `supp-${idx}`,
           name: sup.nom || sup.name || 'Supplément',
           price: parseFloat(sup.prix || sup.price || 0),
           description: sup.description || ''
         }));
+        
+        console.log('✅ Suppléments formatés:', formattedData);
         setSupplements(formattedData);
+      } else {
+        console.warn('⚠️ Aucune réponse valide pour les suppléments');
+        setSupplements([]);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des suppléments:', error);
+      console.error('❌ Erreur lors du chargement des suppléments:', error);
       setSupplements([]);
     } finally {
       setLoading(false);
