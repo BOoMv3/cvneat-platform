@@ -940,6 +940,7 @@ export default function DeliveryDashboard() {
                           </ul>
                         </div>
                       </div>
+                    </div>
                   </div>
                 </div>
               ))}
