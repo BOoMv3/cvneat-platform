@@ -17,7 +17,44 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Récupérer les suppléments disponibles pour cet item de menu
+    // D'abord, essayer de récupérer les suppléments depuis la colonne supplements de menus
+    const { data: menuItem, error: menuError } = await supabase
+      .from('menus')
+      .select('supplements')
+      .eq('id', id)
+      .single();
+
+    if (!menuError && menuItem && menuItem.supplements) {
+      // Parser les suppléments si c'est une string JSON
+      let supplements = [];
+      if (typeof menuItem.supplements === 'string') {
+        try {
+          supplements = JSON.parse(menuItem.supplements);
+        } catch (e) {
+          console.warn('Erreur parsing supplements string:', e);
+          supplements = [];
+        }
+      } else if (Array.isArray(menuItem.supplements)) {
+        supplements = menuItem.supplements;
+      }
+
+      if (supplements.length > 0) {
+        // Formater pour correspondre au format attendu
+        const formattedSupplements = supplements.map((sup, idx) => ({
+          id: sup.id || `supp-${idx}`,
+          nom: sup.nom || sup.name || 'Supplément',
+          name: sup.nom || sup.name || 'Supplément',
+          prix: parseFloat(sup.prix || sup.price || 0),
+          price: parseFloat(sup.prix || sup.price || 0),
+          description: sup.description || '',
+          disponible: sup.disponible !== false,
+          ordre: sup.ordre || idx
+        }));
+        return NextResponse.json(formattedSupplements);
+      }
+    }
+
+    // Fallback : essayer la table menu_supplements (si elle existe)
     const { data: supplements, error } = await supabase
       .from('menu_supplements')
       .select('*')
@@ -25,15 +62,12 @@ export async function GET(request, { params }) {
       .eq('disponible', true)
       .order('ordre');
 
-    if (error) {
-      console.error('Erreur Supabase:', error);
-      return NextResponse.json(
-        { error: 'Erreur lors de la récupération des suppléments' },
-        { status: 500 }
-      );
+    if (!error && supplements && supplements.length > 0) {
+      return NextResponse.json(supplements);
     }
 
-    return NextResponse.json(supplements || []);
+    // Si aucune erreur mais pas de données, retourner un tableau vide
+    return NextResponse.json([]);
 
   } catch (error) {
     console.error('Erreur API suppléments:', error);
