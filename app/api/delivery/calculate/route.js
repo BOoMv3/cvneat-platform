@@ -99,20 +99,11 @@ async function geocodeAddress(address) {
       throw new Error('Coordonnées invalides dans la réponse Nominatim');
     }
     
-    // Vérifier que l'adresse est en France (plus souple)
-    const displayName = (result.display_name || '').toLowerCase();
-    const country = (result.address?.country || '').toLowerCase();
-    
-    // Si on a demandé avec countrycodes=fr, on fait confiance à Nominatim
-    // On ne vérifie que si on a une indication claire que ce n'est pas en France
-    if (country && country !== 'france' && country !== 'fra') {
-      throw new Error('L\'adresse doit être en France');
-    }
-    
+    // On fait confiance à Nominatim avec countrycodes=fr
     const coords = {
       lat: lat,
       lng: lng,
-      display_name: displayName
+      display_name: result.display_name || ''
     };
     
     console.log('🌐 Coordonnées extraites et validées:', coords);
