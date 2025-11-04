@@ -85,13 +85,35 @@ async function geocodeAddress(address) {
     }
     
     const result = data[0];
+    
+    // VALIDATION STRICTE: Vérifier que le résultat a des coordonnées valides
+    if (!result.lat || !result.lon) {
+      throw new Error('Coordonnées manquantes dans la réponse Nominatim');
+    }
+    
+    // VALIDATION STRICTE: Vérifier que les coordonnées sont des nombres
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      throw new Error('Coordonnées invalides dans la réponse Nominatim');
+    }
+    
+    // VALIDATION STRICTE: Vérifier que l'adresse retournée est en France
+    const displayName = result.display_name || '';
+    const country = result.address?.country || '';
+    
+    if (!displayName.toLowerCase().includes('france') && !country.toLowerCase().includes('france')) {
+      throw new Error('L\'adresse doit être en France');
+    }
+    
     const coords = {
-      lat: parseFloat(result.lat),
-      lng: parseFloat(result.lon),
-      display_name: result.display_name
+      lat: lat,
+      lng: lng,
+      display_name: displayName
     };
     
-    console.log('🌐 Coordonnées extraites:', coords);
+    console.log('🌐 Coordonnées extraites et validées:', coords);
     return coords;
     
   } catch (error) {
@@ -143,15 +165,20 @@ export async function POST(request) {
     console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
     console.log('Adresse:', address);
 
-    // 1. Vérifier le code postal
-    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => address.includes(code));
+    // 1. Vérifier le code postal (VALIDATION STRICTE)
+    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => {
+      // Vérifier que le code postal est présent dans l'adresse
+      const codeRegex = new RegExp(`\\b${code}\\b`);
+      return codeRegex.test(address);
+    });
     
     if (!hasValidPostalCode) {
-      console.log('❌ Code postal non autorisé');
+      console.log('❌ Code postal non autorisé dans:', address);
+      console.log('❌ Codes postaux autorisés:', AUTHORIZED_POSTAL_CODES);
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: 'Livraison non disponible dans cette zone'
+        message: `Livraison non disponible dans cette zone. Codes postaux acceptés: ${AUTHORIZED_POSTAL_CODES.join(', ')}`
       });
     }
 
@@ -161,24 +188,78 @@ export async function POST(request) {
     try {
       clientCoords = await geocodeAddress(address);
       console.log('📍 Coordonnées EXACTES:', clientCoords);
+      
+      // VALIDATION STRICTE: Vérifier que les coordonnées sont valides
+      if (!clientCoords || !clientCoords.lat || !clientCoords.lng) {
+        console.error('❌ Coordonnées invalides:', clientCoords);
+        return NextResponse.json({
+          success: false,
+          livrable: false,
+          message: 'Coordonnées invalides pour cette adresse'
+        });
+      }
+
+      // VALIDATION STRICTE: Vérifier que les coordonnées sont des nombres valides
+      const lat = parseFloat(clientCoords.lat);
+      const lng = parseFloat(clientCoords.lng);
+      
+      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        console.error('❌ Coordonnées numériques invalides:', { lat, lng });
+        return NextResponse.json({
+          success: false,
+          livrable: false,
+          message: 'Coordonnées géographiques invalides'
+        });
+      }
+
+      // VALIDATION STRICTE: Vérifier que l'adresse retournée contient le code postal
+      const returnedAddress = clientCoords.display_name || '';
+      const hasMatchingPostalCode = AUTHORIZED_POSTAL_CODES.some(code => 
+        returnedAddress.includes(code) || address.includes(code)
+      );
+      
+      if (!hasMatchingPostalCode) {
+        console.error('❌ Code postal ne correspond pas entre adresse demandée et résultat:', {
+          requested: address,
+          returned: returnedAddress
+        });
+        return NextResponse.json({
+          success: false,
+          livrable: false,
+          message: 'L\'adresse localisée ne correspond pas à la zone de livraison'
+        });
+      }
+
     } catch (error) {
       console.error('❌ Nominatim échoué:', error.message);
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: 'Impossible de localiser cette adresse exacte'
+        message: 'Impossible de localiser cette adresse. Veuillez vérifier que l\'adresse est correcte.'
       });
     }
 
     // 3. Calculer la distance entre restaurant et client
+    const lat = parseFloat(clientCoords.lat);
+    const lng = parseFloat(clientCoords.lng);
     const distance = calculateDistance(
       RESTAURANT.lat, RESTAURANT.lng,
-      clientCoords.lat, clientCoords.lng
+      lat, lng
     );
 
-    console.log(`📏 Distance: ${distance.toFixed(2)}km`);
+    console.log(`📏 Distance calculée: ${distance.toFixed(2)}km`);
 
-    // 4. Vérifier la distance maximum
+    // VALIDATION STRICTE: Vérifier que la distance est un nombre valide
+    if (isNaN(distance) || distance < 0) {
+      console.error('❌ Distance invalide calculée:', distance);
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: 'Erreur lors du calcul de la distance'
+      });
+    }
+
+    // 4. Vérifier la distance maximum (VALIDATION STRICTE)
     if (distance > MAX_DISTANCE) {
       console.log(`❌ Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
