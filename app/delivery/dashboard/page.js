@@ -382,61 +382,22 @@ export default function DeliveryDashboard() {
   const fetchCurrentOrder = async () => {
     try {
       console.log('🔍 Récupération commandes acceptées...');
-      // Récupérer toutes les commandes acceptées par ce livreur
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('❌ Pas d\'utilisateur connecté');
+      
+      const response = await fetchWithAuth('/api/delivery/accepted-orders');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Erreur récupération commandes acceptées:", errorData);
+        setAcceptedOrders([]);
+        setCurrentOrder(null);
+        setLoading(false);
         return;
       }
 
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-      );
+      const data = await response.json();
+      const orders = data.orders || [];
 
-      // Récupérer les commandes avec jointures optionnelles pour éviter les erreurs
-      const { data: orders, error } = await supabaseAdmin
-        .from('commandes')
-        .select(`
-          *,
-          restaurant:restaurants(id, nom, adresse, telephone, ville, code_postal),
-          users(id, nom, prenom, telephone, email),
-          user_addresses(id, address, city, postal_code, delivery_instructions)
-        `)
-        .eq('livreur_id', user.id)
-        .in('statut', ['en_preparation', 'en_livraison', 'pret_a_livrer'])
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error("❌ Erreur récupération commandes acceptées:", error);
-        // En cas d'erreur avec les jointures, essayer sans jointures
-        const { data: simpleOrders, error: simpleError } = await supabaseAdmin
-          .from('commandes')
-          .select('*')
-          .eq('livreur_id', user.id)
-          .in('statut', ['en_preparation', 'en_livraison', 'pret_a_livrer'])
-          .order('created_at', { ascending: true });
-        
-        if (simpleError) {
-          console.error("❌ Erreur récupération simple:", simpleError);
-          setAcceptedOrders([]);
-          setCurrentOrder(null);
-          return;
-        }
-        
-        // Utiliser les commandes simples si les jointures échouent
-        if (simpleOrders && simpleOrders.length > 0) {
-          console.log('✅ Commandes récupérées (sans jointures):', simpleOrders.length);
-          setAcceptedOrders(simpleOrders);
-          setCurrentOrder(simpleOrders[0]);
-        } else {
-          setAcceptedOrders([]);
-          setCurrentOrder(null);
-        }
-        return;
-      }
-
-      if (orders && orders.length > 0) {
+      if (orders.length > 0) {
         console.log('✅ Commandes acceptées récupérées:', orders.length);
         setAcceptedOrders(orders);
         // Garder la première commande pour compatibilité avec l'ancien code
