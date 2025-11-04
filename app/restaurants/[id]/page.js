@@ -252,30 +252,49 @@ export default function RestaurantDetail({ params }) {
       
       // Normaliser les suppléments pour la comparaison (trier par ID pour éviter les problèmes d'ordre)
       const normalizedSupplements = [...itemSupplements].sort((a, b) => {
-        const idA = a.id || a.nom || '';
-        const idB = b.id || b.nom || '';
+        const idA = a.id || a.nom || a.name || '';
+        const idB = b.id || b.nom || b.name || '';
         return idA.localeCompare(idB);
       });
       
       // Créer un identifiant unique basé sur l'ID, les suppléments (normalisés) et la taille
+      // IMPORTANT: Un item avec suppléments est différent d'un item sans suppléments
       const itemKey = JSON.stringify({
         id: item.id,
-        supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+        supplements: normalizedSupplements.map(s => ({ 
+          id: s.id || s.nom || s.name || '', 
+          nom: s.nom || s.name || '', 
+          prix: parseFloat(s.prix || s.price || 0) 
+        })),
         size: itemSize
       });
       
       // Vérifier si l'article avec ces mêmes suppléments et taille existe déjà
       const existingItemIndex = prevCart.findIndex(cartItem => {
+        // Si les IDs ne correspondent pas, ce n'est pas le même item
+        if (cartItem.id !== item.id) return false;
+        
         const cartItemSupplements = cartItem.supplements || [];
         const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
-          const idA = a.id || a.nom || '';
-          const idB = b.id || b.nom || '';
+          const idA = a.id || a.nom || a.name || '';
+          const idB = b.id || b.nom || b.name || '';
           return idA.localeCompare(idB);
         });
         
+        // Si le nombre de suppléments est différent, ce n'est pas le même item
+        if (normalizedSupplements.length !== normalizedCartSupplements.length) return false;
+        
+        // Si la taille est différente, ce n'est pas le même item
+        if ((cartItem.size || null) !== itemSize) return false;
+        
+        // Comparer chaque supplément
         const cartItemKey = JSON.stringify({
           id: cartItem.id,
-          supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+          supplements: normalizedCartSupplements.map(s => ({ 
+            id: s.id || s.nom || s.name || '', 
+            nom: s.nom || s.name || '', 
+            prix: parseFloat(s.prix || s.price || 0) 
+          })),
           size: cartItem.size || null
         });
         return cartItemKey === itemKey;
@@ -307,18 +326,49 @@ export default function RestaurantDetail({ params }) {
 
   const removeFromCart = (itemId, supplements = [], size = null) => {
     setCart(prevCart => {
-      // Créer un identifiant unique basé sur l'ID, les suppléments et la taille
+      // Si supplements et size ne sont pas fournis, utiliser l'index ou trouver le premier item avec cet ID
+      if (!supplements.length && !size) {
+        // Si on a un index (passé comme itemId), l'utiliser directement
+        const index = typeof itemId === 'number' ? itemId : prevCart.findIndex(item => item.id === itemId);
+        if (index !== -1 && index < prevCart.length) {
+          const item = prevCart[index];
+          if (item.quantity === 1) {
+            return prevCart.filter((_, i) => i !== index);
+          }
+          return prevCart.map((cartItem, i) =>
+            i === index
+              ? { ...cartItem, quantity: cartItem.quantity - 1 }
+              : cartItem
+          );
+        }
+      }
+      
+      // Normaliser les suppléments pour la comparaison (comme dans addToCart)
+      const normalizedSupplements = [...(supplements || [])].sort((a, b) => {
+        const idA = a.id || a.nom || '';
+        const idB = b.id || b.nom || '';
+        return idA.localeCompare(idB);
+      });
+      
+      // Créer un identifiant unique basé sur l'ID, les suppléments (normalisés) et la taille
       const itemKey = JSON.stringify({
         id: itemId,
-        supplements: supplements || [],
+        supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
         size: size
       });
       
       // Trouver l'article exact avec ces mêmes suppléments et taille
       const existingItemIndex = prevCart.findIndex(cartItem => {
+        const cartItemSupplements = cartItem.supplements || [];
+        const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
+          const idA = a.id || a.nom || '';
+          const idB = b.id || b.nom || '';
+          return idA.localeCompare(idB);
+        });
+        
         const cartItemKey = JSON.stringify({
           id: cartItem.id,
-          supplements: cartItem.supplements || [],
+          supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
           size: cartItem.size || null
         });
         return cartItemKey === itemKey;
@@ -335,6 +385,62 @@ export default function RestaurantDetail({ params }) {
       return prevCart.map((cartItem, index) =>
         index === existingItemIndex
           ? { ...cartItem, quantity: cartItem.quantity - 1 }
+          : cartItem
+      );
+    });
+  };
+
+  // Fonction pour mettre à jour la quantité d'un item spécifique
+  const updateQuantity = (itemId, newQuantity, supplements = [], size = null) => {
+    if (newQuantity <= 0) {
+      removeFromCart(itemId, supplements, size);
+      return;
+    }
+    
+    setCart(prevCart => {
+      // Si on a un index (passé comme itemId), l'utiliser directement
+      if (typeof itemId === 'number' && itemId < prevCart.length) {
+        return prevCart.map((cartItem, index) =>
+          index === itemId
+            ? { ...cartItem, quantity: newQuantity }
+            : cartItem
+        );
+      }
+      
+      // Sinon, utiliser la même logique de comparaison que addToCart
+      const normalizedSupplements = [...(supplements || [])].sort((a, b) => {
+        const idA = a.id || a.nom || '';
+        const idB = b.id || b.nom || '';
+        return idA.localeCompare(idB);
+      });
+      
+      const itemKey = JSON.stringify({
+        id: itemId,
+        supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+        size: size
+      });
+      
+      const existingItemIndex = prevCart.findIndex(cartItem => {
+        const cartItemSupplements = cartItem.supplements || [];
+        const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
+          const idA = a.id || a.nom || '';
+          const idB = b.id || b.nom || '';
+          return idA.localeCompare(idB);
+        });
+        
+        const cartItemKey = JSON.stringify({
+          id: cartItem.id,
+          supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+          size: cartItem.size || null
+        });
+        return cartItemKey === itemKey;
+      });
+      
+      if (existingItemIndex === -1) return prevCart;
+      
+      return prevCart.map((cartItem, index) =>
+        index === existingItemIndex
+          ? { ...cartItem, quantity: newQuantity }
           : cartItem
       );
     });
@@ -561,10 +667,35 @@ export default function RestaurantDetail({ params }) {
                 const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * (item.quantity || 1);
                 
                 return (
-                  <div key={item.id || idx} className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{item.nom || item.name} x{item.quantity || 1}</span>
-                      <span className="font-bold">{totalItemPrice.toFixed(2)}€</span>
+                  <div key={`${item.id}-${idx}`} className="space-y-1 border-b dark:border-gray-700 pb-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <span className="font-medium">{item.nom || item.name} x{item.quantity || 1}</span>
+                        <span className="font-bold ml-2">{totalItemPrice.toFixed(2)}€</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQuantity(idx, (item.quantity || 1) - 1)}
+                          className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600"
+                        >
+                          <span className="text-gray-600 dark:text-gray-300 font-bold">-</span>
+                        </button>
+                        <button
+                          onClick={() => updateQuantity(idx, (item.quantity || 1) + 1)}
+                          className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center hover:bg-orange-600"
+                        >
+                          <span className="font-bold">+</span>
+                        </button>
+                        <button
+                          onClick={() => removeFromCart(idx)}
+                          className="p-2 text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                          title="Supprimer"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
                       <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
