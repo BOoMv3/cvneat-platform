@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
+import PaymentForm from '@/components/PaymentForm';
 import { FaCreditCard, FaCheckCircle, FaClock, FaEye, FaEuroSign, FaImage, FaLink, FaUser, FaEnvelope, FaPhone } from 'react-icons/fa';
 
 export default function AdvertisePage() {
@@ -18,6 +19,9 @@ export default function AdvertisePage() {
   });
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
 
   const positions = [
     { 
@@ -56,6 +60,7 @@ export default function AdvertisePage() {
     try {
       const selectedPosition = positions.find(p => p.value === formData.position);
       
+      // Créer le PaymentIntent Stripe
       const response = await fetch('/api/payments/create-ad-payment', {
         method: 'POST',
         headers: {
@@ -70,9 +75,13 @@ export default function AdvertisePage() {
       const result = await response.json();
 
       if (response.ok) {
-        setStep(3); // Page de confirmation
+        // Stocker les données et afficher le formulaire de paiement
+        setPaymentIntentId(result.paymentIntentId);
+        setClientSecret(result.clientSecret);
+        setShowPaymentForm(true);
+        setStep(2); // Passer à l'étape de paiement
       } else {
-        throw new Error(result.error || 'Erreur lors du paiement');
+        throw new Error(result.error || 'Erreur lors de la création du paiement');
       }
     } catch (error) {
       console.error('Erreur lors du paiement:', error);
@@ -80,6 +89,47 @@ export default function AdvertisePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = async (paymentData) => {
+    try {
+      setLoading(true);
+      
+      const selectedPosition = positions.find(p => p.value === formData.position);
+      
+      // Confirmer le paiement et créer la publicité
+      const confirmResponse = await fetch('/api/payments/confirm-ad-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentIntentId,
+          ...formData,
+          price: selectedPosition.price
+        }),
+      });
+
+      const confirmResult = await confirmResponse.json();
+
+      if (confirmResponse.ok) {
+        setStep(3); // Page de confirmation
+      } else {
+        throw new Error(confirmResult.error || 'Erreur lors de la sauvegarde');
+      }
+    } catch (error) {
+      console.error('Erreur après paiement:', error);
+      alert(`Paiement réussi mais erreur lors de la création de la publicité: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentError = (error) => {
+    console.error('Erreur paiement:', error);
+    alert(`Erreur de paiement: ${error}`);
+    setShowPaymentForm(false);
+    setLoading(false);
   };
 
   const handleInputChange = (e) => {
@@ -199,6 +249,30 @@ export default function AdvertisePage() {
                   className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                 >
                   Continuer
+                </button>
+              </div>
+            ) : showPaymentForm && clientSecret ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
+                  <FaCreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                  Paiement
+                </h3>
+                <PaymentForm
+                  amount={selectedPosition.price}
+                  paymentIntentId={paymentIntentId}
+                  clientSecret={clientSecret}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                />
+                <button
+                  onClick={() => {
+                    setShowPaymentForm(false);
+                    setPaymentIntentId(null);
+                    setClientSecret(null);
+                  }}
+                  className="w-full mt-4 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+                >
+                  Annuler et retourner
                 </button>
               </div>
             ) : (

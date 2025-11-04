@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 
-const supabase = createClient(
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Utiliser le client admin pour contourner RLS
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
@@ -31,55 +35,37 @@ export async function POST(request) {
       );
     }
 
-    // Simulation du paiement (en production, intégrer Stripe/PayPal)
-    const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const paymentStatus = 'completed'; // Simulation d'un paiement réussi
-
-    if (paymentStatus === 'completed') {
-      // Insérer la publicité dans la base de données
-      const { data, error } = await supabase
-        .from('advertisements')
-        .insert([{
-          title,
-          description,
-          image_url,
-          link_url,
-          position,
-          is_active: false, // En attente de validation admin
-          start_date: start_date || null,
-          end_date: end_date || null,
-          price: parseFloat(price),
+    // Créer le PaymentIntent Stripe
+    const amount = Math.round(parseFloat(price) * 100); // Stripe utilise les centimes
+    
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: 'eur',
+        metadata: {
+          type: 'advertisement',
           advertiser_name,
           advertiser_email,
-          advertiser_phone,
-          payment_id: paymentId,
-          payment_status: 'completed',
-          status: 'pending_approval' // En attente d'approbation
-        }])
-        .select()
-        .single();
+          position,
+          title
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
 
-      if (error) {
-        console.error('Erreur lors de la création de la publicité:', error);
-        return NextResponse.json(
-          { error: 'Erreur lors de la sauvegarde' },
-          { status: 500 }
-        );
-      }
-
-      // Envoyer un email de confirmation (simulation)
-      console.log(`Email envoyé à ${advertiser_email} pour la publicité: ${title}`);
-
+      // Retourner le clientSecret pour le frontend
       return NextResponse.json({
         success: true,
-        payment_id: paymentId,
-        advertisement_id: data.id,
-        message: 'Publicité créée avec succès. En attente de validation.'
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        amount: price
       });
-    } else {
+    } catch (stripeError) {
+      console.error('Erreur Stripe:', stripeError);
       return NextResponse.json(
-        { error: 'Paiement échoué' },
-        { status: 400 }
+        { error: 'Erreur lors de la création du paiement Stripe' },
+        { status: 500 }
       );
     }
 
