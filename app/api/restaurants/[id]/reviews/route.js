@@ -11,7 +11,8 @@ export async function GET(request, { params }) {
         rating,
         comment,
         created_at,
-        users (
+        user_id,
+        users:users!user_id (
           nom,
           prenom,
           avatar_url
@@ -25,7 +26,18 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Erreur lors de la récupération des avis' }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    // Transformer les données pour avoir un format cohérent
+    const formattedReviews = (data || []).map(review => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      date: review.created_at,
+      user_id: review.user_id,
+      name: review.users ? `${review.users.prenom || ''} ${review.users.nom || ''}`.trim() || 'Client' : 'Client',
+      avatar_url: review.users?.avatar_url || null
+    }));
+
+    return NextResponse.json(formattedReviews);
   } catch (error) {
     console.error('Erreur API avis GET:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
@@ -39,6 +51,20 @@ export async function POST(request, { params }) {
 
     if (!userId || !rating || rating < 1 || rating > 5) {
       return NextResponse.json({ error: 'Données invalides' }, { status: 400 });
+    }
+
+    // Vérifier que l'utilisateur a une commande livrée pour ce restaurant
+    const { data: orders } = await supabase
+      .from('commandes')
+      .select('id, restaurant_id, statut')
+      .eq('user_id', userId)
+      .eq('restaurant_id', params.id)
+      .eq('statut', 'livree');
+
+    if (!orders || orders.length === 0) {
+      return NextResponse.json({ 
+        error: 'Vous devez avoir une commande livrée pour ce restaurant avant de pouvoir laisser un avis' 
+      }, { status: 403 });
     }
 
     // Vérifier si l'utilisateur a déjà laissé un avis pour ce restaurant

@@ -16,7 +16,8 @@ import {
   FaCog,
   FaFileAlt,
   FaMapMarkerAlt,
-  FaHome
+  FaHome,
+  FaArrowLeft
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 
@@ -684,18 +685,20 @@ export default function PartnerDashboard() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex flex-col space-y-4 py-4 sm:py-4">
             {/* Bouton retour et titre */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => router.push('/')}
-                className="bg-blue-600 dark:bg-blue-700 text-white p-3 sm:p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center space-x-2"
-                title="Retour à l'accueil"
-              >
-                <FaHome className="h-6 w-6 sm:h-5 sm:w-5" />
-                <span className="text-base sm:text-sm font-medium">Accueil</span>
-              </button>
-              <div>
-                <h1 className="text-2xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard Partenaire</h1>
-                <p className="text-base sm:text-base text-gray-600 dark:text-gray-300">{restaurant?.nom}</p>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => router.push('/')}
+                  className="bg-blue-600 dark:bg-blue-700 text-white p-2 sm:p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center space-x-2"
+                  title="Retour à l'accueil"
+                >
+                  <FaArrowLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <span className="text-sm sm:text-sm font-medium">Retour</span>
+                </button>
+                <div>
+                  <h1 className="text-2xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard Partenaire</h1>
+                  <p className="text-base sm:text-base text-gray-600 dark:text-gray-300">{restaurant?.nom}</p>
+                </div>
               </div>
             </div>
             

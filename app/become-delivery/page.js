@@ -257,20 +257,20 @@ export default function BecomeDelivery() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Expérience (optionnel)
               </label>
               <textarea
                 rows={3}
                 value={formData.experience}
                 onChange={(e) => setFormData({...formData, experience: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Avez-vous déjà travaillé comme livreur ?"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Disponibilité *
               </label>
               <textarea
@@ -278,7 +278,7 @@ export default function BecomeDelivery() {
                 rows={3}
                 value={formData.availability}
                 onChange={(e) => setFormData({...formData, availability: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Quand êtes-vous disponible pour livrer ? (ex: Week-ends, Soirs, etc.)"
               />
             </div>

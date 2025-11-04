@@ -4,29 +4,56 @@ import { useState, useEffect } from 'react';
 import { FaStar, FaUser, FaThumbsUp, FaThumbsDown } from 'react-icons/fa';
 import StarRating from './StarRating';
 
-export default function ReviewsSection({ restaurantId, className = '' }) {
+export default function ReviewsSection({ restaurantId, userId, className = '' }) {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddReview, setShowAddReview] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [user, setUser] = useState(null);
   const [newReview, setNewReview] = useState({
     rating: 0,
-    comment: '',
-    name: ''
+    comment: ''
   });
 
   useEffect(() => {
     fetchReviews();
-  }, [restaurantId]);
+    checkCanReview();
+  }, [restaurantId, userId]);
 
   const fetchReviews = async () => {
     try {
-      // Récupérer les vrais avis depuis la base de données
-      // Pour l'instant, on laisse vide - les avis seront ajoutés par les clients après leurs commandes
-      setReviews([]);
+      const response = await fetch(`/api/restaurants/${restaurantId}/reviews`);
+      if (response.ok) {
+        const data = await response.json();
+        setReviews(data || []);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des avis:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkCanReview = async () => {
+    if (!userId) {
+      setCanReview(false);
+      return;
+    }
+    try {
+      // Vérifier si l'utilisateur a une commande livrée pour ce restaurant
+      const response = await fetch(`/api/orders?userId=${userId}`);
+      if (response.ok) {
+        const orders = await response.json();
+        const hasDeliveredOrder = orders.some(order => 
+          order.restaurant?.id === restaurantId && order.statut === 'livree'
+        );
+        // Vérifier aussi qu'il n'a pas déjà laissé un avis
+        const hasExistingReview = reviews.some(review => review.user_id === userId);
+        setCanReview(hasDeliveredOrder && !hasExistingReview);
+      }
+    } catch (error) {
+      console.error('Erreur vérification droit avis:', error);
+      setCanReview(false);
     }
   };
 
@@ -38,22 +65,36 @@ export default function ReviewsSection({ restaurantId, className = '' }) {
       return;
     }
 
-    try {
-      // Simulation de l'ajout d'un avis
-      const review = {
-        id: reviews.length + 1,
-        name: newReview.name || 'Anonyme',
-        rating: newReview.rating,
-        comment: newReview.comment,
-        date: new Date().toISOString().split('T')[0],
-        helpful: 0
-      };
+    if (!userId) {
+      alert('Vous devez être connecté pour laisser un avis');
+      return;
+    }
 
-      setReviews([review, ...reviews]);
-      setNewReview({ rating: 0, comment: '', name: '' });
-      setShowAddReview(false);
+    try {
+      const response = await fetch(`/api/restaurants/${restaurantId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          rating: newReview.rating,
+          comment: newReview.comment
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        await fetchReviews(); // Recharger les avis
+        setNewReview({ rating: 0, comment: '' });
+        setShowAddReview(false);
+        setCanReview(false); // Plus de droit d'avis après avoir posté
+        alert('Avis publié avec succès !');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Erreur lors de la publication de l\'avis');
+      }
     } catch (error) {
       console.error('Erreur lors de l\'ajout de l\'avis:', error);
+      alert('Erreur lors de la publication de l\'avis');
     }
   };
 
@@ -101,12 +142,17 @@ export default function ReviewsSection({ restaurantId, className = '' }) {
             </span>
           </div>
         </div>
-        <button
-          onClick={() => setShowAddReview(!showAddReview)}
-          className="bg-orange-500 dark:bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors"
-        >
-          Laisser un avis
-        </button>
+        {canReview && (
+          <button
+            onClick={() => setShowAddReview(!showAddReview)}
+            className="bg-orange-500 dark:bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors"
+          >
+            Laisser un avis
+          </button>
+        )}
+        {!canReview && userId && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Vous devez avoir une commande livrée pour laisser un avis</p>
+        )}
       </div>
 
       {/* Formulaire d'ajout d'avis */}
@@ -123,18 +169,6 @@ export default function ReviewsSection({ restaurantId, className = '' }) {
                 interactive={true}
                 onRatingChange={(rating) => setNewReview({ ...newReview, rating })}
                 size="lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nom (optionnel)
-              </label>
-              <input
-                type="text"
-                value={newReview.name}
-                onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-600 dark:text-white"
-                placeholder="Votre nom"
               />
             </div>
             <div>
@@ -186,10 +220,12 @@ export default function ReviewsSection({ restaurantId, className = '' }) {
                     <FaUser className="text-orange-500 dark:text-orange-400" />
                   </div>
                   <div>
-                    <h5 className="font-medium text-gray-900 dark:text-white">{review.name}</h5>
+                    <h5 className="font-medium text-gray-900 dark:text-white">{review.name || review.users?.prenom && review.users?.nom ? `${review.users.prenom} ${review.users.nom}` : 'Client'}</h5>
                     <div className="flex items-center space-x-2">
                       <StarRating rating={review.rating} size="sm" />
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">{review.date}</span>
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">
+                        {review.date ? new Date(review.date).toLocaleDateString('fr-FR') : new Date(review.created_at).toLocaleDateString('fr-FR')}
+                      </span>
                     </div>
                   </div>
                 </div>

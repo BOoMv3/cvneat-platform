@@ -92,9 +92,6 @@ export default function Navbar() {
             <Link href="/restaurants" className="text-gray-700 hover:text-orange-600 transition-colors">
               Restaurants
             </Link>
-            <Link href="/delivery-zones" className="text-gray-700 hover:text-orange-600 transition-colors">
-              Zones de livraison
-            </Link>
 
             <Link href="/devenir-partenaire" className="text-gray-600 hover:text-orange-600 transition-colors font-medium">
               Devenir partenaire
@@ -212,13 +209,6 @@ export default function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Restaurants
-              </Link>
-              <Link
-                href="/delivery-zones"
-                className="text-gray-600 hover:text-orange-600 transition-colors py-1"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Zones de livraison
               </Link>
 
               <Link

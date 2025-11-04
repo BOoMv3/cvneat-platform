@@ -186,59 +186,75 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
+    const body = await request.json();
     const { 
       id, 
       nom, 
-      description, 
+      description = '', 
       prix, 
-      image_url, 
-      disponible, 
-      category,
+      image_url = null, 
+      disponible = true, 
+      category = 'Autres',
       supplements = [],
-      boisson_taille,
-      prix_taille
-    } = await request.json();
+      boisson_taille = null,
+      prix_taille = null
+    } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: 'Menu ID requis' }, { status: 400 });
+    if (!id || !nom || prix === undefined) {
+      return NextResponse.json({ 
+        error: 'Menu ID, nom et prix sont requis' 
+      }, { status: 400 });
+    }
+
+    // Validation du prix
+    const prixNum = parseFloat(prix);
+    if (isNaN(prixNum) || prixNum < 0) {
+      return NextResponse.json({ 
+        error: 'Prix invalide' 
+      }, { status: 400 });
     }
 
     // Préparer les données à mettre à jour
     const updateData = {
-      nom,
-      description,
-      prix: parseFloat(prix),
-      disponible,
-      category
+      nom: nom.trim(),
+      description: description || '',
+      prix: prixNum,
+      disponible: disponible !== false,
+      category: category || 'Autres'
     };
 
     // Ajouter l'image si fournie
-    if (image_url !== undefined) {
+    if (image_url !== null && image_url !== undefined) {
       updateData.image_url = image_url;
+    } else if (image_url === null) {
+      updateData.image_url = null;
     }
 
     // Ajouter les suppléments si fournis (stocker en JSONB)
     if (supplements !== undefined) {
       // Nettoyer les suppléments : s'assurer que chaque supplément a nom et prix
       const cleanedSupplements = Array.isArray(supplements) 
-        ? supplements.map(sup => ({
-            nom: sup.nom || sup.name || '',
-            prix: parseFloat(sup.prix || sup.price || 0)
-          })).filter(sup => sup.nom && sup.prix >= 0)
+        ? supplements.map(sup => {
+            const nom = sup.nom || sup.name || '';
+            const prix = parseFloat(sup.prix || sup.price || 0);
+            return { nom: nom.trim(), prix: prix >= 0 ? prix : 0 };
+          }).filter(sup => sup.nom && sup.prix >= 0)
         : [];
       updateData.supplements = cleanedSupplements;
     }
 
     // Ajouter les tailles de boisson si fournies
-    if (boisson_taille !== undefined) {
+    if (boisson_taille !== null && boisson_taille !== undefined) {
       updateData.boisson_taille = boisson_taille;
     }
-    if (prix_taille !== undefined) {
-      updateData.prix_taille = parseFloat(prix_taille);
+    if (prix_taille !== null && prix_taille !== undefined) {
+      const prixTailleNum = parseFloat(prix_taille);
+      if (!isNaN(prixTailleNum) && prixTailleNum >= 0) {
+        updateData.prix_taille = prixTailleNum;
+      }
     }
 
     console.log('📦 DEBUG API MENU PUT - Données à mettre à jour:', JSON.stringify(updateData, null, 2));
-    console.log('📦 DEBUG API MENU PUT - Suppléments:', JSON.stringify(supplements, null, 2));
 
     const { data, error } = await supabase
       .from('menus')
@@ -247,13 +263,19 @@ export async function PUT(request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erreur Supabase PUT:', error);
+      throw error;
+    }
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Erreur mise à jour menu:', error);
+    console.error('❌ Erreur mise à jour menu:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour du menu' },
+      { 
+        error: 'Erreur lors de la mise à jour du menu',
+        details: error.message 
+      },
       { status: 500 }
     );
   }

@@ -383,74 +383,53 @@ export default function RestaurantDetail({ params }) {
           )}
         </div>
 
-        {/* Panier - Optimisé mobile */}
-        <div className="w-full lg:w-96">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 lg:p-6 sticky top-8">
-            <h2 className="text-lg lg:text-xl font-bold mb-4 text-gray-900 dark:text-white">Votre commande</h2>
-            {cart.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-4">Votre panier est vide</p>
-            ) : (
-              <>
-                <div className="space-y-3 sm:space-y-4 mb-4">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between">
+        {/* Panier flottant - Fixed en bas à droite */}
+        {cart.length > 0 && (
+          <div className="fixed bottom-4 right-4 z-50 w-80 sm:w-96 max-w-[calc(100vw-2rem)]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border dark:border-gray-700 p-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Panier ({cart.reduce((sum, item) => sum + (item.quantity || 1), 0)})</h2>
+                <button
+                  onClick={() => setShowCartModal(true)}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                >
+                  Voir tout
+                </button>
+              </div>
+                <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
+                  {cart.slice(0, 3).map((item) => (
+                    <div key={item.id} className="flex items-center justify-between text-sm">
                       <div className="flex-1 pr-2">
-                        <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">{item.nom || item.name}</p>
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{(item.prix || item.price || 0).toFixed(2)}€</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => removeFromCart(item.id, item.supplements || [], item.size || null)}
-                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation active:scale-95"
-                        >
-                          <FaMinus className="text-xs text-gray-900 dark:text-white" />
-                        </button>
-                        <span className="text-sm sm:text-base font-medium min-w-[20px] text-center text-gray-900 dark:text-white">{item.quantity}</span>
-                        <button
-                          onClick={() => addToCart(item, item.supplements || [], item.size || null)}
-                          className="w-8 h-8 sm:w-6 sm:h-6 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation active:scale-95"
-                        >
-                          <FaPlus className="text-xs text-gray-900 dark:text-white" />
-                        </button>
+                        <p className="font-medium text-gray-900 dark:text-white truncate">{item.nom || item.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{(item.prix || item.price || 0).toFixed(2)}€ x{item.quantity || 1}</p>
                       </div>
                     </div>
                   ))}
+                  {cart.length > 3 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center">+{cart.length - 3} autre(s) article(s)</p>
+                  )}
                 </div>
-                <div className="border-t dark:border-gray-700 pt-4">
-                  <div className="flex justify-between items-center mb-2 text-sm sm:text-base text-gray-900 dark:text-white">
-                    <p>Sous-total</p>
-                    <p>{getSubtotal().toFixed(2)}€</p>
-                  </div>
-                  <div className="flex justify-between items-center mb-4 text-sm sm:text-base text-gray-900 dark:text-white">
-                    <p>Frais de livraison</p>
-                    <p>{deliveryFee !== null ? `${deliveryFee.toFixed(2)}€` : 'À calculer après sélection de l\'adresse'}</p>
-                  </div>
-                  <div className="flex justify-between items-center font-bold text-base sm:text-lg mb-4 text-gray-900 dark:text-white">
-                    <p>Total</p>
-                    <p>{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</p>
+                <div className="border-t dark:border-gray-700 pt-3 mt-3">
+                  <div className="flex justify-between items-center mb-2 text-sm text-gray-900 dark:text-white">
+                    <span>Total</span>
+                    <span className="font-bold">{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</span>
                   </div>
                   <button
                     onClick={handleCheckout}
                     disabled={!isRestaurantOpen || isManuallyClosed}
-                    className={`w-full py-4 sm:py-3 rounded-lg flex items-center justify-center gap-2 font-semibold text-base sm:text-base min-h-[52px] touch-manipulation active:scale-95 ${
+                    className={`w-full py-3 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm min-h-[44px] touch-manipulation active:scale-95 ${
                       !isRestaurantOpen || isManuallyClosed
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        : 'bg-black text-white hover:bg-gray-800'
+                        ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
+                        : 'bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700'
                     }`}
                   >
                     <FaShoppingCart className="h-4 w-4" />
-                    {!isRestaurantOpen || isManuallyClosed ? 'Restaurant fermé' : 'Commander'}
+                    {!isRestaurantOpen || isManuallyClosed ? 'Fermé' : 'Commander'}
                   </button>
-                  {(!isRestaurantOpen || isManuallyClosed) && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-2 text-center">
-                      {isManuallyClosed ? 'Le restaurant est actuellement fermé manuellement' : 'Le restaurant est fermé pour le moment'}
-                    </p>
-                  )}
                 </div>
-              </>
-            )}
+            </div>
           </div>
-        </div>
+        )}
         {/* Modal panier */}
         {showCartModal && (
           <Modal onClose={() => setShowCartModal(false)}>

@@ -154,14 +154,17 @@ export async function POST(request) {
       );
     }
 
-    // Vérifier le délai de réclamation (48h max)
-    const orderTime = new Date(order.created_at);
+    // Vérifier le délai de réclamation (48h max après livraison)
+    // Utiliser la date de livraison si disponible, sinon created_at
+    const deliveryTime = order.updated_at && order.statut === 'livree' 
+      ? new Date(order.updated_at) 
+      : new Date(order.created_at);
     const now = new Date();
-    const hoursDiff = (now - orderTime) / (1000 * 60 * 60);
+    const hoursDiff = (now - deliveryTime) / (1000 * 60 * 60);
 
     if (hoursDiff > 48) {
       return NextResponse.json(
-        { error: 'Délai de réclamation dépassé (48h maximum)' },
+        { error: 'Délai de réclamation dépassé (48h maximum après la livraison)' },
         { status: 400 }
       );
     }
@@ -170,6 +173,29 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'Réclamation trop tôt (minimum 1 heure après la livraison)' },
         { status: 400 }
+      );
+    }
+
+    // Vérifier le montant de remboursement (max 80% du total pour éviter les abus)
+    const maxRefund = parseFloat(order.total || 0) * 0.8;
+    if (parseFloat(requestedRefundAmount) > maxRefund) {
+      return NextResponse.json(
+        { error: `Le montant de remboursement ne peut pas dépasser ${maxRefund.toFixed(2)}€ (80% du total de la commande)` },
+        { status: 400 }
+      );
+    }
+
+    // Vérifier les réclamations récentes du client (anti-fraude)
+    const { data: recentComplaints } = await supabase
+      .from('complaints')
+      .select('id, created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // 30 derniers jours
+
+    if (recentComplaints && recentComplaints.length >= 5) {
+      return NextResponse.json(
+        { error: 'Nombre de réclamations trop élevé. Veuillez contacter le support client.' },
+        { status: 403 }
       );
     }
 

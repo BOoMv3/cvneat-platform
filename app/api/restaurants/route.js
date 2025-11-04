@@ -12,6 +12,27 @@ export async function GET() {
     return NextResponse.json({ message: "Erreur lors de la récupération des restaurants", error: error.message }, { status: 500 });
   }
 
-  // Plus besoin de mapper, les données sont déjà au bon format
-  return NextResponse.json(data || []);
+  // Calculer les notes depuis les vrais avis pour chaque restaurant
+  const restaurantsWithRatings = await Promise.all((data || []).map(async (restaurant) => {
+    const { data: reviews } = await supabase
+      .from('reviews')
+      .select('rating')
+      .eq('restaurant_id', restaurant.id);
+
+    let calculatedRating = 0;
+    let reviewsCount = 0;
+    if (reviews && reviews.length > 0) {
+      const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
+      calculatedRating = Math.round((totalRating / reviews.length) * 10) / 10;
+      reviewsCount = reviews.length;
+    }
+
+    return {
+      ...restaurant,
+      rating: calculatedRating || restaurant.rating || 0,
+      reviews_count: reviewsCount || restaurant.reviews_count || 0
+    };
+  }));
+
+  return NextResponse.json(restaurantsWithRatings);
 } 
