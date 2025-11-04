@@ -54,13 +54,10 @@ export async function GET(request) {
     console.log('📊 Récupération historique pour livreur:', deliveryId);
 
     // Construire la requête avec supabaseAdmin pour bypasser RLS
+    // Simplifier la requête pour éviter les problèmes de jointure
     let query = supabaseAdmin
       .from('commandes')
-      .select(`
-        *,
-        restaurant:restaurants(nom, adresse, telephone, ville),
-        user_addresses(address, city, postal_code)
-      `, { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('livreur_id', deliveryId)
       .order('created_at', { ascending: false });
 
@@ -92,6 +89,25 @@ export async function GET(request) {
 
     console.log('✅ Commandes récupérées:', orders?.length || 0);
 
+    // Récupérer les informations des restaurants séparément
+    const restaurantIds = [...new Set(orders?.map(o => o.restaurant_id).filter(Boolean) || [])];
+    let restaurantsMap = new Map();
+    
+    if (restaurantIds.length > 0) {
+      try {
+        const { data: restaurantsData } = await supabaseAdmin
+          .from('restaurants')
+          .select('id, nom, adresse, telephone, ville, code_postal')
+          .in('id', restaurantIds);
+        
+        if (restaurantsData) {
+          restaurantsMap = new Map(restaurantsData.map(r => [r.id, r]));
+        }
+      } catch (restaurantError) {
+        console.warn('⚠️ Erreur récupération restaurants (non bloquant):', restaurantError);
+      }
+    }
+
     // Récupérer les informations des clients séparément
     const userIds = [...new Set(orders?.map(o => o.user_id).filter(Boolean) || [])];
     let usersMap = new Map();
@@ -114,15 +130,16 @@ export async function GET(request) {
     // Formater les données
     const formattedOrders = orders?.map(order => {
       const userInfo = usersMap.get(order.user_id);
+      const restaurantInfo = restaurantsMap.get(order.restaurant_id);
       return {
         id: order.id,
-        restaurant_nom: order.restaurant?.nom || 'Restaurant inconnu',
-        restaurant_adresse: order.restaurant?.adresse || 'Adresse inconnue',
+        restaurant_nom: restaurantInfo?.nom || 'Restaurant inconnu',
+        restaurant_adresse: restaurantInfo?.adresse || 'Adresse inconnue',
         customer_name: userInfo ? `${userInfo.prenom || ''} ${userInfo.nom || ''}`.trim() || userInfo.email : 'Client',
         customer_phone: userInfo?.telephone || '',
-        delivery_address: order.user_addresses?.address || order.adresse_livraison || 'Adresse non disponible',
-        delivery_city: order.user_addresses?.city || '',
-        delivery_postal_code: order.user_addresses?.postal_code || '',
+        delivery_address: order.adresse_livraison || 'Adresse non disponible',
+        delivery_city: '',
+        delivery_postal_code: '',
         total: parseFloat(order.total || 0) || 0,
         delivery_fee: parseFloat(order.frais_livraison || 0) || 0,
         status: order.statut,
