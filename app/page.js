@@ -132,20 +132,25 @@ export default function Home() {
         const openStatusMap = {};
         await Promise.all(data.map(async (restaurant) => {
           try {
-            const statusResponse = await fetch('/api/restaurants/hours', {
+            const statusResponse = await fetch(`/api/restaurants/${restaurant.id}/hours`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ restaurantId: restaurant.id })
+              headers: { 'Content-Type': 'application/json' }
             });
             if (statusResponse.ok) {
               const statusData = await statusResponse.json();
               openStatusMap[restaurant.id] = {
-                isOpen: statusData.isOpen !== false && !restaurant.ferme_manuellement && !restaurant.is_closed,
+                isOpen: statusData.isOpen !== false,
+                isManuallyClosed: statusData.is_manually_closed || false
+              };
+            } else {
+              // Si erreur, vérifier au moins ferme_manuellement
+              openStatusMap[restaurant.id] = {
+                isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
                 isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false
               };
             }
           } catch (err) {
-            // Si erreur, considérer comme ouvert par défaut
+            // Si erreur, considérer comme ouvert par défaut sauf si ferme_manuellement
             openStatusMap[restaurant.id] = {
               isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
               isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false
@@ -569,62 +574,74 @@ export default function Home() {
                 return (
                 <div
                   key={restaurant.id}
-                  className={`group transform transition-all duration-300 ${isClosed ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'}`}
+                  className={`group transform transition-all duration-300 ${isClosed ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'}`}
                   onClick={() => !isClosed && handleRestaurantClick(restaurant)}
                 >
-                  <div className={`bg-white rounded-3xl shadow-lg transition-all duration-300 overflow-hidden border ${isClosed ? 'border-gray-300 grayscale' : 'border-gray-100 hover:shadow-2xl'}`}>
-                    {isClosed && (
-                      <div className="absolute inset-0 z-10 bg-black/20 rounded-3xl flex items-center justify-center">
-                        <div className="bg-red-600 text-white px-6 py-3 rounded-full text-lg font-bold shadow-lg">
-                          🔴 Fermé
-                        </div>
-                      </div>
-                    )}
+                  <div className={`bg-white rounded-3xl shadow-lg transition-all duration-300 overflow-hidden border ${isClosed ? 'border-gray-300' : 'border-gray-100 hover:shadow-2xl'}`}>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
                       {/* Image du restaurant */}
                       <div className="relative sm:col-span-1 overflow-hidden" style={{ height: '256px', minHeight: '256px', maxHeight: '256px' }}>
-                        <OptimizedRestaurantImage
-                          restaurant={restaurant}
-                          className="h-full w-full"
-                          priority={false}
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
+                        <div className="relative h-full w-full">
+                          <OptimizedRestaurantImage
+                            restaurant={restaurant}
+                            className={`h-full w-full transition-all duration-300 ${isClosed ? 'grayscale opacity-40' : ''}`}
+                            priority={false}
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          />
+                          
+                          {/* Filtre gris transparent si fermé */}
+                          {isClosed && (
+                            <div className="absolute inset-0 bg-gray-900/60 z-10 flex items-center justify-center">
+                              <div className="bg-red-600/95 text-white px-6 py-3 rounded-full text-lg font-bold shadow-2xl backdrop-blur-sm border-2 border-white/30">
+                                🔴 Fermé
+                              </div>
+                            </div>
+                          )}
+                        </div>
                         
-                        {/* Overlay avec gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                        {/* Overlay avec gradient (seulement si ouvert) */}
+                        {!isClosed && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-0"></div>
+                        )}
                         
                         {/* Badges */}
-                        <div className="absolute top-4 left-4 flex flex-col space-y-2">
-                          {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
-                            <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                              ⭐ Sponsorisé
-                            </span>
-                          )}
-                          {favorites.includes(restaurant.id) && (
-                            <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                              ❤️ Favori
-                            </span>
-                          )}
-                        </div>
+                        {!isClosed && (
+                          <div className="absolute top-4 left-4 flex flex-col space-y-2 z-20">
+                            {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
+                              <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                ⭐ Sponsorisé
+                              </span>
+                            )}
+                            {favorites.includes(restaurant.id) && (
+                              <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                ❤️ Favori
+                              </span>
+                            )}
+                          </div>
+                        )}
                         
                         {/* Bouton favori - Optimisé mobile */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleFavorite(restaurant);
-                          }}
-                          className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 sm:w-12 sm:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-200 group-hover:scale-110 touch-manipulation active:scale-95 min-h-[48px] min-w-[48px]"
-                        >
-                          <FaHeart className={`w-5 h-5 sm:w-5 sm:h-5 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
-                        </button>
+                        {!isClosed && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleFavorite(restaurant);
+                            }}
+                            className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 sm:w-12 sm:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-200 group-hover:scale-110 touch-manipulation active:scale-95 min-h-[48px] min-w-[48px] z-20"
+                          >
+                            <FaHeart className={`w-5 h-5 sm:w-5 sm:h-5 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
+                          </button>
+                        )}
                         
                         {/* Temps de livraison - Optimisé mobile */}
-                        <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 bg-white/90 backdrop-blur-sm px-3 py-2 sm:py-2 rounded-full shadow-lg">
-                          <div className="flex items-center space-x-1.5 sm:space-x-2">
-                            <FaClock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600 flex-shrink-0" />
-                            <span className="text-xs sm:text-sm font-semibold text-gray-800">{restaurant.deliveryTime || '25-35'} min</span>
+                        {!isClosed && (
+                          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 bg-white/90 backdrop-blur-sm px-3 py-2 sm:py-2 rounded-full shadow-lg z-20">
+                            <div className="flex items-center space-x-1.5 sm:space-x-2">
+                              <FaClock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600 flex-shrink-0" />
+                              <span className="text-xs sm:text-sm font-semibold text-gray-800">{restaurant.deliveryTime || '25-35'} min</span>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                       
                       {/* Contenu de la carte */}
