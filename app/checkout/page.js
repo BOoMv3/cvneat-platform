@@ -461,15 +461,23 @@ export default function Checkout() {
           const prixUnitaireTotal = itemPrice + supplementsPrice + sizePrice;
 
           console.log('📦 Insertion détail commande pour article:', item.id);
+          
+          // Préparer les données d'insertion
+          const insertData = {
+            commande_id: order.id,
+            plat_id: item.id,
+            quantite: item.quantity || 1,
+            prix_unitaire: prixUnitaireTotal
+          };
+          
+          // Ajouter supplements seulement s'il y en a
+          if (supplementsData.length > 0) {
+            insertData.supplements = supplementsData;
+          }
+          
           const { error: detailError } = await supabase
             .from('details_commande')
-            .insert({
-              commande_id: order.id,
-              plat_id: item.id,
-              quantite: item.quantity || 1,
-              prix_unitaire: prixUnitaireTotal,
-              supplements: supplementsData.length > 0 ? supplementsData : null
-            });
+            .insert(insertData);
 
           if (detailError) {
             console.error('❌ Erreur détail commande:', detailError);
