@@ -99,11 +99,32 @@ export default function Checkout() {
   }, []);
 
   useEffect(() => {
-    // Calculer les totaux
+    // Calculer les totaux en incluant suppléments et tailles
     const total = cart.reduce((sum, item) => {
-      const price = typeof item.prix === 'number' ? item.prix : Number(item.prix);
-      return sum + (price * item.quantity);
+      const itemPrice = parseFloat(item.prix || item.price || 0);
+      const itemQuantity = parseInt(item.quantity || 1, 10);
+
+      // Calculer le prix des suppléments
+      let supplementsPrice = 0;
+      if (item.supplements && Array.isArray(item.supplements)) {
+        supplementsPrice = item.supplements.reduce((supSum, sup) => {
+          return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+        }, 0);
+      }
+
+      // Calculer le prix de la taille
+      let sizePrice = 0;
+      if (item.size && item.size.prix) {
+        sizePrice = parseFloat(item.size.prix) || 0;
+      } else if (item.prix_taille) {
+        sizePrice = parseFloat(item.prix_taille) || 0;
+      }
+
+      // Total pour cet item = (prix de base + suppléments + taille) * quantité
+      const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+      return sum + totalItemPrice;
     }, 0);
+    
     console.log('Recalcul total - cart total:', total, 'frais livraison:', fraisLivraison, 'total avec livraison:', total + fraisLivraison, 'forceUpdate:', forceUpdate);
     setCartTotal(total);
     setTotalAvecLivraison(total + fraisLivraison);
@@ -213,7 +234,31 @@ export default function Checkout() {
       // SUCCÈS - Mettre à jour les frais
       const newFrais = data.frais_livraison;
       setFraisLivraison(newFrais);
-      setTotalAvecLivraison(cartTotal + newFrais);
+      
+      // Recalculer le total du panier avec suppléments et tailles
+      const currentCartTotal = cart.reduce((sum, item) => {
+        const itemPrice = parseFloat(item.prix || item.price || 0);
+        const itemQuantity = parseInt(item.quantity || 1, 10);
+
+        let supplementsPrice = 0;
+        if (item.supplements && Array.isArray(item.supplements)) {
+          supplementsPrice = item.supplements.reduce((supSum, sup) => {
+            return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+          }, 0);
+        }
+
+        let sizePrice = 0;
+        if (item.size && item.size.prix) {
+          sizePrice = parseFloat(item.size.prix) || 0;
+        } else if (item.prix_taille) {
+          sizePrice = parseFloat(item.prix_taille) || 0;
+        }
+
+        const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+        return sum + totalItemPrice;
+      }, 0);
+      
+      setTotalAvecLivraison(currentCartTotal + newFrais);
       setForceUpdate(prev => prev + 1);
 
     } catch (error) {
@@ -275,8 +320,30 @@ export default function Checkout() {
       // Créer la commande
       // IMPORTANT: Le champ 'total' doit contenir UNIQUEMENT le montant des articles (sans frais de livraison)
       // Les frais de livraison sont stockés séparément dans 'frais_livraison'
+      // Calculer le total en incluant suppléments et tailles
       const cartTotal = savedCart.items?.reduce((sum, item) => {
-        return sum + ((item.prix || item.price || 0) * (item.quantity || 0));
+        const itemPrice = parseFloat(item.prix || item.price || 0);
+        const itemQuantity = parseInt(item.quantity || 1, 10);
+
+        // Calculer le prix des suppléments
+        let supplementsPrice = 0;
+        if (item.supplements && Array.isArray(item.supplements)) {
+          supplementsPrice = item.supplements.reduce((supSum, sup) => {
+            return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+          }, 0);
+        }
+
+        // Calculer le prix de la taille
+        let sizePrice = 0;
+        if (item.size && item.size.prix) {
+          sizePrice = parseFloat(item.size.prix) || 0;
+        } else if (item.prix_taille) {
+          sizePrice = parseFloat(item.prix_taille) || 0;
+        }
+
+        // Total pour cet item = (prix de base + suppléments + taille) * quantité
+        const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+        return sum + totalItemPrice;
       }, 0) || 0;
       
       const { data: order, error: orderError } = await supabase
@@ -295,15 +362,31 @@ export default function Checkout() {
 
       if (orderError) throw orderError;
 
-      // Ajouter les détails de commande
+      // Ajouter les détails de commande avec suppléments et tailles
       for (const item of cart) {
+        // Préparer les suppléments pour la sauvegarde
+        let supplementsData = [];
+        if (item.supplements && Array.isArray(item.supplements)) {
+          supplementsData = item.supplements.map(sup => ({
+            nom: sup.nom || sup.name || 'Supplément',
+            prix: parseFloat(sup.prix || sup.price || 0) || 0
+          }));
+        }
+
+        // Calculer le prix unitaire total (base + suppléments + taille)
+        const itemPrice = parseFloat(item.prix || item.price || 0);
+        const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
+        const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+        const prixUnitaireTotal = itemPrice + supplementsPrice + sizePrice;
+
         const { error: detailError } = await supabase
           .from('details_commande')
           .insert({
             commande_id: order.id,
             plat_id: item.id,
             quantite: item.quantity || 1,
-            prix_unitaire: item.prix || item.price || 0
+            prix_unitaire: prixUnitaireTotal,
+            supplements: supplementsData.length > 0 ? supplementsData : null
           });
 
         if (detailError) {
