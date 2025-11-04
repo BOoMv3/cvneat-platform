@@ -157,11 +157,10 @@ export default function RestaurantDetail({ params }) {
       const [restaurantResponse, menuResponse, hoursResponse, openStatusResponse] = await Promise.all([
         fetch(`/api/restaurants/${params.id}`),
         fetch(`/api/restaurants/${params.id}/menu`),
-        fetch(`/api/restaurants/hours?restaurantId=${params.id}`),
-        fetch(`/api/restaurants/hours`, {
+        fetch(`/api/restaurants/${params.id}/hours`),
+        fetch(`/api/restaurants/${params.id}/hours`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ restaurantId: params.id })
+          headers: { 'Content-Type': 'application/json' }
         })
       ]);
       if (!restaurantResponse.ok) throw new Error('Erreur de chargement du restaurant');
@@ -169,14 +168,14 @@ export default function RestaurantDetail({ params }) {
       
       const restaurantData = await restaurantResponse.json();
       const menuData = await menuResponse.json();
-      const hoursData = hoursResponse.ok ? await hoursResponse.json() : [];
+      const hoursData = hoursResponse.ok ? await hoursResponse.json() : { hours: [] };
       const openStatusData = openStatusResponse.ok ? await openStatusResponse.json() : { isOpen: true };
       
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
-      setRestaurantHours(hoursData || []);
+      setRestaurantHours(hoursData.hours || []);
       setIsRestaurantOpen(openStatusData.isOpen !== false);
-      setIsManuallyClosed(restaurantData.ferme_manuellement || restaurantData.is_closed || false);
+      setIsManuallyClosed(hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
     } catch (err) {
       setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
     } finally {
@@ -185,6 +184,12 @@ export default function RestaurantDetail({ params }) {
   };
 
   const addToCart = (item, supplements = [], size = null, quantityToAdd = 1) => {
+    // Vérifier si le restaurant est ouvert avant d'ajouter au panier
+    if (!isRestaurantOpen || isManuallyClosed) {
+      alert('Le restaurant est actuellement fermé. Vous ne pouvez pas ajouter d\'articles au panier.');
+      return;
+    }
+    
     setCart(prevCart => {
       // Si l'item a déjà une propriété quantity (venant de la modal), l'utiliser
       const finalQuantity = item.quantity || quantityToAdd;
@@ -309,6 +314,13 @@ export default function RestaurantDetail({ params }) {
       router.push('/login?redirect=' + encodeURIComponent(`/restaurants/${params.id}`));
       return;
     }
+    
+    // Vérifier si le restaurant est ouvert
+    if (!isRestaurantOpen || isManuallyClosed) {
+      alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
+      return;
+    }
+    
     // La sauvegarde se fait via le useEffect, on peut directement aller au checkout
     router.push('/checkout');
   };
@@ -384,7 +396,7 @@ export default function RestaurantDetail({ params }) {
           isFavorite={isFavorite}
           onToggleFavorite={handleToggleFavorite}
           hours={restaurantHours}
-          isOpen={isRestaurantOpen}
+          isOpen={isRestaurantOpen && !isManuallyClosed}
           isManuallyClosed={isManuallyClosed}
         />
 

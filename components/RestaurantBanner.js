@@ -21,11 +21,9 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
   const formatHours = (hours) => {
     if (!hours || hours.length === 0) return 'Horaires non définis';
     
-    const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
     return hours.map(h => {
-      const dayName = days[h.day_of_week] || `Jour ${h.day_of_week}`;
-      if (h.is_closed) return `${dayName}: Fermé`;
-      return `${dayName}: ${h.open_time || '00:00'} - ${h.close_time || '00:00'}`;
+      if (h.is_closed || !h.ouvert) return `${h.day}: Fermé`;
+      return `${h.day}: ${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`;
     }).join(' | ');
   };
 
@@ -168,9 +166,9 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
                   <span className="text-green-600">🟢 Ouvert maintenant</span>
                 )}
               </div>
-              {currentHours && !currentHours.is_closed && (
+              {currentHours && currentHours.ouvert && !currentHours.is_closed && (
                 <div className="text-gray-600 text-xs">
-                  Aujourd'hui: {currentHours.open_time} - {currentHours.close_time}
+                  Aujourd'hui: {currentHours.ouverture} - {currentHours.fermeture}
                 </div>
               )}
               <details className="mt-1">

@@ -249,7 +249,24 @@ export default function Checkout() {
 
       if (!restaurant) {
         alert('Erreur: Restaurant non trouvé');
+        setSubmitting(false);
         return;
+      }
+
+      // Vérifier si le restaurant est ouvert
+      const hoursCheckResponse = await fetch(`/api/restaurants/${restaurant.id}/hours`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (hoursCheckResponse.ok) {
+        const hoursData = await hoursCheckResponse.json();
+        if (!hoursData.isOpen || hoursData.is_manually_closed) {
+          alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
+          setSubmitting(false);
+          router.push(`/restaurants/${restaurant.id}`);
+          return;
+        }
       }
 
       // Générer un code de sécurité à 6 chiffres pour la livraison
