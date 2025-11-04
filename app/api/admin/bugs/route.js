@@ -31,34 +31,22 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
-    // Récupérer tous les utilisateurs
-    const { data: users, error } = await supabaseAdmin
-      .from('users')
-      .select('id, nom, prenom, email, telephone, role, created_at')
+    // Récupérer tous les signalements de bugs
+    const { data: bugs, error } = await supabaseAdmin
+      .from('bug_reports')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Erreur récupération utilisateurs:', error);
+      console.error('Erreur récupération bugs:', error);
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
-    // Formater les données pour le frontend
-    const formattedUsers = (users || []).map(user => ({
-      id: user.id,
-      name: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
-      email: user.email,
-      phone: user.telephone || '',
-      role: user.role || 'user',
-      created_at: user.created_at
-    }));
-
-    return NextResponse.json(formattedUsers);
+    return NextResponse.json(bugs || []);
 
   } catch (error) {
-    console.error('Erreur API admin users:', error);
-    return NextResponse.json(
-      { error: 'Erreur interne du serveur' },
-      { status: 500 }
-    );
+    console.error('Erreur API bugs:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
-} 
+}
+

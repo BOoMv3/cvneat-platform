@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import AuthGuard from '@/components/AuthGuard';
 import { FaPlus, FaEdit, FaTrash, FaEye, FaEyeSlash, FaCalendarAlt, FaImage, FaLink } from 'react-icons/fa';
@@ -11,6 +12,7 @@ const supabase = createClient(
 );
 
 export default function AdsManagement() {
+  const router = useRouter();
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

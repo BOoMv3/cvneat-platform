@@ -63,9 +63,11 @@ export default function AdminUsers() {
     try {
       const response = await fetchWithAuth('/api/admin/users');
       const data = await response.json();
-      setUsers(data);
+      // Gérer le cas où l'API retourne un objet avec une propriété users
+      setUsers(Array.isArray(data) ? data : (data.users || []));
     } catch (error) {
       setError('Erreur lors du chargement des utilisateurs');
+      setUsers([]); // S'assurer que users est toujours un tableau
     } finally {
       setLoading(false);
     }

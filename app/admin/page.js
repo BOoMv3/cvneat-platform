@@ -466,6 +466,12 @@ export default function AdminPage() {
                 >
                   📋 Voir toutes les Commandes
                 </button>
+                <button 
+                  onClick={() => router.push('/admin/bugs')}
+                  className="p-3 sm:p-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
+                >
+                  🐛 Signalements de bugs
+                </button>
               </div>
             </div>
           </div>
