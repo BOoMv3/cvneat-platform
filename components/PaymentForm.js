@@ -29,6 +29,14 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
     }
 
     try {
+      // IMPORTANT: Appeler elements.submit() AVANT stripe.confirmPayment()
+      // Cela valide les données du formulaire et prépare le paiement
+      const { error: submitError } = await elements.submit();
+
+      if (submitError) {
+        throw new Error(submitError.message);
+      }
+
       // Confirmer le paiement avec le clientSecret existant
       const { error: confirmError } = await stripe.confirmPayment({
         elements,
