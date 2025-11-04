@@ -252,19 +252,33 @@ export async function POST(request, { params }) {
 
     // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
     // Cela signifie que le restaurant ferme à la fin de la journée (minuit)
-    if (todayHours.fermeture === '00:00' || todayHours.fermeture === '0:00') {
+    const isMidnightClose = todayHours.fermeture === '00:00' || todayHours.fermeture === '0:00';
+    if (isMidnightClose) {
       closeTimeMinutes = 24 * 60; // 1440 minutes
     }
 
     // Vérifier si on est dans la plage horaire
     // Si la fermeture est à minuit (1440 minutes), on accepte toutes les heures >= ouverture
     let isOpen;
-    if (closeTimeMinutes === 24 * 60) {
+    if (isMidnightClose) {
       // Fermeture à minuit : ouvert si l'heure actuelle >= heure d'ouverture
       isOpen = currentTimeMinutes >= openTimeMinutes;
+      console.log('🌙 Fermeture à minuit - Comparaison:', {
+        currentTimeMinutes,
+        openTimeMinutes,
+        isOpen,
+        check: `${currentTimeMinutes} >= ${openTimeMinutes} = ${isOpen}`
+      });
     } else {
       // Fermeture normale : ouvert si l'heure actuelle est entre ouverture et fermeture
       isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
+      console.log('🕐 Fermeture normale - Comparaison:', {
+        currentTimeMinutes,
+        openTimeMinutes,
+        closeTimeMinutes,
+        isOpen,
+        check: `${currentTimeMinutes} >= ${openTimeMinutes} && ${currentTimeMinutes} <= ${closeTimeMinutes} = ${isOpen}`
+      });
     }
 
     console.log('🕐 Vérification horaires:', {
