@@ -99,11 +99,13 @@ async function geocodeAddress(address) {
       throw new Error('Coordonnées invalides dans la réponse Nominatim');
     }
     
-    // VALIDATION STRICTE: Vérifier que l'adresse retournée est en France
-    const displayName = result.display_name || '';
-    const country = result.address?.country || '';
+    // Vérifier que l'adresse est en France (plus souple)
+    const displayName = (result.display_name || '').toLowerCase();
+    const country = (result.address?.country || '').toLowerCase();
     
-    if (!displayName.toLowerCase().includes('france') && !country.toLowerCase().includes('france')) {
+    // Si on a demandé avec countrycodes=fr, on fait confiance à Nominatim
+    // On ne vérifie que si on a une indication claire que ce n'est pas en France
+    if (country && country !== 'france' && country !== 'fra') {
       throw new Error('L\'adresse doit être en France');
     }
     
@@ -165,20 +167,15 @@ export async function POST(request) {
     console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
     console.log('Adresse:', address);
 
-    // 1. Vérifier le code postal (VALIDATION STRICTE)
-    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => {
-      // Vérifier que le code postal est présent dans l'adresse
-      const codeRegex = new RegExp(`\\b${code}\\b`);
-      return codeRegex.test(address);
-    });
+    // 1. Vérifier le code postal
+    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => address.includes(code));
     
     if (!hasValidPostalCode) {
       console.log('❌ Code postal non autorisé dans:', address);
-      console.log('❌ Codes postaux autorisés:', AUTHORIZED_POSTAL_CODES);
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: `Livraison non disponible dans cette zone. Codes postaux acceptés: ${AUTHORIZED_POSTAL_CODES.join(', ')}`
+        message: 'Livraison non disponible dans cette zone'
       });
     }
 
@@ -189,44 +186,13 @@ export async function POST(request) {
       clientCoords = await geocodeAddress(address);
       console.log('📍 Coordonnées EXACTES:', clientCoords);
       
-      // VALIDATION STRICTE: Vérifier que les coordonnées sont valides
+        // Vérifier que les coordonnées sont valides
       if (!clientCoords || !clientCoords.lat || !clientCoords.lng) {
         console.error('❌ Coordonnées invalides:', clientCoords);
         return NextResponse.json({
           success: false,
           livrable: false,
-          message: 'Coordonnées invalides pour cette adresse'
-        });
-      }
-
-      // VALIDATION STRICTE: Vérifier que les coordonnées sont des nombres valides
-      const lat = parseFloat(clientCoords.lat);
-      const lng = parseFloat(clientCoords.lng);
-      
-      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        console.error('❌ Coordonnées numériques invalides:', { lat, lng });
-        return NextResponse.json({
-          success: false,
-          livrable: false,
-          message: 'Coordonnées géographiques invalides'
-        });
-      }
-
-      // VALIDATION STRICTE: Vérifier que l'adresse retournée contient le code postal
-      const returnedAddress = clientCoords.display_name || '';
-      const hasMatchingPostalCode = AUTHORIZED_POSTAL_CODES.some(code => 
-        returnedAddress.includes(code) || address.includes(code)
-      );
-      
-      if (!hasMatchingPostalCode) {
-        console.error('❌ Code postal ne correspond pas entre adresse demandée et résultat:', {
-          requested: address,
-          returned: returnedAddress
-        });
-        return NextResponse.json({
-          success: false,
-          livrable: false,
-          message: 'L\'adresse localisée ne correspond pas à la zone de livraison'
+          message: 'Impossible de localiser cette adresse exacte'
         });
       }
 
@@ -249,17 +215,7 @@ export async function POST(request) {
 
     console.log(`📏 Distance calculée: ${distance.toFixed(2)}km`);
 
-    // VALIDATION STRICTE: Vérifier que la distance est un nombre valide
-    if (isNaN(distance) || distance < 0) {
-      console.error('❌ Distance invalide calculée:', distance);
-      return NextResponse.json({
-        success: false,
-        livrable: false,
-        message: 'Erreur lors du calcul de la distance'
-      });
-    }
-
-    // 4. Vérifier la distance maximum (VALIDATION STRICTE)
+    // 4. Vérifier la distance maximum
     if (distance > MAX_DISTANCE) {
       console.log(`❌ Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
