@@ -441,39 +441,51 @@ export default function Checkout() {
       console.log('✅ Order object:', order);
 
       // Ajouter les détails de commande avec suppléments et tailles
-      for (const item of cart) {
-        // Préparer les suppléments pour la sauvegarde
-        let supplementsData = [];
-        if (item.supplements && Array.isArray(item.supplements)) {
-          supplementsData = item.supplements.map(sup => ({
-            nom: sup.nom || sup.name || 'Supplément',
-            prix: parseFloat(sup.prix || sup.price || 0) || 0
-          }));
+      console.log('📦 Ajout des détails de commande pour', cart.length, 'articles');
+      try {
+        for (const item of cart) {
+          console.log('📦 Traitement article:', item.nom || item.name, 'ID:', item.id);
+          // Préparer les suppléments pour la sauvegarde
+          let supplementsData = [];
+          if (item.supplements && Array.isArray(item.supplements)) {
+            supplementsData = item.supplements.map(sup => ({
+              nom: sup.nom || sup.name || 'Supplément',
+              prix: parseFloat(sup.prix || sup.price || 0) || 0
+            }));
+          }
+
+          // Calculer le prix unitaire total (base + suppléments + taille)
+          const itemPrice = parseFloat(item.prix || item.price || 0);
+          const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
+          const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+          const prixUnitaireTotal = itemPrice + supplementsPrice + sizePrice;
+
+          console.log('📦 Insertion détail commande pour article:', item.id);
+          const { error: detailError } = await supabase
+            .from('details_commande')
+            .insert({
+              commande_id: order.id,
+              plat_id: item.id,
+              quantite: item.quantity || 1,
+              prix_unitaire: prixUnitaireTotal,
+              supplements: supplementsData.length > 0 ? supplementsData : null
+            });
+
+          if (detailError) {
+            console.error('❌ Erreur détail commande:', detailError);
+            throw new Error(`Erreur lors de l'ajout des détails de commande: ${detailError.message}`);
+          }
+          console.log('✅ Détail commande ajouté pour article:', item.id);
         }
-
-        // Calculer le prix unitaire total (base + suppléments + taille)
-        const itemPrice = parseFloat(item.prix || item.price || 0);
-        const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
-        const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-        const prixUnitaireTotal = itemPrice + supplementsPrice + sizePrice;
-
-        const { error: detailError } = await supabase
-          .from('details_commande')
-          .insert({
-            commande_id: order.id,
-            plat_id: item.id,
-            quantite: item.quantity || 1,
-            prix_unitaire: prixUnitaireTotal,
-            supplements: supplementsData.length > 0 ? supplementsData : null
-          });
-
-        if (detailError) {
-          throw new Error(`Erreur lors de l'ajout des détails de commande: ${detailError.message}`);
-        }
+        console.log('✅ Tous les détails de commande ont été ajoutés');
+      } catch (detailLoopError) {
+        console.error('❌ Erreur dans la boucle des détails:', detailLoopError);
+        throw detailLoopError;
       }
 
       // Notifier le restaurant (ne pas bloquer la commande si la notification échoue)
       try {
+        console.log('📧 Envoi notification restaurant...');
         await fetch('/api/partner/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -484,8 +496,10 @@ export default function Checkout() {
             orderId: order.id
           })
         });
+        console.log('✅ Notification envoyée');
       } catch (notificationError) {
         // Ne pas bloquer la commande si la notification échoue
+        console.warn('⚠️ Erreur notification (non bloquante):', notificationError);
       }
 
       // Vider le panier
@@ -499,18 +513,38 @@ export default function Checkout() {
       // Réinitialiser le state de soumission AVANT la redirection
       setSubmitting(false);
       
-      // Rediriger immédiatement vers la page de suivi de commande
-      try {
-        const redirectUrl = `/track-order?orderId=${order.id}`;
-        console.log('🔄 Tentative de redirection vers:', redirectUrl);
-        
-        // Utiliser window.location pour forcer la redirection
-        window.location.href = redirectUrl;
-      } catch (redirectError) {
-        console.error('❌ Erreur redirection:', redirectError);
-        // Fallback sur router
-        router.replace(`/track-order?orderId=${order.id}`);
-      }
+      // Stocker l'ID de commande pour la redirection
+      const orderId = order.id;
+      const redirectUrl = `/track-order?orderId=${orderId}`;
+      
+      console.log('🔄 Tentative de redirection vers:', redirectUrl);
+      
+      // Forcer la redirection avec plusieurs méthodes pour garantir qu'elle fonctionne
+      // Utiliser window.location.replace() qui est plus fiable que href
+      // Utiliser setTimeout pour s'assurer que tout le code est exécuté avant la redirection
+      setTimeout(() => {
+        try {
+          console.log('🔄 Exécution redirection...');
+          // Méthode 1: window.location.replace (remplace l'historique, plus fiable)
+          window.location.replace(redirectUrl);
+        } catch (e) {
+          console.error('❌ Erreur window.location.replace:', e);
+          try {
+            // Méthode 2: window.location.href (fallback)
+            window.location.href = redirectUrl;
+          } catch (e2) {
+            console.error('❌ Erreur window.location.href:', e2);
+            try {
+              // Méthode 3: router.push (dernier recours)
+              router.push(redirectUrl);
+            } catch (e3) {
+              console.error('❌ Toutes les méthodes de redirection ont échoué:', e3);
+              // Afficher un message à l'utilisateur
+              alert(`Commande créée avec succès ! ID: ${orderId}. Redirection manuelle nécessaire.`);
+            }
+          }
+        }
+      }, 100); // Petit délai pour garantir que tout est traité
     } catch (error) {
       // Traduire les erreurs en français
       let errorMessage = 'Erreur lors de la création de la commande';
