@@ -225,9 +225,31 @@ export default function Checkout() {
 
       const data = JSON.parse(responseText);
 
-      if (!data.success || !data.livrable) {
+      // VALIDATION STRICTE: Vérifier que la livraison est possible
+      if (!data.success || data.livrable !== true) {
         const message = data.message || 'Livraison non disponible à cette adresse';
+        console.error('❌ Livraison refusée:', data);
         alert(message);
+        // Réinitialiser les frais de livraison
+        setFraisLivraison(0);
+        setTotalAvecLivraison(cart.reduce((sum, item) => {
+          const itemPrice = parseFloat(item.prix || item.price || 0);
+          const itemQuantity = parseInt(item.quantity || 1, 10);
+          let supplementsPrice = 0;
+          if (item.supplements && Array.isArray(item.supplements)) {
+            supplementsPrice = item.supplements.reduce((supSum, sup) => {
+              return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+            }, 0);
+          }
+          let sizePrice = 0;
+          if (item.size && item.size.prix) {
+            sizePrice = parseFloat(item.size.prix) || 0;
+          } else if (item.prix_taille) {
+            sizePrice = parseFloat(item.prix_taille) || 0;
+          }
+          const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+          return sum + totalItemPrice;
+        }, 0));
         return;
       }
 
@@ -312,6 +334,36 @@ export default function Checkout() {
           router.push(`/restaurants/${restaurant.id}`);
           return;
         }
+      }
+
+      // VALIDATION STRICTE: Vérifier à nouveau que l'adresse est livrable AVANT de créer la commande
+      if (!selectedAddress) {
+        alert('Veuillez sélectionner une adresse de livraison');
+        setSubmitting(false);
+        return;
+      }
+
+      const finalAddressCheck = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
+      const finalCheckResponse = await fetch('/api/delivery/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: finalAddressCheck })
+      });
+
+      if (finalCheckResponse.ok) {
+        const finalCheckData = await finalCheckResponse.json();
+        if (!finalCheckData.success || finalCheckData.livrable !== true) {
+          alert(`Cette adresse n'est plus livrable: ${finalCheckData.message || 'Distance trop importante ou adresse invalide'}`);
+          setSubmitting(false);
+          return;
+        }
+        // S'assurer qu'on utilise les frais de livraison les plus récents
+        setFraisLivraison(finalCheckData.frais_livraison || 2.50);
+      } else {
+        console.error('Erreur vérification finale adresse:', finalCheckResponse.status);
+        alert('Erreur lors de la vérification de l\'adresse. Veuillez réessayer.');
+        setSubmitting(false);
+        return;
       }
 
       // Générer un code de sécurité à 6 chiffres pour la livraison

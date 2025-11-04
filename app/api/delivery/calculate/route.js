@@ -199,23 +199,47 @@ export async function POST(request) {
     // 3. Calculer la distance entre restaurant et client
     const lat = parseFloat(clientCoords.lat);
     const lng = parseFloat(clientCoords.lng);
+    
+    // VALIDATION STRICTE: Vérifier que les coordonnées sont valides
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error('❌ Coordonnées invalides pour calcul distance:', { lat, lng });
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: 'Coordonnées invalides pour cette adresse'
+      });
+    }
+    
     const distance = calculateDistance(
       RESTAURANT.lat, RESTAURANT.lng,
       lat, lng
     );
 
-    console.log(`📏 Distance calculée: ${distance.toFixed(2)}km`);
+    console.log(`📏 Distance calculée: ${distance.toFixed(2)}km entre restaurant (${RESTAURANT.lat}, ${RESTAURANT.lng}) et client (${lat}, ${lng})`);
 
-    // 4. Vérifier la distance maximum
-    if (distance > MAX_DISTANCE) {
-      console.log(`❌ Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
+    // VALIDATION STRICTE: Vérifier que la distance est un nombre valide
+    if (isNaN(distance) || distance < 0 || !isFinite(distance)) {
+      console.error('❌ Distance invalide calculée:', distance);
       return NextResponse.json({
         success: false,
         livrable: false,
-        distance: distance,
+        message: 'Erreur lors du calcul de la distance'
+      });
+    }
+
+    // 4. Vérifier la distance maximum (VALIDATION STRICTE)
+    if (distance > MAX_DISTANCE) {
+      console.log(`❌ REJET: Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        distance: parseFloat(distance.toFixed(2)),
+        max_distance: MAX_DISTANCE,
         message: `Livraison impossible: ${distance.toFixed(1)}km (maximum ${MAX_DISTANCE}km)`
       });
     }
+    
+    console.log(`✅ Distance acceptée: ${distance.toFixed(2)}km <= ${MAX_DISTANCE}km`);
 
     // 5. Calculer les frais: 2.50€ + (distance × 0.80€)
     const deliveryFee = calculateDeliveryFee(distance);
