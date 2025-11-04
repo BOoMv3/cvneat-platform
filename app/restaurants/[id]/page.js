@@ -269,7 +269,29 @@ export default function RestaurantDetail({ params }) {
   };
 
   const getSubtotal = () => {
-    return cart.reduce((total, item) => total + ((item.prix || item.price || 0) * (item.quantity || 0)), 0);
+    return cart.reduce((total, item) => {
+      const itemPrice = parseFloat(item.prix || item.price || 0);
+      const itemQuantity = parseInt(item.quantity || 1, 10);
+      
+      // Calculer le prix des suppléments si présents
+      let supplementsPrice = 0;
+      if (item.supplements && Array.isArray(item.supplements)) {
+        supplementsPrice = item.supplements.reduce((sum, sup) => {
+          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+        }, 0);
+      }
+      
+      // Calculer le prix de la taille si présente
+      let sizePrice = 0;
+      if (item.size && item.size.prix) {
+        sizePrice = parseFloat(item.size.prix) || 0;
+      } else if (item.prix_taille) {
+        sizePrice = parseFloat(item.prix_taille) || 0;
+      }
+      
+      const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+      return total + totalItemPrice;
+    }, 0);
   };
 
   const getDeliveryFee = () => {
@@ -397,14 +419,30 @@ export default function RestaurantDetail({ params }) {
                 </button>
               </div>
                 <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
-                  {cart.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-sm">
-                      <div className="flex-1 pr-2">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">{item.nom || item.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{(item.prix || item.price || 0).toFixed(2)}€ x{item.quantity || 1}</p>
+                  {cart.slice(0, 3).map((item, idx) => {
+                    const itemPrice = parseFloat(item.prix || item.price || 0);
+                    const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
+                      ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
+                      : 0;
+                    const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+                    const totalItemPrice = itemPrice + supplementsPrice + sizePrice;
+                    
+                    return (
+                      <div key={item.id || idx} className="flex items-start justify-between text-sm border-b dark:border-gray-700 pb-2">
+                        <div className="flex-1 pr-2 min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">{item.nom || item.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {totalItemPrice.toFixed(2)}€ x{item.quantity || 1}
+                          </p>
+                          {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
+                            <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                              +{item.supplements.length} suppl.
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {cart.length > 3 && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 text-center">+{cart.length - 3} autre(s) article(s)</p>
                   )}
@@ -435,12 +473,41 @@ export default function RestaurantDetail({ params }) {
           <Modal onClose={() => setShowCartModal(false)}>
             <h2 className="text-xl font-bold mb-4">Récapitulatif de votre commande</h2>
             <div className="space-y-2 mb-4">
-              {cart.map((item) => (
-                <div key={item.id} className="flex justify-between">
-                  <span>{item.nom || item.name} x{item.quantity}</span>
-                  <span>{((item.prix || item.price || 0) * (item.quantity || 0)).toFixed(2)}€</span>
-                </div>
-              ))}
+              {cart.map((item, idx) => {
+                const itemPrice = parseFloat(item.prix || item.price || 0);
+                const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
+                  ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
+                  : 0;
+                const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+                const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * (item.quantity || 1);
+                
+                return (
+                  <div key={item.id || idx} className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{item.nom || item.name} x{item.quantity || 1}</span>
+                      <span className="font-bold">{totalItemPrice.toFixed(2)}€</span>
+                    </div>
+                    {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                        <span className="font-medium">Suppléments:</span>
+                        <ul className="list-disc list-inside ml-1">
+                          {item.supplements.map((sup, supIdx) => (
+                            <li key={supIdx}>
+                              {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {item.size && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                        Taille: {item.size.nom || item.size.name || 'Taille'}
+                        {item.size.prix && ` (+${item.size.prix.toFixed(2)}€)`}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <div className="flex justify-between mb-2"><span>Sous-total</span><span>{getSubtotal().toFixed(2)}€</span></div>
             <div className="flex justify-between mb-2"><span>Frais de livraison</span><span>{deliveryFee !== null ? `${deliveryFee.toFixed(2)}€` : 'À calculer après sélection de l\'adresse'}</span></div>

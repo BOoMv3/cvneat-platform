@@ -9,8 +9,29 @@ export default function FloatingCart({ cart, onUpdateQuantity, onRemoveItem, onC
   const [itemCount, setItemCount] = useState(0);
 
   useEffect(() => {
-    const newTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const newItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const newTotal = cart.reduce((sum, item) => {
+      const itemPrice = parseFloat(item.price || item.prix || 0);
+      const itemQuantity = parseInt(item.quantity || 1, 10);
+      
+      // Calculer le prix des suppléments si présents
+      let supplementsPrice = 0;
+      if (item.supplements && Array.isArray(item.supplements)) {
+        supplementsPrice = item.supplements.reduce((supSum, sup) => {
+          return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+        }, 0);
+      }
+      
+      // Calculer le prix de la taille si présente
+      let sizePrice = 0;
+      if (item.size && item.size.prix) {
+        sizePrice = parseFloat(item.size.prix) || 0;
+      } else if (item.prix_taille) {
+        sizePrice = parseFloat(item.prix_taille) || 0;
+      }
+      
+      return sum + ((itemPrice + supplementsPrice + sizePrice) * itemQuantity);
+    }, 0);
+    const newItemCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
     setTotal(newTotal);
     setItemCount(newItemCount);
   }, [cart]);
@@ -65,12 +86,24 @@ export default function FloatingCart({ cart, onUpdateQuantity, onRemoveItem, onC
 
                       {/* Informations du produit */}
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 line-clamp-1">
-                          {item.nom}
+                        <h4 className="font-medium text-gray-900 dark:text-white line-clamp-1">
+                          {item.nom || item.name}
                         </h4>
-                        <p className="text-sm text-gray-600">
-                          {item.prix.toFixed(2)}€
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {(() => {
+                            const itemPrice = parseFloat(item.prix || item.price || 0);
+                            const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
+                              ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
+                              : 0;
+                            const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+                            return (itemPrice + supplementsPrice + sizePrice).toFixed(2);
+                          })()}€
                         </p>
+                        {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                            +{item.supplements.length} suppl.
+                          </p>
+                        )}
                       </div>
 
                       {/* Contrôles de quantité */}

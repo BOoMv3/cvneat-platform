@@ -81,7 +81,29 @@ export default function Panier() {
   };
 
   const getSubtotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => {
+      const itemPrice = parseFloat(item.price || item.prix || 0);
+      const itemQuantity = parseInt(item.quantity || 1, 10);
+      
+      // Calculer le prix des suppléments si présents
+      let supplementsPrice = 0;
+      if (item.supplements && Array.isArray(item.supplements)) {
+        supplementsPrice = item.supplements.reduce((sum, sup) => {
+          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+        }, 0);
+      }
+      
+      // Calculer le prix de la taille si présente
+      let sizePrice = 0;
+      if (item.size && item.size.prix) {
+        sizePrice = parseFloat(item.size.prix) || 0;
+      } else if (item.prix_taille) {
+        sizePrice = parseFloat(item.prix_taille) || 0;
+      }
+      
+      const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+      return total + totalItemPrice;
+    }, 0);
   };
 
   const getDeliveryFee = () => {
@@ -205,7 +227,7 @@ export default function Panier() {
                     <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
                       <div className="flex items-center">
                         <FaStar className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 mr-1" />
-                        <span>{restaurant.rating || '4.5'}</span>
+                        <span>{restaurant.rating || restaurant.averageRating || 'N/A'}</span>
                       </div>
                       <div className="flex items-center">
                         <FaClock className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
@@ -252,9 +274,38 @@ export default function Panier() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 truncate">{item.name}</h4>
-                          <p className="text-gray-600 text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2">{item.description}</p>
-                          <p className="text-base sm:text-lg font-bold text-blue-600">{item.price}€</p>
+                          <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1 truncate">{item.name || item.nom}</h4>
+                          <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2">{item.description}</p>
+                          
+                          {/* Affichage des suppléments */}
+                          {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                              <span className="font-medium">Suppléments:</span>
+                              <ul className="list-disc list-inside ml-1">
+                                {item.supplements.map((sup, idx) => (
+                                  <li key={idx}>
+                                    {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Affichage de la taille si présente */}
+                          {item.size && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                              Taille: {item.size.nom || item.size.name || 'Taille'} 
+                              {item.size.prix && ` (+${item.size.prix.toFixed(2)}€)`}
+                            </div>
+                          )}
+                          
+                          <p className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                            {(parseFloat(item.price || item.prix || 0) + 
+                              (item.supplements ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0) : 0) +
+                              (item.size?.prix ? parseFloat(item.size.prix) : 0) +
+                              (item.prix_taille ? parseFloat(item.prix_taille) : 0)
+                            ).toFixed(2)}€
+                          </p>
                         </div>
                       </div>
                       
@@ -281,8 +332,16 @@ export default function Panier() {
                         </div>
                         
                         <div className="text-right">
-                          <p className="font-bold text-base sm:text-lg text-gray-900">
-                            {(item.price * item.quantity).toFixed(2)}€
+                          <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
+                            {(() => {
+                              const itemPrice = parseFloat(item.price || item.prix || 0);
+                              const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
+                                ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
+                                : 0;
+                              const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+                              const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * (item.quantity || 1);
+                              return totalItemPrice.toFixed(2);
+                            })()}€
                           </p>
                           <button
                             onClick={() => removeFromCart(item.id)}
