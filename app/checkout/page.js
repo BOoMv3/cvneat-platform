@@ -599,25 +599,6 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* Message d'erreur de livraison */}
-            {deliveryError && (
-              <div className="mb-4 sm:mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-700 rounded-lg">
-                <div className="flex items-start">
-                  <FaTimes className="h-5 w-5 text-red-600 dark:text-red-400 mr-3 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-red-800 dark:text-red-300 text-sm sm:text-base mb-1">
-                      ⚠️ Adresse non livrable
-                    </h3>
-                    <p className="text-red-700 dark:text-red-400 text-sm sm:text-base">
-                      {deliveryError}
-                    </p>
-                    <p className="text-red-600 dark:text-red-500 text-xs sm:text-sm mt-2">
-                      Veuillez sélectionner une autre adresse dans la zone de livraison.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Formulaire nouvelle adresse */}
             {showAddressForm && (
@@ -782,6 +763,39 @@ export default function Checkout() {
           </div>
         </div>
       </div>
+
+      {/* Modal pop-up d'erreur de livraison */}
+      {showErrorModal && deliveryError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowErrorModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0">
+                <FaTimes className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">
+                  ⚠️ Adresse non livrable
+                </h3>
+                <p className="text-red-700 dark:text-red-400 text-sm sm:text-base mb-3">
+                  {deliveryError}
+                </p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Veuillez sélectionner une autre adresse dans la zone de livraison.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowErrorModal(false);
+                setDeliveryError(null);
+              }}
+              className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors font-medium"
+            >
+              J'ai compris
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
