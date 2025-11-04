@@ -81,6 +81,15 @@ export async function GET(request) {
       return {
         id: order.id,
         restaurantName: restaurant?.nom || 'Restaurant inconnu',
+        restaurant: {
+          id: restaurant?.id,
+          name: restaurant?.nom || 'Restaurant inconnu',
+          nom: restaurant?.nom || 'Restaurant inconnu',
+          address: restaurant?.adresse || '',
+          adresse: restaurant?.adresse || '',
+          city: restaurant?.ville || '',
+          ville: restaurant?.ville || ''
+        },
         status: order.statut, // Utiliser statut (français)
         total: parseFloat(order.total || 0) || 0,
         deliveryFee: parseFloat(order.frais_livraison || 0) || 0,

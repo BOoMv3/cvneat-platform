@@ -124,9 +124,11 @@ export default function UserOrders() {
 
                 <div className="mb-4">
                   <h4 className="font-medium mb-2 text-gray-900 dark:text-white">Restaurant</h4>
-                  <p className="text-gray-600 dark:text-gray-300">{order.restaurant.name}</p>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    {order.restaurant?.name || order.restaurant?.nom || 'Restaurant inconnu'}
+                  </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {order.restaurant.address}, {order.restaurant.city}
+                    {order.restaurant?.address || order.restaurant?.adresse || ''}, {order.restaurant?.city || order.restaurant?.ville || ''}
                   </p>
                 </div>
 

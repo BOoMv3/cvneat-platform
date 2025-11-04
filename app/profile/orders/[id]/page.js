@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import HomepageNavbar from '../../../../components/HomepageNavbar';
+import Navbar from '../../../../components/Navbar';
 import { FaArrowLeft, FaSpinner, FaCheck, FaTimes } from 'react-icons/fa';
 import { supabase } from '../../../../lib/supabase';
 
@@ -12,10 +12,19 @@ export default function OrderDetail({ params }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
-  const [userPoints, setUserPoints] = useState(0);
-  const [cart, setCart] = useState([]);
-  const [showFloatingCart, setShowFloatingCart] = useState(false);
-  const { id } = params;
+  const [orderId, setOrderId] = useState(null);
+
+  // Gérer params qui peut être une Promise dans Next.js App Router
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await Promise.resolve(params);
+      const id = resolvedParams?.id;
+      if (id) {
+        setOrderId(id);
+      }
+    };
+    resolveParams();
+  }, [params]);
 
   useEffect(() => {
     const checkUserAndFetchOrder = async () => {
@@ -26,21 +35,15 @@ export default function OrderDetail({ params }) {
             return;
         }
         
-        // Charger les points de fidélité
-        const { data: userData } = await supabase
-          .from('users')
-          .select('points_fidelite')
-          .eq('id', user.id)
-          .single();
-        if (userData) {
-          setUserPoints(userData.points_fidelite || 0);
+        if(orderId) {
+          await fetchOrder(orderId);
         }
-        
-        if(id) fetchOrder();
     };
     
-    checkUserAndFetchOrder();
-  }, [id, router]);
+    if (orderId) {
+      checkUserAndFetchOrder();
+    }
+  }, [orderId, router]);
 
   const fetchWithAuth = async (url, options = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -55,69 +58,74 @@ export default function OrderDetail({ params }) {
     return fetch(url, { ...options, headers });
   };
   
-  const fetchOrder = async () => {
+  const fetchOrder = async (id) => {
+    if (!id) {
+      setError('ID de commande manquant');
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     try {
       // Utiliser l'API correcte pour récupérer une commande par ID
       const response = await fetchWithAuth(`/api/orders/${id}`);
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         if (response.status === 404) {
           setError('Commande non trouvée');
         } else if (response.status === 403) {
           setError('Vous n\'êtes pas autorisé à voir cette commande');
+        } else if (response.status === 401) {
+          setError('Authentification requise. Veuillez vous reconnecter.');
+          router.push('/login');
         } else {
-          setError('Erreur lors du chargement de la commande');
+          setError(errorData.error || 'Erreur lors du chargement de la commande');
         }
+        setLoading(false);
         return;
       }
       const data = await response.json();
       setOrder(data);
     } catch (error) {
       console.error('Erreur fetchOrder:', error);
-      setError('Erreur lors du chargement de la commande');
+      setError('Erreur lors du chargement de la commande. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'preparing': return 'bg-blue-100 text-blue-800';
-      case 'ready': return 'bg-green-100 text-green-800';
-      case 'delivered': return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
-      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
-    }
+    // Support des statuts français et anglais
+    const statut = status || '';
+    if (statut === 'en_attente' || statut === 'pending') return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
+    if (statut === 'en_preparation' || statut === 'preparing') return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
+    if (statut === 'pret_a_livrer' || statut === 'ready') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
+    if (statut === 'en_livraison' || statut === 'in_delivery') return 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200';
+    if (statut === 'livree' || statut === 'delivered') return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+    if (statut === 'annulee' || statut === 'cancelled') return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+    return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
   };
 
   const getStatusText = (status) => {
-    switch (status) {
-      case 'pending': return 'En attente';
-      case 'preparing': return 'En préparation';
-      case 'ready': return 'Prêt';
-      case 'delivered': return 'Livré';
-      default: return status;
-    }
+    // Support des statuts français et anglais
+    const statut = status || '';
+    if (statut === 'en_attente' || statut === 'pending') return 'En attente';
+    if (statut === 'en_preparation' || statut === 'preparing') return 'En préparation';
+    if (statut === 'pret_a_livrer' || statut === 'ready') return 'Prêt à livrer';
+    if (statut === 'en_livraison' || statut === 'in_delivery') return 'En livraison';
+    if (statut === 'livree' || statut === 'delivered') return 'Livré';
+    if (statut === 'annulee' || statut === 'cancelled') return 'Annulé';
+    return statut;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Hero Section avec navigation */}
-        <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
-          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-          <HomepageNavbar 
-            user={user} 
-            userPoints={userPoints} 
-            cart={cart} 
-            showFloatingCart={showFloatingCart} 
-            setShowFloatingCart={setShowFloatingCart} 
-          />
-        </section>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
           </div>
         </div>
       </div>
@@ -126,22 +134,18 @@ export default function OrderDetail({ params }) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Hero Section avec navigation */}
-        <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
-          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-          <HomepageNavbar 
-            user={user} 
-            userPoints={userPoints} 
-            cart={cart} 
-            showFloatingCart={showFloatingCart} 
-            setShowFloatingCart={setShowFloatingCart} 
-          />
-        </section>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded relative">
             {error}
           </div>
+          <button
+            onClick={() => router.push('/profile/orders')}
+            className="mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+          >
+            Retour aux commandes
+          </button>
         </div>
       </div>
     );
@@ -149,21 +153,17 @@ export default function OrderDetail({ params }) {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Hero Section avec navigation */}
-        <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
-          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-          <HomepageNavbar 
-            user={user} 
-            userPoints={userPoints} 
-            cart={cart} 
-            showFloatingCart={showFloatingCart} 
-            setShowFloatingCart={setShowFloatingCart} 
-          />
-        </section>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-8">
-            <p className="text-gray-500">Commande non trouvée</p>
+            <p className="text-gray-500 dark:text-gray-400">Commande non trouvée</p>
+            <button
+              onClick={() => router.push('/profile/orders')}
+              className="mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+            >
+              Retour aux commandes
+            </button>
           </div>
         </div>
       </div>
@@ -171,19 +171,9 @@ export default function OrderDetail({ params }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section avec navigation */}
-      <section className="relative h-[200px] overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
-        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-        <HomepageNavbar 
-          user={user} 
-          userPoints={userPoints} 
-          cart={cart} 
-          showFloatingCart={showFloatingCart} 
-          setShowFloatingCart={setShowFloatingCart} 
-        />
-      </section>
-      <main className="container mx-auto px-4 py-8 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Détails de la commande #{order.id}</h1>
@@ -199,10 +189,10 @@ export default function OrderDetail({ params }) {
             </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {new Date(order.createdAt).toLocaleString()}
                 </p>
               </div>

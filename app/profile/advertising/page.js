@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import HomepageNavbar from '../../../components/HomepageNavbar';
+import Navbar from '../../../components/Navbar';
 import { FaArrowLeft, FaImage, FaEdit, FaTrash, FaEye, FaCheckCircle, FaTimesCircle, FaClock } from 'react-icons/fa';
 
 export default function AdvertisingManagement() {
@@ -69,23 +69,23 @@ export default function AdvertisingManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HomepageNavbar user={user} />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => router.push('/profile')}
-              className="flex items-center text-gray-600 hover:text-gray-900"
+              className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <FaArrowLeft className="mr-2" />
               Retour
             </button>
-            <h1 className="text-3xl font-bold">Gestion de mes publicités</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion de mes publicités</h1>
           </div>
           <button
             onClick={() => router.push('/advertising/request')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors font-medium"
           >
             <FaImage className="inline mr-2" />
             Nouvelle publicité
@@ -93,13 +93,13 @@ export default function AdvertisingManagement() {
         </div>
 
         {ads.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <FaImage className="text-6xl text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">Aucune publicité</h2>
-            <p className="text-gray-500 mb-6">Vous n'avez pas encore de publicité active.</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+            <FaImage className="text-6xl text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">Aucune publicité</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">Vous n'avez pas encore de publicité active.</p>
             <button
               onClick={() => router.push('/advertising/request')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors font-medium"
             >
               Demander une publicité
             </button>
