@@ -471,24 +471,37 @@ export default function Checkout() {
 
     try {
       // Créer la commande avec le payment_intent_id
+      // Préparer les données d'insertion avec seulement les colonnes qui existent
+      const insertData = {
+        user_id: orderData.user_id,
+        restaurant_id: orderData.restaurant_id,
+        total: orderData.total,
+        frais_livraison: orderData.frais_livraison,
+        adresse_livraison: orderData.adresse_livraison,
+        statut: 'en_attente'
+      };
+
+      // Ajouter les colonnes optionnelles si elles existent
+      if (orderData.security_code) {
+        insertData.security_code = orderData.security_code;
+      }
+      
+      // Ajouter les colonnes Stripe (elles doivent exister - exécuter add-stripe-payment-columns.sql)
+      insertData.stripe_payment_intent_id = confirmedPaymentIntentId;
+      insertData.payment_status = 'paid';
+
       const { data: order, error: orderError } = await supabase
         .from('commandes')
-        .insert({
-          user_id: orderData.user_id,
-          restaurant_id: orderData.restaurant_id,
-          total: orderData.total,
-          frais_livraison: orderData.frais_livraison,
-          adresse_livraison: orderData.adresse_livraison,
-          statut: 'en_attente',
-          security_code: orderData.security_code,
-          stripe_payment_intent_id: confirmedPaymentIntentId,
-          payment_status: 'paid'
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (orderError) {
         console.error('❌ Erreur création commande:', orderError);
+        // Si l'erreur concerne payment_status, informer l'utilisateur
+        if (orderError.message && orderError.message.includes('payment_status')) {
+          throw new Error('Erreur: La colonne payment_status n\'existe pas dans la base de données. Veuillez exécuter le script SQL add-stripe-payment-columns.sql dans Supabase.');
+        }
         throw orderError;
       }
 
