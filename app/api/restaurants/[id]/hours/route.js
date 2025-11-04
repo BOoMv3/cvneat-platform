@@ -76,7 +76,19 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const { id } = params;
-    const body = await request.json();
+    
+    // Gérer le cas où le body est vide ou manquant
+    let body = {};
+    try {
+      const contentType = request.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        body = await request.json();
+      }
+    } catch (e) {
+      // Si pas de body ou erreur de parsing, utiliser la date actuelle
+      console.log('Pas de body dans la requête, utilisation de la date actuelle');
+    }
+    
     const checkDate = body.date ? new Date(body.date) : new Date();
 
     const { data: restaurant, error } = await supabase
