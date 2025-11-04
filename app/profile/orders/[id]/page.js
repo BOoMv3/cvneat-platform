@@ -186,10 +186,13 @@ export default function OrderDetail({ params }) {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Détails de la commande #{order.id}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Détails de la commande #{order.id}</h1>
             <button
-              onClick={() => router.push('/profile/orders')}
-              className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white flex items-center"
+              onClick={(e) => {
+                e.preventDefault();
+                router.push('/profile/orders');
+              }}
+              className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center transition-colors font-medium"
             >
               <FaArrowLeft className="mr-2" />
               Retour aux commandes
@@ -210,94 +213,146 @@ export default function OrderDetail({ params }) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <h2 className="text-lg font-medium mb-4">Restaurant</h2>
-                <p className="text-gray-600">{order.restaurant.name}</p>
-                <p className="text-sm text-gray-500">
-                  {order.restaurant.address}, {order.restaurant.city}
+                <h2 className="text-lg font-medium mb-4 dark:text-gray-100">Restaurant</h2>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {order.restaurant?.name || order.restaurant?.nom || 'Restaurant inconnu'}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {order.restaurant?.address || order.restaurant?.adresse || ''}, {order.restaurant?.city || order.restaurant?.ville || ''}
                 </p>
               </div>
 
               <div>
-                <h2 className="text-lg font-medium mb-4">Adresse de livraison</h2>
-                <p className="text-gray-600">
-                  {order.deliveryAddress}, {order.deliveryCity} {order.deliveryPostalCode}
+                <h2 className="text-lg font-medium mb-4 dark:text-gray-100">Adresse de livraison</h2>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {order.deliveryAddress || ''}, {order.deliveryCity || ''} {order.deliveryPostalCode || ''}
                 </p>
-                <p className="text-gray-600">Tél: {order.deliveryPhone}</p>
+                <p className="text-gray-600 dark:text-gray-300">Tél: {order.deliveryPhone || 'Non renseigné'}</p>
               </div>
             </div>
 
             <div className="mb-6">
-              <h2 className="text-lg font-medium mb-4">Items commandés</h2>
+              <h2 className="text-lg font-medium mb-4 dark:text-gray-100">Items commandés</h2>
               <div className="space-y-4">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-500">Quantité: {item.quantity}</p>
+                {(order.items || order.details_commande || []).map((item, idx) => {
+                  const itemName = item.name || item.nom || item.menus?.nom || 'Article';
+                  const itemQuantity = item.quantity || item.quantite || 1;
+                  const itemPrice = parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0);
+                  const supplements = item.supplements || item.supplements_data || [];
+                  const totalItemPrice = itemPrice * itemQuantity;
+                  
+                  // Calculer le prix des suppléments si présents
+                  let supplementsPrice = 0;
+                  if (Array.isArray(supplements) && supplements.length > 0) {
+                    supplementsPrice = supplements.reduce((sum, sup) => {
+                      return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                    }, 0) * itemQuantity;
+                  }
+                  
+                  return (
+                    <div key={item.id || idx} className="flex justify-between items-start border-b dark:border-gray-700 pb-4">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white">{itemName}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Quantité: {itemQuantity}</p>
+                        {Array.isArray(supplements) && supplements.length > 0 && (
+                          <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                            <span className="font-medium">Suppléments:</span>
+                            <ul className="list-disc list-inside ml-2 mt-1">
+                              {supplements.map((sup, supIdx) => (
+                                <li key={supIdx}>
+                                  {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {(totalItemPrice + supplementsPrice).toFixed(2)}€
+                      </p>
                     </div>
-                    <p className="font-medium">{item.price}€</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            <div className="border-t pt-6">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <p className="text-sm text-gray-500">Sous-total (articles)</p>
-                  <p className="text-lg font-medium">
+            <div className="border-t dark:border-gray-700 pt-6">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <p className="text-gray-600 dark:text-gray-300">Sous-total (articles)</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
                     {(() => {
-                      // Calculer le sous-total depuis les détails
+                      // Calculer le sous-total depuis les détails avec suppléments
                       if (order.details_commande && Array.isArray(order.details_commande)) {
                         const subtotal = order.details_commande.reduce((sum, detail) => {
-                          const prix = detail.prix_unitaire || detail.menus?.prix || 0;
-                          const qty = detail.quantite || 1;
+                          const prix = parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0;
+                          const qty = parseInt(detail.quantite || 1, 10);
+                          
+                          // Ajouter le prix des suppléments
+                          let supplementsPrice = 0;
+                          if (detail.supplements && Array.isArray(detail.supplements)) {
+                            supplementsPrice = detail.supplements.reduce((supSum, sup) => {
+                              return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                            }, 0);
+                          }
+                          
+                          return sum + ((prix + supplementsPrice) * qty);
+                        }, 0);
+                        return subtotal.toFixed(2);
+                      }
+                      // Fallback avec items
+                      if (order.items && Array.isArray(order.items)) {
+                        const subtotal = order.items.reduce((sum, item) => {
+                          const prix = parseFloat(item.price || 0) || 0;
+                          const qty = parseInt(item.quantity || 1, 10);
                           return sum + (prix * qty);
                         }, 0);
                         return subtotal.toFixed(2);
                       }
-                      // Fallback
+                      // Dernier fallback
                       const subtotal = parseFloat(order.total || 0) - parseFloat(order.frais_livraison || order.deliveryFee || 0);
-                      return subtotal.toFixed(2);
+                      return isNaN(subtotal) ? '0.00' : subtotal.toFixed(2);
                     })()}€
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Frais de livraison</p>
-                  <p className="text-lg font-medium">
+                <div className="flex justify-between">
+                  <p className="text-gray-600 dark:text-gray-300">Frais de livraison</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
                     {(parseFloat(order.frais_livraison || order.deliveryFee || 0)).toFixed(2)}€
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Total</p>
-                  <p className="text-lg font-medium">
+                <div className="flex justify-between font-bold text-lg pt-2 border-t dark:border-gray-700">
+                  <p className="text-gray-900 dark:text-white">Total</p>
+                  <p className="text-gray-900 dark:text-white">
                     {(() => {
                       // Calculer le total correctement
-                      const subtotal = order.details_commande && Array.isArray(order.details_commande) 
-                        ? order.details_commande.reduce((sum, detail) => {
-                            const prix = detail.prix_unitaire || detail.menus?.prix || 0;
-                            const qty = detail.quantite || 1;
-                            return sum + (prix * qty);
-                          }, 0)
-                        : (parseFloat(order.total || 0) - parseFloat(order.frais_livraison || order.deliveryFee || 0));
+                      let subtotal = 0;
+                      if (order.details_commande && Array.isArray(order.details_commande)) {
+                        subtotal = order.details_commande.reduce((sum, detail) => {
+                          const prix = parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0;
+                          const qty = parseInt(detail.quantite || 1, 10);
+                          let supplementsPrice = 0;
+                          if (detail.supplements && Array.isArray(detail.supplements)) {
+                            supplementsPrice = detail.supplements.reduce((supSum, sup) => {
+                              return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                            }, 0);
+                          }
+                          return sum + ((prix + supplementsPrice) * qty);
+                        }, 0);
+                      } else if (order.items && Array.isArray(order.items)) {
+                        subtotal = order.items.reduce((sum, item) => {
+                          const prix = parseFloat(item.price || 0) || 0;
+                          const qty = parseInt(item.quantity || 1, 10);
+                          return sum + (prix * qty);
+                        }, 0);
+                      } else {
+                        subtotal = parseFloat(order.total || 0) - parseFloat(order.frais_livraison || order.deliveryFee || 0);
+                      }
                       const deliveryFee = parseFloat(order.frais_livraison || order.deliveryFee || 0);
-                      return (subtotal + deliveryFee).toFixed(2);
+                      const total = subtotal + deliveryFee;
+                      return isNaN(total) ? '0.00' : total.toFixed(2);
                     })()}€
                   </p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <p className="text-gray-600">Sous-total</p>
-                  <p>{order.totalAmount}€</p>
-                </div>
-                <div className="flex justify-between">
-                  <p className="text-gray-600">Frais de livraison</p>
-                  <p>{order.deliveryFee}€</p>
-                </div>
-                <div className="flex justify-between font-medium text-lg pt-2 border-t">
-                  <p>Total</p>
-                  <p>{order.totalAmount + order.deliveryFee}€</p>
                 </div>
               </div>
             </div>

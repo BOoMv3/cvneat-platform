@@ -48,6 +48,7 @@ export async function GET(request, { params }) {
           id,
           quantite,
           prix_unitaire,
+          supplements,
           menus (
             nom,
             prix
@@ -90,6 +91,7 @@ export async function GET(request, { params }) {
             id,
             quantite,
             prix_unitaire,
+            supplements,
             menus (
               nom,
               prix
@@ -115,12 +117,29 @@ export async function GET(request, { params }) {
 
     // Formater les données pour le frontend
     const restaurant = order.restaurants;
-    const items = (order.details_commande || []).map(detail => ({
-      id: detail.id,
-      name: detail.menus?.nom || 'Article',
-      quantity: detail.quantite || 0,
-      price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0
-    }));
+    const items = (order.details_commande || []).map(detail => {
+      // Récupérer les suppléments depuis le détail
+      let supplements = [];
+      if (detail.supplements) {
+        if (typeof detail.supplements === 'string') {
+          try {
+            supplements = JSON.parse(detail.supplements);
+          } catch (e) {
+            supplements = [];
+          }
+        } else if (Array.isArray(detail.supplements)) {
+          supplements = detail.supplements;
+        }
+      }
+      
+      return {
+        id: detail.id,
+        name: detail.menus?.nom || 'Article',
+        quantity: detail.quantite || 0,
+        price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
+        supplements: supplements
+      };
+    });
 
     // Extraire l'adresse de livraison
     const addressParts = (order.adresse_livraison || '').split(',').map(s => s.trim());
@@ -146,7 +165,25 @@ export async function GET(request, { params }) {
       total: parseFloat(order.total || 0) || 0,
       deliveryFee: parseFloat(order.frais_livraison || 0) || 0,
       items: items,
-      details_commande: order.details_commande || []
+      details_commande: (order.details_commande || []).map(detail => {
+        // S'assurer que les suppléments sont inclus dans details_commande
+        let supplements = [];
+        if (detail.supplements) {
+          if (typeof detail.supplements === 'string') {
+            try {
+              supplements = JSON.parse(detail.supplements);
+            } catch (e) {
+              supplements = [];
+            }
+          } else if (Array.isArray(detail.supplements)) {
+            supplements = detail.supplements;
+          }
+        }
+        return {
+          ...detail,
+          supplements: supplements
+        };
+      })
     };
 
     return NextResponse.json(formattedOrder);
