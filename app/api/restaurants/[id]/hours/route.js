@@ -99,34 +99,59 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier les horaires
-    const horaires = restaurant.horaires || {};
+    let horaires = restaurant.horaires || {};
+    
+    // Si horaires est une chaîne JSON, la parser
+    if (typeof horaires === 'string') {
+      try {
+        horaires = JSON.parse(horaires);
+      } catch (e) {
+        console.error('Erreur parsing horaires JSON dans POST:', e);
+        horaires = {};
+      }
+    }
+    
     const dayOfWeek = checkDate.getDay(); // 0 = dimanche, 1 = lundi, etc.
     
-    // Mapping des jours
-    const dayMapping = {
-      0: 'dimanche',
-      1: 'lundi',
-      2: 'mardi',
-      3: 'mercredi',
-      4: 'jeudi',
-      5: 'vendredi',
-      6: 'samedi'
+    // Mapping des jours avec toutes les variantes possibles
+    const dayVariants = {
+      0: ['dimanche', 'Dimanche', 'DIMANCHE'],
+      1: ['lundi', 'Lundi', 'LUNDI'],
+      2: ['mardi', 'Mardi', 'MARDI'],
+      3: ['mercredi', 'Mercredi', 'MERCREDI'],
+      4: ['jeudi', 'Jeudi', 'JEUDI'],
+      5: ['vendredi', 'Vendredi', 'VENDREDI'],
+      6: ['samedi', 'Samedi', 'SAMEDI']
     };
 
-    const todayKey = dayMapping[dayOfWeek];
+    const variants = dayVariants[dayOfWeek] || ['lundi'];
+    const todayKey = variants[0]; // Clé principale en minuscule
     
-    // Chercher les horaires avec différentes variantes de casse
-    let todayHours = horaires[todayKey] || horaires[todayKey.charAt(0).toUpperCase() + todayKey.slice(1)] || horaires[todayKey.toUpperCase()];
+    // Chercher les horaires avec toutes les variantes de casse
+    let todayHours = null;
+    for (const variant of variants) {
+      if (horaires[variant]) {
+        todayHours = horaires[variant];
+        break;
+      }
+    }
     
     // Si pas de configuration ou fermé ce jour
-    if (!todayHours || !todayHours.ouvert) {
-      console.log('Restaurant fermé - todayKey:', todayKey, 'todayHours:', todayHours, 'horaires:', horaires);
+    if (!todayHours || todayHours.ouvert !== true) {
+      console.log('🔴 Restaurant fermé - todayKey:', todayKey, 'dayOfWeek:', dayOfWeek, 'todayHours:', todayHours, 'allHoraires keys:', Object.keys(horaires), 'allHoraires:', horaires);
       return NextResponse.json({
         isOpen: false,
         message: 'Restaurant fermé aujourd\'hui',
         reason: 'closed_today',
         today: todayKey,
-        debug: { todayKey, todayHours, allHoraires: Object.keys(horaires) }
+        dayOfWeek,
+        debug: { 
+          todayKey, 
+          todayHours, 
+          allHorairesKeys: Object.keys(horaires),
+          allHoraires: horaires,
+          variants: variants
+        }
       });
     }
 
@@ -157,6 +182,17 @@ export async function POST(request, { params }) {
     // Vérifier si on est dans la plage horaire
     const isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
 
+    console.log('🕐 Vérification horaires:', {
+      currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
+      currentTimeMinutes,
+      openTime: todayHours.ouverture,
+      openTimeMinutes,
+      closeTime: todayHours.fermeture,
+      closeTimeMinutes,
+      isOpen,
+      todayKey
+    });
+
     return NextResponse.json({
       isOpen,
       message: isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
@@ -167,7 +203,14 @@ export async function POST(request, { params }) {
       currentTimeMinutes,
       openTimeMinutes,
       closeTimeMinutes,
-      today: todayKey
+      today: todayKey,
+      debug: {
+        currentTimeMinutes,
+        openTimeMinutes,
+        closeTimeMinutes,
+        isOpen,
+        todayHours
+      }
     });
   } catch (error) {
     console.error('Erreur vérification horaires:', error);
