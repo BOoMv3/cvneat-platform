@@ -1,9 +1,12 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { FaArrowLeft } from 'react-icons/fa';
 import FormInput from '../../components/FormInput';
 import { supabase } from '../../lib/supabase';
 
 export default function RestaurantRequest() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     nom: '',
     email: '',
@@ -66,10 +69,17 @@ export default function RestaurantRequest() {
 
   return (
     <>
-      <main className="min-h-screen bg-gray-50 py-12">
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-3xl font-bold text-center mb-8">Devenir Partenaire CVN-EAT</h1>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
+            >
+              <FaArrowLeft className="mr-2" />
+              Retour
+            </button>
+            <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Devenir Partenaire CVN-EAT</h1>
             
             {submitSuccess ? (
               <div className="text-center">
@@ -78,20 +88,28 @@ export default function RestaurantRequest() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-semibold mb-2">Demande soumise avec succès !</h2>
-                <p className="text-gray-600 mb-4">
+                <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Demande soumise avec succès !</h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
                   Nous avons bien reçu votre demande. Notre équipe va l'examiner et vous contactera dans les plus brefs délais.
                 </p>
-                <button
-                  onClick={() => setSubmitSuccess(false)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  Soumettre une nouvelle demande
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => router.push('/')}
+                    className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors font-medium"
+                  >
+                    Retour à l'accueil
+                  </button>
+                  <button
+                    onClick={() => setSubmitSuccess(false)}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-medium"
+                  >
+                    Soumettre une nouvelle demande
+                  </button>
+                </div>
               </div>
             ) : (
               <>
-                <p className="text-gray-600 mb-8 text-center">
+                <p className="text-gray-600 dark:text-gray-300 mb-8 text-center">
                   Remplissez le formulaire ci-dessous pour soumettre votre demande de partenariat. 
                   Notre équipe vous contactera pour discuter des modalités de collaboration.
                 </p>
