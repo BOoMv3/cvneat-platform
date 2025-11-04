@@ -370,8 +370,9 @@ export default function Checkout() {
         body: JSON.stringify({ address: finalAddressCheck })
       });
 
+      let finalCheckData = null;
       if (finalCheckResponse.ok) {
-        const finalCheckData = await finalCheckResponse.json();
+        finalCheckData = await finalCheckResponse.json();
         if (!finalCheckData.success || finalCheckData.livrable !== true) {
           alert(`Cette adresse n'est plus livrable: ${finalCheckData.message || 'Distance trop importante ou adresse invalide'}`);
           setSubmitting(false);
