@@ -30,17 +30,25 @@ export async function GET(request, { params }) {
     }
     
     const joursSemaine = [
-      { key: 'lundi', label: 'Lundi', dayIndex: 1 },
-      { key: 'mardi', label: 'Mardi', dayIndex: 2 },
-      { key: 'mercredi', label: 'Mercredi', dayIndex: 3 },
-      { key: 'jeudi', label: 'Jeudi', dayIndex: 4 },
-      { key: 'vendredi', label: 'Vendredi', dayIndex: 5 },
-      { key: 'samedi', label: 'Samedi', dayIndex: 6 },
-      { key: 'dimanche', label: 'Dimanche', dayIndex: 0 }
+      { key: 'lundi', label: 'Lundi', dayIndex: 1, variants: ['lundi', 'Lundi', 'LUNDI'] },
+      { key: 'mardi', label: 'Mardi', dayIndex: 2, variants: ['mardi', 'Mardi', 'MARDI'] },
+      { key: 'mercredi', label: 'Mercredi', dayIndex: 3, variants: ['mercredi', 'Mercredi', 'MERCREDI'] },
+      { key: 'jeudi', label: 'Jeudi', dayIndex: 4, variants: ['jeudi', 'Jeudi', 'JEUDI'] },
+      { key: 'vendredi', label: 'Vendredi', dayIndex: 5, variants: ['vendredi', 'Vendredi', 'VENDREDI'] },
+      { key: 'samedi', label: 'Samedi', dayIndex: 6, variants: ['samedi', 'Samedi', 'SAMEDI'] },
+      { key: 'dimanche', label: 'Dimanche', dayIndex: 0, variants: ['dimanche', 'Dimanche', 'DIMANCHE'] }
     ];
 
     const formattedHours = joursSemaine.map(jour => {
-      const jourHoraire = horaires[jour.key];
+      // Chercher le jour dans les horaires avec différentes variantes de casse
+      let jourHoraire = null;
+      for (const variant of jour.variants) {
+        if (horaires[variant]) {
+          jourHoraire = horaires[variant];
+          break;
+        }
+      }
+      
       return {
         day: jour.label,
         day_key: jour.key,
@@ -106,15 +114,19 @@ export async function POST(request, { params }) {
     };
 
     const todayKey = dayMapping[dayOfWeek];
-    const todayHours = horaires[todayKey];
-
+    
+    // Chercher les horaires avec différentes variantes de casse
+    let todayHours = horaires[todayKey] || horaires[todayKey.charAt(0).toUpperCase() + todayKey.slice(1)] || horaires[todayKey.toUpperCase()];
+    
     // Si pas de configuration ou fermé ce jour
     if (!todayHours || !todayHours.ouvert) {
+      console.log('Restaurant fermé - todayKey:', todayKey, 'todayHours:', todayHours, 'horaires:', horaires);
       return NextResponse.json({
         isOpen: false,
         message: 'Restaurant fermé aujourd\'hui',
         reason: 'closed_today',
-        today: todayKey
+        today: todayKey,
+        debug: { todayKey, todayHours, allHoraires: Object.keys(horaires) }
       });
     }
 

@@ -47,6 +47,28 @@ export default function RestaurantDetail({ params }) {
     const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
     setFavorites(favorites);
     setIsFavorite(favorites.includes(params.id));
+    
+    // Rafraîchir le statut d'ouverture toutes les minutes
+    const statusInterval = setInterval(() => {
+      const checkStatus = async () => {
+        try {
+          const response = await fetch(`/api/restaurants/${params.id}/hours`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setIsRestaurantOpen(data.isOpen === true);
+            console.log('Statut rafraîchi:', data);
+          }
+        } catch (err) {
+          console.error('Erreur rafraîchissement statut:', err);
+        }
+      };
+      checkStatus();
+    }, 60000); // Toutes les minutes
+    
+    return () => clearInterval(statusInterval);
   }, [params.id]);
 
   useEffect(() => {
