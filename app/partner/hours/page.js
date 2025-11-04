@@ -98,18 +98,62 @@ export default function PartnerHours() {
     setSuccess('');
 
     try {
-      const { error } = await supabase
+      // Vérifier que le restaurant existe
+      if (!restaurant || !restaurant.id) {
+        throw new Error('Restaurant non trouvé');
+      }
+
+      // Nettoyer et valider les horaires avant sauvegarde
+      const cleanedHoraires = {};
+      joursSemaine.forEach(jour => {
+        const horaire = horaires[jour.key];
+        if (horaire) {
+          cleanedHoraires[jour.key] = {
+            ouvert: horaire.ouvert || false,
+            ouverture: horaire.ouvert ? (horaire.ouverture || '09:00') : null,
+            fermeture: horaire.ouvert ? (horaire.fermeture || '22:00') : null
+          };
+        } else {
+          cleanedHoraires[jour.key] = {
+            ouvert: false,
+            ouverture: null,
+            fermeture: null
+          };
+        }
+      });
+
+      console.log('Horaires à sauvegarder:', cleanedHoraires);
+
+      // Sauvegarder dans Supabase
+      const { data, error } = await supabase
         .from('restaurants')
-        .update({ horaires })
-        .eq('id', restaurant.id);
+        .update({ 
+          horaires: cleanedHoraires,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', restaurant.id)
+        .select('horaires');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        throw new Error(error.message || 'Erreur lors de la sauvegarde');
+      }
 
+      if (!data || data.length === 0) {
+        throw new Error('Aucune donnée retournée après la mise à jour');
+      }
+
+      console.log('Horaires sauvegardées avec succès:', data[0].horaires);
+
+      // Mettre à jour l'état local avec les données sauvegardées
+      setRestaurant({ ...restaurant, horaires: data[0].horaires });
+      
       setSuccess('Horaires mis à jour avec succès !');
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
-      setError('Erreur lors de la sauvegarde des horaires');
-      console.error('Erreur sauvegarde horaires:', err);
+      console.error('Erreur complète sauvegarde horaires:', err);
+      setError(err.message || 'Erreur lors de la sauvegarde des horaires. Veuillez réessayer.');
+      setTimeout(() => setError(''), 5000);
     } finally {
       setSaving(false);
     }
@@ -160,14 +204,16 @@ export default function PartnerHours() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-6 flex items-center">
+            <FaTimes className="mr-2 flex-shrink-0" />
+            <span>{error}</span>
           </div>
         )}
         
         {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-            {success}
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded mb-6 flex items-center">
+            <FaCheck className="mr-2 flex-shrink-0" />
+            <span>{success}</span>
           </div>
         )}
 
