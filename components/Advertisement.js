@@ -19,17 +19,24 @@ export default function Advertisement({ position, className = '' }) {
 
   const fetchAd = async () => {
     try {
-      // Récupérer les publicités actives OU en attente d'approbation (si payées)
-      const { data, error } = await supabase
+      // Récupérer les publicités actives OU payées (même en attente d'approbation)
+      const { data: allAds, error } = await supabase
         .from('advertisements')
         .select('*')
         .eq('position', position)
-        .or('is_active.eq.true,and(is_active.eq.false,status.eq.pending_approval,payment_status.eq.paid)')
-        // Filtrer par statut : approuvé, actif, ou en attente d'approbation
         .in('status', ['approved', 'active', 'pending_approval'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Erreur récupération publicités:', error);
+        return;
+      }
+
+      // Filtrer : is_active = true OU (payment_status = 'paid' ET status = 'pending_approval')
+      const data = allAds?.find(ad => 
+        ad.is_active === true || 
+        (ad.payment_status === 'paid' && ad.status === 'pending_approval')
+      ) || null;
 
       // Vérifier si la date est dans la plage valide
       if (data) {
