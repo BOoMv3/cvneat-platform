@@ -11,23 +11,62 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [supplements, setSupplements] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Récupérer les suppléments du restaurant
+  // Récupérer les suppléments depuis l'item du menu ou le restaurant
   useEffect(() => {
-    if (isOpen && restaurantId) {
-      fetchSupplements();
+    if (isOpen) {
+      // D'abord, vérifier si l'item a des suppléments intégrés
+      if (item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0) {
+        // Parser les suppléments si c'est une chaîne JSON
+        let parsedSupplements = item.supplements;
+        if (typeof item.supplements === 'string') {
+          try {
+            parsedSupplements = JSON.parse(item.supplements);
+          } catch (e) {
+            parsedSupplements = [];
+          }
+        }
+        // Formater les suppléments pour correspondre au format attendu
+        const formattedSupplements = parsedSupplements.map((sup, idx) => ({
+          id: sup.id || `supp-${idx}`,
+          name: sup.nom || sup.name || 'Supplément',
+          price: parseFloat(sup.prix || sup.price || 0),
+          description: sup.description || ''
+        }));
+        setSupplements(formattedSupplements);
+        setLoading(false);
+      } else if (restaurantId) {
+        // Sinon, récupérer depuis l'API
+        fetchSupplements();
+      } else {
+        setSupplements([]);
+        setLoading(false);
+      }
     }
-  }, [isOpen, restaurantId]);
+  }, [isOpen, restaurantId, item]);
 
   const fetchSupplements = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+      // Essayer d'abord l'API spécifique au menu item
+      let response = await fetch(`/api/menu/${item.id}/supplements`);
+      if (!response.ok || (await response.json()).length === 0) {
+        // Si pas de suppléments spécifiques, essayer l'API du restaurant
+        response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+      }
       if (response.ok) {
         const data = await response.json();
-        setSupplements(data);
+        // Formater les données pour correspondre au format attendu
+        const formattedData = data.map((sup, idx) => ({
+          id: sup.id || `supp-${idx}`,
+          name: sup.nom || sup.name || 'Supplément',
+          price: parseFloat(sup.prix || sup.price || 0),
+          description: sup.description || ''
+        }));
+        setSupplements(formattedData);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des suppléments:', error);
+      setSupplements([]);
     } finally {
       setLoading(false);
     }

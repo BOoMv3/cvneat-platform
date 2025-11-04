@@ -565,10 +565,6 @@ export default function Checkout() {
                 </span>
                 <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
               </div>
-              {/* Debug affichage */}
-              <div key={`debug-${forceUpdate}`} className="text-xs text-gray-400 dark:text-gray-500">
-                Debug: fraisLivraison={fraisLivraison}, forceUpdate={forceUpdate}
-              </div>
               <div key={`total-${forceUpdate}`} className="border-t dark:border-gray-700 pt-2 sm:pt-3">
                 <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
                   <span>Total</span>

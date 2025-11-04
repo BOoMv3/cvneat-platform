@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import HomepageNavbar from '../../components/HomepageNavbar';
+import Navbar from '../../components/Navbar';
 import { FaArrowLeft, FaMotorcycle, FaCheckCircle } from 'react-icons/fa';
 
 export default function BecomeDelivery() {
@@ -97,8 +97,8 @@ export default function BecomeDelivery() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HomepageNavbar user={user} />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Navbar />
         <div className="max-w-2xl mx-auto px-4 py-12">
           <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
             <FaCheckCircle className="text-green-500 text-6xl mx-auto mb-4" />
@@ -111,8 +111,8 @@ export default function BecomeDelivery() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HomepageNavbar user={user} />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <button
           onClick={() => router.back()}
