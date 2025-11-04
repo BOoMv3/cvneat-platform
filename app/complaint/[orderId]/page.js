@@ -190,8 +190,30 @@ export default function ComplaintForm({ params }) {
       }
 
       const orderTotal = parseFloat(order.total || order.total_amount || 0);
-      if (parseFloat(formData.requestedRefundAmount) > orderTotal) {
-        throw new Error('Le montant de remboursement ne peut pas dépasser le total de la commande');
+      const maxRefund = orderTotal * 0.7; // Maximum 70% du total
+      if (parseFloat(formData.requestedRefundAmount) > maxRefund) {
+        throw new Error(`Le montant de remboursement ne peut pas dépasser ${maxRefund.toFixed(2)}€ (70% du total de la commande). Pour un remboursement complet, contactez le support.`);
+      }
+      
+      if (orderTotal > 10 && parseFloat(formData.requestedRefundAmount) < 5) {
+        throw new Error('Le montant de remboursement minimum est de 5€ pour les commandes supérieures à 10€');
+      }
+      
+      // Validation de la longueur du titre et description
+      if (formData.title.trim().length < 10) {
+        throw new Error('Le titre doit contenir au moins 10 caractères');
+      }
+      
+      if (formData.title.trim().length > 200) {
+        throw new Error('Le titre ne peut pas dépasser 200 caractères');
+      }
+      
+      if (formData.description.trim().length < 50) {
+        throw new Error('La description doit contenir au moins 50 caractères pour être prise en compte');
+      }
+      
+      if (formData.description.trim().length > 2000) {
+        throw new Error('La description ne peut pas dépasser 2000 caractères');
       }
 
       // Récupérer le token d'authentification
@@ -414,7 +436,7 @@ export default function ComplaintForm({ params }) {
                   value={formData.requestedRefundAmount}
                   onChange={handleInputChange}
                   min="0"
-                  max={parseFloat(order.total || order.total_amount || 0)}
+                  max={(parseFloat(order.total || order.total_amount || 0) * 0.7).toFixed(2)}
                   step="0.01"
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                   required
