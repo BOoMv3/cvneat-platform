@@ -307,13 +307,14 @@ export default function TrackOrder() {
   // Auto-rechercher la commande quand orderId est défini depuis l'URL
   useEffect(() => {
     if (orderId && searchParams?.get('orderId') === orderId) {
-      // Attendre un peu pour que l'état soit bien mis à jour
+      // Attendre un peu pour que l'état soit bien mis à jour et que la commande soit créée en BDD
       const timer = setTimeout(() => {
+        console.log('🔄 Auto-recherche de la commande:', orderId);
         fetchOrder();
-      }, 300);
+      }, 1000); // Augmenter le délai pour laisser le temps à la commande d'être créée
       return () => clearTimeout(timer);
     }
-  }, [orderId]);
+  }, [orderId, searchParams]);
 
   // Demander la permission pour les notifications
   useEffect(() => {

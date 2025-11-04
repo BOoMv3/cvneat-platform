@@ -486,8 +486,14 @@ export default function Checkout() {
       safeLocalStorage.removeItem('cart');
       setCart([]);
 
-      // Rediriger vers la page de suivi de commande
-      router.push(`/track-order?orderId=${order.id}`);
+      // Rediriger vers la page de suivi de commande avec un délai pour s'assurer que tout est sauvegardé
+      console.log('✅ Commande créée avec succès, ID:', order.id);
+      console.log('✅ Redirection vers:', `/track-order?orderId=${order.id}`);
+      
+      // Utiliser replace au lieu de push pour éviter les problèmes de navigation
+      setTimeout(() => {
+        router.replace(`/track-order?orderId=${order.id}`);
+      }, 1000); // Augmenter le délai pour laisser le temps à la commande d'être complètement sauvegardée
     } catch (error) {
       // Traduire les erreurs en français
       let errorMessage = 'Erreur lors de la création de la commande';

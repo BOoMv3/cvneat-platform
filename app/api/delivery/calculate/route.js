@@ -151,7 +151,7 @@ export async function POST(request) {
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: '❌ Livraison non disponible dans cette zone. Codes postaux acceptés: 34190, 34150, 34260'
+        message: '❌ Livraison non disponible dans cette zone. Nous desservons actuellement les zones autour de Ganges.'
       }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
