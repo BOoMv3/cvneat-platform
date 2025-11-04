@@ -80,7 +80,13 @@ export default function OrderDetail({ params }) {
           setError('Authentification requise. Veuillez vous reconnecter.');
           router.push('/login');
         } else {
-          setError(errorData.error || 'Erreur lors du chargement de la commande');
+          const errorMessage = errorData.error || errorData.message || 'Erreur lors du chargement de la commande';
+          setError(errorMessage);
+          console.error('Erreur récupération commande:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+          });
         }
         setLoading(false);
         return;

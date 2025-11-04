@@ -67,6 +67,16 @@ export async function GET(request, { params }) {
 
     // Si erreur RLS ou pas de résultat, essayer avec admin pour vérifier l'existence
     if (error || !order) {
+      console.log('Erreur avec client utilisateur, tentative avec admin. Erreur:', error);
+      
+      // Vérifier que la clé admin est disponible
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error('SUPABASE_SERVICE_ROLE_KEY non définie');
+        return NextResponse.json({ 
+          error: 'Erreur de configuration serveur' 
+        }, { status: 500 });
+      }
+
       const { data: orderAdmin, error: adminError } = await supabaseAdmin
         .from('commandes')
         .select('id, user_id, restaurant_id')
@@ -74,11 +84,13 @@ export async function GET(request, { params }) {
         .single();
 
       if (adminError || !orderAdmin) {
+        console.log('Commande non trouvée avec admin:', adminError);
         return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
       // Vérifier que la commande appartient à l'utilisateur
       if (orderAdmin.user_id !== user.id) {
+        console.log('Commande appartient à un autre utilisateur');
         return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
       }
 
@@ -108,8 +120,19 @@ export async function GET(request, { params }) {
         .eq('id', id)
         .single();
 
-      if (orderError || !orderFull) {
-        return NextResponse.json({ error: 'Erreur lors de la récupération' }, { status: 500 });
+      if (orderError) {
+        console.error('Erreur récupération complète avec admin:', orderError);
+        return NextResponse.json({ 
+          error: 'Erreur lors de la récupération des détails de la commande',
+          details: process.env.NODE_ENV === 'development' ? orderError.message : undefined
+        }, { status: 500 });
+      }
+
+      if (!orderFull) {
+        console.error('Aucune donnée retournée par admin pour la commande:', id);
+        return NextResponse.json({ 
+          error: 'Commande non trouvée' 
+        }, { status: 404 });
       }
 
       order = orderFull;
@@ -188,7 +211,11 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(formattedOrder);
   } catch (error) {
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    console.error('Erreur générale dans GET /api/orders/[id]:', error);
+    return NextResponse.json({ 
+      error: 'Erreur serveur',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }
 
