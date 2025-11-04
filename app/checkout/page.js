@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
+import PaymentForm from '@/components/PaymentForm';
 import { 
   FaMapMarkerAlt, 
   FaPlus, 
@@ -33,6 +34,10 @@ export default function Checkout() {
   const [deliveryError, setDeliveryError] = useState(null);
   const [addressValidationMessage, setAddressValidationMessage] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [orderData, setOrderData] = useState(null); // Stocker les données de commande avant paiement
   const [newAddress, setNewAddress] = useState({
     address: '',
     city: '',
@@ -317,7 +322,8 @@ export default function Checkout() {
     await calculateDeliveryFee(address);
   };
 
-  const submitOrder = async () => {
+  // Fonction pour préparer la commande et créer le PaymentIntent Stripe
+  const prepareOrderAndPayment = async () => {
     if (!selectedAddress) {
       alert('Veuillez sélectionner une adresse de livraison');
       return;
@@ -356,13 +362,7 @@ export default function Checkout() {
         }
       }
 
-      // VALIDATION STRICTE: Vérifier à nouveau que l'adresse est livrable AVANT de créer la commande
-      if (!selectedAddress) {
-        alert('Veuillez sélectionner une adresse de livraison');
-        setSubmitting(false);
-        return;
-      }
-
+      // VALIDATION STRICTE: Vérifier à nouveau que l'adresse est livrable
       const finalAddressCheck = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
       const finalCheckResponse = await fetch('/api/delivery/calculate', {
         method: 'POST',
@@ -377,7 +377,6 @@ export default function Checkout() {
           setSubmitting(false);
           return;
         }
-        // S'assurer qu'on utilise les frais de livraison les plus récents
         setFraisLivraison(finalCheckData.frais_livraison || 2.50);
       } else {
         console.error('Erreur vérification finale adresse:', finalCheckResponse.status);
@@ -386,48 +385,103 @@ export default function Checkout() {
         return;
       }
 
-      // Générer un code de sécurité à 6 chiffres pour la livraison
-      const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Créer la commande
-      // IMPORTANT: Le champ 'total' doit contenir UNIQUEMENT le montant des articles (sans frais de livraison)
-      // Les frais de livraison sont stockés séparément dans 'frais_livraison'
-      // Calculer le total en incluant suppléments et tailles
+      // Calculer le total du panier
       const cartTotal = savedCart.items?.reduce((sum, item) => {
         const itemPrice = parseFloat(item.prix || item.price || 0);
         const itemQuantity = parseInt(item.quantity || 1, 10);
-
-        // Calculer le prix des suppléments
         let supplementsPrice = 0;
         if (item.supplements && Array.isArray(item.supplements)) {
           supplementsPrice = item.supplements.reduce((supSum, sup) => {
             return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
           }, 0);
         }
-
-        // Calculer le prix de la taille
         let sizePrice = 0;
         if (item.size && item.size.prix) {
           sizePrice = parseFloat(item.size.prix) || 0;
         } else if (item.prix_taille) {
           sizePrice = parseFloat(item.prix_taille) || 0;
         }
-
-        // Total pour cet item = (prix de base + suppléments + taille) * quantité
         const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
         return sum + totalItemPrice;
       }, 0) || 0;
+
+      const totalAmount = cartTotal + (finalCheckData?.frais_livraison || fraisLivraison);
+
+      // Générer un code de sécurité
+      const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Préparer les données de commande (on les stocke pour créer la commande après le paiement)
+      const orderDataToStore = {
+        user_id: user.id,
+        restaurant_id: restaurant.id,
+        total: cartTotal,
+        frais_livraison: finalCheckData?.frais_livraison || fraisLivraison,
+        adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
+        security_code: securityCode,
+        cart: savedCart.items,
+        orderDetails
+      };
+      setOrderData(orderDataToStore);
+
+      // Créer le PaymentIntent Stripe
+      console.log('💳 Création PaymentIntent Stripe pour montant:', totalAmount);
+      const paymentResponse = await fetch('/api/payment/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: totalAmount,
+          currency: 'eur',
+          metadata: {
+            user_id: user.id,
+            restaurant_id: restaurant.id,
+            cart_total: cartTotal.toString(),
+            delivery_fee: (finalCheckData?.frais_livraison || fraisLivraison).toString()
+          }
+        })
+      });
+
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json();
+        throw new Error(errorData.error || 'Erreur lors de la création du paiement');
+      }
+
+      const paymentData = await paymentResponse.json();
+      setPaymentIntentId(paymentData.paymentIntentId);
       
+      // Stocker le clientSecret pour le formulaire de paiement
+      setClientSecret(paymentData.clientSecret);
+      
+      // Afficher le formulaire de paiement
+      setShowPaymentForm(true);
+      setSubmitting(false);
+      
+    } catch (error) {
+      console.error('❌ Erreur préparation commande:', error);
+      alert(error.message || 'Erreur lors de la préparation de la commande');
+      setSubmitting(false);
+    }
+  };
+
+  // Fonction pour créer la commande après paiement réussi
+  const createOrderAfterPayment = async (confirmedPaymentIntentId) => {
+    if (!orderData) {
+      throw new Error('Données de commande manquantes');
+    }
+
+    try {
+      // Créer la commande avec le payment_intent_id
       const { data: order, error: orderError } = await supabase
         .from('commandes')
         .insert({
-          user_id: user.id,
-          restaurant_id: restaurant.id,
-          total: cartTotal, // UNIQUEMENT les articles, sans frais de livraison
-          frais_livraison: fraisLivraison,
-          adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
+          user_id: orderData.user_id,
+          restaurant_id: orderData.restaurant_id,
+          total: orderData.total,
+          frais_livraison: orderData.frais_livraison,
+          adresse_livraison: orderData.adresse_livraison,
           statut: 'en_attente',
-          security_code: securityCode
+          security_code: orderData.security_code,
+          stripe_payment_intent_id: confirmedPaymentIntentId,
+          payment_status: 'paid'
         })
         .select()
         .single();
@@ -438,75 +492,56 @@ export default function Checkout() {
       }
 
       console.log('✅ Commande créée avec succès:', order.id);
-      console.log('✅ Order object:', order);
 
-      // Ajouter les détails de commande avec suppléments et tailles
-      console.log('📦 Ajout des détails de commande pour', cart.length, 'articles');
-      try {
-        for (const item of cart) {
-          console.log('📦 Traitement article:', item.nom || item.name, 'ID:', item.id);
-          // Préparer les suppléments pour la sauvegarde
-          let supplementsData = [];
-          if (item.supplements && Array.isArray(item.supplements)) {
-            supplementsData = item.supplements.map(sup => ({
-              nom: sup.nom || sup.name || 'Supplément',
-              prix: parseFloat(sup.prix || sup.price || 0) || 0
-            }));
-          }
-
-          // Calculer le prix unitaire total (base + suppléments + taille)
-          const itemPrice = parseFloat(item.prix || item.price || 0);
-          const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
-          const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-          const prixUnitaireTotal = itemPrice + supplementsPrice + sizePrice;
-
-          console.log('📦 Insertion détail commande pour article:', item.id);
-          
-          // Préparer les données d'insertion
-          const insertData = {
-            commande_id: order.id,
-            plat_id: item.id,
-            quantite: item.quantity || 1,
-            prix_unitaire: prixUnitaireTotal
-          };
-          
-          // Ajouter supplements seulement s'il y en a
-          if (supplementsData.length > 0) {
-            insertData.supplements = supplementsData;
-          }
-          
-          const { error: detailError } = await supabase
-            .from('details_commande')
-            .insert(insertData);
-
-          if (detailError) {
-            console.error('❌ Erreur détail commande:', detailError);
-            throw new Error(`Erreur lors de l'ajout des détails de commande: ${detailError.message}`);
-          }
-          console.log('✅ Détail commande ajouté pour article:', item.id);
+      // Ajouter les détails de commande
+      for (const item of orderData.cart) {
+        let supplementsData = [];
+        if (item.supplements && Array.isArray(item.supplements)) {
+          supplementsData = item.supplements.map(sup => ({
+            nom: sup.nom || sup.name || 'Supplément',
+            prix: parseFloat(sup.prix || sup.price || 0) || 0
+          }));
         }
-        console.log('✅ Tous les détails de commande ont été ajoutés');
-      } catch (detailLoopError) {
-        console.error('❌ Erreur dans la boucle des détails:', detailLoopError);
-        throw detailLoopError;
+
+        const itemPrice = parseFloat(item.prix || item.price || 0);
+        const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
+        const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+        const prixUnitaireTotal = itemPrice + supplementsPrice + sizePrice;
+
+        const insertData = {
+          commande_id: order.id,
+          plat_id: item.id,
+          quantite: item.quantity || 1,
+          prix_unitaire: prixUnitaireTotal
+        };
+        
+        if (supplementsData.length > 0) {
+          insertData.supplements = supplementsData;
+        }
+        
+        const { error: detailError } = await supabase
+          .from('details_commande')
+          .insert(insertData);
+
+        if (detailError) {
+          console.error('❌ Erreur détail commande:', detailError);
+          throw new Error(`Erreur lors de l'ajout des détails de commande: ${detailError.message}`);
+        }
       }
 
-      // Notifier le restaurant (ne pas bloquer la commande si la notification échoue)
+      // Notifier le restaurant
       try {
-        console.log('📧 Envoi notification restaurant...');
         await fetch('/api/partner/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            restaurantId: restaurant.id,
+            restaurantId: orderData.restaurant_id,
             type: 'new_order',
-            message: `Nouvelle commande #${order.id} - ${totalAvecLivraison.toFixed(2)}€`,
+            message: `Nouvelle commande #${order.id} - ${(orderData.total + orderData.frais_livraison).toFixed(2)}€`,
             orderId: order.id
           })
         });
-        console.log('✅ Notification envoyée');
       } catch (notificationError) {
-        // Ne pas bloquer la commande si la notification échoue
         console.warn('⚠️ Erreur notification (non bloquante):', notificationError);
       }
 
@@ -514,64 +549,40 @@ export default function Checkout() {
       safeLocalStorage.removeItem('cart');
       setCart([]);
 
-      console.log('✅ Panier vidé');
-      console.log('✅ Commande finale créée, ID:', order.id);
-      console.log('✅ Redirection vers:', `/track-order?orderId=${order.id}`);
-      
-      // Réinitialiser le state de soumission AVANT la redirection
-      setSubmitting(false);
-      
-      // Stocker l'ID de commande pour la redirection
-      const orderId = order.id;
-      const redirectUrl = `/track-order?orderId=${orderId}`;
-      
-      console.log('🔄 Tentative de redirection vers:', redirectUrl);
-      
-      // Forcer la redirection avec plusieurs méthodes pour garantir qu'elle fonctionne
-      // Utiliser window.location.replace() qui est plus fiable que href
-      // Utiliser setTimeout pour s'assurer que tout le code est exécuté avant la redirection
+      // Rediriger vers la page de suivi
+      const redirectUrl = `/track-order?orderId=${order.id}`;
       setTimeout(() => {
-        try {
-          console.log('🔄 Exécution redirection...');
-          // Méthode 1: window.location.replace (remplace l'historique, plus fiable)
-          window.location.replace(redirectUrl);
-        } catch (e) {
-          console.error('❌ Erreur window.location.replace:', e);
-          try {
-            // Méthode 2: window.location.href (fallback)
-            window.location.href = redirectUrl;
-          } catch (e2) {
-            console.error('❌ Erreur window.location.href:', e2);
-            try {
-              // Méthode 3: router.push (dernier recours)
-              router.push(redirectUrl);
-            } catch (e3) {
-              console.error('❌ Toutes les méthodes de redirection ont échoué:', e3);
-              // Afficher un message à l'utilisateur
-              alert(`Commande créée avec succès ! ID: ${orderId}. Redirection manuelle nécessaire.`);
-            }
-          }
-        }
-      }, 100); // Petit délai pour garantir que tout est traité
+        window.location.replace(redirectUrl);
+      }, 100);
+
+      return order;
     } catch (error) {
-      // Traduire les erreurs en français
-      let errorMessage = 'Erreur lors de la création de la commande';
-      if (error.message) {
-        if (error.message.includes('network') || error.message.includes('fetch')) {
-          errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.';
-        } else if (error.message.includes('permission') || error.message.includes('auth')) {
-          errorMessage = 'Erreur d\'authentification. Veuillez vous reconnecter.';
-        } else if (error.message.includes('duplicate') || error.message.includes('unique')) {
-          errorMessage = 'Cette commande existe déjà. Vérifiez votre historique.';
-        } else {
-          errorMessage = `Erreur: ${error.message}`;
-        }
-      }
-      alert(errorMessage);
-      setSubmitting(false);
-    } finally {
-      setSubmitting(false);
+      console.error('❌ Erreur création commande après paiement:', error);
+      throw error;
     }
+  };
+
+  // Gestionnaires pour le formulaire de paiement
+  const handlePaymentSuccess = async (paymentData) => {
+    try {
+      console.log('✅ Paiement confirmé, création de la commande...');
+      await createOrderAfterPayment(paymentIntentId);
+    } catch (error) {
+      console.error('❌ Erreur après paiement:', error);
+      alert('Paiement réussi mais erreur lors de la création de la commande. Contactez le support.');
+    }
+  };
+
+  const handlePaymentError = (error) => {
+    console.error('❌ Erreur paiement:', error);
+    alert(`Erreur de paiement: ${error}`);
+    setShowPaymentForm(false);
+    setSubmitting(false);
+  };
+
+  const submitOrder = async () => {
+    // Préparer la commande et afficher le formulaire de paiement
+    await prepareOrderAndPayment();
   };
 
   if (loading) {
@@ -811,20 +822,49 @@ export default function Checkout() {
               </div>
             </div>
 
-            <button
-              onClick={submitOrder}
-              disabled={submitting || !selectedAddress || deliveryError !== null}
-              className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
-            >
-              {submitting ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
-                  Traitement en cours...
-                </div>
-              ) : (
-                `Confirmer la commande (${totalAvecLivraison.toFixed(2)}€)`
-              )}
-            </button>
+            {!showPaymentForm ? (
+              <button
+                onClick={submitOrder}
+                disabled={submitting || !selectedAddress || deliveryError !== null}
+                className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
+              >
+                {submitting ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
+                    Préparation...
+                  </div>
+                ) : (
+                  `Payer ${totalAvecLivraison.toFixed(2)}€`
+                )}
+              </button>
+            ) : (
+              <div className="mt-4 sm:mt-6">
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
+                  <FaCreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                  Paiement
+                </h3>
+                {clientSecret && (
+                  <PaymentForm
+                    amount={totalAvecLivraison}
+                    paymentIntentId={paymentIntentId}
+                    clientSecret={clientSecret}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                  />
+                )}
+                <button
+                  onClick={() => {
+                    setShowPaymentForm(false);
+                    setPaymentIntentId(null);
+                    setClientSecret(null);
+                    setOrderData(null);
+                  }}
+                  className="w-full mt-4 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 text-sm sm:text-base"
+                >
+                  Annuler et retourner
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

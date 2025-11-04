@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
-  CardElement,
+  PaymentElement,
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-const CheckoutForm = ({ amount, orderId, onSuccess, onError }) => {
+const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onError }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -29,29 +29,14 @@ const CheckoutForm = ({ amount, orderId, onSuccess, onError }) => {
     }
 
     try {
-      // Créer l'intention de paiement
-      const response = await fetch('/api/payment/create-payment-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Confirmer le paiement avec le clientSecret existant
+      const { error: confirmError } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: window.location.href,
         },
-        body: JSON.stringify({
-          amount,
-          metadata: { orderId }
-        }),
-      });
-
-      const { clientSecret, error: paymentError } = await response.json();
-
-      if (paymentError) {
-        throw new Error(paymentError);
-      }
-
-      // Confirmer le paiement
-      const { error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-        },
+        redirect: 'if_required', // Ne pas rediriger si le paiement est immédiat
       });
 
       if (confirmError) {
@@ -65,8 +50,7 @@ const CheckoutForm = ({ amount, orderId, onSuccess, onError }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          paymentIntentId: clientSecret.split('_secret_')[0],
-          orderId
+          paymentIntentId: paymentIntentId,
         }),
       });
 
@@ -87,46 +71,50 @@ const CheckoutForm = ({ amount, orderId, onSuccess, onError }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="bg-white p-4 rounded-lg border">
-        <CardElement
+      <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+        <PaymentElement
           options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
-                },
-              },
-              invalid: {
-                color: '#9e2146',
-              },
-            },
+            layout: 'tabs',
           }}
         />
       </div>
       
       {error && (
-        <div className="text-red-600 text-sm">{error}</div>
+        <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">{error}</div>
       )}
       
       <button
         type="submit"
         disabled={!stripe || loading}
-        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-blue-600 dark:bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
       >
-        {loading ? 'Traitement...' : `Payer ${amount.toFixed(2)}€`}
+        {loading ? (
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            Traitement...
+          </div>
+        ) : (
+          `Payer ${amount.toFixed(2)}€`
+        )}
       </button>
     </form>
   );
 };
 
-const PaymentForm = ({ amount, orderId, onSuccess, onError }) => {
+const PaymentForm = ({ amount, paymentIntentId, clientSecret, onSuccess, onError }) => {
+  const options = {
+    clientSecret,
+    appearance: {
+      theme: 'stripe',
+    },
+  };
+
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise} options={options}>
       <CheckoutForm
+        clientSecret={clientSecret}
         amount={amount}
-        orderId={orderId}
+        paymentIntentId={paymentIntentId}
         onSuccess={onSuccess}
         onError={onError}
       />

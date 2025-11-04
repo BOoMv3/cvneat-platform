@@ -8,9 +8,9 @@ export async function POST(request) {
   try {
     const { paymentIntentId, orderId } = await request.json();
 
-    if (!paymentIntentId || !orderId) {
+    if (!paymentIntentId) {
       return NextResponse.json(
-        { error: 'Paramètres manquants' },
+        { error: 'PaymentIntentId manquant' },
         { status: 400 }
       );
     }
@@ -19,33 +19,35 @@ export async function POST(request) {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status === 'succeeded') {
-      // Mettre à jour le statut de la commande
-      const { error } = await supabase
-        .from('commandes')
-        .update({ 
-          status: 'confirmed',
-          payment_status: 'paid',
-          payment_intent_id: paymentIntentId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+      // Si un orderId est fourni, mettre à jour la commande existante
+      if (orderId) {
+        const { error } = await supabase
+          .from('commandes')
+          .update({ 
+            payment_status: 'paid',
+            stripe_payment_intent_id: paymentIntentId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
 
-      if (error) {
-        console.error('Erreur lors de la mise à jour de la commande:', error);
-        return NextResponse.json(
-          { error: 'Erreur lors de la mise à jour de la commande' },
-          { status: 500 }
-        );
+        if (error) {
+          console.error('Erreur lors de la mise à jour de la commande:', error);
+          return NextResponse.json(
+            { error: 'Erreur lors de la mise à jour de la commande' },
+            { status: 500 }
+          );
+        }
       }
 
       return NextResponse.json({
         success: true,
         message: 'Paiement confirmé avec succès',
-        orderId
+        paymentIntentId,
+        orderId: orderId || null
       });
     } else {
       return NextResponse.json(
-        { error: 'Paiement non réussi' },
+        { error: `Paiement non réussi. Statut: ${paymentIntent.status}` },
         { status: 400 }
       );
     }
