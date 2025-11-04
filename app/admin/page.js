@@ -105,12 +105,31 @@ export default function AdminPage() {
 
       if (partnershipError) throw partnershipError;
 
+      // Récupérer le total d'utilisateurs
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true });
+
+      if (usersError) {
+        console.error('Erreur récupération utilisateurs:', usersError);
+      }
+
       // Calculer les statistiques
       const totalOrders = orders?.length || 0;
       const pendingOrders = orders?.filter(o => o.statut === 'en_attente').length || 0;
       const validatedOrders = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut)).length || 0;
-      const totalRevenue = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut))
-        .reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+      
+      // Chiffre d'affaires = Commissions CVN'EAT (15% des commandes livrées, excluant les frais de livraison)
+      // Les frais de livraison vont au livreur, pas à CVN'EAT
+      const COMMISSION_RATE = 0.15; // 15% de commission sur les commandes
+      const totalRevenue = orders?.filter(o => o.statut === 'livree')
+        .reduce((sum, order) => {
+          // order.total contient uniquement le montant des articles (sans frais de livraison)
+          const orderAmount = parseFloat(order.total || 0);
+          const commission = orderAmount * COMMISSION_RATE;
+          return sum + commission;
+        }, 0) || 0;
+      
       const totalRestaurants = restaurants?.length || 0;
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
 
@@ -132,6 +151,7 @@ export default function AdminPage() {
         totalRevenue,
         totalRestaurants,
         pendingPartners,
+        totalUsers: totalUsers || 0,
         recentOrders: recentOrders,
         recentRestaurants: recentRestaurants
       });

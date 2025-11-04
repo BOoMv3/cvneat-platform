@@ -1,23 +1,37 @@
 import { NextResponse } from 'next/server';
-import mysql from 'mysql2/promise';
-import jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 // Fonction pour vérifier le token et le rôle admin
 const verifyAdminToken = async (request) => {
-  const token = request.headers.get('authorization')?.split(' ')[1];
-  if (!token) {
-    return { error: 'Token manquant', status: 401 };
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { error: 'Non autorisé', status: 401 };
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== 'admin') {
-      return { error: 'Accès non autorisé', status: 403 };
-    }
-    return { userId: decoded.userId };
-  } catch (error) {
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+  if (authError || !user) {
     return { error: 'Token invalide', status: 401 };
   }
+
+  // Vérifier le rôle admin
+  const { data: userData, error: userError } = await supabaseAdmin
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (userError || !userData || userData.role !== 'admin') {
+    return { error: 'Accès refusé', status: 403 };
+  }
+
+  return { userId: user.id };
 };
 
 // PUT /api/admin/users/[id]
@@ -30,28 +44,26 @@ export async function PUT(request, { params }) {
   try {
     const { name, email, phone, role } = await request.json();
 
-    if (!name || !email || !phone || !role) {
+    if (!name || !email || !role) {
       return NextResponse.json(
-        { error: 'Tous les champs sont requis' },
+        { error: 'Tous les champs requis sont manquants' },
         { status: 400 }
       );
     }
 
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME
-    });
+    // Séparer nom et prénom depuis le champ name
+    const nameParts = name.trim().split(' ');
+    const prenom = nameParts[0] || '';
+    const nom = nameParts.slice(1).join(' ') || nameParts[0] || '';
 
     // Vérifier si l'utilisateur existe
-    const [existingUser] = await connection.execute(
-      'SELECT id FROM users WHERE id = ?',
-      [params.id]
-    );
+    const { data: existingUser, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('id', params.id)
+      .single();
 
-    if (existingUser.length === 0) {
-      await connection.end();
+    if (fetchError || !existingUser) {
       return NextResponse.json(
         { error: 'Utilisateur non trouvé' },
         { status: 404 }
@@ -59,13 +71,14 @@ export async function PUT(request, { params }) {
     }
 
     // Vérifier si l'email est déjà utilisé par un autre utilisateur
-    const [emailCheck] = await connection.execute(
-      'SELECT id FROM users WHERE email = ? AND id != ?',
-      [email, params.id]
-    );
+    const { data: emailCheck, error: emailError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .neq('id', params.id)
+      .maybeSingle();
 
-    if (emailCheck.length > 0) {
-      await connection.end();
+    if (emailCheck) {
       return NextResponse.json(
         { error: 'Cet email est déjà utilisé' },
         { status: 400 }
@@ -73,19 +86,35 @@ export async function PUT(request, { params }) {
     }
 
     // Mettre à jour l'utilisateur
-    await connection.execute(
-      'UPDATE users SET name = ?, email = ?, phone = ?, role = ? WHERE id = ?',
-      [name, email, phone, role, params.id]
-    );
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({
+        nom,
+        prenom,
+        email,
+        telephone: phone || null,
+        role
+      })
+      .eq('id', params.id)
+      .select('id, nom, prenom, email, telephone, role')
+      .single();
 
-    // Récupérer l'utilisateur mis à jour
-    const [updatedUser] = await connection.execute(
-      'SELECT id, name, email, phone, role FROM users WHERE id = ?',
-      [params.id]
-    );
+    if (updateError) {
+      console.error('Erreur mise à jour utilisateur:', updateError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la mise à jour de l\'utilisateur' },
+        { status: 500 }
+      );
+    }
 
-    await connection.end();
-    return NextResponse.json(updatedUser[0]);
+    // Formater la réponse pour le frontend
+    return NextResponse.json({
+      id: updatedUser.id,
+      name: `${updatedUser.prenom || ''} ${updatedUser.nom || ''}`.trim() || updatedUser.email,
+      email: updatedUser.email,
+      phone: updatedUser.telephone || '',
+      role: updatedUser.role
+    });
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
     return NextResponse.json(
@@ -103,21 +132,14 @@ export async function DELETE(request, { params }) {
   }
 
   try {
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME
-    });
-
     // Vérifier si l'utilisateur existe
-    const [existingUser] = await connection.execute(
-      'SELECT id FROM users WHERE id = ?',
-      [params.id]
-    );
+    const { data: existingUser, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('id', params.id)
+      .single();
 
-    if (existingUser.length === 0) {
-      await connection.end();
+    if (fetchError || !existingUser) {
       return NextResponse.json(
         { error: 'Utilisateur non trouvé' },
         { status: 404 }
@@ -125,9 +147,19 @@ export async function DELETE(request, { params }) {
     }
 
     // Supprimer l'utilisateur
-    await connection.execute('DELETE FROM users WHERE id = ?', [params.id]);
+    const { error: deleteError } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', params.id);
 
-    await connection.end();
+    if (deleteError) {
+      console.error('Erreur suppression utilisateur:', deleteError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la suppression de l\'utilisateur' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({ message: 'Utilisateur supprimé avec succès' });
   } catch (error) {
     console.error('Erreur lors de la suppression de l\'utilisateur:', error);
