@@ -147,12 +147,12 @@ export async function POST(request) {
     const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => address.includes(code));
     
     if (!hasValidPostalCode) {
-      console.log('❌ Code postal non autorisé');
+      console.log('❌ Code postal non autorisé dans:', address);
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: 'Livraison non disponible dans cette zone'
-      });
+        message: '❌ Livraison non disponible dans cette zone. Codes postaux acceptés: 34190, 34150, 34260'
+      }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
     // 2. Géocoder TOUJOURS avec Nominatim pour avoir les VRAIES coordonnées
@@ -166,8 +166,8 @@ export async function POST(request) {
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: 'Impossible de localiser cette adresse exacte'
-      });
+        message: `❌ Impossible de localiser cette adresse. Vérifiez que l'adresse est correcte. (${error.message})`
+      }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
     // 3. Calculer la distance entre restaurant et client
@@ -180,13 +180,14 @@ export async function POST(request) {
 
     // 4. Vérifier la distance maximum
     if (distance > MAX_DISTANCE) {
-      console.log(`❌ Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
+      console.log(`❌ REJET: Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
         success: false,
         livrable: false,
-        distance: distance,
-        message: `Livraison impossible: ${distance.toFixed(1)}km (maximum ${MAX_DISTANCE}km)`
-      });
+        distance: parseFloat(distance.toFixed(2)),
+        max_distance: MAX_DISTANCE,
+        message: `❌ Livraison impossible: ${distance.toFixed(1)}km (maximum ${MAX_DISTANCE}km)`
+      }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
     // 5. Calculer les frais: 2.50€ + (distance × 0.80€)

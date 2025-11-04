@@ -224,15 +224,21 @@ export default function Checkout() {
       }
 
       const data = JSON.parse(responseText);
+      console.log('📡 Données parsées:', data);
 
       // VALIDATION STRICTE: Vérifier que la livraison est possible
-      if (!data.success || data.livrable !== true) {
+      // Vérifier explicitement que success est true ET livrable est true
+      if (data.success !== true || data.livrable !== true) {
         const message = data.message || 'Livraison non disponible à cette adresse';
-        console.error('❌ Livraison refusée:', data);
-        alert(message);
+        console.error('❌ Livraison refusée - success:', data.success, 'livrable:', data.livrable, 'message:', message);
+        console.error('❌ Données complètes:', data);
+        
+        // Afficher un message d'erreur clair
+        alert(`⚠️ ${message}`);
+        
         // Réinitialiser les frais de livraison
         setFraisLivraison(0);
-        setTotalAvecLivraison(cart.reduce((sum, item) => {
+        const cartTotalCalc = cart.reduce((sum, item) => {
           const itemPrice = parseFloat(item.prix || item.price || 0);
           const itemQuantity = parseInt(item.quantity || 1, 10);
           let supplementsPrice = 0;
@@ -249,7 +255,8 @@ export default function Checkout() {
           }
           const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
           return sum + totalItemPrice;
-        }, 0));
+        }, 0);
+        setTotalAvecLivraison(cartTotalCalc);
         return;
       }
 
