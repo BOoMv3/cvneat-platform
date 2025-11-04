@@ -250,18 +250,32 @@ export default function RestaurantDetail({ params }) {
       const itemSupplements = item.supplements || supplements || [];
       const itemSize = item.size || size || null;
       
-      // Créer un identifiant unique basé sur l'ID, les suppléments et la taille
+      // Normaliser les suppléments pour la comparaison (trier par ID pour éviter les problèmes d'ordre)
+      const normalizedSupplements = [...itemSupplements].sort((a, b) => {
+        const idA = a.id || a.nom || '';
+        const idB = b.id || b.nom || '';
+        return idA.localeCompare(idB);
+      });
+      
+      // Créer un identifiant unique basé sur l'ID, les suppléments (normalisés) et la taille
       const itemKey = JSON.stringify({
         id: item.id,
-        supplements: itemSupplements,
+        supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
         size: itemSize
       });
       
       // Vérifier si l'article avec ces mêmes suppléments et taille existe déjà
       const existingItemIndex = prevCart.findIndex(cartItem => {
+        const cartItemSupplements = cartItem.supplements || [];
+        const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
+          const idA = a.id || a.nom || '';
+          const idB = b.id || b.nom || '';
+          return idA.localeCompare(idB);
+        });
+        
         const cartItemKey = JSON.stringify({
           id: cartItem.id,
-          supplements: cartItem.supplements || [],
+          supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
           size: cartItem.size || null
         });
         return cartItemKey === itemKey;
@@ -276,10 +290,11 @@ export default function RestaurantDetail({ params }) {
         );
       } else {
         // Ajouter un nouvel article avec suppléments et taille
+        // IMPORTANT: Chaque item garde ses propres suppléments indépendamment
         const newItem = {
           ...item,
           quantity: finalQuantity,
-          supplements: itemSupplements,
+          supplements: itemSupplements, // Conserver les suppléments originaux (pas normalisés)
           size: itemSize
         };
         return [...prevCart, newItem];
