@@ -896,24 +896,62 @@ export default function DeliveryDashboard() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                // Vérifier que la géolocalisation est supportée
                                 if (!navigator.geolocation) {
-                                  alert('Géolocalisation non supportée');
+                                  alert('Géolocalisation non supportée par votre navigateur');
                                   return;
                                 }
-                                navigator.geolocation.getCurrentPosition(
-                                  (position) => {
-                                    const lat = position.coords.latitude;
-                                    const lng = position.coords.longitude;
-                                    const delivery = encodeURIComponent(order.user_addresses?.address || '');
-                                    const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
-                                    window.open(url, '_blank');
-                                  },
-                                  (error) => {
-                                    console.error('Erreur géolocalisation:', error);
-                                    alert('Impossible d\'accéder à votre position. Utilisez "Navigation complète" à la place.');
-                                  },
-                                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-                                );
+                                
+                                // Vérifier la permission avant de demander la position
+                                navigator.permissions?.query({ name: 'geolocation' }).then((result) => {
+                                  if (result.state === 'denied') {
+                                    alert('L\'accès à la géolocalisation a été refusé. Veuillez autoriser l\'accès dans les paramètres de votre navigateur.');
+                                    return;
+                                  }
+                                  
+                                  // Demander la position (seulement après interaction utilisateur)
+                                  navigator.geolocation.getCurrentPosition(
+                                    (position) => {
+                                      const lat = position.coords.latitude;
+                                      const lng = position.coords.longitude;
+                                      const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                      const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
+                                      window.open(url, '_blank');
+                                    },
+                                    (error) => {
+                                      console.error('Erreur géolocalisation:', error);
+                                      let errorMessage = 'Impossible d\'accéder à votre position. ';
+                                      if (error.code === error.PERMISSION_DENIED) {
+                                        errorMessage += 'L\'accès à la géolocalisation a été refusé.';
+                                      } else if (error.code === error.POSITION_UNAVAILABLE) {
+                                        errorMessage += 'Position non disponible.';
+                                      } else if (error.code === error.TIMEOUT) {
+                                        errorMessage += 'Délai d\'attente dépassé.';
+                                      } else {
+                                        errorMessage += 'Erreur inconnue.';
+                                      }
+                                      errorMessage += ' Utilisez "Navigation complète" à la place.';
+                                      alert(errorMessage);
+                                    },
+                                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                                  );
+                                }).catch(() => {
+                                  // Si permissions API n'est pas supporté, essayer quand même
+                                  navigator.geolocation.getCurrentPosition(
+                                    (position) => {
+                                      const lat = position.coords.latitude;
+                                      const lng = position.coords.longitude;
+                                      const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                      const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
+                                      window.open(url, '_blank');
+                                    },
+                                    (error) => {
+                                      console.error('Erreur géolocalisation:', error);
+                                      alert('Impossible d\'accéder à votre position. Utilisez "Navigation complète" à la place.');
+                                    },
+                                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                                  );
+                                });
                               }}
                               className="w-full py-2 px-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold text-sm"
                             >
