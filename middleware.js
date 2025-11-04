@@ -4,11 +4,11 @@ export function middleware(request) {
   // Vérifier si le mode maintenance est activé
   const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
   
-  // Routes autorisées même en mode maintenance (pour les restaurants/partenaires)
+  // Routes autorisées même en mode maintenance (pour les restaurants/partenaires uniquement)
   const allowedRoutes = [
     '/login',
-    '/inscription',
-    '/register',
+    '/restaurant-request',  // Demande de devenir partenaire (pour les restaurants)
+    '/devenir-partenaire', // Alternative pour devenir partenaire
     '/partner',
     '/partner/dashboard',
     '/partner/hours',
@@ -22,6 +22,17 @@ export function middleware(request) {
     '/favicon.ico',
     '/maintenance'
   ];
+  
+  // Routes d'inscription client - BLOQUÉES en mode maintenance
+  const blockedClientRoutes = [
+    '/inscription',
+    '/register'
+  ];
+  
+  // Si c'est une route d'inscription client, rediriger vers maintenance
+  if (isMaintenanceMode && blockedClientRoutes.includes(request.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL('/maintenance', request.url));
+  }
   
   // Vérifier si la route actuelle est autorisée
   const isAllowedRoute = allowedRoutes.some(route => 

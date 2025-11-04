@@ -31,13 +31,25 @@ export default function Maintenance() {
           <p className="text-sm text-purple-200 mb-4">
             Vous êtes restaurateur et souhaitez rejoindre CVN'EAT ?
           </p>
-          <Link 
-            href="/partner"
-            className="inline-flex items-center gap-2 bg-white text-purple-700 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors"
-          >
-            <FaLock className="w-4 h-4" />
-            Accès Partenaire
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link 
+              href="/restaurant-request"
+              className="inline-flex items-center gap-2 bg-white text-purple-700 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors"
+            >
+              <FaUtensils className="w-4 h-4" />
+              Devenir Partenaire
+            </Link>
+            <Link 
+              href="/partner"
+              className="inline-flex items-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-600 transition-colors"
+            >
+              <FaLock className="w-4 h-4" />
+              Connexion Partenaire
+            </Link>
+          </div>
+          <p className="text-xs text-purple-300 mt-4">
+            Les inscriptions clients sont temporairement fermées. Le site ouvrira bientôt !
+          </p>
         </div>
       </div>
     </div>
