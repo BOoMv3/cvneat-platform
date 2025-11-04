@@ -70,6 +70,7 @@ export default function PartnerDashboard() {
   });
 
   const [showSupplementModal, setShowSupplementModal] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Variable pour éviter les requêtes simultanées (utiliser useRef pour persister entre renders)
   const isFetchingRef = useRef(false);
@@ -125,26 +126,28 @@ export default function PartnerDashboard() {
       console.log('🔍 DEBUG PARTNER - Rôle attendu: restaurant');
       console.log('🔍 DEBUG PARTNER - Comparaison:', userData?.role === 'restaurant');
       
-      if (userError || !userData || userData.role !== 'restaurant') {
+      // Autoriser les restaurants ET les admins
+      if (userError || !userData || (userData.role !== 'restaurant' && userData.role !== 'admin')) {
         console.log('❌ ACCÈS REFUSÉ - Redirection vers l\'accueil');
-        console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant');
+        console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant ou admin');
         router.push('/');
         return;
       }
       
-      console.log('✅ ACCÈS AUTORISÉ - Rôle restaurant confirmé');
+      console.log('✅ ACCÈS AUTORISÉ - Rôle', userData.role, 'confirmé');
 
       setUser(session.user);
       setUserData(userData); // Stocker userData dans le state
 
-      // Recuperer le restaurant
+      // Recuperer le restaurant (si admin, on peut afficher la page mais sans restaurant)
       const { data: resto, error: restoError } = await supabase
         .from('restaurants')
         .select('*')
         .eq('user_id', session.user.id)
         .single();
 
-      if (restoError || !resto) {
+      // Si ce n'est pas un admin et qu'il n'y a pas de restaurant, rediriger
+      if (userData.role !== 'admin' && (restoError || !resto)) {
         router.push('/profil-partenaire');
         return;
       }
@@ -1369,23 +1372,66 @@ export default function PartnerDashboard() {
                 </div>
               </div>
 
-              {/* URL de l'image */}
+              {/* Image */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  URL de l'image du plat
+                  Image du plat
                 </label>
-                <input
-                  type="url"
-                  value={menuForm.image_url || ''}
-                  onChange={(e) => setMenuForm({...menuForm, image_url: e.target.value})}
-                  placeholder="https://exemple.com/image.jpg"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {menuForm.image_url && (
-                  <div className="mt-2">
-                    <img src={menuForm.image_url} alt="Aperçu" className="w-20 h-20 object-cover rounded-lg" />
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      
+                      setUploadingImage(true);
+                      try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('folder', 'menu-images');
+                        if (userData?.id) formData.append('userId', userData.id);
+
+                        const response = await fetch('/api/upload-image', {
+                          method: 'POST',
+                          body: formData
+                        });
+
+                        const data = await response.json();
+                        if (response.ok && data.imageUrl) {
+                          setMenuForm({...menuForm, image_url: data.imageUrl});
+                        } else {
+                          alert(data.error || 'Erreur lors de l\'upload de l\'image');
+                        }
+                      } catch (error) {
+                        console.error('Erreur upload:', error);
+                        alert('Erreur lors de l\'upload de l\'image');
+                      } finally {
+                        setUploadingImage(false);
+                      }
+                    }}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    disabled={uploadingImage}
+                  />
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Ou utilisez une URL :
                   </div>
-                )}
+                  <input
+                    type="url"
+                    value={menuForm.image_url || ''}
+                    onChange={(e) => setMenuForm({...menuForm, image_url: e.target.value})}
+                    placeholder="https://exemple.com/image.jpg"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                  {uploadingImage && (
+                    <div className="text-sm text-blue-600 dark:text-blue-400">Upload en cours...</div>
+                  )}
+                  {menuForm.image_url && (
+                    <div className="mt-2">
+                      <img src={menuForm.image_url} alt="Aperçu" className="w-20 h-20 object-cover rounded-lg" />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Gestion des suppléments */}

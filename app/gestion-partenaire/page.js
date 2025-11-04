@@ -241,13 +241,13 @@ export default function GestionPartenaire() {
     setUploading(true);
     const fileExt = file.name.split('.').pop();
     const filePath = `menus/${restaurant.id}_${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await supabase.storage.from('menu-images').upload(filePath, file);
+    const { error: uploadError } = await supabase.storage.from('MENU-IMAGES').upload(filePath, file);
     if (uploadError) {
       setError(uploadError.message);
       setUploading(false);
       return;
     }
-    const { data } = supabase.storage.from('menu-images').getPublicUrl(filePath);
+    const { data } = supabase.storage.from('MENU-IMAGES').getPublicUrl(filePath);
     setForm((prev) => ({ ...prev, image_url: data.publicUrl }));
     setUploading(false);
   };

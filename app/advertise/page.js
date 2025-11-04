@@ -22,6 +22,7 @@ export default function AdvertisePage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentIntentId, setPaymentIntentId] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const positions = [
     { 
@@ -43,6 +44,13 @@ export default function AdvertisePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Vérifier que l'image est fournie
+    if (!formData.image_url) {
+      alert('Veuillez fournir une image (fichier ou URL)');
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -295,16 +303,62 @@ export default function AdvertisePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      URL de l'image *
+                      Image de la publicité *
                     </label>
-                    <input
-                      type="url"
-                      name="image_url"
-                      value={formData.image_url}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                      required
-                    />
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          
+                          setUploadingImage(true);
+                          try {
+                            const formDataUpload = new FormData();
+                            formDataUpload.append('file', file);
+                            formDataUpload.append('folder', 'advertisement-images');
+                            formDataUpload.append('userId', 'public');
+
+                            const response = await fetch('/api/upload-image', {
+                              method: 'POST',
+                              body: formDataUpload
+                            });
+
+                            const data = await response.json();
+                            if (response.ok && data.imageUrl) {
+                              setFormData({...formData, image_url: data.imageUrl});
+                            } else {
+                              alert(data.error || 'Erreur lors de l\'upload de l\'image');
+                            }
+                          } catch (error) {
+                            console.error('Erreur upload:', error);
+                            alert('Erreur lors de l\'upload de l\'image');
+                          } finally {
+                            setUploadingImage(false);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        disabled={uploadingImage}
+                      />
+                      {uploadingImage && (
+                        <div className="text-sm text-blue-600 dark:text-blue-400">Upload en cours...</div>
+                      )}
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Ou utilisez une URL :</div>
+                      <input
+                        type="url"
+                        name="image_url"
+                        value={formData.image_url}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        placeholder="https://exemple.com/image.jpg"
+                      />
+                      {formData.image_url && (
+                        <div className="mt-2">
+                          <img src={formData.image_url} alt="Aperçu" className="w-32 h-32 object-cover rounded-lg" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

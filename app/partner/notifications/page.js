@@ -36,7 +36,8 @@ export default function PartnerNotifications() {
         .eq('id', session.user.id)
         .single();
 
-      if (userError || !userData || userData.role !== 'restaurant') {
+      // Autoriser les restaurants ET les admins
+      if (userError || !userData || (userData.role !== 'restaurant' && userData.role !== 'admin')) {
         router.push('/');
         return;
       }

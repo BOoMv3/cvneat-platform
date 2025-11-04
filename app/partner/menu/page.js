@@ -21,8 +21,21 @@ export default function PartnerMenu() {
   });
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingImageEdit, setUploadingImageEdit] = useState(false);
+  const [user, setUser] = useState(null);
 
   const restaurantId = '4572cee6-1fc6-4f32-b007-57c46871ec70'; // ID du restaurant partenaire
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+      }
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -374,13 +387,62 @@ export default function PartnerMenu() {
                 </select>
               </div>
               <div className="mt-4">
-                <input
-                  type="url"
-                  placeholder="URL de l'image (optionnel)"
-                  value={newItem.image_url}
-                  onChange={(e) => setNewItem({...newItem, image_url: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Image du plat
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      
+                      setUploadingImage(true);
+                      try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('folder', 'menu-images');
+                        if (user?.id) formData.append('userId', user.id);
+
+                        const response = await fetch('/api/upload-image', {
+                          method: 'POST',
+                          body: formData
+                        });
+
+                        const data = await response.json();
+                        if (response.ok && data.imageUrl) {
+                          setNewItem({...newItem, image_url: data.imageUrl});
+                        } else {
+                          alert(data.error || 'Erreur lors de l\'upload de l\'image');
+                        }
+                      } catch (error) {
+                        console.error('Erreur upload:', error);
+                        alert('Erreur lors de l\'upload de l\'image');
+                      } finally {
+                        setUploadingImage(false);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={uploadingImage}
+                  />
+                  {uploadingImage && (
+                    <div className="text-sm text-blue-600">Upload en cours...</div>
+                  )}
+                  <div className="text-sm text-gray-600">Ou utilisez une URL :</div>
+                  <input
+                    type="url"
+                    placeholder="https://exemple.com/image.jpg"
+                    value={newItem.image_url}
+                    onChange={(e) => setNewItem({...newItem, image_url: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {newItem.image_url && (
+                    <div className="mt-2">
+                      <img src={newItem.image_url} alt="Aperçu" className="w-32 h-32 object-cover rounded-md" />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="mt-4">
                 <button
@@ -437,12 +499,64 @@ export default function PartnerMenu() {
                                 </option>
                               ))}
                             </select>
-                            <input
-                              type="url"
-                              value={editingItem.image_url}
-                              onChange={(e) => setEditingItem({...editingItem, image_url: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Image du plat
+                              </label>
+                              <div className="space-y-2">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files[0];
+                                    if (!file) return;
+                                    
+                                    setUploadingImageEdit(true);
+                                    try {
+                                      const formData = new FormData();
+                                      formData.append('file', file);
+                                      formData.append('folder', 'menu-images');
+                                      if (user?.id) formData.append('userId', user.id);
+
+                                      const response = await fetch('/api/upload-image', {
+                                        method: 'POST',
+                                        body: formData
+                                      });
+
+                                      const data = await response.json();
+                                      if (response.ok && data.imageUrl) {
+                                        setEditingItem({...editingItem, image_url: data.imageUrl});
+                                      } else {
+                                        alert(data.error || 'Erreur lors de l\'upload de l\'image');
+                                      }
+                                    } catch (error) {
+                                      console.error('Erreur upload:', error);
+                                      alert('Erreur lors de l\'upload de l\'image');
+                                    } finally {
+                                      setUploadingImageEdit(false);
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  disabled={uploadingImageEdit}
+                                />
+                                {uploadingImageEdit && (
+                                  <div className="text-sm text-blue-600">Upload en cours...</div>
+                                )}
+                                <div className="text-sm text-gray-600">Ou utilisez une URL :</div>
+                                <input
+                                  type="url"
+                                  placeholder="https://exemple.com/image.jpg"
+                                  value={editingItem.image_url}
+                                  onChange={(e) => setEditingItem({...editingItem, image_url: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                {editingItem.image_url && (
+                                  <div className="mt-2">
+                                    <img src={editingItem.image_url} alt="Aperçu" className="w-32 h-32 object-cover rounded-md" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                             <div className="flex gap-2">
                               <button
                                 onClick={handleUpdateMenuItem}

@@ -33,6 +33,8 @@ export default function PartnerSettings() {
   const [bannerImage, setBannerImage] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageType, setImageType] = useState(''); // 'profile' ou 'banner'
+  const [uploadingProfile, setUploadingProfile] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   
   const router = useRouter();
 
@@ -51,7 +53,8 @@ export default function PartnerSettings() {
         .eq('id', session.user.id)
         .single();
 
-      if (userError || !userData || userData.role !== 'restaurant') {
+      // Autoriser les restaurants ET les admins
+      if (userError || !userData || (userData.role !== 'restaurant' && userData.role !== 'admin')) {
         router.push('/');
         return;
       }
@@ -129,6 +132,45 @@ export default function PartnerSettings() {
     } catch (error) {
       setError('Erreur lors de la mise à jour de l\'image');
       console.error('Erreur mise à jour image:', error);
+    }
+  };
+
+  const handleFileUpload = async (file, type) => {
+    if (!file) return;
+
+    if (type === 'profile') {
+      setUploadingProfile(true);
+    } else {
+      setUploadingBanner(true);
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'restaurant-images');
+      if (user?.id) formData.append('userId', user.id);
+
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (response.ok && data.imageUrl) {
+        // Mettre à jour l'image dans la base de données
+        await handleImageUpload(data.imageUrl, type);
+      } else {
+        setError(data.error || 'Erreur lors de l\'upload de l\'image');
+      }
+    } catch (error) {
+      console.error('Erreur upload:', error);
+      setError('Erreur lors de l\'upload de l\'image');
+    } finally {
+      if (type === 'profile') {
+        setUploadingProfile(false);
+      } else {
+        setUploadingBanner(false);
+      }
     }
   };
 
@@ -215,7 +257,7 @@ export default function PartnerSettings() {
               {/* Photo de profil */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Photo de profil (URL)
+                  Photo de profil
                 </label>
                 <div className="space-y-3">
                   <img 
@@ -223,30 +265,46 @@ export default function PartnerSettings() {
                     alt="Photo de profil"
                     className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
                   />
-                  <div className="flex space-x-2">
+                  <div className="space-y-2">
                     <input
-                      type="url"
-                      placeholder="https://exemple.com/image.jpg"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleImageUpload(e.target.value, 'profile');
-                        }
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) handleFileUpload(file, 'profile');
                       }}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={uploadingProfile}
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.querySelector('input[type="url"]');
-                        if (input && input.value) {
-                          handleImageUpload(input.value, 'profile');
-                        }
-                      }}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Mettre à jour
-                    </button>
+                    {uploadingProfile && (
+                      <div className="text-sm text-blue-600">Upload en cours...</div>
+                    )}
+                    <div className="text-sm text-gray-600">Ou utilisez une URL :</div>
+                    <div className="flex space-x-2">
+                      <input
+                        type="url"
+                        placeholder="https://exemple.com/image.jpg"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleImageUpload(e.target.value, 'profile');
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const inputs = document.querySelectorAll('input[type="url"]');
+                          if (inputs[0] && inputs[0].value) {
+                            handleImageUpload(inputs[0].value, 'profile');
+                          }
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Mettre à jour
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -254,7 +312,7 @@ export default function PartnerSettings() {
               {/* Bannière */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bannière du restaurant (URL)
+                  Bannière du restaurant
                 </label>
                 <div className="space-y-3">
                   <img 
@@ -262,30 +320,46 @@ export default function PartnerSettings() {
                     alt="Bannière"
                     className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
                   />
-                  <div className="flex space-x-2">
+                  <div className="space-y-2">
                     <input
-                      type="url"
-                      placeholder="https://exemple.com/banner.jpg"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleImageUpload(e.target.value, 'banner');
-                        }
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) handleFileUpload(file, 'banner');
                       }}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={uploadingBanner}
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.querySelectorAll('input[type="url"]')[1];
-                        if (input && input.value) {
-                          handleImageUpload(input.value, 'banner');
-                        }
-                      }}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Mettre à jour
-                    </button>
+                    {uploadingBanner && (
+                      <div className="text-sm text-blue-600">Upload en cours...</div>
+                    )}
+                    <div className="text-sm text-gray-600">Ou utilisez une URL :</div>
+                    <div className="flex space-x-2">
+                      <input
+                        type="url"
+                        placeholder="https://exemple.com/banner.jpg"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleImageUpload(e.target.value, 'banner');
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const inputs = document.querySelectorAll('input[type="url"]');
+                          if (inputs[1] && inputs[1].value) {
+                            handleImageUpload(inputs[1].value, 'banner');
+                          }
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Mettre à jour
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

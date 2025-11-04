@@ -40,7 +40,8 @@ export default function MenuSupplements() {
       .eq('id', user.id)
       .single();
 
-    if (userData?.role !== 'restaurant') {
+    // Autoriser les restaurants ET les admins
+    if (userData?.role !== 'restaurant' && userData?.role !== 'admin') {
       router.push('/');
       return;
     }
