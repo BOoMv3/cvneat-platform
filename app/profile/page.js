@@ -681,7 +681,7 @@ export default function Profile() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-red-900 mb-4">Zone de danger</h3>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront supprimées.')) {
                       try {
                         setLoading(true);
