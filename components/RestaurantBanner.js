@@ -34,7 +34,9 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
   };
 
   return (
-    <div className="relative w-full h-64 sm:h-72 md:h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
+    <div className="relative w-full rounded-t-2xl sm:rounded-t-3xl">
+      {/* Bannière principale */}
+      <div className="relative w-full h-64 sm:h-72 md:h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
       {/* Image de fond avec overlay */}
       <div className="absolute inset-0">
         {restaurant.banner_image ? (
@@ -145,26 +147,28 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
 
       {/* Gradient de transition en bas de l'image - Réduit pour moins d'empiètement */}
       <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-20 md:h-24 bg-gradient-to-b from-transparent via-white/15 to-white dark:via-gray-800/15 dark:to-gray-800 pointer-events-none z-10"></div>
+      </div>
       
       {/* Informations en bas - Position ajustée pour réduire l'empiètement sur l'image */}
-      <div className="relative mt-4 sm:mt-5 md:mt-6 bg-white dark:bg-gray-800 p-3 sm:p-4 md:p-6 rounded-t-2xl sm:rounded-t-3xl border-t border-x border-gray-200 dark:border-gray-700">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
-            <div className="flex items-center gap-1 sm:gap-2">
+      <div className="relative -mt-4 sm:-mt-5 md:-mt-6 bg-white dark:bg-gray-800 p-4 sm:p-5 md:p-6 rounded-t-2xl sm:rounded-t-3xl border-t border-x border-gray-200 dark:border-gray-700 z-20">
+        {/* Étoiles, temps de livraison et frais - Visible en premier */}
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 md:gap-5">
+            <div className="flex items-center gap-2 sm:gap-2.5">
               <StarRating 
                 rating={restaurant.rating || 0} 
                 size="sm" 
                 showValue={true}
               />
-              <span className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">({restaurant.reviews_count || '0'} avis)</span>
+              <span className="text-gray-600 dark:text-gray-400 text-sm sm:text-base font-medium">({restaurant.reviews_count || '0'} avis)</span>
             </div>
-            <div className="flex items-center gap-1">
-              <FaClock className="text-gray-600 dark:text-gray-400 w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="text-gray-800 dark:text-gray-200 text-xs sm:text-sm">{restaurant.deliveryTime || '25'} min</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <FaClock className="text-gray-600 dark:text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-gray-800 dark:text-gray-200 text-sm sm:text-base font-medium">{restaurant.deliveryTime || restaurant.delivery_time || '25'} min</span>
             </div>
-            <div className="flex items-center gap-1">
-              <FaMotorcycle className="text-gray-600 dark:text-gray-400 w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="text-gray-800 dark:text-gray-200 text-xs sm:text-sm">{restaurant.deliveryFee || '2.50'}€</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <FaMotorcycle className="text-gray-600 dark:text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-gray-800 dark:text-gray-200 text-sm sm:text-base font-medium">{restaurant.deliveryFee || restaurant.frais_livraison || '2.50'}€</span>
             </div>
           </div>
         </div>
@@ -174,11 +178,11 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
           <span className="break-words leading-tight">{restaurant.adresse}, {restaurant.ville} {restaurant.code_postal}</span>
         </div>
         
-        {/* Horaires d'ouverture */}
-        <div className="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm border-t border-gray-200 dark:border-gray-700 pt-2 sm:pt-3 mt-2 sm:mt-3">
-          <FaClock className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0 w-3 h-3 sm:w-4 sm:h-4" />
+        {/* Horaires d'ouverture - Section visible */}
+        <div className="flex items-start gap-2 sm:gap-3 text-sm sm:text-base border-t border-gray-200 dark:border-gray-700 pt-3 sm:pt-4 mt-3 sm:mt-4">
+          <FaClock className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
           <div className="flex-1 min-w-0">
-            <div className="text-gray-900 dark:text-gray-100 font-semibold mb-1 sm:mb-2 text-xs sm:text-sm md:text-base">
+            <div className="text-gray-900 dark:text-gray-100 font-bold mb-2 sm:mb-3 text-base sm:text-lg">
               {isManuallyClosed ? (
                 <span className="text-red-600 dark:text-red-400">🔴 Fermé manuellement</span>
               ) : !isOpen ? (
