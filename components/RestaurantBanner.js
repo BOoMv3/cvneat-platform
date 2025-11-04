@@ -131,37 +131,37 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       </div>
 
       {/* Informations en bas */}
-      <div className="absolute -bottom-20 left-0 right-0 bg-white bg-opacity-95 backdrop-blur-sm p-4 rounded-t-3xl shadow-lg border border-gray-200">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-4">
+      <div className="absolute -bottom-20 left-0 right-0 bg-white dark:bg-gray-800 bg-opacity-95 backdrop-blur-sm p-4 sm:p-6 rounded-t-3xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-2">
               <StarRating 
                 rating={restaurant.rating || 0} 
                 size="sm" 
                 showValue={true}
               />
-              <span className="text-gray-600 text-sm">({restaurant.reviews_count || '0'} avis)</span>
+              <span className="text-gray-600 dark:text-gray-400 text-sm">({restaurant.reviews_count || '0'} avis)</span>
             </div>
             <div className="flex items-center gap-1">
-              <FaClock className="text-gray-600" />
-              <span className="text-gray-800">{restaurant.deliveryTime || '25'} min</span>
+              <FaClock className="text-gray-600 dark:text-gray-400" />
+              <span className="text-gray-800 dark:text-gray-200 text-sm">{restaurant.deliveryTime || '25'} min</span>
             </div>
             <div className="flex items-center gap-1">
-              <FaMotorcycle className="text-gray-600" />
-              <span className="text-gray-800">{restaurant.deliveryFee || '2.50'}€</span>
+              <FaMotorcycle className="text-gray-600 dark:text-gray-400" />
+              <span className="text-gray-800 dark:text-gray-200 text-sm">{restaurant.deliveryFee || '2.50'}€</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-          <FaMapMarkerAlt className="text-gray-500" />
-          <span>{restaurant.adresse}, {restaurant.ville} {restaurant.code_postal}</span>
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
+          <FaMapMarkerAlt className="text-gray-500 dark:text-gray-500 flex-shrink-0" />
+          <span className="break-words">{restaurant.adresse}, {restaurant.ville} {restaurant.code_postal}</span>
         </div>
         
         {/* Horaires d'ouverture */}
         <div className="flex items-start gap-3 text-sm border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
           <FaClock className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0 text-base" />
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="text-gray-900 dark:text-gray-100 font-semibold mb-2 text-base">
               {isManuallyClosed ? (
                 <span className="text-red-600 dark:text-red-400">🔴 Fermé manuellement</span>
@@ -178,13 +178,20 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
                     Aujourd'hui ({currentHours.day}): {currentHours.ouverture} - {currentHours.fermeture}
                   </div>
                 )}
+                {!currentHours || !currentHours.ouvert || currentHours.is_closed ? (
+                  currentHours && (
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">
+                      Fermé aujourd'hui ({currentHours.day})
+                    </div>
+                  )
+                ) : null}
                 <details className="mt-2">
                   <summary className="text-gray-600 dark:text-gray-400 text-sm cursor-pointer hover:text-gray-800 dark:hover:text-gray-200 font-medium underline">
                     Voir tous les horaires →
                   </summary>
                   <div className="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-2 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                     {hours.map((h, i) => (
-                      <div key={i} className="flex justify-between items-center">
+                      <div key={i} className="flex justify-between items-center py-1">
                         <span className="font-medium text-gray-900 dark:text-gray-100">{h.day}</span>
                         <span className={h.is_closed || !h.ouvert ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}>
                           {h.is_closed || !h.ouvert ? 'Fermé' : `${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`}

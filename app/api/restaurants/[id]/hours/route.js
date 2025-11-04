@@ -119,19 +119,42 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier l'heure actuelle
-    const currentTime = checkDate.toTimeString().slice(0, 5); // HH:MM
-    const openTime = todayHours.ouverture || '00:00';
-    const closeTime = todayHours.fermeture || '23:59';
+    const now = new Date(checkDate);
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTimeMinutes = currentHours * 60 + currentMinutes;
 
-    const isOpen = currentTime >= openTime && currentTime <= closeTime;
+    // Parser les heures d'ouverture et fermeture
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const openTimeMinutes = parseTime(todayHours.ouverture);
+    const closeTimeMinutes = parseTime(todayHours.fermeture);
+
+    if (openTimeMinutes === null || closeTimeMinutes === null) {
+      return NextResponse.json({
+        isOpen: false,
+        message: 'Horaires invalides',
+        reason: 'invalid_hours'
+      });
+    }
+
+    // Vérifier si on est dans la plage horaire
+    const isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
 
     return NextResponse.json({
       isOpen,
       message: isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
       reason: isOpen ? 'open' : 'outside_hours',
-      openTime,
-      closeTime,
-      currentTime,
+      openTime: todayHours.ouverture,
+      closeTime: todayHours.fermeture,
+      currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
+      currentTimeMinutes,
+      openTimeMinutes,
+      closeTimeMinutes,
       today: todayKey
     });
   } catch (error) {

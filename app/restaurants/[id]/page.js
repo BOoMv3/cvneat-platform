@@ -191,12 +191,13 @@ export default function RestaurantDetail({ params }) {
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
       setRestaurantHours(hoursData.hours || []);
-      setIsRestaurantOpen(openStatusData.isOpen !== false);
+      setIsRestaurantOpen(openStatusData.isOpen === true);
       setIsManuallyClosed(hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
       
       // Debug: afficher les horaires récupérées
       console.log('Horaires récupérées:', hoursData.hours);
       console.log('Statut ouvert:', openStatusData);
+      console.log('isRestaurantOpen sera:', openStatusData.isOpen === true);
     } catch (err) {
       setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
     } finally {
