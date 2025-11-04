@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +13,17 @@ export async function GET(request) {
 
     const token = authHeader.split(' ')[1];
     
+    // Créer un client Supabase avec le token utilisateur
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+    
     // Vérifier le token avec Supabase
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
@@ -22,11 +33,11 @@ export async function GET(request) {
 
     console.log('Utilisateur Supabase Auth:', user);
 
-    // Récupérer les informations utilisateur depuis la table users (par email)
+    // Récupérer les informations utilisateur depuis la table users (par id pour garantir la correspondance)
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single();
 
     console.log('Données utilisateur depuis la table users:', userData, 'Erreur:', userError);
