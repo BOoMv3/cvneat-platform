@@ -4,7 +4,7 @@ export function middleware(request) {
   // Vérifier si le mode maintenance est activé
   const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
   
-  // Routes autorisées même en mode maintenance (pour les restaurants/partenaires uniquement)
+  // Routes autorisées même en mode maintenance (pour les restaurants/partenaires et admin uniquement)
   const allowedRoutes = [
     '/login',
     '/restaurant-request',  // Demande de devenir partenaire (pour les restaurants)
@@ -15,6 +15,7 @@ export function middleware(request) {
     '/partner/menu',
     '/partner/profile',
     '/profil-partenaire',
+    '/admin',  // Toutes les pages admin
     '/api',
     '/auth',
     '/_next',
