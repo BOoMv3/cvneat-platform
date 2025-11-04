@@ -159,10 +159,10 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
         </div>
         
         {/* Horaires d'ouverture */}
-        <div className="flex items-start gap-2 text-sm">
-          <FaClock className="text-gray-500 mt-1 flex-shrink-0" />
+        <div className="flex items-start gap-3 text-sm border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+          <FaClock className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0 text-base" />
           <div className="flex-1">
-            <div className="text-gray-800 dark:text-gray-200 font-medium mb-1">
+            <div className="text-gray-900 dark:text-gray-100 font-semibold mb-2 text-base">
               {isManuallyClosed ? (
                 <span className="text-red-600 dark:text-red-400">🔴 Fermé manuellement</span>
               ) : !isOpen ? (
@@ -172,25 +172,30 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
               )}
             </div>
             {hours && hours.length > 0 ? (
-              <>
+              <div className="space-y-2">
                 {currentHours && currentHours.ouvert && !currentHours.is_closed && (
-                  <div className="text-gray-600 dark:text-gray-400 text-xs">
-                    Aujourd'hui: {currentHours.ouverture} - {currentHours.fermeture}
+                  <div className="text-gray-700 dark:text-gray-300 text-sm font-medium">
+                    Aujourd'hui ({currentHours.day}): {currentHours.ouverture} - {currentHours.fermeture}
                   </div>
                 )}
-                <details className="mt-1">
-                  <summary className="text-gray-600 dark:text-gray-400 text-xs cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">Voir tous les horaires</summary>
-                  <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                <details className="mt-2">
+                  <summary className="text-gray-600 dark:text-gray-400 text-sm cursor-pointer hover:text-gray-800 dark:hover:text-gray-200 font-medium underline">
+                    Voir tous les horaires →
+                  </summary>
+                  <div className="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-2 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                     {hours.map((h, i) => (
-                      <div key={i}>
-                        {h.is_closed || !h.ouvert ? `${h.day}: Fermé` : `${h.day}: ${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`}
+                      <div key={i} className="flex justify-between items-center">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{h.day}</span>
+                        <span className={h.is_closed || !h.ouvert ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}>
+                          {h.is_closed || !h.ouvert ? 'Fermé' : `${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </details>
-              </>
+              </div>
             ) : (
-              <div className="text-gray-500 dark:text-gray-400 text-xs italic">
+              <div className="text-gray-500 dark:text-gray-400 text-sm italic">
                 Horaires non définis
               </div>
             )}
