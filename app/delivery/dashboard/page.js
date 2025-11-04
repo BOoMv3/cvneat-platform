@@ -23,6 +23,8 @@ export default function DeliveryDashboard() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [currentOrder, setCurrentOrder] = useState(null); // Gardé pour compatibilité
   const [acceptedOrders, setAcceptedOrders] = useState([]); // Toutes les commandes acceptées
+  const [selectedOrderId, setSelectedOrderId] = useState(null); // Commande sélectionnée pour voir les détails
+  const [expandedOrders, setExpandedOrders] = useState(new Set()); // Commandes dont les détails sont développés
   const [stats, setStats] = useState({ total_earnings: 0, total_deliveries: 0, average_rating: 0 });
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -760,191 +762,195 @@ export default function DeliveryDashboard() {
             </div>
           </div>
 
-          {/* Commandes acceptées - Affichage multiple */}
+          {/* Commandes acceptées - Vue compacte avec détails */}
           {acceptedOrders.length > 0 && (
-            <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Mes commandes acceptées ({acceptedOrders.length})</h2>
-              {acceptedOrders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg sm:rounded-xl shadow-sm border p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Commande #{order.id}</h3>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium">
-                      {order.total?.toFixed(2)}€
-                    </span>
-                    <span className="px-2 sm:px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs sm:text-sm font-medium">
-                      {order.statut === 'en_livraison' ? 'En livraison' : 'Prêt à livrer'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-gray-900 mb-2">🍽️ Restaurant</h3>
-                      <p className="text-gray-700 font-medium">{order.restaurant?.nom}</p>
-                      <p className="text-gray-600 text-sm">{order.restaurant?.adresse}</p>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-gray-900 mb-2">👤 Client</h3>
-                      <p className="text-gray-700 font-medium">
-                        {order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client non trouvé'}
-                      </p>
-                      <p className="text-gray-600 text-sm">{order.users?.telephone || 'Téléphone non disponible'}</p>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-gray-900 mb-2">🏠 Adresse de livraison</h3>
-                      <p className="text-gray-700">{order.user_addresses?.address}</p>
-                    </div>
-                    
-                    {/* Code de sécurité */}
-                    {order.security_code && (
-                      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Mes commandes acceptées ({acceptedOrders.length})</h2>
+                <button
+                  onClick={() => {
+                    // Développer/réduire toutes les commandes
+                    if (expandedOrders.size === acceptedOrders.length) {
+                      setExpandedOrders(new Set());
+                    } else {
+                      setExpandedOrders(new Set(acceptedOrders.map(o => o.id)));
+                    }
+                  }}
+                  className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  {expandedOrders.size === acceptedOrders.length ? 'Réduire tout' : 'Développer tout'}
+                </button>
+              </div>
+              
+              {/* Liste compacte des commandes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {acceptedOrders.map((order) => {
+                  const isExpanded = expandedOrders.has(order.id);
+                  return (
+                    <div key={order.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                      {/* En-tête compact */}
+                      <div 
+                        className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => {
+                          const newExpanded = new Set(expandedOrders);
+                          if (isExpanded) {
+                            newExpanded.delete(order.id);
+                          } else {
+                            newExpanded.add(order.id);
+                          }
+                          setExpandedOrders(newExpanded);
+                          setSelectedOrderId(order.id);
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm sm:text-base font-semibold text-gray-900">
+                            Commande #{order.id.slice(0, 8)}...
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            order.statut === 'en_livraison' ? 'bg-blue-100 text-blue-800' : 
+                            order.statut === 'pret_a_livrer' ? 'bg-green-100 text-green-800' : 
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {order.statut === 'en_livraison' ? 'En livraison' : 
+                             order.statut === 'pret_a_livrer' ? 'Prêt' : 'En préparation'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
                           <div>
-                            <h3 className="font-semibold text-blue-800 mb-1">🔐 Code de sécurité</h3>
-                            <p className="text-xs text-blue-600">Code à demander au client pour valider la livraison</p>
+                            <p className="text-gray-600 font-medium">{order.restaurant?.nom || 'Restaurant'}</p>
+                            <p className="text-gray-500 text-xs">{order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client'}</p>
                           </div>
-                          <div className="text-2xl sm:text-3xl font-mono font-bold text-blue-800 bg-white px-3 py-2 rounded-lg border-2 border-blue-400 shadow-md">
-                            {order.security_code}
+                          <div className="text-right">
+                            <p className="font-bold text-blue-600">{order.total?.toFixed(2)}€</p>
+                            {order.security_code && (
+                              <p className="text-xs text-gray-500 font-mono">Code: {order.security_code}</p>
+                            )}
                           </div>
                         </div>
+                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                          <span>📍 {order.user_addresses?.address?.slice(0, 30) || 'Adresse'}...</span>
+                          <span className={isExpanded ? 'transform rotate-180' : ''}>▼</span>
+                        </div>
                       </div>
-                    )}
-                    
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                      {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer') && (
-                        <button
-                          onClick={() => completeDelivery(order.id)}
-                          className="flex-1 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold min-h-[44px] touch-manipulation text-sm sm:text-base"
-                        >
-                          ✅ Marquer comme livrée
-                        </button>
+                      
+                      {/* Détails développés */}
+                      {isExpanded && (
+                        <div className="border-t p-4 space-y-4 bg-gray-50">
+                          {/* Informations restaurant */}
+                          <div className="bg-white p-3 rounded-lg">
+                            <h4 className="font-semibold text-gray-900 mb-2 text-sm">🍽️ Restaurant</h4>
+                            <p className="text-gray-700 font-medium text-sm">{order.restaurant?.nom || 'Restaurant'}</p>
+                            <p className="text-gray-600 text-xs">{order.restaurant?.adresse || 'Adresse non disponible'}</p>
+                          </div>
+                          
+                          {/* Informations client */}
+                          <div className="bg-white p-3 rounded-lg">
+                            <h4 className="font-semibold text-gray-900 mb-2 text-sm">👤 Client</h4>
+                            <p className="text-gray-700 font-medium text-sm">
+                              {order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client non trouvé'}
+                            </p>
+                            <p className="text-gray-600 text-xs">{order.users?.telephone || 'Téléphone non disponible'}</p>
+                          </div>
+                          
+                          {/* Adresse de livraison */}
+                          <div className="bg-white p-3 rounded-lg">
+                            <h4 className="font-semibold text-gray-900 mb-2 text-sm">🏠 Adresse de livraison</h4>
+                            <p className="text-gray-700 text-sm">{order.user_addresses?.address || 'Adresse non disponible'}</p>
+                            {(order.user_addresses?.city || order.user_addresses?.postal_code) && (
+                              <p className="text-gray-600 text-xs">
+                                {order.user_addresses?.city} {order.user_addresses?.postal_code}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {/* Code de sécurité */}
+                          {order.security_code && (
+                            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-semibold text-blue-800 mb-1 text-sm">🔐 Code de sécurité</h4>
+                                  <p className="text-xs text-blue-600">À demander au client</p>
+                                </div>
+                                <div className="text-xl font-mono font-bold text-blue-800 bg-white px-3 py-2 rounded-lg border-2 border-blue-400">
+                                  {order.security_code}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Boutons de navigation */}
+                          <div className="space-y-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const restaurant = encodeURIComponent(order.restaurant?.adresse || '');
+                                const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                const url = `https://www.google.com/maps/dir/${restaurant}/${delivery}`;
+                                window.open(url, '_blank');
+                              }}
+                              className="w-full py-2 px-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold text-sm"
+                            >
+                              🗺️ Navigation (Restaurant → Livraison)
+                            </button>
+                            
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!navigator.geolocation) {
+                                  alert('Géolocalisation non supportée');
+                                  return;
+                                }
+                                navigator.geolocation.getCurrentPosition(
+                                  (position) => {
+                                    const lat = position.coords.latitude;
+                                    const lng = position.coords.longitude;
+                                    const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                    const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
+                                    window.open(url, '_blank');
+                                  },
+                                  (error) => {
+                                    console.error('Erreur géolocalisation:', error);
+                                    alert('Impossible d\'accéder à votre position. Utilisez "Navigation complète" à la place.');
+                                  },
+                                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                                );
+                              }}
+                              className="w-full py-2 px-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold text-sm"
+                            >
+                              🌍 Navigation depuis ma position
+                            </button>
+                            
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                const url = `https://waze.com/ul?q=${delivery}`;
+                                window.open(url, '_blank');
+                              }}
+                              className="w-full py-2 px-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold text-sm"
+                            >
+                              🚗 Ouvrir dans Waze
+                            </button>
+                          </div>
+                          
+                          {/* Bouton marquer comme livrée */}
+                          {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                completeDelivery(order.id);
+                              }}
+                              className="w-full py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm"
+                            >
+                              ✅ Marquer comme livrée
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-                  </div>
-                  
-                  <div>
-                    {/* Carte de navigation fonctionnelle */}
-                    <div className="bg-white rounded-lg shadow-sm border p-4">
-                      <h3 className="font-semibold text-gray-900 mb-4">🗺️ Navigation de livraison</h3>
-                      
-                      {/* Carte de navigation - Liens directs */}
-                      <div className="mb-4 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg p-6 text-center">
-                        <div className="mb-4">
-                          <div className="text-4xl mb-2">🗺️</div>
-                          <h4 className="font-semibold text-gray-800">Navigation GPS</h4>
-                          <p className="text-gray-600 text-sm">Cliquez sur les boutons ci-dessous pour ouvrir la navigation</p>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="bg-white rounded p-3 shadow-sm">
-                            <div className="text-red-500 text-2xl mb-1">🍽️</div>
-                            <div className="text-xs font-semibold">Restaurant</div>
-                            <div className="text-xs text-gray-600">{order.restaurant?.adresse || 'Restaurant'}</div>
-                          </div>
-                          <div className="bg-white rounded p-3 shadow-sm">
-                            <div className="text-blue-500 text-2xl mb-1">🏠</div>
-                            <div className="text-xs font-semibold">Livraison</div>
-                            <div className="text-xs text-gray-600">{order.user_addresses?.address || 'Adresse'}</div>
-                          </div>
-                        </div>
-                        
-                        <div className="text-sm text-gray-700">
-                          <div className="flex items-center justify-center space-x-4">
-                            <span>📏 Distance: 2.5 km</span>
-                            <span>⏱️ Temps: ~8 min</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Adresses */}
-                      <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                        <div className="bg-red-50 p-3 rounded">
-                          <div className="font-semibold text-red-700">📍 Restaurant</div>
-                          <div className="text-red-600 text-xs">{order.restaurant?.adresse || 'Restaurant'}</div>
-                        </div>
-                        <div className="bg-blue-50 p-3 rounded">
-                          <div className="font-semibold text-blue-700">🏠 Livraison</div>
-                          <div className="text-blue-600 text-xs">{order.user_addresses?.address || 'Adresse de livraison'}</div>
-                        </div>
-                      </div>
-
-                      {/* Boutons de navigation GPS */}
-                      <div className="space-y-3">
-                        {/* Navigation complète Restaurant → Livraison */}
-                        <button
-                          onClick={() => {
-                            const restaurant = encodeURIComponent(order.restaurant?.adresse || 'Restaurant Test');
-                            const delivery = encodeURIComponent(order.user_addresses?.address || '10 place des cèdres');
-                            const url = `https://www.google.com/maps/dir/${restaurant}/${delivery}`;
-                            window.open(url, '_blank');
-                          }}
-                          className="w-full py-4 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold text-base sm:text-lg"
-                        >
-                          🗺️ Navigation complète (Restaurant → Livraison)
-                        </button>
-                        
-                        {/* Navigation depuis position actuelle */}
-                        <button
-                          onClick={() => {
-                            if (!navigator.geolocation) {
-                              alert('Géolocalisation non supportée par votre navigateur');
-                              return;
-                            }
-
-                            navigator.geolocation.getCurrentPosition(
-                              (position) => {
-                                const lat = position.coords.latitude;
-                                const lng = position.coords.longitude;
-                                const delivery = encodeURIComponent(order.user_addresses?.address || '10 place des cèdres');
-                                const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
-                                window.open(url, '_blank');
-                              },
-                              (error) => {
-                                alert('Erreur de géolocalisation: ' + error.message + '\n\nVous pouvez utiliser le bouton "Navigation complète" à la place.');
-                              },
-                              {
-                                enableHighAccuracy: true,
-                                timeout: 10000,
-                                maximumAge: 60000
-                              }
-                            );
-                          }}
-                            className="w-full py-4 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold text-lg"
-                          >
-                            🌍 Navigation depuis ma position
-                          </button>
-
-                          {/* Bouton de secours pour Waze */}
-                          <button
-                            onClick={() => {
-                              const delivery = encodeURIComponent(order.user_addresses?.address || '10 place des cèdres');
-                              const url = `https://waze.com/ul?q=${delivery}`;
-                              window.open(url, '_blank');
-                            }}
-                            className="w-full py-3 px-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold text-base sm:text-lg"
-                          >
-                            🚗 Ouvrir dans Waze
-                          </button>
-                        </div>
-
-                        {/* Instructions */}
-                        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
-                          <p className="text-yellow-800 text-sm font-semibold">💡 Instructions :</p>
-                          <ul className="text-yellow-700 text-xs mt-1 space-y-1">
-                            <li>• Utilisez "Ouvrir dans Google Maps" pour la navigation complète</li>
-                            <li>• "Navigation depuis ma position" vous géolocalise automatiquement</li>
-                            <li>• Suivez les instructions GPS de Google Maps</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
           )}
 

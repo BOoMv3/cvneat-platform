@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { FaBell } from 'react-icons/fa';
+import { supabase } from '../lib/supabase';
 
 export default function DeliveryNotifications({ deliveryId }) {
   const [notifications, setNotifications] = useState([]);
@@ -18,14 +19,30 @@ export default function DeliveryNotifications({ deliveryId }) {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`/api/delivery/notifications?deliveryId=${deliveryId}`);
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return;
+      }
+
+      const response = await fetch(`/api/delivery/notifications?deliveryId=${deliveryId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setNotifications(data.notifications || []);
         setUnreadCount(data.unreadCount || 0);
+      } else if (response.status === 401) {
+        // Erreur d'authentification - silencieuse pour ne pas polluer la console
+        console.warn('⚠️ Authentification requise pour les notifications');
       }
     } catch (error) {
-      console.error('Erreur récupération notifications:', error);
+      // Erreur silencieuse pour ne pas polluer la console
+      console.warn('⚠️ Erreur récupération notifications:', error.message);
     }
   };
 
