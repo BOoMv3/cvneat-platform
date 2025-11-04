@@ -119,16 +119,30 @@ export default function AdminPage() {
       const pendingOrders = orders?.filter(o => o.statut === 'en_attente').length || 0;
       const validatedOrders = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut)).length || 0;
       
-      // Chiffre d'affaires = Commissions CVN'EAT (15% des commandes livrées, excluant les frais de livraison)
-      // Les frais de livraison vont au livreur, pas à CVN'EAT
-      const COMMISSION_RATE = 0.15; // 15% de commission sur les commandes
-      const totalRevenue = orders?.filter(o => o.statut === 'livree')
-        .reduce((sum, order) => {
-          // order.total contient uniquement le montant des articles (sans frais de livraison)
-          const orderAmount = parseFloat(order.total || 0);
-          const commission = orderAmount * COMMISSION_RATE;
-          return sum + commission;
-        }, 0) || 0;
+      // Calculer les différents chiffres d'affaires
+      const COMMISSION_RATE = 0.20; // 20% de commission sur les commandes
+      
+      // CA total = montant total des commandes livrées (articles + frais de livraison)
+      // CA CVN'EAT = 20% du montant des articles (sans frais de livraison)
+      // CA Livreur = somme des frais de livraison
+      
+      let totalRevenue = 0; // CA total
+      let cvneatRevenue = 0; // CA CVN'EAT (20%)
+      let livreurRevenue = 0; // CA Livreur
+      
+      orders?.filter(o => o.statut === 'livree').forEach(order => {
+        const orderAmount = parseFloat(order.total || 0); // Montant des articles uniquement
+        const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
+        
+        // CA total = articles + frais de livraison
+        totalRevenue += orderAmount + deliveryFee;
+        
+        // CA CVN'EAT = 20% des articles uniquement
+        cvneatRevenue += orderAmount * COMMISSION_RATE;
+        
+        // CA Livreur = frais de livraison
+        livreurRevenue += deliveryFee;
+      });
       
       const totalRestaurants = restaurants?.length || 0;
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
@@ -149,6 +163,8 @@ export default function AdminPage() {
         pendingOrders,
         validatedOrders,
         totalRevenue,
+        cvneatRevenue,
+        livreurRevenue,
         totalRestaurants,
         pendingPartners,
         totalUsers: totalUsers || 0,
