@@ -17,6 +17,7 @@ export default function AdsManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAd, setEditingAd] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -60,6 +61,13 @@ export default function AdsManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Vérifier que l'image est fournie
+    if (!formData.image_url) {
+      alert('Veuillez fournir une image (fichier ou URL)');
+      return;
+    }
+    
     try {
       if (editingAd) {
         const { error } = await supabase
@@ -221,15 +229,61 @@ export default function AdsManagement() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        URL de l'image *
+                        Image de la publicité *
                       </label>
-                      <input
-                        type="url"
-                        value={formData.image_url}
-                        onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
-                        required
-                      />
+                      <div className="space-y-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            
+                            setUploadingImage(true);
+                            try {
+                              const formDataUpload = new FormData();
+                              formDataUpload.append('file', file);
+                              formDataUpload.append('folder', 'advertisement-images');
+                              formDataUpload.append('userId', 'admin');
+
+                              const response = await fetch('/api/upload-image', {
+                                method: 'POST',
+                                body: formDataUpload
+                              });
+
+                              const data = await response.json();
+                              if (response.ok && data.imageUrl) {
+                                setFormData({...formData, image_url: data.imageUrl});
+                              } else {
+                                alert(data.error || 'Erreur lors de l\'upload de l\'image');
+                              }
+                            } catch (error) {
+                              console.error('Erreur upload:', error);
+                              alert('Erreur lors de l\'upload de l\'image');
+                            } finally {
+                              setUploadingImage(false);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+                          disabled={uploadingImage}
+                        />
+                        {uploadingImage && (
+                          <div className="text-sm text-blue-600">Upload en cours...</div>
+                        )}
+                        <div className="text-sm text-gray-600">Ou utilisez une URL :</div>
+                        <input
+                          type="url"
+                          placeholder="https://exemple.com/image.jpg"
+                          value={formData.image_url}
+                          onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+                        />
+                        {formData.image_url && (
+                          <div className="mt-2">
+                            <img src={formData.image_url} alt="Aperçu" className="w-32 h-32 object-cover rounded-md" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">

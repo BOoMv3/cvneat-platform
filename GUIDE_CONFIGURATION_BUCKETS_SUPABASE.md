@@ -29,38 +29,53 @@ Pour chaque bucket à créer :
 3. **Important** : Cochez **Public bucket** pour permettre l'accès public aux images
 4. Cliquez sur **Create bucket** (ou **Créer le bucket**)
 
-### 3. Configurer les permissions (optionnel mais recommandé)
+### 3. Configurer les permissions - MÉTHODE RAPIDE (Recommandée)
 
-Pour chaque bucket créé, vous pouvez configurer les permissions :
+**Option A : Utiliser le fichier SQL (Plus rapide)**
 
-1. Cliquez sur le bucket créé
+1. Ouvrez le fichier `POLITIQUES_BUCKETS_SUPABASE.sql` dans votre projet
+2. Copiez tout le contenu du fichier
+3. Dans Supabase, allez dans **SQL Editor** (éditeur SQL)
+4. Collez le contenu et cliquez sur **Run** (Exécuter)
+5. Toutes les politiques seront créées automatiquement pour tous les buckets
+
+**Option B : Créer manuellement (Si vous préférez)**
+
+Pour chaque bucket créé, vous devez créer les politiques **individuellement** :
+
+1. Cliquez sur le bucket (ex: `RESTAURANTS-IMAGES`)
 2. Allez dans l'onglet **Policies** (ou **Politiques**)
-3. Créez une politique pour permettre l'upload :
-   - **Policy name**: `Allow authenticated upload`
+3. Cliquez sur **Nouvelle politique** (New policy)
+4. Créez une politique pour permettre l'upload :
+   - **Policy name**: `Permettre upload RESTAURANTS-IMAGES authentifié`
    - **Allowed operation**: `INSERT`
    - **Target roles**: `authenticated`
    - **Policy definition**: 
      ```sql
-     (bucket_id = 'MENU-IMAGES'::text)
+     (bucket_id = 'RESTAURANTS-IMAGES'::text)
      ```
-
-4. Créez une politique pour permettre la lecture publique :
-   - **Policy name**: `Allow public read`
+5. Répétez pour créer une politique de lecture publique :
+   - **Policy name**: `Permettre lecture publique RESTAURANTS-IMAGES`
    - **Allowed operation**: `SELECT`
    - **Target roles**: `anon`, `authenticated`
    - **Policy definition**: 
      ```sql
-     (bucket_id = 'MENU-IMAGES'::text)
+     (bucket_id = 'RESTAURANTS-IMAGES'::text)
      ```
+
+**⚠️ IMPORTANT** : Les politiques ne peuvent pas être copiées d'un bucket à l'autre en cliquant. Vous devez créer une nouvelle politique pour chaque bucket avec le bon nom de bucket dans la définition.
 
 ### 4. Répétez pour tous les buckets
 
-Créez les trois buckets suivants avec les mêmes permissions :
+Créez les trois buckets suivants :
 - `MENU-IMAGES`
 - `RESTAURANTS-IMAGES`
 - `PUBLICITÉ-IMAGES`
 
-**Important** : Utilisez exactement ces noms (majuscules avec tirets) pour que le code fonctionne correctement.
+**Important** : 
+- Utilisez exactement ces noms (majuscules avec tirets)
+- Chaque bucket doit avoir ses propres politiques (ne peuvent pas être partagées)
+- Utilisez le fichier SQL `POLITIQUES_BUCKETS_SUPABASE.sql` pour créer toutes les politiques d'un coup
 
 ## ✅ Vérification
 
@@ -86,9 +101,20 @@ Si vous obtenez une erreur "Bucket not found", vérifiez que :
 ### Erreur "Permission denied"
 
 Si vous obtenez une erreur de permission :
-- Vérifiez que les politiques sont correctement configurées
+- Vérifiez que les politiques sont correctement configurées pour **chaque bucket individuellement**
 - Assurez-vous que le bucket est public
 - Vérifiez que l'utilisateur est authentifié
+- **Utilisez le fichier SQL** `POLITIQUES_BUCKETS_SUPABASE.sql` pour créer toutes les politiques d'un coup
+
+### Les politiques ne s'appliquent pas aux autres buckets
+
+**Problème** : Vous avez créé des politiques pour `MENU-IMAGES` mais elles ne fonctionnent pas pour `RESTAURANTS-IMAGES` ou `PUBLICITÉ-IMAGES`.
+
+**Solution** : Les politiques Supabase Storage sont spécifiques à chaque bucket. Vous ne pouvez pas copier une politique d'un bucket à l'autre en cliquant. 
+
+**Deux options** :
+1. **Méthode rapide** : Utilisez le fichier `POLITIQUES_BUCKETS_SUPABASE.sql` dans Supabase SQL Editor pour créer toutes les politiques automatiquement
+2. **Méthode manuelle** : Pour chaque bucket (`RESTAURANTS-IMAGES`, `PUBLICITÉ-IMAGES`, `IMAGES`), créez une nouvelle politique avec le bon nom de bucket dans la définition SQL
 
 ### Images non affichées
 
