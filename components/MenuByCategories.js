@@ -56,7 +56,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
       {selectedCategory === 'all' ? (
         // Afficher tous les menus groupés par catégorie
         categories.map((category) => (
-          <div key={category} className="bg-white rounded-lg shadow-sm">
+          <div key={category} className="bg-white rounded-lg">
             <div className="px-6 py-4 bg-gray-50 border-b">
               <h2 className="text-xl font-semibold text-gray-900">{category}</h2>
             </div>
@@ -71,7 +71,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
         ))
       ) : (
         // Afficher seulement la catégorie sélectionnée
-        <div className="bg-white rounded-lg shadow-sm">
+        <div className="bg-white rounded-lg">
           <div className="px-6 py-4 bg-gray-50 border-b">
             <h2 className="text-xl font-semibold text-gray-900">{selectedCategory}</h2>
           </div>

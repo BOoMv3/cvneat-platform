@@ -61,7 +61,7 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   return (
     <>
       <div 
-        className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 w-full max-w-sm mx-auto cursor-pointer"
+        className="bg-white rounded-lg border border-gray-100 overflow-hidden transition-all duration-300 w-full max-w-sm mx-auto cursor-pointer"
         onClick={handleItemClick}
       >
       {/* Image de l'article - PROPORTIONS MOBILE OPTIMISÉES avec bords arrondis */}

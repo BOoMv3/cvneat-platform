@@ -34,7 +34,7 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
   };
 
   return (
-    <div className="relative w-full h-64 sm:h-72 md:h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden">
+    <div className="relative w-full h-64 sm:h-72 md:h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
       {/* Image de fond avec overlay */}
       <div className="absolute inset-0">
         {restaurant.banner_image ? (
@@ -144,7 +144,7 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       </div>
 
       {/* Informations en bas - Position ajustée pour ne pas empiéter */}
-      <div className="absolute -bottom-16 sm:-bottom-18 md:-bottom-20 left-0 right-0 bg-white dark:bg-gray-800 bg-opacity-95 backdrop-blur-sm p-3 sm:p-4 md:p-6 rounded-t-2xl sm:rounded-t-3xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div className="absolute -bottom-16 sm:-bottom-18 md:-bottom-20 left-0 right-0 bg-white dark:bg-gray-800 bg-opacity-95 backdrop-blur-sm p-3 sm:p-4 md:p-6 rounded-t-2xl sm:rounded-t-3xl border border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
             <div className="flex items-center gap-1 sm:gap-2">

@@ -58,7 +58,7 @@ export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = 
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300">
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300">
       {/* Image de l'article avec bords arrondis */}
       <div className="relative h-48 bg-gradient-to-br from-purple-100 to-orange-100 rounded-t-2xl overflow-hidden">
         {item.image_url ? (
