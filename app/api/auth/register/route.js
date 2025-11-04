@@ -92,6 +92,8 @@ export async function POST(request) {
     // La vérification dans la table users ci-dessus est suffisante pour la plupart des cas
 
     // Créer l'utilisateur dans Supabase Auth avec redirection email
+    // Note: Pour que les emails soient envoyés, il faut configurer un SMTP personnalisé
+    // dans Supabase Dashboard > Authentication > Emails > SMTP Settings
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat-platform.vercel.app';
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
       email: sanitizedData.email,
