@@ -206,21 +206,29 @@ export async function POST(request, { params }) {
       });
     }
 
-    // Vérifier l'heure actuelle (en heure locale française)
-    // Utiliser le fuseau horaire Europe/Paris pour une précision correcte
+    // Vérifier l'heure actuelle (en heure locale française Europe/Paris)
+    // IMPORTANT: Le serveur Vercel utilise UTC, il faut convertir en heure française
     const now = checkDate ? new Date(checkDate) : new Date();
     
     // Convertir en heure locale française (Europe/Paris)
-    // getHours() et getMinutes() retournent déjà l'heure locale du serveur
-    // Mais on veut être sûr d'utiliser le fuseau horaire français
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
+    // Utiliser toLocaleString pour obtenir l'heure dans le bon fuseau horaire
+    const frTime = now.toLocaleString('fr-FR', { 
+      timeZone: 'Europe/Paris',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    // Parser l'heure française (format HH:MM)
+    const [currentHours, currentMinutes] = frTime.split(':').map(Number);
     const currentTimeMinutes = currentHours * 60 + currentMinutes;
     
     // Log pour debug
     console.log('🕐 Heure système:', {
       dateISO: now.toISOString(),
+      dateUTC: now.toUTCString(),
       dateLocale: now.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }),
+      frTimeString: frTime,
       hours: currentHours,
       minutes: currentMinutes,
       timeMinutes: currentTimeMinutes,
