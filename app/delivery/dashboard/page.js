@@ -147,11 +147,12 @@ export default function DeliveryDashboard() {
     };
   }, [currentOrder]);
 
-  // Rechargement automatique des commandes pour détecter les nouvelles
+  // Rechargement automatique des commandes pour détecter les nouvelles et les commandes prises
   useEffect(() => {
+    // Rafraîchir toutes les 3 secondes pour détecter rapidement les commandes prises par d'autres livreurs
     const interval = setInterval(() => {
       fetchAvailableOrders();
-    }, 5000);
+    }, 3000);
     
     // Rafraîchir les statistiques toutes les 30 secondes
     const statsInterval = setInterval(() => {
@@ -249,14 +250,28 @@ export default function DeliveryDashboard() {
       });
       const data = await response.json();
       
-      
       // S'assurer que data est un tableau
       if (response.ok) {
-        // S'assurer que data est un tableau
         if (Array.isArray(data)) {
+          // Récupérer les IDs des commandes actuelles
+          const currentOrderIds = new Set(data.map(order => order.id));
+          
+          // Détecter les commandes qui ont disparu (prises par un autre livreur)
+          const previousOrderIds = new Set(availableOrders.map(order => order.id));
+          const removedOrders = availableOrders.filter(order => !currentOrderIds.has(order.id));
+          
+          if (removedOrders.length > 0 && availableOrders.length > 0) {
+            // Une ou plusieurs commandes ont été prises par un autre livreur
+            console.log('⚠️ Commandes prises par d\'autres livreurs:', removedOrders.map(o => o.id));
+            // Optionnel: afficher une notification discrète
+            // Vous pouvez ajouter un toast ici si vous avez une bibliothèque de notifications
+          }
+          
           // Détecter les nouvelles commandes
-          if (data.length > previousOrderCount) {
-            const newOrders = data.slice(previousOrderCount);
+          const newOrderIds = new Set(data.filter(order => !previousOrderIds.has(order.id)).map(order => order.id));
+          const newOrders = data.filter(order => newOrderIds.has(order.id));
+          
+          if (newOrders.length > 0) {
             // Afficher une alerte pour chaque nouvelle commande
             newOrders.forEach(order => {
               showNewOrderAlert(order);
@@ -274,12 +289,16 @@ export default function DeliveryDashboard() {
           setPreviousOrderCount(data.length);
         } else {
           setAvailableOrders([]);
+          setPreviousOrderCount(0);
         }
       } else {
         setAvailableOrders([]);
+        setPreviousOrderCount(0);
       }
     } catch (error) {
+      console.error('Erreur récupération commandes disponibles:', error);
       setAvailableOrders([]);
+      setPreviousOrderCount(0);
     }
   };
 

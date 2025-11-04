@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 import { 
   FaArrowLeft, 
   FaFilter, 
@@ -10,6 +11,11 @@ import {
   FaSearch,
   FaEye
 } from 'react-icons/fa';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4YnFydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0NzQ4NzcsImV4cCI6MjA1MDA1MDg3N30.G7iFlb2vKi1ouABfyI_azLbZ8XGi66tf9kx_dtVIE40'
+);
 
 export default function DeliveryHistory() {
   const [orders, setOrders] = useState([]);
@@ -34,6 +40,14 @@ export default function DeliveryHistory() {
   const fetchHistory = async () => {
     setLoading(true);
     try {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('❌ Pas de session');
+        setLoading(false);
+        return;
+      }
+
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: '20'
@@ -43,19 +57,27 @@ export default function DeliveryHistory() {
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      const response = await fetch(`/api/delivery/history?${params}`);
+      const response = await fetch(`/api/delivery/history?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
       const data = await response.json();
 
       if (response.ok) {
-        setOrders(data.orders);
+        setOrders(data.orders || []);
         setPagination(prev => ({
           ...prev,
-          total: data.pagination.total,
-          totalPages: data.pagination.totalPages
+          total: data.pagination?.total || 0,
+          totalPages: data.pagination?.totalPages || 0
         }));
+      } else {
+        console.error('❌ Erreur récupération historique:', data.error || data);
       }
     } catch (error) {
-      console.error('Erreur récupération historique:', error);
+      console.error('❌ Erreur récupération historique:', error);
     } finally {
       setLoading(false);
     }
