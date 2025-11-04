@@ -412,8 +412,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Publicité bannière haut */}
-      <Advertisement position="banner_top" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" />
+      {/* Publicité bannière haut - Améliorée */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+        <Advertisement position="banner_top" />
+      </div>
 
       {/* Panier flottant - Optimisé mobile */}
       {showFloatingCart && cart.length > 0 && (
@@ -508,8 +510,8 @@ export default function Home() {
         </section>
 
         {/* Espace publicitaire géré par l'admin */}
-        <section className="mb-12">
-          <Advertisement position="banner_middle" className="max-w-7xl mx-auto" />
+        <section className="mb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Advertisement position="banner_middle" />
         </section>
 
         {/* Section des restaurants avec défilement vertical élégant */}
@@ -567,7 +569,16 @@ export default function Home() {
               <p className="text-gray-600 text-lg">Essayez de modifier vos critères de recherche</p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              {/* Sidebar gauche avec publicité - Desktop seulement */}
+              <div className="hidden lg:block lg:col-span-1">
+                <div className="sticky top-4">
+                  <Advertisement position="sidebar_left" />
+                </div>
+              </div>
+
+              {/* Liste des restaurants */}
+              <div className="lg:col-span-3 space-y-8">
               {filteredAndSortedRestaurants.map((restaurant, index) => {
                 const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { isOpen: true, isManuallyClosed: false };
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
@@ -697,9 +708,15 @@ export default function Home() {
                 </div>
               );
               })}
+              </div>
             </div>
           )}
         </section>
+
+        {/* Publicité footer */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <Advertisement position="footer" />
+        </div>
       </main>
     </div>
   );
