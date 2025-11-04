@@ -94,7 +94,7 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       </div>
 
       {/* Logo et nom du restaurant centrés - Optimisé pour ne pas empiéter */}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full px-2 sm:px-4 pb-4 sm:pb-6 md:pb-8">
+      <div className="relative z-10 flex flex-col items-center justify-center h-full px-2 sm:px-4 pb-6 sm:pb-8 md:pb-10">
         {/* Logo du restaurant */}
         <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white rounded-full shadow-2xl flex items-center justify-center mb-2 sm:mb-3 md:mb-4 border-2 sm:border-3 md:border-4 border-white">
           {restaurant.profile_image ? (
@@ -144,10 +144,10 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       </div>
 
       {/* Gradient de transition en bas de l'image - Réduit pour moins d'empiètement */}
-      <div className="absolute bottom-0 left-0 right-0 h-12 sm:h-16 md:h-20 bg-gradient-to-b from-transparent via-white/10 to-white dark:via-gray-800/10 dark:to-gray-800 pointer-events-none z-10"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-20 md:h-24 bg-gradient-to-b from-transparent via-white/15 to-white dark:via-gray-800/15 dark:to-gray-800 pointer-events-none z-10"></div>
       
       {/* Informations en bas - Position ajustée pour réduire l'empiètement sur l'image */}
-      <div className="relative mt-2 sm:mt-3 md:mt-4 bg-white dark:bg-gray-800 p-3 sm:p-4 md:p-6 rounded-t-2xl sm:rounded-t-3xl border-t border-x border-gray-200 dark:border-gray-700">
+      <div className="relative mt-4 sm:mt-5 md:mt-6 bg-white dark:bg-gray-800 p-3 sm:p-4 md:p-6 rounded-t-2xl sm:rounded-t-3xl border-t border-x border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
             <div className="flex items-center gap-1 sm:gap-2">
