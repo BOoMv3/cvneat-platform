@@ -85,28 +85,13 @@ async function geocodeAddress(address) {
     }
     
     const result = data[0];
-    
-    // VALIDATION STRICTE: Vérifier que le résultat a des coordonnées valides
-    if (!result.lat || !result.lon) {
-      throw new Error('Coordonnées manquantes dans la réponse Nominatim');
-    }
-    
-    // VALIDATION STRICTE: Vérifier que les coordonnées sont des nombres
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    
-    if (isNaN(lat) || isNaN(lng)) {
-      throw new Error('Coordonnées invalides dans la réponse Nominatim');
-    }
-    
-    // On fait confiance à Nominatim avec countrycodes=fr
     const coords = {
-      lat: lat,
-      lng: lng,
-      display_name: result.display_name || ''
+      lat: parseFloat(result.lat),
+      lng: parseFloat(result.lon),
+      display_name: result.display_name
     };
     
-    console.log('🌐 Coordonnées extraites et validées:', coords);
+    console.log('🌐 Coordonnées extraites:', coords);
     return coords;
     
   } catch (error) {
@@ -162,7 +147,7 @@ export async function POST(request) {
     const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => address.includes(code));
     
     if (!hasValidPostalCode) {
-      console.log('❌ Code postal non autorisé dans:', address);
+      console.log('❌ Code postal non autorisé');
       return NextResponse.json({
         success: false,
         livrable: false,
@@ -176,70 +161,33 @@ export async function POST(request) {
     try {
       clientCoords = await geocodeAddress(address);
       console.log('📍 Coordonnées EXACTES:', clientCoords);
-      
-        // Vérifier que les coordonnées sont valides
-      if (!clientCoords || !clientCoords.lat || !clientCoords.lng) {
-        console.error('❌ Coordonnées invalides:', clientCoords);
-        return NextResponse.json({
-          success: false,
-          livrable: false,
-          message: 'Impossible de localiser cette adresse exacte'
-        });
-      }
-
     } catch (error) {
       console.error('❌ Nominatim échoué:', error.message);
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: 'Impossible de localiser cette adresse. Veuillez vérifier que l\'adresse est correcte.'
+        message: 'Impossible de localiser cette adresse exacte'
       });
     }
 
     // 3. Calculer la distance entre restaurant et client
-    const lat = parseFloat(clientCoords.lat);
-    const lng = parseFloat(clientCoords.lng);
-    
-    // VALIDATION STRICTE: Vérifier que les coordonnées sont valides
-    if (isNaN(lat) || isNaN(lng)) {
-      console.error('❌ Coordonnées invalides pour calcul distance:', { lat, lng });
-      return NextResponse.json({
-        success: false,
-        livrable: false,
-        message: 'Coordonnées invalides pour cette adresse'
-      });
-    }
-    
     const distance = calculateDistance(
       RESTAURANT.lat, RESTAURANT.lng,
-      lat, lng
+      clientCoords.lat, clientCoords.lng
     );
 
-    console.log(`📏 Distance calculée: ${distance.toFixed(2)}km entre restaurant (${RESTAURANT.lat}, ${RESTAURANT.lng}) et client (${lat}, ${lng})`);
+    console.log(`📏 Distance: ${distance.toFixed(2)}km`);
 
-    // VALIDATION STRICTE: Vérifier que la distance est un nombre valide
-    if (isNaN(distance) || distance < 0 || !isFinite(distance)) {
-      console.error('❌ Distance invalide calculée:', distance);
-      return NextResponse.json({
-        success: false,
-        livrable: false,
-        message: 'Erreur lors du calcul de la distance'
-      });
-    }
-
-    // 4. Vérifier la distance maximum (VALIDATION STRICTE)
+    // 4. Vérifier la distance maximum
     if (distance > MAX_DISTANCE) {
-      console.log(`❌ REJET: Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
+      console.log(`❌ Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
         success: false,
         livrable: false,
-        distance: parseFloat(distance.toFixed(2)),
-        max_distance: MAX_DISTANCE,
+        distance: distance,
         message: `Livraison impossible: ${distance.toFixed(1)}km (maximum ${MAX_DISTANCE}km)`
       });
     }
-    
-    console.log(`✅ Distance acceptée: ${distance.toFixed(2)}km <= ${MAX_DISTANCE}km`);
 
     // 5. Calculer les frais: 2.50€ + (distance × 0.80€)
     const deliveryFee = calculateDeliveryFee(distance);
