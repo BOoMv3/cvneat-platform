@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage } from 'react-icons/fa';
+import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug } from 'react-icons/fa';
 import LoyaltyProgram from '../components/LoyaltyProgram';
 import PushNotificationService from '../components/PushNotificationService';
 import PageHeader from '@/components/PageHeader';
@@ -638,6 +638,21 @@ export default function Profile() {
                     <DarkModeToggle />
                   </div>
                 </div>
+              </div>
+
+              {/* Signaler un bug */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">Aide et support</h3>
+                <button
+                  onClick={() => router.push('/report-bug')}
+                  className="w-full flex items-center justify-center space-x-2 bg-red-600 dark:bg-red-700 text-white px-4 py-3 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
+                >
+                  <FaBug className="h-5 w-5" />
+                  <span>Signaler un bug</span>
+                </button>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  Aidez-nous à améliorer CVN'Eat en signalant les problèmes rencontrés
+                </p>
               </div>
 
               {/* Points de fidélité - Désactivé temporairement jusqu'à implémentation complète */}
