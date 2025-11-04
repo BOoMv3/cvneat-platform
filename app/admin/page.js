@@ -432,11 +432,44 @@ export default function AdminPage() {
                 <FaEuroSign className="text-base sm:text-2xl" />
               </div>
               <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Commissions CVN'EAT</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">CA Total</p>
                 <p className="text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
-                <p className="text-xs text-gray-500 mt-1">(15% des commandes livrées)</p>
+                <p className="text-xs text-gray-500 mt-1">(Articles + Livraison)</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Chiffres d'affaires détaillés */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <FaEuroSign className="text-xl" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">CA CVN'EAT</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.cvneatRevenue)}</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">20% des commandes livrées (articles uniquement)</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-orange-100 text-orange-600">
+                  <FaEuroSign className="text-xl" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">CA Livreur</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.livreurRevenue)}</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Total des frais de livraison</p>
           </div>
         </div>
 
