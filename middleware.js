@@ -1,122 +1,58 @@
 import { NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
-import { rateLimiter } from './app/lib/rateLimiter';
 
-export async function middleware(request) {
-  // Rate limiting pour les routes API
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    const apiLimiter = rateLimiter({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100, // 100 requêtes par fenêtre
-      keyGenerator: (req) => {
-        // Utiliser l'IP comme clé
-        return req.headers.get('x-forwarded-for') || 
-               req.headers.get('x-real-ip') || 
-               'unknown';
-      }
-    });
-
-    const result = apiLimiter(request);
-    
-    if (!result.allowed) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Trop de requêtes, veuillez réessayer plus tard' }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
-            'Retry-After': Math.ceil((result.resetTime - Date.now()) / 1000)
-          }
-        }
-      );
-    }
-  }
-
-  // Liste des routes publiques
-  const publicRoutes = [
-    '/',
-    '/login', 
+export function middleware(request) {
+  // Vérifier si le mode maintenance est activé
+  const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
+  
+  // Routes autorisées même en mode maintenance (pour les restaurants/partenaires)
+  const allowedRoutes = [
+    '/login',
     '/inscription',
     '/register',
-    '/api/auth/login',
-    '/api/auth/register',
-    '/api/restaurants',
-    '/api/restaurants/[id]',
-    '/api/menu/[id]'
+    '/partner',
+    '/partner/dashboard',
+    '/partner/hours',
+    '/partner/menu',
+    '/partner/profile',
+    '/profil-partenaire',
+    '/api',
+    '/auth',
+    '/_next',
+    '/static',
+    '/favicon.ico',
+    '/maintenance'
   ];
   
-  // Vérifier si la route actuelle est publique
-  const isPublicRoute = publicRoutes.some(route => {
-    if (route.includes('[') && route.includes(']')) {
-      // Route dynamique - vérifier le pattern
-      const pattern = route.replace(/\[.*?\]/g, '[^/]+');
-      const regex = new RegExp(`^${pattern}$`);
-      return regex.test(request.nextUrl.pathname);
+  // Vérifier si la route actuelle est autorisée
+  const isAllowedRoute = allowedRoutes.some(route => 
+    request.nextUrl.pathname.startsWith(route)
+  );
+  
+  // Si le mode maintenance est activé
+  if (isMaintenanceMode) {
+    // Si c'est la page d'accueil ou une route publique, rediriger vers maintenance
+    if (request.nextUrl.pathname === '/' || (!isAllowedRoute && !request.nextUrl.pathname.startsWith('/api'))) {
+      // Ne pas rediriger si c'est déjà la page de maintenance
+      if (!request.nextUrl.pathname.startsWith('/maintenance')) {
+        return NextResponse.redirect(new URL('/maintenance', request.url));
+      }
     }
-    return request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route);
-  });
-
-  if (isPublicRoute) {
+    // Sinon, laisser passer (routes autorisées)
     return NextResponse.next();
   }
-
-  // Récupérer le token du cookie ou header Authorization
-  let token = request.cookies.get('token')?.value;
   
-  if (!token) {
-    const authHeader = request.headers.get('authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
-    }
-  }
-
-  if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  try {
-    // Vérifier le token
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    
-    // Vérifier l'expiration
-    if (payload.exp && payload.exp < Date.now() / 1000) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    // Ajouter les infos utilisateur aux headers pour les API routes
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-id', payload.userId || '');
-    requestHeaders.set('x-user-role', payload.role || '');
-    requestHeaders.set('x-user-email', payload.email || '');
-
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
-  } catch (error) {
-    console.error('Erreur de vérification du token:', error);
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
+  // Mode maintenance désactivé : tout fonctionne normalement
+  return NextResponse.next();
 }
 
-// Configuration des routes à protéger
 export const config = {
   matcher: [
-    '/admin/:path*',
-    '/delivery/:path*',
-    '/restaurants/:path*',
-    '/profile/:path*',
-    '/checkout/:path*',
-    '/api/admin/:path*',
-    '/api/delivery/:path*',
-    '/api/partner/:path*',
-    '/api/orders/:path*',
-    '/api/users/:path*',
-    '/api/notifications/:path*',
-    '/api/payment/:path*'
-  ]
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };

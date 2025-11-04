@@ -25,9 +25,9 @@ La fonctionnalité "Password Protection" de Vercel nécessite le plan Pro + Adva
 
 ---
 
-## ✅ Solution 2 : Page de maintenance avec middleware (Recommandé)
+## ✅ Solution 2 : Page de maintenance avec middleware (Recommandé pour les restaurants)
 
-Cette solution permet d'afficher une page "Site en construction" pour tous les visiteurs, sauf vous.
+Cette solution permet d'afficher une page "Site en construction" pour les visiteurs, mais **autorise l'accès aux routes partenaires** pour que les restaurants puissent créer leurs comptes et accéder au dashboard.
 
 ### Étape 1 : Créer la page de maintenance
 
@@ -53,37 +53,22 @@ export default function Maintenance() {
 
 ### Étape 2 : Créer le middleware
 
-Créez `middleware.js` à la racine du projet :
+Le fichier `middleware.js` a déjà été créé à la racine du projet. Il permet :
+- ✅ D'afficher la page de maintenance pour les visiteurs normaux
+- ✅ De laisser l'accès aux routes partenaires (`/partner`, `/login`, `/inscription`) pour les restaurants
+- ✅ De bloquer uniquement la page d'accueil et les routes publiques
 
-```javascript
-import { NextResponse } from 'next/server';
+**Routes autorisées même en mode maintenance :**
+- `/login` - Connexion
+- `/inscription` - Inscription
+- `/partner/*` - Toutes les pages partenaires
+- `/api/*` - Toutes les API routes
+- `/auth/*` - Routes d'authentification
 
-export function middleware(request) {
-  // Vérifier si le mode maintenance est activé
-  const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
-  
-  // Si le mode maintenance est activé ET que ce n'est pas la page de maintenance elle-même
-  if (isMaintenanceMode && !request.nextUrl.pathname.startsWith('/maintenance')) {
-    // Rediriger vers la page de maintenance
-    return NextResponse.redirect(new URL('/maintenance', request.url));
-  }
-  
-  return NextResponse.next();
-}
-
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
-};
-```
+**Routes bloquées en mode maintenance :**
+- `/` - Page d'accueil
+- `/restaurants/*` - Pages restaurants (pour les clients)
+- Autres routes publiques
 
 ### Étape 3 : Configurer la variable d'environnement
 
