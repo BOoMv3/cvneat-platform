@@ -380,8 +380,15 @@ export default function Checkout() {
         }
         setFraisLivraison(finalCheckData.frais_livraison || 2.50);
       } else {
+        // Gestion spécifique de l'erreur 429 (Rate Limit)
+        if (finalCheckResponse.status === 429) {
+          alert('Trop de requêtes pour la vérification de l\'adresse. Veuillez patienter quelques instants avant de réessayer.');
+          setSubmitting(false);
+          return;
+        }
+        
         console.error('Erreur vérification finale adresse:', finalCheckResponse.status);
-        alert('Erreur lors de la vérification de l\'adresse. Veuillez réessayer.');
+        alert(`Erreur lors de la vérification de l'adresse (${finalCheckResponse.status}). Veuillez réessayer.`);
         setSubmitting(false);
         return;
       }
@@ -442,8 +449,21 @@ export default function Checkout() {
       });
 
       if (!paymentResponse.ok) {
-        const errorData = await paymentResponse.json();
-        throw new Error(errorData.error || 'Erreur lors de la création du paiement');
+        // Gestion spécifique de l'erreur 429 (Rate Limit)
+        if (paymentResponse.status === 429) {
+          const errorMessage = 'Trop de requêtes. Veuillez patienter quelques instants avant de réessayer.';
+          alert(errorMessage);
+          setSubmitting(false);
+          return;
+        }
+        
+        let errorData;
+        try {
+          errorData = await paymentResponse.json();
+        } catch {
+          errorData = { error: `Erreur HTTP ${paymentResponse.status}` };
+        }
+        throw new Error(errorData.error || `Erreur lors de la création du paiement (${paymentResponse.status})`);
       }
 
       const paymentData = await paymentResponse.json();
@@ -458,7 +478,14 @@ export default function Checkout() {
       
     } catch (error) {
       console.error('❌ Erreur préparation commande:', error);
-      alert(error.message || 'Erreur lors de la préparation de la commande');
+      
+      // Gestion spécifique de l'erreur 429
+      if (error.message && (error.message.includes('429') || error.message.includes('Too Many Requests') || error.message.includes('Trop de requêtes'))) {
+        alert('⚠️ Trop de requêtes ont été effectuées. Veuillez patienter quelques instants avant de réessayer.');
+      } else {
+        alert(error.message || 'Erreur lors de la préparation de la commande');
+      }
+      
       setSubmitting(false);
     }
   };
