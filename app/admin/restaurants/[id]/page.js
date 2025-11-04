@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
-import { FaArrowLeft, FaEdit, FaToggleOn, FaToggleOff, FaSpinner, FaEye } from 'react-icons/fa';
+import { FaArrowLeft, FaEdit, FaToggleOn, FaToggleOff, FaSpinner, FaEye, FaGoogle, FaSync } from 'react-icons/fa';
 
 export default function RestaurantDetail({ params }) {
   const router = useRouter();
@@ -12,6 +12,9 @@ export default function RestaurantDetail({ params }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [googlePlaceId, setGooglePlaceId] = useState('');
+  const [updatingGoogle, setUpdatingGoogle] = useState(false);
+  const [googleData, setGoogleData] = useState(null);
 
   useEffect(() => {
     if (params.id) {
@@ -30,6 +33,14 @@ export default function RestaurantDetail({ params }) {
 
       if (error) throw error;
       setRestaurant(data);
+      setGooglePlaceId(data.google_place_id || '');
+      if (data.google_rating) {
+        setGoogleData({
+          rating: data.google_rating,
+          reviews_count: data.google_reviews_count,
+          last_updated: data.google_last_updated
+        });
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -140,6 +151,56 @@ export default function RestaurantDetail({ params }) {
       return 'Format non reconnu';
     } catch (err) {
       return 'Erreur de format';
+    }
+  };
+
+  const updateGoogleRating = async () => {
+    if (!googlePlaceId.trim()) {
+      setError('Veuillez entrer un Google Place ID');
+      return;
+    }
+
+    setUpdatingGoogle(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/restaurants/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id,
+          place_id: googlePlaceId.trim(),
+          force_update: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la mise à jour');
+      }
+
+      if (data.skip_update) {
+        setError('Les données sont déjà à jour');
+        return;
+      }
+
+      setGoogleData({
+        rating: data.rating,
+        reviews_count: data.reviews_count,
+        last_updated: new Date().toISOString()
+      });
+
+      // Rafraîchir les données du restaurant
+      await fetchRestaurantDetails();
+      
+      alert('Notes Google mises à jour avec succès !');
+    } catch (err) {
+      setError(err.message || 'Erreur lors de la mise à jour des notes Google');
+    } finally {
+      setUpdatingGoogle(false);
     }
   };
 
@@ -260,6 +321,73 @@ export default function RestaurantDetail({ params }) {
                 <p className="text-sm text-gray-500">
                   <span className="font-medium">Date d'inscription :</span> {new Date(restaurant.created_at).toLocaleDateString('fr-FR')}
                 </p>
+              </div>
+
+              {/* Section Google Places */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="font-medium text-gray-900 mb-4 flex items-center">
+                  <FaGoogle className="mr-2 text-blue-600" />
+                  Configuration Google Places
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="google-place-id" className="block text-sm font-medium text-gray-700 mb-2">
+                      Google Place ID
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        id="google-place-id"
+                        value={googlePlaceId}
+                        onChange={(e) => setGooglePlaceId(e.target.value)}
+                        placeholder="Ex: ChIJN1t_tDeuEmsRUsoyG83frY4"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        onClick={updateGoogleRating}
+                        disabled={updatingGoogle || !googlePlaceId.trim()}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors"
+                      >
+                        {updatingGoogle ? (
+                          <FaSpinner className="animate-spin" />
+                        ) : (
+                          <>
+                            <FaSync />
+                            <span>Mettre à jour</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Trouvez le Place ID sur{' '}
+                      <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        Google Places API
+                      </a>
+                    </p>
+                  </div>
+
+                  {googleData && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h4 className="font-medium text-green-900 mb-2">Notes Google actuelles</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="font-medium">Note :</span> {googleData.rating?.toFixed(1)}/5 ⭐</p>
+                        <p><span className="font-medium">Nombre d'avis :</span> {googleData.reviews_count || 0}</p>
+                        {googleData.last_updated && (
+                          <p className="text-xs text-gray-600">
+                            Dernière mise à jour : {new Date(googleData.last_updated).toLocaleString('fr-FR')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                      {error}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
