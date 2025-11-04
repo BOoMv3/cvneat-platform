@@ -60,6 +60,13 @@ export async function GET(request, { params }) {
           adresse,
           ville,
           code_postal
+        ),
+        users:users!user_id (
+          id,
+          prenom,
+          nom,
+          telephone,
+          email
         )
       `)
       .eq('id', id)
@@ -115,6 +122,13 @@ export async function GET(request, { params }) {
             adresse,
             ville,
             code_postal
+          ),
+          users:users!user_id (
+            id,
+            prenom,
+            nom,
+            telephone,
+            email
           )
         `)
         .eq('id', id)
@@ -140,6 +154,14 @@ export async function GET(request, { params }) {
 
     // Formater les données pour le frontend
     const restaurant = order.restaurants;
+    const customer = order.users || {};
+    
+    // Extraire les informations client
+    const customerName = customer.prenom && customer.nom 
+      ? `${customer.prenom} ${customer.nom}` 
+      : customer.email || 'Client';
+    const customerPhone = customer.telephone || '';
+    
     const items = (order.details_commande || []).map(detail => {
       // Récupérer les suppléments depuis le détail
       let supplements = [];
@@ -176,14 +198,16 @@ export async function GET(request, { params }) {
       status: order.statut || order.status,
       statut: order.statut || order.status, // Ajouter aussi pour compatibilité
       createdAt: order.created_at,
-      created_at: order.created_at, // Ajouter aussi pour compatibilité
-      updated_at: order.updated_at, // Ajouter aussi pour compatibilité
+      created_at: order.created_at || new Date().toISOString(), // Fallback si manquant
+      updated_at: order.updated_at || new Date().toISOString(), // Fallback si manquant
       user_id: order.user_id, // Ajouter aussi pour compatibilité
       security_code: order.security_code, // Code de sécurité pour la livraison
       frais_livraison: parseFloat(order.frais_livraison || 0) || 0, // Ajouter aussi pour compatibilité
       adresse_livraison: order.adresse_livraison, // Ajouter aussi pour compatibilité
       preparation_time: order.preparation_time, // Ajouter aussi pour compatibilité
       livreur_id: order.livreur_id, // Ajouter aussi pour compatibilité
+      customer_name: customerName, // Nom complet du client
+      customer_phone: customerPhone, // Téléphone du client
       restaurant: {
         id: restaurant?.id,
         name: restaurant?.nom || 'Restaurant inconnu',
@@ -193,7 +217,7 @@ export async function GET(request, { params }) {
       deliveryAddress: deliveryAddress,
       deliveryCity: deliveryCity,
       deliveryPostalCode: deliveryPostalCode,
-      deliveryPhone: deliveryPhone,
+      deliveryPhone: deliveryPhone || customerPhone, // Fallback sur téléphone client
       total: parseFloat(order.total || 0) || 0,
       deliveryFee: parseFloat(order.frais_livraison || 0) || 0,
       items: items,

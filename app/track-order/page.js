@@ -230,7 +230,23 @@ export default function TrackOrder() {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('fr-FR');
+    if (!dateString) return 'Date non disponible';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Date invalide';
+      }
+      return date.toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erreur formatage date:', error);
+      return 'Date invalide';
+    }
   };
 
   // Polling automatique pour suivre les changements de statut
@@ -477,14 +493,24 @@ export default function TrackOrder() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <h3 className="font-semibold mb-2 text-sm sm:text-base text-gray-900 dark:text-white">Informations client</h3>
-                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300"><span className="font-medium">Nom :</span> {order.customer_name}</p>
-                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300"><span className="font-medium">Téléphone :</span> {order.customer_phone}</p>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Nom :</span> {order.customer_name || 'Non renseigné'}
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Téléphone :</span> {order.customer_phone || order.deliveryPhone || 'Non renseigné'}
+                    </p>
                   </div>
                   
                   <div>
                     <h3 className="font-semibold mb-2 text-sm sm:text-base text-gray-900 dark:text-white">Adresse de livraison</h3>
-                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{order.delivery_address}</p>
-                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{order.delivery_city} {order.delivery_postal_code}</p>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                      {order.deliveryAddress || order.adresse_livraison || 'Non renseignée'}
+                    </p>
+                    {(order.deliveryCity || order.deliveryPostalCode) && (
+                      <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                        {order.deliveryCity || ''} {order.deliveryPostalCode || ''}
+                      </p>
+                    )}
                     {order.delivery_instructions && (
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                         Instructions : {order.delivery_instructions}
