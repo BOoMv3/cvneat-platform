@@ -60,6 +60,7 @@ export default function PartnerDashboard() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [preparationTime, setPreparationTime] = useState(15);
   const [showPreparationModal, setShowPreparationModal] = useState(false);
+  const [isManuallyClosed, setIsManuallyClosed] = useState(false);
   const router = useRouter();
 
   const [supplementForm, setSupplementForm] = useState({
@@ -148,6 +149,7 @@ export default function PartnerDashboard() {
       }
 
       setRestaurant(resto);
+      setIsManuallyClosed(resto.ferme_manuellement || resto.is_closed || false);
       await fetchDashboardData(resto.id);
       await fetchMenu(resto.id);
       await fetchOrders(resto.id);
@@ -633,6 +635,40 @@ export default function PartnerDashboard() {
     return { commission, restaurantRevenue };
   };
 
+  const toggleRestaurantClosed = async () => {
+    if (!restaurant?.id) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const newStatus = !isManuallyClosed;
+      
+      const response = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ferme_manuellement: newStatus
+        })
+      });
+      
+      if (response.ok) {
+        setIsManuallyClosed(newStatus);
+        setRestaurant(prev => ({ ...prev, ferme_manuellement: newStatus }));
+        alert(newStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
+      } else {
+        const error = await response.json();
+        alert(`Erreur: ${error.error || 'Impossible de mettre à jour le statut'}`);
+      }
+    } catch (error) {
+      console.error('Erreur toggle fermeture:', error);
+      alert('Erreur lors de la mise à jour du statut');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -688,6 +724,28 @@ export default function PartnerDashboard() {
                 <FaClock className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Horaires</span>
                 <span className="sm:hidden">Horaires</span>
+              </button>
+              <button
+                onClick={toggleRestaurantClosed}
+                className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium ${
+                  isManuallyClosed
+                    ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800'
+                    : 'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
+                }`}
+              >
+                {isManuallyClosed ? (
+                  <>
+                    <FaCheck className="h-4 w-4 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Ouvrir</span>
+                    <span className="sm:hidden">Ouvrir</span>
+                  </>
+                ) : (
+                  <>
+                    <FaTimes className="h-4 w-4 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Fermer</span>
+                    <span className="sm:hidden">Fermer</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={() => router.push('/partner/settings')}

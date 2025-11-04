@@ -366,6 +366,27 @@ export default function Checkout() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto px-3 sm:px-4">
+        {/* Bouton retour */}
+        <div className="mb-4 sm:mb-6">
+          <button
+            onClick={() => {
+              // Retourner au restaurant si on a un panier avec un restaurant, sinon à l'accueil
+              const savedCart = safeLocalStorage.getJSON('cart');
+              if (savedCart?.restaurant?.id) {
+                router.push(`/restaurants/${savedCart.restaurant.id}`);
+              } else {
+                router.push('/');
+              }
+            }}
+            className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Retour
+          </button>
+        </div>
+        
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8">Finaliser votre commande</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">

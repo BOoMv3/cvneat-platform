@@ -329,7 +329,14 @@ export default function TrackOrder() {
           {/* Bouton retour */}
           <div className="mb-4 sm:mb-6">
             <button
-              onClick={() => router.back()}
+              onClick={() => {
+                // Rediriger vers la page des commandes du profil ou l'accueil
+                if (order && order.user_id) {
+                  router.push('/profile/orders');
+                } else {
+                  router.push('/');
+                }
+              }}
               className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base"
             >
               <FaArrowLeft className="mr-2" />

@@ -116,25 +116,25 @@ export default function BecomeDelivery() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <button
           onClick={() => router.back()}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+          className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-6"
         >
           <FaArrowLeft className="mr-2" />
           Retour
         </button>
 
-        <div className="bg-white rounded-lg shadow-sm p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8">
           <div className="flex items-center mb-6">
             <FaMotorcycle className="text-4xl text-blue-600 mr-4" />
             <div>
               <h1 className="text-3xl font-bold">Devenir livreur</h1>
-              <p className="text-gray-600">Rejoignez notre équipe de livreurs et gagnez de l'argent en livrant des repas</p>
+              <p className="text-gray-600 dark:text-gray-300">Rejoignez notre équipe de livreurs et gagnez de l'argent en livrant des repas</p>
             </div>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Nom *
                 </label>
                 <input
@@ -142,12 +142,12 @@ export default function BecomeDelivery() {
                   required
                   value={formData.nom}
                   onChange={(e) => setFormData({...formData, nom: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Prénom *
                 </label>
                 <input
@@ -155,12 +155,12 @@ export default function BecomeDelivery() {
                   required
                   value={formData.prenom}
                   onChange={(e) => setFormData({...formData, prenom: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email *
                 </label>
                 <input
@@ -168,12 +168,12 @@ export default function BecomeDelivery() {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Téléphone *
                 </label>
                 <input
@@ -181,12 +181,12 @@ export default function BecomeDelivery() {
                   required
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Adresse *
                 </label>
                 <input
@@ -194,12 +194,12 @@ export default function BecomeDelivery() {
                   required
                   value={formData.address}
                   onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Ville *
                 </label>
                 <input
@@ -207,12 +207,12 @@ export default function BecomeDelivery() {
                   required
                   value={formData.city}
                   onChange={(e) => setFormData({...formData, city: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Code postal *
                 </label>
                 <input
@@ -220,22 +220,23 @@ export default function BecomeDelivery() {
                   required
                   value={formData.postalCode}
                   onChange={(e) => setFormData({...formData, postalCode: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Type de véhicule *
                 </label>
                 <select
                   required
                   value={formData.vehicleType}
                   onChange={(e) => setFormData({...formData, vehicleType: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="bike">Vélo</option>
                   <option value="scooter">Scooter</option>
+                  <option value="trotinette">Trotinette</option>
                   <option value="car">Voiture</option>
                   <option value="motorcycle">Moto</option>
                 </select>
@@ -251,7 +252,7 @@ export default function BecomeDelivery() {
                   onChange={(e) => setFormData({...formData, hasLicense: e.target.checked})}
                   className="mr-2"
                 />
-                <span>J'ai un permis de conduire valide *</span>
+                <span className="text-gray-900 dark:text-white">J'ai un permis de conduire valide *</span>
               </label>
             </div>
 
@@ -283,17 +284,17 @@ export default function BecomeDelivery() {
             </div>
 
             <div className="flex justify-end space-x-4">
-              <button
+                <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
               >
                 {submitting ? 'Envoi...' : 'Envoyer la candidature'}
               </button>

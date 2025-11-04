@@ -1,11 +1,33 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaHeart } from 'react-icons/fa';
 import StarRating from './StarRating';
 
-export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false }) {
+export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false, hours = [], isOpen = true, isManuallyClosed = false }) {
+  const [currentHours, setCurrentHours] = useState(null);
+  
+  useEffect(() => {
+    if (hours && hours.length > 0) {
+      const today = new Date().getDay(); // 0 = dimanche, 1 = lundi, etc.
+      const todayHours = hours.find(h => h.day_of_week === today);
+      setCurrentHours(todayHours);
+    }
+  }, [hours]);
+
   if (!restaurant) return null;
+
+  const formatHours = (hours) => {
+    if (!hours || hours.length === 0) return 'Horaires non définis';
+    
+    const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    return hours.map(h => {
+      const dayName = days[h.day_of_week] || `Jour ${h.day_of_week}`;
+      if (h.is_closed) return `${dayName}: Fermé`;
+      return `${dayName}: ${h.open_time || '00:00'} - ${h.close_time || '00:00'}`;
+    }).join(' | ');
+  };
 
   return (
     <div className="relative w-full h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden">
@@ -127,10 +149,41 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
           <FaMapMarkerAlt className="text-gray-500" />
           <span>{restaurant.adresse}, {restaurant.ville} {restaurant.code_postal}</span>
         </div>
+        
+        {/* Horaires d'ouverture */}
+        {hours && hours.length > 0 && (
+          <div className="flex items-start gap-2 text-sm">
+            <FaClock className="text-gray-500 mt-1 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="text-gray-800 font-medium mb-1">
+                {isManuallyClosed ? (
+                  <span className="text-red-600">🔴 Fermé manuellement</span>
+                ) : !isOpen ? (
+                  <span className="text-orange-600">🟡 Fermé maintenant</span>
+                ) : (
+                  <span className="text-green-600">🟢 Ouvert maintenant</span>
+                )}
+              </div>
+              {currentHours && !currentHours.is_closed && (
+                <div className="text-gray-600 text-xs">
+                  Aujourd'hui: {currentHours.open_time} - {currentHours.close_time}
+                </div>
+              )}
+              <details className="mt-1">
+                <summary className="text-gray-600 text-xs cursor-pointer hover:text-gray-800">Voir tous les horaires</summary>
+                <div className="mt-2 text-xs text-gray-600 space-y-1">
+                  {formatHours(hours).split(' | ').map((h, i) => (
+                    <div key={i}>{h}</div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          </div>
+        )}
       </div>
 
     </div>

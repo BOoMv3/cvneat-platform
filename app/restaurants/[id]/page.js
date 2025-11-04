@@ -30,6 +30,9 @@ export default function RestaurantDetail({ params }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
+  const [restaurantHours, setRestaurantHours] = useState([]);
+  const [isRestaurantOpen, setIsRestaurantOpen] = useState(true);
+  const [isManuallyClosed, setIsManuallyClosed] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -151,19 +154,29 @@ export default function RestaurantDetail({ params }) {
   const fetchRestaurantDetails = async () => {
     try {
       setLoading(true);
-      const [restaurantResponse, menuResponse] = await Promise.all([
+      const [restaurantResponse, menuResponse, hoursResponse, openStatusResponse] = await Promise.all([
         fetch(`/api/restaurants/${params.id}`),
-        fetch(`/api/restaurants/${params.id}/menu`)
+        fetch(`/api/restaurants/${params.id}/menu`),
+        fetch(`/api/restaurants/hours?restaurantId=${params.id}`),
+        fetch(`/api/restaurants/hours`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ restaurantId: params.id })
+        })
       ]);
       if (!restaurantResponse.ok) throw new Error('Erreur de chargement du restaurant');
       if (!menuResponse.ok) throw new Error('Erreur de chargement du menu');
       
       const restaurantData = await restaurantResponse.json();
       const menuData = await menuResponse.json();
-      
+      const hoursData = hoursResponse.ok ? await hoursResponse.json() : [];
+      const openStatusData = openStatusResponse.ok ? await openStatusResponse.json() : { isOpen: true };
       
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
+      setRestaurantHours(hoursData || []);
+      setIsRestaurantOpen(openStatusData.isOpen !== false);
+      setIsManuallyClosed(restaurantData.ferme_manuellement || restaurantData.is_closed || false);
     } catch (err) {
       setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
     } finally {
@@ -348,6 +361,9 @@ export default function RestaurantDetail({ params }) {
           restaurant={restaurant}
           isFavorite={isFavorite}
           onToggleFavorite={handleToggleFavorite}
+          hours={restaurantHours}
+          isOpen={isRestaurantOpen}
+          isManuallyClosed={isManuallyClosed}
         />
 
         {/* Menu */}
@@ -415,11 +431,21 @@ export default function RestaurantDetail({ params }) {
                   </div>
                   <button
                     onClick={handleCheckout}
-                    className="w-full bg-black text-white py-4 sm:py-3 rounded-lg hover:bg-gray-800 flex items-center justify-center gap-2 font-semibold text-base sm:text-base min-h-[52px] touch-manipulation active:scale-95"
+                    disabled={!isRestaurantOpen || isManuallyClosed}
+                    className={`w-full py-4 sm:py-3 rounded-lg flex items-center justify-center gap-2 font-semibold text-base sm:text-base min-h-[52px] touch-manipulation active:scale-95 ${
+                      !isRestaurantOpen || isManuallyClosed
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        : 'bg-black text-white hover:bg-gray-800'
+                    }`}
                   >
                     <FaShoppingCart className="h-4 w-4" />
-                    Commander
+                    {!isRestaurantOpen || isManuallyClosed ? 'Restaurant fermé' : 'Commander'}
                   </button>
+                  {(!isRestaurantOpen || isManuallyClosed) && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2 text-center">
+                      {isManuallyClosed ? 'Le restaurant est actuellement fermé manuellement' : 'Le restaurant est fermé pour le moment'}
+                    </p>
+                  )}
                 </div>
               </>
             )}

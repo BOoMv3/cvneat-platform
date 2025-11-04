@@ -150,34 +150,34 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Niveau actuel */}
-      <div className={`${currentLevelData.bgColor} ${currentLevelData.borderColor} border rounded-lg p-6`}>
+      <div className={`${currentLevelData.bgColor} dark:bg-gray-800 ${currentLevelData.borderColor} dark:border-gray-700 border rounded-lg p-6`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <CurrentLevelIcon className={`text-3xl ${currentLevelData.color} mr-3`} />
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Niveau {currentLevelData.name}</h3>
-              <p className="text-gray-600">{userPoints} points</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Niveau {currentLevelData.name}</h3>
+              <p className="text-gray-600 dark:text-gray-300">{userPoints} points</p>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-gray-900">{userPoints}</div>
-            <div className="text-sm text-gray-600">points totaux</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{userPoints}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">points totaux</div>
           </div>
         </div>
 
         {nextLevel && (
           <div>
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mb-2">
               <span>Progression vers {LOYALTY_LEVELS[nextLevel].name}</span>
               <span>{userPoints} / {LOYALTY_LEVELS[nextLevel].minPoints} pts</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div 
                 className={`h-3 rounded-full transition-all duration-500 ${currentLevelData.color.replace('text-', 'bg-')}`}
                 style={{ width: `${progressToNext}%` }}
               ></div>
             </div>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
               Plus que {LOYALTY_LEVELS[nextLevel].minPoints - userPoints} points pour atteindre le niveau {LOYALTY_LEVELS[nextLevel].name} !
             </p>
           </div>
@@ -186,40 +186,44 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
         {!nextLevel && (
           <div className="text-center py-4">
             <FaCrown className="text-4xl text-yellow-500 mx-auto mb-2" />
-            <p className="text-lg font-semibold text-gray-900">Niveau maximum atteint !</p>
-            <p className="text-gray-600">Vous profitez de tous les avantages disponibles</p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">Niveau maximum atteint !</p>
+            <p className="text-gray-600 dark:text-gray-300">Vous profitez de tous les avantages disponibles</p>
           </div>
         )}
       </div>
 
       {/* Avantages du niveau actuel */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">Vos avantages</h4>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Vos avantages</h4>
         <div className="space-y-3">
           {currentLevelData.benefits.map((benefit, index) => (
             <div key={index} className="flex items-center">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-              <span className="text-gray-700">{benefit}</span>
+              <span className="text-gray-700 dark:text-gray-300">{benefit}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Récompenses disponibles */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">Récompenses disponibles</h4>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Récompenses disponibles</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {rewards.map((reward) => (
             <div 
               key={reward.id} 
-              className={`border rounded-lg p-4 ${reward.available ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50 opacity-60'}`}
+              className={`border rounded-lg p-4 dark:border-gray-700 ${
+                reward.available 
+                  ? 'border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20' 
+                  : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 opacity-60'
+              }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-2xl">{reward.icon}</span>
-                <span className="text-sm font-medium text-gray-600">{reward.cost} pts</span>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{reward.cost} pts</span>
               </div>
-              <h5 className="font-semibold text-gray-900 mb-1">{reward.name}</h5>
-              <p className="text-sm text-gray-600 mb-3">{reward.description}</p>
+              <h5 className="font-semibold text-gray-900 dark:text-white mb-1">{reward.name}</h5>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{reward.description}</p>
               <button
                 onClick={() => redeemReward(reward.id)}
                 disabled={!reward.available || userPoints < reward.cost}
@@ -242,28 +246,28 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
       </div>
 
       {/* Historique des points */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">Comment gagner des points ?</h4>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Comment gagner des points ?</h4>
         <div className="space-y-3">
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-700">Commande terminée</span>
-            <span className="font-medium text-green-600">+1 point par €</span>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+            <span className="text-gray-700 dark:text-gray-300">Commande terminée</span>
+            <span className="font-medium text-green-600 dark:text-green-400">+1 point par €</span>
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-700">Première commande</span>
-            <span className="font-medium text-green-600">+50 points bonus</span>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+            <span className="text-gray-700 dark:text-gray-300">Première commande</span>
+            <span className="font-medium text-green-600 dark:text-green-400">+50 points bonus</span>
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-700">Avis laissé</span>
-            <span className="font-medium text-green-600">+20 points</span>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+            <span className="text-gray-700 dark:text-gray-300">Avis laissé</span>
+            <span className="font-medium text-green-600 dark:text-green-400">+20 points</span>
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-700">Parrainage d\'un ami</span>
-            <span className="font-medium text-green-600">+100 points</span>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+            <span className="text-gray-700 dark:text-gray-300">Parrainage d'un ami</span>
+            <span className="font-medium text-green-600 dark:text-green-400">+100 points</span>
           </div>
           <div className="flex justify-between items-center py-2">
-            <span className="text-gray-700">Commande d\'anniversaire</span>
-            <span className="font-medium text-green-600">+200 points</span>
+            <span className="text-gray-700 dark:text-gray-300">Commande d'anniversaire</span>
+            <span className="font-medium text-green-600 dark:text-green-400">+200 points</span>
           </div>
         </div>
       </div>

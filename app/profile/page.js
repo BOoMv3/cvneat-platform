@@ -640,7 +640,8 @@ export default function Profile() {
                 </div>
               </div>
 
-              <LoyaltyProgram userPoints={user?.points_fidelite || 0} />
+              {/* Points de fidélité - Désactivé temporairement jusqu'à implémentation complète */}
+              {/* <LoyaltyProgram userPoints={user?.points_fidelite || 0} /> */}
 
               <PushNotificationService />
 

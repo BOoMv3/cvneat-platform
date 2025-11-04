@@ -316,7 +316,16 @@ export default function AdminPage() {
         {/* Header avec bouton retour et info utilisateur - Optimisé mobile */}
         <div className="flex flex-col space-y-3 sm:space-y-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900">🚀 Dashboard Admin CVN'EAT</h1>
+            <div className="flex items-center justify-between w-full">
+              <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">🚀 Dashboard Admin CVN'EAT</h1>
+              <button
+                onClick={() => router.push('/')}
+                className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base"
+              >
+                <FaArrowLeft className="mr-2" />
+                Retour
+              </button>
+            </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
               <span className="text-xs sm:text-sm text-gray-600">
                 Connecté en tant qu'admin
@@ -351,8 +360,8 @@ export default function AdminPage() {
                 <FaUsers className="text-base sm:text-2xl" />
               </div>
               <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Utilisateurs</p>
-                <p className="text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Total Utilisateurs</p>
+                <p className="text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
               </div>
             </div>
           </div>
@@ -363,8 +372,8 @@ export default function AdminPage() {
                 <FaStore className="text-base sm:text-2xl" />
               </div>
               <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Restaurants</p>
-                <p className="text-sm sm:text-2xl font-bold text-gray-900">{stats.totalRestaurants}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Restaurants</p>
+                <p className="text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalRestaurants}</p>
               </div>
             </div>
           </div>
@@ -375,7 +384,7 @@ export default function AdminPage() {
                 <FaShoppingCart className="text-base sm:text-2xl" />
               </div>
               <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Commandes</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Total Commandes</p>
                 <p className="text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
               </div>
             </div>

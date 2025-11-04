@@ -21,7 +21,8 @@ import RealTimeNotifications from '../../components/DeliveryNotifications';
 
 export default function DeliveryDashboard() {
   const [availableOrders, setAvailableOrders] = useState([]);
-  const [currentOrder, setCurrentOrder] = useState(null);
+  const [currentOrder, setCurrentOrder] = useState(null); // Gardé pour compatibilité
+  const [acceptedOrders, setAcceptedOrders] = useState([]); // Toutes les commandes acceptées
   const [stats, setStats] = useState({ total_earnings: 0, total_deliveries: 0, average_rating: 0 });
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -380,25 +381,47 @@ export default function DeliveryDashboard() {
 
   const fetchCurrentOrder = async () => {
     try {
-      const response = await fetchWithAuth('/api/delivery/current-order');
-      if (response.status === 404) {
+      // Récupérer toutes les commandes acceptées par ce livreur
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+
+      const { data: orders, error } = await supabaseAdmin
+        .from('commandes')
+        .select(`
+          *,
+          restaurant:restaurants(id, nom, adresse, telephone, ville, code_postal),
+          users(id, nom, prenom, telephone, email),
+          user_addresses(id, address, city, postal_code, delivery_instructions)
+        `)
+        .eq('livreur_id', user.id)
+        .in('statut', ['en_preparation', 'en_livraison'])
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error("Erreur récupération commandes acceptées:", error);
+        setAcceptedOrders([]);
         setCurrentOrder(null);
         return;
       }
-      const data = await response.json();
-      
-      // Vérifier si une commande existe
-      if (data.hasOrder && data.order) {
-        console.log('🔍 Commande reçue dans fetchCurrentOrder:', data.order);
-        console.log('🔍 Users dans la commande:', data.order.users);
-        console.log('🔍 User addresses dans la commande:', data.order.user_addresses);
-        setCurrentOrder(data.order);
+
+      if (orders && orders.length > 0) {
+        setAcceptedOrders(orders);
+        // Garder la première commande pour compatibilité avec l'ancien code
+        setCurrentOrder(orders[0]);
       } else {
+        setAcceptedOrders([]);
         setCurrentOrder(null);
       }
       setLoading(false);
     } catch (error) {
-      console.error("Erreur lors de la récupération de la commande en cours:", error);
+      console.error("Erreur lors de la récupération des commandes acceptées:", error);
+      setAcceptedOrders([]);
+      setCurrentOrder(null);
       setLoading(false);
     }
   };
@@ -480,20 +503,23 @@ export default function DeliveryDashboard() {
 
   const completeDelivery = async (orderId, providedCode = null) => {
     try {
-      // Si le code n'est pas fourni, utiliser celui de la commande actuelle ou demander via prompt
+      // TOUJOURS demander le code au livreur - ne jamais l'utiliser automatiquement
       let securityCode = providedCode;
       
-      if (!securityCode && currentOrder?.security_code) {
-        // Utiliser le code de la commande actuelle
-        securityCode = currentOrder.security_code;
-      } else if (!securityCode) {
-        // Fallback: demander le code via prompt si non disponible
-        securityCode = prompt('🔐 Entrez le code de sécurité donné par le client:');
-      }
-      
       if (!securityCode) {
-        alert('Code de sécurité requis pour finaliser la livraison');
-        return;
+        // Demander le code via prompt
+        securityCode = prompt('🔐 Entrez le code de sécurité donné par le client (6 chiffres):');
+        
+        if (!securityCode) {
+          alert('Code de sécurité requis pour finaliser la livraison');
+          return;
+        }
+        
+        // Vérifier que le code est au bon format (6 chiffres)
+        if (!/^\d{6}$/.test(securityCode.trim())) {
+          alert('Le code de sécurité doit être composé de 6 chiffres');
+          return;
+        }
       }
       
       const response = await fetchWithAuth(`/api/delivery/complete-delivery/${orderId}`, {
@@ -504,6 +530,8 @@ export default function DeliveryDashboard() {
       if (response.ok) {
         const result = await response.json();
         alert("Livraison finalisée avec succès !");
+        // Mettre à jour la liste des commandes acceptées en retirant celle qui vient d'être livrée
+        setAcceptedOrders(prev => prev.filter(o => o.id !== orderId));
         setCurrentOrder(null);
         setChatOpen(false); // Fermer le chat après la livraison
         fetchStats();
@@ -731,18 +759,20 @@ export default function DeliveryDashboard() {
             </div>
           </div>
 
-          {/* Commande en cours améliorée */}
-          {currentOrder && (
+          {/* Commandes acceptées - Affichage multiple */}
+          {acceptedOrders.length > 0 && (
             <div className="space-y-6">
-              <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Mes commandes acceptées ({acceptedOrders.length})</h2>
+              {acceptedOrders.map((order) => (
+              <div key={order.id} className="bg-white rounded-lg sm:rounded-xl shadow-sm border p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Commande en cours</h2>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Commande #{order.id}</h3>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium">
-                      #{currentOrder.id}
+                      {order.total?.toFixed(2)}€
                     </span>
                     <span className="px-2 sm:px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs sm:text-sm font-medium">
-                      {currentOrder.statut === 'en_livraison' ? 'En livraison' : 'Prêt à livrer'}
+                      {order.statut === 'en_livraison' ? 'En livraison' : 'Prêt à livrer'}
                     </span>
                   </div>
                 </div>
@@ -751,156 +781,137 @@ export default function DeliveryDashboard() {
                   <div className="space-y-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-gray-900 mb-2">🍽️ Restaurant</h3>
-                      <p className="text-gray-700 font-medium">{currentOrder.restaurant?.nom}</p>
-                      <p className="text-gray-600 text-sm">{currentOrder.restaurant?.adresse}</p>
+                      <p className="text-gray-700 font-medium">{order.restaurant?.nom}</p>
+                      <p className="text-gray-600 text-sm">{order.restaurant?.adresse}</p>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-gray-900 mb-2">👤 Client</h3>
                       <p className="text-gray-700 font-medium">
-                        {currentOrder.users?.prenom ? `${currentOrder.users.prenom} ${currentOrder.users.nom}` : 'Client non trouvé'}
+                        {order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client non trouvé'}
                       </p>
-                      <p className="text-gray-600 text-sm">{currentOrder.users?.telephone || 'Téléphone non disponible'}</p>
-                      {/* Debug info */}
-                      <div className="mt-2 text-xs text-gray-500">
-                        <p>Debug users: {JSON.stringify(currentOrder.users)}</p>
-                      </div>
+                      <p className="text-gray-600 text-sm">{order.users?.telephone || 'Téléphone non disponible'}</p>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-gray-900 mb-2">🏠 Adresse de livraison</h3>
-                      <p className="text-gray-700">{currentOrder.user_addresses?.address}</p>
+                      <p className="text-gray-700">{order.user_addresses?.address}</p>
                     </div>
                     
                     {/* Code de sécurité */}
-                    {currentOrder.security_code && (
+                    {order.security_code && (
                       <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <h3 className="font-semibold text-blue-800 mb-1">🔐 Code de sécurité</h3>
                             <p className="text-xs text-blue-600">Code à demander au client pour valider la livraison</p>
                           </div>
-                          <div className="text-3xl sm:text-4xl font-mono font-bold text-blue-800 bg-white px-4 py-2 rounded-lg border-2 border-blue-400 shadow-md">
-                            {currentOrder.security_code}
+                          <div className="text-2xl sm:text-3xl font-mono font-bold text-blue-800 bg-white px-3 py-2 rounded-lg border-2 border-blue-400 shadow-md">
+                            {order.security_code}
                           </div>
                         </div>
                       </div>
                     )}
                     
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                      {(currentOrder.statut === 'en_livraison' || currentOrder.statut === 'pret_a_livrer') && (
+                      {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer') && (
                         <button
-                          onClick={() => completeDelivery(currentOrder.id)}
+                          onClick={() => completeDelivery(order.id)}
                           className="flex-1 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold min-h-[44px] touch-manipulation text-sm sm:text-base"
                         >
                           ✅ Marquer comme livrée
                         </button>
                       )}
-                      <button
-                        onClick={() => setChatOpen(true)}
-                        className="px-4 sm:px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 transform hover:scale-105 font-semibold min-h-[44px] touch-manipulation text-sm sm:text-base"
-                      >
-                        <FaComments className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1 sm:mr-2" />
-                        Chat
-                      </button>
                     </div>
                   </div>
                   
                   <div>
                     {/* Carte de navigation fonctionnelle */}
-                    {currentOrder ? (
-                      <div className="bg-white rounded-lg shadow-sm border p-4">
-                        <h3 className="font-semibold text-gray-900 mb-4">🗺️ Navigation de livraison</h3>
+                    <div className="bg-white rounded-lg shadow-sm border p-4">
+                      <h3 className="font-semibold text-gray-900 mb-4">🗺️ Navigation de livraison</h3>
+                      
+                      {/* Carte de navigation - Liens directs */}
+                      <div className="mb-4 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg p-6 text-center">
+                        <div className="mb-4">
+                          <div className="text-4xl mb-2">🗺️</div>
+                          <h4 className="font-semibold text-gray-800">Navigation GPS</h4>
+                          <p className="text-gray-600 text-sm">Cliquez sur les boutons ci-dessous pour ouvrir la navigation</p>
+                        </div>
                         
-                        {/* Carte de navigation - Liens directs */}
-                        <div className="mb-4 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg p-6 text-center">
-                          <div className="mb-4">
-                            <div className="text-4xl mb-2">🗺️</div>
-                            <h4 className="font-semibold text-gray-800">Navigation GPS</h4>
-                            <p className="text-gray-600 text-sm">Cliquez sur les boutons ci-dessous pour ouvrir la navigation</p>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="bg-white rounded p-3 shadow-sm">
+                            <div className="text-red-500 text-2xl mb-1">🍽️</div>
+                            <div className="text-xs font-semibold">Restaurant</div>
+                            <div className="text-xs text-gray-600">{order.restaurant?.adresse || 'Restaurant'}</div>
                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="bg-white rounded p-3 shadow-sm">
-                              <div className="text-red-500 text-2xl mb-1">🍽️</div>
-                              <div className="text-xs font-semibold">Restaurant</div>
-                              <div className="text-xs text-gray-600">{currentOrder.restaurant?.adresse || 'Restaurant'}</div>
-                            </div>
-                            <div className="bg-white rounded p-3 shadow-sm">
-                              <div className="text-blue-500 text-2xl mb-1">🏠</div>
-                              <div className="text-xs font-semibold">Livraison</div>
-                              <div className="text-xs text-gray-600">{currentOrder.user_addresses?.address || 'Adresse'}</div>
-                            </div>
-                          </div>
-                          
-                          <div className="text-sm text-gray-700">
-                            <div className="flex items-center justify-center space-x-4">
-                              <span>📏 Distance: 2.5 km</span>
-                              <span>⏱️ Temps: ~8 min</span>
-                            </div>
+                          <div className="bg-white rounded p-3 shadow-sm">
+                            <div className="text-blue-500 text-2xl mb-1">🏠</div>
+                            <div className="text-xs font-semibold">Livraison</div>
+                            <div className="text-xs text-gray-600">{order.user_addresses?.address || 'Adresse'}</div>
                           </div>
                         </div>
-
-                        {/* Adresses */}
-                        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                          <div className="bg-red-50 p-3 rounded">
-                            <div className="font-semibold text-red-700">📍 Restaurant</div>
-                            <div className="text-red-600 text-xs">{currentOrder.restaurant?.adresse || 'Restaurant'}</div>
-                          </div>
-                          <div className="bg-blue-50 p-3 rounded">
-                            <div className="font-semibold text-blue-700">🏠 Livraison</div>
-                            <div className="text-blue-600 text-xs">{currentOrder.user_addresses?.address || 'Adresse de livraison'}</div>
+                        
+                        <div className="text-sm text-gray-700">
+                          <div className="flex items-center justify-center space-x-4">
+                            <span>📏 Distance: 2.5 km</span>
+                            <span>⏱️ Temps: ~8 min</span>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Boutons de navigation GPS */}
-                        <div className="space-y-3">
-                          {/* Navigation complète Restaurant → Livraison */}
-                          <button
-                            onClick={() => {
-                              const restaurant = encodeURIComponent(currentOrder.restaurant?.adresse || 'Restaurant Test');
-                              const delivery = encodeURIComponent(currentOrder.user_addresses?.address || '10 place des cèdres');
-                              const url = `https://www.google.com/maps/dir/${restaurant}/${delivery}`;
-                              window.open(url, '_blank');
-                              console.log('🗺️ Ouverture Google Maps:', url);
-                            }}
-                            className="w-full py-4 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold text-lg"
-                          >
-                            🗺️ Navigation complète (Restaurant → Livraison)
-                          </button>
-                          
-                          {/* Navigation depuis position actuelle */}
-                          <button
-                            onClick={() => {
-                              console.log('🌍 Demande de géolocalisation...');
-                              
-                              if (!navigator.geolocation) {
-                                alert('Géolocalisation non supportée par votre navigateur');
-                                return;
+                      {/* Adresses */}
+                      <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                        <div className="bg-red-50 p-3 rounded">
+                          <div className="font-semibold text-red-700">📍 Restaurant</div>
+                          <div className="text-red-600 text-xs">{order.restaurant?.adresse || 'Restaurant'}</div>
+                        </div>
+                        <div className="bg-blue-50 p-3 rounded">
+                          <div className="font-semibold text-blue-700">🏠 Livraison</div>
+                          <div className="text-blue-600 text-xs">{order.user_addresses?.address || 'Adresse de livraison'}</div>
+                        </div>
+                      </div>
+
+                      {/* Boutons de navigation GPS */}
+                      <div className="space-y-3">
+                        {/* Navigation complète Restaurant → Livraison */}
+                        <button
+                          onClick={() => {
+                            const restaurant = encodeURIComponent(order.restaurant?.adresse || 'Restaurant Test');
+                            const delivery = encodeURIComponent(order.user_addresses?.address || '10 place des cèdres');
+                            const url = `https://www.google.com/maps/dir/${restaurant}/${delivery}`;
+                            window.open(url, '_blank');
+                          }}
+                          className="w-full py-4 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold text-base sm:text-lg"
+                        >
+                          🗺️ Navigation complète (Restaurant → Livraison)
+                        </button>
+                        
+                        {/* Navigation depuis position actuelle */}
+                        <button
+                          onClick={() => {
+                            if (!navigator.geolocation) {
+                              alert('Géolocalisation non supportée par votre navigateur');
+                              return;
+                            }
+
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                const delivery = encodeURIComponent(order.user_addresses?.address || '10 place des cèdres');
+                                const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
+                                window.open(url, '_blank');
+                              },
+                              (error) => {
+                                alert('Erreur de géolocalisation: ' + error.message + '\n\nVous pouvez utiliser le bouton "Navigation complète" à la place.');
+                              },
+                              {
+                                enableHighAccuracy: true,
+                                timeout: 10000,
+                                maximumAge: 60000
                               }
-
-                              navigator.geolocation.getCurrentPosition(
-                                (position) => {
-                                  console.log('✅ Position obtenue:', position.coords);
-                                  const lat = position.coords.latitude;
-                                  const lng = position.coords.longitude;
-                                  const delivery = encodeURIComponent(currentOrder.user_addresses?.address || '10 place des cèdres');
-                                  const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
-                                  
-                                  window.open(url, '_blank');
-                                  alert(`📍 Position détectée !\n\nCoordonnées: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n\n🗺️ Ouverture de Google Maps pour la navigation vers la livraison.`);
-                                },
-                                (error) => {
-                                  console.error('❌ Erreur géolocalisation:', error);
-                                  alert('Erreur de géolocalisation: ' + error.message + '\n\nVous pouvez utiliser le bouton "Navigation complète" à la place.');
-                                },
-                                {
-                                  enableHighAccuracy: true,
-                                  timeout: 10000,
-                                  maximumAge: 60000
-                                }
-                              );
-                            }}
+                            );
+                          }}
                             className="w-full py-4 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold text-lg"
                           >
                             🌍 Navigation depuis ma position
@@ -909,12 +920,11 @@ export default function DeliveryDashboard() {
                           {/* Bouton de secours pour Waze */}
                           <button
                             onClick={() => {
-                              const delivery = encodeURIComponent(currentOrder.user_addresses?.address || '10 place des cèdres');
+                              const delivery = encodeURIComponent(order.user_addresses?.address || '10 place des cèdres');
                               const url = `https://waze.com/ul?q=${delivery}`;
                               window.open(url, '_blank');
-                              console.log('🚗 Ouverture Waze:', url);
                             }}
-                            className="w-full py-3 px-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold"
+                            className="w-full py-3 px-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold text-base sm:text-lg"
                           >
                             🚗 Ouvrir dans Waze
                           </button>
@@ -930,14 +940,9 @@ export default function DeliveryDashboard() {
                           </ul>
                         </div>
                       </div>
-                    ) : (
-                      <div className="bg-gray-100 rounded-lg p-8 text-center">
-                        <p className="text-gray-600">Aucune commande active</p>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
           )}
 

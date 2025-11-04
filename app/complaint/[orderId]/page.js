@@ -92,9 +92,10 @@ export default function ComplaintForm({ params }) {
       setOrder(orderData);
       
       // Initialiser le montant de remboursement
+      const orderTotal = parseFloat(orderData.total || orderData.total_amount || 0);
       setFormData(prev => ({
         ...prev,
-        requestedRefundAmount: (orderData.total || 0).toString()
+        requestedRefundAmount: orderTotal.toString()
       }));
 
     } catch (err) {
@@ -188,7 +189,8 @@ export default function ComplaintForm({ params }) {
         throw new Error('Le montant de remboursement doit être positif');
       }
 
-      if (parseFloat(formData.requestedRefundAmount) > order.total_amount) {
+      const orderTotal = parseFloat(order.total || order.total_amount || 0);
+      if (parseFloat(formData.requestedRefundAmount) > orderTotal) {
         throw new Error('Le montant de remboursement ne peut pas dépasser le total de la commande');
       }
 
@@ -226,7 +228,7 @@ export default function ComplaintForm({ params }) {
 
       // Succès
       alert('Réclamation créée avec succès ! Nous examinerons votre demande dans les plus brefs délais.');
-      router.push(`/orders/${params.orderId}`);
+      router.push(`/profile/orders/${params.orderId}`);
 
     } catch (err) {
       console.error('Erreur soumission réclamation:', err);
@@ -313,7 +315,7 @@ export default function ComplaintForm({ params }) {
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Montant total</p>
-                <p className="font-medium text-gray-900 dark:text-gray-100">{order.total_amount}€</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100">{parseFloat(order.total || order.total_amount || 0).toFixed(2)}€</p>
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Date de livraison</p>
@@ -412,13 +414,13 @@ export default function ComplaintForm({ params }) {
                   value={formData.requestedRefundAmount}
                   onChange={handleInputChange}
                   min="0"
-                  max={order.total_amount}
+                  max={parseFloat(order.total || order.total_amount || 0)}
                   step="0.01"
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                   required
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Maximum: {order.total_amount}€
+                  Maximum: {parseFloat(order.total || order.total_amount || 0).toFixed(2)}€
                 </p>
               </div>
 

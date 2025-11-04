@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS delivery_applications (
   address TEXT NOT NULL,
   city TEXT NOT NULL,
   postal_code TEXT NOT NULL,
-  vehicle_type TEXT NOT NULL CHECK (vehicle_type IN ('bike', 'scooter', 'car', 'motorcycle')),
+  vehicle_type TEXT NOT NULL CHECK (vehicle_type IN ('bike', 'scooter', 'trotinette', 'car', 'motorcycle')),
   has_license BOOLEAN NOT NULL,
   experience TEXT,
   availability TEXT NOT NULL,

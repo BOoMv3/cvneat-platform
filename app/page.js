@@ -59,6 +59,7 @@ export default function Home() {
   const [showFloatingCart, setShowFloatingCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
+  const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
 
   // Fonction de déconnexion
   const handleLogout = async () => {
@@ -125,16 +126,33 @@ export default function Home() {
           throw new Error('Format de donnees invalide');
         }
         
-        console.log('Restaurants chargés:', data);
-        console.log('Premier restaurant:', data[0]);
-        console.log('Propriétés d\'image du premier restaurant:', {
-          image_url: data[0]?.image_url,
-          imageUrl: data[0]?.imageUrl,
-          profile_image: data[0]?.profile_image,
-          banner_image: data[0]?.banner_image
-        });
-        
         setRestaurants(data);
+        
+        // Vérifier le statut d'ouverture pour chaque restaurant
+        const openStatusMap = {};
+        await Promise.all(data.map(async (restaurant) => {
+          try {
+            const statusResponse = await fetch('/api/restaurants/hours', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ restaurantId: restaurant.id })
+            });
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              openStatusMap[restaurant.id] = {
+                isOpen: statusData.isOpen !== false && !restaurant.ferme_manuellement && !restaurant.is_closed,
+                isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false
+              };
+            }
+          } catch (err) {
+            // Si erreur, considérer comme ouvert par défaut
+            openStatusMap[restaurant.id] = {
+              isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
+              isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false
+            };
+          }
+        }));
+        setRestaurantsOpenStatus(openStatusMap);
       } catch (error) {
         console.error('Erreur lors du chargement des restaurants:', error);
         setError(error.message);
@@ -302,7 +320,7 @@ export default function Home() {
             <span className="hidden sm:inline">Livreur</span>
           </Link>
           {/* Bouton Publicité */}
-          <Link href="/advertising/request" className="bg-purple-600/90 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-purple-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
+          <Link href="/advertise" className="bg-purple-600/90 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-purple-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
             <FaImage className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
             <span className="hidden sm:inline">Pub</span>
           </Link>
@@ -544,13 +562,24 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-8">
-              {filteredAndSortedRestaurants.map((restaurant, index) => (
+              {filteredAndSortedRestaurants.map((restaurant, index) => {
+                const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { isOpen: true, isManuallyClosed: false };
+                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                
+                return (
                 <div
                   key={restaurant.id}
-                  className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02]"
-                  onClick={() => handleRestaurantClick(restaurant)}
+                  className={`group transform transition-all duration-300 ${isClosed ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'}`}
+                  onClick={() => !isClosed && handleRestaurantClick(restaurant)}
                 >
-                  <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
+                  <div className={`bg-white rounded-3xl shadow-lg transition-all duration-300 overflow-hidden border ${isClosed ? 'border-gray-300 grayscale' : 'border-gray-100 hover:shadow-2xl'}`}>
+                    {isClosed && (
+                      <div className="absolute inset-0 z-10 bg-black/20 rounded-3xl flex items-center justify-center">
+                        <div className="bg-red-600 text-white px-6 py-3 rounded-full text-lg font-bold shadow-lg">
+                          🔴 Fermé
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
                       {/* Image du restaurant */}
                       <div className="relative sm:col-span-1 overflow-hidden" style={{ height: '256px', minHeight: '256px', maxHeight: '256px' }}>
@@ -631,17 +660,25 @@ export default function Home() {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation(); // Empêcher le clic sur le bouton de commande lui-même
-                            handleRestaurantClick(restaurant);
+                            if (!isClosed) {
+                              handleRestaurantClick(restaurant);
+                            }
                           }}
-                          className="w-full bg-gradient-to-r from-orange-500 to-amber-600 text-white py-4 sm:py-4 px-4 sm:px-6 rounded-2xl font-semibold hover:from-orange-600 hover:to-amber-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation active:scale-95"
+                          disabled={isClosed}
+                          className={`w-full py-4 sm:py-4 px-4 sm:px-6 rounded-2xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation ${
+                            isClosed
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700 hover:shadow-xl transform hover:scale-105 active:scale-95'
+                          }`}
                         >
-                          Voir le menu
+                          {isClosed ? 'Restaurant fermé' : 'Voir le menu'}
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </section>

@@ -36,17 +36,17 @@ export async function GET(request) {
       .from('complaints')
       .select(`
         *,
-        order:orders(
+        order:commandes(
           id,
-          order_number,
-          total_amount,
-          status,
+          total,
+          statut,
           created_at
         ),
-        customer:users!customer_id(
+        customer:users!user_id(
           id,
           email,
-          full_name,
+          nom,
+          prenom,
           telephone
         ),
         restaurant:restaurants!restaurant_id(
@@ -80,11 +80,11 @@ export async function GET(request) {
       }
     } else {
       // Client voit ses propres réclamations
-      query = query.eq('customer_id', user.id);
+      query = query.eq('user_id', user.id);
     }
 
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq('statut', status);
     }
 
     const { data: complaints, error } = await query;
@@ -173,12 +173,18 @@ export async function POST(request) {
       );
     }
 
-    // Vérifier l'historique du client (anti-fraude)
-    const { data: customerHistory } = await supabase
-      .from('customer_complaint_history')
-      .select('*')
-      .eq('customer_id', user.id)
-      .single();
+    // Vérifier l'historique du client (anti-fraude) - table optionnelle
+    let customerHistory = null;
+    try {
+      const { data } = await supabase
+        .from('customer_complaint_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      customerHistory = data;
+    } catch (err) {
+      // Table peut ne pas exister, on continue
+    }
 
     if (customerHistory?.is_flagged) {
       return NextResponse.json(
@@ -194,7 +200,7 @@ export async function POST(request) {
     const { data: existingComplaint } = await supabase
       .from('complaints')
       .select('id')
-      .eq('order_id', orderId)
+      .eq('commande_id', orderId)
       .single();
 
     if (existingComplaint) {
@@ -221,23 +227,23 @@ export async function POST(request) {
     const { data: complaint, error: complaintError } = await supabase
       .from('complaints')
       .insert([{
-        order_id: orderId,
-        customer_id: user.id,
-        restaurant_id: order.restaurant.id,
-        complaint_type: complaintType,
-        title,
+        commande_id: orderId,
+        user_id: user.id,
+        restaurant_id: order.restaurant?.id || order.restaurant_id,
+        type: complaintType,
+        titre: title,
         description,
-        requested_refund_amount: Math.min(requestedRefundAmount, order.total_amount),
-        evidence_description: evidenceDescription,
-        photos,
-        complaint_score: complaintScore,
+        montant_remboursement: Math.min(requestedRefundAmount, parseFloat(order.total || 0)),
+        description_preuve: evidenceDescription,
+        photos: photos || [],
+        statut: 'en_attente',
         ip_address: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
         user_agent: request.headers.get('user-agent')
       }])
       .select(`
         *,
-        order:orders(order_number, total_amount),
-        customer:users!customer_id(email, full_name),
+        order:commandes(id, total, statut),
+        customer:users!user_id(email, nom, prenom),
         restaurant:restaurants(nom)
       `)
       .single();
@@ -259,9 +265,9 @@ export async function POST(request) {
           type: 'newComplaint',
           data: {
             complaintId: complaint.id,
-            orderNumber: order.order_number,
-            customerName: complaint.customer.full_name,
-            restaurantName: complaint.restaurant.nom,
+            orderId: order.id,
+            customerName: complaint.customer?.nom || complaint.customer?.prenom || 'Client',
+            restaurantName: complaint.restaurant?.nom || 'Restaurant',
             complaintType: complaintType,
             amount: requestedRefundAmount
           },
