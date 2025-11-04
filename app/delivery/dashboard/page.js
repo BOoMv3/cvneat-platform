@@ -381,15 +381,20 @@ export default function DeliveryDashboard() {
 
   const fetchCurrentOrder = async () => {
     try {
+      console.log('🔍 Récupération commandes acceptées...');
       // Récupérer toutes les commandes acceptées par ce livreur
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('❌ Pas d\'utilisateur connecté');
+        return;
+      }
 
       const supabaseAdmin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
       );
 
+      // Récupérer les commandes avec jointures optionnelles pour éviter les erreurs
       const { data: orders, error } = await supabaseAdmin
         .from('commandes')
         .select(`
@@ -399,27 +404,51 @@ export default function DeliveryDashboard() {
           user_addresses(id, address, city, postal_code, delivery_instructions)
         `)
         .eq('livreur_id', user.id)
-        .in('statut', ['en_preparation', 'en_livraison'])
+        .in('statut', ['en_preparation', 'en_livraison', 'pret_a_livrer'])
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error("Erreur récupération commandes acceptées:", error);
-        setAcceptedOrders([]);
-        setCurrentOrder(null);
+        console.error("❌ Erreur récupération commandes acceptées:", error);
+        // En cas d'erreur avec les jointures, essayer sans jointures
+        const { data: simpleOrders, error: simpleError } = await supabaseAdmin
+          .from('commandes')
+          .select('*')
+          .eq('livreur_id', user.id)
+          .in('statut', ['en_preparation', 'en_livraison', 'pret_a_livrer'])
+          .order('created_at', { ascending: true });
+        
+        if (simpleError) {
+          console.error("❌ Erreur récupération simple:", simpleError);
+          setAcceptedOrders([]);
+          setCurrentOrder(null);
+          return;
+        }
+        
+        // Utiliser les commandes simples si les jointures échouent
+        if (simpleOrders && simpleOrders.length > 0) {
+          console.log('✅ Commandes récupérées (sans jointures):', simpleOrders.length);
+          setAcceptedOrders(simpleOrders);
+          setCurrentOrder(simpleOrders[0]);
+        } else {
+          setAcceptedOrders([]);
+          setCurrentOrder(null);
+        }
         return;
       }
 
       if (orders && orders.length > 0) {
+        console.log('✅ Commandes acceptées récupérées:', orders.length);
         setAcceptedOrders(orders);
         // Garder la première commande pour compatibilité avec l'ancien code
         setCurrentOrder(orders[0]);
       } else {
+        console.log('ℹ️ Aucune commande acceptée trouvée');
         setAcceptedOrders([]);
         setCurrentOrder(null);
       }
       setLoading(false);
     } catch (error) {
-      console.error("Erreur lors de la récupération des commandes acceptées:", error);
+      console.error("❌ Erreur lors de la récupération des commandes acceptées:", error);
       setAcceptedOrders([]);
       setCurrentOrder(null);
       setLoading(false);
@@ -481,22 +510,33 @@ export default function DeliveryDashboard() {
 
   const acceptOrder = async (orderId) => {
     try {
-      
+      console.log('📦 Acceptation commande:', orderId);
       const response = await fetchWithAuth(`/api/delivery/accept-order/${orderId}`, {
         method: 'POST'
       });
 
-
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Commande acceptée avec succès:', result);
+        
+        // Retirer la commande de la liste des commandes disponibles immédiatement
+        setAvailableOrders(prev => prev.filter(o => o.id !== orderId));
+        
+        // Attendre un peu pour que la base de données soit mise à jour
+        setTimeout(() => {
+          console.log('🔄 Mise à jour des commandes acceptées...');
+          fetchAvailableOrders();
+          fetchCurrentOrder();
+        }, 500); // Délai de 500ms pour laisser le temps à la BDD
+        
         alert("Commande acceptée avec succès !");
-        fetchAvailableOrders();
-        fetchCurrentOrder();
       } else {
         const error = await response.json();
+        console.error('❌ Erreur acceptation:', error);
         alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
+      console.error('❌ Erreur acceptation commande:', error);
       alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
     }
   };
