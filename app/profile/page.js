@@ -713,9 +713,6 @@ export default function Profile() {
                         setLoading(false);
                       }
                     }
-                      // Logique de suppression du compte
-                      alert('Fonctionnalité à implémenter');
-                    }
                   }}
                   className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                 >
