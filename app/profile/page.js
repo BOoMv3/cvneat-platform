@@ -80,7 +80,13 @@ export default function Profile() {
       });
       if (!userResponse.ok) throw new Error('Erreur lors de la récupération de l\'utilisateur');
       const userData = await userResponse.json();
-      setUser(userData);
+      // S'assurer que les champs nom, prenom, phone sont bien initialisés
+      setUser({
+        ...userData,
+        nom: userData.nom || '',
+        prenom: userData.prenom || '',
+        phone: userData.phone || ''
+      });
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -676,7 +682,37 @@ export default function Profile() {
                 <h3 className="text-lg font-semibold text-red-900 mb-4">Zone de danger</h3>
                 <button
                   onClick={() => {
-                    if (confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
+                    if (confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront supprimées.')) {
+                      try {
+                        setLoading(true);
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session) {
+                          setError('Session expirée, veuillez vous reconnecter');
+                          setLoading(false);
+                          return;
+                        }
+
+                        const response = await fetch('/api/users/delete-account', {
+                          method: 'DELETE',
+                          headers: {
+                            'Authorization': `Bearer ${session.access_token}`,
+                            'Content-Type': 'application/json',
+                          }
+                        });
+
+                        if (!response.ok) {
+                          const errorData = await response.json();
+                          throw new Error(errorData.error || 'Erreur lors de la suppression du compte');
+                        }
+
+                        // Déconnexion et redirection
+                        await supabase.auth.signOut();
+                        router.push('/');
+                      } catch (err) {
+                        setError(err.message || 'Erreur lors de la suppression du compte');
+                        setLoading(false);
+                      }
+                    }
                       // Logique de suppression du compte
                       alert('Fonctionnalité à implémenter');
                     }

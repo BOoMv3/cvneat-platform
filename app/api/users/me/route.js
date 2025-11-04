@@ -76,7 +76,7 @@ export async function GET(request) {
       name: displayName,
       nom: userData.nom || '',
       prenom: userData.prenom || '',
-      phone: userData.telephone || userData.phone || '',
+      phone: userData.telephone || '',
       created_at: userData.created_at || user.created_at
     });
 
