@@ -148,9 +148,46 @@ export async function POST(request, { params }) {
       }
     }
     
+    // Log détaillé pour debug
+    console.log('🔍 DEBUG horaires:', {
+      restaurantId: id,
+      dayOfWeek,
+      todayKey,
+      variants,
+      allHorairesKeys: Object.keys(horaires),
+      todayHours,
+      todayHoursOuvert: todayHours?.ouvert,
+      todayHoursOuvertType: typeof todayHours?.ouvert,
+      todayHoursOuvertStrict: todayHours?.ouvert === true,
+      allHoraires: JSON.stringify(horaires, null, 2)
+    });
+
     // Si pas de configuration ou fermé ce jour
-    if (!todayHours || todayHours.ouvert !== true) {
-      console.log('🔴 Restaurant fermé - todayKey:', todayKey, 'dayOfWeek:', dayOfWeek, 'todayHours:', todayHours, 'allHoraires keys:', Object.keys(horaires), 'allHoraires:', horaires);
+    if (!todayHours) {
+      console.log('🔴 Restaurant fermé - Pas de configuration pour aujourd\'hui:', todayKey);
+      return NextResponse.json({
+        isOpen: false,
+        message: 'Restaurant fermé aujourd\'hui (pas de configuration)',
+        reason: 'closed_today',
+        today: todayKey,
+        dayOfWeek,
+        debug: { 
+          todayKey, 
+          todayHours: null, 
+          allHorairesKeys: Object.keys(horaires),
+          allHoraires: horaires,
+          variants: variants
+        }
+      });
+    }
+
+    // Vérifier strictement si ouvert (doit être explicitement true)
+    if (todayHours.ouvert !== true) {
+      console.log('🔴 Restaurant fermé - ouvert n\'est pas true:', {
+        ouvert: todayHours.ouvert,
+        type: typeof todayHours.ouvert,
+        strict: todayHours.ouvert === true
+      });
       return NextResponse.json({
         isOpen: false,
         message: 'Restaurant fermé aujourd\'hui',
@@ -162,7 +199,9 @@ export async function POST(request, { params }) {
           todayHours, 
           allHorairesKeys: Object.keys(horaires),
           allHoraires: horaires,
-          variants: variants
+          variants: variants,
+          ouvertValue: todayHours.ouvert,
+          ouvertType: typeof todayHours.ouvert
         }
       });
     }
@@ -195,6 +234,7 @@ export async function POST(request, { params }) {
     const isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
 
     console.log('🕐 Vérification horaires:', {
+      restaurantId: id,
       currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
       currentTimeMinutes,
       openTime: todayHours.ouverture,
@@ -202,7 +242,8 @@ export async function POST(request, { params }) {
       closeTime: todayHours.fermeture,
       closeTimeMinutes,
       isOpen,
-      todayKey
+      todayKey,
+      comparison: `${currentTimeMinutes} >= ${openTimeMinutes} && ${currentTimeMinutes} <= ${closeTimeMinutes} = ${isOpen}`
     });
 
     return NextResponse.json({
