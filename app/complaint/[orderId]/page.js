@@ -266,7 +266,7 @@ export default function ComplaintForm({ params }) {
             <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
             <button
               onClick={() => router.back()}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 dark:bg-blue-700 text-white px-6 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
             >
               Retour
             </button>
@@ -420,7 +420,8 @@ export default function ComplaintForm({ params }) {
                   required
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Maximum: {parseFloat(order.total || order.total_amount || 0).toFixed(2)}€
+                  Maximum: {(parseFloat(order.total || order.total_amount || 0) * 0.7).toFixed(2)}€ (70% du total). 
+                  <span className="text-orange-600 dark:text-orange-400"> Minimum: 5€ pour commandes &gt; 10€</span>
                 </p>
               </div>
 
@@ -492,7 +493,7 @@ export default function ComplaintForm({ params }) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  className="w-full bg-orange-600 dark:bg-orange-700 text-white py-3 px-6 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                 >
                   {submitting ? (
                     <>

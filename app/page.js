@@ -411,9 +411,9 @@ export default function Home() {
 
       {/* Panier flottant - Optimisé mobile */}
       {showFloatingCart && cart.length > 0 && (
-        <div className="fixed top-16 sm:top-24 right-2 sm:right-6 bg-white rounded-3xl shadow-2xl border border-gray-200 p-4 sm:p-6 z-50 w-[calc(100vw-1rem)] sm:w-80 sm:min-w-96 max-w-[calc(100vw-1rem)] sm:max-w-96">
+        <div className="fixed top-16 sm:top-24 right-2 sm:right-6 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 z-50 w-[calc(100vw-1rem)] sm:w-80 sm:min-w-96 max-w-[calc(100vw-1rem)] sm:max-w-96">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Votre panier</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Votre panier</h3>
             <button
               onClick={() => setShowFloatingCart(false)}
               className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -424,18 +424,18 @@ export default function Home() {
           
           <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
             {cart.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-3 sm:p-3 bg-gray-50 rounded-xl">
-                <span className="flex-1 font-medium text-gray-800 text-sm sm:text-base pr-2">{item.nom}</span>
+              <div key={item.id} className="flex items-center justify-between p-3 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <span className="flex-1 font-medium text-gray-800 dark:text-gray-200 text-sm sm:text-base pr-2">{item.nom}</span>
                 <div className="flex items-center space-x-2 sm:space-x-3">
-                  <button className="w-10 h-10 sm:w-8 sm:h-8 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors touch-manipulation active:scale-95">
-                    <FaMinus className="h-3 w-3 sm:h-3 sm:w-3 text-gray-600" />
+                  <button className="w-10 h-10 sm:w-8 sm:h-8 bg-white dark:bg-gray-600 border-2 border-gray-200 dark:border-gray-600 rounded-full flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors touch-manipulation active:scale-95">
+                    <FaMinus className="h-3 w-3 sm:h-3 sm:w-3 text-gray-600 dark:text-gray-200" />
                   </button>
-                  <span className="w-8 sm:w-10 text-center font-semibold text-gray-900 text-sm sm:text-base">{item.quantity || 1}</span>
+                  <span className="w-8 sm:w-10 text-center font-semibold text-gray-900 dark:text-gray-200 text-sm sm:text-base">{item.quantity || 1}</span>
                   <button className="w-10 h-10 sm:w-8 sm:h-8 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full flex items-center justify-center hover:from-orange-600 hover:to-amber-600 transition-all duration-200 touch-manipulation active:scale-95">
                     <FaPlus className="h-3 w-3 sm:h-3 sm:w-3" />
                   </button>
                 </div>
-                <span className="font-bold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4">{(item.prix || 0) * (item.quantity || 1)}€</span>
+                <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-gray-200 ml-2 sm:ml-4">{(item.prix || 0) * (item.quantity || 1)}€</span>
               </div>
             ))}
           </div>
@@ -510,12 +510,12 @@ export default function Home() {
         <section className="mb-12">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Restaurants populaires</h2>
-              <p className="text-gray-600 text-sm sm:text-base">Découvrez les meilleurs restaurants de votre région</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Restaurants populaires</h2>
+              <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">Découvrez les meilleurs restaurants de votre région</p>
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-3.5 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl hover:border-orange-400 hover:shadow-lg transition-all duration-200 text-sm sm:text-base font-semibold min-h-[48px] sm:min-h-[52px] touch-manipulation active:scale-95"
+              className="flex items-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-2xl hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-lg transition-all duration-200 text-sm sm:text-base font-semibold min-h-[48px] sm:min-h-[52px] touch-manipulation active:scale-95"
             >
               <FaFilter className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span className="font-semibold">Filtres</span>

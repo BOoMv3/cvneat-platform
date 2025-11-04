@@ -127,10 +127,35 @@ export async function POST(request) {
       photos = []
     } = await request.json();
 
-    // Validation des données
+    // Validation stricte des données
     if (!orderId || !complaintType || !title || !description || !requestedRefundAmount) {
       return NextResponse.json(
-        { error: 'Données manquantes' },
+        { error: 'Tous les champs sont obligatoires' },
+        { status: 400 }
+      );
+    }
+
+    // Validation du titre (min 10 caractères, max 200)
+    if (title.trim().length < 10 || title.trim().length > 200) {
+      return NextResponse.json(
+        { error: 'Le titre doit contenir entre 10 et 200 caractères' },
+        { status: 400 }
+      );
+    }
+
+    // Validation de la description (min 50 caractères, max 2000)
+    if (description.trim().length < 50 || description.trim().length > 2000) {
+      return NextResponse.json(
+        { error: 'La description doit contenir entre 50 et 2000 caractères' },
+        { status: 400 }
+      );
+    }
+
+    // Validation du montant (doit être un nombre positif)
+    const refundAmount = parseFloat(requestedRefundAmount);
+    if (isNaN(refundAmount) || refundAmount <= 0) {
+      return NextResponse.json(
+        { error: 'Le montant de remboursement doit être un nombre positif' },
         { status: 400 }
       );
     }
@@ -185,18 +210,66 @@ export async function POST(request) {
       );
     }
 
-    // Vérifier les réclamations récentes du client (anti-fraude)
+    // Vérifier les réclamations récentes du client (anti-fraude - STRICT)
     const { data: recentComplaints } = await supabase
       .from('complaints')
-      .select('id, created_at')
+      .select('id, created_at, montant_remboursement')
       .eq('user_id', user.id)
       .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // 30 derniers jours
 
-    if (recentComplaints && recentComplaints.length >= 5) {
+    if (recentComplaints && recentComplaints.length >= 3) {
       return NextResponse.json(
-        { error: 'Nombre de réclamations trop élevé. Veuillez contacter le support client.' },
+        { error: 'Nombre de réclamations trop élevé (maximum 3 par mois). Veuillez contacter le support client pour toute autre demande.' },
         { status: 403 }
       );
+    }
+
+    // Calculer le total des remboursements récents (max 200€ par mois)
+    const totalRecentRefunds = recentComplaints?.reduce((sum, c) => sum + (parseFloat(c.montant_remboursement || 0)), 0) || 0;
+    if (totalRecentRefunds + refundAmount > 200) {
+      return NextResponse.json(
+        { error: 'Limite de remboursement mensuel atteinte (200€ maximum par mois). Veuillez contacter le support client.' },
+        { status: 403 }
+      );
+    }
+
+    // Vérifier si le client a déjà fait une réclamation pour ce restaurant récemment (max 1 par restaurant par mois)
+    const { data: restaurantComplaints } = await supabase
+      .from('complaints')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('restaurant_id', order.restaurant?.id || order.restaurant_id)
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+
+    if (restaurantComplaints && restaurantComplaints.length >= 1) {
+      return NextResponse.json(
+        { error: 'Vous avez déjà fait une réclamation pour ce restaurant ce mois-ci. Une seule réclamation par restaurant et par mois est autorisée.' },
+        { status: 403 }
+      );
+    }
+
+    // Vérifier le ratio réclamations/commandes (max 20% de réclamations)
+    const { data: allOrders } = await supabase
+      .from('commandes')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('statut', 'livree')
+      .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()); // 3 derniers mois
+
+    const { data: allComplaints } = await supabase
+      .from('complaints')
+      .select('id')
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
+
+    if (allOrders && allOrders.length > 0 && allComplaints && allComplaints.length > 0) {
+      const complaintRatio = (allComplaints.length / allOrders.length) * 100;
+      if (complaintRatio > 20) {
+        return NextResponse.json(
+          { error: 'Ratio de réclamations trop élevé. Plus de 20% de vos commandes ont fait l\'objet d\'une réclamation. Veuillez contacter le support client.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Vérifier l'historique du client (anti-fraude) - table optionnelle
