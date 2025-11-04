@@ -106,9 +106,9 @@ export default function AdminPage() {
       if (partnershipError) throw partnershipError;
 
       // Récupérer le total d'utilisateurs
-      const { data: users, error: usersError } = await supabase
+      const { count: totalUsers, error: usersError } = await supabase
         .from('users')
-        .select('id', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true });
 
       if (usersError) {
         console.error('Erreur récupération utilisateurs:', usersError);
@@ -381,7 +381,7 @@ export default function AdminPage() {
               </div>
               <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Total Utilisateurs</p>
-                <p className="text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalOrders > 0 ? 'N/A' : '0'}</p>
+                <p className="text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalUsers || 0}</p>
               </div>
             </div>
           </div>
@@ -416,8 +416,9 @@ export default function AdminPage() {
                 <FaEuroSign className="text-base sm:text-2xl" />
               </div>
               <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Chiffre d'Affaires</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Commissions CVN'EAT</p>
                 <p className="text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
+                <p className="text-xs text-gray-500 mt-1">(15% des commandes livrées)</p>
               </div>
             </div>
           </div>
