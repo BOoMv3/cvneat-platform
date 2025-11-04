@@ -31,12 +31,8 @@ export default function AdsManagement() {
   });
 
   const positions = [
-    { value: 'banner_top', label: 'Bannière haut de page' },
-    { value: 'banner_middle', label: 'Bannière milieu de page' },
-    { value: 'sidebar_left', label: 'Barre latérale gauche' },
-    { value: 'sidebar_right', label: 'Barre latérale droite' },
-    { value: 'popup', label: 'Popup' },
-    { value: 'footer', label: 'Pied de page' }
+    { value: 'banner_middle', label: 'Milieu de page' },
+    { value: 'footer', label: 'Bas de page' }
   ];
 
   useEffect(() => {

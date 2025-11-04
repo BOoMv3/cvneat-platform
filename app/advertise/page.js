@@ -26,28 +26,16 @@ export default function AdvertisePage() {
   const positions = [
     { 
       value: 'banner_middle', 
-      label: 'Bannière principale (recommandé)', 
+      label: 'Milieu de page (recommandé)', 
       price: 50,
       description: 'Espace principal entre les catégories et restaurants',
       popular: true
     },
     { 
-      value: 'banner_top', 
-      label: 'Bannière haut de page', 
-      price: 30,
-      description: 'En haut de la page d\'accueil'
-    },
-    { 
-      value: 'sidebar_left', 
-      label: 'Barre latérale gauche', 
-      price: 20,
-      description: 'Sur le côté gauche de la page'
-    },
-    { 
       value: 'footer', 
-      label: 'Pied de page', 
+      label: 'Bas de page', 
       price: 15,
-      description: 'En bas de la page'
+      description: 'En bas de la page d\'accueil'
     }
   ];
 
