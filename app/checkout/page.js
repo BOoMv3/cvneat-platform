@@ -32,6 +32,7 @@ export default function Checkout() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [deliveryError, setDeliveryError] = useState(null);
   const [addressValidationMessage, setAddressValidationMessage] = useState(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [newAddress, setNewAddress] = useState({
     address: '',
     city: '',
@@ -235,12 +236,10 @@ export default function Checkout() {
         console.error('❌ Livraison refusée - success:', data.success, 'livrable:', data.livrable, 'message:', message);
         console.error('❌ Données complètes:', data);
         
-        // Afficher le message d'erreur sur la page
+        // Afficher le message d'erreur dans un pop-up
         setDeliveryError(message);
         setAddressValidationMessage(message);
-        
-        // Afficher aussi un alert pour être sûr
-        alert(`⚠️ ${message}`);
+        setShowErrorModal(true);
         
         // Réinitialiser les frais de livraison
         setFraisLivraison(0);
@@ -269,6 +268,7 @@ export default function Checkout() {
       // SUCCÈS - Réinitialiser les erreurs
       setDeliveryError(null);
       setAddressValidationMessage(null);
+      setShowErrorModal(false);
 
       // SUCCÈS - Mettre à jour les frais
       const newFrais = data.frais_livraison;
@@ -313,6 +313,7 @@ export default function Checkout() {
     setSelectedAddress(address);
     setDeliveryError(null);
     setAddressValidationMessage(null);
+    setShowErrorModal(false);
     await calculateDeliveryFee(address);
   };
 
