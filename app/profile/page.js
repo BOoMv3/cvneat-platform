@@ -338,11 +338,21 @@ export default function Profile() {
               className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-800 p-4 rounded shadow mb-6"
             >
               <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Prénom</label>
+                <input
+                  type="text"
+                  value={user.prenom || ''}
+                  onChange={e => setUser(u => ({ ...u, prenom: e.target.value }))}
+                  className="input-primary"
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nom</label>
                 <input
                   type="text"
-                  value={user.name || ''}
-                  onChange={e => setUser(u => ({ ...u, name: e.target.value }))}
+                  value={user.nom || ''}
+                  onChange={e => setUser(u => ({ ...u, nom: e.target.value }))}
                   className="input-primary"
                   required
                 />
@@ -355,7 +365,9 @@ export default function Profile() {
                   onChange={e => setUser(u => ({ ...u, email: e.target.value }))}
                   className="input-primary"
                   required
+                  disabled
                 />
+                <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Téléphone</label>

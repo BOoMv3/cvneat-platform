@@ -22,7 +22,7 @@ export async function PUT(request) {
 
     // Récupérer les données du body
     const body = await request.json();
-    const { name, email, phone } = body;
+    const { nom, prenom, email, phone } = body;
 
     // Vérifier si l'utilisateur existe dans la table users
     const { data: existingUser, error: checkError } = await supabase
@@ -42,9 +42,10 @@ export async function PUT(request) {
       const { data, error } = await supabase
         .from('users')
         .update({
-          nom: name,
-          email: email,
-          telephone: phone,
+          nom: nom || existingUser.nom || '',
+          prenom: prenom || existingUser.prenom || '',
+          email: email || existingUser.email,
+          telephone: phone || existingUser.telephone || '',
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -62,9 +63,10 @@ export async function PUT(request) {
         .from('users')
         .insert({
           id: user.id,
-          nom: name,
-          email: email,
-          telephone: phone,
+          nom: nom || '',
+          prenom: prenom || '',
+          email: email || user.email,
+          telephone: phone || '',
           role: 'user'
         })
         .select()
@@ -82,8 +84,10 @@ export async function PUT(request) {
       user: {
         id: result.id,
         email: result.email,
-        name: result.nom,
-        phone: result.telephone
+        nom: result.nom || '',
+        prenom: result.prenom || '',
+        name: `${result.prenom || ''} ${result.nom || ''}`.trim() || result.email,
+        phone: result.telephone || ''
       }
     });
 

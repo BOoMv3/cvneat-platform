@@ -41,13 +41,42 @@ export default function Inscription() {
       return;
     }
 
-    // Inscription avec Supabase Auth
+    // Vérifier si l'utilisateur existe déjà
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', formData.email)
+      .maybeSingle();
+    
+    if (existingUser) {
+      setError('Cet email est déjà utilisé');
+      setLoading(false);
+      return;
+    }
+
+    // Inscription avec Supabase Auth avec redirection email
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
+      options: {
+        emailRedirectTo: `${siteUrl}/auth/callback`,
+        data: {
+          nom: formData.nom,
+          prenom: formData.prenom,
+          telephone: formData.telephone
+        }
+      }
     });
     if (signUpError) {
       setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Vérifier si l'utilisateur a été créé
+    if (!signUpData.user) {
+      setError('Erreur lors de la création du compte');
       setLoading(false);
       return;
     }
@@ -57,14 +86,18 @@ export default function Inscription() {
       id: signUpData.user.id,
       nom: formData.nom,
       prenom: formData.prenom,
+      email: formData.email,
       telephone: formData.telephone,
       adresse: formData.adresse,
       code_postal: formData.codePostal,
       ville: formData.ville,
-      role: formData.role,
+      role: formData.role || 'user',
     });
     if (insertError) {
-      setError(insertError.message);
+      // Si l'insertion échoue, supprimer l'utilisateur Auth pour éviter les doublons
+      console.error('Erreur insertion utilisateur:', insertError);
+      await supabase.auth.admin.deleteUser(signUpData.user.id).catch(() => {});
+      setError(insertError.message || 'Erreur lors de la création du profil');
       setLoading(false);
       return;
     }

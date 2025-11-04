@@ -590,11 +590,22 @@ export default function Checkout() {
       safeLocalStorage.removeItem('cart');
       setCart([]);
 
-      // Rediriger vers la page de suivi
+      // Rediriger vers la page de suivi (méthode robuste pour mobile)
       const redirectUrl = `/track-order?orderId=${order.id}`;
       setTimeout(() => {
-        window.location.replace(redirectUrl);
-      }, 100);
+        try {
+          // Essayer d'abord avec replace
+          window.location.replace(redirectUrl);
+        } catch (e) {
+          // Fallback pour mobile
+          try {
+            window.location.href = redirectUrl;
+          } catch (e2) {
+            // Dernier recours
+            router.push(redirectUrl);
+          }
+        }
+      }, 500);
 
       return order;
     } catch (error) {
@@ -607,10 +618,15 @@ export default function Checkout() {
   const handlePaymentSuccess = async (paymentData) => {
     try {
       console.log('✅ Paiement confirmé, création de la commande...');
+      setSubmitting(true);
       await createOrderAfterPayment(paymentIntentId);
+      setSubmitting(false);
     } catch (error) {
       console.error('❌ Erreur après paiement:', error);
-      alert('Paiement réussi mais erreur lors de la création de la commande. Contactez le support.');
+      setSubmitting(false);
+      const errorMessage = error.message || 'Erreur lors de la création de la commande';
+      alert(`Paiement réussi mais ${errorMessage}. Contactez le support si le problème persiste.`);
+      // Ne pas fermer le formulaire de paiement pour permettre une nouvelle tentative
     }
   };
 

@@ -71,15 +71,32 @@ export async function POST(request) {
       );
     }
 
-    // Créer l'utilisateur dans Supabase Auth
+    // Créer l'utilisateur dans Supabase Auth avec redirection email
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat-platform.vercel.app';
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
       email: sanitizedData.email,
       password,
+      options: {
+        emailRedirectTo: `${siteUrl}/auth/callback`,
+        data: {
+          nom: sanitizedData.nom,
+          prenom: sanitizedData.prenom,
+          telephone: sanitizedData.telephone
+        }
+      }
     });
     if (signUpError) {
       return NextResponse.json(
         { message: signUpError.message },
         { status: 400 }
+      );
+    }
+    
+    // Vérifier si l'utilisateur a été créé
+    if (!authUser.user) {
+      return NextResponse.json(
+        { message: 'Erreur lors de la création du compte' },
+        { status: 500 }
       );
     }
 

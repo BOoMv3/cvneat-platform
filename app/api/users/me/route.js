@@ -38,40 +38,20 @@ export async function GET(request) {
       if (userError.code === 'PGRST116') {
         console.log('Utilisateur non trouvé dans la table users, création d\'un enregistrement de base...');
         
-        const { data: newUser, error: insertError } = await supabase
-          .from('users')
-          .insert({
-            email: user.email,
-            nom: user.user_metadata?.name || user.email.split('@')[0],
-            prenom: user.user_metadata?.first_name || 'Utilisateur',
-            telephone: user.user_metadata?.phone || '0000000000',
-            adresse: user.user_metadata?.address || 'Adresse non renseignée',
-            code_postal: user.user_metadata?.postal_code || '00000',
-            ville: user.user_metadata?.city || 'Ville non renseignée',
-            password: 'password123', // Mot de passe par défaut
-            role: 'user'
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('Erreur lors de la création de l\'utilisateur:', insertError);
-          // Retourner les données de base même si l'insertion échoue
-          return NextResponse.json({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.name || user.email,
-            phone: user.user_metadata?.phone || '',
-            created_at: user.created_at
-          });
-        }
-
+        // Ne pas créer automatiquement d'utilisateur pour éviter les doublons
+        // Si l'utilisateur n'existe pas, c'est qu'il doit compléter son inscription
+        console.warn('Utilisateur Auth trouvé mais pas dans la table users. L\'utilisateur doit compléter son inscription.');
         return NextResponse.json({
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.nom,
-          phone: newUser.telephone,
-          created_at: newUser.created_at
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.prenom && user.user_metadata?.nom 
+            ? `${user.user_metadata.prenom} ${user.user_metadata.nom}`.trim()
+            : user.email,
+          nom: user.user_metadata?.nom || '',
+          prenom: user.user_metadata?.prenom || '',
+          phone: user.user_metadata?.telephone || '',
+          created_at: user.created_at,
+          needsCompletion: true // Indiquer que le profil doit être complété
         });
       }
       
@@ -86,10 +66,16 @@ export async function GET(request) {
     }
 
     // Retourner les données formatées correctement
+    // Construire le nom complet avec prénom et nom, ou utiliser l'email si les deux sont vides
+    const fullName = `${userData.prenom || ''} ${userData.nom || ''}`.trim();
+    const displayName = fullName || userData.email || user.email;
+    
     return NextResponse.json({
       id: userData.id,
       email: userData.email || user.email,
-      name: userData.nom || `${userData.prenom || ''} ${userData.nom || ''}`.trim() || user.email,
+      name: displayName,
+      nom: userData.nom || '',
+      prenom: userData.prenom || '',
       phone: userData.telephone || userData.phone || '',
       created_at: userData.created_at || user.created_at
     });
