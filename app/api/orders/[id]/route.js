@@ -174,7 +174,16 @@ export async function GET(request, { params }) {
     const formattedOrder = {
       id: order.id,
       status: order.statut || order.status,
+      statut: order.statut || order.status, // Ajouter aussi pour compatibilité
       createdAt: order.created_at,
+      created_at: order.created_at, // Ajouter aussi pour compatibilité
+      updated_at: order.updated_at, // Ajouter aussi pour compatibilité
+      user_id: order.user_id, // Ajouter aussi pour compatibilité
+      security_code: order.security_code, // Code de sécurité pour la livraison
+      frais_livraison: parseFloat(order.frais_livraison || 0) || 0, // Ajouter aussi pour compatibilité
+      adresse_livraison: order.adresse_livraison, // Ajouter aussi pour compatibilité
+      preparation_time: order.preparation_time, // Ajouter aussi pour compatibilité
+      livreur_id: order.livreur_id, // Ajouter aussi pour compatibilité
       restaurant: {
         id: restaurant?.id,
         name: restaurant?.nom || 'Restaurant inconnu',
