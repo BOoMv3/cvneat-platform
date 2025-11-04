@@ -432,7 +432,13 @@ export default function Checkout() {
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('❌ Erreur création commande:', orderError);
+        throw orderError;
+      }
+
+      console.log('✅ Commande créée avec succès:', order.id);
+      console.log('✅ Order object:', order);
 
       // Ajouter les détails de commande avec suppléments et tailles
       for (const item of cart) {
@@ -486,14 +492,25 @@ export default function Checkout() {
       safeLocalStorage.removeItem('cart');
       setCart([]);
 
-      // Rediriger vers la page de suivi de commande avec un délai pour s'assurer que tout est sauvegardé
-      console.log('✅ Commande créée avec succès, ID:', order.id);
+      console.log('✅ Panier vidé');
+      console.log('✅ Commande finale créée, ID:', order.id);
       console.log('✅ Redirection vers:', `/track-order?orderId=${order.id}`);
       
-      // Utiliser replace au lieu de push pour éviter les problèmes de navigation
-      setTimeout(() => {
+      // Réinitialiser le state de soumission AVANT la redirection
+      setSubmitting(false);
+      
+      // Rediriger immédiatement vers la page de suivi de commande
+      try {
+        const redirectUrl = `/track-order?orderId=${order.id}`;
+        console.log('🔄 Tentative de redirection vers:', redirectUrl);
+        
+        // Utiliser window.location pour forcer la redirection
+        window.location.href = redirectUrl;
+      } catch (redirectError) {
+        console.error('❌ Erreur redirection:', redirectError);
+        // Fallback sur router
         router.replace(`/track-order?orderId=${order.id}`);
-      }, 1000); // Augmenter le délai pour laisser le temps à la commande d'être complètement sauvegardée
+      }
     } catch (error) {
       // Traduire les erreurs en français
       let errorMessage = 'Erreur lors de la création de la commande';
