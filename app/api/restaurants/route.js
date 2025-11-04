@@ -12,25 +12,27 @@ export async function GET() {
     return NextResponse.json({ message: "Erreur lors de la récupération des restaurants", error: error.message }, { status: 500 });
   }
 
-  // Prioriser les notes Google pour chaque restaurant
-  const restaurantsWithRatings = (data || []).map((restaurant) => {
-    // Si le restaurant a une note Google, l'utiliser
-    if (restaurant.google_rating) {
-      return {
-        ...restaurant,
-        rating: restaurant.google_rating,
-        reviews_count: restaurant.google_reviews_count || restaurant.reviews_count || 0
-      };
+  // Calculer les notes depuis les vrais avis pour chaque restaurant
+  const restaurantsWithRatings = await Promise.all((data || []).map(async (restaurant) => {
+    const { data: reviews } = await supabase
+      .from('reviews')
+      .select('rating')
+      .eq('restaurant_id', restaurant.id);
+
+    let calculatedRating = 0;
+    let reviewsCount = 0;
+    if (reviews && reviews.length > 0) {
+      const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
+      calculatedRating = Math.round((totalRating / reviews.length) * 10) / 10;
+      reviewsCount = reviews.length;
     }
 
-    // Sinon, utiliser les notes calculées depuis les avis (fallback)
-    // Note: Pour optimiser, on pourrait calculer en batch si nécessaire
     return {
       ...restaurant,
-      rating: restaurant.rating || 0,
-      reviews_count: restaurant.reviews_count || 0
+      rating: calculatedRating || restaurant.rating || 0,
+      reviews_count: reviewsCount || restaurant.reviews_count || 0
     };
-  });
+  }));
 
   return NextResponse.json(restaurantsWithRatings);
 } 
