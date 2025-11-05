@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
+
+// Initialiser Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function PUT(request, { params }) {
   try {
@@ -184,6 +188,73 @@ export async function PUT(request, { params }) {
             details: updateError.message,
             orderId: id
           }, { status: 500 });
+        }
+
+        // Si la commande est annulée par le restaurant, rembourser automatiquement
+        if (correctedStatus === 'annulee' && order.payment_status === 'paid' && order.stripe_payment_intent_id) {
+          const orderTotal = parseFloat(order.total || 0);
+          
+          if (orderTotal > 0) {
+            console.log('💰 Remboursement automatique nécessaire (annulation restaurant):', id);
+            
+            try {
+              // Créer le remboursement Stripe
+              const refund = await stripe.refunds.create({
+                payment_intent: order.stripe_payment_intent_id,
+                amount: Math.round(orderTotal * 100), // Stripe utilise les centimes
+                reason: 'requested_by_customer',
+                metadata: {
+                  order_id: id,
+                  cancellation_reason: `Commande annulée par le restaurant${reason ? ': ' + reason : ''}`,
+                  user_id: order.user_id,
+                  restaurant_id: order.restaurant_id
+                }
+              });
+
+              console.log('✅ Remboursement Stripe créé:', refund.id);
+
+              // Mettre à jour la commande avec les informations du remboursement
+              await supabaseAdmin
+                .from('commandes')
+                .update({
+                  payment_status: 'refunded',
+                  stripe_refund_id: refund.id,
+                  refund_amount: orderTotal,
+                  refunded_at: new Date().toISOString()
+                })
+                .eq('id', id);
+
+              // Créer une notification pour le client
+              try {
+                await supabaseAdmin
+                  .from('notifications')
+                  .insert({
+                    user_id: order.user_id,
+                    type: 'order_cancelled_refunded',
+                    title: 'Commande annulée et remboursée',
+                    message: `Votre commande #${id.slice(0, 8)} a été annulée par le restaurant. Un remboursement de ${orderTotal.toFixed(2)}€ sera visible sur votre compte dans 2-5 jours ouvrables.`,
+                    data: {
+                      order_id: id,
+                      refund_id: refund.id,
+                      refund_amount: orderTotal,
+                      cancelled_by: 'restaurant',
+                      reason: reason
+                    },
+                    read: false,
+                    created_at: new Date().toISOString()
+                  });
+                
+                console.log('✅ Notification de remboursement créée');
+              } catch (notificationError) {
+                console.warn('⚠️ Erreur création notification:', notificationError);
+              }
+
+            } catch (stripeError) {
+              console.error('❌ Erreur remboursement Stripe (annulation restaurant):', stripeError);
+              // Ne pas faire échouer la requête, le restaurant a déjà annulé la commande
+              // Le remboursement devra être traité manuellement
+            }
+          }
         }
 
     // Envoyer les notifications par email/WhatsApp au client
