@@ -146,17 +146,41 @@ export default function PartnerDashboard() {
         .eq('user_id', session.user.id)
         .single();
 
+      console.log('🔍 DEBUG PARTNER - Restaurant:', resto);
+      console.log('🔍 DEBUG PARTNER - Restaurant Error:', restoError);
+
       // Si ce n'est pas un admin et qu'il n'y a pas de restaurant, rediriger
       if (userData.role !== 'admin' && (restoError || !resto)) {
+        console.log('⚠️ Aucun restaurant trouvé pour cet utilisateur, redirection vers profil-partenaire');
+        console.log('Restaurant Error Code:', restoError?.code);
+        console.log('Restaurant Error Message:', restoError?.message);
+        
+        // Si l'erreur est "PGRST116" (pas trouvé), c'est normal pour un nouveau partenaire
+        // Sinon, il y a peut-être un problème
+        if (restoError && restoError.code !== 'PGRST116') {
+          console.error('❌ Erreur inattendue lors de la récupération du restaurant:', restoError);
+        }
+        
         router.push('/profil-partenaire');
         return;
       }
 
+      // Si admin, on peut continuer sans restaurant
+      if (userData.role === 'admin' && (restoError || !resto)) {
+        console.log('ℹ️ Admin sans restaurant - Affichage de la page sans données restaurant');
+        setLoading(false);
+        return;
+      }
+
       setRestaurant(resto);
-      setIsManuallyClosed(resto.ferme_manuellement || resto.is_closed || false);
-      await fetchDashboardData(resto.id);
-      await fetchMenu(resto.id);
-      await fetchOrders(resto.id);
+      setIsManuallyClosed(resto?.ferme_manuellement || resto?.is_closed || false);
+      
+      if (resto?.id) {
+        await fetchDashboardData(resto.id);
+        await fetchMenu(resto.id);
+        await fetchOrders(resto.id);
+      }
+      
       setLoading(false);
     };
 

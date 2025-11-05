@@ -65,10 +65,19 @@ export async function POST(request) {
     console.log('👤 Utilisateur trouvé:', userToUpdate);
 
     // 1. Mettre à jour le rôle de l'utilisateur pour qu'il soit "restaurant"
-    const { error: roleError } = await supabaseAdmin
+    console.log('🔄 Mise à jour du rôle utilisateur:', {
+      userId: userToUpdate.id,
+      email: email,
+      roleActuel: userToUpdate.role,
+      nouveauRole: 'restaurant'
+    });
+
+    const { data: updatedUser, error: roleError } = await supabaseAdmin
       .from('users')
       .update({ role: 'restaurant' })
-      .eq('id', userToUpdate.id);
+      .eq('id', userToUpdate.id)
+      .select()
+      .single();
 
     if (roleError) {
       console.error('❌ Erreur mise à jour rôle:', roleError);
@@ -77,7 +86,7 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    console.log('✅ Rôle mis à jour à "restaurant"');
+    console.log('✅ Rôle mis à jour à "restaurant":', updatedUser);
 
     // 2. Créer le restaurant avec le client admin
     console.log('📝 Création restaurant avec données:', {
@@ -114,6 +123,7 @@ export async function POST(request) {
       disponible: true
     };
 
+    console.log('📤 Insertion restaurant dans la base de données...');
     const { data: restaurantData, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
       .insert(restaurantInsertData)
@@ -122,12 +132,45 @@ export async function POST(request) {
 
     if (restaurantError) {
       console.error('❌ Erreur création restaurant:', restaurantError);
+      console.error('❌ Détails erreur:', {
+        code: restaurantError.code,
+        message: restaurantError.message,
+        details: restaurantError.details,
+        hint: restaurantError.hint
+      });
       return NextResponse.json({ 
-        error: `Erreur lors de la création du restaurant: ${restaurantError.message}` 
+        error: `Erreur lors de la création du restaurant: ${restaurantError.message}`,
+        details: restaurantError.details,
+        hint: restaurantError.hint
       }, { status: 500 });
     }
 
-    console.log('✅ Restaurant créé avec succès:', restaurantData);
+    if (!restaurantData) {
+      console.error('❌ Restaurant créé mais aucune donnée retournée');
+      return NextResponse.json({ 
+        error: 'Restaurant créé mais aucune donnée retournée'
+      }, { status: 500 });
+    }
+
+    console.log('✅ Restaurant créé avec succès:', {
+      id: restaurantData.id,
+      nom: restaurantData.nom,
+      user_id: restaurantData.user_id
+    });
+
+    // Vérifier que le restaurant existe bien dans la base
+    const { data: verifyRestaurant, error: verifyError } = await supabaseAdmin
+      .from('restaurants')
+      .select('*')
+      .eq('id', restaurantData.id)
+      .single();
+
+    if (verifyError || !verifyRestaurant) {
+      console.error('⚠️ ATTENTION: Restaurant créé mais non trouvé lors de la vérification:', verifyError);
+    } else {
+      console.log('✅ Vérification: Restaurant confirmé dans la base:', verifyRestaurant.id);
+    }
+
     return NextResponse.json({ 
       success: true, 
       restaurant: restaurantData 
