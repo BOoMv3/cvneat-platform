@@ -730,6 +730,25 @@ export default function RestaurantDetail({ params }) {
                               +{item.supplements.length} suppl.
                             </p>
                           )}
+                          {item.customizations && (
+                            <>
+                              {item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats) && item.customizations.selectedMeats.length > 0 && (
+                                <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                                  {item.customizations.selectedMeats.length} viande{item.customizations.selectedMeats.length > 1 ? 's' : ''}
+                                </p>
+                              )}
+                              {item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces) && item.customizations.selectedSauces.length > 0 && (
+                                <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                                  {item.customizations.selectedSauces.length} sauce{item.customizations.selectedSauces.length > 1 ? 's' : ''}
+                                </p>
+                              )}
+                              {item.customizations.removedIngredients && Array.isArray(item.customizations.removedIngredients) && item.customizations.removedIngredients.length > 0 && (
+                                <p className="text-xs text-orange-500 dark:text-orange-400 italic">
+                                  -{item.customizations.removedIngredients.length} ingrédient{item.customizations.removedIngredients.length > 1 ? 's' : ''}
+                                </p>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     );
@@ -818,6 +837,42 @@ export default function RestaurantDetail({ params }) {
                           {item.supplements.map((sup, supIdx) => (
                             <li key={supIdx}>
                               {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats) && item.customizations.selectedMeats.length > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                        <span className="font-medium">Viandes:</span>
+                        <ul className="list-disc list-inside ml-1">
+                          {item.customizations.selectedMeats.map((meat, meatIdx) => (
+                            <li key={meatIdx}>
+                              {meat.nom || meat.name} {(meat.prix || meat.price) > 0 && `(+${(meat.prix || meat.price || 0).toFixed(2)}€)`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces) && item.customizations.selectedSauces.length > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                        <span className="font-medium">Sauces:</span>
+                        <ul className="list-disc list-inside ml-1">
+                          {item.customizations.selectedSauces.map((sauce, sauceIdx) => (
+                            <li key={sauceIdx}>
+                              {sauce.nom || sauce.name} {(sauce.prix || sauce.price) > 0 && `(+${(sauce.prix || sauce.price || 0).toFixed(2)}€)`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {item.customizations && item.customizations.removedIngredients && Array.isArray(item.customizations.removedIngredients) && item.customizations.removedIngredients.length > 0 && (
+                      <div className="text-xs text-orange-600 dark:text-orange-400 ml-2">
+                        <span className="font-medium">Ingrédients retirés:</span>
+                        <ul className="list-disc list-inside ml-1">
+                          {item.customizations.removedIngredients.map((ing, ingIdx) => (
+                            <li key={ingIdx}>
+                              {ing.nom || ing.name}
                             </li>
                           ))}
                         </ul>

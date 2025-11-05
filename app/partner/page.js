@@ -1123,7 +1123,7 @@ export default function PartnerDashboard() {
                           {order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0 && (
                             <div className="mt-4 p-3 bg-white dark:bg-gray-700 rounded border dark:border-gray-600">
                               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Articles commandés :</p>
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 {order.details_commande.map((detail, index) => {
                                   const menu = detail.menus || {};
                                   const nom = menu.nom || 'Article inconnu';
@@ -1131,14 +1131,100 @@ export default function PartnerDashboard() {
                                   const prixUnitaire = detail.prix_unitaire || menu.prix || 0;
                                   const prixTotal = prixUnitaire * quantite;
                                   
+                                  // Parser les customisations
+                                  let customizations = {};
+                                  if (detail.customizations) {
+                                    if (typeof detail.customizations === 'string') {
+                                      try {
+                                        customizations = JSON.parse(detail.customizations);
+                                      } catch (e) {
+                                        customizations = {};
+                                      }
+                                    } else {
+                                      customizations = detail.customizations;
+                                    }
+                                  }
+                                  
+                                  // Parser les suppléments
+                                  let supplements = [];
+                                  if (detail.supplements) {
+                                    if (typeof detail.supplements === 'string') {
+                                      try {
+                                        supplements = JSON.parse(detail.supplements);
+                                      } catch (e) {
+                                        supplements = [];
+                                      }
+                                    } else if (Array.isArray(detail.supplements)) {
+                                      supplements = detail.supplements;
+                                    }
+                                  }
+                                  
                                   return (
-                                    <div key={detail.id || index} className="flex justify-between text-sm">
-                                      <span className="text-gray-600 dark:text-gray-300">
-                                        {quantite}x {nom}
-                                      </span>
-                                      <span className="text-gray-900 dark:text-white font-medium">
-                                        {prixTotal.toFixed(2)} €
-                                      </span>
+                                    <div key={detail.id || index} className="border-b dark:border-gray-600 pb-2 last:border-0">
+                                      <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-600 dark:text-gray-300 font-medium">
+                                          {quantite}x {nom}
+                                        </span>
+                                        <span className="text-gray-900 dark:text-white font-medium">
+                                          {prixTotal.toFixed(2)} €
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Suppléments */}
+                                      {supplements.length > 0 && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                          <span className="font-medium">Suppléments:</span>
+                                          <ul className="list-disc list-inside ml-1">
+                                            {supplements.map((sup, supIdx) => (
+                                              <li key={supIdx}>
+                                                {sup.nom || sup.name} {(sup.prix || sup.price) > 0 && `(+${(sup.prix || sup.price || 0).toFixed(2)}€)`}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Viandes sélectionnées */}
+                                      {customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                          <span className="font-medium">Viandes:</span>
+                                          <ul className="list-disc list-inside ml-1">
+                                            {customizations.selectedMeats.map((meat, meatIdx) => (
+                                              <li key={meatIdx}>
+                                                {meat.nom || meat.name} {(meat.prix || meat.price) > 0 && `(+${(meat.prix || meat.price || 0).toFixed(2)}€)`}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Sauces sélectionnées */}
+                                      {customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                          <span className="font-medium">Sauces:</span>
+                                          <ul className="list-disc list-inside ml-1">
+                                            {customizations.selectedSauces.map((sauce, sauceIdx) => (
+                                              <li key={sauceIdx}>
+                                                {sauce.nom || sauce.name} {(sauce.prix || sauce.price) > 0 && `(+${(sauce.prix || sauce.price || 0).toFixed(2)}€)`}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Ingrédients retirés */}
+                                      {customizations.removedIngredients && Array.isArray(customizations.removedIngredients) && customizations.removedIngredients.length > 0 && (
+                                        <div className="text-xs text-orange-600 dark:text-orange-400 ml-2">
+                                          <span className="font-medium">Ingrédients retirés:</span>
+                                          <ul className="list-disc list-inside ml-1">
+                                            {customizations.removedIngredients.map((ing, ingIdx) => (
+                                              <li key={ingIdx}>
+                                                {ing.nom || ing.name}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
