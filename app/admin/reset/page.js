@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { 
@@ -97,7 +97,7 @@ export default function AdminReset() {
   };
 
   // Charger les stats au montage
-  useState(() => {
+  useEffect(() => {
     fetchStats();
   }, []);
 
