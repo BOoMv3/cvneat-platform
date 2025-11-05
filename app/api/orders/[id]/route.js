@@ -88,8 +88,18 @@ export async function GET(request, { params }) {
         return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
-      // Vérifier que la commande appartient à l'utilisateur
-      if (orderAdmin.user_id !== user.id) {
+      // Vérifier le rôle de l'utilisateur
+      const { data: userData, error: userDataError } = await supabaseAdmin
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      // Les admins peuvent voir toutes les commandes
+      const isAdmin = userData && userData.role === 'admin';
+      
+      // Vérifier que la commande appartient à l'utilisateur (sauf si admin)
+      if (!isAdmin && orderAdmin.user_id !== user.id) {
         console.log('Commande appartient à un autre utilisateur');
         return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
       }

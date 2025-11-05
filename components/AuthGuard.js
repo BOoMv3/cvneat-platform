@@ -31,9 +31,15 @@ export default function AuthGuard({ children, requiredRole }) {
         return;
       }
 
-      const userRoles = userData.role ? userData.role.split(',') : [];
+      // Les admins ont accès à tout
+      if (userData.role === 'admin') {
+        setStatus('authenticated');
+        return;
+      }
+
+      const userRoles = userData.role ? userData.role.split(',') : [userData.role];
       if (requiredRole && !userRoles.includes(requiredRole)) {
-        // Mauvais role
+        // Mauvais role (sauf admin qui a déjà été vérifié)
         router.push('/'); // Rediriger vers la page d'accueil
         return;
       }

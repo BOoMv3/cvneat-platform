@@ -27,8 +27,18 @@ export async function GET(request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Récupérer les commandes de l'utilisateur avec les détails (utiliser admin pour bypasser RLS)
-    const { data: orders, error: ordersError } = await supabaseAdmin
+    // Vérifier le rôle de l'utilisateur
+    const { data: userData, error: userDataError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    // Les admins peuvent voir toutes les commandes
+    const isAdmin = userData && userData.role === 'admin';
+
+    // Construire la requête
+    let query = supabaseAdmin
       .from('commandes')
       .select(`
         id,
@@ -55,8 +65,14 @@ export async function GET(request) {
           ville
         )
       `)
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+
+    // Filtrer par user_id seulement si ce n'est pas un admin
+    if (!isAdmin) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data: orders, error: ordersError } = await query;
 
     if (ordersError) {
       return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
