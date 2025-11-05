@@ -10,6 +10,7 @@ export default function PartnershipRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState('');
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [processing, setProcessing] = useState(false);
 
@@ -34,20 +35,46 @@ export default function PartnershipRequests() {
 
   const updateRequestStatus = async (requestId, status) => {
     setProcessing(true);
+    setError('');
     try {
-      const { error } = await supabase
+      // 1. Mettre à jour le statut de la demande
+      const { error: updateError } = await supabase
         .from('restaurant_requests')
         .update({ status, processed_at: new Date().toISOString() })
         .eq('id', requestId);
-      if (error) throw error;
+      
+      if (updateError) {
+        console.error('Erreur mise à jour statut:', updateError);
+        throw new Error(`Erreur lors de la mise à jour du statut: ${updateError.message}`);
+      }
+
+      // 2. Si accepté, créer le restaurant et mettre à jour le rôle
       if (status === 'accepted') {
         const request = requests.find(r => r.id === requestId);
-        if (request) await createRestaurantFromRequest(request);
+        if (request) {
+          try {
+            const restaurant = await createRestaurantFromRequest(request);
+            setError(''); // Réinitialiser l'erreur en cas de succès
+            setSuccess(`✅ Partenaire validé avec succès ! Restaurant "${restaurant.nom}" créé et utilisateur "${request.email}" peut maintenant se connecter.`);
+            setTimeout(() => setSuccess(''), 10000); // Afficher pendant 10 secondes
+          } catch (createError) {
+            console.error('Erreur création restaurant:', createError);
+            // Revenir le statut à "pending" si la création échoue
+            await supabase
+              .from('restaurant_requests')
+              .update({ status: 'pending', processed_at: null })
+              .eq('id', requestId);
+            throw createError;
+          }
+        }
       }
+
+      // 3. Rafraîchir la liste
       await fetchPartnershipRequests();
       setSelectedRequest(null);
     } catch (err) {
-      setError(err.message);
+      console.error('Erreur complète:', err);
+      setError(err.message || 'Une erreur est survenue');
     } finally {
       setProcessing(false);
     }
@@ -58,7 +85,7 @@ export default function PartnershipRequests() {
       // Récupérer l'utilisateur associé à cette demande (par email)
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id')
+        .select('id, role')
         .eq('email', request.email)
         .single();
 
@@ -66,7 +93,19 @@ export default function PartnershipRequests() {
         throw new Error(`Utilisateur non trouvé pour l'email: ${request.email}. Veuillez d'abord créer le compte utilisateur.`);
       }
 
-      const { error } = await supabase
+      // 1. Mettre à jour le rôle de l'utilisateur pour qu'il soit "restaurant"
+      const { error: roleError } = await supabase
+        .from('users')
+        .update({ role: 'restaurant' })
+        .eq('id', userData.id);
+
+      if (roleError) {
+        console.error('Erreur mise à jour rôle:', roleError);
+        throw new Error(`Erreur lors de la mise à jour du rôle: ${roleError.message}`);
+      }
+
+      // 2. Créer le restaurant
+      const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({
           user_id: userData.id,
@@ -94,10 +133,19 @@ export default function PartnershipRequests() {
           disponible: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        });
-      if (error) throw error;
+        })
+        .select()
+        .single();
+
+      if (restaurantError) {
+        console.error('Erreur création restaurant:', restaurantError);
+        throw new Error(`Erreur lors de la création du restaurant: ${restaurantError.message}`);
+      }
+
+      console.log('✅ Restaurant créé avec succès:', restaurantData);
+      return restaurantData;
     } catch (err) {
-      console.error('Erreur lors de la création du restaurant:', err);
+      console.error('❌ Erreur complète lors de la création du restaurant:', err);
       throw err;
     }
   };
@@ -147,6 +195,9 @@ export default function PartnershipRequests() {
         </div>
         {error && (
           <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">{error}</div>
+        )}
+        {success && (
+          <div className="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">{success}</div>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
