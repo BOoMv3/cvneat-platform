@@ -352,7 +352,66 @@ body {
   }
 }
 
-/* Optimisations pour les petits écrans */
+/* Optimisations pour les téléphones pliables (mode plié) */
+@media (max-width: 319px) {
+  body {
+    font-size: 14px;
+  }
+  
+  .container-responsive {
+    @apply px-2;
+  }
+  
+  /* Réduire les paddings et marges */
+  .card, .mobile-card {
+    @apply p-3 rounded-md;
+  }
+  
+  /* Boutons plus compacts mais toujours tactiles */
+  button, .mobile-button {
+    @apply min-h-[40px] min-w-[40px] text-xs px-2 py-1;
+  }
+  
+  /* Textes plus petits mais lisibles */
+  h1 {
+    @apply text-lg;
+  }
+  
+  h2 {
+    @apply text-base;
+  }
+  
+  h3 {
+    @apply text-sm;
+  }
+  
+  /* Grilles en colonne unique */
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Modales pleine largeur */
+  .modal, .mobile-modal-content {
+    @apply w-full max-w-full rounded-none;
+  }
+  
+  /* Navigation verticale */
+  nav {
+    @apply flex-col space-y-1;
+  }
+  
+  /* Tables scrollables */
+  table {
+    @apply text-xs;
+  }
+  
+  /* Inputs compacts */
+  input, select, textarea {
+    @apply text-sm px-2 py-1.5;
+  }
+}
+
+/* Optimisations pour les petits écrans standards */
 @media (max-width: 480px) {
   .container-responsive {
     @apply px-3;

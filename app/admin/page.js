@@ -352,12 +352,12 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full mx-auto px-3 sm:px-4 py-3 sm:py-8">
-        {/* Header avec bouton retour et info utilisateur - Optimisé mobile */}
-        <div className="flex flex-col space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-            <div className="flex items-center justify-between w-full">
-              <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">🚀 Dashboard Admin CVN'EAT</h1>
+      <div className="max-w-full mx-auto px-2 fold:px-2 xs:px-3 sm:px-4 py-2 fold:py-2 xs:py-3 sm:py-8">
+        {/* Header avec bouton retour et info utilisateur - Optimisé mobile et foldable */}
+        <div className="flex flex-col space-y-2 fold:space-y-2 xs:space-y-3 sm:space-y-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 fold:space-y-2 xs:space-y-3 sm:space-y-0">
+            <div className="flex items-center justify-between w-full gap-2 fold:gap-2">
+              <h1 className="text-base fold:text-base xs:text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">🚀 Dashboard Admin</h1>
               <button
                 onClick={() => router.push('/')}
                 className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base"
@@ -392,61 +392,61 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Statistiques principales - Optimisées mobile */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-8">
-          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
+        {/* Statistiques principales - Optimisées mobile et foldable */}
+        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 fold:gap-2 xs:gap-2 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
             <div className="flex items-center">
-              <div className="p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600">
-                <FaUsers className="text-base sm:text-2xl" />
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                <FaUsers className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
               </div>
-              <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Total Utilisateurs</p>
-                <p className="text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalUsers || 0}</p>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Total Utilisateurs</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalUsers || 0}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
             <div className="flex items-center">
-              <div className="p-2 sm:p-3 rounded-full bg-green-100 text-green-600">
-                <FaStore className="text-base sm:text-2xl" />
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                <FaStore className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
               </div>
-              <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Restaurants</p>
-                <p className="text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalRestaurants}</p>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Restaurants</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalRestaurants}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
             <div className="flex items-center">
-              <div className="p-2 sm:p-3 rounded-full bg-purple-100 text-purple-600">
-                <FaShoppingCart className="text-base sm:text-2xl" />
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-purple-100 text-purple-600 flex-shrink-0">
+                <FaShoppingCart className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
               </div>
-              <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Total Commandes</p>
-                <p className="text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Total Commandes</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 sm:p-6">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
             <div className="flex items-center">
-              <div className="p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600">
-                <FaEuroSign className="text-base sm:text-2xl" />
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600 flex-shrink-0">
+                <FaEuroSign className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
               </div>
-              <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">CA Total</p>
-                <p className="text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
-                <p className="text-xs text-gray-500 mt-1">(Articles + Livraison)</p>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">CA Total</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
+                <p className="text-[9px] fold:text-[9px] xs:text-xs text-gray-500 mt-0.5 fold:mt-0.5 xs:mt-1 hidden fold:hidden xs:block">(Articles + Livraison)</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Chiffres d'affaires détaillés */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div className="grid grid-cols-1 gap-2 fold:gap-2 xs:gap-4 sm:gap-6 mb-4 fold:mb-4 xs:mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -461,7 +461,7 @@ export default function AdminPage() {
             <p className="text-xs text-gray-500">20% des commandes livrées (articles uniquement)</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-orange-100 text-orange-600">

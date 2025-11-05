@@ -9,7 +9,8 @@ module.exports = {
   theme: {
     extend: {
       screens: {
-        'xs': '475px',
+        'fold': {'min': '280px'}, // Téléphones pliables en mode plié (Honor Magic V5, etc.) - min-width pour que fold: fonctionne
+        'xs': '375px',   // Téléphones standards
       },
       colors: {
         primary: '#000000',

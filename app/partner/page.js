@@ -768,31 +768,31 @@ export default function PartnerDashboard() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex flex-col space-y-4 py-4 sm:py-4">
+        <div className="max-w-7xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-6 lg:px-8">
+          <div className="flex flex-col space-y-2 fold:space-y-2 xs:space-y-4 py-2 fold:py-2 xs:py-4 sm:py-4">
             {/* Bouton retour et titre */}
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-between w-full gap-2 fold:gap-2">
+              <div className="flex items-center space-x-1.5 fold:space-x-1.5 xs:space-x-3 min-w-0 flex-1">
                 <button
                   onClick={() => router.push('/')}
-                  className="bg-blue-600 dark:bg-blue-700 text-white p-2 sm:p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center space-x-2"
+                  className="bg-blue-600 dark:bg-blue-700 text-white p-1.5 fold:p-1.5 xs:p-2 sm:p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center space-x-1 fold:space-x-1 xs:space-x-2 flex-shrink-0"
                   title="Retour à l'accueil"
                 >
-                  <FaArrowLeft className="h-5 w-5 sm:h-4 sm:w-4" />
-                  <span className="text-sm sm:text-sm font-medium">Retour</span>
+                  <FaArrowLeft className="h-4 w-4 fold:h-4 fold:w-4 xs:h-5 xs:w-5 sm:h-4 sm:w-4" />
+                  <span className="text-xs fold:text-xs xs:text-sm sm:text-sm font-medium hidden fold:hidden xs:inline">Retour</span>
                 </button>
-                <div>
-                  <h1 className="text-2xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard Partenaire</h1>
-                  <p className="text-base sm:text-base text-gray-600 dark:text-gray-300">{restaurant?.nom}</p>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-base fold:text-base xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Dashboard Partenaire</h1>
+                  <p className="text-xs fold:text-xs xs:text-sm sm:text-base text-gray-600 dark:text-gray-300 truncate">{restaurant?.nom}</p>
                 </div>
               </div>
             </div>
             
-            {/* Boutons d'action - Responsive mobile */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
+            {/* Boutons d'action - Responsive mobile et foldable */}
+            <div className="grid grid-cols-3 fold:grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-1 fold:gap-1 xs:gap-2 sm:gap-3 lg:gap-4">
               <button
                 onClick={() => router.push('/partner/analytics')}
-                className="bg-purple-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
+                className="bg-purple-600 text-white px-1 fold:px-1 xs:px-2 sm:px-3 lg:px-4 py-1.5 fold:py-1.5 xs:py-2 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col items-center justify-center space-y-0.5 fold:space-y-0.5 xs:space-y-1 text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium"
               >
                 <FaChartLine className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Analytics</span>

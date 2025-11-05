@@ -809,8 +809,8 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8">
-      <div className="max-w-4xl mx-auto px-3 sm:px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-2 fold:py-2 xs:py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-4">
         {/* Bouton retour */}
         <div className="mb-4 sm:mb-6">
           <button
@@ -832,9 +832,9 @@ export default function Checkout() {
           </button>
         </div>
         
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8">Finaliser votre commande</h1>
+        <h1 className="text-base fold:text-base xs:text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4 fold:mb-4 xs:mb-6 sm:mb-8">Finaliser votre commande</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 fold:gap-2 xs:gap-4 sm:gap-6 lg:gap-8">
           {/* Informations de livraison */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 flex items-center text-gray-900 dark:text-white">

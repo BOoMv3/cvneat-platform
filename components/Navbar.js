@@ -66,24 +66,24 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-8">
-        <div className="flex items-center justify-between h-12 sm:h-14 md:h-16">
-          {/* Logo CVN'EAT - Optimisé mobile */}
-          <Link href="/" className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3 min-w-0 flex-shrink-0">
+      <div className="max-w-7xl mx-auto px-1.5 fold:px-1.5 xs:px-2 sm:px-3 md:px-4 lg:px-8">
+        <div className="flex items-center justify-between h-10 fold:h-10 xs:h-12 sm:h-14 md:h-16">
+          {/* Logo CVN'EAT - Optimisé mobile et foldable */}
+          <Link href="/" className="flex items-center space-x-1 fold:space-x-1 xs:space-x-1.5 sm:space-x-2 md:space-x-3 min-w-0 flex-shrink-0">
             <div className="relative flex-shrink-0">
-              <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 bg-white rounded-lg flex items-center justify-center">
-                  <FaUtensils className="h-2.5 w-2.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-orange-600" />
+              <div className="w-6 h-6 fold:w-6 fold:h-6 xs:w-7 xs:h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-lg fold:rounded-lg xs:rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <div className="w-3 h-3 fold:w-3 fold:h-3 xs:w-4 xs:h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 bg-white rounded-md fold:rounded-md xs:rounded-lg flex items-center justify-center">
+                  <FaUtensils className="h-2 w-2 fold:h-2 fold:w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-orange-600" />
                 </div>
               </div>
-              <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-2 sm:border-2 md:border-3 border-white shadow-md animate-pulse"></div>
-              <div className="absolute -bottom-0.5 -left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border-1.5 sm:border-2 border-white"></div>
+              <div className="absolute -top-0.5 -right-0.5 fold:-top-0.5 fold:-right-0.5 xs:-top-0.5 xs:-right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2 h-2 fold:w-2 fold:h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-1.5 fold:border-1.5 xs:border-2 sm:border-2 md:border-3 border-white shadow-md animate-pulse"></div>
+              <div className="absolute -bottom-0.5 -left-0.5 fold:-bottom-0.5 fold:-left-0.5 xs:-bottom-0.5 xs:-left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1 h-1 fold:w-1 fold:h-1 xs:w-1.5 xs:h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border fold:border xs:border-1.5 sm:border-2 border-white"></div>
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight leading-tight">
+              <span className="text-sm fold:text-sm xs:text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight leading-tight">
                 CVN'EAT
               </span>
-              <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 -mt-0.5 sm:-mt-1 font-medium hidden sm:block">Excellence culinaire</span>
+              <span className="text-[9px] fold:text-[9px] xs:text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 -mt-0.5 fold:-mt-0.5 xs:-mt-0.5 sm:-mt-1 font-medium hidden fold:hidden xs:hidden sm:block">Excellence culinaire</span>
             </div>
           </Link>
 
