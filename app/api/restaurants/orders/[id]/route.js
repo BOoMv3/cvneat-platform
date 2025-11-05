@@ -198,10 +198,52 @@ export async function PUT(request, { params }) {
             console.log('💰 Remboursement automatique nécessaire (annulation restaurant):', id);
             
             try {
-              // Créer le remboursement Stripe
+              // IMPORTANT: Recalculer le sous-total depuis les détails de commande pour inclure les suppléments
+              const { data: orderDetails, error: detailsError } = await supabaseAdmin
+                .from('details_commande')
+                .select('quantite, prix_unitaire, supplements')
+                .eq('commande_id', id);
+              
+              let calculatedSubtotal = 0;
+              if (!detailsError && orderDetails && orderDetails.length > 0) {
+                // Calculer le sous-total depuis les détails
+                // IMPORTANT: prix_unitaire contient déjà les suppléments (voir checkout/page.js ligne 570)
+                // Donc on utilise directement prix_unitaire sans ajouter les suppléments
+                orderDetails.forEach(detail => {
+                  const prixUnitaire = parseFloat(detail.prix_unitaire || 0); // Déjà avec suppléments
+                  const quantity = parseFloat(detail.quantite || 1);
+                  calculatedSubtotal += prixUnitaire * quantity;
+                });
+                console.log('💰 Sous-total calculé depuis détails:', calculatedSubtotal);
+              } else {
+                // Fallback : utiliser order.total si pas de détails
+                // ATTENTION: order.total peut ne pas contenir les suppléments si la commande a été créée différemment
+                calculatedSubtotal = parseFloat(order.total || 0);
+                console.warn('⚠️ Pas de détails de commande, utilisation de order.total comme fallback:', calculatedSubtotal);
+              }
+              
+              // IMPORTANT: Le remboursement doit inclure les frais de livraison car ils n'ont pas été effectués
+              const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
+              
+              // Si calculatedSubtotal est 0 ou très petit, essayer de recalculer depuis order.total
+              // mais toujours ajouter les frais de livraison
+              if (calculatedSubtotal <= 0 && parseFloat(order.total || 0) > 0) {
+                calculatedSubtotal = parseFloat(order.total || 0);
+                console.warn('⚠️ Sous-total recalculé depuis order.total:', calculatedSubtotal);
+              }
+              
+              const orderTotalWithDelivery = calculatedSubtotal + deliveryFee; // Total réel payé (articles + suppléments + frais)
+              
+              console.log('💰 Remboursement restaurant - Montant:', {
+                articles_avec_supplements: calculatedSubtotal,
+                frais_livraison: deliveryFee,
+                total: orderTotalWithDelivery
+              });
+              
+              // Créer le remboursement Stripe (incluant les frais de livraison)
               const refund = await stripe.refunds.create({
                 payment_intent: order.stripe_payment_intent_id,
-                amount: Math.round(orderTotal * 100), // Stripe utilise les centimes
+                amount: Math.round(orderTotalWithDelivery * 100), // Stripe utilise les centimes - TOTAL avec frais
                 reason: 'requested_by_customer',
                 metadata: {
                   order_id: id,
@@ -219,7 +261,7 @@ export async function PUT(request, { params }) {
                 .update({
                   payment_status: 'refunded',
                   stripe_refund_id: refund.id,
-                  refund_amount: orderTotal,
+                  refund_amount: orderTotalWithDelivery, // Total avec frais de livraison
                   refunded_at: new Date().toISOString()
                 })
                 .eq('id', id);
@@ -232,11 +274,13 @@ export async function PUT(request, { params }) {
                     user_id: order.user_id,
                     type: 'order_cancelled_refunded',
                     title: 'Commande annulée et remboursée',
-                    message: `Votre commande #${id.slice(0, 8)} a été annulée par le restaurant. Un remboursement de ${orderTotal.toFixed(2)}€ sera visible sur votre compte dans 2-5 jours ouvrables.`,
+                    message: `Votre commande #${id.slice(0, 8)} a été annulée par le restaurant. Un remboursement de ${orderTotalWithDelivery.toFixed(2)}€ (articles avec suppléments: ${calculatedSubtotal.toFixed(2)}€ + frais de livraison: ${deliveryFee.toFixed(2)}€) sera visible sur votre compte dans 2-5 jours ouvrables.`,
                     data: {
                       order_id: id,
                       refund_id: refund.id,
-                      refund_amount: orderTotal,
+                      refund_amount: orderTotalWithDelivery,
+                      refund_subtotal: calculatedSubtotal,
+                      refund_delivery_fee: deliveryFee,
                       cancelled_by: 'restaurant',
                       reason: reason
                     },

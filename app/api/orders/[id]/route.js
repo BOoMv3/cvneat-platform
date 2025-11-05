@@ -238,6 +238,11 @@ export async function GET(request, { params }) {
       deliveryPhone: deliveryPhone || customerPhone, // Fallback sur téléphone client
       total: parseFloat(order.total || 0) || 0,
       deliveryFee: parseFloat(order.frais_livraison || 0) || 0,
+      // Informations de remboursement
+      refund_amount: order.refund_amount ? parseFloat(order.refund_amount) : null,
+      refunded_at: order.refunded_at || null,
+      stripe_refund_id: order.stripe_refund_id || null,
+      payment_status: order.payment_status || 'pending',
       items: items,
       details_commande: (order.details_commande || []).map(detail => {
         // S'assurer que les suppléments sont inclus dans details_commande

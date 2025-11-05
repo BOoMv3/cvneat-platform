@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Créer un client admin pour bypasser RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // GET /api/complaints/[id] - Récupérer une réclamation spécifique
 export async function GET(request, { params }) {
@@ -129,17 +136,17 @@ export async function PUT(request, { params }) {
       adminNotes
     } = await request.json();
 
-    // Récupérer la réclamation actuelle
-    const { data: complaint, error: complaintError } = await supabase
+    // Récupérer la réclamation actuelle avec les détails de la commande
+    const { data: complaint, error: complaintError } = await supabaseAdmin
       .from('complaints')
       .select(`
         *,
-        order:orders(
+        order:commandes(
           id,
-          order_number,
-          total_amount,
-          payment_intent_id,
-          customer_id
+          total,
+          frais_livraison,
+          stripe_payment_intent_id,
+          user_id
         ),
         customer:users!customer_id(email, full_name)
       `)
@@ -173,14 +180,48 @@ export async function PUT(request, { params }) {
 
     // Si approuvée, traiter le remboursement
     if (adminDecision === 'approve' || adminDecision === 'partial_refund') {
-      const refundAmount = finalRefundAmount || complaint.requested_refund_amount;
+      // Calculer le montant de remboursement avec les frais de livraison
+      let refundAmount;
+      
+      if (finalRefundAmount !== undefined && finalRefundAmount !== null) {
+        // Si un montant final est spécifié, vérifier s'il inclut déjà les frais de livraison
+        // Si le montant demandé correspond au total sans frais, on ajoute les frais
+        const requestedAmount = parseFloat(complaint.requested_refund_amount || 0);
+        const orderTotal = parseFloat(complaint.order?.total || 0);
+        const deliveryFee = parseFloat(complaint.order?.frais_livraison || 0);
+        const totalWithDelivery = orderTotal + deliveryFee;
+        
+        // Si le montant final spécifié est égal au total sans frais, ajouter les frais
+        if (Math.abs(finalRefundAmount - orderTotal) < 0.01) {
+          refundAmount = finalRefundAmount + deliveryFee;
+          console.log('💰 Ajout des frais de livraison au remboursement:', {
+            finalRefundAmount,
+            deliveryFee,
+            refundAmount_FINAL: refundAmount
+          });
+        } else {
+          // Sinon, utiliser le montant spécifié tel quel
+          refundAmount = finalRefundAmount;
+        }
+      } else {
+        // Si aucun montant final n'est spécifié, utiliser le montant demandé + frais de livraison
+        const requestedAmount = parseFloat(complaint.requested_refund_amount || 0);
+        const deliveryFee = parseFloat(complaint.order?.frais_livraison || 0);
+        refundAmount = requestedAmount + deliveryFee;
+        
+        console.log('💰 Calcul remboursement avec frais de livraison:', {
+          requestedAmount,
+          deliveryFee,
+          refundAmount_FINAL: refundAmount
+        });
+      }
       
       try {
         // Créer le remboursement Stripe
         let stripeRefund = null;
-        if (complaint.order.payment_intent_id) {
+        if (complaint.order?.stripe_payment_intent_id) {
           stripeRefund = await stripe.refunds.create({
-            payment_intent: complaint.order.payment_intent_id,
+            payment_intent: complaint.order.stripe_payment_intent_id,
             amount: Math.round(refundAmount * 100), // Stripe utilise les centimes
             reason: 'requested_by_customer',
             metadata: {
@@ -189,30 +230,36 @@ export async function PUT(request, { params }) {
               reason: 'Réclamation approuvée par l\'admin'
             }
           });
+          console.log('✅ Remboursement Stripe créé:', stripeRefund.id);
         }
 
         // Mettre à jour le statut de la commande
-        await supabase
+        await supabaseAdmin
           .from('commandes')
           .update({
             statut: 'annulee',
             cancellation_reason: `Réclamation approuvée: ${adminResponse || 'Remboursement effectué'}`,
             refund_amount: refundAmount,
-            refund_id: stripeRefund?.id || null,
+            stripe_refund_id: stripeRefund?.id || null,
             refunded_at: new Date().toISOString(),
+            payment_status: stripeRefund ? 'refunded' : 'pending',
             updated_at: new Date().toISOString()
           })
           .eq('id', complaint.order_id);
 
-        // Mettre à jour le statut de paiement
-        await supabase
-          .from('paiements')
-          .update({
-            status: 'rembourse',
-            refund_id: stripeRefund?.id || null,
-            refunded_at: new Date().toISOString()
-          })
-          .eq('commande_id', complaint.order_id);
+        // Mettre à jour le statut de paiement si la table existe
+        try {
+          await supabaseAdmin
+            .from('paiements')
+            .update({
+              status: 'rembourse',
+              refund_id: stripeRefund?.id || null,
+              refunded_at: new Date().toISOString()
+            })
+            .eq('commande_id', complaint.order_id);
+        } catch (paymentError) {
+          console.warn('⚠️ Erreur mise à jour paiement (table peut ne pas exister):', paymentError);
+        }
 
         updateData.status = 'approved';
         updateData.resolved_at = new Date().toISOString();

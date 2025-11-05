@@ -49,10 +49,15 @@ export async function GET(request) {
         frais_livraison,
         adresse_livraison,
         restaurant_id,
+        refund_amount,
+        refunded_at,
+        stripe_refund_id,
+        payment_status,
         details_commande (
           id,
           quantite,
           prix_unitaire,
+          supplements,
           menus (
             nom,
             prix
@@ -81,18 +86,50 @@ export async function GET(request) {
     // Formater les données pour le frontend
     const formattedOrders = (orders || []).map(order => {
       const restaurant = order.restaurants;
-      const items = (order.details_commande || []).map(detail => ({
-        id: detail.id,
-        name: detail.menus?.nom || 'Article',
-        quantity: detail.quantite || 0,
-        price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0
-      }));
+      
+      // Calculer le vrai sous-total en incluant les suppléments
+      let calculatedSubtotal = 0;
+      const items = (order.details_commande || []).map(detail => {
+        // Récupérer les suppléments
+        let supplements = [];
+        if (detail.supplements) {
+          if (typeof detail.supplements === 'string') {
+            try {
+              supplements = JSON.parse(detail.supplements);
+            } catch (e) {
+              supplements = [];
+            }
+          } else if (Array.isArray(detail.supplements)) {
+            supplements = detail.supplements;
+          }
+        }
+        
+        // IMPORTANT: prix_unitaire contient déjà les suppléments (voir checkout/page.js ligne 570)
+        // Donc on utilise directement prix_unitaire sans ajouter les suppléments
+        const prixUnitaire = parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0; // Déjà avec suppléments
+        const quantity = parseFloat(detail.quantite || 0) || 0;
+        
+        // Ajouter au sous-total
+        calculatedSubtotal += prixUnitaire * quantity;
+        
+        return {
+          id: detail.id,
+          name: detail.menus?.nom || 'Article',
+          quantity: quantity,
+          price: prixUnitaire, // Prix unitaire (déjà avec suppléments)
+          supplements: supplements // Garder les suppléments pour l'affichage
+        };
+      });
 
       // Extraire l'adresse de livraison
       const addressParts = (order.adresse_livraison || '').split(',').map(s => s.trim());
       const deliveryAddress = addressParts[0] || '';
       const deliveryCity = addressParts.length > 2 ? addressParts[1] : (addressParts[1] || '');
       const deliveryPostalCode = addressParts.length > 2 ? addressParts[2]?.split(' ')[0] : '';
+
+      // Le total réel payé = sous-total calculé + frais de livraison
+      const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+      const realTotal = calculatedSubtotal + deliveryFee;
 
       return {
         id: order.id,
@@ -107,13 +144,18 @@ export async function GET(request) {
           ville: restaurant?.ville || ''
         },
         status: order.statut, // Utiliser statut (français)
-        total: parseFloat(order.total || 0) || 0,
-        deliveryFee: parseFloat(order.frais_livraison || 0) || 0,
+        total: realTotal, // Total réel avec suppléments et frais de livraison
+        subtotal: calculatedSubtotal, // Sous-total calculé avec suppléments
+        deliveryFee: deliveryFee,
         deliveryAddress: deliveryAddress,
         deliveryCity: deliveryCity,
         deliveryPostalCode: deliveryPostalCode,
         createdAt: order.created_at,
-        items: items
+        items: items,
+        // Informations de remboursement
+        refund_amount: order.refund_amount ? parseFloat(order.refund_amount) : null,
+        refunded_at: order.refunded_at || null,
+        payment_status: order.payment_status || 'pending'
       };
     });
 
@@ -237,11 +279,13 @@ export async function POST(request) {
     console.log('Tous les articles sont valides');
 
     // Utiliser le montant total et les frais de livraison envoyes par le frontend
+    // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
     const total = totalAmount || 0;
-    const fraisLivraison = deliveryFee || restaurant.frais_livraison || 0;
+    const fraisLivraison = Math.round(parseFloat(deliveryFee || restaurant.frais_livraison || 0) * 100) / 100;
 
     console.log('Total utilise:', total);
-    console.log('Frais de livraison utilises:', fraisLivraison);
+    console.log('Frais de livraison utilises (arrondis):', fraisLivraison);
+    console.log('Frais de livraison bruts recus:', deliveryFee);
 
     // Générer un code de sécurité à 6 chiffres pour la livraison
     const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -294,14 +338,17 @@ export async function POST(request) {
     console.log('✅ Commande créée avec succès:', order.id);
     
     // Envoyer une notification SSE au restaurant via le broadcaster
+    // IMPORTANT: Calculer le montant total avec les frais de livraison pour la notification
+    const totalWithDelivery = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
     try {
       const notificationSent = sseBroadcaster.broadcast(restaurantId, {
         type: 'new_order',
-        message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${order.total || 0}€`,
+        message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
         order: order,
         timestamp: new Date().toISOString()
       });
       console.log('🔔 Notification SSE envoyée:', notificationSent ? 'Oui' : 'Non (aucun client connecté)');
+      console.log('💰 Montant notification (avec frais):', totalWithDelivery, '€ (sous-total:', order.total, '€ + frais:', order.frais_livraison, '€)');
     } catch (broadcastError) {
       console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
       // Ne pas faire échouer la création de commande si le broadcast échoue

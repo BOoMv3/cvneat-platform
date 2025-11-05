@@ -34,10 +34,13 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           // Déclencher l'alerte pour nouvelle commande
           triggerNewOrderAlert(payload.new);
           
+          // IMPORTANT: Calculer le montant total avec les frais de livraison
+          const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
+          
           // Afficher une notification du navigateur
           if (Notification.permission === 'granted') {
             new Notification('Nouvelle commande !', {
-              body: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
+              body: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
               icon: '/icon-192x192.png',
               tag: 'new-order',
               requireInteraction: false
@@ -48,7 +51,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           const newNotification = {
             id: Date.now(),
             type: 'new_order',
-            message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
+            message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
             data: payload.new,
             timestamp: new Date().toISOString(),
             isNew: true
@@ -261,14 +264,12 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     }
     
     // Ajouter la notification avec un effet visuel
+    // IMPORTANT: Afficher le montant total avec les frais de livraison pour correspondre au montant réel payé
+    const totalWithDelivery = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
     const newNotification = {
       id: Date.now(),
       type: 'new_order',
-      message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
-        // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
-        const totalAmount = parseFloat(order.total || 0) || 0;
-        return totalAmount.toFixed(2);
-      })()}€`,
+      message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
       data: order,
       timestamp: new Date().toISOString(),
       isNew: true

@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Créer un client admin pour bypasser RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // POST /api/orders/refund - Rembourser une commande
 export async function POST(request) {
@@ -16,10 +23,10 @@ export async function POST(request) {
       );
     }
 
-    // Récupérer la commande
-    const { data: order, error: orderError } = await supabase
+    // Récupérer la commande avec tous les détails
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
-      .select('*, payment_intent_id, total_amount')
+      .select('*, stripe_payment_intent_id')
       .eq('id', orderId)
       .single();
 
@@ -31,21 +38,94 @@ export async function POST(request) {
     }
 
     // Vérifier que la commande peut être remboursée
-    if (order.status === 'delivered' || order.status === 'cancelled') {
+    if (order.statut === 'livree' || order.statut === 'annulee') {
       return NextResponse.json(
         { error: 'Cette commande ne peut pas être remboursée' },
         { status: 400 }
       );
     }
 
-    const refundAmount = amount || order.total_amount;
+    // IMPORTANT: Calculer le montant total avec les frais de livraison
+    // Même si un montant est fourni, on doit vérifier qu'il inclut les frais de livraison
+    const deliveryFee = parseFloat(order.frais_livraison || 0);
+    let refundAmount;
+    
+    if (amount) {
+      // Si un montant est fourni, vérifier s'il inclut les frais de livraison
+      const providedAmount = parseFloat(amount);
+      const orderSubtotal = parseFloat(order.total || 0);
+      const expectedTotal = orderSubtotal + deliveryFee;
+      
+      // Si le montant fourni est égal au sous-total (sans frais), ajouter les frais
+      if (Math.abs(providedAmount - orderSubtotal) < 0.01) {
+        refundAmount = providedAmount + deliveryFee;
+        console.log('💰 Montant fourni ne contient pas les frais de livraison, ajout automatique:', {
+          providedAmount,
+          deliveryFee,
+          refundAmount_FINAL: refundAmount
+        });
+      } else if (providedAmount >= expectedTotal - 0.01) {
+        // Le montant fourni inclut déjà les frais (ou est supérieur)
+        refundAmount = providedAmount;
+      } else {
+        // Le montant fourni est inférieur au total attendu, ajouter les frais
+        refundAmount = providedAmount + deliveryFee;
+        console.log('💰 Montant fourni inférieur au total attendu, ajout des frais de livraison:', {
+          providedAmount,
+          expectedTotal,
+          deliveryFee,
+          refundAmount_FINAL: refundAmount
+        });
+      }
+    } else {
+      // IMPORTANT: Recalculer le sous-total depuis les détails de commande pour inclure les suppléments
+      const { data: orderDetails, error: detailsError } = await supabaseAdmin
+        .from('details_commande')
+        .select('quantite, prix_unitaire, supplements')
+        .eq('commande_id', orderId);
+      
+      let calculatedSubtotal = 0;
+      if (!detailsError && orderDetails && orderDetails.length > 0) {
+        // Calculer le sous-total depuis les détails
+        // IMPORTANT: prix_unitaire contient déjà les suppléments
+        orderDetails.forEach(detail => {
+          const prixUnitaire = parseFloat(detail.prix_unitaire || 0);
+          const quantity = parseFloat(detail.quantite || 1);
+          calculatedSubtotal += prixUnitaire * quantity;
+        });
+      } else {
+        // Fallback : utiliser order.total si pas de détails
+        calculatedSubtotal = parseFloat(order.total || 0);
+      }
+      
+      // IMPORTANT: Le remboursement doit inclure les frais de livraison
+      // deliveryFee est déjà défini ci-dessus
+      const calculatedTotal = calculatedSubtotal + deliveryFee;
+      const dbTotal = parseFloat(order.total || 0) + deliveryFee;
+      
+      // Utiliser le maximum pour s'assurer qu'on rembourse tout
+      refundAmount = Math.max(calculatedTotal, dbTotal);
+      
+      // Si aucun des deux n'est valide, utiliser au minimum order.total + deliveryFee
+      if (refundAmount <= 0 && order.total > 0) {
+        refundAmount = parseFloat(order.total || 0) + deliveryFee;
+      }
+      
+      console.log('💰 Calcul remboursement:', {
+        calculatedSubtotal,
+        deliveryFee,
+        calculatedTotal,
+        dbTotal,
+        refundAmount_FINAL: refundAmount
+      });
+    }
 
     // Créer le remboursement Stripe
     let refund;
-    if (order.payment_intent_id) {
+    if (order.stripe_payment_intent_id) {
       try {
         refund = await stripe.refunds.create({
-          payment_intent: order.payment_intent_id,
+          payment_intent: order.stripe_payment_intent_id,
           amount: Math.round(refundAmount * 100), // Stripe utilise les centimes
           reason: 'requested_by_customer',
           metadata: {
@@ -53,6 +133,7 @@ export async function POST(request) {
             reason: reason
           }
         });
+        console.log('✅ Remboursement Stripe créé:', refund.id);
       } catch (stripeError) {
         console.error('Erreur Stripe remboursement:', stripeError);
         return NextResponse.json(
@@ -63,14 +144,15 @@ export async function POST(request) {
     }
 
     // Mettre à jour la commande
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('commandes')
       .update({
         statut: 'annulee',
         cancellation_reason: reason,
         refund_amount: refundAmount,
-        refund_id: refund?.id || null,
+        stripe_refund_id: refund?.id || null,
         refunded_at: new Date().toISOString(),
+        payment_status: refund ? 'refunded' : order.payment_status,
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId);
@@ -83,18 +165,22 @@ export async function POST(request) {
       );
     }
 
-    // Mettre à jour le statut de paiement
-    const { error: paymentError } = await supabase
-      .from('paiements')
-      .update({
-        status: 'rembourse',
-        refund_id: refund?.id || null,
-        refunded_at: new Date().toISOString()
-      })
-      .eq('commande_id', orderId);
+    // Mettre à jour le statut de paiement si la table paiements existe
+    try {
+      const { error: paymentError } = await supabaseAdmin
+        .from('paiements')
+        .update({
+          status: 'rembourse',
+          refund_id: refund?.id || null,
+          refunded_at: new Date().toISOString()
+        })
+        .eq('commande_id', orderId);
 
-    if (paymentError) {
-      console.error('Erreur mise à jour paiement:', paymentError);
+      if (paymentError) {
+        console.warn('⚠️ Erreur mise à jour paiement (table peut ne pas exister):', paymentError);
+      }
+    } catch (error) {
+      console.warn('⚠️ Table paiements peut ne pas exister:', error);
     }
 
     // Notifier le client

@@ -526,12 +526,36 @@ export default function TrackOrder() {
                 <div className="space-y-1 sm:space-y-2">
                   {(order.items || order.details_commande || []).map((item, index) => {
                     const itemName = item.name || item.menus?.nom || 'Article';
+                    // IMPORTANT: prix_unitaire contient DÉJÀ les suppléments et la taille
+                    // Ne pas les ajouter à nouveau pour éviter le double comptage
                     const itemPrice = parseFloat(item.price || item.prix_unitaire || 0) || 0;
                     const itemQuantity = parseFloat(item.quantity || item.quantite || 0) || 0;
+                    // Récupérer les suppléments uniquement pour l'affichage
+                    let supplements = [];
+                    if (item.supplements && Array.isArray(item.supplements)) {
+                      supplements = item.supplements;
+                    } else if (item.supplements && typeof item.supplements === 'string') {
+                      try {
+                        supplements = JSON.parse(item.supplements);
+                      } catch (e) {
+                        supplements = [];
+                      }
+                    }
+                    // Le prix_unitaire contient déjà les suppléments, donc on utilise directement itemPrice
+                    const totalItemPrice = itemPrice * itemQuantity;
                     return (
-                      <div key={index} className="flex justify-between text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                        <span className="truncate flex-1 min-w-0">{itemName} x{itemQuantity}</span>
-                        <span className="ml-2">{(itemPrice * itemQuantity).toFixed(2)}€</span>
+                      <div key={index} className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                        <div className="flex justify-between">
+                          <span className="truncate flex-1 min-w-0">{itemName} x{itemQuantity}</span>
+                          <span className="ml-2">{totalItemPrice.toFixed(2)}€</span>
+                        </div>
+                        {supplements.length > 0 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 ml-4 mt-1">
+                            {supplements.map((sup, supIdx) => (
+                              <div key={supIdx}>+ {sup.nom || sup.name || 'Supplément'} ({parseFloat(sup.prix || sup.price || 0).toFixed(2)}€)</div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -542,6 +566,8 @@ export default function TrackOrder() {
                     <span>{(() => {
                       const items = order.items || order.details_commande || [];
                       return (items.reduce((sum, item) => {
+                        // IMPORTANT: prix_unitaire contient DÉJÀ les suppléments et la taille
+                        // Ne pas les ajouter à nouveau
                         const price = parseFloat(item.price || item.prix_unitaire || 0) || 0;
                         const quantity = parseFloat(item.quantity || item.quantite || 0) || 0;
                         return sum + (price * quantity);
@@ -556,20 +582,81 @@ export default function TrackOrder() {
                     <span>Total</span>
                     <span>{(() => {
                       // Calculer le total correctement : sous-total des articles + frais de livraison
-                      // Le champ 'total' dans la BD peut contenir soit juste les articles, soit articles + frais
-                      // On recalcule toujours depuis les articles pour être sûr
+                      // IMPORTANT: prix_unitaire contient DÉJÀ les suppléments et la taille
+                      // Utiliser directement order.total depuis la BD si disponible, sinon recalculer
                       const items = order.items || order.details_commande || [];
-                      const subtotal = items.reduce((sum, item) => {
-                        const price = parseFloat(item.price || item.prix_unitaire || 0) || 0;
-                        const quantity = parseFloat(item.quantity || item.quantite || 0) || 0;
-                        return sum + (price * quantity);
-                      }, 0);
+                      let subtotal;
+                      if (order.total && parseFloat(order.total) > 0) {
+                        // Utiliser le total stocké dans la commande (qui est déjà correct)
+                        subtotal = parseFloat(order.total);
+                      } else {
+                        // Fallback: recalculer depuis les articles (prix_unitaire contient déjà tout)
+                        subtotal = items.reduce((sum, item) => {
+                          const price = parseFloat(item.price || item.prix_unitaire || 0) || 0;
+                          const quantity = parseFloat(item.quantity || item.quantite || 0) || 0;
+                          return sum + (price * quantity);
+                        }, 0);
+                      }
                       const deliveryFee = parseFloat(order.frais_livraison || order.delivery_fee || 0) || 0;
                       const totalWithDelivery = subtotal + deliveryFee;
                       return totalWithDelivery.toFixed(2);
                     })()}€</span>
                   </div>
                 </div>
+                
+                {/* Afficher les infos de remboursement si la commande est annulée */}
+                {(order.statut === 'annulee' || order.status === 'annulee') && order.refund_amount && (
+                  <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-1">
+                          ✓ Commande remboursée
+                        </h4>
+                        <p className="text-xs sm:text-sm text-green-700 dark:text-green-400">
+                          Montant remboursé: <strong>{parseFloat(order.refund_amount || 0).toFixed(2)}€</strong>
+                        </p>
+                        {(() => {
+                          // Vérifier si le remboursement inclut les frais de livraison
+                          const refundAmount = parseFloat(order.refund_amount || 0);
+                          const orderTotal = parseFloat(order.total || 0);
+                          const deliveryFee = parseFloat(order.frais_livraison || 0);
+                          const totalPaid = orderTotal + deliveryFee;
+                          
+                          // Si le remboursement est inférieur au total payé, afficher un avertissement
+                          if (refundAmount < totalPaid - 0.01) {
+                            return (
+                              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
+                                ⚠️ Note: Ce remboursement ({refundAmount.toFixed(2)}€) ne comprend pas les frais de livraison ({deliveryFee.toFixed(2)}€). 
+                                Le montant total payé était de {totalPaid.toFixed(2)}€. 
+                                Veuillez contacter le support si vous souhaitez un remboursement complet.
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+                        {order.refunded_at && (
+                          <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                            Remboursement effectué le {new Date(order.refunded_at).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                        <p className="text-xs text-green-600 dark:text-green-500 mt-2">
+                          Le remboursement apparaîtra sur votre compte bancaire dans 2-5 jours ouvrables.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Timeline des notifications */}

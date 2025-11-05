@@ -178,10 +178,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         removedIngredients: Array.from(removedIngredients),
         addedIngredients: Array.from(selectedIngredients),
         totalPrice: calculateTotalPrice()
-      }
+      },
+      _fromModal: true // Marquer que cet item vient de la modal
     };
     
-    onAddToCart(customizedItem);
+    // Passer les suppléments explicitement comme paramètre séparé
+    onAddToCart(customizedItem, supplementsList, null, quantity);
     onClose();
   };
 

@@ -16,6 +16,10 @@ const MAX_DISTANCE = 10;      // Maximum 10km
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
 
+// Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
+// En production, utiliser une table Supabase pour un cache persistant
+const coordinatesCache = new Map();
+
 // Base de données simple pour éviter Nominatim
 const COORDINATES_DB = {
   // Ganges avec zones différentes pour tester les distances
@@ -105,10 +109,13 @@ async function geocodeAddress(address) {
 
 /**
  * Calculer les frais de livraison
+ * IMPORTANT: Arrondir à 2 décimales pour éviter les micro-variations
  */
 function calculateDeliveryFee(distance) {
   const fee = BASE_FEE + (distance * FEE_PER_KM);
-  return Math.min(fee, MAX_FEE);
+  const cappedFee = Math.min(fee, MAX_FEE);
+  // Arrondir à 2 décimales pour garantir la cohérence
+  return Math.round(cappedFee * 100) / 100;
 }
 
 export async function POST(request) {
@@ -155,19 +162,55 @@ export async function POST(request) {
       }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
-    // 2. Géocoder TOUJOURS avec Nominatim pour avoir les VRAIES coordonnées
-    console.log('🌐 Géocodage Nominatim pour adresse EXACTE...');
+    // 2. Géocoder avec cache pour éviter les variations
+    console.log('🌐 Géocodage avec cache pour adresse EXACTE...');
     let clientCoords;
-    try {
-      clientCoords = await geocodeAddress(address);
-      console.log('📍 Coordonnées EXACTES:', clientCoords);
-    } catch (error) {
-      console.error('❌ Nominatim échoué:', error.message);
-      return NextResponse.json({
-        success: false,
-        livrable: false,
-        message: `❌ Impossible de localiser cette adresse. Vérifiez que l'adresse est correcte. (${error.message})`
-      }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
+    
+    // Normaliser l'adresse pour le cache : enlever les accents, normaliser les espaces
+    const normalizedAddress = address
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Enlever les accents
+    
+    // Extraire le code postal pour une meilleure précision du cache
+    const postalCodeMatch = normalizedAddress.match(/\b(\d{5})\b/);
+    const postalCode = postalCodeMatch ? postalCodeMatch[1] : '';
+    
+    // Créer une clé de cache basée sur l'adresse normalisée + code postal
+    const cacheKey = `${postalCode}_${normalizedAddress}`;
+    
+    // Vérifier le cache d'abord
+    if (coordinatesCache.has(cacheKey)) {
+      clientCoords = coordinatesCache.get(cacheKey);
+      console.log('📍 Coordonnées depuis le cache:', clientCoords);
+    } else {
+      try {
+        clientCoords = await geocodeAddress(address);
+        console.log('📍 Coordonnées EXACTES depuis Nominatim:', clientCoords);
+        
+        // Arrondir les coordonnées plus agressivement pour stabiliser (précision ~100m)
+        // Cela réduit les variations dues aux petites différences dans les réponses Nominatim
+        clientCoords.lat = Math.round(clientCoords.lat * 1000) / 1000; // 3 décimales = ~100m
+        clientCoords.lng = Math.round(clientCoords.lng * 1000) / 1000; // 3 décimales = ~100m
+        
+        // Mettre en cache (limite de 1000 entrées pour éviter les fuites mémoire)
+        if (coordinatesCache.size > 1000) {
+          // Supprimer la première entrée (FIFO)
+          const firstKey = coordinatesCache.keys().next().value;
+          coordinatesCache.delete(firstKey);
+        }
+        coordinatesCache.set(cacheKey, clientCoords);
+        console.log('💾 Coordonnées mises en cache (arrondies à 3 décimales)');
+      } catch (error) {
+        console.error('❌ Nominatim échoué:', error.message);
+        return NextResponse.json({
+          success: false,
+          livrable: false,
+          message: `❌ Impossible de localiser cette adresse. Vérifiez que l'adresse est correcte. (${error.message})`
+        }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
+      }
     }
 
     // 3. Calculer la distance entre restaurant et client
@@ -176,33 +219,36 @@ export async function POST(request) {
       clientCoords.lat, clientCoords.lng
     );
 
-    console.log(`📏 Distance: ${distance.toFixed(2)}km`);
+    // Arrondir la distance à 2 décimales pour éviter les micro-variations
+    const roundedDistance = Math.round(distance * 100) / 100;
+
+    console.log(`📏 Distance: ${roundedDistance.toFixed(2)}km`);
 
     // 4. Vérifier la distance maximum
-    if (distance > MAX_DISTANCE) {
-      console.log(`❌ REJET: Trop loin: ${distance.toFixed(2)}km > ${MAX_DISTANCE}km`);
+    if (roundedDistance > MAX_DISTANCE) {
+      console.log(`❌ REJET: Trop loin: ${roundedDistance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
         success: false,
         livrable: false,
-        distance: parseFloat(distance.toFixed(2)),
+        distance: roundedDistance,
         max_distance: MAX_DISTANCE,
-        message: `❌ Livraison impossible: ${distance.toFixed(1)}km (maximum ${MAX_DISTANCE}km)`
+        message: `❌ Livraison impossible: ${roundedDistance.toFixed(1)}km (maximum ${MAX_DISTANCE}km)`
       }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
     // 5. Calculer les frais: 2.50€ + (distance × 0.80€)
-    const deliveryFee = calculateDeliveryFee(distance);
+    const deliveryFee = calculateDeliveryFee(roundedDistance);
 
-    console.log(`💰 Frais: ${BASE_FEE}€ + (${distance.toFixed(2)}km × ${FEE_PER_KM}€) = ${deliveryFee.toFixed(2)}€`);
+    console.log(`💰 Frais: ${BASE_FEE}€ + (${roundedDistance.toFixed(2)}km × ${FEE_PER_KM}€) = ${deliveryFee.toFixed(2)}€`);
 
     return NextResponse.json({
       success: true,
       livrable: true,
-      distance: distance,
+      distance: roundedDistance,
       frais_livraison: deliveryFee,
       restaurant: RESTAURANT.name,
       client_address: clientCoords.display_name,
-      message: `Livraison possible: ${deliveryFee.toFixed(2)}€ (${distance.toFixed(1)}km)`
+      message: `Livraison possible: ${deliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
     });
 
   } catch (error) {

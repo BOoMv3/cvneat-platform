@@ -155,7 +155,29 @@ export default function UserOrders() {
                 <div className="flex justify-between items-center border-t dark:border-gray-700 pt-4">
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Sous-total</p>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">{((order.total || 0) - (order.deliveryFee || 0)).toFixed(2)}€</p>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {(() => {
+                        // Utiliser le subtotal calculé si disponible, sinon calculer depuis items
+                        if (order.subtotal !== undefined) {
+                          return parseFloat(order.subtotal || 0).toFixed(2);
+                        }
+                        // Fallback : calculer depuis les items
+                        const items = order.items || [];
+                        const subtotal = items.reduce((sum, item) => {
+                          const price = parseFloat(item.price || 0) || 0;
+                          const quantity = parseFloat(item.quantity || 0) || 0;
+                          // Ajouter les suppléments si présents
+                          let supplementsPrice = 0;
+                          if (item.supplements && Array.isArray(item.supplements)) {
+                            supplementsPrice = item.supplements.reduce((supSum, sup) => {
+                              return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                            }, 0);
+                          }
+                          return sum + ((price + supplementsPrice) * quantity);
+                        }, 0);
+                        return subtotal.toFixed(2);
+                      })()}€
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Frais de livraison</p>
@@ -163,9 +185,69 @@ export default function UserOrders() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">{(parseFloat(order.total || 0)).toFixed(2)}€</p>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {(() => {
+                        // Utiliser le total réel si disponible, sinon calculer
+                        if (order.total !== undefined && order.total > 0) {
+                          // Vérifier si le total inclut déjà les frais
+                          const subtotal = order.subtotal !== undefined ? order.subtotal : (order.total - order.deliveryFee);
+                          const deliveryFee = parseFloat(order.deliveryFee || 0);
+                          return (subtotal + deliveryFee).toFixed(2);
+                        }
+                        // Fallback : calculer depuis les items
+                        const items = order.items || [];
+                        const subtotal = items.reduce((sum, item) => {
+                          const price = parseFloat(item.price || 0) || 0;
+                          const quantity = parseFloat(item.quantity || 0) || 0;
+                          let supplementsPrice = 0;
+                          if (item.supplements && Array.isArray(item.supplements)) {
+                            supplementsPrice = item.supplements.reduce((supSum, sup) => {
+                              return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                            }, 0);
+                          }
+                          return sum + ((price + supplementsPrice) * quantity);
+                        }, 0);
+                        const deliveryFee = parseFloat(order.deliveryFee || 0);
+                        return (subtotal + deliveryFee).toFixed(2);
+                      })()}€
+                    </p>
                   </div>
                 </div>
+                
+                {/* Afficher les infos de remboursement si la commande a été annulée et remboursée */}
+                {(order.status === 'annulee' || order.status === 'cancelled') && order.refund_amount && (
+                  <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-1">
+                          ✓ Commande remboursée
+                        </h4>
+                        <p className="text-xs sm:text-sm text-green-700 dark:text-green-400">
+                          Montant remboursé: <strong>{parseFloat(order.refund_amount || 0).toFixed(2)}€</strong>
+                        </p>
+                        {order.refunded_at && (
+                          <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                            Remboursement effectué le {new Date(order.refunded_at).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                        <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                          Le remboursement apparaîtra sur votre compte bancaire dans 2-5 jours ouvrables.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
 

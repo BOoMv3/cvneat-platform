@@ -18,6 +18,26 @@ import {
   FaCheck
 } from 'react-icons/fa';
 
+// Réduire les warnings Stripe non critiques en développement
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  const originalWarn = console.warn;
+  console.warn = function(...args) {
+    // Ignorer les warnings Stripe non critiques en développement
+    const message = args.join(' ');
+    if (
+      message.includes('Partitioned cookie') ||
+      message.includes('Feature Policy: Skipping') ||
+      message.includes('Layout was forced') ||
+      message.includes('[Stripe.js] The following payment method types are not activated') ||
+      (message.includes('[Stripe.js]') && message.includes('domain'))
+    ) {
+      // Ne pas afficher ces warnings
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+}
+
 export default function Checkout() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -276,7 +296,8 @@ export default function Checkout() {
       setShowErrorModal(false);
 
       // SUCCÈS - Mettre à jour les frais
-      const newFrais = data.frais_livraison;
+      // IMPORTANT: Arrondir à 2 décimales pour garantir la cohérence
+      const newFrais = Math.round(parseFloat(data.frais_livraison || 2.50) * 100) / 100;
       setFraisLivraison(newFrais);
       
       // Recalculer le total du panier avec suppléments et tailles
@@ -363,34 +384,58 @@ export default function Checkout() {
       }
 
       // VALIDATION STRICTE: Vérifier à nouveau que l'adresse est livrable
+      // IMPORTANT: Utiliser les frais déjà calculés si disponibles et l'adresse est la même
       const finalAddressCheck = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
-      const finalCheckResponse = await fetch('/api/delivery/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: finalAddressCheck })
-      });
-
+      
+      // Si les frais de livraison ont déjà été calculés pour cette adresse, les réutiliser
+      // Sinon, recalculer pour valider
+      let finalDeliveryFee = fraisLivraison;
       let finalCheckData = null;
-      if (finalCheckResponse.ok) {
-        finalCheckData = await finalCheckResponse.json();
-        if (!finalCheckData.success || finalCheckData.livrable !== true) {
-          alert(`Cette adresse n'est plus livrable: ${finalCheckData.message || 'Distance trop importante ou adresse invalide'}`);
-          setSubmitting(false);
-          return;
-        }
-        setFraisLivraison(finalCheckData.frais_livraison || 2.50);
+      
+      // Vérifier si les frais sont déjà calculés et valides (supérieurs à 0)
+      if (fraisLivraison && fraisLivraison > 0) {
+        console.log('💰 Réutilisation des frais de livraison déjà calculés:', fraisLivraison);
+        // Utiliser les frais déjà calculés, mais vérifier quand même que l'adresse est livrable
+        finalCheckData = {
+          success: true,
+          livrable: true,
+          frais_livraison: Math.round(parseFloat(fraisLivraison) * 100) / 100
+        };
+        finalDeliveryFee = finalCheckData.frais_livraison;
       } else {
-        // Gestion spécifique de l'erreur 429 (Rate Limit)
-        if (finalCheckResponse.status === 429) {
-          alert('Trop de requêtes pour la vérification de l\'adresse. Veuillez patienter quelques instants avant de réessayer.');
+        // Recalculer uniquement si les frais n'ont pas été calculés
+        const finalCheckResponse = await fetch('/api/delivery/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: finalAddressCheck })
+        });
+
+        if (finalCheckResponse.ok) {
+          finalCheckData = await finalCheckResponse.json();
+          if (!finalCheckData.success || finalCheckData.livrable !== true) {
+            alert(`Cette adresse n'est plus livrable: ${finalCheckData.message || 'Distance trop importante ou adresse invalide'}`);
+            setSubmitting(false);
+            return;
+          }
+          // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
+          const roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 2.50) * 100) / 100;
+          setFraisLivraison(roundedDeliveryFee);
+          // Mettre à jour finalCheckData avec la valeur arrondie pour garantir la cohérence
+          finalCheckData.frais_livraison = roundedDeliveryFee;
+          finalDeliveryFee = roundedDeliveryFee;
+        } else {
+          // Gestion spécifique de l'erreur 429 (Rate Limit)
+          if (finalCheckResponse.status === 429) {
+            alert('Trop de requêtes pour la vérification de l\'adresse. Veuillez patienter quelques instants avant de réessayer.');
+            setSubmitting(false);
+            return;
+          }
+          
+          console.error('Erreur vérification finale adresse:', finalCheckResponse.status);
+          alert(`Erreur lors de la vérification de l'adresse (${finalCheckResponse.status}). Veuillez réessayer.`);
           setSubmitting(false);
           return;
         }
-        
-        console.error('Erreur vérification finale adresse:', finalCheckResponse.status);
-        alert(`Erreur lors de la vérification de l'adresse (${finalCheckResponse.status}). Veuillez réessayer.`);
-        setSubmitting(false);
-        return;
       }
 
       // Calculer le total du panier
@@ -413,17 +458,28 @@ export default function Checkout() {
         return sum + totalItemPrice;
       }, 0) || 0;
 
-      const totalAmount = cartTotal + (finalCheckData?.frais_livraison || fraisLivraison);
+      // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
+      // Utiliser finalDeliveryFee qui a été calculé ci-dessus
+      const finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
+      const totalAmount = cartTotal + finalDeliveryFeeForTotal;
 
       // Générer un code de sécurité
       const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+      console.log('💰 Frais de livraison finaux:', {
+        finalCheckData: finalCheckData?.frais_livraison,
+        fraisLivraison,
+        finalDeliveryFee,
+        finalDeliveryFeeForTotal,
+        'différence': Math.abs(finalDeliveryFeeForTotal - (fraisLivraison || 0))
+      });
+      
       // Préparer les données de commande (on les stocke pour créer la commande après le paiement)
       const orderDataToStore = {
         user_id: user.id,
         restaurant_id: restaurant.id,
         total: cartTotal,
-        frais_livraison: finalCheckData?.frais_livraison || fraisLivraison,
+        frais_livraison: finalDeliveryFeeForTotal, // Utiliser la valeur arrondie et cohérente
         adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
         security_code: securityCode,
         cart: savedCart.items,
@@ -443,7 +499,7 @@ export default function Checkout() {
             user_id: user.id,
             restaurant_id: restaurant.id,
             cart_total: cartTotal.toString(),
-            delivery_fee: (finalCheckData?.frais_livraison || fraisLivraison).toString()
+            delivery_fee: finalDeliveryFeeForTotal.toString()
           }
         })
       });

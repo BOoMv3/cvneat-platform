@@ -85,15 +85,30 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // Calculer le montant de remboursement (par défaut montant total, ou montant demandé)
-    const orderTotal = parseFloat(order.total || 0);
-    const refundAmount = amount ? Math.min(parseFloat(amount), orderTotal) : orderTotal;
+    // IMPORTANT: Calculer le montant de remboursement avec les frais de livraison
+    // order.total contient uniquement les articles, il faut ajouter les frais de livraison
+    const orderSubtotal = parseFloat(order.total || 0);
+    const deliveryFee = parseFloat(order.frais_livraison || 0);
+    const orderTotal = orderSubtotal + deliveryFee; // Total réel payé par le client
+    
+    // Si un montant spécifique est fourni, s'assurer qu'il n'excède pas le total avec frais
+    // Sinon, utiliser le total complet (articles + frais de livraison)
+    const refundAmount = amount 
+      ? Math.min(parseFloat(amount), orderTotal) 
+      : orderTotal;
 
     if (refundAmount <= 0 || refundAmount > orderTotal) {
       return NextResponse.json({ 
-        error: 'Montant de remboursement invalide' 
+        error: `Montant de remboursement invalide. Le montant maximum remboursable est ${orderTotal.toFixed(2)}€ (articles: ${orderSubtotal.toFixed(2)}€ + frais de livraison: ${deliveryFee.toFixed(2)}€)` 
       }, { status: 400 });
     }
+    
+    console.log('💰 Calcul remboursement demande:', {
+      orderSubtotal,
+      deliveryFee,
+      orderTotal,
+      refundAmount_FINAL: refundAmount
+    });
 
     // Vérifier qu'il y a un paiement Stripe
     if (!order.stripe_payment_intent_id) {

@@ -249,9 +249,15 @@ export default function RestaurantDetail({ params }) {
       // Si l'item a déjà une propriété quantity (venant de la modal), l'utiliser
       const finalQuantity = item.quantity || quantityToAdd;
       
-      // Extraire les suppléments si l'item les contient déjà
-      const itemSupplements = item.supplements || supplements || [];
-      const itemSize = item.size || size || null;
+      // IMPORTANT: Utiliser les suppléments passés en paramètre en priorité
+      // Si aucun supplément n'est passé explicitement, utiliser ceux de l'item seulement si c'est une modal
+      // Sinon, commencer avec un tableau vide pour éviter de réutiliser les suppléments d'une instance précédente
+      const itemSupplements = supplements.length > 0 
+        ? supplements 
+        : (item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && item._fromModal)
+          ? item.supplements 
+          : [];
+      const itemSize = size !== null ? size : (item.size || null);
       
       // Normaliser les suppléments pour la comparaison (trier par ID pour éviter les problèmes d'ordre)
       const normalizedSupplements = [...itemSupplements].sort((a, b) => {

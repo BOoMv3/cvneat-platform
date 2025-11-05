@@ -146,11 +146,30 @@ export async function POST(request) {
     }
 
     // Ajouter les tailles de boisson si fournies
-    if (boisson_taille) {
-      menuData.boisson_taille = boisson_taille;
-    }
-    if (prix_taille) {
-      menuData.prix_taille = parseFloat(prix_taille);
+    // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
+    if (boisson_taille && boisson_taille.trim() !== '') {
+      menuData.drink_size = boisson_taille.trim();
+      menuData.is_drink = true;
+      
+      // Si un prix de taille est fourni, le mettre dans la colonne correspondante
+      if (prix_taille && prix_taille !== '') {
+        const prixTailleNum = parseFloat(prix_taille);
+        if (!isNaN(prixTailleNum) && prixTailleNum >= 0) {
+          // Mapper selon la taille : petit -> small, moyen -> medium, grand -> large
+          const tailleLower = boisson_taille.toLowerCase().trim();
+          if (tailleLower.includes('petit') || tailleLower.includes('small') || tailleLower.includes('33') || tailleLower.includes('33cl')) {
+            menuData.drink_price_small = prixTailleNum;
+          } else if (tailleLower.includes('moyen') || tailleLower.includes('medium') || tailleLower.includes('50') || tailleLower.includes('50cl')) {
+            menuData.drink_price_medium = prixTailleNum;
+          } else if (tailleLower.includes('grand') || tailleLower.includes('large') || tailleLower.includes('1l') || tailleLower.includes('1 l')) {
+            menuData.drink_price_large = prixTailleNum;
+          } else {
+            // Si la taille n'est pas reconnue, mettre le prix par défaut dans small
+            // Cela permet de supporter les tailles personnalisées comme "75cl", "2L", etc.
+            menuData.drink_price_small = prixTailleNum;
+          }
+        }
+      }
     }
 
     console.log('📦 DEBUG API MENU - Données à insérer:', JSON.stringify(menuData, null, 2));
@@ -163,9 +182,14 @@ export async function POST(request) {
       .single();
 
     if (menuError) {
-      console.error('Erreur création menu:', menuError);
+      console.error('❌ Erreur création menu:', menuError);
+      console.error('❌ Détails erreur:', JSON.stringify(menuError, null, 2));
       return NextResponse.json(
-        { error: 'Erreur lors de la création de l\'item de menu' },
+        { 
+          error: 'Erreur lors de la création de l\'item de menu',
+          details: menuError.message || 'Erreur inconnue',
+          code: menuError.code
+        },
         { status: 500 }
       );
     }
@@ -244,14 +268,34 @@ export async function PUT(request) {
     }
 
     // Ajouter les tailles de boisson si fournies
-    if (boisson_taille !== null && boisson_taille !== undefined) {
-      updateData.boisson_taille = boisson_taille;
-    }
-    if (prix_taille !== null && prix_taille !== undefined) {
-      const prixTailleNum = parseFloat(prix_taille);
-      if (!isNaN(prixTailleNum) && prixTailleNum >= 0) {
-        updateData.prix_taille = prixTailleNum;
+    // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
+    if (boisson_taille !== null && boisson_taille !== undefined && boisson_taille.trim() !== '') {
+      updateData.drink_size = boisson_taille.trim();
+      updateData.is_drink = true;
+      
+      // Si un prix de taille est fourni, le mettre dans la colonne correspondante
+      if (prix_taille !== null && prix_taille !== undefined && prix_taille !== '') {
+        const prixTailleNum = parseFloat(prix_taille);
+        if (!isNaN(prixTailleNum) && prixTailleNum >= 0) {
+          // Mapper selon la taille : petit -> small, moyen -> medium, grand -> large
+          const tailleLower = boisson_taille.toLowerCase().trim();
+          if (tailleLower.includes('petit') || tailleLower.includes('small') || tailleLower.includes('33') || tailleLower.includes('33cl')) {
+            updateData.drink_price_small = prixTailleNum;
+          } else if (tailleLower.includes('moyen') || tailleLower.includes('medium') || tailleLower.includes('50') || tailleLower.includes('50cl')) {
+            updateData.drink_price_medium = prixTailleNum;
+          } else if (tailleLower.includes('grand') || tailleLower.includes('large') || tailleLower.includes('1l') || tailleLower.includes('1 l')) {
+            updateData.drink_price_large = prixTailleNum;
+          } else {
+            // Si la taille n'est pas reconnue, mettre le prix par défaut dans small
+            // Cela permet de supporter les tailles personnalisées comme "75cl", "2L", etc.
+            updateData.drink_price_small = prixTailleNum;
+          }
+        }
       }
+    } else if (boisson_taille === null || boisson_taille === '' || boisson_taille === undefined) {
+      // Si la taille est supprimée, retirer le flag is_drink
+      updateData.is_drink = false;
+      updateData.drink_size = null;
     }
 
     console.log('📦 DEBUG API MENU PUT - Données à mettre à jour:', JSON.stringify(updateData, null, 2));

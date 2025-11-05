@@ -73,17 +73,113 @@ export async function POST(request, { params }) {
 
     // Vérifier si la commande a été payée et nécessite un remboursement
     let refundResult = null;
-    const orderTotal = parseFloat(order.total || 0);
+    
+    // IMPORTANT: Recalculer le sous-total depuis les détails de commande pour inclure les suppléments
+    // Récupérer les détails de commande avec suppléments
+    const { data: orderDetails, error: detailsError } = await supabaseAdmin
+      .from('details_commande')
+      .select('quantite, prix_unitaire, supplements')
+      .eq('commande_id', id);
+    
+    let calculatedSubtotal = 0;
+    if (!detailsError && orderDetails && orderDetails.length > 0) {
+      // Calculer le sous-total depuis les détails
+      // IMPORTANT: prix_unitaire DOIT contenir les suppléments (voir checkout/page.js ligne 570)
+      // Mais pour être sûr, on vérifie aussi la colonne supplements
+      orderDetails.forEach(detail => {
+        let prixUnitaire = parseFloat(detail.prix_unitaire || 0);
+        
+        // Vérifier si les suppléments sont déjà inclus dans prix_unitaire
+        // Si prix_unitaire semble trop bas comparé aux suppléments, on les ajoute
+        let supplementsPrice = 0;
+        if (detail.supplements) {
+          let supplements = [];
+          if (typeof detail.supplements === 'string') {
+            try {
+              supplements = JSON.parse(detail.supplements);
+            } catch (e) {
+              supplements = [];
+            }
+          } else if (Array.isArray(detail.supplements)) {
+            supplements = detail.supplements;
+          }
+          supplementsPrice = supplements.reduce((sum, sup) => {
+            return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+          }, 0);
+        }
+        
+        // Si prix_unitaire est très proche de 0 mais qu'il y a des suppléments, 
+        // c'est qu'il faut les ajouter (anciennes commandes)
+        // Sinon, on fait confiance à prix_unitaire qui devrait déjà tout contenir
+        const quantity = parseFloat(detail.quantite || 1);
+        
+        // Utiliser prix_unitaire si > 0, sinon utiliser suppléments
+        // En théorie prix_unitaire devrait déjà tout contenir, mais on vérifie
+        if (prixUnitaire > 0) {
+          calculatedSubtotal += prixUnitaire * quantity;
+        } else if (supplementsPrice > 0) {
+          // Fallback : si prix_unitaire est 0 mais qu'il y a des suppléments
+          calculatedSubtotal += supplementsPrice * quantity;
+        }
+      });
+      
+      console.log('💰 Calcul sous-total depuis détails:', {
+        detailsCount: orderDetails.length,
+        calculatedSubtotal,
+        orderTotalInDB: order.total
+      });
+    } else {
+      // Fallback : utiliser order.total si pas de détails
+      // order.total contient déjà les articles + suppléments (sans frais de livraison)
+      calculatedSubtotal = parseFloat(order.total || 0);
+      console.log('💰 Utilisation order.total comme fallback:', calculatedSubtotal);
+    }
+    
+    // IMPORTANT: Le remboursement doit inclure les frais de livraison car ils n'ont pas été effectués
+    const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
+    
+    // S'assurer que calculatedSubtotal n'est pas 0 (utiliser order.total comme fallback)
+    if (calculatedSubtotal === 0 && order.total > 0) {
+      console.log('⚠️ CalculatedSubtotal est 0, utilisation de order.total comme fallback');
+      calculatedSubtotal = parseFloat(order.total || 0);
+    }
+    
+    // CALCUL FINAL DU REMBOURSEMENT
+    // Le total payé = sous-total (articles + suppléments) + frais de livraison
+    // On utilise le maximum entre :
+    // 1. calculatedSubtotal + deliveryFee (calculé depuis les détails)
+    // 2. order.total + deliveryFee (depuis la base de données)
+    // Pour s'assurer qu'on rembourse toujours le montant complet
+    const calculatedTotal = calculatedSubtotal + deliveryFee;
+    const dbTotal = parseFloat(order.total || 0) + deliveryFee;
+    
+    // Utiliser le maximum pour s'assurer qu'on rembourse tout
+    let orderTotal = Math.max(calculatedTotal, dbTotal);
+    
+    // Si aucun des deux n'est valide, utiliser au minimum order.total + deliveryFee
+    if (orderTotal <= 0 && order.total > 0) {
+      orderTotal = parseFloat(order.total || 0) + deliveryFee;
+    }
+    
     const needsRefund = order.payment_status === 'paid' && order.stripe_payment_intent_id && orderTotal > 0;
 
     if (needsRefund) {
       console.log('💰 Remboursement automatique nécessaire pour la commande:', id);
+      console.log('💰 Calcul du remboursement:', {
+        calculatedSubtotal,
+        deliveryFee,
+        calculatedTotal,
+        order_total_BD: order.total,
+        dbTotal,
+        orderTotal_FINAL: orderTotal,
+        order_frais_livraison_BD: order.frais_livraison
+      });
       
       try {
-        // Créer le remboursement Stripe
+        // Créer le remboursement Stripe (incluant les frais de livraison)
         const refund = await stripe.refunds.create({
           payment_intent: order.stripe_payment_intent_id,
-          amount: Math.round(orderTotal * 100), // Stripe utilise les centimes
+          amount: Math.round(orderTotal * 100), // Stripe utilise les centimes - TOTAL avec frais
           reason: 'requested_by_customer',
           metadata: {
             order_id: id,
@@ -129,11 +225,13 @@ export async function POST(request, { params }) {
               user_id: order.user_id,
               type: 'order_cancelled_refunded',
               title: 'Commande annulée et remboursée',
-              message: `Votre commande #${id.slice(0, 8)} a été annulée. Un remboursement de ${orderTotal.toFixed(2)}€ sera visible sur votre compte dans 2-5 jours ouvrables.`,
+              message: `Votre commande #${id.slice(0, 8)} a été annulée. Un remboursement de ${orderTotal.toFixed(2)}€ (articles avec suppléments: ${calculatedSubtotal.toFixed(2)}€ + frais de livraison: ${deliveryFee.toFixed(2)}€) sera visible sur votre compte dans 2-5 jours ouvrables.`,
               data: {
                 order_id: id,
                 refund_id: refund.id,
-                refund_amount: orderTotal
+                refund_amount: orderTotal,
+                refund_subtotal: calculatedSubtotal,
+                refund_delivery_fee: deliveryFee
               },
               read: false,
               created_at: new Date().toISOString()

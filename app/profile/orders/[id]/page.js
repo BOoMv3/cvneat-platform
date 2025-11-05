@@ -350,6 +350,37 @@ export default function OrderDetail({ params }) {
                     })()}€
                   </p>
                 </div>
+                {/* Afficher les infos de remboursement si la commande a été annulée et remboursée */}
+                {order.status === 'annulee' && order.refund_amount && (
+                  <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                          ✓ Commande remboursée
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                          Montant remboursé: {parseFloat(order.refund_amount || 0).toFixed(2)}€
+                        </p>
+                        {order.refunded_at && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            Le {new Date(order.refunded_at).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-green-600 dark:text-green-400">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

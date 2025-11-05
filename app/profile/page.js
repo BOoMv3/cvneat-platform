@@ -519,7 +519,26 @@ export default function Profile() {
                         </div>
                         <div className="text-left sm:text-right">
                           <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Total</p>
-                          <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">{(parseFloat(order.total || 0)).toFixed(2)}€</p>
+                          <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                            {(() => {
+                              // Assurer que le total inclut bien les frais de livraison
+                              const subtotal = parseFloat(order.total || 0) - parseFloat(order.deliveryFee || 0);
+                              const deliveryFee = parseFloat(order.deliveryFee || 0);
+                              const total = subtotal + deliveryFee;
+                              return total.toFixed(2);
+                            })()}€
+                          </p>
+                          {order.deliveryFee > 0 && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              (dont {order.deliveryFee.toFixed(2)}€ de frais)
+                            </p>
+                          )}
+                          {/* Afficher les infos de remboursement si la commande a été annulée et remboursée */}
+                          {order.status === 'annulee' && order.refund_amount && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
+                              ✓ Remboursé: {parseFloat(order.refund_amount || 0).toFixed(2)}€
+                            </p>
+                          )}
                         </div>
                       </div>
                       

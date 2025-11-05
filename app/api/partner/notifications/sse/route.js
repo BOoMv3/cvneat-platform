@@ -126,9 +126,11 @@ export async function GET(request) {
               }, 
               (payload) => {
                 console.log('🔔 Nouvelle commande détectée via Supabase Realtime:', payload.new.id);
+                // IMPORTANT: Calculer le montant total avec les frais de livraison
+                const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
                 sendNotification({
                   type: 'new_order',
-                  message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${payload.new.total || 0}€`,
+                  message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
                   order: payload.new,
                   timestamp: new Date().toISOString()
                 });

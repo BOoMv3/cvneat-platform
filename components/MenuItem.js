@@ -40,8 +40,15 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   const handleAddToCart = async () => {
     setIsAdding(true);
     
-    // Appeler la fonction d'ajout au panier
-    onAddToCart(item);
+    // IMPORTANT: Créer une copie de l'item sans suppléments pour éviter de réutiliser
+    // les suppléments d'une instance précédente dans le panier
+    const itemWithoutSupplements = {
+      ...item,
+      supplements: [] // Toujours commencer avec un tableau vide de suppléments
+    };
+    
+    // Appeler la fonction d'ajout au panier avec un item sans suppléments
+    onAddToCart(itemWithoutSupplements, [], null);
     
     // Garder l'animation active pendant 1.5 secondes
     setTimeout(() => {
