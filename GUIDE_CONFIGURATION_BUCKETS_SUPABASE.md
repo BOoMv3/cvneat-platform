@@ -8,9 +8,12 @@ Vous devez créer les buckets suivants dans Supabase Storage :
 
 1. **`MENU-IMAGES`** - Pour les images des plats/menus
 2. **`RESTAURANTS-IMAGES`** - Pour les images des restaurants (photo de profil et bannière)
-3. **`PUBLICITÉ-IMAGES`** - Pour les images des publicités
+3. **`PUBLICITE-IMAGES`** - Pour les images des publicités (⚠️ SANS accent, utilisez `PUBLICITE` pas `PUBLICITÉ`)
 
-**Note importante** : Les noms des buckets sont sensibles à la casse. Utilisez exactement ces noms en majuscules avec les tirets.
+**Note importante** : 
+- Les noms des buckets sont sensibles à la casse
+- Les buckets ne doivent PAS contenir d'accents ni de caractères spéciaux
+- Utilisez exactement ces noms en majuscules avec les tirets
 
 ## 📝 Étapes de création
 
@@ -70,7 +73,7 @@ Pour chaque bucket créé, vous devez créer les politiques **individuellement**
 Créez les trois buckets suivants :
 - `MENU-IMAGES`
 - `RESTAURANTS-IMAGES`
-- `PUBLICITÉ-IMAGES`
+- `PUBLICITE-IMAGES` (⚠️ **SANS accent**, pas `PUBLICITÉ`)
 
 **Important** : 
 - Utilisez exactement ces noms (majuscules avec tirets)
@@ -95,7 +98,7 @@ Si vous obtenez une erreur "Bucket not found", vérifiez que :
 - Le nom du bucket correspond exactement à celui utilisé dans le code (sensible à la casse) :
   - `MENU-IMAGES` (majuscules)
   - `RESTAURANTS-IMAGES` (majuscules, avec un S)
-  - `PUBLICITÉ-IMAGES` (majuscules, avec accent)
+  - `PUBLICITE-IMAGES` (majuscules, **SANS accent** - pas `PUBLICITÉ`)
 - Le bucket est marqué comme "Public"
 
 ### Erreur "Permission denied"
@@ -108,13 +111,25 @@ Si vous obtenez une erreur de permission :
 
 ### Les politiques ne s'appliquent pas aux autres buckets
 
-**Problème** : Vous avez créé des politiques pour `MENU-IMAGES` mais elles ne fonctionnent pas pour `RESTAURANTS-IMAGES` ou `PUBLICITÉ-IMAGES`.
+**Problème** : Vous avez créé des politiques pour `MENU-IMAGES` mais elles ne fonctionnent pas pour `RESTAURANTS-IMAGES` ou `PUBLICITE-IMAGES`.
 
 **Solution** : Les politiques Supabase Storage sont spécifiques à chaque bucket. Vous ne pouvez pas copier une politique d'un bucket à l'autre en cliquant. 
 
 **Deux options** :
 1. **Méthode rapide** : Utilisez le fichier `POLITIQUES_BUCKETS_SUPABASE.sql` dans Supabase SQL Editor pour créer toutes les politiques automatiquement
-2. **Méthode manuelle** : Pour chaque bucket (`RESTAURANTS-IMAGES`, `PUBLICITÉ-IMAGES`, `IMAGES`), créez une nouvelle politique avec le bon nom de bucket dans la définition SQL
+2. **Méthode manuelle** : Pour chaque bucket (`RESTAURANTS-IMAGES`, `PUBLICITE-IMAGES`, `IMAGES`), créez une nouvelle politique avec le bon nom de bucket dans la définition SQL
+
+### Erreur "Bucket name invalid"
+
+**Problème** : Vous obtenez l'erreur "Bucket name invalid" lors de l'upload.
+
+**Solution** : 
+- Les noms de buckets Supabase ne doivent **PAS contenir d'accents** ni de caractères spéciaux
+- Si vous avez créé `PUBLICITÉ-IMAGES` avec un accent, vous devez :
+  1. Créer un nouveau bucket nommé `PUBLICITE-IMAGES` (sans accent)
+  2. Supprimer l'ancien bucket `PUBLICITÉ-IMAGES` s'il existe
+  3. Exécuter le fichier SQL `POLITIQUES_BUCKETS_SUPABASE.sql` pour créer les politiques
+- Le code utilise maintenant `PUBLICITE-IMAGES` (sans accent) par défaut
 
 ### Images non affichées
 
@@ -149,6 +164,9 @@ Pour vérifier que les noms de buckets correspondent :
 - Vérifiez que vous avez exactement :
   - `MENU-IMAGES`
   - `RESTAURANTS-IMAGES`
-  - `PUBLICITÉ-IMAGES`
+  - `PUBLICITE-IMAGES` (⚠️ **SANS accent**, pas `PUBLICITÉ-IMAGES`)
 - Tous doivent être marqués comme "Public"
+- ⚠️ **Si vous avez créé `PUBLICITÉ-IMAGES` avec un accent**, vous devez soit :
+  - Le renommer en `PUBLICITE-IMAGES` (sans accent)
+  - Ou créer un nouveau bucket `PUBLICITE-IMAGES` et supprimer l'ancien
 
