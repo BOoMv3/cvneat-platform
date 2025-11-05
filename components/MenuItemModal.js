@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { FaPlus, FaMinus, FaTimes, FaShoppingCart, FaLeaf, FaFire, FaWheat } from 'react-icons/fa';
+import { FaPlus, FaMinus, FaTimes, FaShoppingCart, FaLeaf, FaUtensils, FaFlask } from 'react-icons/fa';
 
 export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, restaurantId }) {
   const [quantity, setQuantity] = useState(1);
@@ -397,7 +397,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           {meatOptions.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                <FaFire className="w-5 h-5 text-red-600 mr-2" />
+                <FaUtensils className="w-5 h-5 text-red-600 mr-2" />
                 Choisir vos viandes {item.requires_meat_selection && <span className="text-red-500 text-sm ml-2">*</span>}
               </h3>
               <div className="space-y-2">
@@ -440,7 +440,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           {sauceOptions.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                <FaWheat className="w-5 h-5 text-yellow-600 mr-2" />
+                <FaFlask className="w-5 h-5 text-yellow-600 mr-2" />
                 Choisir vos sauces {item.requires_sauce_selection && <span className="text-red-500 text-sm ml-2">*</span>}
               </h3>
               <div className="space-y-2">
