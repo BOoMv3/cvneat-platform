@@ -19,29 +19,57 @@ export default function Advertisement({ position, className = '' }) {
 
   const fetchAd = async () => {
     try {
-      // Récupérer uniquement les publicités validées et actives
+      // Récupérer les publicités actives
+      // Afficher les publicités qui sont :
+      // 1. is_active = true ET status = 'approved' ou 'active'
+      // 2. OU is_active = true ET status = 'pending_approval' ET payment_status = 'paid' (pour afficher immédiatement après paiement)
       const { data, error } = await supabase
         .from('advertisements')
         .select('*')
         .eq('position', position)
         .eq('is_active', true)
-        .in('status', ['approved', 'active'])
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10); // Récupérer plusieurs pour filtrer ensuite
+
+      if (error) {
+        console.error('Erreur lors de la récupération de la publicité:', error);
+        setLoading(false);
+        return;
+      }
+
+      // Filtrer les publicités selon leur statut
+      const validAds = data?.filter(ad => {
+        // Afficher si status est 'approved' ou 'active'
+        if (ad.status === 'approved' || ad.status === 'active') {
+          return true;
+        }
+        // Afficher si status est 'pending_approval' mais le paiement est validé
+        if (ad.status === 'pending_approval' && ad.payment_status === 'paid') {
+          return true;
+        }
+        return false;
+      });
+
+      // Prendre la première publicité valide
+      const adToDisplay = validAds?.[0];
 
       // Vérifier si la date est dans la plage valide
-      if (data) {
+      if (adToDisplay) {
         const today = new Date().toISOString().split('T')[0];
-        const startDate = data.start_date ? new Date(data.start_date).toISOString().split('T')[0] : null;
-        const endDate = data.end_date ? new Date(data.end_date).toISOString().split('T')[0] : null;
+        const startDate = adToDisplay.start_date ? new Date(adToDisplay.start_date).toISOString().split('T')[0] : null;
+        const endDate = adToDisplay.end_date ? new Date(adToDisplay.end_date).toISOString().split('T')[0] : null;
         
         if ((!startDate || today >= startDate) && (!endDate || today <= endDate)) {
-          setAd(data);
+          setAd(adToDisplay);
+        } else {
+          console.log('Publicité hors période:', { startDate, endDate, today });
         }
+      } else {
+        console.log('Aucune publicité valide trouvée pour la position:', position);
+        console.log('Publicités trouvées:', data);
       }
     } catch (error) {
-      // Erreur silencieuse - pas de publicité à afficher
+      console.error('Erreur lors de la récupération de la publicité:', error);
     } finally {
       setLoading(false);
     }
