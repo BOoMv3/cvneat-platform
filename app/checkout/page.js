@@ -127,7 +127,7 @@ export default function Checkout() {
   }, []);
 
   useEffect(() => {
-    // Calculer les totaux en incluant suppléments et tailles
+    // Calculer les totaux en incluant suppléments, customisations et tailles
     const total = cart.reduce((sum, item) => {
       const itemPrice = parseFloat(item.prix || item.price || 0);
       const itemQuantity = parseInt(item.quantity || 1, 10);
@@ -140,6 +140,22 @@ export default function Checkout() {
         }, 0);
       }
 
+      // Calculer le prix des viandes sélectionnées
+      let meatsPrice = 0;
+      if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
+          return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
+        }, 0);
+      }
+
+      // Calculer le prix des sauces sélectionnées
+      let saucesPrice = 0;
+      if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
+          return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
+        }, 0);
+      }
+
       // Calculer le prix de la taille
       let sizePrice = 0;
       if (item.size && item.size.prix) {
@@ -148,8 +164,8 @@ export default function Checkout() {
         sizePrice = parseFloat(item.prix_taille) || 0;
       }
 
-      // Total pour cet item = (prix de base + suppléments + taille) * quantité
-      const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+      // Total pour cet item = (prix de base + suppléments + viandes + sauces + taille) * quantité
+      const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
       return sum + totalItemPrice;
     }, 0);
     
@@ -277,13 +293,25 @@ export default function Checkout() {
               return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
             }, 0);
           }
+          let meatsPrice = 0;
+          if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+            meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
+              return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
+            }, 0);
+          }
+          let saucesPrice = 0;
+          if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+            saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
+              return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
+            }, 0);
+          }
           let sizePrice = 0;
           if (item.size && item.size.prix) {
             sizePrice = parseFloat(item.size.prix) || 0;
           } else if (item.prix_taille) {
             sizePrice = parseFloat(item.prix_taille) || 0;
           }
-          const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+          const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
           return sum + totalItemPrice;
         }, 0);
         setTotalAvecLivraison(cartTotalCalc);
@@ -300,7 +328,7 @@ export default function Checkout() {
       const newFrais = Math.round(parseFloat(data.frais_livraison || 2.50) * 100) / 100;
       setFraisLivraison(newFrais);
       
-      // Recalculer le total du panier avec suppléments et tailles
+      // Recalculer le total du panier avec suppléments, customisations et tailles
       const currentCartTotal = cart.reduce((sum, item) => {
         const itemPrice = parseFloat(item.prix || item.price || 0);
         const itemQuantity = parseInt(item.quantity || 1, 10);
@@ -312,6 +340,20 @@ export default function Checkout() {
           }, 0);
         }
 
+        let meatsPrice = 0;
+        if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+          meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
+            return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
+          }, 0);
+        }
+
+        let saucesPrice = 0;
+        if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+          saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
+            return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
+          }, 0);
+        }
+
         let sizePrice = 0;
         if (item.size && item.size.prix) {
           sizePrice = parseFloat(item.size.prix) || 0;
@@ -319,7 +361,7 @@ export default function Checkout() {
           sizePrice = parseFloat(item.prix_taille) || 0;
         }
 
-        const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+        const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
         return sum + totalItemPrice;
       }, 0);
       
@@ -448,13 +490,25 @@ export default function Checkout() {
             return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
           }, 0);
         }
+        let meatsPrice = 0;
+        if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+          meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
+            return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
+          }, 0);
+        }
+        let saucesPrice = 0;
+        if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+          saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
+            return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
+          }, 0);
+        }
         let sizePrice = 0;
         if (item.size && item.size.prix) {
           sizePrice = parseFloat(item.size.prix) || 0;
         } else if (item.prix_taille) {
           sizePrice = parseFloat(item.prix_taille) || 0;
         }
-        const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+        const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
         return sum + totalItemPrice;
       }, 0) || 0;
 
