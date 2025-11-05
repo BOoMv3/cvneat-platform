@@ -122,7 +122,7 @@ export default function PartnerHours() {
           ...prev[jour],
           plages: newPlages,
           ouvert: newPlages.length > 0 && newPlages.some(p => p.ouverture && p.fermeture)
-        };
+        }
       };
     });
   };
@@ -139,7 +139,7 @@ export default function PartnerHours() {
           ...prev[jour],
           plages: newPlages,
           ouvert: true
-        };
+        }
       };
     });
   };
@@ -153,7 +153,7 @@ export default function PartnerHours() {
           ...prev[jour],
           plages: newPlages,
           ouvert: newPlages.length > 0
-        };
+        }
       };
     });
   };
