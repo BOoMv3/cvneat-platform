@@ -33,6 +33,48 @@ export async function GET(request, { params }) {
           supplements = item.supplements;
         }
       }
+
+      // Parser les options de viande
+      let meatOptions = [];
+      if (item.meat_options) {
+        if (typeof item.meat_options === 'string') {
+          try {
+            meatOptions = JSON.parse(item.meat_options);
+          } catch (e) {
+            meatOptions = [];
+          }
+        } else if (Array.isArray(item.meat_options)) {
+          meatOptions = item.meat_options;
+        }
+      }
+
+      // Parser les options de sauce
+      let sauceOptions = [];
+      if (item.sauce_options) {
+        if (typeof item.sauce_options === 'string') {
+          try {
+            sauceOptions = JSON.parse(item.sauce_options);
+          } catch (e) {
+            sauceOptions = [];
+          }
+        } else if (Array.isArray(item.sauce_options)) {
+          sauceOptions = item.sauce_options;
+        }
+      }
+
+      // Parser les ingrédients de base
+      let baseIngredients = [];
+      if (item.base_ingredients) {
+        if (typeof item.base_ingredients === 'string') {
+          try {
+            baseIngredients = JSON.parse(item.base_ingredients);
+          } catch (e) {
+            baseIngredients = [];
+          }
+        } else if (Array.isArray(item.base_ingredients)) {
+          baseIngredients = item.base_ingredients;
+        }
+      }
       
       return {
         id: item.id,
@@ -43,7 +85,19 @@ export async function GET(request, { params }) {
         category: item.category || 'Autres',
         disponible: item.disponible,
         created_at: item.created_at,
-        supplements: supplements // Inclure les suppléments
+        supplements: supplements, // Inclure les suppléments
+        // Colonnes pour les boissons
+        is_drink: item.is_drink || false,
+        drink_size: item.drink_size || null,
+        drink_price_small: item.drink_price_small || null,
+        drink_price_medium: item.drink_price_medium || null,
+        drink_price_large: item.drink_price_large || null,
+        // Nouvelles colonnes de customisation
+        meat_options: meatOptions,
+        sauce_options: sauceOptions,
+        base_ingredients: baseIngredients,
+        requires_meat_selection: item.requires_meat_selection || false,
+        requires_sauce_selection: item.requires_sauce_selection || false
       };
     }) || [];
 
