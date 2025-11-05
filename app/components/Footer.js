@@ -9,7 +9,7 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">À propos</h3>
             <p className="text-gray-400">
-              CVNeat est votre plateforme de livraison de repas préférée, connectant les meilleurs restaurants à vos papilles.
+              CVN'EAT est votre plateforme de livraison de repas préférée, connectant les meilleurs restaurants à vos papilles.
             </p>
           </div>
 
@@ -70,13 +70,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li className="text-gray-400">
-                Email: contact@cvneat.com
+                Email: <a href="mailto:contact@cvneat.fr" className="hover:text-white underline">contact@cvneat.fr</a>
               </li>
               <li className="text-gray-400">
-                Tél: 01 23 45 67 89
+                Réclamations: <a href="mailto:contact@cvneat.fr" className="hover:text-white underline">contact@cvneat.fr</a>
               </li>
               <li className="text-gray-400">
-                Adresse: 123 Rue de Paris, 75001 Paris
+                Adresse: 1 bis Rue Armand Sabatier, 34190 Ganges
               </li>
             </ul>
           </div>
@@ -84,7 +84,7 @@ export default function Footer() {
 
         {/* Copyright */}
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; {new Date().getFullYear()} CVNeat. Tous droits réservés.</p>
+          <p>&copy; {new Date().getFullYear()} CVN'EAT. Tous droits réservés.</p>
         </div>
       </div>
     </footer>

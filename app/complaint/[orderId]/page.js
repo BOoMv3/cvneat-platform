@@ -538,6 +538,16 @@ export default function ComplaintForm({ params }) {
                   Veuillez fournir des informations précises et des preuves si possible.
                 </p>
               </div>
+
+              {/* Contact */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4">
+                <p className="text-blue-800 dark:text-blue-400 text-sm">
+                  <strong>Besoin d'aide ?</strong> Pour toute question ou réclamation urgente, contactez-nous directement à{' '}
+                  <a href="mailto:contact@cvneat.fr" className="text-orange-600 dark:text-orange-400 hover:underline font-semibold">
+                    contact@cvneat.fr
+                  </a>
+                </p>
+              </div>
             </div>
           </form>
         </div>
