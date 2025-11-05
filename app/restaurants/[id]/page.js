@@ -259,15 +259,42 @@ export default function RestaurantDetail({ params }) {
           : [];
       const itemSize = size !== null ? size : (item.size || null);
       
+      // Récupérer les customisations depuis l'item (viandes, sauces, ingrédients retirés)
+      const itemCustomizations = item.customizations || {};
+      const itemSelectedMeats = itemCustomizations.selectedMeats || [];
+      const itemSelectedSauces = itemCustomizations.selectedSauces || [];
+      const itemRemovedIngredients = itemCustomizations.removedIngredients || [];
+      
       // Normaliser les suppléments pour la comparaison (trier par ID pour éviter les problèmes d'ordre)
       const normalizedSupplements = [...itemSupplements].sort((a, b) => {
         const idA = a.id || a.nom || a.name || '';
         const idB = b.id || b.nom || b.name || '';
         return idA.localeCompare(idB);
       });
+
+      // Normaliser les viandes sélectionnées pour la comparaison
+      const normalizedMeats = [...itemSelectedMeats].sort((a, b) => {
+        const idA = a.id || a.nom || a.name || '';
+        const idB = b.id || b.nom || b.name || '';
+        return idA.localeCompare(idB);
+      });
+
+      // Normaliser les sauces sélectionnées pour la comparaison
+      const normalizedSauces = [...itemSelectedSauces].sort((a, b) => {
+        const idA = a.id || a.nom || a.name || '';
+        const idB = b.id || b.nom || b.name || '';
+        return idA.localeCompare(idB);
+      });
+
+      // Normaliser les ingrédients retirés pour la comparaison
+      const normalizedRemovedIngredients = [...itemRemovedIngredients].sort((a, b) => {
+        const idA = a.id || a.nom || a.name || '';
+        const idB = b.id || b.nom || b.name || '';
+        return idA.localeCompare(idB);
+      });
       
-      // Créer un identifiant unique basé sur l'ID, les suppléments (normalisés) et la taille
-      // IMPORTANT: Un item avec suppléments est différent d'un item sans suppléments
+      // Créer un identifiant unique basé sur l'ID, les suppléments, la taille, et les customisations
+      // IMPORTANT: Un item avec customisations différentes est un item différent
       const itemKey = JSON.stringify({
         id: item.id,
         supplements: normalizedSupplements.map(s => ({ 
@@ -275,10 +302,24 @@ export default function RestaurantDetail({ params }) {
           nom: s.nom || s.name || '', 
           prix: parseFloat(s.prix || s.price || 0) 
         })),
-        size: itemSize
+        size: itemSize,
+        customizations: {
+          selectedMeats: normalizedMeats.map(m => ({ 
+            id: m.id || m.nom || m.name || '', 
+            nom: m.nom || m.name || '' 
+          })),
+          selectedSauces: normalizedSauces.map(s => ({ 
+            id: s.id || s.nom || s.name || '', 
+            nom: s.nom || s.name || '' 
+          })),
+          removedIngredients: normalizedRemovedIngredients.map(i => ({ 
+            id: i.id || i.nom || i.name || '', 
+            nom: i.nom || i.name || '' 
+          }))
+        }
       });
       
-      // Vérifier si l'article avec ces mêmes suppléments et taille existe déjà
+      // Vérifier si l'article avec ces mêmes suppléments, taille et customisations existe déjà
       const existingItemIndex = prevCart.findIndex(cartItem => {
         // Si les IDs ne correspondent pas, ce n'est pas le même item
         if (cartItem.id !== item.id) return false;
@@ -289,14 +330,31 @@ export default function RestaurantDetail({ params }) {
           const idB = b.id || b.nom || b.name || '';
           return idA.localeCompare(idB);
         });
+
+        // Récupérer les customisations du panier
+        const cartItemCustomizations = cartItem.customizations || {};
+        const cartItemMeats = cartItemCustomizations.selectedMeats || [];
+        const cartItemSauces = cartItemCustomizations.selectedSauces || [];
+        const cartItemRemovedIngredients = cartItemCustomizations.removedIngredients || [];
+
+        // Normaliser les customisations du panier
+        const normalizedCartMeats = [...cartItemMeats].sort((a, b) => {
+          const idA = a.id || a.nom || a.name || '';
+          const idB = b.id || b.nom || b.name || '';
+          return idA.localeCompare(idB);
+        });
+        const normalizedCartSauces = [...cartItemSauces].sort((a, b) => {
+          const idA = a.id || a.nom || a.name || '';
+          const idB = b.id || b.nom || b.name || '';
+          return idA.localeCompare(idB);
+        });
+        const normalizedCartRemovedIngredients = [...cartItemRemovedIngredients].sort((a, b) => {
+          const idA = a.id || a.nom || a.name || '';
+          const idB = b.id || b.nom || b.name || '';
+          return idA.localeCompare(idB);
+        });
         
-        // Si le nombre de suppléments est différent, ce n'est pas le même item
-        if (normalizedSupplements.length !== normalizedCartSupplements.length) return false;
-        
-        // Si la taille est différente, ce n'est pas le même item
-        if ((cartItem.size || null) !== itemSize) return false;
-        
-        // Comparer chaque supplément
+        // Comparer tous les éléments
         const cartItemKey = JSON.stringify({
           id: cartItem.id,
           supplements: normalizedCartSupplements.map(s => ({ 
@@ -304,7 +362,21 @@ export default function RestaurantDetail({ params }) {
             nom: s.nom || s.name || '', 
             prix: parseFloat(s.prix || s.price || 0) 
           })),
-          size: cartItem.size || null
+          size: cartItem.size || null,
+          customizations: {
+            selectedMeats: normalizedCartMeats.map(m => ({ 
+              id: m.id || m.nom || m.name || '', 
+              nom: m.nom || m.name || '' 
+            })),
+            selectedSauces: normalizedCartSauces.map(s => ({ 
+              id: s.id || s.nom || s.name || '', 
+              nom: s.nom || s.name || '' 
+            })),
+            removedIngredients: normalizedCartRemovedIngredients.map(i => ({ 
+              id: i.id || i.nom || i.name || '', 
+              nom: i.nom || i.name || '' 
+            }))
+          }
         });
         return cartItemKey === itemKey;
       });
@@ -317,13 +389,14 @@ export default function RestaurantDetail({ params }) {
             : cartItem
         );
       } else {
-        // Ajouter un nouvel article avec suppléments et taille
-        // IMPORTANT: Chaque item garde ses propres suppléments indépendamment
+        // Ajouter un nouvel article avec suppléments, taille et customisations
+        // IMPORTANT: Chaque item garde ses propres suppléments et customisations indépendamment
         const newItem = {
           ...item,
           quantity: finalQuantity,
           supplements: itemSupplements, // Conserver les suppléments originaux (pas normalisés)
-          size: itemSize
+          size: itemSize,
+          customizations: itemCustomizations // Conserver les customisations (viandes, sauces, ingrédients retirés)
         };
         return [...prevCart, newItem];
       }
