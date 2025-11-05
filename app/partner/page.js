@@ -263,7 +263,26 @@ export default function PartnerDashboard() {
 
   const handleMenuSubmit = async (e) => {
     e.preventDefault();
-    if (!menuForm.nom || !menuForm.prix) return;
+    
+    // Vérifications de base
+    if (!menuForm.nom || !menuForm.prix) {
+      alert('Veuillez remplir le nom et le prix du plat');
+      return;
+    }
+
+    // Vérifier que le restaurant existe (sauf pour les admins en mode édition)
+    if (!editingMenu && (!restaurant || !restaurant.id)) {
+      alert('Erreur: Restaurant non trouvé. Veuillez rafraîchir la page.');
+      console.error('❌ Restaurant non défini:', restaurant);
+      return;
+    }
+
+    // Vérifier que userData existe
+    if (!userData || !userData.email) {
+      alert('Erreur: Session utilisateur invalide. Veuillez vous reconnecter.');
+      console.error('❌ UserData non défini:', userData);
+      return;
+    }
 
     try {
       const url = editingMenu ? '/api/partner/menu' : '/api/partner/menu';
@@ -300,14 +319,28 @@ export default function PartnerDashboard() {
 
       console.log('📤 DEBUG - Envoi menu avec suppléments:', JSON.stringify(body, null, 2));
       console.log('📤 DEBUG - Suppléments dans le formulaire:', JSON.stringify(menuForm.supplements, null, 2));
+      console.log('📤 DEBUG - Restaurant ID:', restaurant?.id);
+
+      // Récupérer le token pour l'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Erreur: Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify(body)
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (response.ok) {
+        console.log('✅ Plat ajouté/modifié avec succès');
         setShowMenuModal(false);
         setMenuForm({ 
           nom: '', 
@@ -321,10 +354,20 @@ export default function PartnerDashboard() {
           prix_taille: ''
         });
         setEditingMenu(null);
-        await fetchMenu(restaurant.id);
+        
+        // Rafraîchir le menu seulement si le restaurant existe
+        if (restaurant?.id) {
+          await fetchMenu(restaurant.id);
+        } else {
+          console.warn('⚠️ Restaurant ID non disponible pour rafraîchir le menu');
+        }
+      } else {
+        console.error('❌ Erreur API:', responseData);
+        alert(`Erreur lors de la sauvegarde: ${responseData.error || response.statusText || 'Erreur inconnue'}`);
       }
     } catch (error) {
-      console.error('Erreur sauvegarde menu:', error);
+      console.error('❌ Erreur sauvegarde menu:', error);
+      alert(`Erreur: ${error.message || 'Impossible de sauvegarder le plat'}`);
     }
   };
 
