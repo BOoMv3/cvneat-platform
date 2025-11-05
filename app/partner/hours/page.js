@@ -67,13 +67,29 @@ export default function PartnerHours() {
       setRestaurant(resto);
       
       // Initialiser les horaires avec les données existantes ou par défaut
+      // Support pour plusieurs plages horaires (ex: midi et soir)
       const defaultHoraires = {};
       joursSemaine.forEach(jour => {
-        defaultHoraires[jour.key] = resto.horaires?.[jour.key] || {
-          ouvert: false,
-          ouverture: '09:00',
-          fermeture: '22:00'
-        };
+        const existingHoraire = resto.horaires?.[jour.key];
+        if (existingHoraire && Array.isArray(existingHoraire.plages)) {
+          // Format nouveau avec plages multiples
+          defaultHoraires[jour.key] = existingHoraire;
+        } else if (existingHoraire && existingHoraire.ouverture) {
+          // Format ancien avec une seule plage - convertir
+          defaultHoraires[jour.key] = {
+            ouvert: existingHoraire.ouvert || false,
+            plages: existingHoraire.ouvert ? [{
+              ouverture: existingHoraire.ouverture || '09:00',
+              fermeture: existingHoraire.fermeture || '22:00'
+            }] : []
+          };
+        } else {
+          // Par défaut
+          defaultHoraires[jour.key] = {
+            ouvert: false,
+            plages: []
+          };
+        }
       });
       
       setHoraires(defaultHoraires);
@@ -93,6 +109,55 @@ export default function PartnerHours() {
     }));
   };
 
+  const handlePlageChange = (jour, index, champ, value) => {
+    setHoraires(prev => {
+      const newPlages = [...(prev[jour]?.plages || [])];
+      newPlages[index] = {
+        ...newPlages[index],
+        [champ]: value
+      };
+      return {
+        ...prev,
+        [jour]: {
+          ...prev[jour],
+          plages: newPlages,
+          ouvert: newPlages.length > 0 && newPlages.some(p => p.ouverture && p.fermeture)
+        };
+      };
+    });
+  };
+
+  const addPlage = (jour) => {
+    setHoraires(prev => {
+      const newPlages = [...(prev[jour]?.plages || []), {
+        ouverture: '11:30',
+        fermeture: '14:30'
+      }];
+      return {
+        ...prev,
+        [jour]: {
+          ...prev[jour],
+          plages: newPlages,
+          ouvert: true
+        };
+      };
+    });
+  };
+
+  const removePlage = (jour, index) => {
+    setHoraires(prev => {
+      const newPlages = prev[jour]?.plages?.filter((_, i) => i !== index) || [];
+      return {
+        ...prev,
+        [jour]: {
+          ...prev[jour],
+          plages: newPlages,
+          ouvert: newPlages.length > 0
+        };
+      };
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError('');
@@ -105,20 +170,21 @@ export default function PartnerHours() {
       }
 
       // Nettoyer et valider les horaires avant sauvegarde
+      // Nouveau format avec plages multiples
       const cleanedHoraires = {};
       joursSemaine.forEach(jour => {
         const horaire = horaires[jour.key];
-        if (horaire) {
+        if (horaire && horaire.plages && Array.isArray(horaire.plages) && horaire.plages.length > 0) {
+          // Filtrer les plages valides (avec ouverture et fermeture)
+          const validPlages = horaire.plages.filter(p => p.ouverture && p.fermeture);
           cleanedHoraires[jour.key] = {
-            ouvert: horaire.ouvert || false,
-            ouverture: horaire.ouvert ? (horaire.ouverture || '09:00') : null,
-            fermeture: horaire.ouvert ? (horaire.fermeture || '22:00') : null
+            ouvert: validPlages.length > 0,
+            plages: validPlages
           };
         } else {
           cleanedHoraires[jour.key] = {
             ouvert: false,
-            ouverture: null,
-            fermeture: null
+            plages: []
           };
         }
       });
@@ -252,30 +318,58 @@ export default function PartnerHours() {
                   </div>
 
                   {horaires[jour.key]?.ouvert && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Heure d'ouverture
-                        </label>
-                        <input
-                          type="time"
-                          value={horaires[jour.key]?.ouverture || '09:00'}
-                          onChange={(e) => handleHoraireChange(jour.key, 'ouverture', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                    <div className="space-y-4">
+                      {/* Afficher les plages horaires existantes */}
+                      {(horaires[jour.key]?.plages || []).map((plage, index) => (
+                        <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium text-gray-700">
+                              Plage horaire {index + 1}
+                            </span>
+                            {(horaires[jour.key]?.plages || []).length > 1 && (
+                              <button
+                                onClick={() => removePlage(jour.key, index)}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                              >
+                                Supprimer
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Heure d'ouverture
+                              </label>
+                              <input
+                                type="time"
+                                value={plage.ouverture || '09:00'}
+                                onChange={(e) => handlePlageChange(jour.key, index, 'ouverture', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Heure de fermeture
+                              </label>
+                              <input
+                                type="time"
+                                value={plage.fermeture || '22:00'}
+                                onChange={(e) => handlePlageChange(jour.key, index, 'fermeture', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                       
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Heure de fermeture
-                        </label>
-                        <input
-                          type="time"
-                          value={horaires[jour.key]?.fermeture || '22:00'}
-                          onChange={(e) => handleHoraireChange(jour.key, 'fermeture', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                      {/* Bouton pour ajouter une plage supplémentaire */}
+                      <button
+                        onClick={() => addPlage(jour.key)}
+                        className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-md text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                      >
+                        + Ajouter une plage horaire (ex: soir)
+                      </button>
                     </div>
                   )}
 
@@ -327,8 +421,14 @@ export default function PartnerHours() {
                 <div key={jour.key} className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="font-medium text-gray-900">{jour.label}</span>
                   <span className="text-sm text-gray-600">
-                    {horaires[jour.key]?.ouvert ? (
-                      `${horaires[jour.key]?.ouverture} - ${horaires[jour.key]?.fermeture}`
+                    {horaires[jour.key]?.ouvert && horaires[jour.key]?.plages?.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {horaires[jour.key].plages.map((plage, idx) => (
+                          <span key={idx}>
+                            {plage.ouverture} - {plage.fermeture}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-red-500">Fermé</span>
                     )}

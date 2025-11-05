@@ -29,6 +29,14 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
     
     return hours.map(h => {
       if (h.is_closed || !h.ouvert) return `${h.day}: Fermé`;
+      
+      // Support pour plages multiples (nouveau format)
+      if (h.plages && Array.isArray(h.plages) && h.plages.length > 0) {
+        const plagesStr = h.plages.map(p => `${p.ouverture || '00:00'} - ${p.fermeture || '00:00'}`).join(' / ');
+        return `${h.day}: ${plagesStr}`;
+      }
+      
+      // Ancien format avec une seule plage
       return `${h.day}: ${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`;
     }).join(' | ');
   };
@@ -195,7 +203,12 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
               <div className="space-y-1 sm:space-y-2">
                 {currentHours && currentHours.ouvert && !currentHours.is_closed && (
                   <div className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium">
-                    Aujourd'hui ({currentHours.day}): {currentHours.ouverture} - {currentHours.fermeture}
+                    Aujourd'hui ({currentHours.day}): {
+                      // Support pour plages multiples
+                      currentHours.plages && Array.isArray(currentHours.plages) && currentHours.plages.length > 0
+                        ? currentHours.plages.map(p => `${p.ouverture} - ${p.fermeture}`).join(' / ')
+                        : `${currentHours.ouverture || '00:00'} - ${currentHours.fermeture || '00:00'}`
+                    }
                   </div>
                 )}
                 {!currentHours || !currentHours.ouvert || currentHours.is_closed ? (
@@ -214,7 +227,14 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
                       <div key={i} className="flex justify-between items-center py-0.5 sm:py-1">
                         <span className="font-medium text-gray-900 dark:text-gray-100 text-xs sm:text-sm">{h.day}</span>
                         <span className={`text-xs sm:text-sm ${h.is_closed || !h.ouvert ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                          {h.is_closed || !h.ouvert ? 'Fermé' : `${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`}
+                          {h.is_closed || !h.ouvert ? (
+                            'Fermé'
+                          ) : (
+                            // Support pour plages multiples
+                            h.plages && Array.isArray(h.plages) && h.plages.length > 0
+                              ? h.plages.map(p => `${p.ouverture} - ${p.fermeture}`).join(' / ')
+                              : `${h.ouverture || '00:00'} - ${h.fermeture || '00:00'}`
+                          )}
                         </span>
                       </div>
                     ))}

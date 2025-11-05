@@ -94,17 +94,33 @@ export async function GET(request) {
     if (ordersError) throw ordersError;
 
     // Statistiques générales
-    // IMPORTANT : Le chiffre d'affaires n'inclut PAS les frais de livraison (qui vont au livreur)
-    // On utilise uniquement order.total qui contient le montant des articles uniquement
-    const totalOrders = orders?.length || 0;
-    const totalRevenue = orders?.reduce((sum, order) => {
-      // Ne compter que les commandes livrées pour le chiffre d'affaires
-      if (order.statut === 'livree') {
-        return sum + parseFloat(order.total || 0);
-      }
-      return sum;
-    }, 0) || 0;
-    const commissionEarned = totalRevenue * (restaurant.commission_rate / 100);
+    // IMPORTANT : Le chiffre d'affaires du restaurant = total des articles (sans frais de livraison)
+    // On ne compte QUE les commandes livrées (statut = 'livree')
+    const deliveredOrders = orders?.filter(order => order.statut === 'livree') || [];
+    const totalOrders = deliveredOrders.length;
+    
+    // Calculer le CA total (montant des articles uniquement, sans frais de livraison)
+    const totalRevenue = deliveredOrders.reduce((sum, order) => {
+      // order.total contient le montant des articles + frais de livraison
+      // On doit soustraire les frais de livraison pour avoir le CA du restaurant
+      const fraisLivraison = parseFloat(order.frais_livraison || 0);
+      const totalOrder = parseFloat(order.total || 0);
+      const montantArticles = totalOrder - fraisLivraison;
+      return sum + montantArticles;
+    }, 0);
+    
+    console.log('📊 Analytics - Calcul CA:', {
+      totalOrders: orders?.length || 0,
+      deliveredOrders: deliveredOrders.length,
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      sampleOrder: deliveredOrders[0] ? {
+        total: deliveredOrders[0].total,
+        frais_livraison: deliveredOrders[0].frais_livraison,
+        montantArticles: parseFloat(deliveredOrders[0].total || 0) - parseFloat(deliveredOrders[0].frais_livraison || 0)
+      } : null
+    });
+    
+    const commissionEarned = totalRevenue * ((restaurant.commission_rate || 20) / 100);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Commandes par statut
@@ -141,17 +157,21 @@ export async function GET(request) {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
 
-    // Tendances quotidiennes - Grouper par date
-    const dailyStats = orders?.reduce((acc, order) => {
+    // Tendances quotidiennes - Grouper par date (seulement commandes livrées)
+    const dailyStats = deliveredOrders.reduce((acc, order) => {
       const orderDate = new Date(order.created_at);
       const dateKey = orderDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
       if (!acc[dateKey]) {
         acc[dateKey] = { orders: 0, revenue: 0 };
       }
       acc[dateKey].orders += 1;
-      acc[dateKey].revenue += parseFloat(order.total || 0) || 0;
+      // Calculer le montant des articles (total - frais de livraison)
+      const fraisLivraison = parseFloat(order.frais_livraison || 0);
+      const totalOrder = parseFloat(order.total || 0);
+      const montantArticles = totalOrder - fraisLivraison;
+      acc[dateKey].revenue += montantArticles;
       return acc;
-    }, {}) || {};
+    }, {});
 
     const dailyTrends = Object.entries(dailyStats)
       .map(([date, stats]) => ({
@@ -161,16 +181,20 @@ export async function GET(request) {
       }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Heures de pointe
-    const hourlyStats = orders?.reduce((acc, order) => {
+    // Heures de pointe (seulement commandes livrées)
+    const hourlyStats = deliveredOrders.reduce((acc, order) => {
       const hour = new Date(order.created_at).getHours();
       if (!acc[hour]) {
         acc[hour] = { orders: 0, revenue: 0 };
       }
       acc[hour].orders += 1;
-      acc[hour].revenue += parseFloat(order.total || 0) || 0;
+      // Calculer le montant des articles (total - frais de livraison)
+      const fraisLivraison = parseFloat(order.frais_livraison || 0);
+      const totalOrder = parseFloat(order.total || 0);
+      const montantArticles = totalOrder - fraisLivraison;
+      acc[hour].revenue += montantArticles;
       return acc;
-    }, {}) || {};
+    }, {});
 
     const peakHours = Object.entries(hourlyStats)
       .map(([hour, stats]) => ({

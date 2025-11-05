@@ -49,13 +49,17 @@ export async function GET(request, { params }) {
         }
       }
       
+      // Support pour plages multiples (nouveau format)
+      const hasPlages = Array.isArray(jourHoraire?.plages) && jourHoraire.plages.length > 0;
+      
       return {
         day: jour.label,
         day_key: jour.key,
         day_of_week: jour.dayIndex,
         ouvert: jourHoraire?.ouvert || false,
-        ouverture: jourHoraire?.ouverture || null,
-        fermeture: jourHoraire?.fermeture || null,
+        ouverture: hasPlages ? null : (jourHoraire?.ouverture || null), // null si plages multiples
+        fermeture: hasPlages ? null : (jourHoraire?.fermeture || null), // null si plages multiples
+        plages: hasPlages ? jourHoraire.plages : null, // Inclure les plages si présentes
         is_closed: !jourHoraire?.ouvert || false
       };
     });
@@ -159,6 +163,8 @@ export async function POST(request, { params }) {
       todayHoursOuvert: todayHours?.ouvert,
       todayHoursOuvertType: typeof todayHours?.ouvert,
       todayHoursOuvertStrict: todayHours?.ouvert === true,
+      hasPlages: Array.isArray(todayHours?.plages),
+      plagesCount: todayHours?.plages?.length,
       allHoraires: JSON.stringify(horaires, null, 2)
     });
 
@@ -182,11 +188,17 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier strictement si ouvert (doit être explicitement true)
-    if (todayHours.ouvert !== true) {
-      console.log('🔴 Restaurant fermé - ouvert n\'est pas true:', {
+    // Support pour nouveau format avec plages multiples
+    const hasPlages = Array.isArray(todayHours.plages) && todayHours.plages.length > 0;
+    const isOpenByFlag = todayHours.ouvert === true;
+    
+    if (!isOpenByFlag && !hasPlages) {
+      console.log('🔴 Restaurant fermé - ouvert n\'est pas true et pas de plages:', {
         ouvert: todayHours.ouvert,
         type: typeof todayHours.ouvert,
-        strict: todayHours.ouvert === true
+        strict: todayHours.ouvert === true,
+        hasPlages,
+        plages: todayHours.plages
       });
       return NextResponse.json({
         isOpen: false,
@@ -201,7 +213,8 @@ export async function POST(request, { params }) {
           allHoraires: horaires,
           variants: variants,
           ouvertValue: todayHours.ouvert,
-          ouvertType: typeof todayHours.ouvert
+          ouvertType: typeof todayHours.ouvert,
+          hasPlages
         }
       });
     }
@@ -247,81 +260,106 @@ export async function POST(request, { params }) {
       return totalMinutes;
     };
 
-    const openTimeMinutes = parseTime(todayHours.ouverture);
-    let closeTimeMinutes = parseTime(todayHours.fermeture);
+    // Support pour plusieurs plages horaires (nouveau format)
+    let isOpen = false;
+    let matchingPlage = null;
 
-    if (openTimeMinutes === null || closeTimeMinutes === null) {
-      return NextResponse.json({
-        isOpen: false,
-        message: 'Horaires invalides',
-        reason: 'invalid_hours'
-      });
-    }
+    if (Array.isArray(todayHours.plages) && todayHours.plages.length > 0) {
+      // Nouveau format avec plages multiples
+      for (const plage of todayHours.plages) {
+        if (!plage.ouverture || !plage.fermeture) continue;
 
-    // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
-    // Cela signifie que le restaurant ferme à la fin de la journée (minuit)
-    const isMidnightClose = todayHours.fermeture === '00:00' || todayHours.fermeture === '0:00';
-    if (isMidnightClose) {
-      closeTimeMinutes = 24 * 60; // 1440 minutes
-    }
+        const openTimeMinutes = parseTime(plage.ouverture);
+        let closeTimeMinutes = parseTime(plage.fermeture);
 
-    // Vérifier si on est dans la plage horaire
-    // Si la fermeture est à minuit (1440 minutes), on accepte toutes les heures >= ouverture
-    let isOpen;
-    if (isMidnightClose) {
-      // Fermeture à minuit : ouvert si l'heure actuelle >= heure d'ouverture
-      isOpen = currentTimeMinutes >= openTimeMinutes;
-      console.log('🌙 Fermeture à minuit - Comparaison:', {
+        if (openTimeMinutes === null || closeTimeMinutes === null) continue;
+
+        // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
+        const isMidnightClose = plage.fermeture === '00:00' || plage.fermeture === '0:00';
+        if (isMidnightClose) {
+          closeTimeMinutes = 24 * 60; // 1440 minutes
+        }
+
+        // Vérifier si on est dans cette plage horaire
+        let inPlage;
+        if (isMidnightClose) {
+          inPlage = currentTimeMinutes >= openTimeMinutes;
+        } else {
+          inPlage = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
+        }
+
+        if (inPlage) {
+          isOpen = true;
+          matchingPlage = plage;
+          break; // On est dans une plage, le restaurant est ouvert
+        }
+      }
+
+      console.log('🕐 Vérification plages multiples:', {
+        plagesCount: todayHours.plages.length,
         currentTimeMinutes,
-        openTimeMinutes,
         isOpen,
-        check: `${currentTimeMinutes} >= ${openTimeMinutes} = ${isOpen}`
+        matchingPlage
       });
     } else {
-      // Fermeture normale : ouvert si l'heure actuelle est entre ouverture et fermeture
-      isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
-      console.log('🕐 Fermeture normale - Comparaison:', {
-        currentTimeMinutes,
-        openTimeMinutes,
-        closeTimeMinutes,
-        isOpen,
-        check: `${currentTimeMinutes} >= ${openTimeMinutes} && ${currentTimeMinutes} <= ${closeTimeMinutes} = ${isOpen}`
-      });
+      // Ancien format avec une seule plage (rétrocompatibilité)
+      const openTimeMinutes = parseTime(todayHours.ouverture);
+      let closeTimeMinutes = parseTime(todayHours.fermeture);
+
+      if (openTimeMinutes === null || closeTimeMinutes === null) {
+        return NextResponse.json({
+          isOpen: false,
+          message: 'Horaires invalides',
+          reason: 'invalid_hours'
+        });
+      }
+
+      // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
+      const isMidnightClose = todayHours.fermeture === '00:00' || todayHours.fermeture === '0:00';
+      if (isMidnightClose) {
+        closeTimeMinutes = 24 * 60; // 1440 minutes
+      }
+
+      // Vérifier si on est dans la plage horaire
+      if (isMidnightClose) {
+        isOpen = currentTimeMinutes >= openTimeMinutes;
+      } else {
+        isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
+      }
     }
 
     console.log('🕐 Vérification horaires:', {
       restaurantId: id,
       currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
       currentTimeMinutes,
-      openTime: todayHours.ouverture,
-      openTimeMinutes,
-      closeTime: todayHours.fermeture,
-      closeTimeMinutes,
       isOpen,
       todayKey,
-      isMidnightClose: closeTimeMinutes === 24 * 60,
-      comparison: closeTimeMinutes === 24 * 60 
-        ? `${currentTimeMinutes} >= ${openTimeMinutes} = ${isOpen}`
-        : `${currentTimeMinutes} >= ${openTimeMinutes} && ${currentTimeMinutes} <= ${closeTimeMinutes} = ${isOpen}`
+      hasPlages: Array.isArray(todayHours.plages),
+      plagesCount: todayHours.plages?.length,
+      matchingPlage
     });
+
+    // Préparer les informations de plages pour l'affichage
+    const plagesInfo = Array.isArray(todayHours.plages) && todayHours.plages.length > 0
+      ? todayHours.plages.map(p => ({ ouverture: p.ouverture, fermeture: p.fermeture }))
+      : (todayHours.ouverture && todayHours.fermeture ? [{ ouverture: todayHours.ouverture, fermeture: todayHours.fermeture }] : []);
 
     return NextResponse.json({
       isOpen,
       message: isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
       reason: isOpen ? 'open' : 'outside_hours',
-      openTime: todayHours.ouverture,
-      closeTime: todayHours.fermeture,
+      openTime: matchingPlage?.ouverture || todayHours.ouverture || null,
+      closeTime: matchingPlage?.fermeture || todayHours.fermeture || null,
+      plages: plagesInfo,
       currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
       currentTimeMinutes,
-      openTimeMinutes,
-      closeTimeMinutes,
       today: todayKey,
       debug: {
         currentTimeMinutes,
-        openTimeMinutes,
-        closeTimeMinutes,
         isOpen,
-        todayHours
+        todayHours,
+        matchingPlage,
+        plagesCount: todayHours.plages?.length
       }
     });
   } catch (error) {
