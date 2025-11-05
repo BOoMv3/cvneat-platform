@@ -49,33 +49,113 @@ export async function POST(request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Récupérer l'utilisateur associé à cette demande (par email)
-    const { data: userToUpdate, error: userError2 } = await supabaseAdmin
-      .from('users')
-      .select('id, role')
-      .eq('email', email)
-      .single();
+    // Vérifier si l'utilisateur existe dans Supabase Auth
+    let userToUpdate = null;
+    let userId = null;
 
-    if (userError2 || !userToUpdate) {
-      return NextResponse.json({ 
-        error: `Utilisateur non trouvé pour l'email: ${email}. Veuillez d'abord créer le compte utilisateur.` 
-      }, { status: 404 });
+    // 1. Chercher dans Supabase Auth d'abord
+    const { data: { users: authUsers }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (!listError && authUsers) {
+      const authUser = authUsers.find(u => u.email === email);
+      if (authUser) {
+        userId = authUser.id;
+        console.log('👤 Utilisateur trouvé dans Auth:', authUser.id);
+      }
     }
 
-    console.log('👤 Utilisateur trouvé:', userToUpdate);
+    // 2. Si pas trouvé dans Auth, chercher dans la table users
+    if (!userId) {
+      const { data: userFromTable, error: userError2 } = await supabaseAdmin
+        .from('users')
+        .select('id, role, email')
+        .eq('email', email)
+        .single();
 
-    // 1. Mettre à jour le rôle de l'utilisateur pour qu'il soit "restaurant"
+      if (!userError2 && userFromTable) {
+        userId = userFromTable.id;
+        userToUpdate = userFromTable;
+        console.log('👤 Utilisateur trouvé dans table users:', userFromTable.id);
+      }
+    }
+
+    // 3. Si l'utilisateur n'existe toujours pas, créer un compte automatiquement
+    if (!userId) {
+      console.log('🔵 Création automatique du compte utilisateur pour:', email);
+      
+      // Générer un mot de passe temporaire
+      const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + '!@#';
+      
+      // Créer l'utilisateur dans Supabase Auth
+      const { data: newAuthUser, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
+        email: email,
+        password: tempPassword,
+        email_confirm: true, // Confirmer automatiquement l'email
+        user_metadata: {
+          nom: nom,
+          prenom: '',
+          telephone: telephone
+        }
+      });
+
+      if (createAuthError || !newAuthUser) {
+        console.error('❌ Erreur création utilisateur Auth:', createAuthError);
+        return NextResponse.json({ 
+          error: `Erreur lors de la création du compte utilisateur: ${createAuthError?.message || 'Erreur inconnue'}` 
+        }, { status: 500 });
+      }
+
+      userId = newAuthUser.user.id;
+      console.log('✅ Utilisateur créé dans Auth:', userId);
+
+      // Créer l'entrée dans la table users
+      const { data: newUser, error: createUserError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: userId,
+          email: email,
+          nom: nom,
+          prenom: '',
+          telephone: telephone,
+          role: 'restaurant' // Définir directement le rôle restaurant
+        })
+        .select()
+        .single();
+
+      if (createUserError) {
+        console.error('❌ Erreur création utilisateur dans table:', createUserError);
+        // Ne pas faire échouer, on peut continuer avec userId
+      } else {
+        userToUpdate = newUser;
+        console.log('✅ Utilisateur créé dans table users:', newUser);
+      }
+    } else {
+      // L'utilisateur existe, récupérer ses infos
+      if (!userToUpdate) {
+        const { data: userData, error: fetchError } = await supabaseAdmin
+          .from('users')
+          .select('id, role, email')
+          .eq('id', userId)
+          .single();
+        
+        if (!fetchError && userData) {
+          userToUpdate = userData;
+        }
+      }
+    }
+
+    // 4. Mettre à jour le rôle de l'utilisateur pour qu'il soit "restaurant" (même si déjà créé avec ce rôle)
     console.log('🔄 Mise à jour du rôle utilisateur:', {
-      userId: userToUpdate.id,
+      userId: userId,
       email: email,
-      roleActuel: userToUpdate.role,
+      roleActuel: userToUpdate?.role,
       nouveauRole: 'restaurant'
     });
 
     const { data: updatedUser, error: roleError } = await supabaseAdmin
       .from('users')
       .update({ role: 'restaurant' })
-      .eq('id', userToUpdate.id)
+      .eq('id', userId)
       .select()
       .single();
 
@@ -87,10 +167,26 @@ export async function POST(request) {
     }
 
     console.log('✅ Rôle mis à jour à "restaurant":', updatedUser);
+    
+    // Vérifier que le rôle est bien mis à jour
+    const { data: verifyUser, error: verifyUserError } = await supabaseAdmin
+      .from('users')
+      .select('id, role, email')
+      .eq('id', userId)
+      .single();
+    
+    if (verifyUserError || !verifyUser) {
+      console.error('⚠️ ATTENTION: Impossible de vérifier le rôle après mise à jour');
+    } else {
+      console.log('✅ Vérification: Rôle confirmé:', verifyUser.role);
+      if (verifyUser.role !== 'restaurant') {
+        console.error('❌ PROBLÈME: Le rôle n\'a pas été mis à jour correctement!');
+      }
+    }
 
     // 2. Créer le restaurant avec le client admin
     console.log('📝 Création restaurant avec données:', {
-      user_id: userToUpdate.id,
+      user_id: userId,
       nom,
       email,
       ville,
@@ -98,7 +194,7 @@ export async function POST(request) {
     });
 
     const restaurantInsertData = {
-      user_id: userToUpdate.id,
+      user_id: userId,
       nom: nom,
       description: description || 'Restaurant partenaire CVN\'Eat',
       adresse: adresse,

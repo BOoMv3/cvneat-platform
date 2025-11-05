@@ -55,7 +55,7 @@ export default function PartnershipRequests() {
           try {
             const restaurant = await createRestaurantFromRequest(request);
             setError(''); // Réinitialiser l'erreur en cas de succès
-            setSuccess(`✅ Partenaire validé avec succès ! Restaurant "${restaurant.nom}" créé et utilisateur "${request.email}" peut maintenant se connecter.`);
+            setSuccess(`✅ Partenaire validé avec succès ! Restaurant "${restaurant.nom}" créé. Le compte utilisateur "${request.email}" a été créé automatiquement avec le rôle restaurant. Un email avec les identifiants de connexion sera envoyé.`);
             setTimeout(() => setSuccess(''), 10000); // Afficher pendant 10 secondes
           } catch (createError) {
             console.error('Erreur création restaurant:', createError);
