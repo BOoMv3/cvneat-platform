@@ -55,31 +55,45 @@ export default function PartnershipRequests() {
 
   const createRestaurantFromRequest = async (request) => {
     try {
+      // Récupérer l'utilisateur associé à cette demande (par email)
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', request.email)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error(`Utilisateur non trouvé pour l'email: ${request.email}. Veuillez d'abord créer le compte utilisateur.`);
+      }
+
       const { error } = await supabase
         .from('restaurants')
         .insert({
+          user_id: userData.id,
           nom: request.nom,
           description: request.description || 'Restaurant partenaire CVN\'Eat',
-          address: request.adresse,
-          city: request.ville,
-          postal_code: request.code_postal,
-          phone: request.telephone,
+          adresse: request.adresse,
+          ville: request.ville,
+          code_postal: request.code_postal,
+          telephone: request.telephone,
           email: request.email,
-          status: 'active',
-          delivery_fee: 2.50,
-          min_order: 10.00,
+          frais_livraison: 2.50,
+          minimum_order: 10.00,
           delivery_time: 30,
           rating: 4.5,
           image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
           horaires: {
-            lundi: '11:00-22:00',
-            mardi: '11:00-22:00',
-            mercredi: '11:00-22:00',
-            jeudi: '11:00-22:00',
-            vendredi: '11:00-23:00',
-            samedi: '11:00-23:00',
-            dimanche: '12:00-21:00'
-          }
+            lundi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+            mardi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+            mercredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+            jeudi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+            vendredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
+            samedi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
+            dimanche: { ouvert: true, plages: [{ ouverture: '12:00', fermeture: '21:00' }] }
+          },
+          disponible: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
       if (error) throw error;
     } catch (err) {
