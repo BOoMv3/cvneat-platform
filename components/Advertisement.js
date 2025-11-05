@@ -12,6 +12,7 @@ export default function Advertisement({ position, className = '' }) {
   const [ad, setAd] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPopup, setShowPopup] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     fetchAd();
@@ -76,19 +77,30 @@ export default function Advertisement({ position, className = '' }) {
   };
 
   const handleClick = async () => {
-    if (ad && ad.link_url) {
-      // Enregistrer le clic
-      try {
-        await supabase
-          .from('advertisements')
-          .update({ clicks: ad.clicks + 1 })
-          .eq('id', ad.id);
-      } catch (error) {
-        console.error('Erreur lors de l\'enregistrement du clic:', error);
-      }
+    if (!ad) return;
+    
+    // Enregistrer le clic
+    try {
+      await supabase
+        .from('advertisements')
+        .update({ clicks: (ad.clicks || 0) + 1 })
+        .eq('id', ad.id);
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement du clic:', error);
+    }
 
-      // Ouvrir le lien
+    // Afficher le modal avec les détails
+    setShowModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+  };
+
+  const handleModalLinkClick = () => {
+    if (ad && ad.link_url) {
       window.open(ad.link_url, '_blank', 'noopener,noreferrer');
+      setShowModal(false);
     }
   };
 
@@ -131,12 +143,12 @@ export default function Advertisement({ position, className = '' }) {
       case 'banner_top':
         return 'w-full h-24 sm:h-32 md:h-36 mb-6 sm:mb-8 rounded-xl overflow-hidden';
       case 'banner_middle':
-        return 'w-full h-48 sm:h-56 md:h-64 my-6 sm:my-8 rounded-2xl overflow-hidden';
+        return 'w-full h-48 sm:h-64 md:h-80 my-6 sm:my-8 rounded-2xl overflow-hidden';
       case 'sidebar_left':
       case 'sidebar_right':
         return 'w-full h-64 sm:h-80 mb-6 rounded-xl overflow-hidden sticky top-4';
       case 'footer':
-        return 'w-full h-24 sm:h-32 mt-8 sm:mt-12 rounded-xl overflow-hidden';
+        return 'w-full h-40 sm:h-56 md:h-64 mt-8 sm:mt-12 rounded-xl overflow-hidden';
       case 'popup':
         return 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
       default:
@@ -145,6 +157,11 @@ export default function Advertisement({ position, className = '' }) {
   };
 
   const renderAdContent = () => {
+    // Utiliser object-contain pour banner_middle et footer pour que toute l'image soit visible
+    const imageClass = (position === 'banner_middle' || position === 'footer') 
+      ? 'w-full h-full object-contain bg-gray-100 dark:bg-gray-800'
+      : 'w-full h-full object-cover';
+
     // Style différent pour banner_top (plus discret et mieux intégré)
     if (position === 'banner_top') {
       return (
@@ -185,17 +202,17 @@ export default function Advertisement({ position, className = '' }) {
       );
     }
 
-    // Style pour les autres positions
+    // Style pour les autres positions (banner_middle et footer avec object-contain)
     return (
       <div 
         className={`relative bg-white dark:bg-gray-800 rounded-xl overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 ${getPositionStyles()}`}
         onClick={handleClick}
       >
-        <div className="relative h-full">
+        <div className="relative h-full flex items-center justify-center">
           <img
             src={ad.image_url}
             alt={ad.title}
-            className="w-full h-full object-cover"
+            className={imageClass}
             onError={(e) => {
               e.target.style.display = 'none';
               e.target.nextSibling.style.display = 'flex';
@@ -211,22 +228,13 @@ export default function Advertisement({ position, className = '' }) {
             </div>
           </div>
           
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex items-end">
-            <div className="p-4 sm:p-6 text-white w-full">
-              <h3 className="text-base sm:text-lg font-bold mb-2 line-clamp-1">
-                {ad.title}
-              </h3>
-              {ad.description && (
-                <p className="text-sm sm:text-base opacity-90 line-clamp-2 mb-2">
-                  {ad.description}
-                </p>
-              )}
-              {ad.link_url && (
-                <div className="flex items-center mt-2 text-sm">
-                  <FaExternalLinkAlt className="h-4 w-4 mr-2" />
-                  <span>En savoir plus</span>
-                </div>
-              )}
+          {/* Overlay avec indication de clic */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent flex items-end justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+            <div className="p-4 text-white text-center">
+              <div className="flex items-center justify-center text-sm font-medium">
+                <FaExternalLinkAlt className="h-4 w-4 mr-2" />
+                <span>Cliquez pour voir les détails</span>
+              </div>
             </div>
           </div>
         </div>
@@ -253,5 +261,96 @@ export default function Advertisement({ position, className = '' }) {
     ) : null;
   }
 
-  return renderAdContent();
+  return (
+    <>
+      {renderAdContent()}
+      
+      {/* Modal pour afficher les détails de la publicité */}
+      {showModal && ad && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={handleModalClose}
+        >
+          <div 
+            className="relative bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Bouton de fermeture */}
+            <button
+              onClick={handleModalClose}
+              className="absolute top-4 right-4 z-10 bg-white dark:bg-gray-700 rounded-full p-2 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+            >
+              <FaTimes className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            </button>
+
+            {/* Image */}
+            <div className="relative w-full h-64 sm:h-80 md:h-96 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              <img
+                src={ad.image_url}
+                alt={ad.title}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div 
+                className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white"
+                style={{ display: 'none' }}
+              >
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📢</div>
+                  <div className="text-lg font-medium">{ad.title}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contenu */}
+            <div className="p-6 sm:p-8">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                {ad.title}
+              </h2>
+              
+              {ad.description && (
+                <p className="text-gray-700 dark:text-gray-300 text-base sm:text-lg mb-6 leading-relaxed">
+                  {ad.description}
+                </p>
+              )}
+
+              {/* Informations supplémentaires */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-3">
+                {ad.advertiser_name && (
+                  <div className="flex items-center text-gray-600 dark:text-gray-400">
+                    <span className="font-medium mr-2">Annonceur:</span>
+                    <span>{ad.advertiser_name}</span>
+                  </div>
+                )}
+                {ad.start_date && ad.end_date && (
+                  <div className="flex items-center text-gray-600 dark:text-gray-400">
+                    <span className="font-medium mr-2">Période:</span>
+                    <span>
+                      {new Date(ad.start_date).toLocaleDateString('fr-FR')} - {new Date(ad.end_date).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bouton d'action */}
+              {ad.link_url && (
+                <div className="mt-6">
+                  <button
+                    onClick={handleModalLinkClick}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center"
+                  >
+                    <FaExternalLinkAlt className="h-5 w-5 mr-2" />
+                    En savoir plus
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
