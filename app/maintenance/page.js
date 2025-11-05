@@ -40,11 +40,11 @@ export default function Maintenance() {
               Devenir Partenaire
             </Link>
             <Link 
-              href="/partner"
+              href="/login"
               className="inline-flex items-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-600 transition-colors"
             >
               <FaLock className="w-4 h-4" />
-              Connexion Partenaire
+              Connexion Partenaire / Admin
             </Link>
           </div>
           <p className="text-xs text-purple-300 mt-4">

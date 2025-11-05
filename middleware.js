@@ -3,31 +3,29 @@ import { NextResponse } from 'next/server';
 export function middleware(request) {
   const pathname = request.nextUrl.pathname;
   
-  // Vérifier si le mode maintenance est activé
-  const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
-  
-  // Si le mode maintenance n'est pas activé, laisser passer TOUT
-  if (!isMaintenanceMode) {
-    return NextResponse.next();
-  }
-  
-  // Routes admin/partner - TOUJOURS autorisées en maintenance (PRIORITÉ ABSOLUE)
-  // Vérifier EN PREMIER pour éviter toute redirection
+  // Routes admin/partner - TOUJOURS autorisées (PRIORITÉ ABSOLUE)
+  // Vérifier EN PREMIER pour éviter toute redirection, même en maintenance
   const adminPartnerRoutes = [
     '/admin',
     '/partner',
     '/profil-partenaire',
     '/restaurant-request',
     '/devenir-partenaire',
-    '/login' // Permettre la connexion pour admin/partner
+    '/login',
+    '/delivery'
   ];
   
   // Vérifier si la route commence par une des routes admin/partner
   const isAdminPartnerRoute = adminPartnerRoutes.some(route => pathname.startsWith(route));
   
   if (isAdminPartnerRoute) {
-    console.log('✅ Middleware: Route admin/partner autorisée:', pathname);
-    return NextResponse.next();
+    // Autoriser sans redirection - Ajouter des headers pour éviter le cache
+    const response = NextResponse.next();
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    return response;
   }
   
   // Routes toujours autorisées (même en maintenance)
@@ -37,29 +35,42 @@ export function middleware(request) {
     '/_next',
     '/static',
     '/favicon.ico',
-    '/maintenance'
+    '/maintenance',
+    '/track-order',
+    '/profile',
+    '/panier',
+    '/checkout'
   ];
   
   if (alwaysAllowedRoutes.some(route => pathname.startsWith(route))) {
-    console.log('✅ Middleware: Route toujours autorisée:', pathname);
+    return NextResponse.next();
+  }
+  
+  // Vérifier si le mode maintenance est activé (seulement après avoir vérifié les routes admin/partner)
+  const maintenanceEnv = process.env.NEXT_PUBLIC_MAINTENANCE_MODE;
+  const isMaintenanceMode = maintenanceEnv === 'true' || maintenanceEnv === true;
+  
+  // Si le mode maintenance n'est pas activé, laisser passer TOUT
+  if (!isMaintenanceMode) {
     return NextResponse.next();
   }
   
   // Routes d'inscription client - BLOQUÉES en mode maintenance
   if (pathname === '/inscription' || pathname === '/register') {
-    console.log('🚫 Middleware: Route inscription bloquée:', pathname);
-    return NextResponse.redirect(new URL('/maintenance', request.url));
+    const response = NextResponse.redirect(new URL('/maintenance', request.url));
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return response;
   }
   
   // Routes publiques client - Rediriger vers maintenance
   // Seulement si ce n'est PAS une route admin/partner (déjà vérifiée plus haut)
   if (pathname === '/' || pathname.startsWith('/restaurants/')) {
-    console.log('🚫 Middleware: Route publique redirigée vers maintenance:', pathname);
-    return NextResponse.redirect(new URL('/maintenance', request.url));
+    const response = NextResponse.redirect(new URL('/maintenance', request.url));
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return response;
   }
   
   // Pour toutes les autres routes, laisser passer (pour éviter les boucles)
-  console.log('⚠️ Middleware: Route non gérée, laissée passer:', pathname);
   return NextResponse.next();
 }
 

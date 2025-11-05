@@ -63,7 +63,8 @@ export default function AdminPage() {
         .single();
 
       if (userError || !userData || userData.role !== 'admin') {
-        router.push('/');
+        // Rediriger vers login au lieu de la page d'accueil pour éviter la maintenance
+        router.push('/login');
         return;
       }
 

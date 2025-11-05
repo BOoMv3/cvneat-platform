@@ -128,9 +128,9 @@ export default function PartnerDashboard() {
       
       // Autoriser les restaurants ET les admins
       if (userError || !userData || (userData.role !== 'restaurant' && userData.role !== 'admin')) {
-        console.log('❌ ACCÈS REFUSÉ - Redirection vers l\'accueil');
+        console.log('❌ ACCÈS REFUSÉ - Redirection vers login');
         console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant ou admin');
-        router.push('/');
+        router.push('/login');
         return;
       }
       
