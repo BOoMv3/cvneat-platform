@@ -80,35 +80,43 @@ export async function POST(request) {
     console.log('✅ Rôle mis à jour à "restaurant"');
 
     // 2. Créer le restaurant avec le client admin
+    console.log('📝 Création restaurant avec données:', {
+      user_id: userToUpdate.id,
+      nom,
+      email,
+      ville,
+      code_postal
+    });
+
+    const restaurantInsertData = {
+      user_id: userToUpdate.id,
+      nom: nom,
+      description: description || 'Restaurant partenaire CVN\'Eat',
+      adresse: adresse,
+      ville: ville,
+      code_postal: code_postal,
+      telephone: telephone,
+      email: email,
+      frais_livraison: 2.50,
+      minimum_order: 10.00,
+      delivery_time: 30,
+      rating: 4.5,
+      image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
+      horaires: {
+        lundi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+        mardi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+        mercredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+        jeudi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
+        vendredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
+        samedi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
+        dimanche: { ouvert: true, plages: [{ ouverture: '12:00', fermeture: '21:00' }] }
+      },
+      disponible: true
+    };
+
     const { data: restaurantData, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
-      .insert({
-        user_id: userToUpdate.id,
-        nom: nom,
-        description: description || 'Restaurant partenaire CVN\'Eat',
-        adresse: adresse,
-        ville: ville,
-        code_postal: code_postal,
-        telephone: telephone,
-        email: email,
-        frais_livraison: 2.50,
-        minimum_order: 10.00,
-        delivery_time: 30,
-        rating: 4.5,
-        image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
-        horaires: {
-          lundi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-          mardi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-          mercredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-          jeudi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-          vendredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
-          samedi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
-          dimanche: { ouvert: true, plages: [{ ouverture: '12:00', fermeture: '21:00' }] }
-        },
-        disponible: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .insert(restaurantInsertData)
       .select()
       .single();
 

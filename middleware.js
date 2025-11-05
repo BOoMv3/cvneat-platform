@@ -18,10 +18,15 @@ export function middleware(request) {
     '/partner',
     '/profil-partenaire',
     '/restaurant-request',
-    '/devenir-partenaire'
+    '/devenir-partenaire',
+    '/login' // Permettre la connexion pour admin/partner
   ];
   
-  if (adminPartnerRoutes.some(route => pathname.startsWith(route))) {
+  // Vérifier si la route commence par une des routes admin/partner
+  const isAdminPartnerRoute = adminPartnerRoutes.some(route => pathname.startsWith(route));
+  
+  if (isAdminPartnerRoute) {
+    console.log('✅ Middleware: Route admin/partner autorisée:', pathname);
     return NextResponse.next();
   }
   
@@ -32,26 +37,29 @@ export function middleware(request) {
     '/_next',
     '/static',
     '/favicon.ico',
-    '/maintenance',
-    '/login'
+    '/maintenance'
   ];
   
   if (alwaysAllowedRoutes.some(route => pathname.startsWith(route))) {
+    console.log('✅ Middleware: Route toujours autorisée:', pathname);
     return NextResponse.next();
   }
   
   // Routes d'inscription client - BLOQUÉES en mode maintenance
   if (pathname === '/inscription' || pathname === '/register') {
+    console.log('🚫 Middleware: Route inscription bloquée:', pathname);
     return NextResponse.redirect(new URL('/maintenance', request.url));
   }
   
   // Routes publiques client - Rediriger vers maintenance
   // Seulement si ce n'est PAS une route admin/partner (déjà vérifiée plus haut)
   if (pathname === '/' || pathname.startsWith('/restaurants/')) {
+    console.log('🚫 Middleware: Route publique redirigée vers maintenance:', pathname);
     return NextResponse.redirect(new URL('/maintenance', request.url));
   }
   
   // Pour toutes les autres routes, laisser passer (pour éviter les boucles)
+  console.log('⚠️ Middleware: Route non gérée, laissée passer:', pathname);
   return NextResponse.next();
 }
 

@@ -50,11 +50,14 @@ export default function LoginPage() {
           .eq('id', data.user.id)
           .single();
 
-        if (userData?.role === 'delivery') {
+        if (userData?.role === 'admin') {
+          router.push('/admin');
+        } else if (userData?.role === 'delivery') {
           router.push('/delivery');
         } else if (userData?.role === 'restaurant') {
           router.push('/partner');
         } else {
+          // Pour les clients, rediriger vers la page d'accueil (ou maintenance si activée)
           router.push('/');
         }
       }

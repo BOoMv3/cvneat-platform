@@ -82,11 +82,15 @@ export default function PartnershipRequests() {
 
   const createRestaurantFromRequest = async (request) => {
     try {
+      console.log('🔵 Début création restaurant pour:', request.email);
+      
       // Récupérer le token de session pour l'authentification
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Session expirée. Veuillez vous reconnecter.');
       }
+
+      console.log('✅ Session récupérée, appel API...');
 
       // Appeler l'API pour créer le restaurant (utilise le client admin côté serveur)
       const response = await fetch('/api/admin/create-restaurant', {
@@ -106,16 +110,26 @@ export default function PartnershipRequests() {
         })
       });
 
+      console.log('📡 Réponse API:', response.status, response.statusText);
+
       const data = await response.json();
+      console.log('📦 Données API:', data);
 
       if (!response.ok) {
+        console.error('❌ Erreur API:', data);
         throw new Error(data.error || 'Erreur lors de la création du restaurant');
+      }
+
+      if (!data.restaurant) {
+        console.error('❌ Pas de restaurant dans la réponse:', data);
+        throw new Error('Restaurant non retourné par l\'API');
       }
 
       console.log('✅ Restaurant créé avec succès:', data.restaurant);
       return data.restaurant;
     } catch (err) {
       console.error('❌ Erreur complète lors de la création du restaurant:', err);
+      console.error('❌ Stack:', err.stack);
       throw err;
     }
   };
