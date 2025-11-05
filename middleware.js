@@ -1,11 +1,27 @@
 import { NextResponse } from 'next/server';
 
 export function middleware(request) {
+  const pathname = request.nextUrl.pathname;
+  
   // Vérifier si le mode maintenance est activé
   const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
   
-  // Si le mode maintenance n'est pas activé, laisser passer
+  // Si le mode maintenance n'est pas activé, laisser passer TOUT
   if (!isMaintenanceMode) {
+    return NextResponse.next();
+  }
+  
+  // Routes admin/partner - TOUJOURS autorisées en maintenance (PRIORITÉ ABSOLUE)
+  // Vérifier EN PREMIER pour éviter toute redirection
+  const adminPartnerRoutes = [
+    '/admin',
+    '/partner',
+    '/profil-partenaire',
+    '/restaurant-request',
+    '/devenir-partenaire'
+  ];
+  
+  if (adminPartnerRoutes.some(route => pathname.startsWith(route))) {
     return NextResponse.next();
   }
   
@@ -20,49 +36,22 @@ export function middleware(request) {
     '/login'
   ];
   
-  // Vérifier si c'est une route toujours autorisée
-  const isAlwaysAllowed = alwaysAllowedRoutes.some(route => 
-    request.nextUrl.pathname.startsWith(route)
-  );
-  
-  if (isAlwaysAllowed) {
-    return NextResponse.next();
-  }
-  
-  // Routes admin/partner - Laisser passer (les pages vérifieront l'auth elles-mêmes)
-  const adminPartnerRoutes = [
-    '/admin',
-    '/partner',
-    '/profil-partenaire',
-    '/restaurant-request',
-    '/devenir-partenaire'
-  ];
-  
-  const isAdminPartnerRoute = adminPartnerRoutes.some(route => 
-    request.nextUrl.pathname.startsWith(route)
-  );
-  
-  // Autoriser l'accès aux routes admin/partner (les pages géreront l'auth)
-  if (isAdminPartnerRoute) {
+  if (alwaysAllowedRoutes.some(route => pathname.startsWith(route))) {
     return NextResponse.next();
   }
   
   // Routes d'inscription client - BLOQUÉES en mode maintenance
-  const blockedClientRoutes = [
-    '/inscription',
-    '/register'
-  ];
-  
-  if (blockedClientRoutes.includes(request.nextUrl.pathname)) {
+  if (pathname === '/inscription' || pathname === '/register') {
     return NextResponse.redirect(new URL('/maintenance', request.url));
   }
   
-  // Pour toutes les autres routes (page d'accueil, restaurants, etc.), rediriger vers maintenance
-  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/restaurants')) {
+  // Routes publiques client - Rediriger vers maintenance
+  // Seulement si ce n'est PAS une route admin/partner (déjà vérifiée plus haut)
+  if (pathname === '/' || pathname.startsWith('/restaurants/')) {
     return NextResponse.redirect(new URL('/maintenance', request.url));
   }
   
-  // Laisser passer les autres routes (pour éviter les boucles)
+  // Pour toutes les autres routes, laisser passer (pour éviter les boucles)
   return NextResponse.next();
 }
 
