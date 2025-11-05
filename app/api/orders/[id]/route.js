@@ -49,6 +49,7 @@ export async function GET(request, { params }) {
           quantite,
           prix_unitaire,
           supplements,
+          customizations,
           menus (
             nom,
             prix
@@ -194,13 +195,28 @@ export async function GET(request, { params }) {
           supplements = detail.supplements;
         }
       }
+
+      // Récupérer les customisations depuis le détail
+      let customizations = {};
+      if (detail.customizations) {
+        if (typeof detail.customizations === 'string') {
+          try {
+            customizations = JSON.parse(detail.customizations);
+          } catch (e) {
+            customizations = {};
+          }
+        } else if (typeof detail.customizations === 'object') {
+          customizations = detail.customizations;
+        }
+      }
       
       return {
         id: detail.id,
         name: detail.menus?.nom || 'Article',
         quantity: detail.quantite || 0,
         price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
-        supplements: supplements
+        supplements: supplements,
+        customizations: customizations
       };
     });
 
@@ -258,9 +274,25 @@ export async function GET(request, { params }) {
             supplements = detail.supplements;
           }
         }
+
+        // Récupérer les customisations depuis le détail
+        let customizations = {};
+        if (detail.customizations) {
+          if (typeof detail.customizations === 'string') {
+            try {
+              customizations = JSON.parse(detail.customizations);
+            } catch (e) {
+              customizations = {};
+            }
+          } else if (typeof detail.customizations === 'object') {
+            customizations = detail.customizations;
+          }
+        }
+
         return {
           ...detail,
-          supplements: supplements
+          supplements: supplements,
+          customizations: customizations
         };
       })
     };
