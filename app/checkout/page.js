@@ -600,10 +600,24 @@ export default function Checkout() {
           }));
         }
 
+        // Récupérer les customizations (viandes, sauces, ingrédients retirés)
+        const customizations = item.customizations || {};
+        const selectedMeats = customizations.selectedMeats || [];
+        const selectedSauces = customizations.selectedSauces || [];
+        const removedIngredients = customizations.removedIngredients || [];
+
+        // Calculer le prix total avec toutes les options
         const itemPrice = parseFloat(item.prix || item.price || 0);
         const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
+        
+        // Ajouter le prix des viandes sélectionnées
+        const meatsPrice = selectedMeats.reduce((sum, meat) => sum + (parseFloat(meat.prix || meat.price || 0) || 0), 0);
+        
+        // Ajouter le prix des sauces sélectionnées
+        const saucesPrice = selectedSauces.reduce((sum, sauce) => sum + (parseFloat(sauce.prix || sauce.price || 0) || 0), 0);
+        
         const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-        const prixUnitaireTotal = itemPrice + supplementsPrice + sizePrice;
+        const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
 
         const insertData = {
           commande_id: order.id,
@@ -614,6 +628,22 @@ export default function Checkout() {
         
         if (supplementsData.length > 0) {
           insertData.supplements = supplementsData;
+        }
+
+        // Ajouter les customizations dans un champ JSONB
+        const customizationData = {};
+        if (selectedMeats.length > 0) {
+          customizationData.selectedMeats = selectedMeats;
+        }
+        if (selectedSauces.length > 0) {
+          customizationData.selectedSauces = selectedSauces;
+        }
+        if (removedIngredients.length > 0) {
+          customizationData.removedIngredients = removedIngredients;
+        }
+
+        if (Object.keys(customizationData).length > 0) {
+          insertData.customizations = customizationData;
         }
         
         const { error: detailError } = await supabase

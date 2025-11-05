@@ -8,12 +8,71 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [quantity, setQuantity] = useState(1);
   const [selectedIngredients, setSelectedIngredients] = useState(new Set());
   const [removedIngredients, setRemovedIngredients] = useState(new Set());
+  const [selectedMeats, setSelectedMeats] = useState(new Set()); // Nouvelles sélections de viandes
+  const [selectedSauces, setSelectedSauces] = useState(new Set()); // Nouvelles sélections de sauces
   const [supplements, setSupplements] = useState([]);
+  const [meatOptions, setMeatOptions] = useState([]); // Options de viande depuis la base de données
+  const [sauceOptions, setSauceOptions] = useState([]); // Options de sauce depuis la base de données
+  const [baseIngredients, setBaseIngredients] = useState([]); // Ingrédients de base depuis la base de données
   const [loading, setLoading] = useState(false);
 
-  // Récupérer les suppléments depuis l'item du menu ou le restaurant
+  // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
     if (isOpen) {
+      // Récupérer les options de customisation depuis l'item
+      // Options de viande
+      if (item.meat_options) {
+        let parsedMeats = item.meat_options;
+        if (typeof item.meat_options === 'string') {
+          try {
+            parsedMeats = JSON.parse(item.meat_options);
+          } catch (e) {
+            parsedMeats = [];
+          }
+        }
+        setMeatOptions(Array.isArray(parsedMeats) ? parsedMeats : []);
+        
+        // Sélectionner les viandes par défaut (default: true)
+        const defaultMeats = parsedMeats.filter(m => m.default === true).map(m => m.id || m.nom);
+        setSelectedMeats(new Set(defaultMeats));
+      } else {
+        setMeatOptions([]);
+      }
+
+      // Options de sauce
+      if (item.sauce_options) {
+        let parsedSauces = item.sauce_options;
+        if (typeof item.sauce_options === 'string') {
+          try {
+            parsedSauces = JSON.parse(item.sauce_options);
+          } catch (e) {
+            parsedSauces = [];
+          }
+        }
+        setSauceOptions(Array.isArray(parsedSauces) ? parsedSauces : []);
+        
+        // Sélectionner les sauces par défaut (default: true)
+        const defaultSauces = parsedSauces.filter(s => s.default === true).map(s => s.id || s.nom);
+        setSelectedSauces(new Set(defaultSauces));
+      } else {
+        setSauceOptions([]);
+      }
+
+      // Ingrédients de base
+      if (item.base_ingredients) {
+        let parsedIngredients = item.base_ingredients;
+        if (typeof item.base_ingredients === 'string') {
+          try {
+            parsedIngredients = JSON.parse(item.base_ingredients);
+          } catch (e) {
+            parsedIngredients = [];
+          }
+        }
+        setBaseIngredients(Array.isArray(parsedIngredients) ? parsedIngredients : []);
+      } else {
+        setBaseIngredients([]);
+      }
+
       // D'abord, vérifier si l'item a des suppléments intégrés
       if (item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0) {
         // Parser les suppléments si c'est une chaîne JSON
@@ -120,8 +179,42 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     { id: 'extra_tomato', name: 'Tomates fraîches', price: 1.5 }
   ];
 
-  const itemIngredients = defaultIngredients[item.nom] || [];
+  // Utiliser baseIngredients depuis la base de données si disponible, sinon fallback sur defaultIngredients
+  const itemIngredients = baseIngredients.length > 0 
+    ? baseIngredients.map(ing => ({
+        id: ing.id || ing.nom,
+        name: ing.nom || ing.name,
+        price: parseFloat(ing.prix || ing.price || 0),
+        removable: ing.removable !== false // Par défaut, tous les ingrédients sont retirables
+      }))
+    : (defaultIngredients[item.nom] || []);
   const allIngredients = [...itemIngredients, ...extraIngredients];
+
+  // Gestionnaire pour sélectionner/désélectionner les viandes
+  const handleMeatToggle = (meatId) => {
+    setSelectedMeats(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(meatId)) {
+        newSet.delete(meatId);
+      } else {
+        newSet.add(meatId);
+      }
+      return newSet;
+    });
+  };
+
+  // Gestionnaire pour sélectionner/désélectionner les sauces
+  const handleSauceToggle = (sauceId) => {
+    setSelectedSauces(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sauceId)) {
+        newSet.delete(sauceId);
+      } else {
+        newSet.add(sauceId);
+      }
+      return newSet;
+    });
+  };
 
   const handleIngredientToggle = (ingredient) => {
     if (itemIngredients.some(ing => ing.id === ingredient.id)) {
@@ -152,6 +245,22 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const calculateTotalPrice = () => {
     let total = item.prix || 0;
     
+    // Ajouter le prix des viandes sélectionnées
+    selectedMeats.forEach(meatId => {
+      const meat = meatOptions.find(m => (m.id || m.nom) === meatId);
+      if (meat) {
+        total += parseFloat(meat.prix || meat.price || 0);
+      }
+    });
+
+    // Ajouter le prix des sauces sélectionnées
+    selectedSauces.forEach(sauceId => {
+      const sauce = sauceOptions.find(s => (s.id || s.nom) === sauceId);
+      if (sauce) {
+        total += parseFloat(sauce.prix || sauce.price || 0);
+      }
+    });
+    
     // Ajouter le prix des suppléments sélectionnés
     selectedIngredients.forEach(ingredientId => {
       const supplement = supplements.find(sup => sup.id === ingredientId);
@@ -164,10 +273,42 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   };
 
   const handleAddToCart = () => {
+    // Validation : vérifier si une sélection de viande est requise
+    if (item.requires_meat_selection && selectedMeats.size === 0) {
+      alert('Veuillez sélectionner au moins une viande');
+      return;
+    }
+
+    // Validation : vérifier si une sélection de sauce est requise
+    if (item.requires_sauce_selection && selectedSauces.size === 0) {
+      alert('Veuillez sélectionner au moins une sauce');
+      return;
+    }
+
     // Extraire les suppléments depuis selectedIngredients
     const supplementsList = Array.from(selectedIngredients).map(ingId => {
       const supplement = supplements.find(sup => sup.id === ingId);
       return supplement ? { id: supplement.id, nom: supplement.name, prix: supplement.price } : null;
+    }).filter(Boolean);
+
+    // Extraire les viandes sélectionnées
+    const selectedMeatsList = Array.from(selectedMeats).map(meatId => {
+      const meat = meatOptions.find(m => (m.id || m.nom) === meatId);
+      return meat ? { 
+        id: meat.id || meat.nom, 
+        nom: meat.nom || meat.name, 
+        prix: parseFloat(meat.prix || meat.price || 0) 
+      } : null;
+    }).filter(Boolean);
+
+    // Extraire les sauces sélectionnées
+    const selectedSaucesList = Array.from(selectedSauces).map(sauceId => {
+      const sauce = sauceOptions.find(s => (s.id || s.nom) === sauceId);
+      return sauce ? { 
+        id: sauce.id || sauce.nom, 
+        nom: sauce.nom || sauce.name, 
+        prix: parseFloat(sauce.prix || sauce.price || 0) 
+      } : null;
     }).filter(Boolean);
 
     const customizedItem = {
@@ -175,7 +316,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       quantity: quantity, // Utiliser la quantité sélectionnée
       supplements: supplementsList,
       customizations: {
-        removedIngredients: Array.from(removedIngredients),
+        selectedMeats: selectedMeatsList,
+        selectedSauces: selectedSaucesList,
+        removedIngredients: Array.from(removedIngredients).map(ingId => {
+          const ing = itemIngredients.find(i => i.id === ingId);
+          return ing ? { id: ing.id, nom: ing.name } : { id: ingId, nom: ingId };
+        }),
         addedIngredients: Array.from(selectedIngredients),
         totalPrice: calculateTotalPrice()
       },
@@ -247,12 +393,98 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             </div>
           </div>
 
+          {/* Options de viande */}
+          {meatOptions.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <FaFire className="w-5 h-5 text-red-600 mr-2" />
+                Choisir vos viandes {item.requires_meat_selection && <span className="text-red-500 text-sm ml-2">*</span>}
+              </h3>
+              <div className="space-y-2">
+                {meatOptions.map((meat) => {
+                  const meatId = meat.id || meat.nom;
+                  const isSelected = selectedMeats.has(meatId);
+                  return (
+                    <div
+                      key={meatId}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-red-50 border-red-300 text-red-800'
+                          : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                      }`}
+                      onClick={() => handleMeatToggle(meatId)}
+                    >
+                      <div className="flex items-center">
+                        <span className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
+                          isSelected
+                            ? 'border-red-500 bg-red-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {isSelected && <span className="text-white text-xs">✓</span>}
+                        </span>
+                        <span className="font-medium">{meat.nom || meat.name}</span>
+                      </div>
+                      {(meat.prix || meat.price) > 0 && (
+                        <span className="text-sm font-medium text-red-600">
+                          +{parseFloat(meat.prix || meat.price || 0).toFixed(2)}€
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Options de sauce */}
+          {sauceOptions.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <FaWheat className="w-5 h-5 text-yellow-600 mr-2" />
+                Choisir vos sauces {item.requires_sauce_selection && <span className="text-red-500 text-sm ml-2">*</span>}
+              </h3>
+              <div className="space-y-2">
+                {sauceOptions.map((sauce) => {
+                  const sauceId = sauce.id || sauce.nom;
+                  const isSelected = selectedSauces.has(sauceId);
+                  return (
+                    <div
+                      key={sauceId}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-yellow-50 border-yellow-300 text-yellow-800'
+                          : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                      }`}
+                      onClick={() => handleSauceToggle(sauceId)}
+                    >
+                      <div className="flex items-center">
+                        <span className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
+                          isSelected
+                            ? 'border-yellow-500 bg-yellow-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {isSelected && <span className="text-white text-xs">✓</span>}
+                        </span>
+                        <span className="font-medium">{sauce.nom || sauce.name}</span>
+                      </div>
+                      {(sauce.prix || sauce.price) > 0 && (
+                        <span className="text-sm font-medium text-yellow-600">
+                          +{parseFloat(sauce.prix || sauce.price || 0).toFixed(2)}€
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Ingrédients de base */}
           {itemIngredients.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaLeaf className="w-5 h-5 text-green-600 mr-2" />
-                Ingrédients inclus
+                Ingrédients inclus (vous pouvez les retirer)
               </h3>
               <div className="space-y-2">
                 {itemIngredients.map((ingredient) => (
@@ -261,16 +493,18 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                     className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
                       removedIngredients.has(ingredient.id)
                         ? 'bg-red-50 border-red-200 text-red-600'
-                        : 'bg-green-50 border-green-200 text-green-800'
+                        : 'bg-green-50 border-green-200 text-green-800 hover:bg-green-100'
                     }`}
                     onClick={() => handleIngredientToggle(ingredient)}
                   >
                     <div className="flex items-center">
-                      <span className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                      <span className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
                         removedIngredients.has(ingredient.id)
                           ? 'border-red-400 bg-red-400'
                           : 'border-green-400 bg-green-400'
-                      }`}></span>
+                      }`}>
+                        {removedIngredients.has(ingredient.id) && <span className="text-white text-xs">✕</span>}
+                      </span>
                       <span className={removedIngredients.has(ingredient.id) ? 'line-through' : ''}>
                         {ingredient.name}
                       </span>

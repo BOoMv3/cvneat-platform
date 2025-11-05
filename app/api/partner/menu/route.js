@@ -55,7 +55,13 @@ export async function POST(request) {
       supplements = [], // Ajout des suppléments
       image_url, // Ajout de l'image
       boisson_taille,
-      prix_taille
+      prix_taille,
+      // Nouvelles options de customisation
+      meat_options = [],
+      sauce_options = [],
+      base_ingredients = [],
+      requires_meat_selection = false,
+      requires_sauce_selection = false
     } = await request.json();
 
     if (!restaurant_id || !nom || !prix || !user_email) {
@@ -145,6 +151,40 @@ export async function POST(request) {
       menuData.image_url = image_url;
     }
 
+    // Ajouter les options de customisation (viandes, sauces, ingrédients de base)
+    if (meat_options && Array.isArray(meat_options) && meat_options.length > 0) {
+      const cleanedMeatOptions = meat_options.map(meat => ({
+        id: meat.id || meat.nom || '',
+        nom: meat.nom || meat.name || '',
+        prix: parseFloat(meat.prix || meat.price || 0),
+        default: meat.default === true
+      })).filter(meat => meat.nom);
+      menuData.meat_options = cleanedMeatOptions;
+    }
+
+    if (sauce_options && Array.isArray(sauce_options) && sauce_options.length > 0) {
+      const cleanedSauceOptions = sauce_options.map(sauce => ({
+        id: sauce.id || sauce.nom || '',
+        nom: sauce.nom || sauce.name || '',
+        prix: parseFloat(sauce.prix || sauce.price || 0),
+        default: sauce.default === true
+      })).filter(sauce => sauce.nom);
+      menuData.sauce_options = cleanedSauceOptions;
+    }
+
+    if (base_ingredients && Array.isArray(base_ingredients) && base_ingredients.length > 0) {
+      const cleanedBaseIngredients = base_ingredients.map(ing => ({
+        id: ing.id || ing.nom || '',
+        nom: ing.nom || ing.name || '',
+        prix: parseFloat(ing.prix || ing.price || 0),
+        removable: ing.removable !== false
+      })).filter(ing => ing.nom);
+      menuData.base_ingredients = cleanedBaseIngredients;
+    }
+
+    menuData.requires_meat_selection = requires_meat_selection === true;
+    menuData.requires_sauce_selection = requires_sauce_selection === true;
+
     // Ajouter les tailles de boisson si fournies
     // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
     if (boisson_taille && boisson_taille.trim() !== '') {
@@ -221,7 +261,13 @@ export async function PUT(request) {
       category = 'Autres',
       supplements = [],
       boisson_taille = null,
-      prix_taille = null
+      prix_taille = null,
+      // Nouvelles options de customisation
+      meat_options = null,
+      sauce_options = null,
+      base_ingredients = null,
+      requires_meat_selection = null,
+      requires_sauce_selection = null
     } = body;
 
     if (!id || !nom || prix === undefined) {
@@ -268,6 +314,57 @@ export async function PUT(request) {
     }
 
     // Ajouter les tailles de boisson si fournies
+    // Ajouter les options de customisation (viandes, sauces, ingrédients de base)
+    if (meat_options !== null && meat_options !== undefined) {
+      if (Array.isArray(meat_options) && meat_options.length > 0) {
+        const cleanedMeatOptions = meat_options.map(meat => ({
+          id: meat.id || meat.nom || '',
+          nom: meat.nom || meat.name || '',
+          prix: parseFloat(meat.prix || meat.price || 0),
+          default: meat.default === true
+        })).filter(meat => meat.nom);
+        updateData.meat_options = cleanedMeatOptions;
+      } else {
+        updateData.meat_options = [];
+      }
+    }
+
+    if (sauce_options !== null && sauce_options !== undefined) {
+      if (Array.isArray(sauce_options) && sauce_options.length > 0) {
+        const cleanedSauceOptions = sauce_options.map(sauce => ({
+          id: sauce.id || sauce.nom || '',
+          nom: sauce.nom || sauce.name || '',
+          prix: parseFloat(sauce.prix || sauce.price || 0),
+          default: sauce.default === true
+        })).filter(sauce => sauce.nom);
+        updateData.sauce_options = cleanedSauceOptions;
+      } else {
+        updateData.sauce_options = [];
+      }
+    }
+
+    if (base_ingredients !== null && base_ingredients !== undefined) {
+      if (Array.isArray(base_ingredients) && base_ingredients.length > 0) {
+        const cleanedBaseIngredients = base_ingredients.map(ing => ({
+          id: ing.id || ing.nom || '',
+          nom: ing.nom || ing.name || '',
+          prix: parseFloat(ing.prix || ing.price || 0),
+          removable: ing.removable !== false
+        })).filter(ing => ing.nom);
+        updateData.base_ingredients = cleanedBaseIngredients;
+      } else {
+        updateData.base_ingredients = [];
+      }
+    }
+
+    if (requires_meat_selection !== null && requires_meat_selection !== undefined) {
+      updateData.requires_meat_selection = requires_meat_selection === true;
+    }
+
+    if (requires_sauce_selection !== null && requires_sauce_selection !== undefined) {
+      updateData.requires_sauce_selection = requires_sauce_selection === true;
+    }
+
     // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
     if (boisson_taille !== null && boisson_taille !== undefined && boisson_taille.trim() !== '') {
       updateData.drink_size = boisson_taille.trim();
