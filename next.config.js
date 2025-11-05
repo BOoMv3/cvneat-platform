@@ -14,7 +14,23 @@ const nextConfig = {
       'cdn.pixabay.com',
       'images.pexels.com',
       'res.cloudinary.com',
-      'images.unsplash.com'
+      'images.unsplash.com',
+      'i.ibb.co', // ImgBB pour les uploads d'images
+      'ibb.co' // ImgBB domaines alternatifs
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'i.ibb.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ibb.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      }
     ],
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
