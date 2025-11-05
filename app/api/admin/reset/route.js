@@ -59,7 +59,9 @@ export async function POST(request) {
       commandes: 0,
       details_commande: 0,
       livraisons: 0,
-      reclamations: 0
+      reclamations: 0,
+      delivery_stats: 0,
+      customer_complaint_history: 0
     };
 
     try {
@@ -89,6 +91,26 @@ export async function POST(request) {
         counts.reclamations = reclamationsCount.count || 0;
       } catch (e) {
         console.warn('Table reclamations non trouvée ou erreur:', e);
+      }
+
+      // Compter les statistiques de livraison
+      try {
+        const deliveryStatsCount = await supabaseAdmin
+          .from('delivery_stats')
+          .select('id', { count: 'exact', head: true });
+        counts.delivery_stats = deliveryStatsCount.count || 0;
+      } catch (e) {
+        console.warn('Table delivery_stats non trouvée ou erreur:', e);
+      }
+
+      // Compter l'historique des réclamations clients
+      try {
+        const complaintHistoryCount = await supabaseAdmin
+          .from('customer_complaint_history')
+          .select('id', { count: 'exact', head: true });
+        counts.customer_complaint_history = complaintHistoryCount.count || 0;
+      } catch (e) {
+        console.warn('Table customer_complaint_history non trouvée ou erreur:', e);
       }
     } catch (e) {
       console.error('Erreur lors du comptage:', e);
@@ -155,6 +177,59 @@ export async function POST(request) {
       }
     } catch (e) {
       console.warn('Table reclamations non trouvée ou erreur:', e);
+    }
+
+    // 5. Statistiques de livraison (réinitialiser tous les gains et totaux)
+    try {
+      const { error: deliveryStatsError } = await supabaseAdmin
+        .from('delivery_stats')
+        .update({
+          total_earnings: 0,
+          total_deliveries: 0,
+          average_rating: 0,
+          last_month_earnings: 0,
+          total_distance_km: 0,
+          total_time_hours: 0,
+          updated_at: new Date().toISOString()
+        })
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (deliveryStatsError) {
+        console.warn('Erreur réinitialisation delivery_stats (peut ne pas exister):', deliveryStatsError);
+        // Si la mise à jour échoue, essayer de supprimer
+        try {
+          await supabaseAdmin.from('delivery_stats').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (deleteError) {
+          console.warn('Impossible de supprimer delivery_stats:', deleteError);
+        }
+      }
+    } catch (e) {
+      console.warn('Table delivery_stats non trouvée ou erreur:', e);
+    }
+
+    // 6. Historique des réclamations clients (réinitialiser les totaux)
+    try {
+      const { error: complaintHistoryError } = await supabaseAdmin
+        .from('customer_complaint_history')
+        .update({
+          total_complaints: 0,
+          total_refunded: 0,
+          last_complaint_date: null,
+          updated_at: new Date().toISOString()
+        })
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (complaintHistoryError) {
+        console.warn('Erreur réinitialisation customer_complaint_history (peut ne pas exister):', complaintHistoryError);
+        // Si la mise à jour échoue, essayer de supprimer
+        try {
+          await supabaseAdmin.from('customer_complaint_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (deleteError) {
+          console.warn('Impossible de supprimer customer_complaint_history:', deleteError);
+        }
+      }
+    } catch (e) {
+      console.warn('Table customer_complaint_history non trouvée ou erreur:', e);
     }
 
     if (errors.length > 0) {

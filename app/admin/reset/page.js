@@ -145,6 +145,14 @@ export default function AdminReset() {
                 <p className="text-xs fold:text-xs xs:text-sm text-gray-600 dark:text-gray-400">Réclamations</p>
                 <p className="text-lg fold:text-lg xs:text-xl font-bold text-gray-900 dark:text-white">{stats.reclamations || 0}</p>
               </div>
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                <p className="text-xs fold:text-xs xs:text-sm text-gray-600 dark:text-gray-400">Stats livreurs</p>
+                <p className="text-lg fold:text-lg xs:text-xl font-bold text-gray-900 dark:text-white">{stats.delivery_stats || 0}</p>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                <p className="text-xs fold:text-xs xs:text-sm text-gray-600 dark:text-gray-400">Historique réclamations</p>
+                <p className="text-lg fold:text-lg xs:text-xl font-bold text-gray-900 dark:text-white">{stats.customer_complaint_history || 0}</p>
+              </div>
             </div>
           </div>
         )}
@@ -163,6 +171,9 @@ export default function AdminReset() {
                   <li>Tous les <strong>détails de commandes</strong> seront supprimés</li>
                   <li>Toutes les <strong>livraisons</strong> seront supprimées</li>
                   <li>Toutes les <strong>réclamations</strong> seront supprimées</li>
+                  <li>Tous les <strong>chiffres d'affaires et statistiques</strong> seront réinitialisés à 0</li>
+                  <li>Toutes les <strong>statistiques de livreurs</strong> (gains, livraisons) seront remises à zéro</li>
+                  <li>L'<strong>historique des réclamations clients</strong> sera réinitialisé</li>
                   <li>Les <strong>restaurants, utilisateurs et menus</strong> seront conservés</li>
                 </ul>
                 <p className="mt-4 text-sm fold:text-sm xs:text-base font-semibold text-red-800 dark:text-red-200">
@@ -278,6 +289,12 @@ export default function AdminReset() {
                     <li>• {deletedCounts.details_commande || 0} détail(s) de commande(s)</li>
                     <li>• {deletedCounts.livraisons || 0} livraison(s)</li>
                     <li>• {deletedCounts.reclamations || 0} réclamation(s)</li>
+                    {deletedCounts.delivery_stats !== undefined && (
+                      <li>• Statistiques de {deletedCounts.delivery_stats || 0} livreur(s) réinitialisées</li>
+                    )}
+                    {deletedCounts.customer_complaint_history !== undefined && (
+                      <li>• Historique de {deletedCounts.customer_complaint_history || 0} client(s) réinitialisé</li>
+                    )}
                   </ul>
                 </div>
                 <button

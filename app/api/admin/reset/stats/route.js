@@ -45,18 +45,22 @@ export async function GET(request) {
     }
 
     // Compter les données
-    const [commandesResult, detailsResult, livraisonsResult, reclamationsResult] = await Promise.all([
+    const [commandesResult, detailsResult, livraisonsResult, reclamationsResult, deliveryStatsResult, complaintHistoryResult] = await Promise.all([
       supabaseAdmin.from('commandes').select('id', { count: 'exact', head: true }),
       supabaseAdmin.from('details_commande').select('id', { count: 'exact', head: true }),
       supabaseAdmin.from('livraisons').select('id', { count: 'exact', head: true }).catch(() => ({ count: 0 })),
-      supabaseAdmin.from('reclamations').select('id', { count: 'exact', head: true }).catch(() => ({ count: 0 }))
+      supabaseAdmin.from('reclamations').select('id', { count: 'exact', head: true }).catch(() => ({ count: 0 })),
+      supabaseAdmin.from('delivery_stats').select('id', { count: 'exact', head: true }).catch(() => ({ count: 0 })),
+      supabaseAdmin.from('customer_complaint_history').select('id', { count: 'exact', head: true }).catch(() => ({ count: 0 }))
     ]);
 
     return NextResponse.json({
       commandes: commandesResult.count || 0,
       details_commande: detailsResult.count || 0,
       livraisons: livraisonsResult.count || 0,
-      reclamations: reclamationsResult.count || 0
+      reclamations: reclamationsResult.count || 0,
+      delivery_stats: deliveryStatsResult.count || 0,
+      customer_complaint_history: complaintHistoryResult.count || 0
     });
   } catch (error) {
     console.error('Erreur récupération stats:', error);
