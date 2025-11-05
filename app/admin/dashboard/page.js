@@ -22,6 +22,8 @@ export default function AdminDashboard() {
     pendingOrders: 0,
     validatedOrders: 0,
     totalRevenue: 0,
+    cvneatRevenue: 0,
+    livreurRevenue: 0,
     totalRestaurants: 0,
     pendingPartners: 0,
     recentOrders: []
@@ -83,8 +85,32 @@ export default function AdminDashboard() {
       const totalOrders = orders?.length || 0;
       const pendingOrders = orders?.filter(o => o.statut === 'en_attente').length || 0;
       const validatedOrders = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut)).length || 0;
-      const totalRevenue = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut))
-        .reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+      
+      // Calculer les différents chiffres d'affaires (comme dans /admin/page.js)
+      const COMMISSION_RATE = 0.20; // 20% de commission sur les commandes
+      
+      // CA total = montant total des commandes livrées (articles + frais de livraison)
+      // CA CVN'EAT = 20% du montant des articles (sans frais de livraison)
+      // CA Livreur = somme des frais de livraison
+      
+      let totalRevenue = 0; // CA total
+      let cvneatRevenue = 0; // CA CVN'EAT (20%)
+      let livreurRevenue = 0; // CA Livreur
+      
+      orders?.filter(o => o.statut === 'livree').forEach(order => {
+        const orderAmount = parseFloat(order.total || 0); // Montant des articles uniquement
+        const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
+        
+        // CA total = articles + frais de livraison
+        totalRevenue += orderAmount + deliveryFee;
+        
+        // CA CVN'EAT = 20% des articles uniquement
+        cvneatRevenue += orderAmount * COMMISSION_RATE;
+        
+        // CA Livreur = frais de livraison
+        livreurRevenue += deliveryFee;
+      });
+      
       const totalRestaurants = restaurants?.length || 0;
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
       const recentOrders = orders?.slice(0, 5) || [];
@@ -94,6 +120,8 @@ export default function AdminDashboard() {
         pendingOrders,
         validatedOrders,
         totalRevenue,
+        cvneatRevenue,
+        livreurRevenue,
         totalRestaurants,
         pendingPartners,
         recentOrders
