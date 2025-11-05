@@ -4,25 +4,48 @@ export function middleware(request) {
   // Vérifier si le mode maintenance est activé
   const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
   
-  // Routes autorisées même en mode maintenance (pour les restaurants/partenaires et admin uniquement)
-  const allowedRoutes = [
-    '/login',
-    '/restaurant-request',  // Demande de devenir partenaire (pour les restaurants)
-    '/devenir-partenaire', // Alternative pour devenir partenaire
-    '/partner',
-    '/partner/dashboard',
-    '/partner/hours',
-    '/partner/menu',
-    '/partner/profile',
-    '/profil-partenaire',
-    '/admin',  // Toutes les pages admin
+  // Si le mode maintenance n'est pas activé, laisser passer
+  if (!isMaintenanceMode) {
+    return NextResponse.next();
+  }
+  
+  // Routes toujours autorisées (même en maintenance)
+  const alwaysAllowedRoutes = [
     '/api',
     '/auth',
     '/_next',
     '/static',
     '/favicon.ico',
-    '/maintenance'
+    '/maintenance',
+    '/login'
   ];
+  
+  // Vérifier si c'est une route toujours autorisée
+  const isAlwaysAllowed = alwaysAllowedRoutes.some(route => 
+    request.nextUrl.pathname.startsWith(route)
+  );
+  
+  if (isAlwaysAllowed) {
+    return NextResponse.next();
+  }
+  
+  // Routes admin/partner - Laisser passer (les pages vérifieront l'auth elles-mêmes)
+  const adminPartnerRoutes = [
+    '/admin',
+    '/partner',
+    '/profil-partenaire',
+    '/restaurant-request',
+    '/devenir-partenaire'
+  ];
+  
+  const isAdminPartnerRoute = adminPartnerRoutes.some(route => 
+    request.nextUrl.pathname.startsWith(route)
+  );
+  
+  // Autoriser l'accès aux routes admin/partner (les pages géreront l'auth)
+  if (isAdminPartnerRoute) {
+    return NextResponse.next();
+  }
   
   // Routes d'inscription client - BLOQUÉES en mode maintenance
   const blockedClientRoutes = [
@@ -30,30 +53,16 @@ export function middleware(request) {
     '/register'
   ];
   
-  // Si c'est une route d'inscription client, rediriger vers maintenance
-  if (isMaintenanceMode && blockedClientRoutes.includes(request.nextUrl.pathname)) {
+  if (blockedClientRoutes.includes(request.nextUrl.pathname)) {
     return NextResponse.redirect(new URL('/maintenance', request.url));
   }
   
-  // Vérifier si la route actuelle est autorisée
-  const isAllowedRoute = allowedRoutes.some(route => 
-    request.nextUrl.pathname.startsWith(route)
-  );
-  
-  // Si le mode maintenance est activé
-  if (isMaintenanceMode) {
-    // Si c'est la page d'accueil ou une route publique, rediriger vers maintenance
-    if (request.nextUrl.pathname === '/' || (!isAllowedRoute && !request.nextUrl.pathname.startsWith('/api'))) {
-      // Ne pas rediriger si c'est déjà la page de maintenance
-      if (!request.nextUrl.pathname.startsWith('/maintenance')) {
-        return NextResponse.redirect(new URL('/maintenance', request.url));
-      }
-    }
-    // Sinon, laisser passer (routes autorisées)
-    return NextResponse.next();
+  // Pour toutes les autres routes (page d'accueil, restaurants, etc.), rediriger vers maintenance
+  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/restaurants')) {
+    return NextResponse.redirect(new URL('/maintenance', request.url));
   }
   
-  // Mode maintenance désactivé : tout fonctionne normalement
+  // Laisser passer les autres routes (pour éviter les boucles)
   return NextResponse.next();
 }
 

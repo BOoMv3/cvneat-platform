@@ -82,68 +82,38 @@ export default function PartnershipRequests() {
 
   const createRestaurantFromRequest = async (request) => {
     try {
-      // Récupérer l'utilisateur associé à cette demande (par email)
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, role')
-        .eq('email', request.email)
-        .single();
-
-      if (userError || !userData) {
-        throw new Error(`Utilisateur non trouvé pour l'email: ${request.email}. Veuillez d'abord créer le compte utilisateur.`);
+      // Récupérer le token de session pour l'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
       }
 
-      // 1. Mettre à jour le rôle de l'utilisateur pour qu'il soit "restaurant"
-      const { error: roleError } = await supabase
-        .from('users')
-        .update({ role: 'restaurant' })
-        .eq('id', userData.id);
-
-      if (roleError) {
-        console.error('Erreur mise à jour rôle:', roleError);
-        throw new Error(`Erreur lors de la mise à jour du rôle: ${roleError.message}`);
-      }
-
-      // 2. Créer le restaurant
-      const { data: restaurantData, error: restaurantError } = await supabase
-        .from('restaurants')
-        .insert({
-          user_id: userData.id,
+      // Appeler l'API pour créer le restaurant (utilise le client admin côté serveur)
+      const response = await fetch('/api/admin/create-restaurant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          email: request.email,
           nom: request.nom,
-          description: request.description || 'Restaurant partenaire CVN\'Eat',
+          description: request.description,
           adresse: request.adresse,
           ville: request.ville,
           code_postal: request.code_postal,
-          telephone: request.telephone,
-          email: request.email,
-          frais_livraison: 2.50,
-          minimum_order: 10.00,
-          delivery_time: 30,
-          rating: 4.5,
-          image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
-          horaires: {
-            lundi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-            mardi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-            mercredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-            jeudi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-            vendredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
-            samedi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
-            dimanche: { ouvert: true, plages: [{ ouverture: '12:00', fermeture: '21:00' }] }
-          },
-          disponible: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          telephone: request.telephone
         })
-        .select()
-        .single();
+      });
 
-      if (restaurantError) {
-        console.error('Erreur création restaurant:', restaurantError);
-        throw new Error(`Erreur lors de la création du restaurant: ${restaurantError.message}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la création du restaurant');
       }
 
-      console.log('✅ Restaurant créé avec succès:', restaurantData);
-      return restaurantData;
+      console.log('✅ Restaurant créé avec succès:', data.restaurant);
+      return data.restaurant;
     } catch (err) {
       console.error('❌ Erreur complète lors de la création du restaurant:', err);
       throw err;
