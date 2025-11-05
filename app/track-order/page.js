@@ -541,18 +541,58 @@ export default function TrackOrder() {
                         supplements = [];
                       }
                     }
+
+                    // Parser les customisations
+                    let customizations = {};
+                    if (item.customizations) {
+                      if (typeof item.customizations === 'string') {
+                        try {
+                          customizations = JSON.parse(item.customizations);
+                        } catch (e) {
+                          customizations = {};
+                        }
+                      } else {
+                        customizations = item.customizations;
+                      }
+                    }
+
                     // Le prix_unitaire contient déjà les suppléments, donc on utilise directement itemPrice
                     const totalItemPrice = itemPrice * itemQuantity;
                     return (
-                      <div key={index} className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                        <div className="flex justify-between">
-                          <span className="truncate flex-1 min-w-0">{itemName} x{itemQuantity}</span>
-                          <span className="ml-2">{totalItemPrice.toFixed(2)}€</span>
+                      <div key={index} className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 pb-2 last:border-0 mb-2">
+                        <div className="flex justify-between mb-1">
+                          <span className="truncate flex-1 min-w-0 font-medium">{itemName} x{itemQuantity}</span>
+                          <span className="ml-2 font-medium">{totalItemPrice.toFixed(2)}€</span>
                         </div>
                         {supplements.length > 0 && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 ml-4 mt-1">
+                            <span className="font-medium">Suppléments:</span>
                             {supplements.map((sup, supIdx) => (
-                              <div key={supIdx}>+ {sup.nom || sup.name || 'Supplément'} ({parseFloat(sup.prix || sup.price || 0).toFixed(2)}€)</div>
+                              <div key={supIdx} className="ml-2">• {sup.nom || sup.name || 'Supplément'} {(sup.prix || sup.price) > 0 && `(+${(sup.prix || sup.price || 0).toFixed(2)}€)`}</div>
+                            ))}
+                          </div>
+                        )}
+                        {customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 ml-4 mt-1">
+                            <span className="font-medium">Viandes:</span>
+                            {customizations.selectedMeats.map((meat, meatIdx) => (
+                              <div key={meatIdx} className="ml-2">• {meat.nom || meat.name} {(meat.prix || meat.price) > 0 && `(+${(meat.prix || meat.price || 0).toFixed(2)}€)`}</div>
+                            ))}
+                          </div>
+                        )}
+                        {customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 ml-4 mt-1">
+                            <span className="font-medium">Sauces:</span>
+                            {customizations.selectedSauces.map((sauce, sauceIdx) => (
+                              <div key={sauceIdx} className="ml-2">• {sauce.nom || sauce.name} {(sauce.prix || sauce.price) > 0 && `(+${(sauce.prix || sauce.price || 0).toFixed(2)}€)`}</div>
+                            ))}
+                          </div>
+                        )}
+                        {customizations.removedIngredients && Array.isArray(customizations.removedIngredients) && customizations.removedIngredients.length > 0 && (
+                          <div className="text-xs text-orange-600 dark:text-orange-400 ml-4 mt-1">
+                            <span className="font-medium">Ingrédients retirés:</span>
+                            {customizations.removedIngredients.map((ing, ingIdx) => (
+                              <div key={ingIdx} className="ml-2">• {ing.nom || ing.name}</div>
                             ))}
                           </div>
                         )}
