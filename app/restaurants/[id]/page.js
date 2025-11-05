@@ -541,6 +541,22 @@ export default function RestaurantDetail({ params }) {
         }, 0);
       }
       
+      // Calculer le prix des viandes sélectionnées
+      let meatsPrice = 0;
+      if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
+          return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
+        }, 0);
+      }
+      
+      // Calculer le prix des sauces sélectionnées
+      let saucesPrice = 0;
+      if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
+          return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
+        }, 0);
+      }
+      
       // Calculer le prix de la taille si présente
       let sizePrice = 0;
       if (item.size && item.size.prix) {
@@ -549,7 +565,7 @@ export default function RestaurantDetail({ params }) {
         sizePrice = parseFloat(item.prix_taille) || 0;
       }
       
-      const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
+      const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
       return total + totalItemPrice;
     }, 0);
   };
@@ -691,8 +707,16 @@ export default function RestaurantDetail({ params }) {
                     const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
                       ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
                       : 0;
+                    // Calculer le prix des viandes sélectionnées
+                    const meatsPrice = item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)
+                      ? item.customizations.selectedMeats.reduce((sum, meat) => sum + parseFloat(meat.prix || meat.price || 0), 0)
+                      : 0;
+                    // Calculer le prix des sauces sélectionnées
+                    const saucesPrice = item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)
+                      ? item.customizations.selectedSauces.reduce((sum, sauce) => sum + parseFloat(sauce.prix || sauce.price || 0), 0)
+                      : 0;
                     const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-                    const totalItemPrice = itemPrice + supplementsPrice + sizePrice;
+                    const totalItemPrice = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
                     
                     return (
                       <div key={item.id || idx} className="flex items-start justify-between text-sm border-b dark:border-gray-700 pb-2">
@@ -745,8 +769,16 @@ export default function RestaurantDetail({ params }) {
                 const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
                   ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
                   : 0;
+                // Calculer le prix des viandes sélectionnées
+                const meatsPrice = item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)
+                  ? item.customizations.selectedMeats.reduce((sum, meat) => sum + parseFloat(meat.prix || meat.price || 0), 0)
+                  : 0;
+                // Calculer le prix des sauces sélectionnées
+                const saucesPrice = item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)
+                  ? item.customizations.selectedSauces.reduce((sum, sauce) => sum + parseFloat(sauce.prix || sauce.price || 0), 0)
+                  : 0;
                 const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-                const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * (item.quantity || 1);
+                const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * (item.quantity || 1);
                 
                 return (
                   <div key={`${item.id}-${idx}`} className="space-y-1 border-b dark:border-gray-700 pb-3">
