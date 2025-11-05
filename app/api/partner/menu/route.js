@@ -187,16 +187,25 @@ export async function POST(request) {
 
     // Ajouter les tailles de boisson si fournies
     // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
-    if (boisson_taille && boisson_taille.trim() !== '') {
-      menuData.drink_size = boisson_taille.trim();
+    // IMPORTANT: boisson_taille peut être un nombre ou une chaîne, il faut le convertir en string
+    const boissonTailleStr = boisson_taille !== null && boisson_taille !== undefined 
+      ? String(boisson_taille).trim() 
+      : '';
+    
+    if (boissonTailleStr !== '') {
+      menuData.drink_size = boissonTailleStr;
       menuData.is_drink = true;
       
       // Si un prix de taille est fourni, le mettre dans la colonne correspondante
-      if (prix_taille && prix_taille !== '') {
-        const prixTailleNum = parseFloat(prix_taille);
+      const prixTailleStr = prix_taille !== null && prix_taille !== undefined 
+        ? String(prix_taille).trim() 
+        : '';
+      
+      if (prixTailleStr !== '') {
+        const prixTailleNum = parseFloat(prixTailleStr);
         if (!isNaN(prixTailleNum) && prixTailleNum >= 0) {
           // Mapper selon la taille : petit -> small, moyen -> medium, grand -> large
-          const tailleLower = boisson_taille.toLowerCase().trim();
+          const tailleLower = boissonTailleStr.toLowerCase();
           if (tailleLower.includes('petit') || tailleLower.includes('small') || tailleLower.includes('33') || tailleLower.includes('33cl')) {
             menuData.drink_price_small = prixTailleNum;
           } else if (tailleLower.includes('moyen') || tailleLower.includes('medium') || tailleLower.includes('50') || tailleLower.includes('50cl')) {
@@ -366,16 +375,25 @@ export async function PUT(request) {
     }
 
     // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
-    if (boisson_taille !== null && boisson_taille !== undefined && boisson_taille.trim() !== '') {
-      updateData.drink_size = boisson_taille.trim();
+    // IMPORTANT: boisson_taille peut être un nombre ou une chaîne, il faut le convertir en string
+    const boissonTailleStr = boisson_taille !== null && boisson_taille !== undefined 
+      ? String(boisson_taille).trim() 
+      : '';
+    
+    if (boissonTailleStr !== '') {
+      updateData.drink_size = boissonTailleStr;
       updateData.is_drink = true;
       
       // Si un prix de taille est fourni, le mettre dans la colonne correspondante
-      if (prix_taille !== null && prix_taille !== undefined && prix_taille !== '') {
-        const prixTailleNum = parseFloat(prix_taille);
+      const prixTailleStr = prix_taille !== null && prix_taille !== undefined 
+        ? String(prix_taille).trim() 
+        : '';
+      
+      if (prixTailleStr !== '') {
+        const prixTailleNum = parseFloat(prixTailleStr);
         if (!isNaN(prixTailleNum) && prixTailleNum >= 0) {
           // Mapper selon la taille : petit -> small, moyen -> medium, grand -> large
-          const tailleLower = boisson_taille.toLowerCase().trim();
+          const tailleLower = boissonTailleStr.toLowerCase();
           if (tailleLower.includes('petit') || tailleLower.includes('small') || tailleLower.includes('33') || tailleLower.includes('33cl')) {
             updateData.drink_price_small = prixTailleNum;
           } else if (tailleLower.includes('moyen') || tailleLower.includes('medium') || tailleLower.includes('50') || tailleLower.includes('50cl')) {
@@ -389,10 +407,13 @@ export async function PUT(request) {
           }
         }
       }
-    } else if (boisson_taille === null || boisson_taille === '' || boisson_taille === undefined) {
+    } else {
       // Si la taille est supprimée, retirer le flag is_drink
       updateData.is_drink = false;
       updateData.drink_size = null;
+      updateData.drink_price_small = null;
+      updateData.drink_price_medium = null;
+      updateData.drink_price_large = null;
     }
 
     console.log('📦 DEBUG API MENU PUT - Données à mettre à jour:', JSON.stringify(updateData, null, 2));

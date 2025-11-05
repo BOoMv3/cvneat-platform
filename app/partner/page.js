@@ -55,7 +55,13 @@ export default function PartnerDashboard() {
     image_url: '',
     supplements: [],
     boisson_taille: '',
-    prix_taille: ''
+    prix_taille: '',
+    // Nouvelles options de customisation
+    meat_options: [],
+    sauce_options: [],
+    base_ingredients: [],
+    requires_meat_selection: false,
+    requires_sauce_selection: false
   });
   const [editingMenu, setEditingMenu] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -301,6 +307,11 @@ export default function PartnerDashboard() {
             supplements: Array.isArray(menuForm.supplements) ? menuForm.supplements : [],
             boisson_taille: menuForm.boisson_taille || null,
             prix_taille: menuForm.prix_taille || null,
+            meat_options: menuForm.meat_options || [],
+            sauce_options: menuForm.sauce_options || [],
+            base_ingredients: menuForm.base_ingredients || [],
+            requires_meat_selection: menuForm.requires_meat_selection || false,
+            requires_sauce_selection: menuForm.requires_sauce_selection || false,
             user_email: userData.email
           }
         : { 
@@ -314,6 +325,11 @@ export default function PartnerDashboard() {
             supplements: Array.isArray(menuForm.supplements) ? menuForm.supplements : [],
             boisson_taille: menuForm.boisson_taille || null,
             prix_taille: menuForm.prix_taille || null,
+            meat_options: menuForm.meat_options || [],
+            sauce_options: menuForm.sauce_options || [],
+            base_ingredients: menuForm.base_ingredients || [],
+            requires_meat_selection: menuForm.requires_meat_selection || false,
+            requires_sauce_selection: menuForm.requires_sauce_selection || false,
             user_email: userData.email
           };
 
@@ -1290,11 +1306,56 @@ export default function PartnerDashboard() {
                                     parsedSupplements = item.supplements;
                                   }
                                 }
+                                // Parser les options de customisation
+                                let parsedMeatOptions = [];
+                                if (item.meat_options) {
+                                  if (typeof item.meat_options === 'string') {
+                                    try {
+                                      parsedMeatOptions = JSON.parse(item.meat_options);
+                                    } catch (e) {
+                                      parsedMeatOptions = [];
+                                    }
+                                  } else if (Array.isArray(item.meat_options)) {
+                                    parsedMeatOptions = item.meat_options;
+                                  }
+                                }
+
+                                let parsedSauceOptions = [];
+                                if (item.sauce_options) {
+                                  if (typeof item.sauce_options === 'string') {
+                                    try {
+                                      parsedSauceOptions = JSON.parse(item.sauce_options);
+                                    } catch (e) {
+                                      parsedSauceOptions = [];
+                                    }
+                                  } else if (Array.isArray(item.sauce_options)) {
+                                    parsedSauceOptions = item.sauce_options;
+                                  }
+                                }
+
+                                let parsedBaseIngredients = [];
+                                if (item.base_ingredients) {
+                                  if (typeof item.base_ingredients === 'string') {
+                                    try {
+                                      parsedBaseIngredients = JSON.parse(item.base_ingredients);
+                                    } catch (e) {
+                                      parsedBaseIngredients = [];
+                                    }
+                                  } else if (Array.isArray(item.base_ingredients)) {
+                                    parsedBaseIngredients = item.base_ingredients;
+                                  }
+                                }
+
                                 setMenuForm({
                                   ...item,
                                   supplements: parsedSupplements,
-                                  boisson_taille: item.boisson_taille || '',
-                                  prix_taille: item.prix_taille || ''
+                                  boisson_taille: item.drink_size || item.boisson_taille || '',
+                                  prix_taille: item.prix_taille || '',
+                                  meat_options: parsedMeatOptions,
+                                  sauce_options: parsedSauceOptions,
+                                  base_ingredients: parsedBaseIngredients,
+                                  requires_meat_selection: item.requires_meat_selection || false,
+                                  requires_sauce_selection: item.requires_sauce_selection || false
                                 });
                                 setShowMenuModal(true);
                               }}
@@ -1535,6 +1596,237 @@ export default function PartnerDashboard() {
                 )}
               </div>
 
+              {/* Options de customisation - Viandes */}
+              {menuForm.category !== 'boisson' && (
+                <>
+                  <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Options de viande (pour tacos, etc.)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newMeat = { id: `meat-${Date.now()}`, nom: '', prix: 0, default: false };
+                          setMenuForm({...menuForm, meat_options: [...menuForm.meat_options, newMeat]});
+                        }}
+                        className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                      >
+                        + Ajouter viande
+                      </button>
+                    </div>
+                    {menuForm.meat_options.length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {menuForm.meat_options.map((meat, index) => (
+                          <div key={meat.id || index} className="grid grid-cols-1 md:grid-cols-4 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <input
+                              type="text"
+                              value={meat.nom || ''}
+                              onChange={(e) => {
+                                const updated = [...menuForm.meat_options];
+                                updated[index] = {...updated[index], nom: e.target.value};
+                                setMenuForm({...menuForm, meat_options: updated});
+                              }}
+                              placeholder="Nom (ex: Poulet)"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={meat.prix || 0}
+                              onChange={(e) => {
+                                const updated = [...menuForm.meat_options];
+                                updated[index] = {...updated[index], prix: parseFloat(e.target.value) || 0};
+                                setMenuForm({...menuForm, meat_options: updated});
+                              }}
+                              placeholder="Prix (€)"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <label className="flex items-center text-sm">
+                              <input
+                                type="checkbox"
+                                checked={meat.default || false}
+                                onChange={(e) => {
+                                  const updated = [...menuForm.meat_options];
+                                  updated[index] = {...updated[index], default: e.target.checked};
+                                  setMenuForm({...menuForm, meat_options: updated});
+                                }}
+                                className="mr-2"
+                              />
+                              Par défaut
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuForm({...menuForm, meat_options: menuForm.meat_options.filter((_, i) => i !== index)});
+                              }}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center mb-3">
+                      <input
+                        type="checkbox"
+                        id="requires_meat_selection"
+                        checked={menuForm.requires_meat_selection}
+                        onChange={(e) => setMenuForm({...menuForm, requires_meat_selection: e.target.checked})}
+                        className="mr-2"
+                      />
+                      <label htmlFor="requires_meat_selection" className="text-sm text-gray-700 dark:text-gray-300">
+                        Sélection de viande obligatoire
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Options de customisation - Sauces */}
+                  <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Options de sauce
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSauce = { id: `sauce-${Date.now()}`, nom: '', prix: 0, default: false };
+                          setMenuForm({...menuForm, sauce_options: [...menuForm.sauce_options, newSauce]});
+                        }}
+                        className="bg-yellow-600 text-white px-3 py-1 rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                      >
+                        + Ajouter sauce
+                      </button>
+                    </div>
+                    {menuForm.sauce_options.length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {menuForm.sauce_options.map((sauce, index) => (
+                          <div key={sauce.id || index} className="grid grid-cols-1 md:grid-cols-4 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <input
+                              type="text"
+                              value={sauce.nom || ''}
+                              onChange={(e) => {
+                                const updated = [...menuForm.sauce_options];
+                                updated[index] = {...updated[index], nom: e.target.value};
+                                setMenuForm({...menuForm, sauce_options: updated});
+                              }}
+                              placeholder="Nom (ex: Sauce blanche)"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={sauce.prix || 0}
+                              onChange={(e) => {
+                                const updated = [...menuForm.sauce_options];
+                                updated[index] = {...updated[index], prix: parseFloat(e.target.value) || 0};
+                                setMenuForm({...menuForm, sauce_options: updated});
+                              }}
+                              placeholder="Prix (€)"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <label className="flex items-center text-sm">
+                              <input
+                                type="checkbox"
+                                checked={sauce.default || false}
+                                onChange={(e) => {
+                                  const updated = [...menuForm.sauce_options];
+                                  updated[index] = {...updated[index], default: e.target.checked};
+                                  setMenuForm({...menuForm, sauce_options: updated});
+                                }}
+                                className="mr-2"
+                              />
+                              Par défaut
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuForm({...menuForm, sauce_options: menuForm.sauce_options.filter((_, i) => i !== index)});
+                              }}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center mb-3">
+                      <input
+                        type="checkbox"
+                        id="requires_sauce_selection"
+                        checked={menuForm.requires_sauce_selection}
+                        onChange={(e) => setMenuForm({...menuForm, requires_sauce_selection: e.target.checked})}
+                        className="mr-2"
+                      />
+                      <label htmlFor="requires_sauce_selection" className="text-sm text-gray-700 dark:text-gray-300">
+                        Sélection de sauce obligatoire
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Ingrédients de base (retirables) */}
+                  <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Ingrédients de base (que le client peut retirer)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newIng = { id: `ing-${Date.now()}`, nom: '', prix: 0, removable: true };
+                          setMenuForm({...menuForm, base_ingredients: [...menuForm.base_ingredients, newIng]});
+                        }}
+                        className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      >
+                        + Ajouter ingrédient
+                      </button>
+                    </div>
+                    {menuForm.base_ingredients.length > 0 && (
+                      <div className="space-y-2">
+                        {menuForm.base_ingredients.map((ing, index) => (
+                          <div key={ing.id || index} className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <input
+                              type="text"
+                              value={ing.nom || ''}
+                              onChange={(e) => {
+                                const updated = [...menuForm.base_ingredients];
+                                updated[index] = {...updated[index], nom: e.target.value};
+                                setMenuForm({...menuForm, base_ingredients: updated});
+                              }}
+                              placeholder="Nom (ex: Tomate, Oignon)"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={ing.prix || 0}
+                              onChange={(e) => {
+                                const updated = [...menuForm.base_ingredients];
+                                updated[index] = {...updated[index], prix: parseFloat(e.target.value) || 0};
+                                setMenuForm({...menuForm, base_ingredients: updated});
+                              }}
+                              placeholder="Prix (€)"
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuForm({...menuForm, base_ingredients: menuForm.base_ingredients.filter((_, i) => i !== index)});
+                              }}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
               {/* Gestion des tailles de boissons */}
               {menuForm.category === 'boisson' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1585,7 +1877,12 @@ export default function PartnerDashboard() {
                       image_url: '',
                       supplements: [],
                       boisson_taille: '',
-                      prix_taille: ''
+                      prix_taille: '',
+                      meat_options: [],
+                      sauce_options: [],
+                      base_ingredients: [],
+                      requires_meat_selection: false,
+                      requires_sauce_selection: false
                     });
                     setEditingMenu(null);
                   }}
