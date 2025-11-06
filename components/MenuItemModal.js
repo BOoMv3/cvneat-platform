@@ -208,8 +208,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     setSelectedSauces(prev => {
       const newSet = new Set(prev);
       if (newSet.has(sauceId)) {
+        // Désélectionner
         newSet.delete(sauceId);
       } else {
+        // Vérifier la limite de sauces si elle existe
+        const maxSauces = item.max_sauces || item.max_sauce_count;
+        if (maxSauces && newSet.size >= maxSauces) {
+          // Afficher un message d'erreur
+          alert(`Vous ne pouvez sélectionner que ${maxSauces} sauce${maxSauces > 1 ? 's' : ''} maximum pour ce produit.`);
+          return prev; // Ne pas ajouter
+        }
         newSet.add(sauceId);
       }
       return newSet;
@@ -424,10 +432,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                         </span>
                         <span className="font-medium">{meat.nom || meat.name}</span>
                       </div>
-                      {(meat.prix || meat.price) > 0 && (
+                      {(meat.prix || meat.price) > 0 ? (
                         <span className="text-sm font-medium text-red-600">
+                          <span className="text-gray-500 mr-1">Prix:</span>
                           +{parseFloat(meat.prix || meat.price || 0).toFixed(2)}€
                         </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Gratuit</span>
                       )}
                     </div>
                   );
@@ -442,6 +453,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaFlask className="w-5 h-5 text-yellow-600 mr-2" />
                 Choisir vos sauces {item.requires_sauce_selection && <span className="text-red-500 text-sm ml-2">*</span>}
+                {(item.max_sauces || item.max_sauce_count) && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (Maximum {item.max_sauces || item.max_sauce_count} sauce{(item.max_sauces || item.max_sauce_count) > 1 ? 's' : ''})
+                  </span>
+                )}
               </h3>
               <div className="space-y-2">
                 {sauceOptions.map((sauce) => {
@@ -467,10 +483,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                         </span>
                         <span className="font-medium">{sauce.nom || sauce.name}</span>
                       </div>
-                      {(sauce.prix || sauce.price) > 0 && (
+                      {(sauce.prix || sauce.price) > 0 ? (
                         <span className="text-sm font-medium text-yellow-600">
+                          <span className="text-gray-500 mr-1">Prix:</span>
                           +{parseFloat(sauce.prix || sauce.price || 0).toFixed(2)}€
                         </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Gratuit</span>
                       )}
                     </div>
                   );

@@ -61,7 +61,8 @@ export default function PartnerDashboard() {
     sauce_options: [],
     base_ingredients: [],
     requires_meat_selection: false,
-    requires_sauce_selection: false
+    requires_sauce_selection: false,
+    max_sauces: null // Limite de sauces (null = illimité)
   });
   const [editingMenu, setEditingMenu] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -314,6 +315,7 @@ export default function PartnerDashboard() {
             base_ingredients: menuForm.base_ingredients || [],
             requires_meat_selection: menuForm.requires_meat_selection || false,
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
+            max_sauces: menuForm.max_sauces || null,
             user_email: userData.email
           }
         : { 
@@ -332,6 +334,7 @@ export default function PartnerDashboard() {
             base_ingredients: menuForm.base_ingredients || [],
             requires_meat_selection: menuForm.requires_meat_selection || false,
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
+            max_sauces: menuForm.max_sauces || null,
             user_email: userData.email
           };
 
@@ -1459,7 +1462,8 @@ export default function PartnerDashboard() {
                                   sauce_options: parsedSauceOptions,
                                   base_ingredients: parsedBaseIngredients,
                                   requires_meat_selection: item.requires_meat_selection || false,
-                                  requires_sauce_selection: item.requires_sauce_selection || false
+                                  requires_sauce_selection: item.requires_sauce_selection || false,
+                                  max_sauces: item.max_sauces || item.max_sauce_count || null
                                 });
                                 setShowMenuModal(true);
                               }}
@@ -1734,18 +1738,21 @@ export default function PartnerDashboard() {
                               placeholder="Nom (ex: Poulet)"
                               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
                             />
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={meat.prix || 0}
-                              onChange={(e) => {
-                                const updated = [...menuForm.meat_options];
-                                updated[index] = {...updated[index], prix: parseFloat(e.target.value) || 0};
-                                setMenuForm({...menuForm, meat_options: updated});
-                              }}
-                              placeholder="Prix (€)"
-                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                            />
+                            <div className="flex flex-col">
+                              <label className="text-xs text-gray-500 mb-1">Prix (€)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={meat.prix || 0}
+                                onChange={(e) => {
+                                  const updated = [...menuForm.meat_options];
+                                  updated[index] = {...updated[index], prix: parseFloat(e.target.value) || 0};
+                                  setMenuForm({...menuForm, meat_options: updated});
+                                }}
+                                placeholder="0.00"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                              />
+                            </div>
                             <label className="flex items-center text-sm">
                               <input
                                 type="checkbox"
@@ -1818,18 +1825,21 @@ export default function PartnerDashboard() {
                               placeholder="Nom (ex: Sauce blanche)"
                               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
                             />
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={sauce.prix || 0}
-                              onChange={(e) => {
-                                const updated = [...menuForm.sauce_options];
-                                updated[index] = {...updated[index], prix: parseFloat(e.target.value) || 0};
-                                setMenuForm({...menuForm, sauce_options: updated});
-                              }}
-                              placeholder="Prix (€)"
-                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                            />
+                            <div className="flex flex-col">
+                              <label className="text-xs text-gray-500 mb-1">Prix (€)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={sauce.prix || 0}
+                                onChange={(e) => {
+                                  const updated = [...menuForm.sauce_options];
+                                  updated[index] = {...updated[index], prix: parseFloat(e.target.value) || 0};
+                                  setMenuForm({...menuForm, sauce_options: updated});
+                                }}
+                                placeholder="0.00"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                              />
+                            </div>
                             <label className="flex items-center text-sm">
                               <input
                                 type="checkbox"
@@ -1867,6 +1877,23 @@ export default function PartnerDashboard() {
                       <label htmlFor="requires_sauce_selection" className="text-sm text-gray-700 dark:text-gray-300">
                         Sélection de sauce obligatoire
                       </label>
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="max_sauces" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Limite de sauces (laisser vide pour illimité)
+                      </label>
+                      <input
+                        type="number"
+                        id="max_sauces"
+                        min="1"
+                        value={menuForm.max_sauces || ''}
+                        onChange={(e) => setMenuForm({...menuForm, max_sauces: e.target.value ? parseInt(e.target.value) : null})}
+                        placeholder="Ex: 2 (maximum 2 sauces)"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Définir une limite (ex: 2) pour restreindre le nombre de sauces sélectionnables par le client
+                      </p>
                     </div>
                   </div>
 
