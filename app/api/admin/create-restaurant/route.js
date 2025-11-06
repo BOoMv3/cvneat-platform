@@ -271,8 +271,8 @@ export async function POST(request) {
       code_postal
     });
 
-    // Créer l'objet avec uniquement les colonnes qui existent dans la table restaurants
-    // Basé sur les colonnes réellement utilisées dans app/api/partner/restaurant/route.js
+    // Créer l'objet avec uniquement les colonnes essentielles qui existent sûrement
+    // Colonnes minimales pour éviter les erreurs de colonnes inexistantes
     const restaurantInsertData = {
       user_id: userId,
       nom: nom,
@@ -280,17 +280,17 @@ export async function POST(request) {
       adresse: adresse,
       telephone: telephone,
       email: email,
-      image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
-      frais_livraison: 2.50,
-      commande_min: 10.00, // Utiliser commande_min au lieu de minimum_order
-      rating: 4.5,
-      is_active: true // Utiliser is_active au lieu de disponible
-      // Colonnes retirées car elles n'existent pas :
+      image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'
+      // Colonnes retirées car elles n'existent pas dans la table :
+      // - frais_livraison (peut être ajouté plus tard)
+      // - commande_min (n'existe pas)
+      // - minimum_order (n'existe pas)
+      // - rating (peut être calculé depuis les avis)
+      // - is_active (n'existe pas)
+      // - disponible (n'existe pas)
       // - ville (peut être dans adresse)
       // - code_postal (peut être dans adresse)
-      // - minimum_order (utiliser commande_min)
       // - delivery_time (n'existe pas)
-      // - disponible (utiliser is_active)
       // - horaires (peut être ajouté plus tard si nécessaire)
     };
 
