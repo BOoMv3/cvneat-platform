@@ -52,9 +52,21 @@ export default function Panier() {
 
     setIsUpdating(true);
     try {
-      const updatedCart = cart.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      );
+      // Pour les formules, on peut avoir plusieurs items avec le même ID mais différentes configurations
+      // On cherche l'item par index si c'est un nombre, sinon par ID
+      const updatedCart = cart.map((item, index) => {
+        // Si itemId est un nombre (index), utiliser l'index
+        if (typeof itemId === 'number' && itemId === index) {
+          return { ...item, quantity: newQuantity };
+        }
+        // Sinon, comparer par ID
+        if (item.id === itemId) {
+          // Si on a plusieurs items avec le même ID, prendre le premier trouvé
+          // (pour les formules, on suppose qu'elles sont uniques par ID)
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      });
       setCart(updatedCart);
       saveCart(updatedCart);
       
@@ -66,7 +78,20 @@ export default function Panier() {
   };
 
   const removeFromCart = (itemId) => {
-    const updatedCart = cart.filter(item => item.id !== itemId);
+    // Pour les formules, on peut avoir plusieurs items avec le même ID mais différentes configurations
+    // Si itemId est un nombre (index), utiliser l'index
+    let updatedCart;
+    if (typeof itemId === 'number') {
+      updatedCart = cart.filter((item, index) => index !== itemId);
+    } else {
+      // Sinon, retirer par ID (prendre le premier trouvé)
+      const itemIndex = cart.findIndex(item => item.id === itemId);
+      if (itemIndex !== -1) {
+        updatedCart = cart.filter((item, index) => index !== itemIndex);
+      } else {
+        updatedCart = cart;
+      }
+    }
     setCart(updatedCart);
     saveCart(updatedCart);
   };
@@ -252,17 +277,17 @@ export default function Panier() {
               <div className="divide-y divide-gray-100">
                 {cart.map((item, index) => (
                   <div 
-                    key={item.id} 
+                    key={`${item.id}-${index}-${item.is_formula ? 'formula' : 'item'}`}
                     className="p-4 sm:p-6 hover:bg-gray-50 transition-colors"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                       <div className="flex items-center space-x-3 sm:space-x-4">
                         <div className="flex-shrink-0">
-                          {item.image ? (
+                          {(item.image_url || item.image) ? (
                             <Image
-                              src={item.image}
-                              alt={item.name}
+                              src={item.image_url || item.image}
+                              alt={item.name || item.nom}
                               width={60}
                               height={60}
                               className="rounded-lg object-cover sm:w-20 sm:h-20"
@@ -274,8 +299,29 @@ export default function Panier() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1 truncate">{item.name || item.nom}</h4>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">{item.name || item.nom}</h4>
+                            {item.is_formula && (
+                              <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+                                Formule
+                              </span>
+                            )}
+                          </div>
                           <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2">{item.description}</p>
+                          
+                          {/* Affichage des plats de la formule */}
+                          {item.is_formula && item.formula_items && Array.isArray(item.formula_items) && item.formula_items.length > 0 && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                              <span className="font-medium">Composée de:</span>
+                              <ul className="list-disc list-inside ml-1">
+                                {item.formula_items.map((formulaItem, idx) => (
+                                  <li key={idx}>
+                                    {formulaItem.quantity || 1}x {formulaItem.menu?.nom || formulaItem.menu?.name || 'Plat'}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                           
                           {/* Affichage des suppléments */}
                           {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
@@ -313,7 +359,7 @@ export default function Panier() {
                         {/* Contrôles quantité */}
                         <div className="flex items-center border border-gray-200 rounded-lg bg-white">
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            onClick={() => updateQuantity(index, item.quantity - 1)}
                             disabled={isUpdating}
                             className="px-2 sm:px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[44px] touch-manipulation"
                           >
@@ -323,7 +369,7 @@ export default function Panier() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => updateQuantity(index, item.quantity + 1)}
                             disabled={isUpdating}
                             className="px-2 sm:px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[44px] touch-manipulation"
                           >
@@ -344,7 +390,7 @@ export default function Panier() {
                             })()}€
                           </p>
                           <button
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => removeFromCart(index)}
                             className="text-red-600 hover:text-red-700 text-xs sm:text-sm flex items-center justify-end space-x-1 mt-1 min-h-[44px] touch-manipulation"
                           >
                             <FaTrash className="h-3 w-3" />
