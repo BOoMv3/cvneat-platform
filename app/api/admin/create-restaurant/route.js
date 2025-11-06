@@ -282,7 +282,7 @@ export async function POST(request) {
       email: email,
       frais_livraison: 2.50,
       minimum_order: 10.00,
-      delivery_time: 30,
+      // delivery_time n'existe pas dans la table restaurants, retiré
       rating: 4.5,
       image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
       horaires: {
