@@ -26,6 +26,10 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     if (catLower.includes('entree') || catLower.includes('entrée') || catLower === 'entrées' || catLower === 'entrees') {
       return 1;
     }
+    // Sandwiches (1.5) - Entre entrées et plats
+    if (catLower.includes('sandwich') || catLower === 'sandwiches') {
+      return 1.5;
+    }
     // Plats (2)
     if (catLower === 'plat' || catLower === 'plats' || catLower.includes('plat principal')) {
       return 2;
@@ -69,6 +73,10 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     'entree': FaLeaf,
     'Entree': FaLeaf,
     'entrées': FaLeaf,
+    'Sandwich': FaBreadSlice,
+    'sandwich': FaBreadSlice,
+    'Sandwiches': FaBreadSlice,
+    'sandwiches': FaBreadSlice,
     'Plats': FaUtensils,
     'plat': FaUtensils,
     'Plat': FaUtensils,

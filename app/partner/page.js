@@ -1867,6 +1867,7 @@ export default function PartnerDashboard() {
                   >
                     <option value="">Selectionner une categorie</option>
                     <option value="entree">Entree</option>
+                    <option value="sandwich">Sandwich</option>
                     <option value="plat">Plat principal</option>
                     <option value="dessert">Dessert</option>
                     <option value="boisson">Boisson</option>
