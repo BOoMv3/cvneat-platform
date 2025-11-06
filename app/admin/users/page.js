@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '../../../components/Navbar';
-import { FaEdit, FaTrash, FaSpinner } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSpinner, FaLock } from 'react-icons/fa';
 import { supabase } from '../../../lib/supabase';
 
 export default function AdminUsers() {
@@ -19,6 +19,8 @@ export default function AdminUsers() {
     phone: '',
     role: 'user'
   });
+  const [resettingPassword, setResettingPassword] = useState(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState(null);
 
   useEffect(() => {
     const checkUserAndFetchUsers = async () => {
@@ -118,6 +120,43 @@ export default function AdminUsers() {
       role: user.role
     });
     setShowForm(true);
+  };
+
+  const handleResetPassword = async (email) => {
+    if (!confirm(`Êtes-vous sûr de vouloir réinitialiser le mot de passe pour ${email} ?`)) return;
+
+    setResettingPassword(email);
+    setResetPasswordResult(null);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth('/api/admin/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la réinitialisation du mot de passe');
+      }
+
+      setResetPasswordResult({
+        success: true,
+        email: data.email,
+        nom: data.nom,
+        newPassword: data.newPassword,
+        message: data.message
+      });
+    } catch (err) {
+      setError(err.message);
+      setResetPasswordResult({
+        success: false,
+        message: err.message
+      });
+    } finally {
+      setResettingPassword(null);
+    }
   };
 
   if (loading) {
@@ -307,12 +346,26 @@ export default function AdminUsers() {
                       <button
                         onClick={() => handleEdit(user)}
                         className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mr-4"
+                        title="Modifier"
                       >
                         <FaEdit />
                       </button>
                       <button
+                        onClick={() => handleResetPassword(user.email)}
+                        disabled={resettingPassword === user.email}
+                        className="text-blue-600 hover:text-blue-900 mr-4 disabled:opacity-50"
+                        title="Réinitialiser le mot de passe"
+                      >
+                        {resettingPassword === user.email ? (
+                          <FaSpinner className="animate-spin" />
+                        ) : (
+                          <FaLock />
+                        )}
+                      </button>
+                      <button
                         onClick={() => handleDelete(user.id)}
                         className="text-red-600 hover:text-red-900"
+                        title="Supprimer"
                       >
                         <FaTrash />
                       </button>
@@ -328,6 +381,55 @@ export default function AdminUsers() {
               </div>
             )}
           </div>
+
+          {/* Modal pour afficher le nouveau mot de passe */}
+          {resetPasswordResult && resetPasswordResult.success && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Mot de passe réinitialisé avec succès
+                </h3>
+                <div className="space-y-3 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    <strong>Email:</strong> {resetPasswordResult.email}
+                  </p>
+                  {resetPasswordResult.nom && (
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      <strong>Nom:</strong> {resetPasswordResult.nom}
+                    </p>
+                  )}
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                      Nouveau mot de passe:
+                    </p>
+                    <div className="flex items-center justify-between bg-white dark:bg-gray-700 rounded px-3 py-2">
+                      <code className="text-lg font-mono text-gray-900 dark:text-white">
+                        {resetPasswordResult.newPassword}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(resetPasswordResult.newPassword);
+                          alert('Mot de passe copié dans le presse-papiers');
+                        }}
+                        className="ml-2 text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Copier
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    ⚠️ Conservez ce mot de passe en lieu sûr et communiquez-le au restaurant.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setResetPasswordResult(null)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
