@@ -289,12 +289,20 @@ export default function TrackOrder() {
                 'pret_a_livrer': 'Votre commande est prête !',
                 'ready': 'Votre commande est prête !',
                 'livree': 'Votre commande a été livrée !',
-                'delivered': 'Votre commande a été livrée !'
+                'delivered': 'Votre commande a été livrée !',
+                'refusee': data.rejection_reason || data.rejectionReason 
+                  ? `Votre commande a été refusée ❌\nRaison: ${data.rejection_reason || data.rejectionReason}`
+                  : 'Votre commande a été refusée ❌',
+                'rejected': data.rejection_reason || data.rejectionReason 
+                  ? `Votre commande a été refusée ❌\nRaison: ${data.rejection_reason || data.rejectionReason}`
+                  : 'Votre commande a été refusée ❌'
               };
               
+              const notificationBody = statusMessages[currentStatus] || 'Statut de votre commande mis à jour';
+              
               new Notification('CVN\'EAT - Mise à jour commande', {
-                body: statusMessages[currentStatus] || 'Statut de votre commande mis à jour',
-                icon: '/favicon.ico'
+                body: notificationBody,
+                icon: '/icon-192x192.png'
               });
             }
             
