@@ -271,30 +271,27 @@ export async function POST(request) {
       code_postal
     });
 
+    // Créer l'objet avec uniquement les colonnes qui existent dans la table restaurants
+    // Basé sur les colonnes réellement utilisées dans app/api/partner/restaurant/route.js
     const restaurantInsertData = {
       user_id: userId,
       nom: nom,
       description: description || 'Restaurant partenaire CVN\'Eat',
       adresse: adresse,
-      ville: ville,
-      code_postal: code_postal,
       telephone: telephone,
       email: email,
-      frais_livraison: 2.50,
-      minimum_order: 10.00,
-      // delivery_time n'existe pas dans la table restaurants, retiré
-      rating: 4.5,
       image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop',
-      horaires: {
-        lundi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-        mardi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-        mercredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-        jeudi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '22:00' }] },
-        vendredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
-        samedi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
-        dimanche: { ouvert: true, plages: [{ ouverture: '12:00', fermeture: '21:00' }] }
-      }
-      // disponible n'existe pas dans la table restaurants, retiré
+      frais_livraison: 2.50,
+      commande_min: 10.00, // Utiliser commande_min au lieu de minimum_order
+      rating: 4.5,
+      is_active: true // Utiliser is_active au lieu de disponible
+      // Colonnes retirées car elles n'existent pas :
+      // - ville (peut être dans adresse)
+      // - code_postal (peut être dans adresse)
+      // - minimum_order (utiliser commande_min)
+      // - delivery_time (n'existe pas)
+      // - disponible (utiliser is_active)
+      // - horaires (peut être ajouté plus tard si nécessaire)
     };
 
     console.log('📤 Insertion restaurant dans la base de données...');
