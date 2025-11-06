@@ -40,6 +40,15 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   const handleAddToCart = async () => {
     setIsAdding(true);
     
+    // Si c'est une formule, l'ajouter directement sans modal
+    if (item.is_formula) {
+      onAddToCart(item);
+      setTimeout(() => {
+        setIsAdding(false);
+      }, 1500);
+      return;
+    }
+    
     // IMPORTANT: Créer une copie de l'item sans suppléments pour éviter de réutiliser
     // les suppléments d'une instance précédente dans le panier
     const itemWithoutSupplements = {
@@ -57,6 +66,11 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   };
 
   const handleItemClick = () => {
+    // Si c'est une formule, ne pas ouvrir le modal (les formules sont ajoutées directement)
+    if (item.is_formula) {
+      handleAddToCart();
+      return;
+    }
     setIsModalOpen(true);
   };
 
@@ -127,18 +141,54 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
         {/* Titre - Plus grand et visible */}
         <h3 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-2 leading-tight">
           {nom}
+          {item.is_formula && (
+            <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+              Formule
+            </span>
+          )}
         </h3>
+
+        {/* Description pour les formules */}
+        {item.is_formula && item.description && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+            {item.description}
+          </p>
+        )}
+
+        {/* Liste des plats pour les formules */}
+        {item.is_formula && item.formula_items && item.formula_items.length > 0 && (
+          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+            <p className="font-medium">Composée de:</p>
+            <ul className="list-disc list-inside ml-2">
+              {item.formula_items.map((formulaItem, idx) => (
+                <li key={idx}>
+                  {formulaItem.quantity || 1}x {formulaItem.menu?.nom || 'Plat'}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Prix - Mise en avant, seul élément important */}
         <div className="flex items-center justify-between pt-1">
-          <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-            {typeof prix === 'number' ? prix.toFixed(2) : prix}€
+          <div>
+            <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+              {typeof prix === 'number' ? prix.toFixed(2) : prix}€
+            </span>
+            {item.is_formula && item.total_items_price && item.total_items_price > prix && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <span className="line-through">{item.total_items_price.toFixed(2)}€</span>
+                <span className="ml-2 text-green-600 dark:text-green-400 font-medium">
+                  Économie: {(item.total_items_price - prix).toFixed(2)}€
+                </span>
+              </div>
+            )}
             {promotion && (
               <span className="text-sm text-gray-400 dark:text-gray-500 line-through ml-2 font-normal">
                 {typeof prix === 'number' ? (prix * 2).toFixed(2) : prix}€
               </span>
             )}
-          </span>
+          </div>
         </div>
       </div>
 

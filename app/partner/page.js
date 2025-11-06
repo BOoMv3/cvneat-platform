@@ -34,12 +34,13 @@ export default function PartnerDashboard() {
   const [orders, setOrders] = useState([]);
   const [showOrdersTab, setShowOrdersTab] = useState(false);
   const [menu, setMenu] = useState([]);
+  const [formulas, setFormulas] = useState([]);
   const [loading, setLoading] = useState(true);
   // Initialiser activeTab depuis l'URL hash si présent
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '');
-      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard') {
+      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard' || hash === 'formulas') {
         return hash;
       }
     }
@@ -81,6 +82,19 @@ export default function PartnerDashboard() {
 
   const [showSupplementModal, setShowSupplementModal] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  
+  // États pour les formules
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
+  const [editingFormula, setEditingFormula] = useState(null);
+  const [formulaForm, setFormulaForm] = useState({
+    nom: '',
+    description: '',
+    prix: '',
+    prix_reduit: '',
+    image_url: '',
+    disponible: true,
+    menu_items: [] // Array of { menu_id, order_index, quantity }
+  });
 
   // Variable pour éviter les requêtes simultanées (utiliser useRef pour persister entre renders)
   const isFetchingRef = useRef(false);
@@ -89,7 +103,7 @@ export default function PartnerDashboard() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard') {
+      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard' || hash === 'formulas') {
         setActiveTab(hash);
       }
     };
@@ -189,6 +203,7 @@ export default function PartnerDashboard() {
         await fetchDashboardData(resto.id);
         await fetchMenu(resto.id);
         await fetchOrders(resto.id);
+        await fetchFormulas();
       }
       
       setLoading(false);
@@ -268,6 +283,28 @@ export default function PartnerDashboard() {
       }
     } catch (error) {
       console.error('Erreur recuperation menu:', error);
+    }
+  };
+
+  const fetchFormulas = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/partner/formulas', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFormulas(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Erreur récupération formules');
+        setFormulas([]);
+      }
+    } catch (error) {
+      console.error('Erreur récupération formules:', error);
+      setFormulas([]);
     }
   };
 
@@ -413,6 +450,95 @@ export default function PartnerDashboard() {
       }
     } catch (error) {
       console.error('Erreur suppression menu:', error);
+    }
+  };
+
+  const handleFormulaSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formulaForm.nom || !formulaForm.prix || !formulaForm.menu_items || formulaForm.menu_items.length === 0) {
+      alert('Veuillez remplir le nom, le prix et sélectionner au moins un plat');
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Erreur: Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+
+      const url = editingFormula ? `/api/partner/formulas/${editingFormula.id}` : '/api/partner/formulas';
+      const method = editingFormula ? 'PUT' : 'POST';
+
+      const body = {
+        nom: formulaForm.nom.trim(),
+        description: formulaForm.description || '',
+        prix: parseFloat(formulaForm.prix),
+        prix_reduit: formulaForm.prix_reduit ? parseFloat(formulaForm.prix_reduit) : null,
+        image_url: formulaForm.image_url || null,
+        disponible: formulaForm.disponible !== false,
+        menu_items: formulaForm.menu_items.map((item, index) => ({
+          menu_id: item.menu_id,
+          order_index: item.order_index !== undefined ? item.order_index : index,
+          quantity: item.quantity || 1
+        }))
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      const responseData = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        setShowFormulaModal(false);
+        setFormulaForm({
+          nom: '',
+          description: '',
+          prix: '',
+          prix_reduit: '',
+          image_url: '',
+          disponible: true,
+          menu_items: []
+        });
+        setEditingFormula(null);
+        await fetchFormulas();
+      } else {
+        alert(`Erreur: ${responseData.error || response.statusText || 'Erreur inconnue'}`);
+      }
+    } catch (error) {
+      console.error('Erreur sauvegarde formule:', error);
+      alert(`Erreur: ${error.message || 'Impossible de sauvegarder la formule'}`);
+    }
+  };
+
+  const handleDeleteFormula = async (formulaId) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette formule ?')) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const response = await fetch(`/api/partner/formulas/${formulaId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+
+      if (response.ok) {
+        await fetchFormulas();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(`Erreur: ${errorData.error || 'Impossible de supprimer la formule'}`);
+      }
+    } catch (error) {
+      console.error('Erreur suppression formule:', error);
+      alert('Erreur lors de la suppression de la formule');
     }
   };
 
@@ -926,6 +1052,16 @@ export default function PartnerDashboard() {
             >
               Menu
             </button>
+            <button
+              onClick={() => setActiveTab('formulas')}
+              className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
+                activeTab === 'formulas'
+                  ? 'border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              Formules
+            </button>
           </nav>
         </div>
       </div>
@@ -1321,6 +1457,121 @@ export default function PartnerDashboard() {
                                 )}
                               </div>
                             </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'formulas' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Gestion des formules</h2>
+              <button
+                onClick={() => {
+                  setEditingFormula(null);
+                  setFormulaForm({
+                    nom: '',
+                    description: '',
+                    prix: '',
+                    prix_reduit: '',
+                    image_url: '',
+                    disponible: true,
+                    menu_items: []
+                  });
+                  setShowFormulaModal(true);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Créer une formule
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <div className="p-6">
+                {!Array.isArray(formulas) || formulas.length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400 text-center">Aucune formule créée</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {formulas.map((formula) => {
+                      const totalPrice = formula.items?.reduce((sum, item) => {
+                        const itemPrice = item.menu?.prix || 0;
+                        const quantity = item.quantity || 1;
+                        return sum + (itemPrice * quantity);
+                      }, 0) || 0;
+                      const savings = formula.prix_reduit ? (totalPrice - formula.prix) : 0;
+
+                      return (
+                        <div key={formula.id} className="border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                          {formula.image_url && (
+                            <img 
+                              src={formula.image_url} 
+                              alt={formula.nom}
+                              className="w-full h-32 object-cover rounded-lg mb-3"
+                            />
+                          )}
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-white">{formula.nom}</h3>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => {
+                                  setEditingFormula(formula);
+                                  setFormulaForm({
+                                    nom: formula.nom,
+                                    description: formula.description || '',
+                                    prix: formula.prix,
+                                    prix_reduit: formula.prix_reduit || '',
+                                    image_url: formula.image_url || '',
+                                    disponible: formula.disponible !== false,
+                                    menu_items: (formula.items || []).map(item => ({
+                                      menu_id: item.menu?.id,
+                                      order_index: item.order_index,
+                                      quantity: item.quantity || 1
+                                    }))
+                                  });
+                                  setShowFormulaModal(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
+                              >
+                                <FaEdit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFormula(formula.id)}
+                                className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                              >
+                                <FaTrash className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">{formula.description}</p>
+                          <div className="space-y-1 mb-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Composée de:</p>
+                            {formula.items?.map((item, idx) => (
+                              <div key={idx} className="text-xs text-gray-600 dark:text-gray-300">
+                                • {item.quantity || 1}x {item.menu?.nom || 'Plat inconnu'}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-lg font-bold text-green-600">{formula.prix}€</p>
+                              {formula.prix_reduit && savings > 0 && (
+                                <p className="text-xs text-gray-500 line-through">{totalPrice.toFixed(2)}€</p>
+                              )}
+                              {savings > 0 && (
+                                <p className="text-xs text-green-600">Économie: {savings.toFixed(2)}€</p>
+                              )}
+                            </div>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              formula.disponible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {formula.disponible ? 'Disponible' : 'Indisponible'}
+                            </span>
                           </div>
                         </div>
                       );
@@ -2228,6 +2479,284 @@ export default function PartnerDashboard() {
                 Annuler
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour créer/modifier une formule */}
+      {showFormulaModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              {editingFormula ? 'Modifier la formule' : 'Créer une formule'}
+            </h3>
+            <form onSubmit={handleFormulaSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nom de la formule *
+                  </label>
+                  <input
+                    type="text"
+                    value={formulaForm.nom}
+                    onChange={(e) => setFormulaForm({...formulaForm, nom: e.target.value})}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Ex: Menu complet, Formule déjeuner..."
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Prix de la formule (€) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formulaForm.prix}
+                    onChange={(e) => setFormulaForm({...formulaForm, prix: e.target.value})}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={formulaForm.description}
+                  onChange={(e) => setFormulaForm({...formulaForm, description: e.target.value})}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  rows="3"
+                  placeholder="Description de la formule..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Prix réduit (€) - Optionnel
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formulaForm.prix_reduit}
+                    onChange={(e) => setFormulaForm({...formulaForm, prix_reduit: e.target.value})}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Prix si acheté séparément"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Prix total si les plats étaient achetés séparément (pour afficher l'économie)
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="formula_disponible"
+                    checked={formulaForm.disponible}
+                    onChange={(e) => setFormulaForm({...formulaForm, disponible: e.target.checked})}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="formula_disponible" className="ml-2 block text-sm text-gray-900 dark:text-white">
+                    Disponible
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Image de la formule
+                </label>
+                <input
+                  type="url"
+                  value={formulaForm.image_url || ''}
+                  onChange={(e) => setFormulaForm({...formulaForm, image_url: e.target.value})}
+                  placeholder="https://exemple.com/image.jpg"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              {/* Sélection des plats */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Plats de la formule *
+                </label>
+                {!Array.isArray(menu) || menu.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    Aucun plat disponible. Veuillez d'abord créer des plats dans l'onglet Menu.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3">
+                    {menu.map((item) => {
+                      const isSelected = formulaForm.menu_items.some(mi => mi.menu_id === item.id);
+                      const selectedItem = formulaForm.menu_items.find(mi => mi.menu_id === item.id);
+                      
+                      return (
+                        <div
+                          key={item.id}
+                          className={`p-3 rounded-lg border transition-all ${
+                            isSelected
+                              ? 'bg-blue-50 dark:bg-blue-900 border-blue-300 dark:border-blue-700'
+                              : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      // Ajouter le plat
+                                      setFormulaForm({
+                                        ...formulaForm,
+                                        menu_items: [
+                                          ...formulaForm.menu_items,
+                                          {
+                                            menu_id: item.id,
+                                            order_index: formulaForm.menu_items.length,
+                                            quantity: 1
+                                          }
+                                        ]
+                                      });
+                                    } else {
+                                      // Retirer le plat
+                                      setFormulaForm({
+                                        ...formulaForm,
+                                        menu_items: formulaForm.menu_items.filter(mi => mi.menu_id !== item.id)
+                                      });
+                                    }
+                                  }}
+                                  className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900 dark:text-white">{item.nom}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.category} - {item.prix}€</p>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <div className="mt-2 ml-7 flex items-center space-x-2">
+                                  <label className="text-xs text-gray-600 dark:text-gray-300">Quantité:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={selectedItem?.quantity || 1}
+                                    onChange={(e) => {
+                                      const quantity = parseInt(e.target.value) || 1;
+                                      setFormulaForm({
+                                        ...formulaForm,
+                                        menu_items: formulaForm.menu_items.map(mi =>
+                                          mi.menu_id === item.id
+                                            ? { ...mi, quantity: quantity }
+                                            : mi
+                                        )
+                                      });
+                                    }}
+                                    className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentIndex = selectedItem?.order_index ?? formulaForm.menu_items.length - 1;
+                                      const newIndex = Math.max(0, currentIndex - 1);
+                                      setFormulaForm({
+                                        ...formulaForm,
+                                        menu_items: formulaForm.menu_items.map(mi =>
+                                          mi.menu_id === item.id
+                                            ? { ...mi, order_index: newIndex }
+                                            : mi.order_index === newIndex
+                                            ? { ...mi, order_index: currentIndex }
+                                            : mi
+                                        )
+                                      });
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                    disabled={selectedItem?.order_index === 0}
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentIndex = selectedItem?.order_index ?? formulaForm.menu_items.length - 1;
+                                      const maxIndex = formulaForm.menu_items.length - 1;
+                                      const newIndex = Math.min(maxIndex, currentIndex + 1);
+                                      setFormulaForm({
+                                        ...formulaForm,
+                                        menu_items: formulaForm.menu_items.map(mi =>
+                                          mi.menu_id === item.id
+                                            ? { ...mi, order_index: newIndex }
+                                            : mi.order_index === newIndex
+                                            ? { ...mi, order_index: currentIndex }
+                                            : mi
+                                        )
+                                      });
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                    disabled={selectedItem?.order_index === formulaForm.menu_items.length - 1}
+                                  >
+                                    ↓
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {formulaForm.menu_items.length > 0 && (
+                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900 rounded-lg">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                      Ordre des plats dans la formule:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 text-sm text-green-700 dark:text-green-300">
+                      {formulaForm.menu_items
+                        .sort((a, b) => a.order_index - b.order_index)
+                        .map((item, idx) => {
+                          const menuItem = menu.find(m => m.id === item.menu_id);
+                          return (
+                            <li key={item.menu_id || idx}>
+                              {item.quantity || 1}x {menuItem?.nom || 'Plat inconnu'}
+                            </li>
+                          );
+                        })}
+                    </ol>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  {editingFormula ? 'Modifier' : 'Créer'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFormulaModal(false);
+                    setFormulaForm({
+                      nom: '',
+                      description: '',
+                      prix: '',
+                      prix_reduit: '',
+                      image_url: '',
+                      disponible: true,
+                      menu_items: []
+                    });
+                    setEditingFormula(null);
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

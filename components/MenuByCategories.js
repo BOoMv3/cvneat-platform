@@ -18,6 +18,10 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
   const getCategoryOrder = (category) => {
     const catLower = category.toLowerCase();
     
+    // Formules (0) - Afficher en premier
+    if (catLower === 'formule' || catLower === 'formules') {
+      return 0;
+    }
     // Entrées (1)
     if (catLower.includes('entree') || catLower.includes('entrée') || catLower === 'entrées' || catLower === 'entrees') {
       return 1;
@@ -57,6 +61,10 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
 
   // Icônes pour les catégories
   const categoryIcons = {
+    'Formules': FaUtensils,
+    'formule': FaUtensils,
+    'Formule': FaUtensils,
+    'formules': FaUtensils,
     'Entrées': FaLeaf,
     'entree': FaLeaf,
     'Entree': FaLeaf,

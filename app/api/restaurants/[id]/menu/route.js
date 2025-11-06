@@ -17,6 +17,34 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
+    // Récupérer les formules disponibles
+    const { data: formulas, error: formulasError } = await supabase
+      .from('formulas')
+      .select(`
+        *,
+        formula_items:formula_items(
+          id,
+          order_index,
+          quantity,
+          menu:menus(
+            id,
+            nom,
+            description,
+            prix,
+            image_url,
+            category
+          )
+        )
+      `)
+      .eq('restaurant_id', id)
+      .eq('disponible', true)
+      .order('created_at', { ascending: true });
+
+    if (formulasError) {
+      console.warn('Erreur récupération formules:', formulasError);
+      // Ne pas bloquer si les formules ne peuvent pas être récupérées
+    }
+
     // Transformer les données pour correspondre au format attendu par le frontend
     const transformedMenu = menus?.map(item => {
       // Parser les suppléments si présents (JSONB ou string)
@@ -103,7 +131,42 @@ export async function GET(request, { params }) {
       };
     }) || [];
 
-    return NextResponse.json(transformedMenu);
+    // Transformer les formules pour correspondre au format attendu
+    const transformedFormulas = (formulas || []).map(formula => {
+      const items = (formula.formula_items || [])
+        .sort((a, b) => a.order_index - b.order_index)
+        .map(item => ({
+          id: item.id,
+          order_index: item.order_index,
+          quantity: item.quantity || 1,
+          menu: item.menu
+        }));
+
+      return {
+        id: formula.id,
+        nom: formula.nom,
+        description: formula.description || '',
+        prix: formula.prix,
+        prix_reduit: formula.prix_reduit,
+        image_url: formula.image_url,
+        category: 'formule',
+        disponible: formula.disponible,
+        created_at: formula.created_at,
+        is_formula: true, // Marqueur pour identifier les formules
+        formula_items: items, // Items de la formule
+        // Calculer le prix total des items individuels pour afficher l'économie
+        total_items_price: items.reduce((sum, item) => {
+          const itemPrice = item.menu?.prix || 0;
+          const quantity = item.quantity || 1;
+          return sum + (itemPrice * quantity);
+        }, 0)
+      };
+    });
+
+    // Combiner les menus et les formules
+    const allItems = [...transformedMenu, ...transformedFormulas];
+
+    return NextResponse.json(allItems);
   } catch (error) {
     console.error('Erreur API menu:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
