@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { FaPlus, FaMinus, FaTimes, FaShoppingCart, FaLeaf, FaUtensils, FaFlask } from 'react-icons/fa';
 
@@ -349,17 +350,41 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     onClose();
   };
 
-  if (!isOpen) return null;
+  // Utiliser un portail pour rendre la modal directement dans le body
+  const [mounted, setMounted] = useState(false);
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+    // Empêcher le scroll du body quand la modal est ouverte
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted || typeof window === 'undefined') return null;
+
+  const modalContent = (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
       onClick={onClose}
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+      style={{ 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0,
+        zIndex: 99999
+      }}
     >
       <div 
-        className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative z-[10000] shadow-2xl"
+        className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        style={{ zIndex: 100000 }}
       >
         {/* Header */}
         <div className="relative">
@@ -614,4 +639,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       </div>
     </div>
   );
+
+  // Rendre la modal dans le body via un portail
+  return createPortal(modalContent, document.body);
 }
