@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // GET /api/admin/restaurants/[id] - Récupérer un restaurant spécifique
 export async function GET(request, { params }) {
@@ -137,7 +138,7 @@ export async function PUT(request, { params }) {
   }
 }
 
-// DELETE /api/admin/restaurants/[id] - Désactiver un restaurant
+// DELETE /api/admin/restaurants/[id] - Supprimer définitivement un restaurant
 export async function DELETE(request, { params }) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -163,27 +164,77 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Récupérer les infos du restaurant avant désactivation
-    const { data: restaurant, error: restaurantError } = await supabase
+    // Utiliser un client admin pour contourner les RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Récupérer les infos du restaurant avant suppression
+    const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
       .select(`
         *,
-        partner:users(email, full_name)
+        partner:users(id, email, full_name)
       `)
       .eq('id', params.id)
       .single();
 
-    if (restaurantError) throw restaurantError;
+    if (restaurantError || !restaurant) {
+      return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
+    }
 
-    // Désactiver le restaurant
-    const { data: deactivatedRestaurant, error } = await supabase
+    // Vérifier s'il y a des commandes en cours
+    const { data: activeOrders, error: ordersError } = await supabaseAdmin
+      .from('commandes')
+      .select('id, statut')
+      .eq('restaurant_id', params.id)
+      .in('statut', ['en_attente', 'acceptee', 'en_preparation', 'prete']);
+
+    if (ordersError) {
+      console.error('Erreur vérification commandes:', ordersError);
+    }
+
+    if (activeOrders && activeOrders.length > 0) {
+      return NextResponse.json({
+        error: 'Impossible de supprimer le restaurant',
+        details: `Il y a ${activeOrders.length} commande(s) en cours. Veuillez d'abord traiter ces commandes.`,
+        code: 'ACTIVE_ORDERS'
+      }, { status: 409 });
+    }
+
+    // Vérifier le nombre total de commandes (pour information)
+    const { count: totalOrdersCount } = await supabaseAdmin
+      .from('commandes')
+      .select('id', { count: 'exact', head: true })
+      .eq('restaurant_id', params.id);
+
+    // Supprimer le restaurant (cascade devrait supprimer les menus, formules, etc.)
+    // Si les contraintes de clés étrangères sont en ON DELETE CASCADE
+    const { error: deleteError } = await supabaseAdmin
       .from('restaurants')
-      .update({ is_active: false })
-      .eq('id', params.id)
-      .select()
-      .single();
+      .delete()
+      .eq('id', params.id);
 
-    if (error) throw error;
+    if (deleteError) {
+      console.error('Erreur suppression restaurant:', deleteError);
+      
+      // Vérifier si c'est une erreur de contrainte de clé étrangère
+      if (deleteError.code === '23503' || deleteError.message?.includes('foreign key')) {
+        return NextResponse.json({
+          error: 'Impossible de supprimer le restaurant',
+          details: 'Le restaurant est lié à d\'autres données (commandes, menus, formules, etc.). Vous pouvez le désactiver au lieu de le supprimer.',
+          code: 'FOREIGN_KEY_CONSTRAINT',
+          suggestion: 'Utilisez PUT pour désactiver le restaurant (is_active: false)'
+        }, { status: 409 });
+      }
+
+      return NextResponse.json({
+        error: 'Erreur lors de la suppression du restaurant',
+        details: deleteError.message || 'Erreur inconnue',
+        code: deleteError.code
+      }, { status: 500 });
+    }
 
     // Envoyer email de notification au partenaire
     try {
@@ -191,26 +242,36 @@ export async function DELETE(request, { params }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'restaurantDeactivated',
+          type: 'restaurantDeleted',
           data: {
             restaurantName: restaurant.nom,
             partnerName: restaurant.partner?.full_name,
-            reason: 'Votre restaurant a été désactivé par l\'administration'
+            reason: 'Votre restaurant a été supprimé définitivement par l\'administration'
           },
           recipientEmail: restaurant.partner?.email
         })
       });
     } catch (emailError) {
-      console.error('Erreur envoi email désactivation:', emailError);
+      console.error('Erreur envoi email suppression:', emailError);
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Restaurant désactivé',
-      restaurant: deactivatedRestaurant
+      message: 'Restaurant supprimé définitivement',
+      deletedRestaurant: {
+        id: restaurant.id,
+        nom: restaurant.nom,
+        email: restaurant.email
+      },
+      stats: {
+        totalOrders: totalOrdersCount || 0
+      }
     });
   } catch (error) {
-    console.error('Erreur désactivation restaurant:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    console.error('Erreur suppression restaurant:', error);
+    return NextResponse.json({ 
+      error: 'Erreur serveur', 
+      details: error.message 
+    }, { status: 500 });
   }
 } 

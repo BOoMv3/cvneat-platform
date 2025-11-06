@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaEye, FaEdit, FaToggleOn, FaToggleOff, FaSpinner } from 'react-icons/fa';
+import { FaEye, FaEdit, FaToggleOn, FaToggleOff, FaSpinner, FaTrash } from 'react-icons/fa';
 
 export default function AdminRestaurants() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export default function AdminRestaurants() {
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
     fetchRestaurants();
@@ -39,6 +40,22 @@ export default function AdminRestaurants() {
     }
   };
 
+  const fetchWithAuth = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Non authentifié');
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+      'Authorization': `Bearer ${session.access_token}`
+    };
+
+    const response = await fetch(url, { ...options, headers });
+    return response;
+  };
+
   const toggleRestaurantStatus = async (id, currentStatus) => {
     setUpdating(true);
     try {
@@ -56,6 +73,43 @@ export default function AdminRestaurants() {
       setError(err.message);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDelete = async (id, nom) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement le restaurant "${nom}" ?\n\nCette action est irréversible et supprimera tous les menus, formules et données associées.`)) {
+      return;
+    }
+
+    // Double confirmation
+    if (!confirm(`ATTENTION: Cette action est définitive !\n\nVoulez-vous vraiment supprimer "${nom}" ?`)) {
+      return;
+    }
+
+    setDeleting(id);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(`/api/admin/restaurants/${id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = data.details
+          ? `${data.error}: ${data.details}`
+          : data.error || 'Erreur lors de la suppression du restaurant';
+        throw new Error(errorMessage);
+      }
+
+      // Rafraîchir la liste
+      await fetchRestaurants();
+    } catch (err) {
+      setError(err.message);
+      console.error('Erreur suppression:', err);
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -219,7 +273,7 @@ export default function AdminRestaurants() {
                     <div className="flex items-center justify-end space-x-2">
                       <button
                         onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
-                        className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100"
+                        className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                         title="Voir les détails"
                       >
                         <FaEye />
@@ -241,6 +295,19 @@ export default function AdminRestaurants() {
                           }
                         </button>
                       )}
+
+                      <button
+                        onClick={() => handleDelete(restaurant.id, restaurant.nom)}
+                        disabled={deleting === restaurant.id}
+                        className="text-red-600 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Supprimer définitivement"
+                      >
+                        {deleting === restaurant.id ? (
+                          <FaSpinner className="animate-spin" />
+                        ) : (
+                          <FaTrash />
+                        )}
+                      </button>
                     </div>
                   </td>
                 </tr>
