@@ -39,7 +39,8 @@ export function middleware(request) {
     '/track-order',
     '/profile',
     '/panier',
-    '/checkout'
+    '/checkout',
+    '/restaurants' // Permettre l'accès aux pages restaurant (pour que les partenaires puissent voir leur fiche)
   ];
   
   if (alwaysAllowedRoutes.some(route => pathname.startsWith(route))) {
@@ -64,7 +65,8 @@ export function middleware(request) {
   
   // Routes publiques client - Rediriger vers maintenance
   // Seulement si ce n'est PAS une route admin/partner (déjà vérifiée plus haut)
-  if (pathname === '/' || pathname.startsWith('/restaurants/')) {
+  // Ne pas bloquer /restaurants/ car les partenaires ont besoin d'y accéder
+  if (pathname === '/') {
     const response = NextResponse.redirect(new URL('/maintenance', request.url));
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
