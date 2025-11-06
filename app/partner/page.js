@@ -935,7 +935,7 @@ export default function PartnerDashboard() {
             </div>
             
             {/* Boutons d'action - Responsive mobile et foldable */}
-            <div className="grid grid-cols-3 fold:grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-1 fold:gap-1 xs:gap-2 sm:gap-3 lg:gap-4">
+            <div className="grid grid-cols-3 fold:grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1 fold:gap-1 xs:gap-2 sm:gap-3 lg:gap-4">
               <button
                 onClick={() => router.push('/partner/analytics')}
                 className="bg-purple-600 text-white px-1 fold:px-1 xs:px-2 sm:px-3 lg:px-4 py-1.5 fold:py-1.5 xs:py-2 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col items-center justify-center space-y-0.5 fold:space-y-0.5 xs:space-y-1 text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium"
@@ -993,6 +993,20 @@ export default function PartnerDashboard() {
                 <span className="hidden sm:inline">Paramètres</span>
                 <span className="sm:hidden">Config</span>
               </button>
+              {restaurant?.id && (
+                <button
+                  onClick={() => {
+                    // Ouvrir la page restaurant dans un nouvel onglet pour voir comme un client
+                    window.open(`/restaurants/${restaurant.id}`, '_blank');
+                  }}
+                  className="bg-indigo-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-indigo-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
+                  title="Voir ma fiche établissement comme un client"
+                >
+                  <FaEye className="h-4 w-4 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Voir fiche</span>
+                  <span className="sm:hidden">Voir</span>
+                </button>
+              )}
               <div className="flex justify-center">
                 <RealTimeNotifications 
                   restaurantId={restaurant?.id} 
