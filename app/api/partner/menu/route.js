@@ -250,6 +250,18 @@ export async function POST(request) {
     if (menuError) {
       console.error('❌ Erreur création menu:', menuError);
       console.error('❌ Détails erreur:', JSON.stringify(menuError, null, 2));
+      // Vérifier si l'erreur est due à des colonnes manquantes
+      if (menuError.message && menuError.message.includes('column') && menuError.message.includes('not found')) {
+        return NextResponse.json(
+          { 
+            error: 'Colonnes manquantes dans la base de données',
+            details: 'Les colonnes max_sauces et/ou max_meats n\'existent pas. Veuillez exécuter le script SQL add-max-limits-to-menus.sql',
+            sqlError: menuError.message,
+            code: menuError.code
+          },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         { 
           error: 'Erreur lors de la création de l\'item de menu',
@@ -463,6 +475,17 @@ export async function PUT(request) {
 
     if (error) {
       console.error('❌ Erreur Supabase PUT:', error);
+      // Vérifier si l'erreur est due à des colonnes manquantes
+      if (error.message && error.message.includes('column') && error.message.includes('not found')) {
+        return NextResponse.json(
+          { 
+            error: 'Colonnes manquantes dans la base de données',
+            details: 'Les colonnes max_sauces et/ou max_meats n\'existent pas. Veuillez exécuter le script SQL add-max-limits-to-menus.sql',
+            sqlError: error.message
+          },
+          { status: 500 }
+        );
+      }
       throw error;
     }
 
