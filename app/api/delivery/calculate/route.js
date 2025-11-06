@@ -166,19 +166,23 @@ export async function POST(request) {
     console.log('🌐 Géocodage avec cache pour adresse EXACTE...');
     let clientCoords;
     
-    // Normaliser l'adresse pour le cache : enlever les accents, normaliser les espaces
+    // Normaliser l'adresse pour le cache : enlever les accents, normaliser les espaces, supprimer caractères spéciaux
     const normalizedAddress = address
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')
+      .replace(/\s+/g, ' ') // Normaliser les espaces multiples
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // Enlever les accents
+      .replace(/[\u0300-\u036f]/g, '') // Enlever les accents
+      .replace(/[^\w\s\d]/g, '') // Enlever les caractères spéciaux sauf lettres, chiffres et espaces
+      .replace(/\bfrance\b/gi, '') // Enlever "France" qui peut varier
+      .trim();
     
     // Extraire le code postal pour une meilleure précision du cache
-    const postalCodeMatch = normalizedAddress.match(/\b(\d{5})\b/);
+    const postalCodeMatch = address.match(/\b(\d{5})\b/);
     const postalCode = postalCodeMatch ? postalCodeMatch[1] : '';
     
-    // Créer une clé de cache basée sur l'adresse normalisée + code postal
+    // Créer une clé de cache basée sur le code postal + adresse normalisée
+    // Le code postal est le facteur principal pour la cohérence
     const cacheKey = `${postalCode}_${normalizedAddress}`;
     
     // Vérifier le cache d'abord
@@ -190,10 +194,11 @@ export async function POST(request) {
         clientCoords = await geocodeAddress(address);
         console.log('📍 Coordonnées EXACTES depuis Nominatim:', clientCoords);
         
-        // Arrondir les coordonnées plus agressivement pour stabiliser (précision ~100m)
+        // Arrondir les coordonnées plus agressivement pour stabiliser (précision ~200m)
         // Cela réduit les variations dues aux petites différences dans les réponses Nominatim
-        clientCoords.lat = Math.round(clientCoords.lat * 1000) / 1000; // 3 décimales = ~100m
-        clientCoords.lng = Math.round(clientCoords.lng * 1000) / 1000; // 3 décimales = ~100m
+        // Arrondir à 2 décimales = ~200m de précision, ce qui est suffisant pour les frais de livraison
+        clientCoords.lat = Math.round(clientCoords.lat * 100) / 100; // 2 décimales = ~200m
+        clientCoords.lng = Math.round(clientCoords.lng * 100) / 100; // 2 décimales = ~200m
         
         // Mettre en cache (limite de 1000 entrées pour éviter les fuites mémoire)
         if (coordinatesCache.size > 1000) {
@@ -202,7 +207,7 @@ export async function POST(request) {
           coordinatesCache.delete(firstKey);
         }
         coordinatesCache.set(cacheKey, clientCoords);
-        console.log('💾 Coordonnées mises en cache (arrondies à 3 décimales)');
+        console.log('💾 Coordonnées mises en cache (arrondies à 2 décimales pour stabilité)');
       } catch (error) {
         console.error('❌ Nominatim échoué:', error.message);
         return NextResponse.json({
@@ -219,10 +224,11 @@ export async function POST(request) {
       clientCoords.lat, clientCoords.lng
     );
 
-    // Arrondir la distance à 2 décimales pour éviter les micro-variations
-    const roundedDistance = Math.round(distance * 100) / 100;
+    // Arrondir la distance à 1 décimale pour éviter les micro-variations
+    // Cela garantit que la même adresse donne toujours la même distance (et donc les mêmes frais)
+    const roundedDistance = Math.round(distance * 10) / 10; // 1 décimale = précision ~100m
 
-    console.log(`📏 Distance: ${roundedDistance.toFixed(2)}km`);
+    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km`);
 
     // 4. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
@@ -239,7 +245,7 @@ export async function POST(request) {
     // 5. Calculer les frais: 2.50€ + (distance × 0.80€)
     const deliveryFee = calculateDeliveryFee(roundedDistance);
 
-    console.log(`💰 Frais: ${BASE_FEE}€ + (${roundedDistance.toFixed(2)}km × ${FEE_PER_KM}€) = ${deliveryFee.toFixed(2)}€`);
+    console.log(`💰 Frais: ${BASE_FEE}€ + (${roundedDistance.toFixed(1)}km × ${FEE_PER_KM}€) = ${deliveryFee.toFixed(2)}€`);
 
     return NextResponse.json({
       success: true,
