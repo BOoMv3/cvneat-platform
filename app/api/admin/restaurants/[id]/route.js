@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { supabase, supabaseAdmin as sharedSupabaseAdmin } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+
+const getAdminClient = () => {
+  if (sharedSupabaseAdmin) {
+    return sharedSupabaseAdmin;
+  }
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  if (!serviceRoleKey || !url) {
+    return null;
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+};
 
 // GET /api/admin/restaurants/[id] - Récupérer un restaurant spécifique
 export async function GET(request, { params }) {
@@ -165,10 +185,16 @@ export async function DELETE(request, { params }) {
     }
 
     // Utiliser un client admin pour contourner les RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabaseAdmin = getAdminClient();
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        {
+          error: 'Configuration Supabase incomplète',
+          details: 'SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL manquant. Veuillez vérifier votre fichier .env.local.'
+        },
+        { status: 500 }
+      );
+    }
 
     // Récupérer les infos du restaurant avant suppression
     const { data: restaurant, error: restaurantError } = await supabaseAdmin
@@ -180,7 +206,18 @@ export async function DELETE(request, { params }) {
       .eq('id', params.id)
       .single();
 
-    if (restaurantError || !restaurant) {
+    if (restaurantError) {
+      console.error('Erreur récupération restaurant (admin):', restaurantError);
+      return NextResponse.json(
+        {
+          error: 'Impossible de récupérer le restaurant',
+          details: restaurantError.message || 'Erreur inconnue lors de la récupération du restaurant'
+        },
+        { status: restaurantError.code === 'PGRST116' ? 404 : 500 }
+      );
+    }
+
+    if (!restaurant) {
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
