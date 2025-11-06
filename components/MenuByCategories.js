@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import MenuItem from './MenuItem';
-import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice } from 'react-icons/fa';
+import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaSaladBowl, FaDrumstickBite } from 'react-icons/fa';
 
 export default function MenuByCategories({ menu, selectedCategory, onCategorySelect, onAddToCart, restaurantId }) {
   // Grouper les menus par catégorie
@@ -14,10 +14,65 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     return acc;
   }, {});
 
-  const categories = Object.keys(menuByCategory).sort();
+  // Ordre personnalisé des catégories (ordre logique d'un repas)
+  const getCategoryOrder = (category) => {
+    const catLower = category.toLowerCase();
+    
+    // Entrées (1)
+    if (catLower.includes('entree') || catLower.includes('entrée') || catLower === 'entrées' || catLower === 'entrees') {
+      return 1;
+    }
+    // Plats (2)
+    if (catLower === 'plat' || catLower === 'plats' || catLower.includes('plat principal')) {
+      return 2;
+    }
+    // Desserts (3)
+    if (catLower.includes('dessert')) {
+      return 3;
+    }
+    // Boissons (4)
+    if (catLower.includes('boisson') || catLower.includes('drink') || catLower === 'boissons') {
+      return 4;
+    }
+    // Autres catégories spécifiques (5)
+    if (catLower.includes('kebab') || catLower.includes('panini') || catLower.includes('taco') || catLower.includes('pizza')) {
+      return 2; // Considérer comme plats
+    }
+    // Autres (99)
+    return 99;
+  };
+  
+  // Trier les catégories selon l'ordre personnalisé
+  const categories = Object.keys(menuByCategory).sort((a, b) => {
+    const orderA = getCategoryOrder(a);
+    const orderB = getCategoryOrder(b);
+    
+    // Si même ordre, tri alphabétique
+    if (orderA === orderB) {
+      return a.localeCompare(b);
+    }
+    
+    return orderA - orderB;
+  });
 
   // Icônes pour les catégories
   const categoryIcons = {
+    'Entrées': FaSaladBowl,
+    'entree': FaSaladBowl,
+    'Entree': FaSaladBowl,
+    'entrées': FaSaladBowl,
+    'Plats': FaDrumstickBite,
+    'plat': FaDrumstickBite,
+    'Plat': FaDrumstickBite,
+    'plats': FaDrumstickBite,
+    'Desserts': FaIceCream,
+    'dessert': FaIceCream,
+    'Dessert': FaIceCream,
+    'desserts': FaIceCream,
+    'Boissons': FaCoffee,
+    'boisson': FaCoffee,
+    'Boisson': FaCoffee,
+    'boissons': FaCoffee,
     'Kebab': FaHamburger,
     'Kebabs': FaHamburger,
     'Panini': FaBreadSlice,
@@ -25,9 +80,6 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     'Tacos': FaUtensils,
     'Pizza': FaPizzaSlice,
     'Pizzas': FaPizzaSlice,
-    'Desserts': FaIceCream,
-    'Boissons': FaCoffee,
-    'Boisson': FaCoffee,
     'Vins': FaWineGlass,
     'Autres': FaUtensils
   };
