@@ -68,106 +68,78 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   return (
     <>
       <div 
-        className="bg-white rounded-lg border border-gray-100 overflow-hidden transition-all duration-300 w-full max-w-sm mx-auto cursor-pointer"
+        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer group"
         onClick={handleItemClick}
       >
-      {/* Image de l'article - PROPORTIONS MOBILE OPTIMISÉES avec bords arrondis */}
-      <div className="relative h-36 w-full bg-gradient-to-br from-purple-100 to-orange-100 rounded-t-lg overflow-hidden">
+      {/* Image de l'article - Design épuré */}
+      <div className="relative h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 overflow-hidden">
         {image_url ? (
           <Image
             src={image_url}
             alt={nom}
             fill
-            className="object-cover rounded-t-lg"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-purple-200 to-orange-200 flex items-center justify-center rounded-t-lg">
-            <span className="text-xl">🍽️</span>
+          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
+            <span className="text-4xl opacity-50">🍽️</span>
           </div>
         )}
 
-        {/* Badge populaire - POSITION MOBILE OPTIMISÉE */}
+        {/* Badge populaire */}
         {is_popular && (
-          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+          <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
             N°{popularNumber}
           </div>
         )}
 
-        {/* Bouton d'ajout avec animation - TAILLE MOBILE OPTIMISÉE */}
+        {/* Bouton d'ajout - Design épuré */}
         <button
           onClick={(e) => {
-            e.stopPropagation(); // Empêcher l'ouverture de la modal
+            e.stopPropagation();
             handleAddToCart();
           }}
           disabled={isAdding}
-          className={`absolute bottom-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform ${
+          className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
             isAdding
-              ? 'bg-green-500 text-white scale-110 shadow-xl animate-pulse'
-              : 'bg-white text-gray-800 hover:bg-gray-50 hover:scale-105'
+              ? 'bg-green-500 text-white scale-110 animate-pulse'
+              : 'bg-white dark:bg-gray-800 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:scale-110'
           }`}
         >
           {isAdding ? (
-            <>
-              <div className="absolute inset-0 bg-green-400 rounded-full animate-ping"></div>
-              <FaPlus className="w-3.5 h-3.5 relative z-10 animate-bounce" />
-            </>
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           ) : (
-            <FaPlus className="w-3.5 h-3.5" />
+            <FaPlus className="w-5 h-5" />
           )}
         </button>
 
-        {/* Promotion - POSITION MOBILE OPTIMISÉE */}
+        {/* Promotion */}
         {promotion && (
-          <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+          <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
             {promotion}
           </div>
         )}
       </div>
 
-      {/* Informations de l'article - PROPORTIONS MOBILE OPTIMISÉES */}
-      <div className="p-3">
-        {/* Titre - TAILLE MOBILE OPTIMISÉE */}
-        <h3 className="font-bold text-sm text-gray-900 mb-2 line-clamp-1">
+      {/* Informations de l'article - Design minimaliste */}
+      <div className="p-5 space-y-3">
+        {/* Titre - Plus grand et visible */}
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-2 leading-tight">
           {nom}
         </h3>
 
-        {/* Description - TAILLE MOBILE OPTIMISÉE */}
-        {description && (
-          <p className="text-gray-600 text-xs mb-2 line-clamp-2">
-            {description}
-          </p>
-        )}
-
-        {/* Prix et évaluation - PROPORTIONS MOBILE OPTIMISÉES */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="text-base font-bold text-gray-900">
-              {typeof prix === 'number' ? prix.toFixed(2) : prix}€
-            </span>
+        {/* Prix - Mise en avant, seul élément important */}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            {typeof prix === 'number' ? prix.toFixed(2) : prix}€
             {promotion && (
-              <span className="text-xs text-gray-500 line-through">
+              <span className="text-sm text-gray-400 dark:text-gray-500 line-through ml-2 font-normal">
                 {typeof prix === 'number' ? (prix * 2).toFixed(2) : prix}€
               </span>
             )}
-          </div>
-
-          {/* Note et nombre d'avis - TAILLE MOBILE OPTIMISÉE */}
-          <div className="flex items-center gap-1 text-xs text-gray-600">
-            <FaThumbsUp className="text-green-500 w-3.5 h-3.5" />
-            <span>
-              {itemRating}% ({itemReviewCount})
-            </span>
-          </div>
+          </span>
         </div>
-
-        {/* Offre spéciale - TAILLE MOBILE OPTIMISÉE */}
-        {promotion && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 font-medium">
-            <FaLock className="text-red-500 w-3.5 h-3.5" />
-            <span>1+1 gratuit</span>
-          </div>
-        )}
       </div>
 
       {/* Modal pour personnaliser le plat */}

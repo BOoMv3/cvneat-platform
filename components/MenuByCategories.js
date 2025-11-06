@@ -46,9 +46,9 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Filtres par catégorie - Design amélioré avec scroll horizontal */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 pb-4 pt-2 -mt-2">
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 pb-6 pt-4 -mt-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide px-1">
           <button
             onClick={() => onCategorySelect('all')}
@@ -90,53 +90,53 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
         categories.map((category, index) => {
           const Icon = getCategoryIcon(category);
           return (
-            <div key={category} className="space-y-4">
-              {/* En-tête de catégorie avec icône */}
-              <div className="flex items-center gap-3 pb-2 border-b-2 border-orange-200 dark:border-orange-800">
-                <div className="p-2 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-lg">
-                  <Icon className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            <div key={category} className="space-y-6">
+              {/* En-tête de catégorie avec icône - Design épuré */}
+              <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
+                <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
+                  <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{category}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
               
-              {/* Grille de produits */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              {/* Grille de produits - Design épuré avec moins de colonnes et plus d'espace */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
                 {menuByCategory[category].map((item) => (
                   <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
                 ))}
               </div>
               
-              {/* Séparateur entre catégories (sauf dernière) */}
+              {/* Séparateur entre catégories (sauf dernière) - Plus d'espace */}
               {index < categories.length - 1 && (
-                <div className="my-8 border-t border-gray-200 dark:border-gray-700"></div>
+                <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
               )}
             </div>
           );
         })
       ) : (
         // Afficher seulement la catégorie sélectionnée
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-2 border-b-2 border-orange-200 dark:border-orange-800">
-            <div className="p-2 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-lg">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
+            <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
               {(() => {
                 const Icon = getCategoryIcon(selectedCategory);
-                return <Icon className="w-6 h-6 text-orange-600 dark:text-orange-400" />;
+                return <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />;
               })()}
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedCategory}</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {menuByCategory[selectedCategory]?.length || 0} produit{(menuByCategory[selectedCategory]?.length || 0) > 1 ? 's' : ''}
               </p>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
             {menuByCategory[selectedCategory]?.map((item) => (
               <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
             ))}
