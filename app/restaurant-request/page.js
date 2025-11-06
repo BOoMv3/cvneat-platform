@@ -150,34 +150,65 @@ export default function RestaurantRequest() {
         throw new Error('Impossible de vérifier votre compte. Veuillez réessayer.');
       }
       
-      // Vérifier que l'utilisateur existe dans la table users
-      const { data: userExists, error: userCheckError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', currentUser.id)
-        .single();
+      // Vérifier que l'utilisateur existe dans la table users et attendre qu'il soit créé
+      let userExists = null;
+      let attempts = 0;
+      const maxAttempts = 5;
       
-      if (userCheckError || !userExists) {
-        console.warn('⚠️ Utilisateur non trouvé dans la table users, création du profil...');
-        // Créer l'entrée dans users si elle n'existe pas
-        const { error: createUserError } = await supabase
+      while (attempts < maxAttempts) {
+        const { data: userCheck, error: userCheckError } = await supabase
           .from('users')
-          .insert([
-            {
-              id: currentUser.id,
-              email: formData.email,
-              nom: formData.nom,
-              telephone: formData.telephone,
-              role: 'user'
-            }
-          ])
-          .select()
+          .select('id')
+          .eq('id', currentUser.id)
           .single();
         
-        if (createUserError && !createUserError.message.includes('duplicate')) {
-          console.error('❌ Erreur création profil utilisateur:', createUserError);
-          // Continuer quand même, le profil peut être créé automatiquement par un trigger
+        if (userCheck && !userCheckError) {
+          userExists = userCheck;
+          break;
         }
+        
+        // Si l'utilisateur n'existe pas, essayer de le créer
+        if (userCheckError || !userCheck) {
+          console.warn(`⚠️ Utilisateur non trouvé (tentative ${attempts + 1}/${maxAttempts}), création du profil...`);
+          const { error: createUserError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: currentUser.id,
+                email: formData.email,
+                nom: formData.nom,
+                telephone: formData.telephone,
+                role: 'user'
+              }
+            ])
+            .select()
+            .single();
+          
+          if (!createUserError || createUserError.message.includes('duplicate')) {
+            // Attendre un peu pour que la transaction soit commitée
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+            continue;
+          } else {
+            console.error('❌ Erreur création profil utilisateur:', createUserError);
+            // Continuer quand même, le profil peut être créé automatiquement par un trigger
+            break;
+          }
+        }
+        
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Vérifier s'il existe déjà une demande avec cet email
+      const { data: existingRequest } = await supabase
+        .from('restaurant_requests')
+        .select('id, email')
+        .eq('email', formData.email)
+        .single();
+      
+      if (existingRequest) {
+        throw new Error('Une demande existe déjà avec cet email. Veuillez contacter le support si vous souhaitez modifier votre demande.');
       }
       
       // Préparer les données d'insertion
@@ -192,20 +223,18 @@ export default function RestaurantRequest() {
         status: 'pending'
       };
       
-      // Ajouter user_id seulement si la colonne existe (gestion d'erreur gracieuse)
-      // On essaie d'abord avec user_id, puis sans si ça échoue
+      // Ajouter user_id seulement si l'utilisateur existe dans la table users
       let data, error;
       
       try {
-        // Essayer d'abord avec user_id
+        // Essayer d'abord avec user_id si l'utilisateur existe
+        const insertData = userExists 
+          ? { ...requestData, user_id: currentUser.id }
+          : requestData;
+        
         const result = await supabase
           .from('restaurant_requests')
-          .insert([
-            {
-              ...requestData,
-              user_id: currentUser.id // Lier la demande à l'utilisateur
-            }
-          ])
+          .insert([insertData])
           .select()
           .single();
         
@@ -215,14 +244,30 @@ export default function RestaurantRequest() {
         // Gérer différents types d'erreurs
         if (error) {
           const errorMessage = error.message || error.toString();
-          console.error('❌ Erreur insertion avec user_id:', errorMessage);
+          const errorCode = error.code || '';
+          const errorDetails = error.details || '';
+          const errorHint = error.hint || '';
           
-          // Si erreur de colonne manquante ou clé étrangère, réessayer sans user_id
-          if (errorMessage.includes('column') && errorMessage.includes('user_id') ||
+          console.error('❌ Erreur insertion détaillée:', {
+            message: errorMessage,
+            code: errorCode,
+            details: errorDetails,
+            hint: errorHint
+          });
+          
+          // Si erreur de colonne manquante, clé étrangère, ou violation de contrainte unique
+          if (errorCode === '23503' || // Foreign key violation
+              errorCode === '23505' || // Unique constraint violation
+              errorMessage.includes('column') && errorMessage.includes('user_id') ||
               errorMessage.includes('foreign key') ||
               errorMessage.includes('violates foreign key') ||
-              errorMessage.includes('violate key')) {
-            console.warn('⚠️ Erreur liée à user_id, insertion sans user_id...');
+              errorMessage.includes('violate key') ||
+              errorMessage.includes('duplicate key') ||
+              errorMessage.includes('unique constraint')) {
+            
+            console.warn('⚠️ Erreur liée à user_id ou contrainte unique, insertion sans user_id...');
+            
+            // Réessayer sans user_id
             const resultWithoutUserId = await supabase
               .from('restaurant_requests')
               .insert([requestData])
@@ -233,10 +278,27 @@ export default function RestaurantRequest() {
             error = resultWithoutUserId.error;
             
             if (error) {
-              console.error('❌ Erreur insertion sans user_id:', error.message || error.toString());
+              const fallbackErrorMessage = error.message || error.toString();
+              const fallbackErrorCode = error.code || '';
+              console.error('❌ Erreur insertion sans user_id:', {
+                message: fallbackErrorMessage,
+                code: fallbackErrorCode,
+                details: error.details,
+                hint: error.hint
+              });
+              
+              // Si c'est une contrainte unique sur l'email
+              if (fallbackErrorCode === '23505' || fallbackErrorMessage.includes('unique constraint') || fallbackErrorMessage.includes('duplicate key')) {
+                throw new Error('Une demande existe déjà avec cet email. Veuillez contacter le support.');
+              }
+              
+              throw new Error(`Erreur lors de la création de la demande: ${fallbackErrorMessage}${fallbackErrorCode ? ` (Code: ${fallbackErrorCode})` : ''}`);
             } else {
-              console.log('✅ Demande créée sans user_id (colonne non disponible)');
+              console.log('✅ Demande créée sans user_id');
             }
+          } else {
+            // Autre type d'erreur
+            throw new Error(`Erreur lors de la création de la demande: ${errorMessage}${errorCode ? ` (Code: ${errorCode})` : ''}${errorDetails ? ` - ${errorDetails}` : ''}`);
           }
         }
       } catch (insertError) {
@@ -247,7 +309,10 @@ export default function RestaurantRequest() {
         if (errorMessage.includes('foreign key') ||
             errorMessage.includes('violates foreign key') ||
             errorMessage.includes('violate key') ||
-            errorMessage.includes('column') && errorMessage.includes('user_id')) {
+            errorMessage.includes('duplicate key') ||
+            errorMessage.includes('unique constraint') ||
+            (errorMessage.includes('column') && errorMessage.includes('user_id'))) {
+          
           console.warn('⚠️ Erreur clé/violation détectée, insertion sans user_id...');
           try {
             const resultWithoutUserId = await supabase
@@ -260,7 +325,11 @@ export default function RestaurantRequest() {
             error = resultWithoutUserId.error;
             
             if (error) {
-              throw new Error(`Erreur lors de la création de la demande: ${error.message || error.toString()}`);
+              const fallbackErrorMessage = error.message || error.toString();
+              if (fallbackErrorMessage.includes('unique constraint') || fallbackErrorMessage.includes('duplicate key')) {
+                throw new Error('Une demande existe déjà avec cet email. Veuillez contacter le support.');
+              }
+              throw new Error(`Erreur lors de la création de la demande: ${fallbackErrorMessage}`);
             }
           } catch (fallbackError) {
             throw new Error(`Impossible de créer la demande: ${fallbackError.message || fallbackError.toString()}`);
@@ -272,7 +341,8 @@ export default function RestaurantRequest() {
 
       if (error) {
         const errorMessage = error.message || error.toString();
-        throw new Error(`Erreur lors de la création de la demande: ${errorMessage}`);
+        const errorCode = error.code || '';
+        throw new Error(`Erreur lors de la création de la demande: ${errorMessage}${errorCode ? ` (Code: ${errorCode})` : ''}`);
       }
 
       setSubmitSuccess(true);
