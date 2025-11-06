@@ -71,20 +71,41 @@ export async function GET(request) {
       return NextResponse.json({ orders: simpleOrders || [] });
     }
 
-    // Récupérer les adresses séparément pour éviter les problèmes de jointure
+    // Enrichir les commandes avec les adresses et informations complètes
     const ordersWithAddresses = await Promise.all((orders || []).map(async (order) => {
       try {
-        const { data: address } = await supabaseAdmin
-          .from('user_addresses')
-          .select('id, address, city, postal_code, delivery_instructions')
-          .eq('user_id', order.user_id)
-          .single();
+        // D'abord, vérifier si adresse_livraison existe directement dans la commande
+        let deliveryAddress = null;
+        if (order.adresse_livraison) {
+          // Si adresse_livraison existe, l'utiliser
+          deliveryAddress = {
+            address: order.adresse_livraison,
+            city: order.ville_livraison || null,
+            postal_code: order.code_postal_livraison || null,
+            delivery_instructions: order.instructions_livraison || null
+          };
+        } else {
+          // Sinon, chercher dans user_addresses
+          const { data: address } = await supabaseAdmin
+            .from('user_addresses')
+            .select('id, address, city, postal_code, delivery_instructions')
+            .eq('user_id', order.user_id)
+            .single();
+          
+          deliveryAddress = address || null;
+        }
         
         return {
           ...order,
-          user_addresses: address || null
+          user_addresses: deliveryAddress,
+          // Ajouter aussi les informations directement accessibles
+          adresse_livraison: order.adresse_livraison || deliveryAddress?.address || null,
+          ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
+          code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
+          instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null
         };
       } catch (err) {
+        console.warn('⚠️ Erreur récupération adresse pour commande', order.id, err);
         return {
           ...order,
           user_addresses: null

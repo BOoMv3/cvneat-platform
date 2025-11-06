@@ -847,7 +847,7 @@ export default function DeliveryDashboard() {
                           </div>
                         </div>
                         <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                          <span>📍 {order.user_addresses?.address?.slice(0, 30) || 'Adresse'}...</span>
+                          <span>📍 {(order.adresse_livraison || order.user_addresses?.address || order.delivery_address || 'Adresse')?.slice(0, 30)}...</span>
                           <span className={isExpanded ? 'transform rotate-180' : ''}>▼</span>
                         </div>
                       </div>
@@ -874,10 +874,17 @@ export default function DeliveryDashboard() {
                           {/* Adresse de livraison */}
                           <div className="bg-white p-3 rounded-lg">
                             <h4 className="font-semibold text-gray-900 mb-2 text-sm">🏠 Adresse de livraison</h4>
-                            <p className="text-gray-700 text-sm">{order.user_addresses?.address || 'Adresse non disponible'}</p>
-                            {(order.user_addresses?.city || order.user_addresses?.postal_code) && (
+                            <p className="text-gray-700 text-sm">
+                              {order.adresse_livraison || order.user_addresses?.address || 'Adresse non disponible'}
+                            </p>
+                            {(order.ville_livraison || order.code_postal_livraison || order.user_addresses?.city || order.user_addresses?.postal_code) && (
                               <p className="text-gray-600 text-xs">
-                                {order.user_addresses?.city} {order.user_addresses?.postal_code}
+                                {order.ville_livraison || order.user_addresses?.city || ''} {order.code_postal_livraison || order.user_addresses?.postal_code || ''}
+                              </p>
+                            )}
+                            {(order.instructions_livraison || order.user_addresses?.delivery_instructions) && (
+                              <p className="text-gray-500 text-xs mt-1 italic">
+                                Instructions: {order.instructions_livraison || order.user_addresses?.delivery_instructions}
                               </p>
                             )}
                           </div>
@@ -903,7 +910,7 @@ export default function DeliveryDashboard() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const restaurant = encodeURIComponent(order.restaurant?.adresse || '');
-                                const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                const delivery = encodeURIComponent(order.adresse_livraison || order.user_addresses?.address || order.delivery_address || '');
                                 const url = `https://www.google.com/maps/dir/${restaurant}/${delivery}`;
                                 window.open(url, '_blank');
                               }}
@@ -933,7 +940,7 @@ export default function DeliveryDashboard() {
                                     (position) => {
                                       const lat = position.coords.latitude;
                                       const lng = position.coords.longitude;
-                                      const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                      const delivery = encodeURIComponent(order.adresse_livraison || order.user_addresses?.address || order.delivery_address || '');
                                       const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
                                       window.open(url, '_blank');
                                     },
@@ -960,7 +967,7 @@ export default function DeliveryDashboard() {
                                     (position) => {
                                       const lat = position.coords.latitude;
                                       const lng = position.coords.longitude;
-                                      const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                      const delivery = encodeURIComponent(order.adresse_livraison || order.user_addresses?.address || order.delivery_address || '');
                                       const url = `https://www.google.com/maps/dir/${lat},${lng}/${delivery}`;
                                       window.open(url, '_blank');
                                     },
@@ -980,7 +987,7 @@ export default function DeliveryDashboard() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const delivery = encodeURIComponent(order.user_addresses?.address || '');
+                                const delivery = encodeURIComponent(order.adresse_livraison || order.user_addresses?.address || order.delivery_address || '');
                                 const url = `https://waze.com/ul?q=${delivery}`;
                                 window.open(url, '_blank');
                               }}
