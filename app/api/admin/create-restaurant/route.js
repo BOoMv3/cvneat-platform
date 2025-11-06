@@ -136,7 +136,7 @@ export async function POST(request) {
           .from('users')
           .select('id, role, email')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
         
         if (!fetchError && userData) {
           userToUpdate = userData;
@@ -152,31 +152,100 @@ export async function POST(request) {
       nouveauRole: 'restaurant'
     });
 
-    const { data: updatedUser, error: roleError } = await supabaseAdmin
+    // Vérifier d'abord que l'utilisateur existe dans la table users
+    const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
-      .update({ role: 'restaurant' })
+      .select('id, role, email')
       .eq('id', userId)
-      .select()
-      .single();
+      .maybeSingle();
 
-    if (roleError) {
-      console.error('❌ Erreur mise à jour rôle:', roleError);
+    if (checkError) {
+      console.error('❌ Erreur vérification utilisateur:', checkError);
       return NextResponse.json({ 
-        error: `Erreur lors de la mise à jour du rôle: ${roleError.message}` 
+        error: `Erreur lors de la vérification de l'utilisateur: ${checkError.message}` 
       }, { status: 500 });
     }
 
-    console.log('✅ Rôle mis à jour à "restaurant":', updatedUser);
+    if (!existingUser) {
+      console.warn('⚠️ Utilisateur non trouvé dans la table users, création...');
+      // Créer l'utilisateur dans la table users
+      const { data: newUser, error: createUserError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: userId,
+          email: email,
+          nom: nom,
+          prenom: '',
+          telephone: telephone,
+          role: 'restaurant'
+        })
+        .select()
+        .single();
+
+      if (createUserError) {
+        console.error('❌ Erreur création utilisateur:', createUserError);
+        return NextResponse.json({ 
+          error: `Erreur lors de la création de l'utilisateur: ${createUserError.message}` 
+        }, { status: 500 });
+      }
+
+      console.log('✅ Utilisateur créé avec rôle restaurant:', newUser);
+    } else {
+      // L'utilisateur existe, mettre à jour le rôle
+      const { data: updatedUser, error: roleError } = await supabaseAdmin
+        .from('users')
+        .update({ role: 'restaurant' })
+        .eq('id', userId)
+        .select()
+        .maybeSingle();
+
+      if (roleError) {
+        console.error('❌ Erreur mise à jour rôle:', roleError);
+        return NextResponse.json({ 
+          error: `Erreur lors de la mise à jour du rôle: ${roleError.message}` 
+        }, { status: 500 });
+      }
+
+      if (!updatedUser) {
+        console.warn('⚠️ Aucune ligne mise à jour (utilisateur peut-être supprimé)');
+        // Essayer de créer l'utilisateur
+        const { data: newUser, error: createUserError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            id: userId,
+            email: email,
+            nom: nom,
+            prenom: '',
+            telephone: telephone,
+            role: 'restaurant'
+          })
+          .select()
+          .single();
+
+        if (createUserError) {
+          console.error('❌ Erreur création utilisateur (fallback):', createUserError);
+          return NextResponse.json({ 
+            error: `Erreur lors de la création de l'utilisateur: ${createUserError.message}` 
+          }, { status: 500 });
+        }
+
+        console.log('✅ Utilisateur créé (fallback) avec rôle restaurant:', newUser);
+      } else {
+        console.log('✅ Rôle mis à jour à "restaurant":', updatedUser);
+      }
+    }
     
     // Vérifier que le rôle est bien mis à jour
     const { data: verifyUser, error: verifyUserError } = await supabaseAdmin
       .from('users')
       .select('id, role, email')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     
-    if (verifyUserError || !verifyUser) {
-      console.error('⚠️ ATTENTION: Impossible de vérifier le rôle après mise à jour');
+    if (verifyUserError) {
+      console.error('⚠️ ATTENTION: Erreur lors de la vérification du rôle:', verifyUserError);
+    } else if (!verifyUser) {
+      console.error('⚠️ ATTENTION: Utilisateur non trouvé après mise à jour');
     } else {
       console.log('✅ Vérification: Rôle confirmé:', verifyUser.role);
       if (verifyUser.role !== 'restaurant') {
