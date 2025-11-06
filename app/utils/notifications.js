@@ -47,19 +47,36 @@ export const sendOrderStatusNotification = (orderId, status, orderDetails = {}) 
     },
     'rejected': {
       title: 'CVN\'Eat - Commande refusée ❌',
-      body: `Votre commande #${orderId} a été refusée. Veuillez contacter le restaurant.`
+      body: () => {
+        const reason = orderDetails.rejection_reason || orderDetails.rejectionReason;
+        return reason 
+          ? `Votre commande #${orderId} a été refusée. Raison: ${reason}`
+          : `Votre commande #${orderId} a été refusée. Veuillez contacter le restaurant.`;
+      }
+    },
+    'refusee': {
+      title: 'CVN\'Eat - Commande refusée ❌',
+      body: () => {
+        const reason = orderDetails.rejection_reason || orderDetails.rejectionReason;
+        return reason 
+          ? `Votre commande #${orderId} a été refusée. Raison: ${reason}`
+          : `Votre commande #${orderId} a été refusée. Veuillez contacter le restaurant.`;
+      }
     }
   };
 
   const message = statusMessages[status];
   if (message) {
-    return sendPushNotification(message.title, message.body, {
+    // Si message.body est une fonction, l'appeler pour obtenir le body dynamique
+    const bodyText = typeof message.body === 'function' ? message.body() : message.body;
+    return sendPushNotification(message.title, bodyText, {
       tag: `order-${orderId}-${status}`,
       data: {
         orderId,
         status,
         restaurantName: orderDetails.restaurant_name,
-        totalAmount: orderDetails.total_amount
+        totalAmount: orderDetails.total_amount,
+        rejectionReason: orderDetails.rejection_reason || orderDetails.rejectionReason
       }
     });
   }

@@ -7,10 +7,8 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#grad512)"/>
-  <rect x="128" y="128" width="256" height="256" rx="32" fill="white"/>
-  <path d="M256 192 L288 256 L256 320 L224 256 Z" fill="#ea580c"/>
-  <circle cx="256" cy="256" r="24" fill="#22c55e"/>
-  <circle cx="304" cy="224" r="18" fill="#eab308"/>
-  <text x="256" y="380" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#ea580c" text-anchor="middle">CVN'EAT</text>
+  <rect x="96" y="96" width="320" height="320" rx="48" fill="white"/>
+  <path d="M256 176 L288 256 L256 336 L224 256 Z" fill="#ea580c"/>
+  <circle cx="320" cy="160" r="32" fill="#22c55e"/>
+  <circle cx="192" cy="352" r="24" fill="#eab308"/>
 </svg>
-

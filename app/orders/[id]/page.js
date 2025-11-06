@@ -42,15 +42,24 @@ export default function OrderStatus({ params }) {
             'preparing': 'Votre commande est en préparation 👨‍🍳',
             'ready': 'Votre commande est prête ! 📦',
             'delivered': 'Votre commande a été livrée ! 🚚',
-            'rejected': 'Votre commande a été refusée ❌'
+            'rejected': payload.new.rejection_reason 
+              ? `Votre commande a été refusée ❌\nRaison: ${payload.new.rejection_reason}`
+              : 'Votre commande a été refusée ❌',
+            'refusee': payload.new.rejection_reason 
+              ? `Votre commande a été refusée ❌\nRaison: ${payload.new.rejection_reason}`
+              : 'Votre commande a été refusée ❌'
           };
           
           if (statusMessages[payload.new.statut]) {
             setStatusNotification(statusMessages[payload.new.statut]);
             setTimeout(() => setStatusNotification(null), 5000);
             
-            // Envoyer une notification push
-            sendOrderStatusNotification(payload.new.id, payload.new.statut, payload.new);
+            // Envoyer une notification push avec la raison
+            sendOrderStatusNotification(payload.new.id, payload.new.statut, {
+              ...payload.new,
+              rejection_reason: payload.new.rejection_reason,
+              rejectionReason: payload.new.rejection_reason
+            });
           }
         }
       )

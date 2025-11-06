@@ -336,6 +336,7 @@ export async function POST(request) {
         total,
         frais_livraison,
         adresse_livraison,
+        rejection_reason,
         user_id,
         users:user_id (
           email,
@@ -358,12 +359,14 @@ export async function POST(request) {
 
     // Déterminer le template selon le statut
     let template;
+    // Utiliser la raison fournie, sinon récupérer depuis la base de données
+    const finalRejectionReason = rejectionReason || order.rejection_reason || null;
     let orderData = {
       id: order.id,
       total: order.total,
       restaurantName: restaurantName || 'le restaurant',
       deliveryAddress: order.adresse_livraison,
-      rejectionReason,
+      rejectionReason: finalRejectionReason,
       preparationTime
     };
 
