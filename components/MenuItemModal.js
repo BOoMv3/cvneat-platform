@@ -195,8 +195,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     setSelectedMeats(prev => {
       const newSet = new Set(prev);
       if (newSet.has(meatId)) {
+        // Désélectionner
         newSet.delete(meatId);
       } else {
+        // Vérifier la limite de viandes si elle existe
+        const maxMeats = item.max_meats || item.max_meat_count;
+        if (maxMeats && newSet.size >= maxMeats) {
+          // Afficher un message d'erreur
+          alert(`Vous ne pouvez sélectionner que ${maxMeats} viande${maxMeats > 1 ? 's' : ''} maximum pour ce produit.`);
+          return prev; // Ne pas ajouter
+        }
         newSet.add(meatId);
       }
       return newSet;
@@ -407,6 +415,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaUtensils className="w-5 h-5 text-red-600 mr-2" />
                 Choisir vos viandes {item.requires_meat_selection && <span className="text-red-500 text-sm ml-2">*</span>}
+                {(item.max_meats || item.max_meat_count) && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (Maximum {item.max_meats || item.max_meat_count} viande{(item.max_meats || item.max_meat_count) > 1 ? 's' : ''})
+                  </span>
+                )}
               </h3>
               <div className="space-y-2">
                 {meatOptions.map((meat) => {

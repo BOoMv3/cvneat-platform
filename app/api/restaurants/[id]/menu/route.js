@@ -98,7 +98,8 @@ export async function GET(request, { params }) {
         base_ingredients: baseIngredients,
         requires_meat_selection: item.requires_meat_selection || false,
         requires_sauce_selection: item.requires_sauce_selection || false,
-        max_sauces: item.max_sauces || item.max_sauce_count || null
+        max_sauces: item.max_sauces || item.max_sauce_count || null,
+        max_meats: item.max_meats || item.max_meat_count || null
       };
     }) || [];
 

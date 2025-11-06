@@ -62,7 +62,8 @@ export default function PartnerDashboard() {
     base_ingredients: [],
     requires_meat_selection: false,
     requires_sauce_selection: false,
-    max_sauces: null // Limite de sauces (null = illimité)
+    max_sauces: null, // Limite de sauces (null = illimité)
+    max_meats: null // Limite de viandes (null = illimité)
   });
   const [editingMenu, setEditingMenu] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -316,6 +317,7 @@ export default function PartnerDashboard() {
             requires_meat_selection: menuForm.requires_meat_selection || false,
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
             max_sauces: menuForm.max_sauces || null,
+            max_meats: menuForm.max_meats || null,
             user_email: userData.email
           }
         : { 
@@ -335,6 +337,7 @@ export default function PartnerDashboard() {
             requires_meat_selection: menuForm.requires_meat_selection || false,
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
             max_sauces: menuForm.max_sauces || null,
+            max_meats: menuForm.max_meats || null,
             user_email: userData.email
           };
 
@@ -1463,7 +1466,8 @@ export default function PartnerDashboard() {
                                   base_ingredients: parsedBaseIngredients,
                                   requires_meat_selection: item.requires_meat_selection || false,
                                   requires_sauce_selection: item.requires_sauce_selection || false,
-                                  max_sauces: item.max_sauces || item.max_sauce_count || null
+                                  max_sauces: item.max_sauces || item.max_sauce_count || null,
+                                  max_meats: item.max_meats || item.max_meat_count || null
                                 });
                                 setShowMenuModal(true);
                               }}
@@ -1790,6 +1794,23 @@ export default function PartnerDashboard() {
                       <label htmlFor="requires_meat_selection" className="text-sm text-gray-700 dark:text-gray-300">
                         Sélection de viande obligatoire
                       </label>
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="max_meats" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Limite de viandes (laisser vide pour illimité)
+                      </label>
+                      <input
+                        type="number"
+                        id="max_meats"
+                        min="1"
+                        value={menuForm.max_meats || ''}
+                        onChange={(e) => setMenuForm({...menuForm, max_meats: e.target.value ? parseInt(e.target.value) : null})}
+                        placeholder="Ex: 2 (maximum 2 viandes)"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Définir une limite (ex: 2) pour restreindre le nombre de viandes sélectionnables par le client
+                      </p>
                     </div>
                   </div>
 
