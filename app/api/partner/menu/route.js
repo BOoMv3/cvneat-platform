@@ -61,7 +61,9 @@ export async function POST(request) {
       sauce_options = [],
       base_ingredients = [],
       requires_meat_selection = false,
-      requires_sauce_selection = false
+      requires_sauce_selection = false,
+      max_sauces = null,
+      max_meats = null
     } = await request.json();
 
     if (!restaurant_id || !nom || !prix || !user_email) {
@@ -185,6 +187,21 @@ export async function POST(request) {
     menuData.requires_meat_selection = requires_meat_selection === true;
     menuData.requires_sauce_selection = requires_sauce_selection === true;
 
+    // Ajouter les limites de sauces et viandes
+    if (max_sauces !== null && max_sauces !== undefined) {
+      const maxSaucesNum = parseInt(max_sauces);
+      menuData.max_sauces = !isNaN(maxSaucesNum) && maxSaucesNum > 0 ? maxSaucesNum : null;
+    } else {
+      menuData.max_sauces = null;
+    }
+
+    if (max_meats !== null && max_meats !== undefined) {
+      const maxMeatsNum = parseInt(max_meats);
+      menuData.max_meats = !isNaN(maxMeatsNum) && maxMeatsNum > 0 ? maxMeatsNum : null;
+    } else {
+      menuData.max_meats = null;
+    }
+
     // Ajouter les tailles de boisson si fournies
     // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
     // IMPORTANT: boisson_taille peut être un nombre ou une chaîne, il faut le convertir en string
@@ -276,7 +293,9 @@ export async function PUT(request) {
       sauce_options = null,
       base_ingredients = null,
       requires_meat_selection = null,
-      requires_sauce_selection = null
+      requires_sauce_selection = null,
+      max_sauces = null,
+      max_meats = null
     } = body;
 
     if (!id || !nom || prix === undefined) {
@@ -372,6 +391,23 @@ export async function PUT(request) {
 
     if (requires_sauce_selection !== null && requires_sauce_selection !== undefined) {
       updateData.requires_sauce_selection = requires_sauce_selection === true;
+    }
+
+    // Ajouter les limites de sauces et viandes
+    if (max_sauces !== null && max_sauces !== undefined) {
+      const maxSaucesNum = parseInt(max_sauces);
+      updateData.max_sauces = !isNaN(maxSaucesNum) && maxSaucesNum > 0 ? maxSaucesNum : null;
+    } else if (max_sauces === null) {
+      // Permettre de réinitialiser à null explicitement
+      updateData.max_sauces = null;
+    }
+
+    if (max_meats !== null && max_meats !== undefined) {
+      const maxMeatsNum = parseInt(max_meats);
+      updateData.max_meats = !isNaN(maxMeatsNum) && maxMeatsNum > 0 ? maxMeatsNum : null;
+    } else if (max_meats === null) {
+      // Permettre de réinitialiser à null explicitement
+      updateData.max_meats = null;
     }
 
     // Mapper boisson_taille vers drink_size et prix_taille vers les prix appropriés
