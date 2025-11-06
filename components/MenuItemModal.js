@@ -302,6 +302,17 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   };
 
   const handleAddToCart = () => {
+    // Pour les formules, ajouter directement sans validation de personnalisation
+    if (item.is_formula) {
+      const formulaItem = {
+        ...item,
+        quantity: quantity
+      };
+      onAddToCart(formulaItem, [], null, quantity);
+      onClose();
+      return;
+    }
+
     // Validation : vérifier si une sélection de viande est requise
     if (item.requires_meat_selection && selectedMeats.size === 0) {
       alert('Veuillez sélectionner au moins une viande');
@@ -426,23 +437,77 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         <div className="p-6">
           {/* Titre et description */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{item.nom}</h2>
-            <p className="text-gray-600 mb-4">{item.description}</p>
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{item.nom}</h2>
+              {item.is_formula && (
+                <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+                  Formule
+                </span>
+              )}
+            </div>
+            {item.description && (
+              <p className="text-gray-600 dark:text-gray-300 mb-4">{item.description}</p>
+            )}
+            
+            {/* Affichage spécial pour les formules */}
+            {item.is_formula && item.formula_items && item.formula_items.length > 0 && (
+              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Cette formule comprend :</h3>
+                <ul className="space-y-2">
+                  {item.formula_items.map((formulaItem, idx) => (
+                    <li key={idx} className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                      <span className="font-medium">{formulaItem.quantity || 1}x</span>
+                      <span className="ml-2">{formulaItem.menu?.nom || 'Plat'}</span>
+                      {formulaItem.menu?.prix && (
+                        <span className="ml-auto text-gray-500">
+                          ({formulaItem.menu.prix}€)
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {item.total_items_price && item.total_items_price > item.prix && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">Prix total si acheté séparément :</span>
+                      <span className="line-through text-gray-500">{item.total_items_price.toFixed(2)}€</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-green-600 dark:text-green-400">Économie :</span>
+                      <span className="font-bold text-green-600 dark:text-green-400">
+                        {(item.total_items_price - item.prix).toFixed(2)}€
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold text-orange-600">{calculateTotalPrice().toFixed(2)}€</span>
+              <div>
+                <span className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                  {(item.prix * quantity).toFixed(2)}€
+                </span>
+                {quantity > 1 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {item.prix.toFixed(2)}€ × {quantity}
+                  </p>
+                )}
+              </div>
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">Quantité:</span>
-                <div className="flex items-center border rounded-lg">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Quantité:</span>
+                <div className="flex items-center border rounded-lg dark:border-gray-600">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-2 hover:bg-gray-100 transition-colors"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     <FaMinus className="w-4 h-4" />
                   </button>
-                  <span className="px-4 py-2 font-medium">{quantity}</span>
+                  <span className="px-4 py-2 font-medium dark:text-white">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="p-2 hover:bg-gray-100 transition-colors"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     <FaPlus className="w-4 h-4" />
                   </button>
@@ -451,8 +516,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             </div>
           </div>
 
-          {/* Options de viande */}
-          {meatOptions.length > 0 && (
+          {/* Options de personnalisation - Masquées pour les formules */}
+          {!item.is_formula && meatOptions.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaUtensils className="w-5 h-5 text-red-600 mr-2" />
@@ -503,7 +568,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Options de sauce */}
-          {sauceOptions.length > 0 && (
+          {!item.is_formula && sauceOptions.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaFlask className="w-5 h-5 text-yellow-600 mr-2" />
@@ -569,7 +634,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Ingrédients de base */}
-          {itemIngredients.length > 0 && (
+          {!item.is_formula && itemIngredients.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaLeaf className="w-5 h-5 text-green-600 mr-2" />
@@ -608,6 +673,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Ingrédients supplémentaires */}
+          {!item.is_formula && (
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
               <FaPlus className="w-5 h-5 text-orange-600 mr-2" />
@@ -655,6 +721,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               </div>
             )}
           </div>
+          )}
 
           {/* Bouton d'ajout au panier */}
           <button
@@ -662,7 +729,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             className="w-full bg-orange-600 text-white py-4 rounded-xl hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2 font-semibold text-lg"
           >
             <FaShoppingCart className="w-5 h-5" />
-            <span>Ajouter au panier - {calculateTotalPrice().toFixed(2)}€</span>
+            <span>Ajouter au panier - {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>
       </div>

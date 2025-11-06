@@ -40,15 +40,6 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   const handleAddToCart = async () => {
     setIsAdding(true);
     
-    // Si c'est une formule, l'ajouter directement sans modal
-    if (item.is_formula) {
-      onAddToCart(item);
-      setTimeout(() => {
-        setIsAdding(false);
-      }, 1500);
-      return;
-    }
-    
     // IMPORTANT: Créer une copie de l'item sans suppléments pour éviter de réutiliser
     // les suppléments d'une instance précédente dans le panier
     const itemWithoutSupplements = {
@@ -66,11 +57,7 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   };
 
   const handleItemClick = () => {
-    // Si c'est une formule, ne pas ouvrir le modal (les formules sont ajoutées directement)
-    if (item.is_formula) {
-      handleAddToCart();
-      return;
-    }
+    // Ouvrir la modal pour tous les items, y compris les formules
     setIsModalOpen(true);
   };
 
