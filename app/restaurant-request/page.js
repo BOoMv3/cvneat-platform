@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import FormInput from '../../components/FormInput';
 import { supabase } from '../../lib/supabase';
-import AuthGuard from '../../components/AuthGuard';
 
 export default function RestaurantRequest() {
   const router = useRouter();
@@ -17,7 +16,8 @@ export default function RestaurantRequest() {
     adresse: '',
     description: '',
     code_postal: '',
-    ville: ''
+    ville: '',
+    password: '' // Mot de passe pour création de compte si non connecté
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,30 +29,28 @@ export default function RestaurantRequest() {
     const checkAuth = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
-        if (error || !user) {
-          // Rediriger vers la page de connexion avec un message
-          router.push('/login?redirect=/restaurant-request&message=Veuillez vous connecter pour faire une demande de partenariat');
-          return;
+        if (!error && user) {
+          // Utilisateur connecté
+          setUser(user);
+          
+          // Pré-remplir l'email avec l'email de l'utilisateur connecté
+          const { data: userData } = await supabase
+            .from('users')
+            .select('email, nom, prenom, telephone')
+            .eq('id', user.id)
+            .single();
+          
+          if (userData) {
+            setFormData(prev => ({
+              ...prev,
+              email: userData.email || user.email || '',
+              nom: userData.nom || userData.prenom || ''
+            }));
+          }
         }
-        setUser(user);
-        
-        // Pré-remplir l'email avec l'email de l'utilisateur connecté
-        const { data: userData } = await supabase
-          .from('users')
-          .select('email, nom, prenom, telephone')
-          .eq('id', user.id)
-          .single();
-        
-        if (userData) {
-          setFormData(prev => ({
-            ...prev,
-            email: userData.email || user.email || '',
-            nom: userData.nom || userData.prenom || ''
-          }));
-        }
+        // Si pas connecté, on laisse l'utilisateur remplir le formulaire avec création de compte
       } catch (error) {
         console.error('Erreur vérification auth:', error);
-        router.push('/login?redirect=/restaurant-request&message=Veuillez vous connecter pour faire une demande de partenariat');
       } finally {
         setLoading(false);
       }
@@ -63,31 +61,108 @@ export default function RestaurantRequest() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Vérifier que l'utilisateur est connecté
-    if (!user) {
-      setErrors({ submit: 'Vous devez être connecté pour soumettre une demande' });
-      router.push('/login?redirect=/restaurant-request&message=Veuillez vous connecter pour faire une demande de partenariat');
-      return;
-    }
-    
     setIsSubmitting(true);
     setErrors({});
 
     try {
-      // Vérifier à nouveau l'authentification avant la soumission
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      let currentUser = user;
+      
+      // Si l'utilisateur n'est pas connecté, créer un compte automatiquement
       if (!currentUser) {
-        throw new Error('Session expirée. Veuillez vous reconnecter.');
+        // Vérifier que le mot de passe est fourni
+        if (!formData.password || formData.password.length < 6) {
+          throw new Error('Le mot de passe est requis et doit contenir au moins 6 caractères');
+        }
+        
+        // Vérifier que l'email n'existe pas déjà
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id, email')
+          .eq('email', formData.email)
+          .single();
+        
+        if (existingUser) {
+          throw new Error('Cet email est déjà utilisé. Veuillez vous connecter avec ce compte.');
+        }
+        
+        // Créer le compte utilisateur
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              nom: formData.nom,
+              prenom: '',
+              telephone: formData.telephone
+            }
+          }
+        });
+        
+        if (signUpError) {
+          throw new Error(signUpError.message || 'Erreur lors de la création du compte');
+        }
+        
+        if (!authData.user) {
+          throw new Error('Impossible de créer le compte');
+        }
+        
+        currentUser = authData.user;
+        
+        // Créer l'entrée dans la table users
+        const { error: userError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: currentUser.id,
+              email: formData.email,
+              nom: formData.nom,
+              telephone: formData.telephone,
+              role: 'user' // Rôle par défaut, sera changé en 'partner' si la demande est approuvée
+            }
+          ]);
+        
+        if (userError && !userError.message.includes('duplicate')) {
+          console.warn('Erreur création profil utilisateur:', userError);
+          // Continuer quand même, le profil peut être créé automatiquement par un trigger
+        }
+        
+        // Connecter l'utilisateur
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password
+        });
+        
+        if (signInError) {
+          console.warn('Erreur connexion automatique:', signInError);
+          // Continuer quand même, l'utilisateur peut se connecter manuellement
+        } else {
+          setUser(currentUser);
+        }
       }
       
+      // Vérifier à nouveau l'utilisateur avant la soumission
+      if (!currentUser) {
+        const { data: { user: verifiedUser } } = await supabase.auth.getUser();
+        currentUser = verifiedUser;
+      }
+      
+      if (!currentUser) {
+        throw new Error('Impossible de vérifier votre compte. Veuillez réessayer.');
+      }
+      
+      // Soumettre la demande de partenariat
       const { data, error } = await supabase
         .from('restaurant_requests')
         .insert([
           {
-            ...formData,
-            user_id: currentUser.id, // Lier la demande à l'utilisateur connecté
-            email: currentUser.email || formData.email, // Utiliser l'email de l'utilisateur connecté
+            nom: formData.nom,
+            email: formData.email,
+            telephone: formData.telephone,
+            adresse: formData.adresse,
+            description: formData.description,
+            code_postal: formData.code_postal,
+            ville: formData.ville,
+            user_id: currentUser.id, // Lier la demande à l'utilisateur
             status: 'pending',
             created_at: new Date().toISOString()
           }
@@ -106,7 +181,8 @@ export default function RestaurantRequest() {
         adresse: '',
         description: '',
         code_postal: '',
-        ville: ''
+        ville: '',
+        password: ''
       });
     } catch (error) {
       setErrors({ submit: error.message });
@@ -135,10 +211,7 @@ export default function RestaurantRequest() {
     );
   }
 
-  // Si pas d'utilisateur, ne rien afficher (redirection en cours)
-  if (!user) {
-    return null;
-  }
+  // Afficher le formulaire même si l'utilisateur n'est pas connecté (création de compte automatique)
 
   return (
     <>
@@ -154,14 +227,25 @@ export default function RestaurantRequest() {
             </button>
             <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Devenir Partenaire CVN-EAT</h1>
             
-            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>✅ Vous êtes connecté en tant que :</strong> {user.email}
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                Votre demande sera liée à votre compte CVN'EAT.
-              </p>
-            </div>
+            {user ? (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>✅ Vous êtes connecté en tant que :</strong> {user.email}
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                  Votre demande sera liée à votre compte CVN'EAT.
+                </p>
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                <p className="text-sm text-orange-800 dark:text-orange-200">
+                  <strong>ℹ️ Création de compte automatique</strong>
+                </p>
+                <p className="text-xs text-orange-600 dark:text-orange-300 mt-1">
+                  Un compte CVN'EAT sera créé automatiquement avec votre email. Vous pourrez vous connecter avec le mot de passe que vous allez définir.
+                </p>
+              </div>
+            )}
             
             {submitSuccess ? (
               <div className="text-center">
@@ -216,12 +300,36 @@ export default function RestaurantRequest() {
                     error={errors.email}
                     value={formData.email}
                     onChange={handleChange}
-                    disabled={true}
-                    className="bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+                    disabled={!!user}
+                    className={user ? "bg-gray-100 dark:bg-gray-700 cursor-not-allowed" : ""}
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    L'email est automatiquement rempli avec votre compte CVN'EAT.
-                  </p>
+                  {user ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      L'email est automatiquement rempli avec votre compte CVN'EAT.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Cet email sera utilisé pour créer votre compte CVN'EAT.
+                    </p>
+                  )}
+                  
+                  {!user && (
+                    <>
+                      <FormInput
+                        label="Mot de passe"
+                        type="password"
+                        name="password"
+                        placeholder="Minimum 6 caractères"
+                        required
+                        error={errors.password}
+                        value={formData.password}
+                        onChange={handleChange}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Ce mot de passe vous permettra de vous connecter à votre compte CVN'EAT.
+                      </p>
+                    </>
+                  )}
 
                   <FormInput
                     label="Téléphone"
