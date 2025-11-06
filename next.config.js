@@ -22,7 +22,8 @@ const nextConfig = {
       'encrypted-tbn2.gstatic.com', // Google Images
       'encrypted-tbn3.gstatic.com', // Google Images
       'lh3.googleusercontent.com', // Google User Content
-      'googleusercontent.com' // Google User Content
+      'googleusercontent.com', // Google User Content
+      'poissons-coquillages-crustaces.fr' // Images de produits de la mer
     ],
     remotePatterns: [
       {
