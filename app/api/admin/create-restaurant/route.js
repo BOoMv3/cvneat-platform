@@ -117,6 +117,9 @@ export async function POST(request) {
           nom: nom,
           prenom: '',
           telephone: telephone,
+          adresse: adresse || 'Adresse non renseignée',
+          code_postal: code_postal || '00000',
+          ville: ville || 'Ville non renseignée',
           role: 'restaurant' // Définir directement le rôle restaurant
         })
         .select()
@@ -177,6 +180,9 @@ export async function POST(request) {
           nom: nom,
           prenom: '',
           telephone: telephone,
+          adresse: adresse || 'Adresse non renseignée',
+          code_postal: code_postal || '00000',
+          ville: ville || 'Ville non renseignée',
           role: 'restaurant'
         })
         .select()
@@ -217,6 +223,9 @@ export async function POST(request) {
             nom: nom,
             prenom: '',
             telephone: telephone,
+            adresse: adresse || 'Adresse non renseignée',
+            code_postal: code_postal || '00000',
+            ville: ville || 'Ville non renseignée',
             role: 'restaurant'
           })
           .select()
