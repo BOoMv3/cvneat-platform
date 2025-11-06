@@ -271,8 +271,8 @@ export async function POST(request) {
       code_postal
     });
 
-    // Créer l'objet avec les colonnes essentielles qui existent et sont requises
-    // code_postal et ville sont NOT NULL dans la table restaurants
+    // Créer l'objet avec toutes les colonnes NOT NULL requises
+    // Basé sur le schéma de la table restaurants
     const restaurantInsertData = {
       user_id: userId,
       nom: nom,
@@ -282,6 +282,7 @@ export async function POST(request) {
       code_postal: code_postal || '00000',
       telephone: telephone,
       email: email,
+      type_cuisine: 'Générale', // Colonne NOT NULL requise, valeur par défaut
       image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'
       // Colonnes retirées car elles n'existent pas dans la table :
       // - frais_livraison (peut être ajouté plus tard)
