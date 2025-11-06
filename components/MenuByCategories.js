@@ -42,6 +42,18 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     if (catLower.includes('boisson') || catLower.includes('drink') || catLower === 'boissons') {
       return 4;
     }
+    // Burgers (2.5)
+    if (catLower.includes('burger')) {
+      return 2.5;
+    }
+    // Poke Bowl (2.7)
+    if (catLower.includes('poke')) {
+      return 2.7;
+    }
+    // Salades (2.8)
+    if (catLower.includes('salade')) {
+      return 2.8;
+    }
     // Autres catégories spécifiques (5)
     if (catLower.includes('kebab') || catLower.includes('panini') || catLower.includes('taco') || catLower.includes('pizza')) {
       return 2; // Considérer comme plats
@@ -89,6 +101,18 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     'boisson': FaCoffee,
     'Boisson': FaCoffee,
     'boissons': FaCoffee,
+    'Burger': FaHamburger,
+    'burger': FaHamburger,
+    'Burgers': FaHamburger,
+    'burgers': FaHamburger,
+    'Poke Bowl': FaUtensils,
+    'poke bowl': FaUtensils,
+    'Poke Bowls': FaUtensils,
+    'poke bowls': FaUtensils,
+    'Salade': FaLeaf,
+    'salade': FaLeaf,
+    'Salades': FaLeaf,
+    'salades': FaLeaf,
     'Kebab': FaHamburger,
     'Kebabs': FaHamburger,
     'Panini': FaBreadSlice,
