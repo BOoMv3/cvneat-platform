@@ -271,13 +271,15 @@ export async function POST(request) {
       code_postal
     });
 
-    // Créer l'objet avec uniquement les colonnes essentielles qui existent sûrement
-    // Colonnes minimales pour éviter les erreurs de colonnes inexistantes
+    // Créer l'objet avec les colonnes essentielles qui existent et sont requises
+    // code_postal et ville sont NOT NULL dans la table restaurants
     const restaurantInsertData = {
       user_id: userId,
       nom: nom,
       description: description || 'Restaurant partenaire CVN\'Eat',
       adresse: adresse,
+      ville: ville || 'Ville non renseignée',
+      code_postal: code_postal || '00000',
       telephone: telephone,
       email: email,
       image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop'
@@ -288,8 +290,6 @@ export async function POST(request) {
       // - rating (peut être calculé depuis les avis)
       // - is_active (n'existe pas)
       // - disponible (n'existe pas)
-      // - ville (peut être dans adresse)
-      // - code_postal (peut être dans adresse)
       // - delivery_time (n'existe pas)
       // - horaires (peut être ajouté plus tard si nécessaire)
     };
