@@ -293,8 +293,8 @@ export async function POST(request) {
         vendredi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
         samedi: { ouvert: true, plages: [{ ouverture: '11:00', fermeture: '23:00' }] },
         dimanche: { ouvert: true, plages: [{ ouverture: '12:00', fermeture: '21:00' }] }
-      },
-      disponible: true
+      }
+      // disponible n'existe pas dans la table restaurants, retiré
     };
 
     console.log('📤 Insertion restaurant dans la base de données...');
