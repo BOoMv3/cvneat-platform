@@ -44,19 +44,18 @@ export async function GET(request) {
     );
 
     // Récupérer les commandes disponibles pour livraison
-    // IMPORTANT: La contrainte CHECK n'autorise que: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
-    // Les livreurs voient uniquement les commandes:
-    // - avec statut='en_preparation' (restaurant a accepté et marqué comme prête)
-    // - avec ready_for_delivery=true (restaurant a marqué "prêt à livrer")
+    // IMPORTANT: Les livreurs voient les commandes dès qu'elles sont acceptées par le restaurant
+    // - avec statut='en_preparation' (restaurant a accepté la commande)
     // - avec livreur_id null (pas encore assignées)
+    // Les livreurs peuvent se préparer avant que la commande soit marquée comme prête
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone, frais_livraison)
+        restaurant:restaurants(nom, adresse, telephone, frais_livraison),
+        users(id, nom, prenom, telephone, email)
       `)
-      .eq('statut', 'en_preparation') // Commandes en préparation
-      .eq('ready_for_delivery', true) // SEULEMENT celles marquées comme prêtes par le restaurant
+      .eq('statut', 'en_preparation') // Commandes en préparation (acceptées par le restaurant)
       .is('livreur_id', null) // Pas encore assignées à un livreur
       .order('created_at', { ascending: true });
 
@@ -69,9 +68,54 @@ export async function GET(request) {
       }, { status: 500 });
     }
 
-    console.log('✅ Commandes récupérées:', orders?.length || 0);
-    console.log('✅ Détails commandes:', orders);
-    return NextResponse.json(orders || []);
+    // Enrichir les commandes avec les adresses et informations complètes
+    const ordersWithDetails = await Promise.all((orders || []).map(async (order) => {
+      try {
+        // Récupérer l'adresse de livraison
+        let deliveryAddress = null;
+        if (order.adresse_livraison) {
+          deliveryAddress = {
+            address: order.adresse_livraison,
+            city: order.ville_livraison || null,
+            postal_code: order.code_postal_livraison || null,
+            delivery_instructions: order.instructions_livraison || null
+          };
+        } else if (order.user_id) {
+          const { data: address } = await supabaseAdmin
+            .from('user_addresses')
+            .select('id, address, city, postal_code, delivery_instructions')
+            .eq('user_id', order.user_id)
+            .single();
+          
+          deliveryAddress = address || null;
+        }
+        
+        return {
+          ...order,
+          user_addresses: deliveryAddress,
+          // Ajouter les informations directement accessibles
+          adresse_livraison: order.adresse_livraison || deliveryAddress?.address || null,
+          ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
+          code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
+          instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null,
+          // Informations client pour compatibilité
+          customer_name: order.users?.prenom && order.users?.nom 
+            ? `${order.users.prenom} ${order.users.nom}` 
+            : order.users?.nom || 'Client',
+          customer_phone: order.users?.telephone || null,
+          delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
+          delivery_city: order.ville_livraison || deliveryAddress?.city || null,
+          delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,
+          delivery_instructions: order.instructions_livraison || deliveryAddress?.delivery_instructions || null
+        };
+      } catch (err) {
+        console.warn('⚠️ Erreur enrichissement commande', order.id, err);
+        return order;
+      }
+    }));
+
+    console.log('✅ Commandes récupérées:', ordersWithDetails?.length || 0);
+    return NextResponse.json(ordersWithDetails || []);
   } catch (error) {
     console.error('❌ Erreur API commandes disponibles:', error);
     return NextResponse.json(

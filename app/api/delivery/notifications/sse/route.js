@@ -29,10 +29,12 @@ export async function GET(request) {
       const checkNotifications = async () => {
         try {
           // Nouvelles commandes disponibles
+          // Notifier dès que la commande est en préparation (acceptée par le restaurant)
+          // Pas besoin d'attendre qu'elle soit marquée comme prête
           const { data: availableOrders } = await supabase
             .from('commandes')
             .select('*')
-            .eq('statut', 'pret_a_livrer')
+            .eq('statut', 'en_preparation')
             .is('livreur_id', null)
             .gte('created_at', new Date(Date.now() - 20000).toISOString());
 

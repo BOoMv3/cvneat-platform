@@ -12,9 +12,8 @@ export default function DeliveryOrderAlert() {
     // Vérifier l'authentification
     checkAuth();
     
-    // Écouter les nouvelles commandes - SEULEMENT celles en_preparation avec ready_for_delivery=true
-    // Le filtre dans Supabase Realtime peut filtrer sur statut et ready_for_delivery
-    // On filtre aussi côté client pour vérifier livreur_id IS NULL
+    // Écouter les nouvelles commandes dès qu'elles sont en préparation (acceptées par le restaurant)
+    // Pas besoin d'attendre ready_for_delivery=true, les livreurs peuvent se préparer avant
     const channel = supabase
       .channel('delivery-orders')
       .on('postgres_changes', 
@@ -25,9 +24,9 @@ export default function DeliveryOrderAlert() {
           filter: 'statut=eq.en_preparation'
         }, 
         (payload) => {
-          // Vérifier que ready_for_delivery est true et livreur_id est null
-          if (payload.new.ready_for_delivery === true && !payload.new.livreur_id) {
-            console.log('Nouvelle commande disponible (prête pour livraison):', payload.new);
+          // Vérifier que livreur_id est null (pas encore assignée)
+          if (!payload.new.livreur_id) {
+            console.log('Nouvelle commande disponible (en préparation):', payload.new);
             fetchAvailableOrders();
           }
         }
@@ -40,9 +39,9 @@ export default function DeliveryOrderAlert() {
           filter: 'statut=eq.en_preparation'
         }, 
         (payload) => {
-          // Vérifier que ready_for_delivery est true et livreur_id est null
-          if (payload.new.ready_for_delivery === true && !payload.new.livreur_id) {
-            console.log('Commande disponible mise à jour (prête pour livraison):', payload.new);
+          // Vérifier que livreur_id est null (pas encore assignée)
+          if (!payload.new.livreur_id) {
+            console.log('Commande disponible mise à jour (en préparation):', payload.new);
             fetchAvailableOrders();
           }
         }
