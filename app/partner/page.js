@@ -316,8 +316,8 @@ export default function PartnerDashboard() {
             base_ingredients: menuForm.base_ingredients || [],
             requires_meat_selection: menuForm.requires_meat_selection || false,
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
-            max_sauces: menuForm.max_sauces || null,
-            max_meats: menuForm.max_meats || null,
+            max_sauces: (menuForm.max_sauces !== null && menuForm.max_sauces !== undefined) ? menuForm.max_sauces : null,
+            max_meats: (menuForm.max_meats !== null && menuForm.max_meats !== undefined) ? menuForm.max_meats : null,
             user_email: userData.email
           }
         : { 
@@ -336,8 +336,8 @@ export default function PartnerDashboard() {
             base_ingredients: menuForm.base_ingredients || [],
             requires_meat_selection: menuForm.requires_meat_selection || false,
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
-            max_sauces: menuForm.max_sauces || null,
-            max_meats: menuForm.max_meats || null,
+            max_sauces: (menuForm.max_sauces !== null && menuForm.max_sauces !== undefined) ? menuForm.max_sauces : null,
+            max_meats: (menuForm.max_meats !== null && menuForm.max_meats !== undefined) ? menuForm.max_meats : null,
             user_email: userData.email
           };
 
@@ -1466,8 +1466,17 @@ export default function PartnerDashboard() {
                                   base_ingredients: parsedBaseIngredients,
                                   requires_meat_selection: item.requires_meat_selection || false,
                                   requires_sauce_selection: item.requires_sauce_selection || false,
-                                  max_sauces: item.max_sauces || item.max_sauce_count || null,
-                                  max_meats: item.max_meats || item.max_meat_count || null
+                                  // Gérer explicitement 0 (sauces déjà comprises) vs null (illimité)
+                                  max_sauces: (item.max_sauces !== null && item.max_sauces !== undefined) 
+                                    ? item.max_sauces 
+                                    : ((item.max_sauce_count !== null && item.max_sauce_count !== undefined) 
+                                        ? item.max_sauce_count 
+                                        : null),
+                                  max_meats: (item.max_meats !== null && item.max_meats !== undefined) 
+                                    ? item.max_meats 
+                                    : ((item.max_meat_count !== null && item.max_meat_count !== undefined) 
+                                        ? item.max_meat_count 
+                                        : null)
                                 });
                                 setShowMenuModal(true);
                               }}
@@ -1901,19 +1910,22 @@ export default function PartnerDashboard() {
                     </div>
                     <div className="mb-3">
                       <label htmlFor="max_sauces" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Limite de sauces (laisser vide pour illimité)
+                        Limite de sauces (laisser vide pour illimité, 0 si déjà comprises)
                       </label>
                       <input
                         type="number"
                         id="max_sauces"
-                        min="1"
-                        value={menuForm.max_sauces || ''}
-                        onChange={(e) => setMenuForm({...menuForm, max_sauces: e.target.value ? parseInt(e.target.value) : null})}
-                        placeholder="Ex: 2 (maximum 2 sauces)"
+                        min="0"
+                        value={menuForm.max_sauces !== null && menuForm.max_sauces !== undefined ? menuForm.max_sauces : ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setMenuForm({...menuForm, max_sauces: value === '' ? null : parseInt(value)});
+                        }}
+                        placeholder="Ex: 2 (maximum 2 sauces) ou 0 (déjà comprises)"
                         className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Définir une limite (ex: 2) pour restreindre le nombre de sauces sélectionnables par le client
+                        Définir une limite (ex: 2) pour restreindre le nombre de sauces, ou 0 si les sauces sont déjà comprises dans le plat
                       </p>
                     </div>
                   </div>

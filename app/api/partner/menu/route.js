@@ -190,7 +190,8 @@ export async function POST(request) {
     // Ajouter les limites de sauces et viandes
     if (max_sauces !== null && max_sauces !== undefined) {
       const maxSaucesNum = parseInt(max_sauces);
-      menuData.max_sauces = !isNaN(maxSaucesNum) && maxSaucesNum > 0 ? maxSaucesNum : null;
+      // Accepter 0 (sauces déjà comprises) ou un nombre positif
+      menuData.max_sauces = !isNaN(maxSaucesNum) && maxSaucesNum >= 0 ? maxSaucesNum : null;
     } else {
       menuData.max_sauces = null;
     }
@@ -408,7 +409,8 @@ export async function PUT(request) {
     // Ajouter les limites de sauces et viandes
     if (max_sauces !== null && max_sauces !== undefined) {
       const maxSaucesNum = parseInt(max_sauces);
-      updateData.max_sauces = !isNaN(maxSaucesNum) && maxSaucesNum > 0 ? maxSaucesNum : null;
+      // Accepter 0 (sauces déjà comprises) ou un nombre positif
+      updateData.max_sauces = !isNaN(maxSaucesNum) && maxSaucesNum >= 0 ? maxSaucesNum : null;
     } else if (max_sauces === null) {
       // Permettre de réinitialiser à null explicitement
       updateData.max_sauces = null;

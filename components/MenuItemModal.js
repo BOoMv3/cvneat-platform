@@ -52,9 +52,15 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         }
         setSauceOptions(Array.isArray(parsedSauces) ? parsedSauces : []);
         
-        // Sélectionner les sauces par défaut (default: true)
-        const defaultSauces = parsedSauces.filter(s => s.default === true).map(s => s.id || s.nom);
-        setSelectedSauces(new Set(defaultSauces));
+        // Sélectionner les sauces par défaut (default: true) seulement si max_sauces !== 0
+        const maxSauces = item.max_sauces || item.max_sauce_count;
+        if (maxSauces !== 0) {
+          const defaultSauces = parsedSauces.filter(s => s.default === true).map(s => s.id || s.nom);
+          setSelectedSauces(new Set(defaultSauces));
+        } else {
+          // Si max_sauces = 0, ne pas sélectionner de sauces (elles sont déjà comprises)
+          setSelectedSauces(new Set());
+        }
       } else {
         setSauceOptions([]);
       }
@@ -214,6 +220,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
   // Gestionnaire pour sélectionner/désélectionner les sauces
   const handleSauceToggle = (sauceId) => {
+    const maxSauces = item.max_sauces || item.max_sauce_count;
+    
+    // Si max_sauces = 0, les sauces sont déjà comprises, on ne peut pas en sélectionner
+    if (maxSauces === 0) {
+      return; // Ne rien faire
+    }
+    
     setSelectedSauces(prev => {
       const newSet = new Set(prev);
       if (newSet.has(sauceId)) {
@@ -221,8 +234,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         newSet.delete(sauceId);
       } else {
         // Vérifier la limite de sauces si elle existe
-        const maxSauces = item.max_sauces || item.max_sauce_count;
-        if (maxSauces && newSet.size >= maxSauces) {
+        if (maxSauces && maxSauces > 0 && newSet.size >= maxSauces) {
           // Afficher un message d'erreur
           alert(`Vous ne pouvez sélectionner que ${maxSauces} sauce${maxSauces > 1 ? 's' : ''} maximum pour ce produit.`);
           return prev; // Ne pas ajouter
@@ -297,7 +309,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     }
 
     // Validation : vérifier si une sélection de sauce est requise
-    if (item.requires_sauce_selection && selectedSauces.size === 0) {
+    // Ne pas valider si max_sauces = 0 (sauces déjà comprises)
+    const maxSauces = item.max_sauces || item.max_sauce_count;
+    if (item.requires_sauce_selection && selectedSauces.size === 0 && maxSauces !== 0) {
       alert('Veuillez sélectionner au moins une sauce');
       return;
     }
@@ -494,48 +508,63 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaFlask className="w-5 h-5 text-yellow-600 mr-2" />
                 Choisir vos sauces {item.requires_sauce_selection && <span className="text-red-500 text-sm ml-2">*</span>}
-                {(item.max_sauces || item.max_sauce_count) && (
+                {(item.max_sauces || item.max_sauce_count) !== null && (item.max_sauces || item.max_sauce_count) !== undefined && (
                   <span className="text-sm text-gray-500 ml-2">
-                    (Maximum {item.max_sauces || item.max_sauce_count} sauce{(item.max_sauces || item.max_sauce_count) > 1 ? 's' : ''})
+                    {(item.max_sauces || item.max_sauce_count) === 0 ? (
+                      <span className="text-green-600 font-medium">(Déjà comprises)</span>
+                    ) : (
+                      `(Maximum ${item.max_sauces || item.max_sauce_count} sauce${(item.max_sauces || item.max_sauce_count) > 1 ? 's' : ''})`
+                    )}
                   </span>
                 )}
               </h3>
-              <div className="space-y-2">
-                {sauceOptions.map((sauce) => {
-                  const sauceId = sauce.id || sauce.nom;
-                  const isSelected = selectedSauces.has(sauceId);
-                  return (
-                    <div
-                      key={sauceId}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-yellow-50 border-yellow-300 text-yellow-800'
-                          : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                      }`}
-                      onClick={() => handleSauceToggle(sauceId)}
-                    >
-                      <div className="flex items-center">
-                        <span className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
+              {(item.max_sauces || item.max_sauce_count) === 0 ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-green-800 font-medium">
+                    ✓ Les sauces sont déjà comprises dans ce plat
+                  </p>
+                  <p className="text-sm text-green-600 mt-1">
+                    Aucune sélection supplémentaire n'est nécessaire
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sauceOptions.map((sauce) => {
+                    const sauceId = sauce.id || sauce.nom;
+                    const isSelected = selectedSauces.has(sauceId);
+                    return (
+                      <div
+                        key={sauceId}
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-yellow-500 bg-yellow-500'
-                            : 'border-gray-300'
-                        }`}>
-                          {isSelected && <span className="text-white text-xs">✓</span>}
-                        </span>
-                        <span className="font-medium">{sauce.nom || sauce.name}</span>
+                            ? 'bg-yellow-50 border-yellow-300 text-yellow-800'
+                            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                        }`}
+                        onClick={() => handleSauceToggle(sauceId)}
+                      >
+                        <div className="flex items-center">
+                          <span className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
+                            isSelected
+                              ? 'border-yellow-500 bg-yellow-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {isSelected && <span className="text-white text-xs">✓</span>}
+                          </span>
+                          <span className="font-medium">{sauce.nom || sauce.name}</span>
+                        </div>
+                        {(sauce.prix || sauce.price) > 0 ? (
+                          <span className="text-sm font-medium text-yellow-600">
+                            <span className="text-gray-500 mr-1">Prix:</span>
+                            +{parseFloat(sauce.prix || sauce.price || 0).toFixed(2)}€
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">Gratuit</span>
+                        )}
                       </div>
-                      {(sauce.prix || sauce.price) > 0 ? (
-                        <span className="text-sm font-medium text-yellow-600">
-                          <span className="text-gray-500 mr-1">Prix:</span>
-                          +{parseFloat(sauce.prix || sauce.price || 0).toFixed(2)}€
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">Gratuit</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
