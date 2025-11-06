@@ -36,6 +36,12 @@ export const metadata = {
         height: 630,
         alt: 'CVN\'EAT - Plateforme de livraison de repas à domicile',
       },
+      {
+        url: '/og-image.svg',
+        width: 1200,
+        height: 630,
+        alt: 'CVN\'EAT - Plateforme de livraison de repas à domicile',
+      },
     ],
     locale: 'fr_FR',
     type: 'website',
@@ -44,7 +50,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'CVN\'EAT - Livraison de repas à domicile',
     description: 'Commandez vos plats préférés et faites-vous livrer à domicile. Restaurants partenaires, livraison rapide.',
-    images: ['/og-image.jpg'],
+    images: ['/og-image.jpg', '/og-image.svg'],
   },
   robots: {
     index: true,
@@ -81,10 +87,14 @@ export default function RootLayout({ children }) {
         
         {/* Favicons et icônes */}
         <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png" />
+        <link rel="icon" type="image/svg+xml" sizes="32x32" href="/icon-32x32.svg" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.svg" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
+        <link rel="icon" type="image/svg+xml" sizes="192x192" href="/icon-192x192.svg" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
+        <link rel="icon" type="image/svg+xml" sizes="512x512" href="/icon-512x512.svg" />
         
         {/* Theme colors */}
         <meta name="theme-color" content="#ea580c" />
