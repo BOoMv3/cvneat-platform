@@ -54,7 +54,7 @@ export async function GET(request, { params }) {
         *,
         menus(*),
         orders(count),
-        partner:users(email, full_name, telephone)
+        partner:users(email, nom, prenom, telephone)
       `)
       .eq('id', params.id)
       .single();
@@ -121,7 +121,7 @@ export async function PUT(request, { params }) {
       .eq('id', params.id)
       .select(`
         *,
-        partner:users(email, full_name)
+        partner:users(email, nom, prenom)
       `)
       .single();
 
@@ -137,7 +137,7 @@ export async function PUT(request, { params }) {
             type: is_active ? 'restaurantActivated' : 'restaurantDeactivated',
             data: {
               restaurantName: updatedRestaurant.nom,
-              partnerName: updatedRestaurant.partner?.full_name,
+              partnerName: [updatedRestaurant.partner?.prenom, updatedRestaurant.partner?.nom].filter(Boolean).join(' ') || null,
               reason: is_active ? 'Votre restaurant a été activé' : 'Votre restaurant a été désactivé'
             },
             recipientEmail: updatedRestaurant.partner?.email
@@ -201,7 +201,7 @@ export async function DELETE(request, { params }) {
       .from('restaurants')
       .select(`
         *,
-        partner:users(id, email, full_name)
+        partner:users(id, email, nom, prenom)
       `)
       .eq('id', params.id)
       .single();
@@ -282,7 +282,7 @@ export async function DELETE(request, { params }) {
           type: 'restaurantDeleted',
           data: {
             restaurantName: restaurant.nom,
-            partnerName: restaurant.partner?.full_name,
+            partnerName: [restaurant.partner?.prenom, restaurant.partner?.nom].filter(Boolean).join(' ') || null,
             reason: 'Votre restaurant a été supprimé définitivement par l\'administration'
           },
           recipientEmail: restaurant.partner?.email
