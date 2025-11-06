@@ -21,3 +21,4 @@ WHERE table_name = 'menus'
   AND column_name IN ('max_sauces', 'max_meats')
 ORDER BY column_name;
 
+

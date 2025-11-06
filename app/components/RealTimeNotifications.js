@@ -420,21 +420,28 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   // Fonction pour jouer une alerte sonore
   const playNotificationSound = () => {
     try {
-      // Initialiser ou réutiliser le contexte audio (nécessite une interaction utilisateur pour la première fois)
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      let audioContext = audioContextRef.current;
+      
+      // Créer un nouveau contexte si nécessaire
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContextRef.current = audioContext;
       }
       
-      const audioContext = audioContextRef.current;
-      
-      // Reprendre le contexte s'il est suspendu (peut arriver après inactivité)
+      // Toujours essayer de reprendre le contexte s'il est suspendu
       if (audioContext.state === 'suspended') {
         audioContext.resume().then(() => {
           // Continuer avec la lecture du son après la reprise
           playSoundWithContext(audioContext);
         }).catch(() => {
-          console.warn('Contexte audio suspendu, utilisation du fallback');
-          playFallbackSound();
+          // Si la résolution échoue, créer un nouveau contexte
+          try {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            playSoundWithContext(audioContextRef.current);
+          } catch (newContextError) {
+            console.warn('Impossible de créer un nouveau contexte audio, utilisation du fallback');
+            playFallbackSound();
+          }
         });
         return;
       }
@@ -443,7 +450,12 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       playSoundWithContext(audioContext);
     } catch (error) {
       console.warn('Impossible de jouer le son avec AudioContext:', error);
-      playFallbackSound();
+      // Essayer le fallback
+      try {
+        playFallbackSound();
+      } catch (fallbackError) {
+        console.warn('Impossible de jouer le son de fallback:', fallbackError);
+      }
     }
   };
 

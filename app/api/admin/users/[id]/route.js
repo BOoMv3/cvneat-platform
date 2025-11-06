@@ -132,39 +132,97 @@ export async function DELETE(request, { params }) {
   }
 
   try {
-    // Vérifier si l'utilisateur existe
+    const userId = params.id;
+
+    // Vérifier si l'utilisateur existe dans la table users
     const { data: existingUser, error: fetchError } = await supabaseAdmin
       .from('users')
-      .select('id')
-      .eq('id', params.id)
-      .single();
+      .select('id, email, nom, prenom')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (fetchError || !existingUser) {
+    if (fetchError) {
+      console.error('Erreur lors de la récupération de l\'utilisateur:', fetchError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la vérification de l\'utilisateur', details: fetchError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!existingUser) {
       return NextResponse.json(
         { error: 'Utilisateur non trouvé' },
         { status: 404 }
       );
     }
 
-    // Supprimer l'utilisateur
+    // Empêcher la suppression de soi-même
+    if (userId === auth.userId) {
+      return NextResponse.json(
+        { error: 'Vous ne pouvez pas supprimer votre propre compte' },
+        { status: 400 }
+      );
+    }
+
+    // Supprimer l'utilisateur de Supabase Auth d'abord (si possible)
+    try {
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (deleteAuthError) {
+        console.warn('Avertissement: Impossible de supprimer l\'utilisateur de Auth:', deleteAuthError.message);
+        // Continuer quand même, l'utilisateur pourrait ne pas exister dans Auth
+      }
+    } catch (authErr) {
+      console.warn('Avertissement: Erreur lors de la suppression Auth:', authErr);
+      // Continuer quand même
+    }
+
+    // Supprimer l'utilisateur de la table users
     const { error: deleteError } = await supabaseAdmin
       .from('users')
       .delete()
-      .eq('id', params.id);
+      .eq('id', userId);
 
     if (deleteError) {
       console.error('Erreur suppression utilisateur:', deleteError);
+      
+      // Vérifier si c'est une erreur de contrainte de clé étrangère
+      if (deleteError.code === '23503' || deleteError.message?.includes('foreign key') || deleteError.message?.includes('violates foreign key')) {
+        return NextResponse.json(
+          { 
+            error: 'Impossible de supprimer cet utilisateur',
+            details: 'L\'utilisateur est lié à d\'autres données (commandes, restaurants, etc.). Veuillez d\'abord supprimer ou réassigner ces données.',
+            code: 'FOREIGN_KEY_CONSTRAINT'
+          },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
-        { error: 'Erreur lors de la suppression de l\'utilisateur' },
+        { 
+          error: 'Erreur lors de la suppression de l\'utilisateur',
+          details: deleteError.message || 'Erreur inconnue',
+          code: deleteError.code
+        },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ message: 'Utilisateur supprimé avec succès' });
+    return NextResponse.json({ 
+      message: 'Utilisateur supprimé avec succès',
+      deletedUser: {
+        id: existingUser.id,
+        email: existingUser.email,
+        nom: existingUser.nom,
+        prenom: existingUser.prenom
+      }
+    });
   } catch (error) {
     console.error('Erreur lors de la suppression de l\'utilisateur:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la suppression de l\'utilisateur' },
+      { 
+        error: 'Erreur lors de la suppression de l\'utilisateur',
+        details: error.message || 'Erreur inconnue'
+      },
       { status: 500 }
     );
   }

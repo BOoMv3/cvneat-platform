@@ -100,14 +100,26 @@ export default function AdminUsers() {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
 
     try {
+      setError(null);
       const response = await fetchWithAuth(`/api/admin/users/${id}`, {
         method: 'DELETE'
       });
 
-      if (!response.ok) throw new Error('Erreur lors de la suppression de l\'utilisateur');
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = data.details 
+          ? `${data.error}: ${data.details}` 
+          : data.error || 'Erreur lors de la suppression de l\'utilisateur';
+        throw new Error(errorMessage);
+      }
+
+      // Afficher un message de succès
+      setError(null);
       fetchUsers();
     } catch (err) {
       setError(err.message);
+      console.error('Erreur suppression:', err);
     }
   };
 
