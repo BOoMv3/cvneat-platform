@@ -1,40 +1,79 @@
 {
-  "name": "CVN'EAT - Plateforme de livraison",
+  "name": "CVN'EAT - Plateforme de livraison de repas à domicile",
   "short_name": "CVN'EAT",
-  "description": "Livraison de plats à domicile",
+  "description": "Application de livraison de repas à domicile. Commandez vos plats préférés auprès des meilleurs restaurants partenaires. Livraison rapide et service de qualité.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#8b5cf6",
+  "theme_color": "#ea580c",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "fr",
-  "categories": ["food", "lifestyle", "shopping"],
+  "dir": "ltr",
+  "categories": ["food", "lifestyle", "shopping", "restaurant"],
   "icons": [
     {
       "src": "/icon-16x16.png",
       "sizes": "16x16",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
+  "screenshots": [],
   "shortcuts": [
     {
       "name": "Commander",
       "short_name": "Commander",
-      "description": "Passer une commande",
+      "description": "Passer une commande de repas",
       "url": "/restaurants",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Mes commandes",
       "short_name": "Commandes",
-      "description": "Voir mes commandes",
+      "description": "Voir mes commandes en cours et passées",
       "url": "/profile/orders",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Profil",
       "short_name": "Profil",
-      "description": "Gérer mon profil",
+      "description": "Gérer mon profil et mes informations",
       "url": "/profile",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ],
   "related_applications": [],
@@ -42,4 +81,4 @@
   "edge_side_panel": {
     "preferred_width": 400
   }
-} 
+}
