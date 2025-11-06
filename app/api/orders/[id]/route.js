@@ -259,6 +259,9 @@ export async function GET(request, { params }) {
       refunded_at: order.refunded_at || null,
       stripe_refund_id: order.stripe_refund_id || null,
       payment_status: order.payment_status || 'pending',
+      // Raison de refus
+      rejection_reason: order.rejection_reason || null,
+      rejectionReason: order.rejection_reason || null, // Alias pour compatibilité
       items: items,
       details_commande: (order.details_commande || []).map(detail => {
         // S'assurer que les suppléments sont inclus dans details_commande
