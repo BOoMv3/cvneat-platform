@@ -6,7 +6,9 @@ export default function FormInput({
   required = false,
   error,
   value,
-  onChange
+  onChange,
+  disabled = false,
+  className = ''
 }) {
   // Villages proches de Ganges pour l'autocomplétion
   const nearbyVillages = [
@@ -39,10 +41,11 @@ export default function FormInput({
         required={required}
         value={value}
         onChange={onChange}
+        disabled={disabled}
         list={isVilleField ? 'villages-list' : undefined}
         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm sm:text-base bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
           error ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-        }`}
+        } ${disabled ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-60' : ''} ${className}`}
       />
       {isVilleField && (
         <datalist id="villages-list">

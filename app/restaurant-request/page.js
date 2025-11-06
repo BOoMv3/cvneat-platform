@@ -1,12 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import FormInput from '../../components/FormInput';
 import { supabase } from '../../lib/supabase';
+import AuthGuard from '../../components/AuthGuard';
 
 export default function RestaurantRequest() {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     nom: '',
     email: '',
@@ -21,17 +24,70 @@ export default function RestaurantRequest() {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Vérifier l'authentification au chargement
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) {
+          // Rediriger vers la page de connexion avec un message
+          router.push('/login?redirect=/restaurant-request&message=Veuillez vous connecter pour faire une demande de partenariat');
+          return;
+        }
+        setUser(user);
+        
+        // Pré-remplir l'email avec l'email de l'utilisateur connecté
+        const { data: userData } = await supabase
+          .from('users')
+          .select('email, nom, prenom, telephone')
+          .eq('id', user.id)
+          .single();
+        
+        if (userData) {
+          setFormData(prev => ({
+            ...prev,
+            email: userData.email || user.email || '',
+            nom: userData.nom || userData.prenom || ''
+          }));
+        }
+      } catch (error) {
+        console.error('Erreur vérification auth:', error);
+        router.push('/login?redirect=/restaurant-request&message=Veuillez vous connecter pour faire une demande de partenariat');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Vérifier que l'utilisateur est connecté
+    if (!user) {
+      setErrors({ submit: 'Vous devez être connecté pour soumettre une demande' });
+      router.push('/login?redirect=/restaurant-request&message=Veuillez vous connecter pour faire une demande de partenariat');
+      return;
+    }
+    
     setIsSubmitting(true);
     setErrors({});
 
     try {
+      // Vérifier à nouveau l'authentification avant la soumission
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      }
+      
       const { data, error } = await supabase
         .from('restaurant_requests')
         .insert([
           {
             ...formData,
+            user_id: currentUser.id, // Lier la demande à l'utilisateur connecté
+            email: currentUser.email || formData.email, // Utiliser l'email de l'utilisateur connecté
             status: 'pending',
             created_at: new Date().toISOString()
           }
@@ -67,6 +123,23 @@ export default function RestaurantRequest() {
     }));
   };
 
+  // Afficher un loader pendant la vérification de l'authentification
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Vérification de l'authentification...</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Si pas d'utilisateur, ne rien afficher (redirection en cours)
+  if (!user) {
+    return null;
+  }
+
   return (
     <>
       <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
@@ -80,6 +153,15 @@ export default function RestaurantRequest() {
               Retour
             </button>
             <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Devenir Partenaire CVN-EAT</h1>
+            
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>✅ Vous êtes connecté en tant que :</strong> {user.email}
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                Votre demande sera liée à votre compte CVN'EAT.
+              </p>
+            </div>
             
             {submitSuccess ? (
               <div className="text-center">
@@ -134,7 +216,12 @@ export default function RestaurantRequest() {
                     error={errors.email}
                     value={formData.email}
                     onChange={handleChange}
+                    disabled={true}
+                    className="bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
                   />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    L'email est automatiquement rempli avec votre compte CVN'EAT.
+                  </p>
 
                   <FormInput
                     label="Téléphone"
