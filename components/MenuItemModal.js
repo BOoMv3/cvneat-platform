@@ -353,22 +353,25 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
       onClick={onClose}
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
     >
       <div 
-        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative z-[10000] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="relative">
           {item.image_url && (
-            <div className="relative h-48 w-full">
+            <div className="relative h-64 w-full">
               <Image
                 src={item.image_url}
                 alt={item.nom}
                 fill
                 className="object-cover rounded-t-2xl"
+                sizes="(max-width: 768px) 100vw, 672px"
+                priority
               />
             </div>
           )}

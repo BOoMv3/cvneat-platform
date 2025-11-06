@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import MenuItem from './MenuItem';
-import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaSaladBowl, FaDrumstickBite } from 'react-icons/fa';
+import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf } from 'react-icons/fa';
 
 export default function MenuByCategories({ menu, selectedCategory, onCategorySelect, onAddToCart, restaurantId }) {
   // Grouper les menus par catégorie
@@ -57,14 +57,14 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
 
   // Icônes pour les catégories
   const categoryIcons = {
-    'Entrées': FaSaladBowl,
-    'entree': FaSaladBowl,
-    'Entree': FaSaladBowl,
-    'entrées': FaSaladBowl,
-    'Plats': FaDrumstickBite,
-    'plat': FaDrumstickBite,
-    'Plat': FaDrumstickBite,
-    'plats': FaDrumstickBite,
+    'Entrées': FaLeaf,
+    'entree': FaLeaf,
+    'Entree': FaLeaf,
+    'entrées': FaLeaf,
+    'Plats': FaUtensils,
+    'plat': FaUtensils,
+    'Plat': FaUtensils,
+    'plats': FaUtensils,
     'Desserts': FaIceCream,
     'dessert': FaIceCream,
     'Dessert': FaIceCream,
