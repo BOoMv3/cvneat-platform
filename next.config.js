@@ -16,7 +16,13 @@ const nextConfig = {
       'res.cloudinary.com',
       'images.unsplash.com',
       'i.ibb.co', // ImgBB pour les uploads d'images
-      'ibb.co' // ImgBB domaines alternatifs
+      'ibb.co', // ImgBB domaines alternatifs
+      'encrypted-tbn0.gstatic.com', // Google Images
+      'encrypted-tbn1.gstatic.com', // Google Images
+      'encrypted-tbn2.gstatic.com', // Google Images
+      'encrypted-tbn3.gstatic.com', // Google Images
+      'lh3.googleusercontent.com', // Google User Content
+      'googleusercontent.com' // Google User Content
     ],
     remotePatterns: [
       {
@@ -30,6 +36,19 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: '*.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.gstatic.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.google.com',
+        pathname: '/images/**',
       }
     ],
     formats: ['image/webp', 'image/avif'],
