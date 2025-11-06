@@ -318,16 +318,23 @@ export async function PUT(request, { params }) {
 
       if (clientInfo) {
         // Appeler l'API de notification
+        // Utiliser le statut original pour les notifications (pas le statut mappé)
+        // car l'API de notification gère les statuts métier
+        const notificationStatus = status === 'refusee' ? 'refusee' : correctedStatus;
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/order-status`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderId: updatedOrder.id,
-            status: correctedStatus,
+            status: notificationStatus,
             restaurantName: restaurantInfo?.nom,
-            rejectionReason: reason,
+            rejectionReason: reason || updatedOrder.rejection_reason, // Utiliser la raison fournie ou celle de la BDD
             preparationTime: preparation_time
           })
+        });
+        console.log('📧 Notification envoyée avec:', { 
+          status: notificationStatus, 
+          rejectionReason: reason || updatedOrder.rejection_reason 
         });
       }
     } catch (notificationError) {
