@@ -1,8 +1,23 @@
 -- Ajouter la colonne user_id à la table restaurant_requests
 -- Cette colonne lie la demande de partenariat à un compte utilisateur CVN'EAT
 
-ALTER TABLE restaurant_requests
-ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+-- Vérifier si la colonne existe déjà avant de l'ajouter
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'restaurant_requests' 
+        AND column_name = 'user_id'
+    ) THEN
+        ALTER TABLE restaurant_requests
+        ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+        
+        RAISE NOTICE 'Colonne user_id ajoutée avec succès';
+    ELSE
+        RAISE NOTICE 'Colonne user_id existe déjà';
+    END IF;
+END $$;
 
 -- Créer un index pour améliorer les performances des requêtes
 CREATE INDEX IF NOT EXISTS idx_restaurant_requests_user_id ON restaurant_requests(user_id);

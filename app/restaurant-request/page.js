@@ -150,25 +150,95 @@ export default function RestaurantRequest() {
         throw new Error('Impossible de vérifier votre compte. Veuillez réessayer.');
       }
       
-      // Soumettre la demande de partenariat
-      const { data, error } = await supabase
-        .from('restaurant_requests')
-        .insert([
-          {
-            nom: formData.nom,
-            email: formData.email,
-            telephone: formData.telephone,
-            adresse: formData.adresse,
-            description: formData.description,
-            code_postal: formData.code_postal,
-            ville: formData.ville,
-            user_id: currentUser.id, // Lier la demande à l'utilisateur
-            status: 'pending',
-            created_at: new Date().toISOString()
-          }
-        ])
-        .select()
+      // Vérifier que l'utilisateur existe dans la table users
+      const { data: userExists, error: userCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', currentUser.id)
         .single();
+      
+      if (userCheckError || !userExists) {
+        console.warn('⚠️ Utilisateur non trouvé dans la table users, création du profil...');
+        // Créer l'entrée dans users si elle n'existe pas
+        const { error: createUserError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: currentUser.id,
+              email: formData.email,
+              nom: formData.nom,
+              telephone: formData.telephone,
+              role: 'user'
+            }
+          ])
+          .select()
+          .single();
+        
+        if (createUserError && !createUserError.message.includes('duplicate')) {
+          console.error('❌ Erreur création profil utilisateur:', createUserError);
+          // Continuer quand même, le profil peut être créé automatiquement par un trigger
+        }
+      }
+      
+      // Préparer les données d'insertion
+      const requestData = {
+        nom: formData.nom,
+        email: formData.email,
+        telephone: formData.telephone,
+        adresse: formData.adresse,
+        description: formData.description,
+        code_postal: formData.code_postal,
+        ville: formData.ville,
+        status: 'pending'
+      };
+      
+      // Ajouter user_id seulement si la colonne existe (gestion d'erreur gracieuse)
+      // On essaie d'abord avec user_id, puis sans si ça échoue
+      let data, error;
+      
+      try {
+        const result = await supabase
+          .from('restaurant_requests')
+          .insert([
+            {
+              ...requestData,
+              user_id: currentUser.id // Lier la demande à l'utilisateur
+            }
+          ])
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+        
+        // Si erreur de colonne manquante, réessayer sans user_id
+        if (error && error.message && error.message.includes('column') && error.message.includes('user_id')) {
+          console.warn('⚠️ Colonne user_id non trouvée, insertion sans user_id...');
+          const resultWithoutUserId = await supabase
+            .from('restaurant_requests')
+            .insert([requestData])
+            .select()
+            .single();
+          
+          data = resultWithoutUserId.data;
+          error = resultWithoutUserId.error;
+        }
+      } catch (insertError) {
+        // Si erreur de contrainte de clé étrangère, réessayer sans user_id
+        if (insertError.message && insertError.message.includes('foreign key')) {
+          console.warn('⚠️ Erreur clé étrangère user_id, insertion sans user_id...');
+          const resultWithoutUserId = await supabase
+            .from('restaurant_requests')
+            .insert([requestData])
+            .select()
+            .single();
+          
+          data = resultWithoutUserId.data;
+          error = resultWithoutUserId.error;
+        } else {
+          throw insertError;
+        }
+      }
 
       if (error) throw error;
 
