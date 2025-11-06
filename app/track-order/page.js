@@ -401,6 +401,30 @@ export default function TrackOrder() {
                   </span>
                 </div>
 
+                {/* Afficher la raison de refus si la commande est refusée */}
+                {(order.statut === 'refusee' || order.status === 'refusee' || order.statut === 'rejected' || order.status === 'rejected') && (order.rejection_reason || order.rejectionReason) && (
+                  <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
+                          📋 Raison du refus
+                        </h4>
+                        <p className="text-xs sm:text-sm text-red-700 dark:text-red-400">
+                          {order.rejection_reason || order.rejectionReason}
+                        </p>
+                        <p className="text-xs text-red-600 dark:text-red-500 mt-2">
+                          Votre paiement sera remboursé automatiquement dans les plus brefs délais.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Code de sécurité */}
                 {order.security_code && (
                   <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">

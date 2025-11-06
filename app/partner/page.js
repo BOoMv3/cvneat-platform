@@ -67,6 +67,8 @@ export default function PartnerDashboard() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [preparationTime, setPreparationTime] = useState(15);
   const [showPreparationModal, setShowPreparationModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
   const router = useRouter();
 
@@ -408,7 +410,7 @@ export default function PartnerDashboard() {
     }
   };
 
-  const updateOrderStatus = async (orderId, status, prepTime = null) => {
+  const updateOrderStatus = async (orderId, status, prepTime = null, reason = null) => {
     try {
       // Si on accepte la commande, prepTime doit être fourni
       if (status === 'acceptee' && !prepTime) {
@@ -416,6 +418,14 @@ export default function PartnerDashboard() {
         setSelectedOrderId(orderId);
         setPreparationTime(15);
         setShowPreparationModal(true);
+        return;
+      }
+
+      // Si on refuse la commande, ouvrir le modal pour saisir la raison
+      if (status === 'refusee' && !reason) {
+        setSelectedOrderId(orderId);
+        setRejectionReason('');
+        setShowRejectionModal(true);
         return;
       }
 
@@ -427,7 +437,8 @@ export default function PartnerDashboard() {
       if (prepTime !== null && prepTime > 0) {
         updateData.preparation_time = prepTime;
       }
-      console.log('🔄 Mise à jour commande:', { orderId, status });
+
+      console.log('🔄 Mise à jour commande:', { orderId, status, reason });
       
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -438,10 +449,13 @@ export default function PartnerDashboard() {
       const token = session.access_token;
       console.log('🔑 Token présent:', token ? 'Oui' : 'Non');
       
-      // Préparer le body avec status et preparation_time si fourni
+      // Préparer le body avec status, preparation_time et reason si fournis
       const requestBody = { status };
       if (prepTime !== null && prepTime > 0) {
         requestBody.preparation_time = prepTime;
+      }
+      if (reason && reason.trim()) {
+        requestBody.reason = reason.trim();
       }
 
       // Utiliser l'API correcte pour mettre à jour le statut
@@ -1270,7 +1284,11 @@ export default function PartnerDashboard() {
                                       Accepter
                                     </button>
                                     <button
-                                      onClick={() => updateOrderStatus(order.id, 'refusee')}
+                                      onClick={() => {
+                                        setSelectedOrderId(order.id);
+                                        setRejectionReason('');
+                                        setShowRejectionModal(true);
+                                      }}
                                       className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors"
                                     >
                                       Refuser
@@ -2085,6 +2103,65 @@ export default function PartnerDashboard() {
                 onClick={() => {
                   setShowPreparationModal(false);
                   setSelectedOrderId(null);
+                }}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-gray-300"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de refus avec raison */}
+      {showRejectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Refuser la commande
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Veuillez indiquer la raison du refus. Cette information sera communiquée au client.
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Raison du refus *
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Ex: Produits non disponibles, restaurant fermé, commande trop importante..."
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Minimum 10 caractères requis
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  if (rejectionReason.trim().length < 10) {
+                    alert('Veuillez saisir une raison d\'au moins 10 caractères');
+                    return;
+                  }
+                  updateOrderStatus(selectedOrderId, 'refusee', null, rejectionReason);
+                  setShowRejectionModal(false);
+                  setSelectedOrderId(null);
+                  setRejectionReason('');
+                }}
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-semibold"
+              >
+                Confirmer le refus
+              </button>
+              <button
+                onClick={() => {
+                  setShowRejectionModal(false);
+                  setSelectedOrderId(null);
+                  setRejectionReason('');
                 }}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-gray-300"
               >
