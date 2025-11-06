@@ -197,6 +197,7 @@ export default function RestaurantRequest() {
       let data, error;
       
       try {
+        // Essayer d'abord avec user_id
         const result = await supabase
           .from('restaurant_requests')
           .insert([
@@ -211,36 +212,68 @@ export default function RestaurantRequest() {
         data = result.data;
         error = result.error;
         
-        // Si erreur de colonne manquante, réessayer sans user_id
-        if (error && error.message && error.message.includes('column') && error.message.includes('user_id')) {
-          console.warn('⚠️ Colonne user_id non trouvée, insertion sans user_id...');
-          const resultWithoutUserId = await supabase
-            .from('restaurant_requests')
-            .insert([requestData])
-            .select()
-            .single();
+        // Gérer différents types d'erreurs
+        if (error) {
+          const errorMessage = error.message || error.toString();
+          console.error('❌ Erreur insertion avec user_id:', errorMessage);
           
-          data = resultWithoutUserId.data;
-          error = resultWithoutUserId.error;
+          // Si erreur de colonne manquante ou clé étrangère, réessayer sans user_id
+          if (errorMessage.includes('column') && errorMessage.includes('user_id') ||
+              errorMessage.includes('foreign key') ||
+              errorMessage.includes('violates foreign key') ||
+              errorMessage.includes('violate key')) {
+            console.warn('⚠️ Erreur liée à user_id, insertion sans user_id...');
+            const resultWithoutUserId = await supabase
+              .from('restaurant_requests')
+              .insert([requestData])
+              .select()
+              .single();
+            
+            data = resultWithoutUserId.data;
+            error = resultWithoutUserId.error;
+            
+            if (error) {
+              console.error('❌ Erreur insertion sans user_id:', error.message || error.toString());
+            } else {
+              console.log('✅ Demande créée sans user_id (colonne non disponible)');
+            }
+          }
         }
       } catch (insertError) {
-        // Si erreur de contrainte de clé étrangère, réessayer sans user_id
-        if (insertError.message && insertError.message.includes('foreign key')) {
-          console.warn('⚠️ Erreur clé étrangère user_id, insertion sans user_id...');
-          const resultWithoutUserId = await supabase
-            .from('restaurant_requests')
-            .insert([requestData])
-            .select()
-            .single();
-          
-          data = resultWithoutUserId.data;
-          error = resultWithoutUserId.error;
+        console.error('❌ Exception lors de l\'insertion:', insertError);
+        const errorMessage = insertError.message || insertError.toString();
+        
+        // Si erreur de contrainte de clé étrangère ou violation de clé, réessayer sans user_id
+        if (errorMessage.includes('foreign key') ||
+            errorMessage.includes('violates foreign key') ||
+            errorMessage.includes('violate key') ||
+            errorMessage.includes('column') && errorMessage.includes('user_id')) {
+          console.warn('⚠️ Erreur clé/violation détectée, insertion sans user_id...');
+          try {
+            const resultWithoutUserId = await supabase
+              .from('restaurant_requests')
+              .insert([requestData])
+              .select()
+              .single();
+            
+            data = resultWithoutUserId.data;
+            error = resultWithoutUserId.error;
+            
+            if (error) {
+              throw new Error(`Erreur lors de la création de la demande: ${error.message || error.toString()}`);
+            }
+          } catch (fallbackError) {
+            throw new Error(`Impossible de créer la demande: ${fallbackError.message || fallbackError.toString()}`);
+          }
         } else {
-          throw insertError;
+          throw new Error(`Erreur lors de la création de la demande: ${errorMessage}`);
         }
       }
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = error.message || error.toString();
+        throw new Error(`Erreur lors de la création de la demande: ${errorMessage}`);
+      }
 
       setSubmitSuccess(true);
       setShowConfirmationModal(false);

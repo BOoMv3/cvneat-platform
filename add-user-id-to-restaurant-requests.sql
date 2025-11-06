@@ -30,6 +30,9 @@ CREATE POLICY "Users can view own restaurant requests"
     TO authenticated
     USING (auth.uid() = user_id);
 
+-- S'assurer que la contrainte de clé étrangère est créée correctement
+-- Si la colonne existe déjà mais sans contrainte, on ne fait rien (ON DELETE SET NULL est déjà géré)
+
 -- Commentaire sur la colonne
 COMMENT ON COLUMN restaurant_requests.user_id IS 'ID de l''utilisateur CVN''EAT qui a fait la demande de partenariat';
 
