@@ -170,6 +170,7 @@ export default function Advertisement({ position, className = '' }) {
           onClick={handleClick}
         >
           <div className="relative h-full">
+            <div className="absolute top-2 left-2 z-10 bg-yellow-400/95 text-yellow-900 text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider shadow">Publicité</div>
             <img
               src={ad.image_url}
               alt={ad.title}
@@ -209,6 +210,7 @@ export default function Advertisement({ position, className = '' }) {
         onClick={handleClick}
       >
         <div className="relative h-full flex items-center justify-center">
+          <div className="absolute top-2 left-2 z-10 bg-yellow-400/95 text-yellow-900 text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider shadow">Publicité</div>
           <img
             src={ad.image_url}
             alt={ad.title}
