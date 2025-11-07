@@ -264,36 +264,36 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
           )}
 
           {categories.map((category, index) => {
-          const Icon = getCategoryIcon(category);
-          return (
-            <div key={category} className="space-y-6">
-              {/* En-tête de catégorie avec icône - Design épuré */}
-              <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
-                <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
-                  <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
+            const Icon = getCategoryIcon(category);
+            return (
+              <div key={category} className="space-y-6">
+                {/* En-tête de catégorie avec icône - Design épuré */}
+                <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
+                  <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
+                    <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{category}</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{category}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
-                  </p>
+                
+                {/* Grille de produits - Design épuré avec moins de colonnes et plus d'espace */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
+                  {menuByCategory[category].map((item) => (
+                    <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
+                  ))}
                 </div>
+                
+                {/* Séparateur entre catégories (sauf dernière) - Plus d'espace */}
+                {index < categories.length - 1 && (
+                  <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
+                )}
               </div>
-              
-              {/* Grille de produits - Design épuré avec moins de colonnes et plus d'espace */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
-                {menuByCategory[category].map((item) => (
-                  <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
-                ))}
-              </div>
-              
-              {/* Séparateur entre catégories (sauf dernière) - Plus d'espace */}
-              {index < categories.length - 1 && (
-                <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
-              )}
-            </div>
-          );
-          })
+            );
+          })}
         </>
       ) : (
         // Afficher seulement la catégorie sélectionnée
