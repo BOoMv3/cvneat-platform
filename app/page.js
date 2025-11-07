@@ -259,10 +259,7 @@ export default function Home() {
   };
 
   const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
-    const normalizedName = normalizeName(restaurant.nom);
-    const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-
-    if (!isReadyRestaurant && (restaurant.is_active === false || restaurant.active === false || restaurant.status === 'inactive')) {
+    if (restaurant.is_active === false || restaurant.active === false || restaurant.status === 'inactive') {
       return false;
     }
     if (restaurant.ferme_definitivement) {
