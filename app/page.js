@@ -321,13 +321,42 @@ export default function Home() {
     }
   });
 
-  const fallbackReadyRestaurants = useMemo(() => (
-    restaurants.filter((restaurant) => READY_RESTAURANTS.has(normalizeName(restaurant.nom)))
-  ), [restaurants]);
+  const fallbackReadyRestaurants = useMemo(() => {
+    const uniqueMap = new Map();
+
+    restaurants.forEach((restaurant) => {
+      const normalizedName = normalizeName(restaurant.nom);
+      if (!READY_RESTAURANTS.has(normalizedName)) {
+        return;
+      }
+
+      if (restaurant.status === 'inactive' || restaurant.is_active === false || restaurant.active === false) {
+        return;
+      }
+
+      if (!uniqueMap.has(normalizedName)) {
+        uniqueMap.set(normalizedName, restaurant);
+      }
+    });
+
+    return Array.from(uniqueMap.values());
+  }, [restaurants]);
 
   const finalRestaurants = filteredAndSortedRestaurants.length > 0
     ? filteredAndSortedRestaurants
     : fallbackReadyRestaurants;
+
+  const displayRestaurants = useMemo(() => {
+    const seen = new Set();
+    return finalRestaurants.filter((restaurant) => {
+      const key = normalizeName(restaurant.nom) || restaurant.id;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }, [finalRestaurants]);
 
   if (!isClient) {
     return null;
@@ -624,7 +653,7 @@ export default function Home() {
                 </div>
                 
                 <div className="text-gray-600 text-sm sm:text-base bg-gray-100 px-4 py-3 sm:py-2 rounded-full font-medium min-h-[48px] sm:min-h-[44px] flex items-center justify-center">
-                  {finalRestaurants.length} restaurant{finalRestaurants.length !== 1 ? 's' : ''} trouvé{finalRestaurants.length !== 1 ? 's' : ''}
+                  {displayRestaurants.length} restaurant{displayRestaurants.length !== 1 ? 's' : ''} trouvé{displayRestaurants.length !== 1 ? 's' : ''}
                 </div>
               </div>
             </div>
@@ -635,7 +664,7 @@ export default function Home() {
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
             </div>
-          ) : finalRestaurants.length === 0 ? (
+          ) : displayRestaurants.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-6xl">🔍</span>
@@ -645,9 +674,11 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-8">
-              {finalRestaurants.map((restaurant, index) => {
+              {displayRestaurants.map((restaurant, index) => {
                 const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { isOpen: true, isManuallyClosed: false };
-                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                const normalizedName = normalizeName(restaurant.nom);
+                const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
+                const isClosed = isReadyRestaurant ? false : (!restaurantStatus.isOpen || restaurantStatus.isManuallyClosed);
                 
                 return (
                 <div
