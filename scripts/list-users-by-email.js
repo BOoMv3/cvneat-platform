@@ -31,27 +31,29 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 }
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('Variables Supabase manquantes.');
+  console.error('Variables Supabase manquantes');
   process.exit(1);
 }
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function main() {
-  const search = process.argv[2] || '';
-  const { data, error } = await supabaseAdmin
-    .from('restaurants')
-    .select('id, nom, status, created_at, horaires, user_id, email')
-    .ilike('nom', `%${search}%`)
-    .order('nom');
-
-  if (error) {
-    console.error('Erreur:', error.message);
+  const searchEmail = process.argv[2];
+  if (!searchEmail) {
+    console.error('Usage: node scripts/list-users-by-email.js <email>');
     process.exit(1);
   }
 
-  console.log('Résultats pour', search || '(tous)');
-  console.table(data || []);
+  const normalized = searchEmail.toLowerCase().trim();
+
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*')
+    .eq('email', normalized);
+
+  console.log('error', error);
+  console.log('data', data);
+
   process.exit(0);
 }
 

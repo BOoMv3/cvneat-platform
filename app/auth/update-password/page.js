@@ -119,6 +119,8 @@ export default function UpdatePasswordPage() {
         console.error('Erreur updateUser:', updateError);
         if (updateError.message?.toLowerCase().includes('token')) {
           setError('Le lien a expiré. Veuillez recommencer la procédure depuis CVN\'EAT.');
+        } else if (updateError.message) {
+          setError(`Erreur Supabase : ${updateError.message}`);
         } else {
           setError("Impossible de mettre à jour le mot de passe. Veuillez réessayer.");
         }
