@@ -63,21 +63,38 @@ export async function POST(request) {
     }
 
     // Trouver l'utilisateur par email
+    const normalizedEmail = email.toLowerCase().trim();
+
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, email, nom, supabase_auth_id')
-      .eq('email', email.toLowerCase().trim())
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
-    if (userError || !userData) {
-      return NextResponse.json(
-        { error: 'Utilisateur non trouvé avec cet email' },
-        { status: 404 }
-      );
+    let authRecord = null;
+
+    if (!userData) {
+      try {
+        const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+        if (listError) {
+          console.warn('⚠️ Erreur listUsers:', listError.message);
+        } else {
+          authRecord = listData.users.find((u) => u.email?.toLowerCase() === normalizedEmail);
+        }
+      } catch (listErr) {
+        console.warn('⚠️ Exception listUsers:', listErr.message);
+      }
+
+      if (!authRecord) {
+        return NextResponse.json(
+          { error: 'Utilisateur non trouvé avec cet email' },
+          { status: 404 }
+        );
+      }
     }
 
     // Réinitialiser le mot de passe dans Supabase Auth
-    const authId = userData.supabase_auth_id || userData.id;
+    const authId = userData?.supabase_auth_id || userData?.id || authRecord?.id;
 
     if (!authId) {
       return NextResponse.json(
@@ -110,8 +127,8 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       message: 'Mot de passe réinitialisé avec succès',
-      email: userData.email,
-      nom: userData.nom || '',
+      email: (userData?.email || authRecord?.email || normalizedEmail),
+      nom: userData?.nom || '',
       newPassword: passwordToSet, // Retourner le nouveau mot de passe pour l'admin
       warning: 'Conservez ce mot de passe en lieu sûr et communiquez-le au restaurant'
     });
