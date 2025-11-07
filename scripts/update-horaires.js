@@ -38,20 +38,33 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function main() {
-  const search = process.argv[2] || '';
-  const { data, error } = await supabaseAdmin
-    .from('restaurants')
-    .select('id, nom, status, created_at, horaires')
-    .ilike('nom', `%${search}%`)
-    .order('nom');
-
-  if (error) {
-    console.error('Erreur:', error.message);
+  const restaurantId = process.argv[2];
+  if (!restaurantId) {
+    console.error('Usage: node scripts/update-horaires.js <restaurant_id>');
     process.exit(1);
   }
 
-  console.log('Résultats pour', search || '(tous)');
-  console.table(data || []);
+  const horaires = {
+    lundi: { ouvert: true, plages: [{ debut: '18:00', fin: '22:00' }] },
+    mardi: { ouvert: false, plages: [] },
+    mercredi: { ouvert: true, plages: [{ debut: '18:00', fin: '22:00' }] },
+    jeudi: { ouvert: true, plages: [{ debut: '18:00', fin: '22:00' }] },
+    vendredi: { ouvert: true, plages: [{ debut: '18:00', fin: '22:00' }] },
+    samedi: { ouvert: true, plages: [{ debut: '18:00', fin: '22:00' }] },
+    dimanche: { ouvert: true, plages: [{ debut: '18:00', fin: '22:00' }] },
+  };
+
+  const { error } = await supabaseAdmin
+    .from('restaurants')
+    .update({ horaires })
+    .eq('id', restaurantId);
+
+  if (error) {
+    console.error('Erreur mise à jour horaires:', error.message);
+    process.exit(1);
+  }
+
+  console.log('✅ Horaires mis à jour pour le restaurant', restaurantId);
   process.exit(0);
 }
 

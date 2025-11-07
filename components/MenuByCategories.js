@@ -147,7 +147,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     <div className="space-y-10">
       {/* Filtres par catégorie - Design amélioré avec scroll horizontal */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 pb-6 pt-4 -mt-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide px-1">
+        <div className="flex flex-wrap md:flex-nowrap gap-3 md:overflow-x-auto overflow-visible pb-2 scrollbar-hide px-1">
           <button
             onClick={() => onCategorySelect('all')}
             className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${

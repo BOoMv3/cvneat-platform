@@ -28,7 +28,7 @@ export default function AdvertisePage() {
     { 
       value: 'banner_middle', 
       label: 'Milieu de page (recommandé)', 
-      price: 50,
+      price: 15,
       description: 'Espace principal entre les catégories et restaurants',
       popular: true
     },

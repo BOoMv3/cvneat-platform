@@ -28,8 +28,11 @@ export default function AdBanner({ title, image, description, link, sponsor, sty
         )}
       </div>
       {/* Badge "PUB" */}
-      <div className="absolute top-2 right-2 bg-yellow-400 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-bounce">
-        PUB
+      <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+        Publicité
+      </div>
+      <div className="absolute -top-3 left-6 bg-yellow-100 text-yellow-800 text-[10px] font-semibold px-3 py-1 rounded-full shadow border border-yellow-300 uppercase tracking-wide">
+        Annonce sponsorisée
       </div>
     </div>
   );
