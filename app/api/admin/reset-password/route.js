@@ -65,7 +65,7 @@ export async function POST(request) {
     // Trouver l'utilisateur par email
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, email, nom')
+      .select('id, email, nom, supabase_auth_id')
       .eq('email', email.toLowerCase().trim())
       .maybeSingle();
 
@@ -77,8 +77,20 @@ export async function POST(request) {
     }
 
     // Réinitialiser le mot de passe dans Supabase Auth
+    const authId = userData.supabase_auth_id || userData.id;
+
+    if (!authId) {
+      return NextResponse.json(
+        {
+          error: 'Identifiant utilisateur introuvable',
+          details: 'Impossible de déterminer l\'ID Auth Supabase pour cet utilisateur.'
+        },
+        { status: 500 }
+      );
+    }
+
     const { data: authData, error: resetError } = await supabaseAdmin.auth.admin.updateUserById(
-      userData.id,
+      authId,
       { password: passwordToSet }
     );
 
