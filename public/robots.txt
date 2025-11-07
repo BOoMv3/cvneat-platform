@@ -1,20 +1,14 @@
+# *
 User-agent: *
 Allow: /
-Disallow: /api/
-Disallow: /admin/
-Disallow: /partner/
-Disallow: /delivery/
-Disallow: /auth/
-Disallow: /checkout/
 
-# Sitemap
-Sitemap: https://cvneat.fr/sitemap.xml
+# *
+User-agent: *
+Disallow: /admin
+Disallow: /partner
 
-# Google
-User-agent: Googlebot
-Allow: /
+# Host
+Host: https://www.cvneat.fr
 
-# Bing
-User-agent: Bingbot
-Allow: /
-
+# Sitemaps
+Sitemap: https://www.cvneat.fr/sitemap.xml
