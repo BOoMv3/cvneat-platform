@@ -4,6 +4,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FaStar, FaClock, FaMotorcycle, FaHeart } from 'react-icons/fa';
 
+const READY_RESTAURANTS = new Set([
+  'la bonne pate',
+  "l'eclipse",
+  'leclipse'
+]);
+
+const normalizeName = (value = '') =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
 export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorite = false }) {
   const {
     id,
@@ -19,6 +32,8 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
     promotion,
     is_sponsored
   } = restaurant;
+
+  const isRestaurantReady = READY_RESTAURANTS.has(normalizeName(nom));
 
   return (
     <Link href={`/restaurants/${id}`} className="block">
@@ -79,6 +94,12 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
           {promotion && (
             <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
               {promotion}
+            </div>
+          )}
+
+          {!isRestaurantReady && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+              Disponible lundi
             </div>
           )}
 

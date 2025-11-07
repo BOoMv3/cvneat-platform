@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { FaUtensils, FaClock, FaLock } from 'react-icons/fa';
 import { useEffect, useMemo, useState } from 'react';
 
+const TARGET_HOUR = 19;
+
 const createCountdown = () => {
   const now = new Date();
   const target = new Date();
-  target.setHours(17, 0, 0, 0);
+  target.setHours(TARGET_HOUR, 0, 0, 0);
 
   // Si on a dépassé 17h, viser le lendemain à 17h
   if (now > target) {
@@ -41,7 +43,7 @@ export default function Maintenance() {
 
   const targetLabel = useMemo(() => {
     const target = new Date();
-    target.setHours(17, 0, 0, 0);
+    target.setHours(TARGET_HOUR, 0, 0, 0);
     if (new Date() > target) {
       target.setDate(target.getDate() + 1);
     }
@@ -69,7 +71,7 @@ export default function Maintenance() {
             CVN'EAT sera bientôt disponible !
           </p>
           <div className="mt-6">
-            <p className="text-sm uppercase tracking-widest text-purple-200 mb-3">Réouverture prévue aujourd'hui à 17h</p>
+            <p className="text-sm uppercase tracking-widest text-purple-200 mb-3">Réouverture prévue aujourd'hui à 19h</p>
             <div className="flex items-center justify-center gap-3 sm:gap-4">
               {['Heures', 'Minutes', 'Secondes'].map((label, index) => {
                 const value = index === 0 ? countdown.hours : index === 1 ? countdown.minutes : countdown.seconds;

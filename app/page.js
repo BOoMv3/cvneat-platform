@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -37,6 +37,20 @@ import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 
+const TARGET_OPENING_HOUR = 19;
+const READY_RESTAURANTS_LABEL = "La Bonne Pâte • L'Eclipse";
+
+const getNextOpeningDate = () => {
+  const now = new Date();
+  const target = new Date();
+  target.setHours(TARGET_OPENING_HOUR, 0, 0, 0);
+
+  if (now > target) {
+    target.setDate(target.getDate() + 1);
+  }
+
+  return target;
+};
 
 // Desactiver le rendu statique pour cette page
 export const dynamic = 'force-dynamic';
@@ -60,6 +74,15 @@ export default function Home() {
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
+
+  const nextOpeningDate = useMemo(() => getNextOpeningDate(), []);
+  const nextOpeningLabel = useMemo(() => {
+    return new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(nextOpeningDate);
+  }, [nextOpeningDate]);
 
   // Fonction de déconnexion
   const handleLogout = async () => {
@@ -224,6 +247,12 @@ export default function Home() {
   };
 
   const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
+    if (restaurant.is_active === false || restaurant.active === false || restaurant.status === 'inactive') {
+      return false;
+    }
+    if (restaurant.ferme_definitivement) {
+      return false;
+    }
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
       // Vérifier plusieurs champs possibles pour la catégorie
@@ -410,6 +439,29 @@ export default function Home() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-1 border-none outline-none text-gray-900 placeholder-gray-500 text-sm sm:text-base min-h-[44px] touch-manipulation"
                 />
+              </div>
+            </div>
+
+            <div className="mt-6 sm:mt-8">
+              <div className="bg-white/20 backdrop-blur-md rounded-3xl p-4 sm:p-5 text-white shadow-xl border border-white/25">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/80 flex items-center justify-center shadow-lg">
+                      <FaClock className="text-purple-600 h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm uppercase tracking-widest text-purple-100/90 font-semibold">
+                      Horaires du jour
+                    </p>
+                    <p className="text-lg sm:text-xl font-bold">
+                      Prochaine ouverture : {nextOpeningLabel}
+                    </p>
+                    <p className="text-xs sm:text-sm text-purple-100/85 mt-1">
+                      Restaurants prêts aujourd'hui : {READY_RESTAURANTS_LABEL}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
