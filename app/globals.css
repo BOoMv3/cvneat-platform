@@ -33,6 +33,12 @@
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
   background-color: var(--background-primary);
   color: var(--text-primary);
@@ -40,6 +46,7 @@ body {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  min-height: 100vh;
 }
 
 /* Optimisations pour mobile */

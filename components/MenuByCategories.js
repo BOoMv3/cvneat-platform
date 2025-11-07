@@ -30,6 +30,10 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     if (catLower.includes('sandwich') || catLower === 'sandwiches') {
       return 1.5;
     }
+    // Puccias (2) - assimilé à un plat principal
+    if (catLower.includes('puccia')) {
+      return 2;
+    }
     // Plats (2)
     if (catLower === 'plat' || catLower === 'plats' || catLower.includes('plat principal')) {
       return 2;
@@ -120,6 +124,8 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     'Tacos': FaUtensils,
     'Pizza': FaPizzaSlice,
     'Pizzas': FaPizzaSlice,
+    'Puccias': FaBreadSlice,
+    'puccias': FaBreadSlice,
     'Vins': FaWineGlass,
     'Autres': FaUtensils
   };

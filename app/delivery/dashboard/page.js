@@ -19,6 +19,28 @@ const supabase = createClient(
 );
 import RealTimeNotifications from '../../components/DeliveryNotifications';
 
+const isNotificationSupported = () => typeof window !== 'undefined' && 'Notification' in window;
+
+const showDeliveryNotification = (title, options) => {
+  if (isNotificationSupported() && Notification.permission === 'granted') {
+    try {
+      new Notification(title, options);
+    } catch (error) {
+      console.warn('Notification delivery non supportée:', error);
+    }
+  }
+};
+
+const requestDeliveryNotificationPermission = () => {
+  if (isNotificationSupported() && Notification.permission === 'default') {
+    try {
+      Notification.requestPermission();
+    } catch (error) {
+      console.warn('Impossible de demander la permission de notification livraison:', error);
+    }
+  }
+};
+
 export default function DeliveryDashboard() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [currentOrder, setCurrentOrder] = useState(null); // Gardé pour compatibilité
@@ -380,18 +402,14 @@ export default function DeliveryDashboard() {
     }
 
     // Demander la permission pour les notifications
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    requestDeliveryNotificationPermission();
 
     // Notification du navigateur
-    if (Notification.permission === 'granted') {
-      new Notification('Nouvelle commande disponible !', {
-        body: `Commande #${order.id} - ${order.customer_name} - ${order.total}€`,
-        icon: '/icon-192x192.png',
-        tag: 'new-order'
-      });
-    }
+    showDeliveryNotification('Nouvelle commande disponible !', {
+      body: `Commande #${order.id} - ${order.customer_name} - ${order.total}€`,
+      icon: '/icon-192x192.png',
+      tag: 'new-order'
+    });
 
     // Auto-fermer l'alerte après 10 secondes
     setTimeout(() => {

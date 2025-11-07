@@ -3,6 +3,28 @@ import { useState, useEffect, useRef } from 'react';
 import { FaBell, FaTimes, FaShoppingCart, FaEuroSign, FaExclamationCircle } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 
+const isNotificationSupported = () => typeof window !== 'undefined' && 'Notification' in window;
+
+const showBrowserNotification = (title, options) => {
+  if (isNotificationSupported() && Notification.permission === 'granted') {
+    try {
+      new Notification(title, options);
+    } catch (error) {
+      console.warn('Notification non supportée:', error);
+    }
+  }
+};
+
+const requestBrowserNotificationPermission = () => {
+  if (isNotificationSupported() && Notification.permission === 'default') {
+    try {
+      Notification.requestPermission();
+    } catch (error) {
+      console.warn('Impossible de demander la permission de notification:', error);
+    }
+  }
+};
+
 export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const [notifications, setNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -38,14 +60,12 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
           
           // Afficher une notification du navigateur
-          if (Notification.permission === 'granted') {
-            new Notification('Nouvelle commande !', {
-              body: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
-              icon: '/icon-192x192.png',
-              tag: 'new-order',
-              requireInteraction: false
-            });
-          }
+          showBrowserNotification('Nouvelle commande !', {
+            body: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
+            icon: '/icon-192x192.png',
+            tag: 'new-order',
+            requireInteraction: false
+          });
           
           // Ajouter la notification avec un effet visuel
           const newNotification = {
@@ -246,22 +266,20 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     }, 4000); // Toutes les 4 secondes
     
     // Afficher une notification du navigateur
-    if (Notification.permission === 'granted') {
-      new Notification('🎉 NOUVELLE COMMANDE !', {
-        body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
-          // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
-          // order.total contient uniquement le montant des articles
-          const totalAmount = parseFloat(order.total || 0) || 0;
-          return totalAmount.toFixed(2);
-        })()}€`,
-        icon: '/icon-192x192.png',
-        tag: `order-${order.id}`,
-        requireInteraction: true,
-        badge: '/icon-192x192.png'
-      });
-    } else if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    showBrowserNotification('🎉 NOUVELLE COMMANDE !', {
+      body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
+        // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
+        // order.total contient uniquement le montant des articles
+        const totalAmount = parseFloat(order.total || 0) || 0;
+        return totalAmount.toFixed(2);
+      })()}€`,
+      icon: '/icon-192x192.png',
+      tag: `order-${order.id}`,
+      requireInteraction: true,
+      badge: '/icon-192x192.png'
+    });
+
+    requestBrowserNotificationPermission();
     
     // Ajouter la notification avec un effet visuel
     // IMPORTANT: Afficher le montant total avec les frais de livraison pour correspondre au montant réel payé
@@ -298,15 +316,13 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     setTimeout(() => playCancellationSound(), 600);
     
     // Afficher une notification du navigateur
-    if (Notification.permission === 'granted') {
-      new Notification('⚠️ COMMANDE ANNULÉE', {
-        body: `La commande #${order.id?.slice(0, 8) || 'N/A'} a été annulée par le client`,
-        icon: '/icon-192x192.png',
-        tag: `order-cancelled-${order.id}`,
-        requireInteraction: true,
-        badge: '/icon-192x192.png'
-      });
-    }
+    showBrowserNotification('⚠️ COMMANDE ANNULÉE', {
+      body: `La commande #${order.id?.slice(0, 8) || 'N/A'} a été annulée par le client`,
+      icon: '/icon-192x192.png',
+      tag: `order-cancelled-${order.id}`,
+      requireInteraction: true,
+      badge: '/icon-192x192.png'
+    });
     
     // Ajouter la notification avec un effet visuel
     const newNotification = {
@@ -546,9 +562,11 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Demander la permission pour les notifications du navigateur
   useEffect(() => {
-    if (Notification.permission === 'default') {
+    if (isNotificationSupported() && Notification.permission === 'default') {
       Notification.requestPermission().then(permission => {
         console.log('Permission notification:', permission);
+      }).catch((error) => {
+        console.warn('Permission notification refusée ou non disponible:', error);
       });
     }
   }, []);
