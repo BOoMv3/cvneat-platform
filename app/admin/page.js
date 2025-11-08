@@ -153,15 +153,9 @@ export default function AdminPage() {
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
 
       // Fallback avec données de test si la base est vide
-      const recentOrders = (orders?.length > 0 ? orders : [
-        { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', user_id: '11111111-1111-1111-1111-111111111111', restaurant_id: '11111111-1111-1111-1111-111111111111', total: 25.50, statut: 'en_attente', created_at: new Date().toISOString() },
-        { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', user_id: '22222222-2222-2222-2222-222222222222', restaurant_id: '22222222-2222-2222-2222-222222222222', total: 18.90, statut: 'acceptee', created_at: new Date(Date.now() - 3600000).toISOString() },
-      ])?.slice(0, 5) || [];
+      const recentOrders = (orders || []).slice(0, 5);
 
-      const recentRestaurants = (restaurants?.length > 0 ? restaurants : [
-        { id: '11111111-1111-1111-1111-111111111111', nom: 'La Bella Pizza', adresse: '123 Rue de la Paix', ville: 'Ganges', status: 'active', created_at: new Date().toISOString() },
-        { id: '22222222-2222-2222-2222-222222222222', nom: 'Burger King', adresse: '456 Avenue des Champs', ville: 'Lyon', status: 'active', created_at: new Date(Date.now() - 7200000).toISOString() },
-      ])?.slice(0, 5) || [];
+      const recentRestaurants = (restaurants || []).slice(0, 5);
 
       setStats({
         totalOrders,
