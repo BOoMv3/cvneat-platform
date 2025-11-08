@@ -463,30 +463,6 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-6 sm:mt-8">
-              <div className="bg-white/20 backdrop-blur-md rounded-3xl p-4 sm:p-5 text-white shadow-xl border border-white/25">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/80 flex items-center justify-center shadow-lg">
-                      <FaClock className="text-purple-600 h-5 w-5 sm:h-6 sm:w-6" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm uppercase tracking-widest text-purple-100/90 font-semibold">
-                      Horaires du jour
-                    </p>
-                    <p className="text-lg sm:text-xl font-bold">
-                      Prochaine ouverture : {nextOpeningLabel}
-                    </p>
-                    {READY_RESTAURANTS_LABEL ? (
-                      <p className="text-xs sm:text-sm text-purple-100/85 mt-1">
-                        Restaurants prêts aujourd'hui : {READY_RESTAURANTS_LABEL}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
