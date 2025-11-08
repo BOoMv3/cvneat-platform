@@ -27,6 +27,8 @@ export function middleware(request) {
   const alwaysAllowedRoutes = [
     '/api',
     '/auth',
+    '/auth/confirm',
+    '/auth/update-password',
     '/_next',
     '/static',
     '/favicon.ico',
