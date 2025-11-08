@@ -102,7 +102,16 @@ export async function GET(request) {
           adresse_livraison: order.adresse_livraison || deliveryAddress?.address || null,
           ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
-          instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null
+          instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null,
+          customer_name: order.users?.prenom && order.users?.nom 
+            ? `${order.users.prenom} ${order.users.nom}` 
+            : order.users?.nom || 'Client',
+          customer_phone: order.users?.telephone || null,
+          customer_email: order.users?.email || null,
+          delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
+          delivery_city: order.ville_livraison || deliveryAddress?.city || null,
+          delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,
+          delivery_instructions: order.instructions_livraison || deliveryAddress?.delivery_instructions || null
         };
       } catch (err) {
         console.warn('⚠️ Erreur récupération adresse pour commande', order.id, err);

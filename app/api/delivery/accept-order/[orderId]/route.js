@@ -62,8 +62,8 @@ export async function POST(request, { params }) {
 
     // Vérifier que la commande est dans un statut acceptable
     // Les statuts autorisés par la contrainte CHECK sont: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
-    // Les livreurs peuvent accepter les commandes 'en_preparation' avec ready_for_delivery=true (restaurant a marqué comme prête)
-    if (!['en_preparation'].includes(order.statut)) {
+    // Les livreurs peuvent accepter les commandes 'en_preparation' ou 'pret_a_livrer'
+    if (!['en_preparation', 'pret_a_livrer'].includes(order.statut)) {
       console.log('❌ Statut commande non acceptable pour livreur:', order.statut);
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
@@ -71,29 +71,26 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // Vérifier que la commande est marquée comme prête pour livraison
-    if (order.ready_for_delivery !== true) {
-      console.log('❌ Commande non prête pour livraison:', { orderId, ready_for_delivery: order.ready_for_delivery });
-      return NextResponse.json({ 
-        error: 'Commande non prête pour livraison', 
-        details: 'Le restaurant n\'a pas encore marqué cette commande comme prête.' 
-      }, { status: 400 });
-    }
-
     // Accepter la commande
     console.log('📤 Mise à jour commande:', {
       orderId,
       livreur_id: user.id,
-      statut: 'en_livraison'
+      statut: ['pret_a_livrer', 'en_livraison'].includes(order.statut) || order.ready_for_delivery ? 'en_livraison' : order.statut
     });
     
+    const shouldMoveToDelivery = order.statut === 'pret_a_livrer' || order.ready_for_delivery === true || order.statut === 'en_livraison';
+    const updatePayload = {
+      livreur_id: user.id,
+      updated_at: new Date().toISOString()
+    };
+
+    if (shouldMoveToDelivery) {
+      updatePayload.statut = 'en_livraison';
+    }
+
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
-      .update({
-        livreur_id: user.id,
-        statut: 'en_livraison', // Le livreur accepte, statut passe en livraison
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', orderId)
       .select()
       .single();

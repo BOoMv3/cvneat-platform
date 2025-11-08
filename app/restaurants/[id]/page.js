@@ -101,13 +101,24 @@ export default function RestaurantDetail({ params }) {
       if (!restaurant || !deliveryAddress) return;
       setDeliveryInfoLoading(true);
       try {
+        const restaurantAddressString = (() => {
+          const street = restaurant.adresse;
+          const cityBlock = [restaurant.code_postal, restaurant.ville].filter(Boolean).join(' ').trim();
+          const parts = [street, cityBlock].filter(Boolean);
+          return parts.length ? `${parts.join(', ')}, France` : 'France';
+        })();
+
         const response = await fetch('/api/delivery/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            restaurantAddress: restaurant.adresse + ', ' + restaurant.code_postal + ' ' + restaurant.ville,
+            restaurantId: restaurant.id,
+            restaurantAddress: restaurantAddressString,
             deliveryAddress: deliveryAddress,
-            orderAmount: getSubtotal() // On envoie le montant du panier
+            orderAmount: getSubtotal(), // On envoie le montant du panier
+            perKmRate: restaurant.frais_livraison_km ?? restaurant.frais_livraison_par_km ?? restaurant.delivery_fee_per_km ?? restaurant.tarif_kilometre ?? restaurant.per_km_fee,
+            baseFee: restaurant.frais_livraison_base ?? restaurant.frais_livraison_minimum ?? restaurant.frais_livraison,
+            freeDeliveryThreshold: restaurant.livraison_gratuite_seuil ?? restaurant.free_delivery_threshold
           })
         });
         if (response.ok) {

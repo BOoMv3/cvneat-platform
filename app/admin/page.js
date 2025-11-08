@@ -17,7 +17,10 @@ import {
   FaEdit,
   FaTrash,
   FaLock,
-  FaRedo
+  FaRedo,
+  FaUser,
+  FaUserPlus,
+  FaSignInAlt
 } from 'react-icons/fa';
 
 export default function AdminPage() {
@@ -25,14 +28,19 @@ export default function AdminPage() {
     totalOrders: 0,
     pendingOrders: 0,
     validatedOrders: 0,
-    totalRevenue: 0, // CA total
+    totalRevenue: 0, // CA total (articles + livraison)
     cvneatRevenue: 0, // CA CVN'EAT (20%)
     livreurRevenue: 0, // CA Livreur (frais de livraison)
+    restaurantRevenue: 0, // Part restaurant (articles - commission)
     totalRestaurants: 0,
     pendingPartners: 0,
     totalUsers: 0,
     recentOrders: [],
-    recentRestaurants: []
+    recentRestaurants: [],
+    allRestaurants: [],
+    totalVisitors: 0,
+    registeredVisitors: 0,
+    guestVisitors: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -134,11 +142,13 @@ export default function AdminPage() {
       let totalRevenue = 0; // CA total
       let cvneatRevenue = 0; // CA CVN'EAT (20%)
       let livreurRevenue = 0; // CA Livreur
+      let restaurantRevenue = 0; // CA Restaurant (total - commission)
       
       orders?.filter(o => o.statut === 'livree').forEach(order => {
         const orderAmount = parseFloat(order.total || 0); // Montant des articles uniquement
         const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
-        
+        const restaurantShare = orderAmount - (orderAmount * COMMISSION_RATE);
+
         // CA total = articles + frais de livraison
         totalRevenue += orderAmount + deliveryFee;
         
@@ -147,6 +157,9 @@ export default function AdminPage() {
         
         // CA Livreur = frais de livraison
         livreurRevenue += deliveryFee;
+
+        // CA Restaurant = articles - commission
+        restaurantRevenue += restaurantShare;
       });
       
       const totalRestaurants = restaurants?.length || 0;
@@ -157,6 +170,35 @@ export default function AdminPage() {
 
       const recentRestaurants = (restaurants || []).slice(0, 5);
 
+      // Statistiques visiteurs
+      let totalVisitors = totalUsers || 0;
+      let guestVisitors = 0;
+      let registeredVisitors = totalUsers || 0;
+
+      try {
+        const { data: visitData, error: visitError } = await supabase
+          .from('site_visits')
+          .select('id, user_id')
+          .order('created_at', { ascending: false });
+
+        if (visitError) {
+          throw visitError;
+        }
+
+        const visits = Array.isArray(visitData) ? visitData : [];
+        const totalVisitCount = visits.length;
+        const guestVisitCount = visits.filter(visit => !visit.user_id).length;
+        const registeredVisitCount = totalVisitCount - guestVisitCount;
+
+        if (totalVisitCount > 0) {
+          totalVisitors = totalVisitCount;
+          guestVisitors = guestVisitCount;
+          registeredVisitors = registeredVisitCount;
+        }
+      } catch (visitErr) {
+        console.warn('⚠️ Impossible de récupérer les visites (table site_visits manquante ?):', visitErr.message || visitErr);
+      }
+
       setStats({
         totalOrders,
         pendingOrders,
@@ -164,11 +206,16 @@ export default function AdminPage() {
         totalRevenue,
         cvneatRevenue,
         livreurRevenue,
+        restaurantRevenue,
         totalRestaurants,
         pendingPartners,
         totalUsers: totalUsers || 0,
         recentOrders: recentOrders,
-        recentRestaurants: recentRestaurants
+        recentRestaurants: recentRestaurants,
+        allRestaurants: restaurants || [],
+        totalVisitors,
+        registeredVisitors,
+        guestVisitors
       });
 
     } catch (err) {
@@ -447,8 +494,62 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Statistiques visiteurs */}
+        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 fold:gap-2 xs:gap-3 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
+                <FaUser className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs totaux</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalVisitors || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                <FaUserPlus className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs avec compte</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.registeredVisitors || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-red-100 text-red-600 flex-shrink-0">
+                <FaSignInAlt className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs invités</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.guestVisitors || 0}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Chiffres d'affaires détaillés */}
-        <div className="grid grid-cols-1 gap-2 fold:gap-2 xs:gap-4 sm:gap-6 mb-4 fold:mb-4 xs:mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 fold:gap-2 xs:gap-4 sm:gap-6 mb-4 fold:mb-4 xs:mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-green-100 text-green-600">
+                  <FaEuroSign className="text-xl" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">CA Restaurants</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.restaurantRevenue)}</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Part reversée aux restaurants (80% des articles)</p>
+          </div>
+
           <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -477,6 +578,20 @@ export default function AdminPage() {
               </div>
             </div>
             <p className="text-xs text-gray-500">Total des frais de livraison</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6 lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                  <FaEuroSign className="text-xl" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">CA Complet</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.restaurantRevenue + stats.cvneatRevenue + stats.livreurRevenue)}</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Total restaurants + CVN'EAT (20%) + frais de livraison</p>
           </div>
         </div>
 
@@ -586,8 +701,8 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {stats.recentOrders.map((order) => {
-                    // Chercher le restaurant directement
-                    const restaurant = stats.recentRestaurants?.find(r => r.id === order.restaurant_id);
+                    // Chercher le restaurant dans l'ensemble des restaurants
+                    const restaurant = stats.allRestaurants?.find(r => r.id === order.restaurant_id);
                     
                     return (
                       <tr key={order?.id || Math.random()} className="hover:bg-gray-50">

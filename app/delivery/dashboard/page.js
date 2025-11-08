@@ -855,7 +855,7 @@ export default function DeliveryDashboard() {
                         <div className="flex items-center justify-between text-sm">
                           <div>
                             <p className="text-gray-600 font-medium">{order.restaurant?.nom || 'Restaurant'}</p>
-                            <p className="text-gray-500 text-xs">{order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client'}</p>
+                            <p className="text-gray-500 text-xs">{order.customer_name || (order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client')}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-blue-600">{order.total?.toFixed(2)}€</p>
@@ -884,9 +884,14 @@ export default function DeliveryDashboard() {
                           <div className="bg-white p-3 rounded-lg">
                             <h4 className="font-semibold text-gray-900 mb-2 text-sm">👤 Client</h4>
                             <p className="text-gray-700 font-medium text-sm">
-                              {order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client non trouvé'}
+                              {order.customer_name || (order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client non trouvé')}
                             </p>
-                            <p className="text-gray-600 text-xs">{order.users?.telephone || 'Téléphone non disponible'}</p>
+                            <p className="text-gray-600 text-xs">{order.customer_phone || order.users?.telephone || 'Téléphone non disponible'}</p>
+                            {(order.customer_email || order.users?.email) && (
+                              <p className="text-gray-500 text-xs break-all mt-1">
+                                {order.customer_email || order.users?.email}
+                              </p>
+                            )}
                           </div>
                           
                           {/* Adresse de livraison */}
@@ -1142,6 +1147,12 @@ export default function DeliveryDashboard() {
                                 <h4 className="font-semibold text-gray-900 mb-1 text-sm">🏠 Livraison</h4>
                                 <p className="text-gray-700 font-medium text-sm">{order.customer_name || 'N/A'}</p>
                                 <p className="text-gray-600 text-xs">{order.delivery_address || 'N/A'}</p>
+                                {order.customer_phone && (
+                                  <p className="text-gray-500 text-xs mt-1">📞 {order.customer_phone}</p>
+                                )}
+                                {order.customer_email && (
+                                  <p className="text-gray-400 text-xs mt-1 break-all">✉️ {order.customer_email}</p>
+                                )}
                               </div>
                             </div>
                             

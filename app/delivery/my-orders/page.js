@@ -142,6 +142,17 @@ export default function MyOrdersPage() {
                   </p>
                 </div>
 
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">Contact client:</h4>
+                <p className="text-gray-700">{order.customer_name || 'Client'}</p>
+                {order.customer_phone && (
+                  <p className="text-sm text-gray-500">📞 {order.customer_phone}</p>
+                )}
+                {order.customer_email && (
+                  <p className="text-sm text-gray-500 break-all">✉️ {order.customer_email}</p>
+                )}
+              </div>
+
                 {order.delivery_instructions && (
                   <div className="mb-4">
                     <h4 className="font-medium mb-1">Instructions:</h4>

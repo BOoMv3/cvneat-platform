@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
+const computeArticleAmount = (order) => {
+  if (!order) return 0;
+  const fraisLivraison = parseFloat(order.frais_livraison || 0) || 0;
+
+  if (order.total !== null && order.total !== undefined) {
+    const parsed = parseFloat(order.total || 0) || 0;
+    return Math.max(0, Math.round(parsed * 100) / 100);
+  }
+
+  const totalAmount = parseFloat(order.total_amount || 0) || 0;
+  const calculated = totalAmount - fraisLivraison;
+  if (!Number.isFinite(calculated)) {
+    return Math.max(0, Math.round(totalAmount * 100) / 100);
+  }
+  return Math.max(0, Math.round(calculated * 100) / 100);
+};
+
 // GET /api/partner/analytics - Récupérer les analytics du partenaire
 export async function GET(request) {
   try {
@@ -101,12 +118,7 @@ export async function GET(request) {
     
     // Calculer le CA total (montant des articles uniquement, sans frais de livraison)
     const totalRevenue = deliveredOrders.reduce((sum, order) => {
-      // order.total contient le montant des articles + frais de livraison
-      // On doit soustraire les frais de livraison pour avoir le CA du restaurant
-      const fraisLivraison = parseFloat(order.frais_livraison || 0);
-      const totalOrder = parseFloat(order.total || 0);
-      const montantArticles = totalOrder - fraisLivraison;
-      return sum + montantArticles;
+      return sum + computeArticleAmount(order);
     }, 0);
     
     console.log('📊 Analytics - Calcul CA:', {
@@ -115,8 +127,9 @@ export async function GET(request) {
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       sampleOrder: deliveredOrders[0] ? {
         total: deliveredOrders[0].total,
+        total_amount: deliveredOrders[0].total_amount,
         frais_livraison: deliveredOrders[0].frais_livraison,
-        montantArticles: parseFloat(deliveredOrders[0].total || 0) - parseFloat(deliveredOrders[0].frais_livraison || 0)
+        montantArticles: computeArticleAmount(deliveredOrders[0])
       } : null
     });
     
@@ -165,11 +178,7 @@ export async function GET(request) {
         acc[dateKey] = { orders: 0, revenue: 0 };
       }
       acc[dateKey].orders += 1;
-      // Calculer le montant des articles (total - frais de livraison)
-      const fraisLivraison = parseFloat(order.frais_livraison || 0);
-      const totalOrder = parseFloat(order.total || 0);
-      const montantArticles = totalOrder - fraisLivraison;
-      acc[dateKey].revenue += montantArticles;
+      acc[dateKey].revenue += computeArticleAmount(order);
       return acc;
     }, {});
 
@@ -188,11 +197,7 @@ export async function GET(request) {
         acc[hour] = { orders: 0, revenue: 0 };
       }
       acc[hour].orders += 1;
-      // Calculer le montant des articles (total - frais de livraison)
-      const fraisLivraison = parseFloat(order.frais_livraison || 0);
-      const totalOrder = parseFloat(order.total || 0);
-      const montantArticles = totalOrder - fraisLivraison;
-      acc[hour].revenue += montantArticles;
+      acc[hour].revenue += computeArticleAmount(order);
       return acc;
     }, {});
 

@@ -37,13 +37,9 @@ import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 
-const TARGET_OPENING_HOUR = 19;
-const READY_RESTAURANTS_LABEL = "La Bonne Pâte • L'Eclipse";
-const READY_RESTAURANTS = new Set([
-  'la bonne pate',
-  "l'eclipse",
-  'leclipse'
-]);
+const TARGET_OPENING_HOUR = 18;
+const READY_RESTAURANTS_LABEL = '';
+const READY_RESTAURANTS = new Set();
 
 const normalizeName = (value = '') =>
   value
@@ -53,14 +49,9 @@ const normalizeName = (value = '') =>
     .trim();
 
 const getNextOpeningDate = () => {
-  const now = new Date();
   const target = new Date();
+  target.setDate(target.getDate() + 1);
   target.setHours(TARGET_OPENING_HOUR, 0, 0, 0);
-
-  if (now > target) {
-    target.setDate(target.getDate() + 1);
-  }
-
   return target;
 };
 
@@ -318,26 +309,7 @@ export default function Home() {
     }
   });
 
-  const fallbackReadyRestaurants = useMemo(() => {
-    const uniqueMap = new Map();
-
-    restaurants.forEach((restaurant) => {
-      const normalizedName = normalizeName(restaurant.nom);
-      if (!READY_RESTAURANTS.has(normalizedName)) {
-        return;
-      }
-
-      if (restaurant.status === 'inactive' || restaurant.is_active === false || restaurant.active === false) {
-        return;
-      }
-
-      if (!uniqueMap.has(normalizedName)) {
-        uniqueMap.set(normalizedName, restaurant);
-      }
-    });
-
-    return Array.from(uniqueMap.values());
-  }, [restaurants]);
+  const fallbackReadyRestaurants = useMemo(() => [], [restaurants]);
 
   const finalRestaurants = filteredAndSortedRestaurants.length > 0
     ? filteredAndSortedRestaurants
@@ -506,9 +478,11 @@ export default function Home() {
                     <p className="text-lg sm:text-xl font-bold">
                       Prochaine ouverture : {nextOpeningLabel}
                     </p>
-                    <p className="text-xs sm:text-sm text-purple-100/85 mt-1">
-                      Restaurants prêts aujourd'hui : {READY_RESTAURANTS_LABEL}
-                    </p>
+                    {READY_RESTAURANTS_LABEL ? (
+                      <p className="text-xs sm:text-sm text-purple-100/85 mt-1">
+                        Restaurants prêts aujourd'hui : {READY_RESTAURANTS_LABEL}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </div>

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const runtime = 'nodejs';
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY; // Clé API ImgBB (gratuite, voir GUIDE_CONFIGURATION_IMGBB.md)
@@ -69,41 +71,73 @@ export async function POST(request) {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Générer un nom de fichier unique
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${folder}/${userId || 'anonymous'}_${Date.now()}.${fileExt}`;
+        const originalName = file.name || 'image';
+        const rawExt = originalName.includes('.') ? originalName.split('.').pop() : '';
+        const safeExt = rawExt?.toLowerCase()?.replace(/[^a-z0-9]/g, '') || 'jpg';
+        const safeFolder = folder.replace(/[^a-z0-9\-_/]/gi, '');
+        const fileName = `${safeFolder}/${userId || 'anonymous'}_${Date.now()}.${safeExt}`;
 
         // Convertir le fichier en ArrayBuffer
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Déterminer le bucket selon le type
-        let bucketName = 'IMAGES';
-        if (folder === 'menu-images') bucketName = 'MENU-IMAGES';
-        else if (folder === 'restaurant-images') bucketName = 'RESTAURANTS-IMAGES';
-        else if (folder === 'advertisement-images') bucketName = 'PUBLICITE-IMAGES';
+        // Déterminer la liste des buckets à tester
+        const bucketCandidates = (() => {
+          switch (folder) {
+            case 'menu-images':
+              return ['MENU-IMAGES', 'menu-images', 'IMAGES', 'images'];
+            case 'restaurant-images':
+              return ['RESTAURANTS-IMAGES', 'restaurants-images', 'IMAGES', 'images'];
+            case 'advertisement-images':
+              return ['PUBLICITE-IMAGES', 'publicite-images', 'PUBLICITE', 'publicite', 'IMAGES', 'images'];
+            default:
+              return ['IMAGES', 'images'];
+          }
+        })();
 
-        console.log('📦 Tentative upload Supabase vers bucket:', bucketName);
+        let uploadSuccess = false;
+        let lastUploadError = null;
 
-        // Upload vers Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from(bucketName)
-          .upload(fileName, buffer, {
-            contentType: file.type,
-            upsert: false
-          });
+        for (const bucketName of bucketCandidates) {
+          try {
+            console.log('📦 Tentative upload Supabase vers bucket:', bucketName);
+            const { error: uploadError } = await supabase.storage
+              .from(bucketName)
+              .upload(fileName, buffer, {
+                contentType: file.type,
+                upsert: false
+              });
 
-        if (!uploadError) {
-          // Obtenir l'URL publique
-          const { data: urlData } = supabase.storage
-            .from(bucketName)
-            .getPublicUrl(fileName);
+            if (uploadError) {
+              lastUploadError = uploadError;
+              console.warn(`⚠️ Upload échoué pour bucket ${bucketName}:`, uploadError.message);
+              continue;
+            }
 
-          imageUrl = urlData.publicUrl;
-          provider = 'supabase';
-          console.log('✅ Upload Supabase réussi');
-        } else {
-          console.warn('⚠️ Upload Supabase échoué, passage à ImgBB:', uploadError.message);
-          throw uploadError;
+            const { data: urlData } = supabase.storage
+              .from(bucketName)
+              .getPublicUrl(fileName);
+
+            if (urlData?.publicUrl) {
+              imageUrl = urlData.publicUrl;
+              provider = `supabase:${bucketName}`;
+              uploadSuccess = true;
+              console.log('✅ Upload Supabase réussi via bucket', bucketName);
+              break;
+            }
+          } catch (bucketError) {
+            lastUploadError = bucketError;
+            console.warn(`⚠️ Erreur lors de l'upload vers ${bucketName}:`, bucketError.message);
+          }
+        }
+
+        if (!uploadSuccess) {
+          if (lastUploadError) {
+            console.warn('⚠️ Upload Supabase échoué, passage à ImgBB:', lastUploadError.message);
+          } else {
+            console.warn('⚠️ Aucun bucket Supabase valide trouvé, passage à ImgBB');
+          }
+          throw lastUploadError || new Error('Impossible d\'uploader sur Supabase');
         }
       } catch (supabaseError) {
         console.warn('⚠️ Supabase non disponible, utilisation d\'ImgBB comme alternative');

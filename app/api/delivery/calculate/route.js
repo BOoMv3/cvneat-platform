@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
+import { supabase } from '../../../../lib/supabase';
 
-// Restaurant Ganges - COORDONNÉES FIXES
-const RESTAURANT = {
+// Configuration par défaut (utilisée si aucune donnée spécifique restaurant)
+const DEFAULT_RESTAURANT = {
   lat: 43.9342,
   lng: 3.7098,
   name: 'Restaurant Ganges'
 };
 
-// Configuration des frais
-const BASE_FEE = 2.50;        // 2.50€ de base
-const FEE_PER_KM = 0.80;      // 0.80€ par kilomètre
-const MAX_FEE = 10.00;        // Maximum 10€
-const MAX_DISTANCE = 10;      // Maximum 10km
+const DEFAULT_BASE_FEE = 2.50;      // 2.50€ de base
+const DEFAULT_PER_KM_FEE = 0.80;    // 0.80€ par kilomètre (tarif standard)
+const ALTERNATE_PER_KM_FEE = 0.89;  // 0.89€ par kilomètre (tarif premium éventuel)
+const MAX_FEE = 10.00;              // Maximum 10€
+const MAX_DISTANCE = 10;            // Maximum 10km
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
@@ -19,6 +20,7 @@ const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
 const coordinatesCache = new Map();
+const restaurantCache = new Map();
 
 // Base de données simple pour éviter Nominatim
 const COORDINATES_DB = {
@@ -107,12 +109,72 @@ async function geocodeAddress(address) {
   }
 }
 
+function normalizeAddressForCache(address) {
+  return address
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s\d]/g, '')
+    .replace(/\bfrance\b/gi, '')
+    .trim();
+}
+
+function buildCacheKey(address, prefix = 'addr') {
+  const normalizedAddress = normalizeAddressForCache(address);
+  const postalCodeMatch = address.match(/\b(\d{5})\b/);
+  const postalCode = postalCodeMatch ? postalCodeMatch[1] : '';
+  return `${prefix}_${postalCode}_${normalizedAddress}`;
+}
+
+async function getCoordinatesWithCache(address, { prefix = 'addr' } = {}) {
+  const cacheKey = buildCacheKey(address, prefix);
+  const cache = prefix === 'restaurant' ? restaurantCache : coordinatesCache;
+
+  if (cache.has(cacheKey)) {
+    const cached = cache.get(cacheKey);
+    console.log(`📍 Coordonnées depuis le cache (${prefix}):`, cached);
+    return cached;
+  }
+
+  const coords = await geocodeAddress(address);
+  console.log(`📍 Coordonnées EXACTES depuis Nominatim (${prefix}):`, coords);
+
+  coords.lat = Math.round(coords.lat * 100) / 100;
+  coords.lng = Math.round(coords.lng * 100) / 100;
+
+  if (cache.size > 1000) {
+    const firstKey = cache.keys().next().value;
+    cache.delete(firstKey);
+  }
+
+  cache.set(cacheKey, coords);
+  console.log(`💾 Coordonnées mises en cache (${prefix}) (arrondies à 2 décimales pour stabilité)`);
+
+  return coords;
+}
+
+function pickNumeric(candidates = [], fallback, { min } = {}) {
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === '') continue;
+    const parsed = typeof candidate === 'number' ? candidate : parseFloat(candidate);
+    if (!Number.isNaN(parsed) && (min === undefined || parsed >= min)) {
+      return parsed;
+    }
+  }
+  return fallback;
+}
+
 /**
  * Calculer les frais de livraison
  * IMPORTANT: Arrondir à 2 décimales pour éviter les micro-variations
  */
-function calculateDeliveryFee(distance) {
-  const fee = BASE_FEE + (distance * FEE_PER_KM);
+function calculateDeliveryFee(distance, {
+  baseFee = DEFAULT_BASE_FEE,
+  perKmFee = DEFAULT_PER_KM_FEE
+} = {}) {
+  const fee = baseFee + (distance * perKmFee);
   const cappedFee = Math.min(fee, MAX_FEE);
   // Arrondir à 2 décimales pour garantir la cohérence
   return Math.round(cappedFee * 100) / 100;
@@ -136,9 +198,20 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
-    const { address } = body;
+    const {
+      address,
+      deliveryAddress,
+      restaurantAddress: restaurantAddressOverride,
+      restaurantId,
+      orderAmount,
+      perKmRate,
+      baseFee: baseFeeOverride,
+      freeDeliveryThreshold
+    } = body;
     
-    if (!address) {
+    const clientAddress = deliveryAddress || address;
+    
+    if (!clientAddress) {
       console.log('❌ Adresse manquante');
       return NextResponse.json({ 
         success: false, 
@@ -148,13 +221,13 @@ export async function POST(request) {
     }
 
     console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
-    console.log('Adresse:', address);
+    console.log('Adresse client:', clientAddress);
 
     // 1. Vérifier le code postal
-    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => address.includes(code));
+    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => clientAddress.includes(code));
     
     if (!hasValidPostalCode) {
-      console.log('❌ Code postal non autorisé dans:', address);
+      console.log('❌ Code postal non autorisé dans:', clientAddress);
       return NextResponse.json({
         success: false,
         livrable: false,
@@ -162,65 +235,93 @@ export async function POST(request) {
       }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
-    // 2. Géocoder avec cache pour éviter les variations
-    console.log('🌐 Géocodage avec cache pour adresse EXACTE...');
-    let clientCoords;
-    
-    // Normaliser l'adresse pour le cache : enlever les accents, normaliser les espaces, supprimer caractères spéciaux
-    const normalizedAddress = address
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ') // Normaliser les espaces multiples
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Enlever les accents
-      .replace(/[^\w\s\d]/g, '') // Enlever les caractères spéciaux sauf lettres, chiffres et espaces
-      .replace(/\bfrance\b/gi, '') // Enlever "France" qui peut varier
-      .trim();
-    
-    // Extraire le code postal pour une meilleure précision du cache
-    const postalCodeMatch = address.match(/\b(\d{5})\b/);
-    const postalCode = postalCodeMatch ? postalCodeMatch[1] : '';
-    
-    // Créer une clé de cache basée sur le code postal + adresse normalisée
-    // Le code postal est le facteur principal pour la cohérence
-    const cacheKey = `${postalCode}_${normalizedAddress}`;
-    
-    // Vérifier le cache d'abord
-    if (coordinatesCache.has(cacheKey)) {
-      clientCoords = coordinatesCache.get(cacheKey);
-      console.log('📍 Coordonnées depuis le cache:', clientCoords);
-    } else {
+    // 2. Récupérer les informations du restaurant si disponibles
+    let restaurantData = null;
+    if (restaurantId) {
       try {
-        clientCoords = await geocodeAddress(address);
-        console.log('📍 Coordonnées EXACTES depuis Nominatim:', clientCoords);
-        
-        // Arrondir les coordonnées plus agressivement pour stabiliser (précision ~200m)
-        // Cela réduit les variations dues aux petites différences dans les réponses Nominatim
-        // Arrondir à 2 décimales = ~200m de précision, ce qui est suffisant pour les frais de livraison
-        clientCoords.lat = Math.round(clientCoords.lat * 100) / 100; // 2 décimales = ~200m
-        clientCoords.lng = Math.round(clientCoords.lng * 100) / 100; // 2 décimales = ~200m
-        
-        // Mettre en cache (limite de 1000 entrées pour éviter les fuites mémoire)
-        if (coordinatesCache.size > 1000) {
-          // Supprimer la première entrée (FIFO)
-          const firstKey = coordinatesCache.keys().next().value;
-          coordinatesCache.delete(firstKey);
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*')
+          .eq('id', restaurantId)
+          .single();
+
+        if (error) {
+          console.warn('⚠️ Impossible de récupérer le restaurant', restaurantId, error);
+        } else if (data) {
+          restaurantData = data;
         }
-        coordinatesCache.set(cacheKey, clientCoords);
-        console.log('💾 Coordonnées mises en cache (arrondies à 2 décimales pour stabilité)');
       } catch (error) {
-        console.error('❌ Nominatim échoué:', error.message);
-        return NextResponse.json({
-          success: false,
-          livrable: false,
-          message: `❌ Impossible de localiser cette adresse. Vérifiez que l'adresse est correcte. (${error.message})`
-        }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
+        console.warn('⚠️ Erreur inattendue lors de la récupération du restaurant', restaurantId, error);
       }
     }
 
-    // 3. Calculer la distance entre restaurant et client
+    // Déterminer l'adresse du restaurant à utiliser pour le calcul si elle n'est pas déjà fournie
+    const restaurantAddressCandidates = [
+      restaurantAddressOverride,
+      restaurantData ? [
+        restaurantData.adresse,
+        restaurantData.code_postal,
+        restaurantData.ville
+      ].filter(Boolean).join(', ').trim() : null
+    ].filter(addr => typeof addr === 'string' && addr.trim().length > 0);
+
+    const restaurantAddress = restaurantAddressCandidates[0] || null;
+    const restaurantName = restaurantData?.nom || DEFAULT_RESTAURANT.name;
+
+    // 3. Géocoder avec cache pour éviter les variations
+    console.log('🌐 Géocodage avec cache pour les adresses...');
+    let clientCoords;
+    let restaurantCoords;
+
+    try {
+      clientCoords = await getCoordinatesWithCache(clientAddress, { prefix: 'client' });
+    } catch (error) {
+      console.error('❌ Nominatim échoué pour l\'adresse client:', error.message);
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: `❌ Impossible de localiser l'adresse de livraison. Vérifiez qu'elle est correcte. (${error.message})`
+      }, { status: 200 });
+    }
+
+    // Préférence : utiliser les coordonnées stockées en base si disponibles
+    if (restaurantData?.latitude && restaurantData?.longitude) {
+      const lat = parseFloat(restaurantData.latitude);
+      const lng = parseFloat(restaurantData.longitude);
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+        restaurantCoords = {
+          lat: Math.round(lat * 100) / 100,
+          lng: Math.round(lng * 100) / 100,
+          display_name: restaurantAddress || restaurantName
+        };
+      }
+    }
+
+    // Sinon, géocoder l'adresse du restaurant (cache séparé)
+    if (!restaurantCoords && restaurantAddress) {
+      try {
+        const coords = await getCoordinatesWithCache(restaurantAddress, { prefix: 'restaurant' });
+        restaurantCoords = {
+          lat: coords.lat,
+          lng: coords.lng,
+          display_name: coords.display_name || restaurantAddress
+        };
+      } catch (error) {
+        console.warn('⚠️ Géocodage restaurant échoué, utilisation des coordonnées par défaut:', error.message);
+      }
+    }
+
+    if (!restaurantCoords) {
+      restaurantCoords = {
+        lat: DEFAULT_RESTAURANT.lat,
+        lng: DEFAULT_RESTAURANT.lng,
+        display_name: DEFAULT_RESTAURANT.name
+      };
+    }
+
+    // 4. Calculer la distance entre restaurant et client
     const distance = calculateDistance(
-      RESTAURANT.lat, RESTAURANT.lng,
+      restaurantCoords.lat, restaurantCoords.lng,
       clientCoords.lat, clientCoords.lng
     );
 
@@ -230,7 +331,7 @@ export async function POST(request) {
 
     console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km`);
 
-    // 4. Vérifier la distance maximum
+    // 5. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
       console.log(`❌ REJET: Trop loin: ${roundedDistance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
@@ -242,17 +343,75 @@ export async function POST(request) {
       }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
-    // 5. Calculer les frais: 2.50€ + (distance × 0.80€)
-    const deliveryFee = calculateDeliveryFee(roundedDistance);
+    // 6. Déterminer les paramètres tarifaires
+    const resolvedBaseFee = pickNumeric(
+      [
+        baseFeeOverride,
+        restaurantData?.frais_livraison_base,
+        restaurantData?.frais_livraison_minimum,
+        restaurantData?.frais_livraison
+      ],
+      DEFAULT_BASE_FEE,
+      { min: 0 }
+    );
 
-    console.log(`💰 Frais: ${BASE_FEE}€ + (${roundedDistance.toFixed(1)}km × ${FEE_PER_KM}€) = ${deliveryFee.toFixed(2)}€`);
+    let resolvedPerKmFee = pickNumeric(
+      [
+        perKmRate,
+        body?.perKmFee,
+        restaurantData?.frais_livraison_par_km,
+        restaurantData?.frais_livraison_km,
+        restaurantData?.delivery_fee_per_km,
+        restaurantData?.tarif_kilometre
+      ],
+      undefined,
+      { min: 0 }
+    );
+
+    if (resolvedPerKmFee === undefined) {
+      // Certains restaurants peuvent avoir un indicateur spécifique pour le tarif premium
+      if ((restaurantData?.tarif_livraison || restaurantData?.delivery_mode)?.toLowerCase?.() === 'premium') {
+        resolvedPerKmFee = ALTERNATE_PER_KM_FEE;
+      } else {
+        resolvedPerKmFee = DEFAULT_PER_KM_FEE;
+      }
+    }
+
+    // 7. Calculer les frais
+    let deliveryFee = calculateDeliveryFee(roundedDistance, {
+      baseFee: resolvedBaseFee,
+      perKmFee: resolvedPerKmFee
+    });
+
+    const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
+    const resolvedFreeThreshold = pickNumeric(
+      [
+        freeDeliveryThreshold,
+        restaurantData?.free_delivery_threshold,
+        restaurantData?.livraison_gratuite_seuil
+      ],
+      null,
+      { min: 0 }
+    );
+
+    if (resolvedFreeThreshold !== null && orderAmountNumeric >= resolvedFreeThreshold) {
+      console.log(`🎁 Livraison offerte (commande ${orderAmountNumeric.toFixed(2)}€ >= seuil ${resolvedFreeThreshold}€)`);
+      deliveryFee = 0;
+    }
+
+    console.log(`💰 Frais: ${resolvedBaseFee}€ + (${roundedDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
 
     return NextResponse.json({
       success: true,
       livrable: true,
       distance: roundedDistance,
       frais_livraison: deliveryFee,
-      restaurant: RESTAURANT.name,
+      restaurant: restaurantName,
+      restaurant_coordinates: restaurantCoords,
+      client_coordinates: clientCoords,
+      applied_base_fee: resolvedBaseFee,
+      applied_per_km_fee: resolvedPerKmFee,
+      order_amount: orderAmountNumeric,
       client_address: clientCoords.display_name,
       message: `Livraison possible: ${deliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
     });

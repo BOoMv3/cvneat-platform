@@ -33,9 +33,54 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const [alertOrder, setAlertOrder] = useState(null);
   const [isBlinking, setIsBlinking] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const audioContextRef = useRef(null);
   const lastOrderCheckRef = useRef(null);
   const soundIntervalRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem('restaurant-sound-enabled');
+      if (stored !== null) {
+        setSoundEnabled(stored === 'true');
+      }
+    } catch (error) {
+      console.warn('Impossible de charger la préférence sonore:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('restaurant-sound-enabled', soundEnabled ? 'true' : 'false');
+    } catch (error) {
+      console.warn('Impossible de sauvegarder la préférence sonore:', error);
+    }
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(() => {});
+        }
+      } catch (error) {
+        console.warn('Impossible d\'initialiser le contexte audio:', error);
+      }
+    };
+
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+  }, []);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -349,6 +394,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Fonction pour jouer une alerte sonore d'annulation (son différent)
   const playCancellationSound = () => {
+    if (!soundEnabled) {
+      return;
+    }
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -435,6 +483,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Fonction pour jouer une alerte sonore
   const playNotificationSound = () => {
+    if (!soundEnabled) {
+      return;
+    }
     try {
       let audioContext = audioContextRef.current;
       
@@ -748,6 +799,41 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                 {isConnected ? 'Connecté' : 'Déconnecté'}
               </span>
             </div>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Alerte sonore</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={soundEnabled}
+                  onChange={(e) => setSoundEnabled(e.target.checked)}
+                />
+                <div className={`w-10 h-5 sm:w-11 sm:h-6 rounded-full transition-colors duration-200 ${
+                  soundEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}>
+                  <div
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full shadow transform transition-transform duration-200 ${
+                      soundEnabled ? 'translate-x-5 sm:translate-x-5' : 'translate-x-0'
+                    }`}
+                  ></div>
+                </div>
+              </label>
+            </div>
+            <button
+              onClick={() => {
+                if (!soundEnabled) {
+                  setSoundEnabled(true);
+                  setTimeout(() => {
+                    playNotificationSound();
+                  }, 50);
+                } else {
+                  playNotificationSound();
+                }
+              }}
+              className="mt-2 w-full text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+            >
+              Tester le son
+            </button>
           </div>
           
           <div className="max-h-96 overflow-y-auto">

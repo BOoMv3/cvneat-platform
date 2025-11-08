@@ -103,6 +103,7 @@ export async function GET(request) {
             ? `${order.users.prenom} ${order.users.nom}` 
             : order.users?.nom || 'Client',
           customer_phone: order.users?.telephone || null,
+          customer_email: order.users?.email || null,
           delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: order.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,

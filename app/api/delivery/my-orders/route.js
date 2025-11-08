@@ -48,7 +48,8 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         *,
-        restaurant:restaurants(nom, adresse, telephone, frais_livraison)
+        restaurant:restaurants(nom, adresse, telephone, frais_livraison),
+        users(id, nom, prenom, telephone, email)
       `)
       .eq('livreur_id', user.id) // Commandes assignées à ce livreur
       .in('statut', ['en_livraison', 'livree']) // Commandes en livraison ou livrées
@@ -59,8 +60,26 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
-    console.log('✅ Commandes trouvées:', orders?.length || 0);
-    return NextResponse.json(orders || []);
+    const enrichedOrders = (orders || []).map(order => {
+      const deliveryAddress = order.adresse_livraison || order.delivery_address || null;
+      const deliveryCity = order.ville_livraison || order.delivery_city || null;
+      const deliveryPostal = order.code_postal_livraison || order.delivery_postal_code || null;
+      return {
+        ...order,
+        customer_name: order.users?.prenom && order.users?.nom
+          ? `${order.users.prenom} ${order.users.nom}`
+          : order.users?.nom || 'Client',
+        customer_phone: order.users?.telephone || null,
+        customer_email: order.users?.email || null,
+        delivery_address: deliveryAddress,
+        delivery_city: deliveryCity,
+        delivery_postal_code: deliveryPostal,
+        delivery_instructions: order.instructions_livraison || order.delivery_instructions || null
+      };
+    });
+
+    console.log('✅ Commandes trouvées:', enrichedOrders.length || 0);
+    return NextResponse.json(enrichedOrders);
   } catch (error) {
     console.error('❌ Erreur API mes commandes:', error);
     return NextResponse.json(

@@ -38,10 +38,51 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   };
 }
 
+function computeCartTotalWithExtras(items = []) {
+  if (!Array.isArray(items)) return 0;
+
+  return items.reduce((sum, item) => {
+    const itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
+    const itemQuantity = parseInt(item?.quantity ?? 1, 10);
+
+    let supplementsPrice = 0;
+    if (item?.supplements && Array.isArray(item.supplements)) {
+      supplementsPrice = item.supplements.reduce((supSum, sup) => {
+        return supSum + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0);
+      }, 0);
+    }
+
+    let meatsPrice = 0;
+    if (item?.customizations?.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+      meatsPrice = item.customizations.selectedMeats.reduce((meatSum, meat) => {
+        return meatSum + (parseFloat(meat?.prix ?? meat?.price ?? 0) || 0);
+      }, 0);
+    }
+
+    let saucesPrice = 0;
+    if (item?.customizations?.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+      saucesPrice = item.customizations.selectedSauces.reduce((sauceSum, sauce) => {
+        return sauceSum + (parseFloat(sauce?.prix ?? sauce?.price ?? 0) || 0);
+      }, 0);
+    }
+
+    let sizePrice = 0;
+    if (item?.size?.prix) {
+      sizePrice = parseFloat(item.size.prix) || 0;
+    } else if (item?.prix_taille) {
+      sizePrice = parseFloat(item.prix_taille) || 0;
+    }
+
+    const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
+    return sum + totalItemPrice;
+  }, 0) || 0;
+}
+
 export default function Checkout() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [cart, setCart] = useState([]);
+  const [restaurant, setRestaurant] = useState(null);
   const [cartTotal, setCartTotal] = useState(0);
   const [fraisLivraison, setFraisLivraison] = useState(2.50);
   const [totalAvecLivraison, setTotalAvecLivraison] = useState(0);
@@ -122,57 +163,17 @@ export default function Checkout() {
     const savedCart = safeLocalStorage.getJSON('cart');
     if (savedCart && Array.isArray(savedCart.items)) {
       setCart(savedCart.items);
+      setRestaurant(savedCart.restaurant || null);
       setFraisLivraison(savedCart.frais_livraison || 2.50);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    // Calculer les totaux en incluant suppléments, customisations et tailles
-    const total = cart.reduce((sum, item) => {
-      const itemPrice = parseFloat(item.prix || item.price || 0);
-      const itemQuantity = parseInt(item.quantity || 1, 10);
-
-      // Calculer le prix des suppléments
-      let supplementsPrice = 0;
-      if (item.supplements && Array.isArray(item.supplements)) {
-        supplementsPrice = item.supplements.reduce((supSum, sup) => {
-          return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
-        }, 0);
-      }
-
-      // Calculer le prix des viandes sélectionnées
-      let meatsPrice = 0;
-      if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
-        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
-          return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
-        }, 0);
-      }
-
-      // Calculer le prix des sauces sélectionnées
-      let saucesPrice = 0;
-      if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
-        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
-          return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
-        }, 0);
-      }
-
-      // Calculer le prix de la taille
-      let sizePrice = 0;
-      if (item.size && item.size.prix) {
-        sizePrice = parseFloat(item.size.prix) || 0;
-      } else if (item.prix_taille) {
-        sizePrice = parseFloat(item.prix_taille) || 0;
-      }
-
-      // Total pour cet item = (prix de base + suppléments + viandes + sauces + taille) * quantité
-      const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
-      return sum + totalItemPrice;
-    }, 0);
-    
-    console.log('Recalcul total - cart total:', total, 'frais livraison:', fraisLivraison, 'total avec livraison:', total + fraisLivraison, 'forceUpdate:', forceUpdate);
+    const total = computeCartTotalWithExtras(cart);
+    console.log('Recalcul total - cart total:', total, 'frais livraison:', fraisLivraison, 'total avec livraison:', total + (parseFloat(fraisLivraison) || 0), 'forceUpdate:', forceUpdate);
     setCartTotal(total);
-    setTotalAvecLivraison(total + fraisLivraison);
+    setTotalAvecLivraison(total + (parseFloat(fraisLivraison) || 0));
   }, [cart, fraisLivraison, forceUpdate]);
 
   // Recalcul automatique des frais de livraison à chaque changement d'adresse ou de panier
@@ -183,6 +184,63 @@ export default function Checkout() {
       calculateDeliveryFee(selectedAddress);
     }
   }, [selectedAddress, cart]);
+
+  const buildDeliveryPayload = useCallback((fullAddress) => {
+    const savedCart = safeLocalStorage.getJSON('cart');
+    const restaurantInfo = restaurant || savedCart?.restaurant || null;
+    const subtotal = computeCartTotalWithExtras(cart);
+
+    const payload = {
+      deliveryAddress: fullAddress,
+      orderAmount: Math.round(subtotal * 100) / 100
+    };
+
+    const restaurantId = restaurantInfo?.id ?? restaurantInfo?.restaurant_id ?? restaurantInfo?.uuid ?? null;
+    if (restaurantId) {
+      payload.restaurantId = restaurantId;
+    }
+
+    const restaurantStreet = restaurantInfo?.adresse || restaurantInfo?.address || restaurantInfo?.street;
+    const restaurantPostal = restaurantInfo?.code_postal || restaurantInfo?.postal_code;
+    const restaurantCity = restaurantInfo?.ville || restaurantInfo?.city;
+
+    let restaurantAddressString;
+    if (restaurantStreet || restaurantPostal || restaurantCity) {
+      const cityBlock = [restaurantPostal, restaurantCity].filter(Boolean).join(' ').trim();
+      restaurantAddressString = [restaurantStreet, cityBlock].filter(Boolean).join(', ').trim();
+    }
+
+    if (restaurantAddressString) {
+      payload.restaurantAddress = `${restaurantAddressString}, France`.replace(/,\s*,/g, ', ').trim();
+    }
+
+    const perKmOverride = restaurantInfo?.frais_livraison_km
+      ?? restaurantInfo?.frais_livraison_par_km
+      ?? restaurantInfo?.delivery_fee_per_km
+      ?? restaurantInfo?.tarif_kilometre
+      ?? restaurantInfo?.per_km_fee;
+
+    if (perKmOverride !== undefined && perKmOverride !== null && perKmOverride !== '') {
+      payload.perKmRate = perKmOverride;
+    }
+
+    const baseFeeOverride = restaurantInfo?.frais_livraison_base
+      ?? restaurantInfo?.frais_livraison_minimum
+      ?? restaurantInfo?.frais_livraison;
+
+    if (baseFeeOverride !== undefined && baseFeeOverride !== null && baseFeeOverride !== '') {
+      payload.baseFee = baseFeeOverride;
+    }
+
+    const freeThresholdOverride = restaurantInfo?.livraison_gratuite_seuil
+      ?? restaurantInfo?.free_delivery_threshold;
+
+    if (freeThresholdOverride !== undefined && freeThresholdOverride !== null && freeThresholdOverride !== '') {
+      payload.freeDeliveryThreshold = freeThresholdOverride;
+    }
+
+    return { payload, restaurantInfo, subtotal };
+  }, [restaurant, cart]);
 
   const addNewAddress = async () => {
     if (!newAddress.address || !newAddress.city || !newAddress.postal_code) {
@@ -259,13 +317,15 @@ export default function Checkout() {
     const fullAddress = `${address.address}, ${address.postal_code} ${address.city}, France`;
     console.log('Adresse complète:', fullAddress);
 
+    const { payload, restaurantInfo } = buildDeliveryPayload(fullAddress);
+
     try {
       console.log('📡 Appel API /api/delivery/calculate...');
-      
+
       const response = await fetch('/api/delivery/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: fullAddress })
+        body: JSON.stringify(payload)
       });
 
       console.log('📡 Réponse HTTP:', response.status, response.statusText);
@@ -298,37 +358,13 @@ export default function Checkout() {
         
         // Réinitialiser les frais de livraison
         setFraisLivraison(0);
-        const cartTotalCalc = cart.reduce((sum, item) => {
-          const itemPrice = parseFloat(item.prix || item.price || 0);
-          const itemQuantity = parseInt(item.quantity || 1, 10);
-          let supplementsPrice = 0;
-          if (item.supplements && Array.isArray(item.supplements)) {
-            supplementsPrice = item.supplements.reduce((supSum, sup) => {
-              return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
-            }, 0);
-          }
-          let meatsPrice = 0;
-          if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
-            meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
-              return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
-            }, 0);
-          }
-          let saucesPrice = 0;
-          if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
-            saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
-              return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
-            }, 0);
-          }
-          let sizePrice = 0;
-          if (item.size && item.size.prix) {
-            sizePrice = parseFloat(item.size.prix) || 0;
-          } else if (item.prix_taille) {
-            sizePrice = parseFloat(item.prix_taille) || 0;
-          }
-          const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
-          return sum + totalItemPrice;
-        }, 0);
+        const cartTotalCalc = computeCartTotalWithExtras(cart);
         setTotalAvecLivraison(cartTotalCalc);
+        safeLocalStorage.setJSON('cart', {
+          items: cart,
+          restaurant: restaurantInfo || restaurant || null,
+          frais_livraison: 0
+        });
         return;
       }
 
@@ -343,44 +379,15 @@ export default function Checkout() {
       setFraisLivraison(newFrais);
       
       // Recalculer le total du panier avec suppléments, customisations et tailles
-      const currentCartTotal = cart.reduce((sum, item) => {
-        const itemPrice = parseFloat(item.prix || item.price || 0);
-        const itemQuantity = parseInt(item.quantity || 1, 10);
-
-        let supplementsPrice = 0;
-        if (item.supplements && Array.isArray(item.supplements)) {
-          supplementsPrice = item.supplements.reduce((supSum, sup) => {
-            return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
-          }, 0);
-        }
-
-        let meatsPrice = 0;
-        if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
-          meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
-            return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
-          }, 0);
-        }
-
-        let saucesPrice = 0;
-        if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
-          saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
-            return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
-          }, 0);
-        }
-
-        let sizePrice = 0;
-        if (item.size && item.size.prix) {
-          sizePrice = parseFloat(item.size.prix) || 0;
-        } else if (item.prix_taille) {
-          sizePrice = parseFloat(item.prix_taille) || 0;
-        }
-
-        const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
-        return sum + totalItemPrice;
-      }, 0);
+      const currentCartTotal = computeCartTotalWithExtras(cart);
       
       setTotalAvecLivraison(currentCartTotal + newFrais);
       setForceUpdate(prev => prev + 1);
+      safeLocalStorage.setJSON('cart', {
+        items: cart,
+        restaurant: restaurantInfo || restaurant || null,
+        frais_livraison: newFrais
+      });
 
     } catch (error) {
       if (error instanceof SyntaxError) {
@@ -415,16 +422,17 @@ export default function Checkout() {
 
     try {
       const savedCart = safeLocalStorage.getJSON('cart');
-      const restaurant = savedCart?.restaurant;
+      const restaurantInfoFromStorage = savedCart?.restaurant || null;
+      const activeRestaurant = restaurant || restaurantInfoFromStorage;
 
-      if (!restaurant) {
+      if (!activeRestaurant) {
         alert('Erreur: Restaurant non trouvé');
         setSubmitting(false);
         return;
       }
 
       // Vérifier si le restaurant est ouvert
-      const hoursCheckResponse = await fetch(`/api/restaurants/${restaurant.id}/hours`, {
+      const hoursCheckResponse = await fetch(`/api/restaurants/${activeRestaurant.id}/hours`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -434,7 +442,7 @@ export default function Checkout() {
         if (!hoursData.isOpen || hoursData.is_manually_closed) {
           alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
           setSubmitting(false);
-          router.push(`/restaurants/${restaurant.id}`);
+          router.push(`/restaurants/${activeRestaurant.id}`);
           return;
         }
       }
@@ -442,6 +450,14 @@ export default function Checkout() {
       // VALIDATION STRICTE: Vérifier à nouveau que l'adresse est livrable
       // IMPORTANT: Utiliser les frais déjà calculés si disponibles et l'adresse est la même
       const finalAddressCheck = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
+      const { payload: finalPayload, subtotal: orderSubtotal, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(finalAddressCheck);
+      const resolvedRestaurant = activeRestaurant || payloadRestaurantInfo || null;
+      
+      if (!resolvedRestaurant) {
+        alert('Impossible de déterminer le restaurant pour cette commande.');
+        setSubmitting(false);
+        return;
+      }
       
       // Si les frais de livraison ont déjà été calculés pour cette adresse, les réutiliser
       // Sinon, recalculer pour valider
@@ -463,7 +479,7 @@ export default function Checkout() {
         const finalCheckResponse = await fetch('/api/delivery/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: finalAddressCheck })
+          body: JSON.stringify(finalPayload)
         });
 
         if (finalCheckResponse.ok) {
@@ -495,36 +511,7 @@ export default function Checkout() {
       }
 
       // Calculer le total du panier
-      const cartTotal = savedCart.items?.reduce((sum, item) => {
-        const itemPrice = parseFloat(item.prix || item.price || 0);
-        const itemQuantity = parseInt(item.quantity || 1, 10);
-        let supplementsPrice = 0;
-        if (item.supplements && Array.isArray(item.supplements)) {
-          supplementsPrice = item.supplements.reduce((supSum, sup) => {
-            return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
-          }, 0);
-        }
-        let meatsPrice = 0;
-        if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
-          meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
-            return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
-          }, 0);
-        }
-        let saucesPrice = 0;
-        if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
-          saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
-            return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
-          }, 0);
-        }
-        let sizePrice = 0;
-        if (item.size && item.size.prix) {
-          sizePrice = parseFloat(item.size.prix) || 0;
-        } else if (item.prix_taille) {
-          sizePrice = parseFloat(item.prix_taille) || 0;
-        }
-        const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
-        return sum + totalItemPrice;
-      }, 0) || 0;
+      const cartTotal = orderSubtotal || computeCartTotalWithExtras(savedCart.items);
 
       // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
       // Utiliser finalDeliveryFee qui a été calculé ci-dessus
@@ -545,7 +532,7 @@ export default function Checkout() {
       // Préparer les données de commande (on les stocke pour créer la commande après le paiement)
       const orderDataToStore = {
         user_id: user.id,
-        restaurant_id: restaurant.id,
+        restaurant_id: resolvedRestaurant.id,
         total: cartTotal,
         frais_livraison: finalDeliveryFeeForTotal, // Utiliser la valeur arrondie et cohérente
         adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
@@ -565,7 +552,7 @@ export default function Checkout() {
           currency: 'eur',
           metadata: {
             user_id: user.id,
-            restaurant_id: restaurant.id,
+            restaurant_id: resolvedRestaurant.id,
             cart_total: cartTotal.toString(),
             delivery_fee: finalDeliveryFeeForTotal.toString()
           }
