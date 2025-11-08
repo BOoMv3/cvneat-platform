@@ -47,11 +47,12 @@ export default function Register() {
 
     // Inscription avec Supabase Auth avec redirection email
     const siteUrl = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat-platform.vercel.app';
+    const redirectBase = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
+        emailRedirectTo: `${redirectBase}/auth/confirm`,
         data: {
           nom: formData.nom,
           prenom: formData.prenom,

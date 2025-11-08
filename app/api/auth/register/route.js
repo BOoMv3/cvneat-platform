@@ -95,11 +95,12 @@ export async function POST(request) {
     // Note: Pour que les emails soient envoyés, il faut configurer un SMTP personnalisé
     // dans Supabase Dashboard > Authentication > Emails > SMTP Settings
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat-platform.vercel.app';
+    const redirectBase = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
     const { data: authUser, error: signUpError } = await supabase.auth.signUp({
       email: sanitizedData.email,
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
+        emailRedirectTo: `${redirectBase}/auth/confirm`,
         data: {
           nom: sanitizedData.nom,
           prenom: sanitizedData.prenom,

@@ -86,16 +86,24 @@ export default function RestaurantRequest() {
         }
         
         // Créer le compte utilisateur
+        const baseSiteUrl =
+          (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || '') || '';
+        const normalizedSiteUrl = baseSiteUrl.endsWith('/') ? baseSiteUrl.slice(0, -1) : baseSiteUrl;
+        const signUpOptions = {
+          data: {
+            nom: formData.nom,
+            prenom: '',
+            telephone: formData.telephone
+          }
+        };
+        if (normalizedSiteUrl) {
+          signUpOptions.emailRedirectTo = `${normalizedSiteUrl}/auth/confirm`;
+        }
+
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
-          options: {
-            data: {
-              nom: formData.nom,
-              prenom: '',
-              telephone: formData.telephone
-            }
-          }
+          options: signUpOptions
         });
         
         if (signUpError) {

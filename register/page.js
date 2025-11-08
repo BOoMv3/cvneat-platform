@@ -31,9 +31,17 @@ export default function Register() {
     }
 
     // Inscription avec Supabase Auth
+    const siteUrl =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
+    const redirectBase = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
+      options: {
+        emailRedirectTo: `${redirectBase}/auth/confirm`,
+      },
     });
     if (signUpError) {
       setErrors({ email: signUpError.message });

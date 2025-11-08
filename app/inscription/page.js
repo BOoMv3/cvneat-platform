@@ -58,11 +58,12 @@ export default function Inscription() {
     // Note: Pour activer les emails de confirmation, aller dans Supabase Dashboard > 
     // Authentication > Settings et activer "Enable email confirmations"
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const redirectBase = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
+        emailRedirectTo: `${redirectBase}/auth/confirm`,
         data: {
           nom: formData.nom,
           prenom: formData.prenom,
