@@ -1,5 +1,3 @@
-import { MetadataRoute } from 'next';
-
 const BASE_URL = 'https://www.cvneat.fr';
 
 const staticRoutes = [
@@ -26,6 +24,6 @@ export default function sitemap() {
     priority: path === '/' ? 1 : 0.7,
   }));
 
-  return urls satisfies MetadataRoute.Sitemap;
+  return urls;
 }
 
