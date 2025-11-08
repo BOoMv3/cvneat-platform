@@ -91,7 +91,7 @@ Un Place ID Google ressemble généralement à :
 Les deux formats fonctionnent, mais préférez le format court (commence par `ChIJ`) si possible.
 
 ---
-
+0x12b3f7342efb4ab3:0x6eb7a2fe100bcfc
 ## ✅ Vérifier que le Place ID est correct
 
 Une fois que vous avez le Place ID, vous pouvez le tester en allant sur :

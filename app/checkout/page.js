@@ -62,6 +62,7 @@ export default function Checkout() {
     address: '',
     city: '',
     postal_code: '',
+  instructions: '',
     is_default: false
   });
   const [orderDetails, setOrderDetails] = useState({
@@ -190,46 +191,59 @@ export default function Checkout() {
     }
 
     try {
-      // Si on définit cette adresse comme défaut, on retire le statut défaut des autres
-      if (newAddress.is_default) {
-        await supabase
-          .from('user_addresses')
-          .update({ is_default: false })
-          .eq('user_id', user.id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        alert('Votre session a expiré. Veuillez vous reconnecter.');
+        router.push('/login');
+        return;
       }
 
-      const { data, error } = await supabase
-        .from('user_addresses')
-        .insert({
-          user_id: user.id,
-          name: `${newAddress.city} - ${newAddress.address}`, // Nom automatique
+      const response = await fetch('/api/users/addresses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: `${newAddress.city} - ${newAddress.address}`,
           address: newAddress.address,
           city: newAddress.city,
           postal_code: newAddress.postal_code,
+          instructions: newAddress.instructions || '',
           is_default: newAddress.is_default
         })
-        .select()
-        .single();
+      });
 
-      if (error) {
-        console.error('Erreur détaillée:', error);
-        throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Erreur API /api/users/addresses POST:', result);
+        throw new Error(result.error || 'Impossible d\'ajouter l\'adresse');
       }
 
-      setUserAddresses(prev => [...prev, data]);
-      setSelectedAddress(data);
-      setShowAddressForm(false);
-      setNewAddress({ address: '', city: '', postal_code: '', is_default: false });
+      const createdAddress = result.address;
 
-      // Recalculer les frais de livraison
-      await calculateDeliveryFee(data);
-      
-      // Notification de succès
+      setUserAddresses(prev => [...prev, createdAddress]);
+      setSelectedAddress(createdAddress);
+      setShowAddressForm(false);
+      setNewAddress({
+        address: '',
+        city: '',
+        postal_code: '',
+        instructions: '',
+        is_default: false
+      });
+
+      if (cart.length > 0) {
+        await calculateDeliveryFee(createdAddress);
+      }
+
       alert('Adresse ajoutée avec succès !');
     } catch (error) {
       console.error('Erreur ajout adresse:', error);
-      // Affichage détaillé de l'erreur Supabase
-      alert('Erreur lors de l\'ajout de l\'adresse : ' + (error.message || JSON.stringify(error)));
+      alert(error.message || 'Erreur lors de l\'ajout de l\'adresse. Veuillez réessayer.');
     }
   };
 
@@ -901,6 +915,13 @@ export default function Checkout() {
                       className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                     />
                   </div>
+                <textarea
+                  placeholder="Instructions de livraison (optionnel)"
+                  value={newAddress.instructions}
+                  onChange={(e) => setNewAddress(prev => ({ ...prev, instructions: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
+                />
                   <label className="flex items-center min-h-[44px] touch-manipulation">
                     <input
                       type="checkbox"

@@ -144,6 +144,46 @@ export async function POST(request) {
       );
     }
 
+    try {
+      if (!supabaseAdmin) {
+        console.warn('Supabase admin non configuré, impossible de générer un lien de confirmation personnalisé');
+      } else {
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'signup',
+          email: sanitizedData.email,
+          options: {
+            redirectTo: `${redirectBase}/auth/confirm`,
+          },
+        });
+
+        if (linkError) {
+          throw linkError;
+        }
+
+        const confirmationUrl =
+          linkData?.properties?.action_link ||
+          linkData?.action_link ||
+          linkData?.redirect_to ||
+          null;
+
+        if (confirmationUrl) {
+          await fetch(`${redirectBase}/api/notifications/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'accountConfirmation',
+              data: { confirmationUrl },
+              recipientEmail: sanitizedData.email,
+            }),
+          });
+        } else {
+          console.warn('Lien de confirmation introuvable dans la réponse Supabase');
+        }
+      }
+    } catch (linkError) {
+      console.warn('Impossible d\'envoyer l\'email de confirmation personnalisé:', linkError);
+    }
+
     return NextResponse.json(
       { message: 'Inscription réussie, veuillez vérifier votre email pour valider votre compte.' },
       { status: 201 }

@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
 export default function Inscription() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     nom: '',
     prenom: '',
@@ -21,6 +19,8 @@ export default function Inscription() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [manualConfirmationLink, setManualConfirmationLink] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +33,8 @@ export default function Inscription() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
+    setManualConfirmationLink('');
     setLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
@@ -105,10 +107,69 @@ export default function Inscription() {
       return;
     }
 
-    // Redirection vers la page de connexion
-    router.push('/login?registered=true');
+    try {
+      const response = await fetch('/api/auth/send-confirmation-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.confirmationUrl) {
+          setManualConfirmationLink(payload.confirmationUrl);
+          if (typeof window !== 'undefined') {
+            window.open(payload.confirmationUrl, '_blank', 'noopener,noreferrer');
+          }
+        }
+      } else {
+        const payload = await response.json().catch(() => ({}));
+        console.warn('Impossible d’envoyer l’email de confirmation:', payload?.error || response.statusText);
+      }
+    } catch (confirmationError) {
+      console.warn('Erreur lors de la génération du lien de confirmation:', confirmationError);
+    }
+
+    setSuccess(true);
     setLoading(false);
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Inscription presque terminée !</h2>
+          <p className="text-gray-700">
+            Un nouvel onglet a été ouvert automatiquement pour confirmer votre compte.
+          </p>
+          <p className="mt-4 text-gray-700">
+            Si ce n’est pas le cas, cliquez directement sur ce lien sécurisé&nbsp;:
+          </p>
+          {manualConfirmationLink ? (
+            <p className="mt-4 text-sm text-gray-600 break-words">
+              <a
+                href={manualConfirmationLink}
+                className="text-orange-500 hover:text-orange-600 break-words"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {manualConfirmationLink}
+              </a>
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-gray-500">
+              Le lien direct n’a pas pu être généré automatiquement. Réessayez plus tard ou contactez le support.
+            </p>
+          )}
+          <Link
+            href="/login"
+            className="mt-8 inline-flex items-center justify-center rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
+          >
+            Aller à la connexion
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

@@ -142,13 +142,9 @@ export default function AdminUsers() {
     setError(null);
 
     try {
-      const body = new URLSearchParams({ email });
-
-      const response = await fetchWithAuth(`/api/admin/reset-password?${body.toString()}`, {
+      const response = await fetchWithAuth('/api/admin/reset-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: JSON.stringify({ email })
       });
 
       const data = await response.json();

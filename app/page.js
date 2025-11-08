@@ -675,7 +675,7 @@ export default function Home() {
                 const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { isOpen: true, isManuallyClosed: false };
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-                const isClosed = isReadyRestaurant ? false : (!restaurantStatus.isOpen || restaurantStatus.isManuallyClosed);
+                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 
                 return (
                 <div

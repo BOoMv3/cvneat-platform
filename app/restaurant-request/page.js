@@ -114,6 +114,25 @@ export default function RestaurantRequest() {
         }
         
         currentUser = authData.user;
+
+        try {
+          const response = await fetch('/api/auth/send-confirmation-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: formData.email }),
+          });
+          if (response.ok) {
+            const payload = await response.json();
+            if (payload?.confirmationUrl && typeof window !== 'undefined') {
+              window.open(payload.confirmationUrl, '_blank', 'noopener,noreferrer');
+            }
+          } else {
+            const payload = await response.json().catch(() => ({}));
+            console.warn('Impossible d’envoyer l’email de confirmation:', payload?.error || response.statusText);
+          }
+        } catch (confirmationError) {
+          console.warn('Erreur lors de la génération du lien de confirmation:', confirmationError);
+        }
         
         // Créer l'entrée dans la table users
         const { error: userError } = await supabase

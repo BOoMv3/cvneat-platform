@@ -19,11 +19,13 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+  const [manualConfirmationLink, setManualConfirmationLink] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
     setSuccess('');
+    setManualConfirmationLink('');
     setLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
@@ -94,7 +96,29 @@ export default function Register() {
       return;
     }
 
-    setSuccess('Inscription réussie ! Vérifiez votre email.');
+    try {
+      const response = await fetch('/api/auth/send-confirmation-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.confirmationUrl) {
+          setManualConfirmationLink(payload.confirmationUrl);
+          if (typeof window !== 'undefined') {
+            window.open(payload.confirmationUrl, '_blank', 'noopener,noreferrer');
+          }
+        }
+      } else {
+        const payload = await response.json().catch(() => ({}));
+        console.warn('Impossible d’envoyer l’email de confirmation:', payload?.error || response.statusText);
+      }
+    } catch (confirmationError) {
+      console.warn('Erreur lors de la génération du lien de confirmation:', confirmationError);
+    }
+
+    setSuccess('Inscription réussie !');
     setLoading(false);
   };
 
@@ -112,13 +136,29 @@ export default function Register() {
         <div className="w-full max-w-md bg-white rounded-lg shadow p-8 text-center">
           <h1 className="text-2xl font-bold mb-4 text-green-600">Inscription presque terminée !</h1>
           <p className="text-gray-700">
-            Nous vous avons envoyé un e-mail à <strong className="font-semibold">{formData.email}</strong>.
+            Un nouvel onglet a été ouvert automatiquement pour valider votre compte.
           </p>
           <p className="mt-4 text-gray-700">
-            Veuillez cliquer sur le lien dans cet e-mail pour activer votre compte.
+            Si rien ne s’affiche, utilisez directement le lien sécurisé ci-dessous.
           </p>
+          {manualConfirmationLink ? (
+            <p className="mt-4 text-sm text-gray-600 break-words">
+              <a
+                href={manualConfirmationLink}
+                className="text-orange-500 hover:text-orange-600 break-words"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {manualConfirmationLink}
+              </a>
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-gray-500">
+              Le lien direct n’a pas pu être généré automatiquement. Réessayez depuis cette page ou contactez-nous.
+            </p>
+          )}
           <p className="mt-6 text-sm text-gray-500">
-            (Pensez à vérifier votre dossier de courriers indésirables ou spam)
+            Vous pouvez fermer cette fenêtre après la confirmation.
           </p>
         </div>
       </main>
