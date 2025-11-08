@@ -86,8 +86,7 @@ export default function RestaurantRequest() {
         }
         
         // Créer le compte utilisateur
-        const baseSiteUrl =
-          (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || '') || '';
+        const baseSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
         const normalizedSiteUrl = baseSiteUrl.endsWith('/') ? baseSiteUrl.slice(0, -1) : baseSiteUrl;
         const signUpOptions = {
           data: {

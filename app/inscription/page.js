@@ -57,8 +57,8 @@ export default function Inscription() {
     // Inscription avec Supabase Auth avec redirection email
     // Note: Pour activer les emails de confirmation, aller dans Supabase Dashboard > 
     // Authentication > Settings et activer "Enable email confirmations"
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-    const redirectBase = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
+    const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
+    const redirectBase = rawSiteUrl.endsWith('/') ? rawSiteUrl.slice(0, -1) : rawSiteUrl;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
