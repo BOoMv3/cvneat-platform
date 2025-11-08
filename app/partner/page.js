@@ -1832,6 +1832,9 @@ export default function PartnerDashboard() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Prix (€)
                   </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Astuce : ajoutez +25% sur vos prix pour compenser la commission et préserver votre marge.
+                  </p>
                   <input
                     type="number"
                     step="0.01"
@@ -2276,6 +2279,9 @@ export default function PartnerDashboard() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Prix pour cette taille (€)
                     </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Pensez à appliquer +25% pour conserver votre marge sur CVN'EAT.
+                  </p>
                     <input
                       type="number"
                       step="0.01"
@@ -2524,6 +2530,9 @@ export default function PartnerDashboard() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Prix de la formule (€) *
                   </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Conseillé : ajoutez +25% pour aligner la marge brute avec vos ventes directes.
+                  </p>
                   <input
                     type="number"
                     step="0.01"
