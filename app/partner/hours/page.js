@@ -100,13 +100,22 @@ export default function PartnerHours() {
   }, [router]);
 
   const handleHoraireChange = (jour, champ, value) => {
-    setHoraires(prev => ({
-      ...prev,
-      [jour]: {
-        ...prev[jour],
+    setHoraires(prev => {
+      const previous = prev[jour] || { ouvert: false, plages: [] };
+      const updated = {
+        ...previous,
         [champ]: value
+      };
+
+      if (champ === 'ouvert' && value === false) {
+        updated.plages = [];
       }
-    }));
+
+      return {
+        ...prev,
+        [jour]: updated
+      };
+    });
   };
 
   const handlePlageChange = (jour, index, champ, value) => {
@@ -178,8 +187,8 @@ export default function PartnerHours() {
           // Filtrer les plages valides (avec ouverture et fermeture)
           const validPlages = horaire.plages.filter(p => p.ouverture && p.fermeture);
           cleanedHoraires[jour.key] = {
-            ouvert: validPlages.length > 0,
-            plages: validPlages
+            ouvert: Boolean(horaire?.ouvert) && validPlages.length > 0,
+            plages: Boolean(horaire?.ouvert) ? validPlages : []
           };
         } else {
           cleanedHoraires[jour.key] = {
