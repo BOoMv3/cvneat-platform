@@ -291,7 +291,7 @@ export default function Home() {
       quantity: 1,
       restaurant_id: restaurant.id,
       restaurant_name: restaurant.nom,
-      image_url: restaurant.image_url
+      image_url: restaurant.image_url || restaurant.imageUrl
     };
     
     setCart(prev => [...prev, newCartItem]);

@@ -116,15 +116,25 @@ export async function GET(request) {
     const deliveredOrders = orders?.filter(order => order.statut === 'livree') || [];
     const totalOrders = deliveredOrders.length;
     
-    // Calculer le CA total (montant des articles uniquement, sans frais de livraison)
-    const totalRevenue = deliveredOrders.reduce((sum, order) => {
+    const normalizedRestaurantName = (restaurant.nom || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+    const commissionRatePercent = restaurant.commission_rate ?? 20;
+    const commissionRate = isInternalRestaurant ? 0 : commissionRatePercent / 100;
+
+    const totalArticleRevenue = deliveredOrders.reduce((sum, order) => {
       return sum + computeArticleAmount(order);
     }, 0);
-    
+    const commissionEarned = totalArticleRevenue * commissionRate;
+    const restaurantRevenue = totalArticleRevenue - commissionEarned;
+
     console.log('📊 Analytics - Calcul CA:', {
       totalOrders: orders?.length || 0,
       deliveredOrders: deliveredOrders.length,
-      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      restaurantRevenue: Math.round(restaurantRevenue * 100) / 100,
+      commissionRateApplied: commissionRate * 100,
       sampleOrder: deliveredOrders[0] ? {
         total: deliveredOrders[0].total,
         total_amount: deliveredOrders[0].total_amount,
@@ -133,8 +143,7 @@ export async function GET(request) {
       } : null
     });
     
-    const commissionEarned = totalRevenue * ((restaurant.commission_rate || 20) / 100);
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const averageOrderValue = totalOrders > 0 ? restaurantRevenue / totalOrders : 0;
 
     // Commandes par statut
     const ordersByStatus = orders?.reduce((acc, order) => {
@@ -178,7 +187,7 @@ export async function GET(request) {
         acc[dateKey] = { orders: 0, revenue: 0 };
       }
       acc[dateKey].orders += 1;
-      acc[dateKey].revenue += computeArticleAmount(order);
+      acc[dateKey].revenue += computeArticleAmount(order) * (1 - commissionRate);
       return acc;
     }, {});
 
@@ -197,7 +206,7 @@ export async function GET(request) {
         acc[hour] = { orders: 0, revenue: 0 };
       }
       acc[hour].orders += 1;
-      acc[hour].revenue += computeArticleAmount(order);
+      acc[hour].revenue += computeArticleAmount(order) * (1 - commissionRate);
       return acc;
     }, {});
 
@@ -220,7 +229,7 @@ export async function GET(request) {
         count: trend.count
       })),
       revenue: {
-        total: Math.round(totalRevenue * 100) / 100,
+        total: Math.round(restaurantRevenue * 100) / 100,
         data: dailyTrends.map(trend => ({
           date: trend.date,
           amount: trend.revenue
