@@ -255,7 +255,12 @@ export default function Home() {
           throw new Error('Format de donnees invalide');
         }
         
-        const normalizedRestaurants = data.map((restaurant) => {
+        const normalizedRestaurants = data
+          .filter((restaurant) => {
+            const normalized = normalizeName(restaurant.nom);
+            return normalized && normalized !== '.';
+          })
+          .map((restaurant) => {
           const primaryImage =
             restaurant.profile_image ||
             restaurant.image_url ||
