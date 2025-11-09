@@ -249,7 +249,37 @@ export default function Home() {
     router.push(`/restaurants/${restaurant.id}`);
   };
 
-  const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
+    const mappedRestaurants = restaurants.map((restaurant) => {
+      const primaryImage =
+        restaurant.profile_image ||
+        restaurant.image_url ||
+        restaurant.logo_image ||
+        restaurant.profileImage ||
+        restaurant.imageUrl;
+
+      const bannerImage =
+        restaurant.banner_image ||
+        restaurant.bannerImage ||
+        restaurant.cover_image ||
+        restaurant.banniere_image;
+
+      const logoImage =
+        restaurant.logo_image ||
+        restaurant.logoImage ||
+        restaurant.profile_image ||
+        restaurant.profileImage;
+
+      return {
+        ...restaurant,
+        image_url: primaryImage,
+        banner_image: bannerImage,
+        logo_image: logoImage,
+        cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
+        category: restaurant.category || restaurant.categorie
+      };
+    });
+
+    const filteredAndSortedRestaurants = mappedRestaurants.filter(restaurant => {
     if (restaurant.is_active === false || restaurant.active === false || restaurant.status === 'inactive') {
       return false;
     }
