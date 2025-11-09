@@ -97,18 +97,49 @@ export default function Home() {
 
   // Catégories de restaurants avec icônes et couleurs
   const categories = [
-    { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-orange-500 to-amber-600' },
-    { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-red-500 to-orange-500' },
-    { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-amber-500 to-orange-500' },
-    { id: 'coffee', name: 'Café', icon: FaCoffee, color: 'from-amber-600 to-yellow-600' },
-    { id: 'dessert', name: 'Desserts', icon: FaIceCream, color: 'from-pink-400 to-orange-400' },
-    { id: 'healthy', name: 'Healthy', icon: FaLeaf, color: 'from-green-500 to-emerald-500' },
-    { id: 'fast', name: 'Fast Food', icon: FaFire, color: 'from-orange-500 to-red-500' }
+    { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-orange-500 to-amber-600', tagline: 'Tout découvrir' },
+    { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-red-500 to-orange-500', tagline: 'Aux saveurs d\'Italie' },
+    { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-amber-500 to-orange-500', tagline: 'Gourmand et fondant' },
+    { id: 'coffee', name: 'Café', icon: FaCoffee, color: 'from-amber-600 to-yellow-600', tagline: 'Pause sucrée' },
+    { id: 'dessert', name: 'Desserts', icon: FaIceCream, color: 'from-pink-400 to-orange-400', tagline: 'Douceurs sucrées' },
+    { id: 'healthy', name: 'Healthy', icon: FaLeaf, color: 'from-green-500 to-emerald-500', tagline: 'Léger & vitaminé' },
+    { id: 'fast', name: 'Fast Food', icon: FaFire, color: 'from-orange-500 to-red-500', tagline: 'Rapide & efficace' }
   ];
+
+  const heroSlides = useMemo(() => [
+    {
+      id: 'slide-1',
+      image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop',
+      title: 'Livraison rapide et repas délicieux',
+      subtitle: 'Découvrez les meilleurs restaurants locaux sans bouger de votre canapé'
+    },
+    {
+      id: 'slide-2',
+      image: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?q=80&w=2000&auto=format&fit=crop',
+      title: 'Partenaires passionnés',
+      subtitle: 'Des chefs soigneusement sélectionnés pour la qualité de leurs produits'
+    },
+    {
+      id: 'slide-3',
+      image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2000&auto=format&fit=crop',
+      title: 'Promos exclusives CVN’EAT',
+      subtitle: 'Profitez de remises et de programmes fidélité dédiés'
+    }
+  ], []);
+
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (!heroSlides.length) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
 
   useEffect(() => {
     // Verifier l'authentification
@@ -152,11 +183,41 @@ export default function Home() {
           throw new Error('Format de donnees invalide');
         }
         
-        setRestaurants(data);
+        const normalizedRestaurants = data.map((restaurant) => {
+          const primaryImage =
+            restaurant.profile_image ||
+            restaurant.image_url ||
+            restaurant.logo_image ||
+            restaurant.profileImage ||
+            restaurant.imageUrl;
+
+          const bannerImage =
+            restaurant.banner_image ||
+            restaurant.bannerImage ||
+            restaurant.cover_image ||
+            restaurant.banniere_image;
+
+          const logoImage =
+            restaurant.logo_image ||
+            restaurant.logoImage ||
+            restaurant.profile_image ||
+            restaurant.profileImage;
+
+          return {
+            ...restaurant,
+            image_url: primaryImage,
+            banner_image: bannerImage,
+            logo_image: logoImage,
+            cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
+            category: restaurant.category || restaurant.categorie
+          };
+        });
+
+        setRestaurants(normalizedRestaurants);
         
         // Vérifier le statut d'ouverture pour chaque restaurant
         const openStatusMap = {};
-        await Promise.all(data.map(async (restaurant) => {
+        await Promise.all(normalizedRestaurants.map(async (restaurant) => {
           try {
             const statusResponse = await fetch(`/api/restaurants/${restaurant.id}/hours`, {
               method: 'POST',
@@ -230,7 +291,7 @@ export default function Home() {
       quantity: 1,
       restaurant_id: restaurant.id,
       restaurant_name: restaurant.nom,
-      image_url: restaurant.imageUrl
+      image_url: restaurant.image_url
     };
     
     setCart(prev => [...prev, newCartItem]);
@@ -249,37 +310,7 @@ export default function Home() {
     router.push(`/restaurants/${restaurant.id}`);
   };
 
-    const mappedRestaurants = restaurants.map((restaurant) => {
-      const primaryImage =
-        restaurant.profile_image ||
-        restaurant.image_url ||
-        restaurant.logo_image ||
-        restaurant.profileImage ||
-        restaurant.imageUrl;
-
-      const bannerImage =
-        restaurant.banner_image ||
-        restaurant.bannerImage ||
-        restaurant.cover_image ||
-        restaurant.banniere_image;
-
-      const logoImage =
-        restaurant.logo_image ||
-        restaurant.logoImage ||
-        restaurant.profile_image ||
-        restaurant.profileImage;
-
-      return {
-        ...restaurant,
-        image_url: primaryImage,
-        banner_image: bannerImage,
-        logo_image: logoImage,
-        cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
-        category: restaurant.category || restaurant.categorie
-      };
-    });
-
-    const filteredAndSortedRestaurants = mappedRestaurants.filter(restaurant => {
+    const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
     if (restaurant.is_active === false || restaurant.active === false || restaurant.status === 'inactive') {
       return false;
     }
@@ -347,13 +378,26 @@ export default function Home() {
 
   const displayRestaurants = useMemo(() => {
     const seen = new Set();
-    return finalRestaurants.filter((restaurant) => {
+    const uniqueRestaurants = finalRestaurants.filter((restaurant) => {
       const key = normalizeName(restaurant.nom) || restaurant.id;
       if (seen.has(key)) {
         return false;
       }
       seen.add(key);
       return true;
+    });
+
+    const boostOrder = (restaurant) => {
+      const normalized = normalizeName(restaurant.nom);
+      if (normalized.includes('la bonne pate')) return 0;
+      if (normalized.includes('eclipse')) return 1;
+      return 2;
+    };
+
+    return uniqueRestaurants.sort((a, b) => {
+      const boostDiff = boostOrder(a) - boostOrder(b);
+      if (boostDiff !== 0) return boostDiff;
+      return 0;
     });
   }, [finalRestaurants]);
 
@@ -363,18 +407,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section avec bannière et image de base - Optimisé mobile Android */}
-      <section className="relative h-[400px] sm:h-[500px] md:h-[600px] overflow-hidden">
-        <Image
-          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop"
-          alt="Bannière de restauration"
-          fill
-          className="object-cover"
-          priority
-          unoptimized
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+      {/* Hero Section avec carrousel visuel */}
+      <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
+        {heroSlides.map((slide, index) => (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 transition-opacity duration-[1200ms] ease-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <Image
+              src={slide.image}
+              alt={slide.title}
+              fill
+              className="object-cover"
+              priority={index === 0}
+              unoptimized
+              sizes="100vw"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/30" />
+          </div>
+        ))}
         
         {/* Logo CVN'EAT en haut à gauche - Optimisé mobile */}
         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 z-20">
@@ -473,10 +524,10 @@ export default function Home() {
         <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 h-full flex items-center">
           <div className="text-white max-w-2xl w-full">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl font-bold mb-3 sm:mb-4 md:mb-6 leading-tight">
-              Découvrez les meilleurs restaurants
+              {heroSlides[currentSlide]?.title}
             </h1>
             <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl mb-4 sm:mb-5 md:mb-6 lg:mb-8 text-gray-200">
-              Livraison rapide et repas délicieux à votre porte
+              {heroSlides[currentSlide]?.subtitle}
             </p>
 
             {/* Barre de recherche intégrée - Optimisée mobile */}
@@ -494,6 +545,18 @@ export default function Home() {
             </div>
 
           </div>
+        </div>
+
+        {/* Indicateurs du carrousel */}
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 z-20">
+          {heroSlides.map((slide, index) => (
+            <button
+              key={slide.id}
+              aria-label={`Aller au slide ${index + 1}`}
+              onClick={() => setCurrentSlide(index)}
+              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-110' : 'bg-white/40 hover:bg-white/70'}`}
+            />
+          ))}
         </div>
       </section>
 
@@ -558,32 +621,32 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section des catégories style Uber Eats - Optimisé mobile */}
-        <section className="mb-6">
-          <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 overflow-x-auto pb-3 scrollbar-hide px-1">
+        <section className="mb-10">
+          <div className="flex items-stretch space-x-2 sm:space-x-3 lg:space-x-4 overflow-x-auto pb-4 scrollbar-hide px-1">
             {categories.map((category) => {
               const Icon = category.icon;
+              const isSelected = selectedCategory === category.id;
               return (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`flex-shrink-0 flex items-center space-x-1.5 sm:space-x-2 px-4 sm:px-5 py-3 sm:py-3.5 rounded-2xl transition-all duration-300 min-h-[48px] sm:min-h-[52px] touch-manipulation ${
-                    selectedCategory === category.id
-                      ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg transform scale-105'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md active:scale-95'
+                  className={`relative flex-shrink-0 w-28 sm:w-32 md:w-36 h-24 sm:h-28 rounded-3xl transition-all duration-300 focus:outline-none group ${
+                    isSelected ? 'scale-105 shadow-2xl' : 'hover:scale-105 hover:shadow-xl'
                   }`}
                 >
-                  <Icon className={`h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 ${
-                    selectedCategory === category.id 
-                      ? 'text-white' 
-                      : 'text-gray-600'
-                  }`} />
-                  <span className={`text-sm sm:text-base font-semibold whitespace-nowrap ${
-                    selectedCategory === category.id 
-                      ? 'text-white' 
-                      : 'text-gray-700'
-                  }`}>
-                    {category.name}
-                  </span>
+                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${category.color} ${isSelected ? 'opacity-100' : 'opacity-85 group-hover:opacity-100'} transition-opacity`} />
+                  <div className={`absolute inset-0 rounded-3xl border-2 ${isSelected ? 'border-white/70' : 'border-white/30 group-hover:border-white/50'} transition-colors`} />
+                  <div className="relative h-full w-full p-3 sm:p-4 flex flex-col justify-between text-left text-white">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center shadow-md">
+                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm sm:text-lg font-bold leading-tight">{category.name}</p>
+                      <p className="text-[10px] sm:text-xs text-white/85 mt-0.5">
+                        {category.tagline}
+                      </p>
+                    </div>
+                  </div>
                 </button>
               );
             })}
@@ -674,37 +737,29 @@ export default function Home() {
                             priority={false}
                             sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
-                          
-                          {/* Filtre gris transparent si fermé */}
-                          {isClosed && (
-                            <div className="absolute inset-0 bg-gray-900/60 z-10 flex items-center justify-center">
-                              <div className="bg-red-600/95 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-full text-sm sm:text-base md:text-lg font-bold shadow-2xl backdrop-blur-sm border-2 border-white/30">
-                                🔴 Fermé
-                              </div>
-                            </div>
-                          )}
                         </div>
                         
-                        {/* Overlay avec gradient (seulement si ouvert) */}
-                        {!isClosed && (
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-0"></div>
-                        )}
+                        {/* Overlay */}
+                        <div className={`absolute inset-0 ${isClosed ? 'bg-gradient-to-t from-black/70 via-black/40 to-transparent' : 'bg-gradient-to-t from-black/60 via-transparent to-transparent'} z-0`}></div>
                         
                         {/* Badges - Optimisé mobile */}
-                        {!isClosed && (
-                          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 flex flex-col space-y-1.5 sm:space-y-2 z-20">
-                            {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
-                              <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg">
-                                ⭐ Sponsorisé
-                              </span>
-                            )}
-                            {favorites.includes(restaurant.id) && (
-                              <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg">
-                                ❤️ Favori
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 flex flex-col space-y-1.5 sm:space-y-2 z-20">
+                          {isClosed && (
+                            <span className="bg-red-600 text-white/95 px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-3.5 md:py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-lg border border-white/40">
+                              Fermé
+                            </span>
+                          )}
+                          {!isClosed && restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
+                            <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg">
+                              ⭐ Sponsorisé
+                            </span>
+                          )}
+                          {!isClosed && favorites.includes(restaurant.id) && (
+                            <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg">
+                              ❤️ Favori
+                            </span>
+                          )}
+                        </div>
                         
                         {/* Bouton favori - Optimisé mobile Android */}
                         {!isClosed && (
@@ -720,14 +775,14 @@ export default function Home() {
                         )}
                         
                         {/* Temps de livraison - Optimisé mobile */}
-                        {!isClosed && (
-                          <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/90 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2 rounded-full shadow-lg z-20">
-                            <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
-                              <FaClock className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-gray-600 flex-shrink-0" />
-                              <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-800">{restaurant.deliveryTime || '25-35'} min</span>
-                            </div>
+                        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/90 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2 rounded-full shadow-lg z-20">
+                          <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
+                            <FaClock className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-gray-600 flex-shrink-0" />
+                            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-800">
+                              {isClosed ? 'Horaires variables' : `${restaurant.deliveryTime || '25-35'} min`}
+                            </span>
                           </div>
-                        )}
+                        </div>
                       </div>
                       
                       {/* Contenu de la carte - Optimisé mobile */}
@@ -768,13 +823,13 @@ export default function Home() {
                             }
                           }}
                           disabled={isClosed}
-                          className={`w-full py-4 sm:py-4 px-4 sm:px-6 rounded-2xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation ${
+                          className={`w-full py-4 sm:py-4 px-4 sm:px-6 rounded-2xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[48px] sm:min-h-[52px] touch-manipulation ${
                             isClosed
-                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                               : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700 hover:shadow-xl transform hover:scale-105 active:scale-95'
                           }`}
                         >
-                          {isClosed ? 'Restaurant fermé' : 'Voir le menu'}
+                          {isClosed ? 'Restaurant fermé pour le moment' : 'Voir le menu'}
                         </button>
                       </div>
                     </div>
