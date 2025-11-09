@@ -48,6 +48,77 @@ const normalizeName = (value = '') =>
     .toLowerCase()
     .trim();
 
+const normalizeToken = (value = '') =>
+  value
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const extractKeywords = (value) => {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => extractKeywords(item))
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value || {})
+      .flatMap((val) => extractKeywords(val))
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    // Tenter de parser un JSON array
+    if (
+      (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+      (trimmed.startsWith('{') && trimmed.endsWith('}'))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return extractKeywords(parsed);
+      } catch (err) {
+        // Ignorer si non JSON valide
+      }
+    }
+
+    return trimmed
+      .split(/[,;\/|&]| et |\n|\r|\t/gi)
+      .map((token) => normalizeToken(token))
+      .filter(Boolean);
+  }
+
+  return [normalizeToken(value)];
+};
+
+const getCategoryTokensForRestaurant = (restaurant = {}) => {
+  const sources = [
+    restaurant.cuisine_type,
+    restaurant.type_cuisine,
+    restaurant.categories,
+    restaurant.category,
+    restaurant.categorie,
+    restaurant.type,
+    restaurant.tags,
+    restaurant.keywords,
+    restaurant.specialites,
+    restaurant.specialities,
+    restaurant.description
+  ];
+
+  const tokens = sources
+    .flatMap((source) => extractKeywords(source))
+    .filter(Boolean);
+
+  return Array.from(new Set(tokens.map(normalizeToken))).filter(Boolean);
+};
+
 const getNextOpeningDate = () => {
   const target = new Date();
   target.setDate(target.getDate() + 1);
@@ -98,6 +169,7 @@ export default function Home() {
   // Catégories de restaurants avec icônes et couleurs
   const categories = [
     { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-orange-500 to-amber-600', tagline: 'Tout découvrir' },
+    { id: 'traditional', name: 'Traditionnel', icon: FaUtensils, color: 'from-amber-600 to-red-500', tagline: 'Recettes authentiques' },
     { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-red-500 to-orange-500', tagline: 'Aux saveurs d\'Italie' },
     { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-amber-500 to-orange-500', tagline: 'Gourmand et fondant' },
     { id: 'coffee', name: 'Café', icon: FaCoffee, color: 'from-amber-600 to-yellow-600', tagline: 'Pause sucrée' },
@@ -203,13 +275,16 @@ export default function Home() {
             restaurant.profile_image ||
             restaurant.profileImage;
 
+          const categoryTokens = getCategoryTokensForRestaurant(restaurant);
+
           return {
             ...restaurant,
             image_url: primaryImage,
             banner_image: bannerImage,
             logo_image: logoImage,
             cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
-            category: restaurant.category || restaurant.categorie
+            category: restaurant.category || restaurant.categorie,
+            category_tokens: categoryTokens
           };
         });
 
@@ -319,26 +394,35 @@ export default function Home() {
     }
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
-      // Vérifier plusieurs champs possibles pour la catégorie
-      const restaurantCategory = (
-        restaurant.cuisine_type?.toLowerCase() || 
-        restaurant.category?.toLowerCase() || 
-        restaurant.type?.toLowerCase() ||
-        restaurant.description?.toLowerCase() ||
-        ''
-      );
-      
+      const restaurantTokens = restaurant.category_tokens || [];
+
       const categoryMap = {
         'pizza': ['pizza', 'italien', 'italian', 'pizzeria'],
         'burger': ['burger', 'hamburger', 'fast food', 'fast-food', 'sandwich'],
         'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery', 'boulanger'],
         'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream', 'sucré'],
         'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic', 'végétarien', 'vegan'],
-        'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick', 'snack']
+        'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick', 'snack'],
+        'traditional': [
+          'traditionnel',
+          'traditionnelle',
+          'tradition',
+          'cuisine familiale',
+          'fait maison',
+          'terroir',
+          'brasserie',
+          'bistrot',
+          'bistro',
+          'français',
+          'francaise',
+          'française'
+        ]
       };
       
       const validCategories = categoryMap[selectedCategory] || [];
-      const matchesCategory = validCategories.some(cat => restaurantCategory.includes(cat));
+      const matchesCategory = validCategories.some((cat) =>
+        restaurantTokens.some((token) => token.includes(normalizeToken(cat)))
+      );
       if (!matchesCategory) return false;
     }
     
