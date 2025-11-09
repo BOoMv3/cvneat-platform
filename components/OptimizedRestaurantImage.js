@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop';
 
@@ -12,6 +12,7 @@ export default function OptimizedRestaurantImage({
 }) {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const imgRef = useRef(null);
   const [currentSrc, setCurrentSrc] = useState(
     restaurant.image_url || 
     restaurant.imageUrl || 
@@ -33,6 +34,15 @@ export default function OptimizedRestaurantImage({
     );
   }, [restaurant]);
 
+  useEffect(() => {
+    if (!imgRef.current) return;
+
+    if (imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setImageLoaded(true);
+      setImageError(false);
+    }
+  }, [currentSrc]);
+
   const handleImageError = () => {
     if (currentSrc !== DEFAULT_IMAGE) {
       setCurrentSrc(DEFAULT_IMAGE);
@@ -49,6 +59,7 @@ export default function OptimizedRestaurantImage({
     <div className={`relative overflow-hidden ${className}`} style={{ width: '100%', height: '256px' }}>
       {/* Image normale pour la compatibilité mobile */}
       <img
+        ref={imgRef}
         src={currentSrc}
         alt={restaurant.nom || restaurant.name || 'Restaurant'}
         className={`w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500 ${
