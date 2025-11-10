@@ -1723,7 +1723,16 @@ export default function PartnerDashboard() {
                         
                         <div className="flex justify-between items-start mb-1">
                           <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">{item.nom}</h3>
-                          <div className="flex space-x-1">
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => handleToggleMenuAvailability(item)}
+                              className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors ${
+                                item.disponible ? 'text-green-600' : 'text-red-600'
+                              }`}
+                              title={item.disponible ? 'Rendre le plat indisponible' : 'Rendre le plat disponible'}
+                            >
+                              {item.disponible ? <FaCheck className="h-3.5 w-3.5" /> : <FaTimes className="h-3.5 w-3.5" />}
+                            </button>
                             <button
                               onClick={() => {
                                 setEditingMenu(item);
@@ -1852,15 +1861,13 @@ export default function PartnerDashboard() {
                         )}
                         
                         {/* Statut de disponibilité */}
-                        <button
-                          onClick={() => handleToggleMenuAvailability(item)}
-                          className={`inline-block px-1.5 py-0.5 rounded-full text-xs transition-colors ${
-                            item.disponible ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
+                        <span
+                          className={`inline-block px-1 py-0.5 rounded-full text-xs ${
+                            item.disponible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}
-                          title={item.disponible ? 'Rendre le plat indisponible' : 'Rendre le plat disponible'}
                         >
                           {item.disponible ? 'Disponible' : 'Indisponible'}
-                        </button>
+                        </span>
                       </div>
                     ))}
                   </div>
