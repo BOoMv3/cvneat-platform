@@ -60,10 +60,14 @@ export default function RestaurantDetail({ params }) {
           if (response.ok) {
             const data = await response.json();
             setIsRestaurantOpen(data.isOpen === true);
-            console.log('Statut rafraîchi:', data);
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('Statut rafraîchi:', data);
+            }
           }
         } catch (err) {
-          console.warn('Erreur rafraîchissement statut:', err);
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Erreur rafraîchissement statut:', err);
+          }
         }
       };
       checkStatus();
@@ -218,7 +222,9 @@ export default function RestaurantDetail({ params }) {
         try {
           hoursData = await hoursResponse.json();
         } catch (e) {
-          console.warn('Erreur parsing heures:', e);
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Erreur parsing heures:', e);
+          }
         }
       } else {
         console.warn('Erreur récupération horaires:', hoursResponse.status);
@@ -230,7 +236,9 @@ export default function RestaurantDetail({ params }) {
           openStatusData = await openStatusResponse.json();
           console.log('✅ Statut ouvert reçu:', openStatusData);
         } catch (e) {
-          console.warn('❌ Erreur parsing statut:', e);
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('❌ Erreur parsing statut:', e);
+          }
           openStatusData = { isOpen: false };
         }
       } else {
