@@ -1034,7 +1034,7 @@ export default function DeliveryDashboard() {
                           </div>
                           
                           {/* Bouton marquer comme livrée */}
-                          {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer') && (
+                          {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
