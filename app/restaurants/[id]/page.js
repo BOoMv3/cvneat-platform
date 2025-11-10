@@ -12,17 +12,6 @@ import MenuByCategories from '@/components/MenuByCategories';
 import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 
-const isDev = process.env.NODE_ENV !== 'production';
-const debugLog = (...args) => {
-  if (isDev && typeof console !== 'undefined' && console.log) {
-    console.log(...args);
-  }
-};
-const debugWarn = (...args) => {
-  if (isDev && typeof console !== 'undefined' && console.warn) {
-    console.warn(...args);
-  }
-};
 
 export default function RestaurantDetail({ params }) {
   const router = useRouter();
@@ -44,7 +33,6 @@ export default function RestaurantDetail({ params }) {
   const [restaurantHours, setRestaurantHours] = useState([]);
   const [isRestaurantOpen, setIsRestaurantOpen] = useState(true);
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
-  const [isMobileView, setIsMobileView] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -71,10 +59,10 @@ export default function RestaurantDetail({ params }) {
           if (response.ok) {
             const data = await response.json();
             setIsRestaurantOpen(data.isOpen === true);
-            debugLog('Statut rafraîchi:', data);
+            console.log('Statut rafraîchi:', data);
           }
         } catch (err) {
-          debugWarn('Erreur rafraîchissement statut:', err);
+          console.error('Erreur rafraîchissement statut:', err);
         }
       };
       checkStatus();
@@ -82,17 +70,6 @@ export default function RestaurantDetail({ params }) {
     
     return () => clearInterval(statusInterval);
   }, [params.id]);
-
-  useEffect(() => {
-    const updateView = () => {
-      if (typeof window === 'undefined') return;
-      setIsMobileView(window.innerWidth < 768);
-    };
-
-    updateView();
-    window.addEventListener('resize', updateView);
-    return () => window.removeEventListener('resize', updateView);
-  }, []);
 
   useEffect(() => {
     // Sauvegarder le panier a chaque modification
@@ -229,9 +206,7 @@ export default function RestaurantDetail({ params }) {
         try {
           hoursData = await hoursResponse.json();
         } catch (e) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('Erreur parsing heures:', e);
-          }
+          console.error('Erreur parsing heures:', e);
         }
       } else {
         console.warn('Erreur récupération horaires:', hoursResponse.status);
@@ -243,9 +218,7 @@ export default function RestaurantDetail({ params }) {
           openStatusData = await openStatusResponse.json();
           console.log('✅ Statut ouvert reçu:', openStatusData);
         } catch (e) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('❌ Erreur parsing statut:', e);
-          }
+          console.error('❌ Erreur parsing statut:', e);
           openStatusData = { isOpen: false };
         }
       } else {
@@ -638,9 +611,6 @@ export default function RestaurantDetail({ params }) {
     selectedCategory === 'all' || (item.category || item.categorie || 'Autres') === selectedCategory
   );
 
-  const cartItemCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
-  const cartDisplayTotal = deliveryFee !== null ? getTotal() : getSubtotal();
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -731,52 +701,34 @@ export default function RestaurantDetail({ params }) {
 
         {/* Panier flottant - Fixed en bas à droite */}
         {cart.length > 0 && (
-          isMobileView ? (
-            <div className="fixed inset-x-4 bottom-4 z-50">
-              <button
-                type="button"
-                onClick={() => setShowCartModal(true)}
-                className="w-full flex items-center justify-between gap-3 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white px-5 py-3 shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300"
-              >
-                <div className="flex flex-col text-left">
-                  <span className="text-xs uppercase tracking-wide opacity-80">Panier</span>
-                  <span className="text-lg font-semibold">
-                    {cartItemCount} article{cartItemCount > 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-base font-bold">
-                  {cartDisplayTotal.toFixed(2)}€
-                  <FaShoppingCart className="h-5 w-5" />
-                </div>
-              </button>
-            </div>
-          ) : (
-            <div className="fixed bottom-4 right-4 z-50 w-80 sm:w-96 max-w-[calc(100vw-2rem)]">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border dark:border-gray-700 p-4 max-h-[80vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Panier ({cartItemCount})</h2>
-                  <button
-                    onClick={() => setShowCartModal(true)}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
-                  >
-                    Voir tout
-                  </button>
-                </div>
+          <div className="fixed bottom-4 right-4 z-50 w-80 sm:w-96 max-w-[calc(100vw-2rem)]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border dark:border-gray-700 p-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Panier ({cart.reduce((sum, item) => sum + (item.quantity || 1), 0)})</h2>
+                <button
+                  onClick={() => setShowCartModal(true)}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                >
+                  Voir tout
+                </button>
+              </div>
                 <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
                   {cart.slice(0, 3).map((item, idx) => {
                     const itemPrice = parseFloat(item.prix || item.price || 0);
-                    const supplementsPrice = item.supplements && Array.isArray(item.supplements)
+                    const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
                       ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
                       : 0;
+                    // Calculer le prix des viandes sélectionnées
                     const meatsPrice = item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)
                       ? item.customizations.selectedMeats.reduce((sum, meat) => sum + parseFloat(meat.prix || meat.price || 0), 0)
                       : 0;
+                    // Calculer le prix des sauces sélectionnées
                     const saucesPrice = item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)
                       ? item.customizations.selectedSauces.reduce((sum, sauce) => sum + parseFloat(sauce.prix || sauce.price || 0), 0)
                       : 0;
                     const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
                     const totalItemPrice = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
-
+                    
                     return (
                       <div key={item.id || idx} className="flex items-start justify-between text-sm border-b dark:border-gray-700 pb-2">
                         <div className="flex-1 pr-2 min-w-0">
@@ -819,7 +771,7 @@ export default function RestaurantDetail({ params }) {
                 <div className="border-t dark:border-gray-700 pt-3 mt-3">
                   <div className="flex justify-between items-center mb-2 text-sm text-gray-900 dark:text-white">
                     <span>Total</span>
-                    <span className="font-bold">{cartDisplayTotal.toFixed(2)}€</span>
+                    <span className="font-bold">{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</span>
                   </div>
                   <button
                     onClick={handleCheckout}
@@ -834,9 +786,8 @@ export default function RestaurantDetail({ params }) {
                     {!isRestaurantOpen || isManuallyClosed ? 'Fermé' : 'Commander'}
                   </button>
                 </div>
-              </div>
             </div>
-          )
+          </div>
         )}
         {/* Modal panier */}
         {showCartModal && (

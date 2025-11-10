@@ -94,9 +94,7 @@ async function geocodeAddress(address) {
     const coords = {
       lat: parseFloat(result.lat),
       lng: parseFloat(result.lon),
-      display_name: result.display_name,
-      postcode: result.address?.postcode || null,
-      city: result.address?.city || result.address?.town || result.address?.village || null
+      display_name: result.display_name
     };
     
     console.log('🌐 Coordonnées extraites:', coords);
@@ -225,7 +223,19 @@ export async function POST(request) {
     console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
     console.log('Adresse client:', clientAddress);
 
-    // 1. Récupérer les informations du restaurant si disponibles
+    // 1. Vérifier le code postal
+    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => clientAddress.includes(code));
+    
+    if (!hasValidPostalCode) {
+      console.log('❌ Code postal non autorisé dans:', clientAddress);
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: '❌ Livraison non disponible dans cette zone. Nous desservons actuellement les zones autour de Ganges.'
+      }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
+    }
+
+    // 2. Récupérer les informations du restaurant si disponibles
     let restaurantData = null;
     if (restaurantId) {
       try {
@@ -258,7 +268,7 @@ export async function POST(request) {
     const restaurantAddress = restaurantAddressCandidates[0] || null;
     const restaurantName = restaurantData?.nom || DEFAULT_RESTAURANT.name;
 
-    // 2. Géocoder avec cache pour éviter les variations
+    // 3. Géocoder avec cache pour éviter les variations
     console.log('🌐 Géocodage avec cache pour les adresses...');
     let clientCoords;
     let restaurantCoords;
@@ -274,7 +284,7 @@ export async function POST(request) {
       }, { status: 200 });
     }
 
-    // 3. Préférence : utiliser les coordonnées stockées en base si disponibles
+    // Préférence : utiliser les coordonnées stockées en base si disponibles
     if (restaurantData?.latitude && restaurantData?.longitude) {
       const lat = parseFloat(restaurantData.latitude);
       const lng = parseFloat(restaurantData.longitude);
@@ -309,26 +319,7 @@ export async function POST(request) {
       };
     }
 
-    // 4. Vérifier la zone desservie (codes postaux autorisés)
-    const postalCodeMatches = [
-      ...(clientAddress.match(/\b(\d{5})\b/g) || []),
-      clientCoords.postcode
-    ]
-      .filter(Boolean)
-      .map(code => code.trim());
-
-    const hasAuthorizedPostalCode = postalCodeMatches.some(code => AUTHORIZED_POSTAL_CODES.includes(code));
-
-    if (!hasAuthorizedPostalCode) {
-      console.log('❌ Code postal non autorisé:', postalCodeMatches, 'adresse:', clientCoords.display_name || clientAddress);
-      return NextResponse.json({
-        success: false,
-        livrable: false,
-        message: '❌ Livraison indisponible pour cette adresse. Zones desservies : 34190, 34150, 34260.'
-      }, { status: 200 });
-    }
-
-    // 5. Calculer la distance entre restaurant et client
+    // 4. Calculer la distance entre restaurant et client
     const distance = calculateDistance(
       restaurantCoords.lat, restaurantCoords.lng,
       clientCoords.lat, clientCoords.lng
@@ -340,7 +331,7 @@ export async function POST(request) {
 
     console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km`);
 
-    // 6. Vérifier la distance maximum
+    // 5. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
       console.log(`❌ REJET: Trop loin: ${roundedDistance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
@@ -352,7 +343,7 @@ export async function POST(request) {
       }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
-    // 7. Déterminer les paramètres tarifaires
+    // 6. Déterminer les paramètres tarifaires
     const resolvedBaseFee = pickNumeric(
       [
         baseFeeOverride,
@@ -386,7 +377,7 @@ export async function POST(request) {
       }
     }
 
-    // 8. Calculer les frais
+    // 7. Calculer les frais
     let deliveryFee = calculateDeliveryFee(roundedDistance, {
       baseFee: resolvedBaseFee,
       perKmFee: resolvedPerKmFee

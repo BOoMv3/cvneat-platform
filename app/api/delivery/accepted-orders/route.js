@@ -67,79 +67,8 @@ export async function GET(request) {
         console.error('❌ Erreur récupération simple:', simpleError);
         return NextResponse.json({ error: 'Erreur récupération commandes' }, { status: 500 });
       }
-
-      // Tenter de récupérer les informations utilisateur associées
-      let enrichedFallback = simpleOrders || [];
-      if (enrichedFallback.length > 0) {
-        const userIds = [...new Set(enrichedFallback.map(order => order.user_id).filter(Boolean))];
-        let usersMap = new Map();
-
-        if (userIds.length > 0) {
-          try {
-            const { data: fallbackUsers } = await supabaseAdmin
-              .from('users')
-              .select('id, nom, prenom, telephone, email')
-              .in('id', userIds);
-            if (fallbackUsers) {
-              usersMap = new Map(fallbackUsers.map(u => [u.id, u]));
-            }
-          } catch (fallbackUserError) {
-            console.warn('⚠️ Impossible de récupérer les utilisateurs pour les commandes fallback:', fallbackUserError);
-          }
-        }
-
-        enrichedFallback = await Promise.all(enrichedFallback.map(async (order) => {
-          const userInfo = usersMap.get(order.user_id) || {};
-
-          let deliveryAddress = null;
-          if (order.adresse_livraison) {
-            deliveryAddress = {
-              address: order.adresse_livraison,
-              city: order.ville_livraison || null,
-              postal_code: order.code_postal_livraison || null,
-              delivery_instructions: order.instructions_livraison || null
-            };
-          } else if (order.user_id) {
-            const { data: address } = await supabaseAdmin
-              .from('user_addresses')
-              .select('id, address, city, postal_code, delivery_instructions')
-              .eq('user_id', order.user_id)
-              .single();
-            deliveryAddress = address || null;
-          }
-
-          return {
-            ...order,
-            users: userInfo,
-            user_addresses: deliveryAddress,
-            adresse_livraison: order.adresse_livraison || deliveryAddress?.address || null,
-            ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
-            code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
-            instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null,
-            customer_name: order.customer_name
-              || (userInfo.prenom && userInfo.nom ? `${userInfo.prenom} ${userInfo.nom}` : null)
-              || userInfo.nom
-              || order.nom_client
-              || order.client_nom
-              || 'Client',
-            customer_phone: order.customer_phone
-              || order.telephone
-              || order.phone
-              || userInfo.telephone
-              || null,
-            customer_email: order.customer_email
-              || order.email
-              || userInfo.email
-              || null,
-            delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
-            delivery_city: order.ville_livraison || deliveryAddress?.city || null,
-            delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,
-            delivery_instructions: order.instructions_livraison || deliveryAddress?.delivery_instructions || null
-          };
-        }));
-      }
       
-      return NextResponse.json({ orders: enrichedFallback });
+      return NextResponse.json({ orders: simpleOrders || [] });
     }
 
     // Enrichir les commandes avec les adresses et informations complètes
@@ -174,21 +103,11 @@ export async function GET(request) {
           ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
           instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null,
-          customer_name: order.customer_name
-            || (order.users?.prenom && order.users?.nom ? `${order.users.prenom} ${order.users.nom}` : null)
-            || order.users?.nom
-            || order.nom_client
-            || order.client_nom
-            || 'Client',
-          customer_phone: order.customer_phone
-            || order.telephone
-            || order.phone
-            || order.users?.telephone
-            || null,
-          customer_email: order.customer_email
-            || order.email
-            || order.users?.email
-            || null,
+          customer_name: order.users?.prenom && order.users?.nom 
+            ? `${order.users.prenom} ${order.users.nom}` 
+            : order.users?.nom || 'Client',
+          customer_phone: order.users?.telephone || null,
+          customer_email: order.users?.email || null,
           delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: order.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,

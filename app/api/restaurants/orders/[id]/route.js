@@ -105,9 +105,7 @@ export async function PUT(request, { params }) {
     console.log('✅ Commande appartient au restaurant');
 
     // Vérifier si la commande a déjà été acceptée par un livreur
-    const allowedWithAssignedDriver = ['livree', 'pret_a_livrer'];
-
-    if (order.livreur_id && !allowedWithAssignedDriver.includes(status)) {
+    if (order.livreur_id && status !== 'livree') {
       console.log('⚠️ Commande déjà acceptée par un livreur:', order.livreur_id);
       return NextResponse.json({ 
         error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être modifiée',

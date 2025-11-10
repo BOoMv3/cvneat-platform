@@ -97,37 +97,7 @@ const extractKeywords = (value) => {
   return [normalizeToken(value)];
 };
 
-const extractCategoryFlags = (input) => {
-  if (!input) return [];
-  if (Array.isArray(input)) {
-    return input.map((flag) => (typeof flag === 'string' ? flag.toLowerCase() : flag)).filter(Boolean);
-  }
-  if (typeof input === 'string') {
-    try {
-      const parsed = JSON.parse(input);
-      if (Array.isArray(parsed)) return parsed;
-      if (parsed && Array.isArray(parsed.category_flags)) return parsed.category_flags;
-      return input
-        .split(',')
-        .map((value) => value.trim().toLowerCase())
-        .filter(Boolean);
-    } catch {
-      return input
-        .split(',')
-        .map((value) => value.trim().toLowerCase())
-        .filter(Boolean);
-    }
-  }
-  if (typeof input === 'object' && Array.isArray(input.category_flags)) {
-    return input.category_flags;
-  }
-  return [];
-};
-
 const getCategoryTokensForRestaurant = (restaurant = {}) => {
-  const categoryFlags = extractCategoryFlags(restaurant.category_flags);
-  const tagFlags = extractCategoryFlags(restaurant.tags);
-
   const sources = [
     restaurant.cuisine_type,
     restaurant.type_cuisine,
@@ -139,9 +109,7 @@ const getCategoryTokensForRestaurant = (restaurant = {}) => {
     restaurant.keywords,
     restaurant.specialites,
     restaurant.specialities,
-    restaurant.description,
-    categoryFlags,
-    tagFlags
+    restaurant.description
   ];
 
   const tokens = sources
@@ -385,12 +353,6 @@ export default function Home() {
 
           const categoryTokens = getCategoryTokensForRestaurant(restaurant);
           const todayHoursLabel = getTodayHoursLabel(restaurant);
-          const categoryFlags = [
-            ...new Set([
-              ...extractCategoryFlags(restaurant.category_flags),
-              ...extractCategoryFlags(restaurant.tags)
-            ])
-          ];
 
           return {
             ...restaurant,
@@ -400,7 +362,6 @@ export default function Home() {
             cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
             category: restaurant.category || restaurant.categorie,
             category_tokens: categoryTokens,
-            category_flags: categoryFlags,
             today_hours_label: todayHoursLabel
           };
         });
@@ -516,42 +477,35 @@ export default function Home() {
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
       const restaurantTokens = restaurant.category_tokens || [];
-      const restaurantCategories = Array.isArray(restaurant.category_flags)
-        ? restaurant.category_flags.map((flag) => normalizeToken(flag))
-        : [];
 
-      if (restaurantCategories.includes(selectedCategory)) {
-        // Correspondance directe, pas besoin de vérifier les tokens
-      } else {
-        const categoryMap = {
-          'pizza': ['pizza', 'italien', 'italian', 'pizzeria'],
-          'burger': ['burger', 'hamburger', 'fast food', 'fast-food', 'sandwich'],
-          'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery', 'boulanger'],
-          'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream', 'sucré'],
-          'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic', 'végétarien', 'vegan'],
-          'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick', 'snack'],
-          'traditional': [
-            'traditionnel',
-            'traditionnelle',
-            'tradition',
-            'cuisine familiale',
-            'fait maison',
-            'terroir',
-            'brasserie',
-            'bistrot',
-            'bistro',
-            'français',
-            'francaise',
-            'française'
-          ]
-        };
-
-        const validCategories = categoryMap[selectedCategory] || [];
-        const matchesCategory = validCategories.some((cat) =>
-          restaurantTokens.some((token) => token.includes(normalizeToken(cat)))
-        );
-        if (!matchesCategory) return false;
-      }
+      const categoryMap = {
+        'pizza': ['pizza', 'italien', 'italian', 'pizzeria'],
+        'burger': ['burger', 'hamburger', 'fast food', 'fast-food', 'sandwich'],
+        'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery', 'boulanger'],
+        'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream', 'sucré'],
+        'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic', 'végétarien', 'vegan'],
+        'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick', 'snack'],
+        'traditional': [
+          'traditionnel',
+          'traditionnelle',
+          'tradition',
+          'cuisine familiale',
+          'fait maison',
+          'terroir',
+          'brasserie',
+          'bistrot',
+          'bistro',
+          'français',
+          'francaise',
+          'française'
+        ]
+      };
+      
+      const validCategories = categoryMap[selectedCategory] || [];
+      const matchesCategory = validCategories.some((cat) =>
+        restaurantTokens.some((token) => token.includes(normalizeToken(cat)))
+      );
+      if (!matchesCategory) return false;
     }
     
     // Filtre par recherche textuelle
@@ -772,11 +726,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Bannière publicitaire haute */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 mt-4 sm:mt-6">
-        <Advertisement position="banner_top" />
-      </div>
-
 
       {/* Panier flottant - Optimisé mobile */}
       {showFloatingCart && cart.length > 0 && (
@@ -958,7 +907,7 @@ export default function Home() {
                           <OptimizedRestaurantImage
                             restaurant={restaurant}
                             className={`h-full w-full object-cover transition-all duration-300 ${isClosed ? 'grayscale opacity-40' : ''}`}
-                            priority={index < 4}
+                            priority={false}
                             sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
                         </div>

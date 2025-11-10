@@ -25,107 +25,6 @@ const requestBrowserNotificationPermission = () => {
   }
 };
 
-const hasWindow = () => typeof window !== 'undefined';
-
-const bufferToWaveDataUri = (buffer) => {
-  try {
-    const numChannels = buffer.numberOfChannels;
-    const sampleRate = buffer.sampleRate;
-    const format = 1; // PCM
-    const bitDepth = 16;
-    const blockAlign = numChannels * (bitDepth / 8);
-    const byteRate = sampleRate * blockAlign;
-    const dataLength = buffer.length * blockAlign;
-    const bufferLength = 44 + dataLength;
-
-    const arrayBuffer = new ArrayBuffer(bufferLength);
-    const view = new DataView(arrayBuffer);
-
-    const writeString = (offset, string) => {
-      for (let i = 0; i < string.length; i += 1) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    };
-
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + dataLength, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, format, true);
-    view.setUint16(22, numChannels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, byteRate, true);
-    view.setUint16(32, blockAlign, true);
-    view.setUint16(34, bitDepth, true);
-    writeString(36, 'data');
-    view.setUint32(40, dataLength, true);
-
-    let offset = 44;
-    const interleaved = new Float32Array(buffer.length * numChannels);
-    let interleavedIndex = 0;
-
-    for (let i = 0; i < buffer.length; i += 1) {
-      for (let channel = 0; channel < numChannels; channel += 1) {
-        interleaved[interleavedIndex] = buffer.getChannelData(channel)[i];
-        interleavedIndex += 1;
-      }
-    }
-
-    for (let i = 0; i < interleaved.length; i += 1) {
-      const sample = Math.max(-1, Math.min(1, interleaved[i]));
-      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
-      offset += 2;
-    }
-
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i += 1) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return `data:audio/wav;base64,${btoa(binary)}`;
-  } catch (error) {
-    console.warn('Impossible de convertir le buffer audio en WAV:', error);
-    return null;
-  }
-};
-
-const generateToneDataUri = async () => {
-  if (!hasWindow() || !(window.OfflineAudioContext || window.webkitOfflineAudioContext)) {
-    return null;
-  }
-
-  try {
-    const duration = 0.45;
-    const sampleRate = 44100;
-    const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    const offline = new OfflineContext(1, sampleRate * duration, sampleRate);
-
-    const oscillator = offline.createOscillator();
-    const gain = offline.createGain();
-
-    oscillator.type = 'sine';
-    oscillator.frequency.value = 880;
-
-    oscillator.connect(gain);
-    gain.connect(offline.destination);
-
-    gain.gain.setValueAtTime(0, 0);
-    gain.gain.linearRampToValueAtTime(0.7, 0.05);
-    gain.gain.linearRampToValueAtTime(0.55, 0.2);
-    gain.gain.linearRampToValueAtTime(0, duration);
-
-    oscillator.start(0);
-    oscillator.stop(duration);
-
-    const rendered = await offline.startRendering();
-    return bufferToWaveDataUri(rendered);
-  } catch (error) {
-    console.warn('Impossible de générer le son de notification:', error);
-    return null;
-  }
-};
-
 export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const [notifications, setNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -136,32 +35,11 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const [pendingOrderId, setPendingOrderId] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const audioContextRef = useRef(null);
-  const audioElementRef = useRef(null);
-  const generatingToneRef = useRef(false);
   const lastOrderCheckRef = useRef(null);
   const soundIntervalRef = useRef(null);
 
-  const ensureTonePrepared = async () => {
-    if (!hasWindow()) return;
-    if (audioElementRef.current || generatingToneRef.current) return;
-    generatingToneRef.current = true;
-    try {
-      const dataUri = await generateToneDataUri();
-      if (dataUri) {
-        const audioEl = new Audio(dataUri);
-        audioEl.preload = 'auto';
-        audioEl.volume = 1;
-        audioElementRef.current = audioEl;
-      }
-    } catch (error) {
-      console.warn('Impossible de préparer le son HTML5:', error);
-    } finally {
-      generatingToneRef.current = false;
-    }
-  };
-
   useEffect(() => {
-    if (!hasWindow()) return;
+    if (typeof window === 'undefined') return;
     try {
       const stored = localStorage.getItem('restaurant-sound-enabled');
       if (stored !== null) {
@@ -173,7 +51,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   }, []);
 
   useEffect(() => {
-    if (!hasWindow()) return;
+    if (typeof window === 'undefined') return;
     try {
       localStorage.setItem('restaurant-sound-enabled', soundEnabled ? 'true' : 'false');
     } catch (error) {
@@ -182,34 +60,26 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   }, [soundEnabled]);
 
   useEffect(() => {
-    if (!hasWindow()) return;
-
-    const unlockAudio = async () => {
+    const unlockAudio = () => {
       try {
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume().catch(() => {});
+          audioContextRef.current.resume().catch(() => {});
         }
       } catch (error) {
         console.warn('Impossible d\'initialiser le contexte audio:', error);
       }
-      await ensureTonePrepared();
     };
 
-    const events = ['pointerdown', 'touchstart', 'keydown'];
-    events.forEach((eventName) => window.addEventListener(eventName, unlockAudio));
-    // Essayer immédiatement
-    unlockAudio();
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
 
     return () => {
-      events.forEach((eventName) => window.removeEventListener(eventName, unlockAudio));
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
     };
-  }, []);
-
-  useEffect(() => {
-    ensureTonePrepared();
   }, []);
 
   useEffect(() => {
@@ -611,31 +481,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     }
   };
 
-  const playHtmlAudioTone = () => {
-    const base = audioElementRef.current;
-    if (!base) return false;
-    try {
-      const playClone = () => {
-        const clone = base.cloneNode(true);
-        clone.volume = base.volume;
-        clone.play().catch(() => {});
-      };
-
-      playClone();
-      setTimeout(playClone, 180);
-      return true;
-    } catch (error) {
-      console.warn('Impossible de jouer le son via l’élément audio:', error);
-      return false;
-    }
-  };
-
   // Fonction pour jouer une alerte sonore
   const playNotificationSound = () => {
     if (!soundEnabled) {
-      return;
-    }
-    if (playHtmlAudioTone()) {
       return;
     }
     try {
@@ -737,10 +585,10 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Fallback pour le son (utilise un élément audio HTML5)
   const playFallbackSound = () => {
-    if (playHtmlAudioTone()) {
-      return;
-    }
     try {
+      // Créer un élément audio temporaire pour jouer un bip
+      const audio = document.createElement('audio');
+      // Générer un bip simple avec Web Audio API en fallback
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -748,16 +596,16 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       osc.connect(gain);
       gain.connect(ctx.destination);
       
-      osc.frequency.value = 850;
+      osc.frequency.value = 800;
       osc.type = 'sine';
       
       const now = ctx.currentTime;
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.55, now + 0.01);
-      gain.gain.linearRampToValueAtTime(0, now + 0.25);
+      gain.gain.linearRampToValueAtTime(0.5, now + 0.01);
+      gain.gain.linearRampToValueAtTime(0, now + 0.2);
       
       osc.start(now);
-      osc.stop(now + 0.25);
+      osc.stop(now + 0.2);
     } catch (error) {
       console.warn('Impossible de jouer le son de fallback:', error);
     }
@@ -913,27 +761,26 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         </div>
       )}
       
-      <div className="relative inline-flex">
+      <div className="relative">
       {/* Bouton notifications */}
       <button
         onClick={() => setShowNotifications(!showNotifications)}
-        className="relative flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-white/90 dark:bg-gray-900 text-gray-600 dark:text-gray-300 shadow-md ring-1 ring-gray-200 dark:ring-gray-700 hover:text-gray-900 dark:hover:text-white hover:ring-blue-300 transition-all"
-        aria-label="Notifications en temps réel"
+        className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
       >
         <FaBell className="h-5 w-5" />
         {notifications.length > 0 && (
-          <span className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 bg-red-500 text-white text-[10px] sm:text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
             {notifications.length}
           </span>
         )}
         {isConnected && (
-          <span className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 bg-green-500 rounded-full h-2 w-2 ring-2 ring-white dark:ring-gray-900"></span>
+          <span className="absolute -bottom-1 -right-1 bg-green-500 rounded-full h-2 w-2"></span>
         )}
       </button>
 
           {/* Panneau notifications */}
           {showNotifications && (
-            <div className="fixed inset-x-4 top-20 sm:absolute sm:inset-auto sm:right-0 sm:left-auto sm:top-full sm:mt-2 w-[calc(100vw-2rem)] sm:w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 z-50 max-h-[calc(100vh-6rem)] overflow-y-auto">
+            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 z-50">
           <div className="p-4 border-b dark:border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>

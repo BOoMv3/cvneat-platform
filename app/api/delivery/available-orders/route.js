@@ -99,21 +99,11 @@ export async function GET(request) {
           code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
           instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null,
           // Informations client pour compatibilité
-          customer_name: order.customer_name
-            || (order.users?.prenom && order.users?.nom ? `${order.users.prenom} ${order.users.nom}` : null)
-            || order.users?.nom
-            || order.nom_client
-            || order.client_nom
-            || 'Client',
-          customer_phone: order.customer_phone
-            || order.telephone
-            || order.phone
-            || order.users?.telephone
-            || null,
-          customer_email: order.customer_email
-            || order.email
-            || order.users?.email
-            || null,
+          customer_name: order.users?.prenom && order.users?.nom 
+            ? `${order.users.prenom} ${order.users.nom}` 
+            : order.users?.nom || 'Client',
+          customer_phone: order.users?.telephone || null,
+          customer_email: order.users?.email || null,
           delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: order.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,

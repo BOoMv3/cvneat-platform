@@ -238,7 +238,7 @@ export const invalidateCache = (type, id = null) => {
 };
 
 // Middleware pour Next.js API routes
-export const withCacheRoute = (handler, options = {}) => {
+export const withCache = (handler, options = {}) => {
   return async (req, res) => {
     const {
       ttl = 5 * 60 * 1000,

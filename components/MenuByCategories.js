@@ -1,22 +1,18 @@
 'use client';
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo } from 'react';
 import MenuItem from './MenuItem';
-import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf, FaChevronDown } from 'react-icons/fa';
+import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf } from 'react-icons/fa';
 
 export default function MenuByCategories({ menu, selectedCategory, onCategorySelect, onAddToCart, restaurantId }) {
   // Grouper les menus par catégorie
-  const menuByCategory = useMemo(() => {
-    return menu.reduce((acc, item) => {
-      const category = item.category || item.categorie || 'Autres';
-
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-
-      acc[category].push(item);
-      return acc;
-    }, {});
-  }, [menu]);
+  const menuByCategory = menu.reduce((acc, item) => {
+    const category = item.category || item.categorie || 'Autres';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {});
 
   const specialSelections = [
     {
@@ -49,85 +45,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
   }, {});
 
   // Ordre personnalisé des catégories (ordre logique d'un repas)
-  const categories = useMemo(() => {
-    return Object.keys(menuByCategory).sort((a, b) => {
-      const orderA = getCategoryOrder(a);
-      const orderB = getCategoryOrder(b);
-
-      // Si même ordre, tri alphabétique
-      if (orderA === orderB) {
-        return a.localeCompare(b);
-      }
-
-      return orderA - orderB;
-    });
-  }, [menuByCategory]);
-
-  const [isMobile, setIsMobile] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState(() => new Set());
-
-  useEffect(() => {
-    const updateIsMobile = () => {
-      if (typeof window === 'undefined') return;
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    updateIsMobile();
-    window.addEventListener('resize', updateIsMobile);
-    return () => window.removeEventListener('resize', updateIsMobile);
-  }, []);
-
-  useEffect(() => {
-    setExpandedCategories((prev) => {
-      if (!isMobile) {
-        const next = new Set();
-        if (specialCategories.length > 0) {
-          next.add('__special__');
-        }
-        categories.forEach((category) => next.add(category));
-
-        if (prev.size === next.size && [...next].every((key) => prev.has(key))) {
-          return prev;
-        }
-
-        return next;
-      }
-
-      if (prev.size > 0) {
-        return prev;
-      }
-
-      const initial = new Set();
-      if (specialCategories.length > 0) {
-        initial.add('__special__');
-      }
-      if (categories.length > 0) {
-        initial.add(categories[0]);
-      }
-      return initial;
-    });
-  }, [isMobile, categories, specialCategories]);
-
-  const toggleCategory = useCallback((key) => {
-    if (!isMobile) return;
-    setExpandedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  }, [isMobile]);
-
-  const isCategoryExpanded = useCallback((key) => {
-    if (!isMobile) return true;
-    return expandedCategories.has(key);
-  }, [isMobile, expandedCategories]);
-
-  // Ordre personnalisé des catégories (ordre logique d'un repas)
-  function getCategoryOrder(category) {
+  const getCategoryOrder = (category) => {
     const catLower = category.toLowerCase();
     
     // Formules (0) - Afficher en premier
@@ -176,8 +94,21 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     }
     // Autres (99)
     return 99;
-  }
+  };
   
+  // Trier les catégories selon l'ordre personnalisé
+  const categories = Object.keys(menuByCategory).sort((a, b) => {
+    const orderA = getCategoryOrder(a);
+    const orderB = getCategoryOrder(b);
+    
+    // Si même ordre, tri alphabétique
+    if (orderA === orderB) {
+      return a.localeCompare(b);
+    }
+    
+    return orderA - orderB;
+  });
+
   // Icônes pour les catégories
   const categoryIcons = {
     'pizza-du-moment': FaPizzaSlice,
@@ -248,7 +179,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     <div className="space-y-10">
       {/* Filtres par catégorie - Design amélioré avec scroll horizontal */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 pb-6 pt-4 -mt-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex gap-3 overflow-x-auto sm:flex-wrap sm:overflow-visible md:flex-nowrap pb-2 scrollbar-hide px-1">
+        <div className="flex flex-wrap md:flex-nowrap gap-3 md:overflow-x-auto overflow-visible pb-2 scrollbar-hide px-1">
           <button
             onClick={() => onCategorySelect('all')}
             className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
@@ -307,12 +238,8 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
         // Afficher tous les menus groupés par catégorie avec séparateurs clairs
         <>
           {specialCategories.length > 0 && (
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => toggleCategory('__special__')}
-                className={`w-full flex items-center gap-4 pb-3 border-b-2 border-purple-200 dark:border-purple-800 text-left ${isMobile ? 'cursor-pointer focus:outline-none' : 'cursor-default'}`}
-              >
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 pb-3 border-b-2 border-purple-200 dark:border-purple-800">
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-xl shadow-sm">
                   <FaPizzaSlice className="w-7 h-7 text-purple-600 dark:text-purple-300" />
                 </div>
@@ -322,40 +249,26 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
                     Découvre les nouveautés et suggestions du chef
                   </p>
                 </div>
-                {isMobile && (
-                  <FaChevronDown
-                    className={`ml-auto text-purple-600 dark:text-purple-300 transition-transform ${isCategoryExpanded('__special__') ? 'rotate-180' : ''}`}
-                  />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
+                {specialCategories.map(({ items }) =>
+                  items.map((item) => (
+                    <MenuItem key={`special-${item.id}`} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
+                  ))
                 )}
-              </button>
+              </div>
 
-              {isCategoryExpanded('__special__') && (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
-                    {specialCategories.flatMap(({ items }) =>
-                      items.map((item) => (
-                        <MenuItem key={`special-${item.id}`} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
-                      ))
-                    )}
-                  </div>
-
-                  <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
-                </>
-              )}
+              <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
             </div>
           )}
 
           {categories.map((category, index) => {
             const Icon = getCategoryIcon(category);
-            const categoryKey = category;
-            const expanded = isCategoryExpanded(categoryKey);
             return (
-              <div key={category} className="mb-12 last:mb-0">
-                <button
-                  type="button"
-                  onClick={() => toggleCategory(categoryKey)}
-                  className={`w-full flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800 text-left ${isMobile ? 'cursor-pointer focus:outline-none' : 'cursor-default'}`}
-                >
+              <div key={category} className="space-y-6">
+                {/* En-tête de catégorie avec icône - Design épuré */}
+                <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
                   <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
                     <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
                   </div>
@@ -365,24 +278,18 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
                       {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
                     </p>
                   </div>
-                  {isMobile && (
-                    <FaChevronDown
-                      className={`ml-auto text-orange-600 dark:text-orange-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                    />
-                  )}
-                </button>
-
-                {expanded && (
-                  <>
-                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
-                      {menuByCategory[category].map((item) => (
-                        <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
-                      ))}
-                    </div>
-                    {index < categories.length - 1 && (
-                      <div className="mt-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
-                    )}
-                  </>
+                </div>
+                
+                {/* Grille de produits - Design épuré avec moins de colonnes et plus d'espace */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
+                  {menuByCategory[category].map((item) => (
+                    <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
+                  ))}
+                </div>
+                
+                {/* Séparateur entre catégories (sauf dernière) - Plus d'espace */}
+                {index < categories.length - 1 && (
+                  <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
                 )}
               </div>
             );

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -17,13 +17,7 @@ import {
   FaFileAlt,
   FaMapMarkerAlt,
   FaHome,
-  FaArrowLeft,
-  FaPizzaSlice,
-  FaHamburger,
-  FaCoffee,
-  FaIceCream,
-  FaLeaf,
-  FaFire
+  FaArrowLeft
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 
@@ -38,21 +32,10 @@ const CATEGORY_OPTIONS = [
   { value: 'wraps_tacos', label: 'Wraps / Tacos' }
 ];
 
-const RESTAURANT_CATEGORY_OPTIONS = [
-  { value: 'pizza', label: 'Pizza', icon: FaPizzaSlice, description: 'Pizzas, pizzerias et spécialités italiennes' },
-  { value: 'burger', label: 'Burgers', icon: FaHamburger, description: 'Burgers, smash burgers, hot-dogs' },
-  { value: 'coffee', label: 'Café & Boulangerie', icon: FaCoffee, description: 'Cafés, pâtisseries, boulangeries' },
-  { value: 'dessert', label: 'Desserts & Glaces', icon: FaIceCream, description: 'Desserts, glaces, gourmandises' },
-  { value: 'healthy', label: 'Healthy', icon: FaLeaf, description: 'Salades, bowls, options healthy' },
-  { value: 'fast', label: 'Fast Food', icon: FaFire, description: 'Tacos, wraps, kebabs, street-food' },
-  { value: 'traditional', label: 'Cuisine traditionnelle', icon: FaUtensils, description: 'Bistrot, brasserie, cuisine du terroir' }
-];
-
 export default function PartnerDashboard() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null); // Ajout de userData
   const [restaurant, setRestaurant] = useState(null);
-  const [categoryFlags, setCategoryFlags] = useState([]);
   const [stats, setStats] = useState({
     todayOrders: 0,
     pendingOrders: 0,
@@ -101,14 +84,7 @@ export default function PartnerDashboard() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
-  const [updatingCategoryFlag, setUpdatingCategoryFlag] = useState(null);
-  const [togglingItemId, setTogglingItemId] = useState(null);
   const router = useRouter();
-
-  const categoryFlagsSet = useMemo(
-    () => new Set(Array.isArray(categoryFlags) ? categoryFlags.map((flag) => (typeof flag === 'string' ? flag.toLowerCase() : flag)) : []),
-    [categoryFlags]
-  );
 
   const [supplementForm, setSupplementForm] = useState({
     nom: '',
@@ -231,37 +207,7 @@ export default function PartnerDashboard() {
         return;
       }
 
-      const extractCategoryFlags = (input) => {
-        if (!input) return [];
-        if (Array.isArray(input)) return input;
-        if (typeof input === 'string') {
-          try {
-            const parsed = JSON.parse(input);
-            if (Array.isArray(parsed)) return parsed;
-            if (parsed && Array.isArray(parsed.category_flags)) return parsed.category_flags;
-          } catch {
-            return input.split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
-          }
-          return [];
-        }
-        if (typeof input === 'object' && Array.isArray(input.category_flags)) {
-          return input.category_flags;
-        }
-        return [];
-      };
-
-      const initialFlags = [
-        ...new Set([
-          ...extractCategoryFlags(resto?.category_flags),
-          ...extractCategoryFlags(resto?.tags)
-        ])
-      ].map((flag) => (typeof flag === 'string' ? flag.toLowerCase() : flag));
-
-      setRestaurant({
-        ...resto,
-        category_flags: initialFlags
-      });
-      setCategoryFlags(initialFlags);
+      setRestaurant(resto);
       setIsManuallyClosed(resto?.ferme_manuellement || resto?.is_closed || false);
       
       if (resto?.id) {
@@ -277,8 +223,8 @@ export default function PartnerDashboard() {
     fetchData();
   }, [router]);
 
-    // Rafraîchir automatiquement les données clés toutes les 15 secondes (si la page est active)
-    // Complète le temps réel Supabase pour garantir un état toujours à jour
+    // Rafraîchir automatiquement les commandes toutes les 60 secondes (réduit pour éviter rate limiting)
+    // Note: Le rafraîchissement réel se fait via Supabase Realtime dans RealTimeNotifications
     useEffect(() => {
       if (!restaurant?.id) return;
       
@@ -286,9 +232,8 @@ export default function PartnerDashboard() {
         // Vérifier que l'onglet est actif avant de rafraîchir
         if (document.visibilityState === 'visible') {
           fetchOrders(restaurant.id);
-          fetchDashboardData(restaurant.id);
         }
-      }, 15000); // 15 secondes
+      }, 60000); // 60 secondes (augmenté pour éviter rate limiting)
       
       // Nettoyer l'intervalle lors du démontage
       return () => {
@@ -713,8 +658,8 @@ export default function PartnerDashboard() {
     }
     
     const prix = parseFloat(supplementForm.prix);
-    if (isNaN(prix) || prix < 0) {
-      alert('Veuillez entrer un prix valide (minimum 0 €)');
+    if (isNaN(prix) || prix <= 0) {
+      alert('Veuillez entrer un prix valide supérieur à 0');
       return;
     }
     
@@ -736,136 +681,6 @@ export default function PartnerDashboard() {
       ...prev,
       supplements: prev.supplements.filter((_, i) => i !== index)
     }));
-  };
-
-  const handleCategoryFlagToggle = async (flagValue) => {
-    if (!restaurant?.id) return;
-
-    const normalizedValue = typeof flagValue === 'string' ? flagValue.trim().toLowerCase() : '';
-    if (!normalizedValue) return;
-
-    const previousFlags = Array.from(categoryFlagsSet);
-    const exists = categoryFlagsSet.has(normalizedValue);
-    const nextFlags = exists
-      ? previousFlags.filter((value) => value !== normalizedValue)
-      : [...previousFlags, normalizedValue];
-
-    setCategoryFlags(nextFlags);
-    setUpdatingCategoryFlag(normalizedValue);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('Session expirée. Veuillez vous reconnecter.');
-      }
-
-      const response = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ category_flags: nextFlags })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Impossible de mettre à jour les catégories');
-      }
-
-      setRestaurant((prev) => (prev ? { ...prev, category_flags: nextFlags } : prev));
-    } catch (error) {
-      console.error('Erreur mise à jour categories:', error);
-      alert(error.message || 'Erreur lors de la mise à jour des catégories');
-      setCategoryFlags(previousFlags);
-    } finally {
-      setUpdatingCategoryFlag(null);
-    }
-  };
-
-  const normalizeJsonField = (value, fallback = []) => {
-    if (!value) return fallback;
-
-    if (Array.isArray(value)) return value;
-
-    if (typeof value === 'string') {
-      try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : fallback;
-      } catch (error) {
-        console.warn('Impossible de parser le champ JSON', value, error);
-        return fallback;
-      }
-    }
-
-    return fallback;
-  };
-
-  const toggleMenuAvailability = async (item, available) => {
-    if (!item?.id) return;
-
-    try {
-      setTogglingItemId(item.id);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        alert('Session expirée. Merci de vous reconnecter.');
-        return;
-      }
-
-      const normalizedSupplements = normalizeJsonField(item.supplements);
-      const normalizedMeats = normalizeJsonField(item.meat_options);
-      const normalizedSauces = normalizeJsonField(item.sauce_options);
-      const normalizedBaseIngredients = normalizeJsonField(item.base_ingredients);
-
-      const payload = {
-        id: item.id,
-        nom: item.nom,
-        description: item.description || '',
-        prix: parseFloat(item.prix || item.price || 0),
-        category: item.category || 'Autres',
-        disponible: available,
-        image_url: item.image_url || null,
-        supplements: normalizedSupplements,
-        boisson_taille: item.drink_size || item.boisson_taille || null,
-        prix_taille: item.prix_taille || item.drink_price_small || null,
-        meat_options: normalizedMeats,
-        sauce_options: normalizedSauces,
-        base_ingredients: normalizedBaseIngredients,
-        requires_meat_selection: item.requires_meat_selection ?? null,
-        requires_sauce_selection: item.requires_sauce_selection ?? null,
-        max_sauces: item.max_sauces ?? item.max_sauce_count ?? null,
-        max_meats: item.max_meats ?? item.max_meat_count ?? null
-      };
-
-      const response = await fetch('/api/partner/menu', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const responseData = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        console.error('Erreur mise à jour disponibilité:', responseData);
-        alert(responseData.error || 'Impossible de mettre à jour la disponibilité');
-        return;
-      }
-
-      setMenu(prev => prev.map(menuItem => (
-        menuItem.id === item.id
-          ? { ...menuItem, disponible: available }
-          : menuItem
-      )));
-    } catch (error) {
-      console.error('Erreur toggle disponibilité:', error);
-      alert(error.message || 'Erreur lors de la mise à jour de la disponibilité');
-    } finally {
-      setTogglingItemId(null);
-    }
   };
 
   
@@ -1318,67 +1133,6 @@ export default function PartnerDashboard() {
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Catégories de visibilité */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Catégories affichées aux clients</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Sélectionnez les catégories dans lesquelles votre établissement doit apparaître sur la page d’accueil (ex. Pizza, Burgers, Healthy…).
-                  </p>
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {updatingCategoryFlag
-                    ? 'Mise à jour…'
-                    : `${categoryFlagsSet.size} catégorie${categoryFlagsSet.size > 1 ? 's' : ''} sélectionnée${categoryFlagsSet.size > 1 ? 's' : ''}`}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {RESTAURANT_CATEGORY_OPTIONS.map((option) => {
-                  const isActive = categoryFlagsSet.has(option.value);
-                  const Icon = option.icon;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleCategoryFlagToggle(option.value)}
-                      disabled={Boolean(updatingCategoryFlag)}
-                      className={`relative overflow-hidden rounded-2xl border transition-all duration-200 text-left p-4 flex items-start gap-3 ${
-                        isActive
-                          ? 'border-green-400 bg-green-50 dark:bg-green-900/40 dark:border-green-500'
-                          : 'border-gray-200 hover:border-green-400 hover:bg-green-50/60 dark:border-gray-700 dark:hover:border-green-400 dark:hover:bg-green-900/20'
-                      }`}
-                    >
-                      <div className={`p-3 rounded-xl shadow-sm ${
-                        isActive ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
-                      }`}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
-                            {option.label}
-                          </h3>
-                          <span
-                            className={`text-xs font-semibold uppercase tracking-wide ${
-                              isActive
-                                ? 'text-green-600 dark:text-green-300'
-                                : 'text-gray-400 dark:text-gray-500'
-                            }`}
-                          >
-                            {isActive ? 'Actif' : 'Inactif'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                          {option.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
               </div>
             </div>
 
@@ -1918,9 +1672,9 @@ export default function PartnerDashboard() {
                           </div>
                         </div>
                         
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate pr-2">{item.nom}</h3>
-                          <div className="flex items-center space-x-1">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">{item.nom}</h3>
+                          <div className="flex space-x-1">
                             <button
                               onClick={() => {
                                 setEditingMenu(item);
@@ -2013,22 +1767,6 @@ export default function PartnerDashboard() {
                               <FaTrash className="h-3 w-3" />
                             </button>
                           </div>
-                        </div>
-
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${item.disponible ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {item.disponible ? 'Disponible' : 'Indisponible'}
-                          </span>
-                          <label className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="form-checkbox h-4 w-4 text-green-600"
-                              checked={item.disponible === true}
-                              onChange={(e) => toggleMenuAvailability(item, e.target.checked)}
-                              disabled={togglingItemId === item.id}
-                            />
-                            <span>{togglingItemId === item.id ? 'Mise à jour…' : 'Visible sur la carte'}</span>
-                          </label>
                         </div>
                         
                         <p className="text-xs text-gray-600 dark:text-gray-300 mb-1 line-clamp-2">{item.description}</p>
