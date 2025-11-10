@@ -107,8 +107,61 @@ export async function POST(request, { params }) {
       statut: updatedOrder.statut,
       livreur_id: updatedOrder.livreur_id
     });
-    
-    return NextResponse.json({ success: true, message: 'Commande acceptée avec succès' });
+
+    const { data: enrichedOrder } = await supabaseAdmin
+      .from('commandes')
+      .select(`
+        *,
+        restaurant:restaurants(id, nom, adresse, telephone, ville, code_postal),
+        users(id, nom, prenom, telephone, email)
+      `)
+      .eq('id', orderId)
+      .single();
+
+    let deliveryAddress = null;
+    if (enrichedOrder) {
+      if (enrichedOrder.adresse_livraison) {
+        deliveryAddress = {
+          address: enrichedOrder.adresse_livraison,
+          city: enrichedOrder.ville_livraison || null,
+          postal_code: enrichedOrder.code_postal_livraison || null,
+          delivery_instructions: enrichedOrder.instructions_livraison || null
+        };
+      } else if (enrichedOrder.user_id) {
+        const { data: address } = await supabaseAdmin
+          .from('user_addresses')
+          .select('id, address, city, postal_code, delivery_instructions')
+          .eq('user_id', enrichedOrder.user_id)
+          .single();
+        deliveryAddress = address || null;
+      }
+    }
+
+    const formattedOrder = enrichedOrder
+      ? {
+          ...enrichedOrder,
+          user_addresses: deliveryAddress,
+          adresse_livraison: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
+          ville_livraison: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
+          code_postal_livraison: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,
+          instructions_livraison: enrichedOrder.instructions_livraison || deliveryAddress?.delivery_instructions || null,
+          customer_name: enrichedOrder.users?.prenom && enrichedOrder.users?.nom
+            ? `${enrichedOrder.users.prenom} ${enrichedOrder.users.nom}`
+            : enrichedOrder.users?.nom || 'Client',
+          customer_phone: enrichedOrder.users?.telephone || null,
+          customer_email: enrichedOrder.users?.email || null,
+          delivery_address: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
+          delivery_city: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
+          delivery_postal_code: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,
+          delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.delivery_instructions || null
+        }
+      : updatedOrder;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Commande acceptée avec succès',
+      order: formattedOrder
+    });
   } catch (error) {
     console.error('❌ Erreur API accept-order:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
