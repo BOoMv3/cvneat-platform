@@ -504,6 +504,78 @@ export async function PUT(request) {
   }
 }
 
+export async function PATCH(request) {
+  try {
+    const { id, disponible, user_email } = await request.json();
+
+    if (!id || !user_email) {
+      return NextResponse.json(
+        { error: 'ID du plat et email utilisateur requis' },
+        { status: 400 }
+      );
+    }
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('email', user_email)
+      .single();
+
+    if (userError || !userData || userData.role !== 'restaurant') {
+      return NextResponse.json(
+        { error: 'Accès refusé - Rôle restaurant requis' },
+        { status: 403 }
+      );
+    }
+
+    const { data: menuItem, error: menuError } = await supabase
+      .from('menus')
+      .select('id, restaurant_id')
+      .eq('id', id)
+      .single();
+
+    if (menuError || !menuItem) {
+      return NextResponse.json(
+        { error: 'Plat introuvable' },
+        { status: 404 }
+      );
+    }
+
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('id')
+      .eq('id', menuItem.restaurant_id)
+      .eq('user_id', userData.id)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      return NextResponse.json(
+        { error: 'Accès refusé à ce restaurant' },
+        { status: 403 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from('menus')
+      .update({ disponible: disponible !== false })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ success: true, menu: data });
+  } catch (error) {
+    console.error('❌ Erreur PATCH menu:', error);
+    return NextResponse.json(
+      { error: error.message || 'Erreur lors de la mise à jour de la disponibilité' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);

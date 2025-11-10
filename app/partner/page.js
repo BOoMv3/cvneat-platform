@@ -464,6 +464,55 @@ export default function PartnerDashboard() {
     }
   };
 
+  const handleToggleMenuAvailability = async (menuItem) => {
+    try {
+      if (!userData?.email) {
+        alert('Erreur: utilisateur non authentifié.');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+
+      const response = await fetch('/api/partner/menu', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          id: menuItem.id,
+          disponible: !menuItem.disponible,
+          user_email: userData.email
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        console.error('❌ Erreur toggle disponibilité:', payload);
+        alert(payload?.error || 'Impossible de mettre à jour la disponibilité');
+        return;
+      }
+
+      const updatedItem = payload?.menu || payload;
+
+      setMenu(prev =>
+        prev.map(item =>
+          item.id === menuItem.id
+            ? { ...item, disponible: updatedItem?.disponible ?? !menuItem.disponible }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error('❌ Erreur toggle disponibilité menu:', error);
+      alert(error.message || 'Impossible de mettre à jour la disponibilité');
+    }
+  };
+
   const handleFormulaSubmit = async (e) => {
     e.preventDefault();
     
@@ -658,8 +707,8 @@ export default function PartnerDashboard() {
     }
     
     const prix = parseFloat(supplementForm.prix);
-    if (isNaN(prix) || prix <= 0) {
-      alert('Veuillez entrer un prix valide supérieur à 0');
+    if (isNaN(prix) || prix < 0) {
+      alert('Veuillez entrer un prix valide (zéro ou valeur positive)');
       return;
     }
     
@@ -667,8 +716,8 @@ export default function PartnerDashboard() {
     setMenuForm(prev => ({
       ...prev,
       supplements: Array.isArray(prev.supplements) 
-        ? [...prev.supplements, { ...supplementForm, id: Date.now(), prix: prix }]
-        : [{ ...supplementForm, id: Date.now(), prix: prix }]
+        ? [...prev.supplements, { ...supplementForm, id: Date.now(), prix }]
+        : [{ ...supplementForm, id: Date.now(), prix }]
     }));
     
     // Réinitialiser le formulaire
@@ -1803,11 +1852,15 @@ export default function PartnerDashboard() {
                         )}
                         
                         {/* Statut de disponibilité */}
-                        <span className={`inline-block px-1 py-0.5 rounded-full text-xs ${
-                          item.disponible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <button
+                          onClick={() => handleToggleMenuAvailability(item)}
+                          className={`inline-block px-1.5 py-0.5 rounded-full text-xs transition-colors ${
+                            item.disponible ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          }`}
+                          title={item.disponible ? 'Rendre le plat indisponible' : 'Rendre le plat disponible'}
+                        >
                           {item.disponible ? 'Disponible' : 'Indisponible'}
-                        </span>
+                        </button>
                       </div>
                     ))}
                   </div>
