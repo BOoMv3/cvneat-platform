@@ -508,6 +508,18 @@ export default function DeliveryDashboard() {
     }
   };
 
+  const formatApiError = (error) => {
+    if (!error) return 'Erreur inconnue';
+    if (typeof error === 'string') return error;
+    return (
+      error.error ||
+      error.message ||
+      error.details ||
+      error.reason ||
+      'Erreur inconnue'
+    );
+  };
+
   const acceptOrder = async (orderId) => {
     try {
       console.log('📦 Acceptation commande:', orderId);
@@ -533,7 +545,7 @@ export default function DeliveryDashboard() {
       } else {
         const error = await response.json();
         console.error('❌ Erreur acceptation:', error);
-        alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
+        alert(`Erreur: ${formatApiError(error)}`);
       }
     } catch (error) {
       console.error('❌ Erreur acceptation commande:', error);
@@ -579,7 +591,7 @@ export default function DeliveryDashboard() {
         fetchCurrentOrder();
       } else {
         const error = await response.json();
-        alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
+        alert(`Erreur: ${formatApiError(error)}`);
       }
     } catch (error) {
       alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
@@ -598,7 +610,7 @@ export default function DeliveryDashboard() {
         alert(`Disponibilité mise à jour: ${!isAvailable ? 'En ligne' : 'Hors ligne'}`);
       } else {
         const error = await response.json();
-        alert(`Erreur: ${error.message}`);
+        alert(`Erreur: ${formatApiError(error)}`);
       }
     } catch (error) {
       alert('Erreur lors du changement de disponibilité');
@@ -618,7 +630,8 @@ export default function DeliveryDashboard() {
         a.click();
         a.remove();
       } else {
-        alert("Erreur lors de l'exportation des gains.");
+        const error = await response.json().catch(() => null);
+        alert(`Erreur lors de l'exportation des gains: ${formatApiError(error)}`);
       }
     } catch (error) {
       alert("Erreur lors de l'exportation des gains");
