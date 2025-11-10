@@ -20,6 +20,7 @@ import {
   FaArrowLeft
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
+import OrderCountdown from '../components/OrderCountdown';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
@@ -1469,6 +1470,25 @@ export default function PartnerDashboard() {
                             </div>
                           )}
                           
+                          {/* Timer préparation */}
+                          {order.statut === 'en_preparation' && order.preparation_time && (
+                            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded border border-blue-200 dark:border-blue-700">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                                    ⏱️ Temps de préparation estimé : {order.preparation_time} min
+                                  </p>
+                                  {order.livreur_id && !order.ready_for_delivery && (
+                                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                      Un livreur a déjà accepté la course – marquez la commande comme prête dès qu’elle l’est.
+                                    </p>
+                                  )}
+                                </div>
+                                <OrderCountdown order={order} />
+                              </div>
+                            </div>
+                          )}
+
                           {/* Statut et actions */}
                           <div className="mt-4 pt-3 border-t border-gray-200">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1511,7 +1531,7 @@ export default function PartnerDashboard() {
                                     </button>
                                   </>
                                 )}
-                                {order.statut === 'en_preparation' && !order.livreur_id && !order.ready_for_delivery && (
+                                {order.statut === 'en_preparation' && !order.ready_for_delivery && (
                                   <button
                                     onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
                                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
@@ -1519,14 +1539,14 @@ export default function PartnerDashboard() {
                                     Marquer comme prête
                                   </button>
                                 )}
-                                {order.statut === 'en_preparation' && order.ready_for_delivery && !order.livreur_id && (
+                                {order.statut === 'en_preparation' && order.ready_for_delivery && (
                                   <span className="text-sm text-green-600 px-3 py-2 font-medium">
                                     ✓ Prête pour livraison
                                   </span>
                                 )}
-                                {order.statut === 'en_preparation' && order.livreur_id && (
+                                {order.statut === 'en_preparation' && order.livreur_id && order.ready_for_delivery && (
                                   <span className="text-sm text-gray-600 dark:text-gray-300 px-3 py-2">
-                                    En attente du livreur
+                                    Livreur en route
                                   </span>
                                 )}
                               </div>
