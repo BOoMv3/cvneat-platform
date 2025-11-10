@@ -38,6 +38,32 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const RESTAURANT_ID = '9521bf01-ce3f-4859-8d36-5294139721ac';
 const RESTAURANT_NAME = 'Dolce Vita';
+const PRICE_MULTIPLIER = 1.25;
+
+const normalizeString = (value = '') =>
+  value
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const shouldSkipItem = (item = {}) => {
+  const normalizedCategory = normalizeString(item.category);
+  const normalizedName = normalizeString(item.nom);
+
+  if (normalizedCategory === 'desserts') {
+    if (normalizedName.includes('cafe gourmand')) {
+      return true;
+    }
+
+    if (normalizedName.includes('glace') && normalizedName.includes('boule')) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 const entrées = [
   { nom: 'Carpaccio', prix: 7.9, category: 'Entrées' },
@@ -165,16 +191,22 @@ const menuItems = [
   ...menus,
   ...desserts,
   ...suggestions,
-];
+].filter((item) => !shouldSkipItem(item));
 
 const formatPrice = (value) => Number.parseFloat(value).toFixed(2);
 
 async function upsertMenuItem(item) {
+  const basePrice = Number.parseFloat(item.prix);
+  if (!Number.isFinite(basePrice)) {
+    throw new Error(`Prix invalide pour ${item.nom}`);
+  }
+  const priceWithMarkup = Number.parseFloat((basePrice * PRICE_MULTIPLIER).toFixed(2));
+
   const payload = {
     restaurant_id: RESTAURANT_ID,
     nom: item.nom,
     description: item.description || null,
-    prix: Number.parseFloat(item.prix),
+    prix: priceWithMarkup,
     category: item.category,
     disponible: true,
     image_url: item.image_url || null,
@@ -207,7 +239,7 @@ async function upsertMenuItem(item) {
     if (updateError) {
       throw new Error(`Erreur mise à jour ${item.nom} : ${updateError.message}`);
     }
-    console.log(`🔄 ${item.nom} mis à jour (${formatPrice(item.prix)}€)`);
+    console.log(`🔄 ${item.nom} mis à jour (${formatPrice(priceWithMarkup)}€)`);
     return 'updated';
   }
 
@@ -218,7 +250,7 @@ async function upsertMenuItem(item) {
   if (insertError) {
     throw new Error(`Erreur insertion ${item.nom} : ${insertError.message}`);
   }
-  console.log(`✅ ${item.nom} ajouté (${formatPrice(item.prix)}€)`);
+  console.log(`✅ ${item.nom} ajouté (${formatPrice(priceWithMarkup)}€)`);
   return 'inserted';
 }
 
