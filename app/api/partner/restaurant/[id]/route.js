@@ -40,7 +40,7 @@ export async function PUT(request, { params }) {
 
     const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
-      .select('id, user_id')
+      .select('id, user_id, tags')
       .eq('id', id)
       .single();
 
@@ -64,17 +64,62 @@ export async function PUT(request, { params }) {
       const sanitizedFlags = body.category_flags
         .map((flag) => (typeof flag === 'string' ? flag.trim().toLowerCase() : null))
         .filter(Boolean);
+
+      let parsedTags = {};
+      if (restaurant.tags !== null && restaurant.tags !== undefined) {
+        try {
+          if (typeof restaurant.tags === 'string') {
+            parsedTags = JSON.parse(restaurant.tags);
+          } else if (typeof restaurant.tags === 'object') {
+            parsedTags = restaurant.tags;
+          }
+        } catch {
+          parsedTags = {};
+        }
+      }
+
+      if (!parsedTags || typeof parsedTags !== 'object' || Array.isArray(parsedTags)) {
+        parsedTags = {};
+      }
+      parsedTags.category_flags = sanitizedFlags;
+
+      const serializedTags = JSON.stringify(parsedTags);
+      updateData.tags =
+        typeof restaurant.tags === 'object' && restaurant.tags !== null ? parsedTags : serializedTags;
+
       updateData.category_flags = sanitizedFlags;
       updateData.category_flags_sync_at = new Date().toISOString();
     }
 
-    // Mettre à jour le restaurant
-    const { data: updatedRestaurant, error: updateError } = await supabaseAdmin
-      .from('restaurants')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    const executeUpdate = async (data) =>
+      supabaseAdmin
+        .from('restaurants')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+    let updatedRestaurant = null;
+    let updateError = null;
+
+    ({ data: updatedRestaurant, error: updateError } = await executeUpdate(updateData));
+
+    if (updateError) {
+      const fallbackData = { ...updateData };
+
+      if (updateError.message?.includes('column "category_flags"')) {
+        delete fallbackData.category_flags;
+        delete fallbackData.category_flags_sync_at;
+      }
+
+      if (updateError.message?.toLowerCase().includes('json') && typeof fallbackData.tags === 'object') {
+        fallbackData.tags = JSON.stringify(fallbackData.tags);
+      } else if (updateError.message?.toLowerCase().includes('text') && typeof fallbackData.tags !== 'string') {
+        fallbackData.tags = JSON.stringify(fallbackData.tags);
+      }
+
+      ({ data: updatedRestaurant, error: updateError } = await executeUpdate(fallbackData));
+    }
 
     if (updateError) {
       console.error('Erreur mise à jour restaurant:', updateError);

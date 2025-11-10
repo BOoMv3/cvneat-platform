@@ -97,7 +97,37 @@ const extractKeywords = (value) => {
   return [normalizeToken(value)];
 };
 
+const extractCategoryFlags = (input) => {
+  if (!input) return [];
+  if (Array.isArray(input)) {
+    return input.map((flag) => (typeof flag === 'string' ? flag.toLowerCase() : flag)).filter(Boolean);
+  }
+  if (typeof input === 'string') {
+    try {
+      const parsed = JSON.parse(input);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && Array.isArray(parsed.category_flags)) return parsed.category_flags;
+      return input
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+    } catch {
+      return input
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+    }
+  }
+  if (typeof input === 'object' && Array.isArray(input.category_flags)) {
+    return input.category_flags;
+  }
+  return [];
+};
+
 const getCategoryTokensForRestaurant = (restaurant = {}) => {
+  const categoryFlags = extractCategoryFlags(restaurant.category_flags);
+  const tagFlags = extractCategoryFlags(restaurant.tags);
+
   const sources = [
     restaurant.cuisine_type,
     restaurant.type_cuisine,
@@ -110,7 +140,8 @@ const getCategoryTokensForRestaurant = (restaurant = {}) => {
     restaurant.specialites,
     restaurant.specialities,
     restaurant.description,
-    restaurant.category_flags
+    categoryFlags,
+    tagFlags
   ];
 
   const tokens = sources
@@ -354,7 +385,12 @@ export default function Home() {
 
           const categoryTokens = getCategoryTokensForRestaurant(restaurant);
           const todayHoursLabel = getTodayHoursLabel(restaurant);
-          const categoryFlags = Array.isArray(restaurant.category_flags) ? restaurant.category_flags : [];
+          const categoryFlags = [
+            ...new Set([
+              ...extractCategoryFlags(restaurant.category_flags),
+              ...extractCategoryFlags(restaurant.tags)
+            ])
+          ];
 
           return {
             ...restaurant,

@@ -933,7 +933,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
           {/* Panneau notifications */}
           {showNotifications && (
-            <div className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 mt-2 w-[min(18rem,calc(100vw-2.5rem))] sm:w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 z-50">
+            <div className="fixed inset-x-4 top-20 sm:absolute sm:inset-auto sm:right-0 sm:left-auto sm:top-full sm:mt-2 w-[calc(100vw-2rem)] sm:w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 z-50 max-h-[calc(100vh-6rem)] overflow-y-auto">
           <div className="p-4 border-b dark:border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>

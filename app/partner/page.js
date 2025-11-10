@@ -231,8 +231,37 @@ export default function PartnerDashboard() {
         return;
       }
 
-      setRestaurant(resto);
-      setCategoryFlags(Array.isArray(resto?.category_flags) ? resto.category_flags : []);
+      const extractCategoryFlags = (input) => {
+        if (!input) return [];
+        if (Array.isArray(input)) return input;
+        if (typeof input === 'string') {
+          try {
+            const parsed = JSON.parse(input);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && Array.isArray(parsed.category_flags)) return parsed.category_flags;
+          } catch {
+            return input.split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
+          }
+          return [];
+        }
+        if (typeof input === 'object' && Array.isArray(input.category_flags)) {
+          return input.category_flags;
+        }
+        return [];
+      };
+
+      const initialFlags = [
+        ...new Set([
+          ...extractCategoryFlags(resto?.category_flags),
+          ...extractCategoryFlags(resto?.tags)
+        ])
+      ].map((flag) => (typeof flag === 'string' ? flag.toLowerCase() : flag));
+
+      setRestaurant({
+        ...resto,
+        category_flags: initialFlags
+      });
+      setCategoryFlags(initialFlags);
       setIsManuallyClosed(resto?.ferme_manuellement || resto?.is_closed || false);
       
       if (resto?.id) {
