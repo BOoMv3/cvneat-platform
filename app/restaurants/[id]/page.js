@@ -803,11 +803,11 @@ export default function RestaurantDetail({ params }) {
               <div className="flex flex-col text-left">
                 <span className="text-xs uppercase tracking-wide opacity-80">Panier</span>
                 <span className="text-base font-semibold">
-                  {cartItemCount} article{cartItemCount > 1 ? 's' : ''}
+                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)} article{cart.reduce((sum, item) => sum + (item.quantity || 1), 0) > 1 ? 's' : ''}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-lg font-bold">
-                {cartDisplayTotal.toFixed(2)}€
+                {(deliveryFee !== null ? getTotal() : getSubtotal()).toFixed(2)}€
                 <FaShoppingCart className="h-4 w-4" />
               </div>
             </button>
