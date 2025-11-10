@@ -11,9 +11,11 @@ const collectImageCandidates = (restaurant) => {
   if (!restaurant) return [];
 
   const candidates = [
-    restaurant.optimized_image_url,
+    restaurant.display_image,
+    restaurant.displayImage,
     restaurant.banner_image,
     restaurant.bannerImage,
+    restaurant.optimized_image_url,
     restaurant.cover_image,
     restaurant.coverImage,
     restaurant.image_cover,
