@@ -109,7 +109,8 @@ const getCategoryTokensForRestaurant = (restaurant = {}) => {
     restaurant.keywords,
     restaurant.specialites,
     restaurant.specialities,
-    restaurant.description
+    restaurant.description,
+    restaurant.category_flags
   ];
 
   const tokens = sources
@@ -353,6 +354,7 @@ export default function Home() {
 
           const categoryTokens = getCategoryTokensForRestaurant(restaurant);
           const todayHoursLabel = getTodayHoursLabel(restaurant);
+          const categoryFlags = Array.isArray(restaurant.category_flags) ? restaurant.category_flags : [];
 
           return {
             ...restaurant,
@@ -362,6 +364,7 @@ export default function Home() {
             cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
             category: restaurant.category || restaurant.categorie,
             category_tokens: categoryTokens,
+            category_flags: categoryFlags,
             today_hours_label: todayHoursLabel
           };
         });
@@ -477,35 +480,42 @@ export default function Home() {
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
       const restaurantTokens = restaurant.category_tokens || [];
+      const restaurantCategories = Array.isArray(restaurant.category_flags)
+        ? restaurant.category_flags.map((flag) => normalizeToken(flag))
+        : [];
 
-      const categoryMap = {
-        'pizza': ['pizza', 'italien', 'italian', 'pizzeria'],
-        'burger': ['burger', 'hamburger', 'fast food', 'fast-food', 'sandwich'],
-        'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery', 'boulanger'],
-        'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream', 'sucré'],
-        'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic', 'végétarien', 'vegan'],
-        'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick', 'snack'],
-        'traditional': [
-          'traditionnel',
-          'traditionnelle',
-          'tradition',
-          'cuisine familiale',
-          'fait maison',
-          'terroir',
-          'brasserie',
-          'bistrot',
-          'bistro',
-          'français',
-          'francaise',
-          'française'
-        ]
-      };
-      
-      const validCategories = categoryMap[selectedCategory] || [];
-      const matchesCategory = validCategories.some((cat) =>
-        restaurantTokens.some((token) => token.includes(normalizeToken(cat)))
-      );
-      if (!matchesCategory) return false;
+      if (restaurantCategories.includes(selectedCategory)) {
+        // Correspondance directe, pas besoin de vérifier les tokens
+      } else {
+        const categoryMap = {
+          'pizza': ['pizza', 'italien', 'italian', 'pizzeria'],
+          'burger': ['burger', 'hamburger', 'fast food', 'fast-food', 'sandwich'],
+          'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery', 'boulanger'],
+          'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream', 'sucré'],
+          'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic', 'végétarien', 'vegan'],
+          'fast': ['fast food', 'fast-food', 'restaurant rapide', 'quick', 'snack'],
+          'traditional': [
+            'traditionnel',
+            'traditionnelle',
+            'tradition',
+            'cuisine familiale',
+            'fait maison',
+            'terroir',
+            'brasserie',
+            'bistrot',
+            'bistro',
+            'français',
+            'francaise',
+            'française'
+          ]
+        };
+
+        const validCategories = categoryMap[selectedCategory] || [];
+        const matchesCategory = validCategories.some((cat) =>
+          restaurantTokens.some((token) => token.includes(normalizeToken(cat)))
+        );
+        if (!matchesCategory) return false;
+      }
     }
     
     // Filtre par recherche textuelle
@@ -907,7 +917,7 @@ export default function Home() {
                           <OptimizedRestaurantImage
                             restaurant={restaurant}
                             className={`h-full w-full object-cover transition-all duration-300 ${isClosed ? 'grayscale opacity-40' : ''}`}
-                            priority={false}
+                            priority={index < 4}
                             sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
                         </div>

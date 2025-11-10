@@ -1,7 +1,7 @@
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import MenuItem from './MenuItem';
-import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf } from 'react-icons/fa';
+import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf, FaChevronDown } from 'react-icons/fa';
 
 export default function MenuByCategories({ menu, selectedCategory, onCategorySelect, onAddToCart, restaurantId }) {
   // Grouper les menus par catégorie
@@ -43,6 +43,69 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     acc[category.id] = category;
     return acc;
   }, {});
+
+  const [isMobile, setIsMobile] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState(() => new Set());
+
+  useEffect(() => {
+    const updateIsMobile = () => {
+      if (typeof window === 'undefined') return;
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
+  }, []);
+
+  useEffect(() => {
+    setExpandedCategories((prev) => {
+      if (!isMobile) {
+        const next = new Set();
+        if (specialCategories.length > 0) {
+          next.add('__special__');
+        }
+        categories.forEach((category) => next.add(category));
+
+        if (prev.size === next.size && [...next].every((key) => prev.has(key))) {
+          return prev;
+        }
+
+        return next;
+      }
+
+      if (prev.size > 0) {
+        return prev;
+      }
+
+      const initial = new Set();
+      if (specialCategories.length > 0) {
+        initial.add('__special__');
+      }
+      if (categories.length > 0) {
+        initial.add(categories[0]);
+      }
+      return initial;
+    });
+  }, [isMobile, categories, specialCategories]);
+
+  const toggleCategory = useCallback((key) => {
+    if (!isMobile) return;
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, [isMobile]);
+
+  const isCategoryExpanded = useCallback((key) => {
+    if (!isMobile) return true;
+    return expandedCategories.has(key);
+  }, [isMobile, expandedCategories]);
 
   // Ordre personnalisé des catégories (ordre logique d'un repas)
   const getCategoryOrder = (category) => {
@@ -238,8 +301,12 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
         // Afficher tous les menus groupés par catégorie avec séparateurs clairs
         <>
           {specialCategories.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 pb-3 border-b-2 border-purple-200 dark:border-purple-800">
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => toggleCategory('__special__')}
+                className={`w-full flex items-center gap-4 pb-3 border-b-2 border-purple-200 dark:border-purple-800 text-left ${isMobile ? 'cursor-pointer focus:outline-none' : 'cursor-default'}`}
+              >
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-xl shadow-sm">
                   <FaPizzaSlice className="w-7 h-7 text-purple-600 dark:text-purple-300" />
                 </div>
@@ -249,26 +316,40 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
                     Découvre les nouveautés et suggestions du chef
                   </p>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
-                {specialCategories.map(({ items }) =>
-                  items.map((item) => (
-                    <MenuItem key={`special-${item.id}`} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
-                  ))
+                {isMobile && (
+                  <FaChevronDown
+                    className={`ml-auto text-purple-600 dark:text-purple-300 transition-transform ${isCategoryExpanded('__special__') ? 'rotate-180' : ''}`}
+                  />
                 )}
-              </div>
+              </button>
 
-              <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
+              {isCategoryExpanded('__special__') && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
+                    {specialCategories.flatMap(({ items }) =>
+                      items.map((item) => (
+                        <MenuItem key={`special-${item.id}`} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
+                      ))
+                    )}
+                  </div>
+
+                  <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
+                </>
+              )}
             </div>
           )}
 
           {categories.map((category, index) => {
             const Icon = getCategoryIcon(category);
+            const categoryKey = category;
+            const expanded = isCategoryExpanded(categoryKey);
             return (
-              <div key={category} className="space-y-6">
-                {/* En-tête de catégorie avec icône - Design épuré */}
-                <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
+              <div key={category} className="mb-12 last:mb-0">
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(categoryKey)}
+                  className={`w-full flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800 text-left ${isMobile ? 'cursor-pointer focus:outline-none' : 'cursor-default'}`}
+                >
                   <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
                     <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
                   </div>
@@ -278,18 +359,24 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
                       {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
                     </p>
                   </div>
-                </div>
-                
-                {/* Grille de produits - Design épuré avec moins de colonnes et plus d'espace */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
-                  {menuByCategory[category].map((item) => (
-                    <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
-                  ))}
-                </div>
-                
-                {/* Séparateur entre catégories (sauf dernière) - Plus d'espace */}
-                {index < categories.length - 1 && (
-                  <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
+                  {isMobile && (
+                    <FaChevronDown
+                      className={`ml-auto text-orange-600 dark:text-orange-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                    />
+                  )}
+                </button>
+
+                {expanded && (
+                  <>
+                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
+                      {menuByCategory[category].map((item) => (
+                        <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
+                      ))}
+                    </div>
+                    {index < categories.length - 1 && (
+                      <div className="mt-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
+                    )}
+                  </>
                 )}
               </div>
             );

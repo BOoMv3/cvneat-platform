@@ -60,6 +60,13 @@ export async function PUT(request, { params }) {
     if (body.is_closed !== undefined) {
       updateData.is_closed = body.is_closed;
     }
+    if (Array.isArray(body.category_flags)) {
+      const sanitizedFlags = body.category_flags
+        .map((flag) => (typeof flag === 'string' ? flag.trim().toLowerCase() : null))
+        .filter(Boolean);
+      updateData.category_flags = sanitizedFlags;
+      updateData.category_flags_sync_at = new Date().toISOString();
+    }
 
     // Mettre à jour le restaurant
     const { data: updatedRestaurant, error: updateError } = await supabaseAdmin
