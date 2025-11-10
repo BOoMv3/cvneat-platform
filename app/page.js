@@ -772,6 +772,11 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Bannière publicitaire haute */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 mt-4 sm:mt-6">
+        <Advertisement position="banner_top" />
+      </div>
+
 
       {/* Panier flottant - Optimisé mobile */}
       {showFloatingCart && cart.length > 0 && (
