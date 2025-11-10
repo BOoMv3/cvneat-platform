@@ -5,14 +5,18 @@ import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlas
 
 export default function MenuByCategories({ menu, selectedCategory, onCategorySelect, onAddToCart, restaurantId }) {
   // Grouper les menus par catégorie
-  const menuByCategory = menu.reduce((acc, item) => {
-    const category = item.category || item.categorie || 'Autres';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(item);
-    return acc;
-  }, {});
+  const menuByCategory = useMemo(() => {
+    return menu.reduce((acc, item) => {
+      const category = item.category || item.categorie || 'Autres';
+
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+
+      acc[category].push(item);
+      return acc;
+    }, {});
+  }, [menu]);
 
   const specialSelections = [
     {
@@ -43,6 +47,21 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     acc[category.id] = category;
     return acc;
   }, {});
+
+  // Ordre personnalisé des catégories (ordre logique d'un repas)
+  const categories = useMemo(() => {
+    return Object.keys(menuByCategory).sort((a, b) => {
+      const orderA = getCategoryOrder(a);
+      const orderB = getCategoryOrder(b);
+
+      // Si même ordre, tri alphabétique
+      if (orderA === orderB) {
+        return a.localeCompare(b);
+      }
+
+      return orderA - orderB;
+    });
+  }, [menuByCategory]);
 
   const [isMobile, setIsMobile] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState(() => new Set());
@@ -108,7 +127,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
   }, [isMobile, expandedCategories]);
 
   // Ordre personnalisé des catégories (ordre logique d'un repas)
-  const getCategoryOrder = (category) => {
+  function getCategoryOrder(category) {
     const catLower = category.toLowerCase();
     
     // Formules (0) - Afficher en premier
@@ -157,21 +176,8 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     }
     // Autres (99)
     return 99;
-  };
+  }
   
-  // Trier les catégories selon l'ordre personnalisé
-  const categories = Object.keys(menuByCategory).sort((a, b) => {
-    const orderA = getCategoryOrder(a);
-    const orderB = getCategoryOrder(b);
-    
-    // Si même ordre, tri alphabétique
-    if (orderA === orderB) {
-      return a.localeCompare(b);
-    }
-    
-    return orderA - orderB;
-  });
-
   // Icônes pour les catégories
   const categoryIcons = {
     'pizza-du-moment': FaPizzaSlice,

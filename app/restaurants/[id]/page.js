@@ -12,6 +12,17 @@ import MenuByCategories from '@/components/MenuByCategories';
 import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 
+const isDev = process.env.NODE_ENV !== 'production';
+const debugLog = (...args) => {
+  if (isDev && typeof console !== 'undefined' && console.log) {
+    console.log(...args);
+  }
+};
+const debugWarn = (...args) => {
+  if (isDev && typeof console !== 'undefined' && console.warn) {
+    console.warn(...args);
+  }
+};
 
 export default function RestaurantDetail({ params }) {
   const router = useRouter();
@@ -60,14 +71,10 @@ export default function RestaurantDetail({ params }) {
           if (response.ok) {
             const data = await response.json();
             setIsRestaurantOpen(data.isOpen === true);
-            if (process.env.NODE_ENV !== 'production') {
-              console.log('Statut rafraîchi:', data);
-            }
+            debugLog('Statut rafraîchi:', data);
           }
         } catch (err) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('Erreur rafraîchissement statut:', err);
-          }
+          debugWarn('Erreur rafraîchissement statut:', err);
         }
       };
       checkStatus();
