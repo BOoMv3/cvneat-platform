@@ -63,7 +63,7 @@ export default function RestaurantDetail({ params }) {
             console.log('Statut rafraîchi:', data);
           }
         } catch (err) {
-          console.error('Erreur rafraîchissement statut:', err);
+          console.warn('Erreur rafraîchissement statut:', err);
         }
       };
       checkStatus();
@@ -218,7 +218,7 @@ export default function RestaurantDetail({ params }) {
         try {
           hoursData = await hoursResponse.json();
         } catch (e) {
-          console.error('Erreur parsing heures:', e);
+          console.warn('Erreur parsing heures:', e);
         }
       } else {
         console.warn('Erreur récupération horaires:', hoursResponse.status);
@@ -230,7 +230,7 @@ export default function RestaurantDetail({ params }) {
           openStatusData = await openStatusResponse.json();
           console.log('✅ Statut ouvert reçu:', openStatusData);
         } catch (e) {
-          console.error('❌ Erreur parsing statut:', e);
+          console.warn('❌ Erreur parsing statut:', e);
           openStatusData = { isOpen: false };
         }
       } else {
