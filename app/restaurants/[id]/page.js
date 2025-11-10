@@ -842,7 +842,7 @@ export default function RestaurantDetail({ params }) {
                 </div>
                 <button
                   onClick={handleCheckout}
-                  disabled {!isRestaurantOpen || isManuallyClosed}
+                  disabled={!isRestaurantOpen || isManuallyClosed}
                   className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm ${
                     !isRestaurantOpen || isManuallyClosed
                       ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
