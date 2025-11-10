@@ -61,7 +61,13 @@ export default function Advertisement({ position, className = '' }) {
         const endDate = adToDisplay.end_date ? new Date(adToDisplay.end_date).toISOString().split('T')[0] : null;
         
         if ((!startDate || today >= startDate) && (!endDate || today <= endDate)) {
-          setAd(adToDisplay);
+          const cacheBustingUrl = adToDisplay.image_url
+            ? `${adToDisplay.image_url}${adToDisplay.image_url.includes('?') ? '&' : '?'}cb=${new Date(adToDisplay.updated_at || adToDisplay.created_at || Date.now()).getTime()}`
+            : null;
+          setAd({
+            ...adToDisplay,
+            image_url_with_cache_bust: cacheBustingUrl
+          });
         } else {
           console.log('Publicité hors période:', { startDate, endDate, today });
         }
@@ -172,7 +178,7 @@ export default function Advertisement({ position, className = '' }) {
           <div className="relative h-full">
             <div className="absolute top-2 left-2 z-10 bg-yellow-400/95 text-yellow-900 text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider shadow">Publicité</div>
             <img
-              src={ad.image_url}
+              src={ad.image_url_with_cache_bust || ad.image_url}
               alt={ad.title}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -212,7 +218,7 @@ export default function Advertisement({ position, className = '' }) {
         <div className="relative h-full flex items-center justify-center">
           <div className="absolute top-2 left-2 z-10 bg-yellow-400/95 text-yellow-900 text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider shadow">Publicité</div>
           <img
-            src={ad.image_url}
+            src={ad.image_url_with_cache_bust || ad.image_url}
             alt={ad.title}
             className={imageClass}
             onError={(e) => {
@@ -288,7 +294,7 @@ export default function Advertisement({ position, className = '' }) {
             {/* Image */}
             <div className="relative w-full h-64 sm:h-80 md:h-96 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               <img
-                src={ad.image_url}
+                src={ad.image_url_with_cache_bust || ad.image_url}
                 alt={ad.title}
                 className="w-full h-full object-contain"
                 onError={(e) => {
