@@ -137,27 +137,27 @@ export default function Inscription() {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Inscription presque terminée !</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Confirmez votre inscription</h2>
           <p className="text-gray-700">
-            Un nouvel onglet a été ouvert automatiquement pour confirmer votre compte.
-          </p>
-          <p className="mt-4 text-gray-700">
-            Si ce n’est pas le cas, cliquez directement sur ce lien sécurisé&nbsp;:
+            Cliquez sur le lien sécurisé ci-dessous pour valider votre compte CVN&apos;EAT.
           </p>
           {manualConfirmationLink ? (
-            <p className="mt-4 text-sm text-gray-600 break-words">
+            <p className="mt-6">
               <a
                 href={manualConfirmationLink}
-                className="text-orange-500 hover:text-orange-600 break-words"
+                className="inline-flex items-center justify-center px-5 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {manualConfirmationLink}
+                Valider mon compte
               </a>
+              <span className="block mt-2 text-xs text-gray-500 break-words">
+                {manualConfirmationLink}
+              </span>
             </p>
           ) : (
             <p className="mt-4 text-sm text-gray-500">
-              Le lien direct n’a pas pu être généré automatiquement. Réessayez plus tard ou contactez le support.
+              Le lien n’a pas pu être généré automatiquement. Réessayez ou contactez le support pour recevoir votre confirmation.
             </p>
           )}
           <Link

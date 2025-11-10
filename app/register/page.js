@@ -134,31 +134,31 @@ export default function Register() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
         <div className="w-full max-w-md bg-white rounded-lg shadow p-8 text-center">
-          <h1 className="text-2xl font-bold mb-4 text-green-600">Inscription presque terminée !</h1>
+          <h1 className="text-2xl font-bold mb-4 text-green-600">Confirmez votre inscription</h1>
           <p className="text-gray-700">
-            Un nouvel onglet a été ouvert automatiquement pour valider votre compte.
-          </p>
-          <p className="mt-4 text-gray-700">
-            Si rien ne s’affiche, utilisez directement le lien sécurisé ci-dessous.
+            Cliquez sur le lien sécurisé ci-dessous afin de valider votre compte CVN&apos;EAT.
           </p>
           {manualConfirmationLink ? (
-            <p className="mt-4 text-sm text-gray-600 break-words">
+            <p className="mt-6">
               <a
                 href={manualConfirmationLink}
-                className="text-orange-500 hover:text-orange-600 break-words"
+                className="inline-flex items-center justify-center px-5 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {manualConfirmationLink}
+                Valider mon compte
               </a>
+              <span className="block mt-2 text-xs text-gray-500 break-words">
+                {manualConfirmationLink}
+              </span>
             </p>
           ) : (
             <p className="mt-4 text-sm text-gray-500">
-              Le lien direct n’a pas pu être généré automatiquement. Réessayez depuis cette page ou contactez-nous.
+              Le lien n’a pas pu être généré automatiquement. Réessayez ou contactez-nous pour recevoir votre confirmation.
             </p>
           )}
           <p className="mt-6 text-sm text-gray-500">
-            Vous pouvez fermer cette fenêtre après la confirmation.
+            Une fois le lien ouvert, suivez les instructions affichées pour activer le compte.
           </p>
         </div>
       </main>
