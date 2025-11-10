@@ -178,19 +178,19 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
   return (
     <div className="space-y-10">
       {/* Filtres par catégorie - Design amélioré avec scroll horizontal */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 pb-6 pt-4 -mt-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex flex-wrap md:flex-nowrap gap-3 md:overflow-x-auto overflow-visible pb-2 scrollbar-hide px-1">
+      <div className="sticky top-16 sm:top-20 z-30 bg-white dark:bg-gray-900 -mt-2 pb-3 pt-4 border-b border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto sm:overflow-x-visible scrollbar-hide px-1 sm:px-2">
           <button
             onClick={() => onCategorySelect('all')}
-            className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+            className={`flex-none inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-sm font-semibold transition-all ${
               selectedCategory === 'all'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg transform scale-105'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg border-transparent'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             <FaUtensils className="w-4 h-4" />
-            <span>Tous</span>
-            <span className="text-xs opacity-75">({menu.length})</span>
+            <span className="whitespace-nowrap">Tous</span>
+            <span className="text-xs opacity-75 whitespace-nowrap">({menu.length})</span>
           </button>
           {specialCategories.map((category) => {
             const Icon = category.icon || getCategoryIcon(category.label);
@@ -198,15 +198,15 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
               <button
                 key={category.id}
                 onClick={() => onCategorySelect(category.id)}
-                className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                className={`flex-none inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-sm font-semibold transition-all ${
                   selectedCategory === category.id
-                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg transform scale-105'
-                    : 'bg-purple-100/40 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200 hover:bg-purple-200/50 dark:hover:bg-purple-800/60'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg border-transparent'
+                    : 'bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-200 border-purple-100 dark:border-purple-800 hover:bg-purple-50/80 dark:hover:bg-purple-900/40'
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span>{category.label}</span>
-                <span className="text-xs opacity-75">({category.items.length})</span>
+                <span className="whitespace-nowrap">{category.label}</span>
+                <span className="text-xs opacity-75 whitespace-nowrap">({category.items.length})</span>
               </button>
             );
           })}
@@ -218,15 +218,15 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
               <button
                 key={category}
                 onClick={() => onCategorySelect(category)}
-                className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                className={`flex-none inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-sm font-semibold transition-all ${
                   selectedCategory === category
-                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg transform scale-105'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg border-transparent'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span>{category}</span>
-                <span className="text-xs opacity-75">({count})</span>
+                <span className="whitespace-nowrap">{category}</span>
+                <span className="text-xs opacity-75 whitespace-nowrap">({count})</span>
               </button>
             );
           })}

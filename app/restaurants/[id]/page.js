@@ -795,65 +795,22 @@ export default function RestaurantDetail({ params }) {
         {/* Panier mobile */}
         {cart.length > 0 && (
           <div className="lg:hidden fixed inset-x-4 bottom-6 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 p-4 max-h-[70vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Panier</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)} article(s)</p>
-                </div>
-                <button
-                  onClick={() => setShowCartModal(true)}
-                  className="text-blue-600 dark:text-blue-400 text-xs font-medium"
-                >
-                  Voir tout
-                </button>
+            <button
+              type="button"
+              onClick={() => setShowCartModal(true)}
+              className="w-full flex items-center justify-between gap-3 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white px-5 py-4 shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300"
+            >
+              <div className="flex flex-col text-left">
+                <span className="text-xs uppercase tracking-wide opacity-80">Panier</span>
+                <span className="text-base font-semibold">
+                  {cartItemCount} article{cartItemCount > 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="space-y-2 mb-3 max-h-44 overflow-y-auto">
-                {cart.slice(0, 2).map((item, idx) => {
-                  const itemPrice = parseFloat(item.prix || item.price || 0);
-                  const supplementsPrice = item.supplements && Array.isArray(item.supplements)
-                    ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
-                    : 0;
-                  const meatsPrice = item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)
-                    ? item.customizations.selectedMeats.reduce((sum, meat) => sum + parseFloat(meat.prix || meat.price || 0), 0)
-                    : 0;
-                  const saucesPrice = item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)
-                    ? item.customizations.selectedSauces.reduce((sum, sauce) => sum + parseFloat(sauce.prix || sauce.price || 0), 0)
-                    : 0;
-                  const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-                  const totalItemPrice = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
-
-                  return (
-                    <div key={item.id || idx} className="flex items-start justify-between text-sm border-b dark:border-gray-700 pb-2">
-                      <div className="flex-1 pr-2 min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">{item.nom || item.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {totalItemPrice.toFixed(2)}€ x{item.quantity || 1}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center gap-2 text-lg font-bold">
+                {cartDisplayTotal.toFixed(2)}€
+                <FaShoppingCart className="h-4 w-4" />
               </div>
-              <div className="border-t dark:border-gray-700 pt-3 mt-3">
-                <div className="flex justify-between items-center mb-2 text-sm text-gray-900 dark:text-white">
-                  <span>Total</span>
-                  <span className="font-bold">{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</span>
-                </div>
-                <button
-                  onClick={handleCheckout}
-                  disabled={!isRestaurantOpen || isManuallyClosed}
-                  className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm ${
-                    !isRestaurantOpen || isManuallyClosed
-                      ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
-                      : 'bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700'
-                  }`}
-                >
-                  <FaShoppingCart className="h-4 w-4" />
-                  {!isRestaurantOpen || isManuallyClosed ? 'Fermé' : 'Commander'}
-                </button>
-              </div>
-            </div>
+            </button>
           </div>
         )}
         {/* Modal panier */}
