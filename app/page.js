@@ -126,6 +126,77 @@ const getNextOpeningDate = () => {
   return target;
 };
 
+const formatTimeForLabel = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const [hours, minutes = '00'] = timeStr.split(':');
+  if (hours === undefined) return timeStr;
+  return `${hours.padStart(2, '0')}h${minutes.padStart(2, '0')}`;
+};
+
+const formatTimeRangeLabel = (start, end) => {
+  const formattedStart = formatTimeForLabel(start);
+  const formattedEnd = formatTimeForLabel(end);
+  if (!formattedStart || !formattedEnd) return null;
+  return `${formattedStart} - ${formattedEnd}`;
+};
+
+const getTodayHoursLabel = (restaurant = {}) => {
+  try {
+    let horaires = restaurant.horaires;
+    if (!horaires) return null;
+
+    if (typeof horaires === 'string') {
+      try {
+        horaires = JSON.parse(horaires);
+      } catch {
+        return null;
+      }
+    }
+
+    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long' });
+    const todayName = todayFormatter.format(new Date()).toLowerCase();
+    const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
+    let heuresJour = null;
+    for (const key of variants) {
+      if (horaires?.[key]) {
+        heuresJour = horaires[key];
+        break;
+      }
+    }
+
+    if (!heuresJour) return null;
+
+    if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
+      const ranges = heuresJour.plages
+        .map(plage => formatTimeRangeLabel(plage?.ouverture, plage?.fermeture))
+        .filter(Boolean);
+      return ranges.length > 0 ? ranges.join(' / ') : null;
+    }
+
+    return formatTimeRangeLabel(heuresJour?.ouverture, heuresJour?.fermeture);
+  } catch {
+    return null;
+  }
+};
+
+const formatStatusHoursLabel = (statusData, fallback) => {
+  if (!statusData) return fallback || null;
+
+  if (Array.isArray(statusData.plages) && statusData.plages.length > 0) {
+    const ranges = statusData.plages
+      .map(plage => formatTimeRangeLabel(plage?.ouverture, plage?.fermeture))
+      .filter(Boolean);
+    if (ranges.length > 0) {
+      return ranges.join(' / ');
+    }
+  }
+
+  const singleRange = formatTimeRangeLabel(statusData.openTime, statusData.closeTime);
+  if (singleRange) return singleRange;
+
+  return fallback || null;
+};
+
 // Desactiver le rendu statique pour cette page
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -281,6 +352,7 @@ export default function Home() {
             restaurant.profileImage;
 
           const categoryTokens = getCategoryTokensForRestaurant(restaurant);
+          const todayHoursLabel = getTodayHoursLabel(restaurant);
 
           return {
             ...restaurant,
@@ -289,7 +361,8 @@ export default function Home() {
             logo_image: logoImage,
             cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
             category: restaurant.category || restaurant.categorie,
-            category_tokens: categoryTokens
+            category_tokens: categoryTokens,
+            today_hours_label: todayHoursLabel
           };
         });
 
@@ -308,15 +381,18 @@ export default function Home() {
               // Utiliser une comparaison stricte === true pour éviter les cas undefined/null
               const isOpen = statusData.isOpen === true;
               const isManuallyClosed = statusData.is_manually_closed === true || statusData.reason === 'manual';
+              const hoursLabel = formatStatusHoursLabel(statusData, restaurant.today_hours_label) || restaurant.today_hours_label || 'Horaires non communiquées';
               openStatusMap[restaurant.id] = {
                 isOpen,
-                isManuallyClosed
+                isManuallyClosed,
+                hoursLabel
               };
             } else {
               // Si erreur, vérifier au moins ferme_manuellement
               openStatusMap[restaurant.id] = {
                 isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
-                isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false
+                isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false,
+                hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
               };
             }
           } catch (err) {
@@ -324,7 +400,8 @@ export default function Home() {
             // Si erreur, considérer comme fermé par défaut sauf si pas de ferme_manuellement
             openStatusMap[restaurant.id] = {
               isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
-              isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false
+              isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false,
+              hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
             };
           }
         }));
@@ -804,10 +881,17 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {displayRestaurants.map((restaurant, index) => {
-                const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { isOpen: true, isManuallyClosed: false };
+                const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { 
+                  isOpen: true, 
+                  isManuallyClosed: false,
+                  hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
+                };
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                const displayHoursLabel = restaurantStatus.isManuallyClosed
+                  ? 'Fermé temporairement'
+                  : (restaurantStatus.hoursLabel || restaurant.today_hours_label || 'Horaires non communiquées');
                 
                 return (
                 <div
@@ -864,12 +948,19 @@ export default function Home() {
                         )}
                         
                         {/* Temps de livraison - Optimisé mobile */}
-                        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/90 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2 rounded-full shadow-lg z-20">
-                          <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
-                            <FaClock className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-gray-600 flex-shrink-0" />
-                            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-800">
-                              {isClosed ? 'Horaires variables' : `${restaurant.deliveryTime || '25-35'} min`}
-                            </span>
+                        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/90 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg shadow-lg z-20">
+                          <div className="flex flex-col">
+                            <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
+                              <FaClock className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-gray-600 flex-shrink-0" />
+                              <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-800">
+                                {displayHoursLabel}
+                              </span>
+                            </div>
+                            {!restaurantStatus.isManuallyClosed && (
+                              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-0.5">
+                                Livraison ~{restaurant.deliveryTime || '25-35'} min
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

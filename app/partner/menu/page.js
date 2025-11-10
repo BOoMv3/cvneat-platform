@@ -2,6 +2,31 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 
+const DEFAULT_CATEGORY_TEMPLATES = [
+  {
+    name: 'Salades',
+    description: 'Sélection de salades fraîches',
+    sort_order: 20
+  },
+  {
+    name: 'Panini',
+    description: 'Paninis chauds et croustillants',
+    sort_order: 30
+  },
+  {
+    name: 'Wraps/Tacos',
+    description: 'Wraps et tacos savoureux',
+    sort_order: 40
+  }
+];
+
+const normalizeCategoryName = (value = '') =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
 export default function PartnerMenu() {
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -51,6 +76,8 @@ export default function PartnerMenu() {
         .eq('is_active', true)
         .order('sort_order');
 
+      const ensuredCategories = await ensureDefaultCategories(categoriesData || []);
+
       // Récupérer les éléments de menu
       const { data: menuData } = await supabase
         .from('menus')
@@ -58,12 +85,50 @@ export default function PartnerMenu() {
         .eq('restaurant_id', restaurantId)
         .order('name');
 
-      setCategories(categoriesData || []);
+      setCategories(ensuredCategories);
       setMenuItems(menuData || []);
       setLoading(false);
     } catch (error) {
       console.error('Erreur lors de la récupération des données:', error);
       setLoading(false);
+    }
+  };
+
+  const ensureDefaultCategories = async (existingCategories) => {
+    try {
+      const normalizedExisting = new Set(
+        existingCategories.map((cat) => normalizeCategoryName(cat.name))
+      );
+
+      const categoriesToInsert = DEFAULT_CATEGORY_TEMPLATES.filter((template) => {
+        return !normalizedExisting.has(normalizeCategoryName(template.name));
+      }).map((template, index) => ({
+        ...template,
+        restaurant_id: restaurantId,
+        sort_order: template.sort_order ?? (existingCategories.length + index + 1),
+        is_active: true
+      }));
+
+      if (categoriesToInsert.length === 0) {
+        return existingCategories;
+      }
+
+      const { data: inserted, error } = await supabase
+        .from('menu_categories')
+        .insert(categoriesToInsert)
+        .select();
+
+      if (error) {
+        console.warn('⚠️ Impossible d’ajouter les catégories par défaut :', error.message);
+        return existingCategories;
+      }
+
+      return [...existingCategories, ...(inserted || [])].sort(
+        (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
+      );
+    } catch (err) {
+      console.warn('⚠️ Erreur ensureDefaultCategories :', err);
+      return existingCategories;
     }
   };
 

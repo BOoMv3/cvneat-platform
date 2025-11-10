@@ -21,6 +21,17 @@ import {
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 
+const CATEGORY_OPTIONS = [
+  { value: 'entree', label: 'Entrée' },
+  { value: 'sandwich', label: 'Sandwich' },
+  { value: 'plat', label: 'Plat principal' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'boisson', label: 'Boisson' },
+  { value: 'salade', label: 'Salades' },
+  { value: 'panini', label: 'Panini' },
+  { value: 'wraps_tacos', label: 'Wraps / Tacos' }
+];
+
 export default function PartnerDashboard() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null); // Ajout de userData
@@ -1869,11 +1880,11 @@ export default function PartnerDashboard() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Selectionner une categorie</option>
-                    <option value="entree">Entree</option>
-                    <option value="sandwich">Sandwich</option>
-                    <option value="plat">Plat principal</option>
-                    <option value="dessert">Dessert</option>
-                    <option value="boisson">Boisson</option>
+                    {CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex items-center">

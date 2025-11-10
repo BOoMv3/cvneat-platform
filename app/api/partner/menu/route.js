@@ -18,7 +18,7 @@ export async function GET(request) {
       .from('menus')
       .select('*')
       .eq('restaurant_id', restaurantId)
-      .eq('disponible', true)
+      .order('disponible', { ascending: false })
       .order('category', { ascending: true })
       .order('nom', { ascending: true });
 
