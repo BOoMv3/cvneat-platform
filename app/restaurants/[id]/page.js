@@ -671,38 +671,39 @@ export default function RestaurantDetail({ params }) {
         </div>
       </div>
 
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Bannière du restaurant style Uber Eats */}
-        <RestaurantBanner
-          restaurant={restaurant}
-          isFavorite={isFavorite}
-          onToggleFavorite={handleToggleFavorite}
-          hours={restaurantHours}
-          isOpen={isRestaurantOpen && !isManuallyClosed}
-          isManuallyClosed={isManuallyClosed}
-        />
-
-        {/* Menu - Padding top réduit car moins d'empiètement */}
-        <div className="space-y-8 sm:space-y-12 pt-12 sm:pt-14 md:pt-16">
-          {menu.length === 0 ? (
-            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-              <p>Aucun plat disponible pour ce restaurant.</p>
-            </div>
-          ) : (
-            <MenuByCategories
-              menu={menu}
-              selectedCategory={selectedCategory}
-              onCategorySelect={setSelectedCategory}
-              onAddToCart={addToCart}
-              restaurantId={params.id}
+      <main className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="flex flex-col lg:flex-row lg:gap-6">
+          <div className="flex-1 min-w-0">
+            <RestaurantBanner
+              restaurant={restaurant}
+              isFavorite={isFavorite}
+              onToggleFavorite={handleToggleFavorite}
+              hours={restaurantHours}
+              isOpen={isRestaurantOpen && !isManuallyClosed}
+              isManuallyClosed={isManuallyClosed}
             />
-          )}
-        </div>
 
-        {/* Panier flottant - Fixed en bas à droite */}
-        {cart.length > 0 && (
-          <div className="fixed bottom-4 right-4 z-50 w-80 sm:w-96 max-w-[calc(100vw-2rem)]">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border dark:border-gray-700 p-4 max-h-[80vh] overflow-y-auto">
+            <div className="space-y-8 sm:space-y-12 pt-12 sm:pt-14 md:pt-16">
+              {menu.length === 0 ? (
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  <p>Aucun plat disponible pour ce restaurant.</p>
+                </div>
+              ) : (
+                <MenuByCategories
+                  menu={menu}
+                  selectedCategory={selectedCategory}
+                  onCategorySelect={setSelectedCategory}
+                  onAddToCart={addToCart}
+                  restaurantId={params.id}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Panier desktop */}
+          {cart.length > 0 && (
+            <aside className="hidden lg:block w-[320px] xl:w-[360px] flex-shrink-0">
+              <div className="sticky top-28 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border dark:border-gray-700 p-4 space-y-3">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Panier ({cart.reduce((sum, item) => sum + (item.quantity || 1), 0)})</h2>
                 <button
@@ -786,6 +787,72 @@ export default function RestaurantDetail({ params }) {
                     {!isRestaurantOpen || isManuallyClosed ? 'Fermé' : 'Commander'}
                   </button>
                 </div>
+              </div>
+            </aside>
+          )}
+        </div>
+
+        {/* Panier mobile */}
+        {cart.length > 0 && (
+          <div className="lg:hidden fixed inset-x-4 bottom-6 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 p-4 max-h-[70vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Panier</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)} article(s)</p>
+                </div>
+                <button
+                  onClick={() => setShowCartModal(true)}
+                  className="text-blue-600 dark:text-blue-400 text-xs font-medium"
+                >
+                  Voir tout
+                </button>
+              </div>
+              <div className="space-y-2 mb-3 max-h-44 overflow-y-auto">
+                {cart.slice(0, 2).map((item, idx) => {
+                  const itemPrice = parseFloat(item.prix || item.price || 0);
+                  const supplementsPrice = item.supplements && Array.isArray(item.supplements)
+                    ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
+                    : 0;
+                  const meatsPrice = item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)
+                    ? item.customizations.selectedMeats.reduce((sum, meat) => sum + parseFloat(meat.prix || meat.price || 0), 0)
+                    : 0;
+                  const saucesPrice = item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)
+                    ? item.customizations.selectedSauces.reduce((sum, sauce) => sum + parseFloat(sauce.prix || sauce.price || 0), 0)
+                    : 0;
+                  const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+                  const totalItemPrice = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
+
+                  return (
+                    <div key={item.id || idx} className="flex items-start justify-between text-sm border-b dark:border-gray-700 pb-2">
+                      <div className="flex-1 pr-2 min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">{item.nom || item.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {totalItemPrice.toFixed(2)}€ x{item.quantity || 1}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="border-t dark:border-gray-700 pt-3 mt-3">
+                <div className="flex justify-between items-center mb-2 text-sm text-gray-900 dark:text-white">
+                  <span>Total</span>
+                  <span className="font-bold">{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</span>
+                </div>
+                <button
+                  onClick={handleCheckout}
+                  disabled {!isRestaurantOpen || isManuallyClosed}
+                  className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm ${
+                    !isRestaurantOpen || isManuallyClosed
+                      ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
+                      : 'bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700'
+                  }`}
+                >
+                  <FaShoppingCart className="h-4 w-4" />
+                  {!isRestaurantOpen || isManuallyClosed ? 'Fermé' : 'Commander'}
+                </button>
+              </div>
             </div>
           </div>
         )}
