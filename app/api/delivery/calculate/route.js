@@ -94,7 +94,9 @@ async function geocodeAddress(address) {
     const coords = {
       lat: parseFloat(result.lat),
       lng: parseFloat(result.lon),
-      display_name: result.display_name
+      display_name: result.display_name,
+      postcode: result.address?.postcode || null,
+      city: result.address?.city || result.address?.town || result.address?.village || null
     };
     
     console.log('🌐 Coordonnées extraites:', coords);
@@ -223,19 +225,7 @@ export async function POST(request) {
     console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
     console.log('Adresse client:', clientAddress);
 
-    // 1. Vérifier le code postal
-    const hasValidPostalCode = AUTHORIZED_POSTAL_CODES.some(code => clientAddress.includes(code));
-    
-    if (!hasValidPostalCode) {
-      console.log('❌ Code postal non autorisé dans:', clientAddress);
-      return NextResponse.json({
-        success: false,
-        livrable: false,
-        message: '❌ Livraison non disponible dans cette zone. Nous desservons actuellement les zones autour de Ganges.'
-      }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
-    }
-
-    // 2. Récupérer les informations du restaurant si disponibles
+    // 1. Récupérer les informations du restaurant si disponibles
     let restaurantData = null;
     if (restaurantId) {
       try {
@@ -281,6 +271,25 @@ export async function POST(request) {
         success: false,
         livrable: false,
         message: `❌ Impossible de localiser l'adresse de livraison. Vérifiez qu'elle est correcte. (${error.message})`
+      }, { status: 200 });
+    }
+
+    // Vérifier que le code postal est dans une zone desservie (en se basant sur l'adresse saisie et le géocodage)
+    const postalCodeMatches = [
+      ...(clientAddress.match(/\b(\d{5})\b/g) || []),
+      clientCoords.postcode
+    ]
+      .filter(Boolean)
+      .map(code => code.trim());
+
+    const hasAuthorizedPostalCode = postalCodeMatches.some(code => AUTHORIZED_POSTAL_CODES.includes(code));
+
+    if (!hasAuthorizedPostalCode) {
+      console.log('❌ Code postal non autorisé:', postalCodeMatches, 'adresse:', clientCoords.display_name || clientAddress);
+      return NextResponse.json({
+        success: false,
+        livrable: false,
+        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190, 34150, 34260.'
       }, { status: 200 });
     }
 
