@@ -61,8 +61,13 @@ export default function Advertisement({ position, className = '' }) {
         const endDate = adToDisplay.end_date ? new Date(adToDisplay.end_date).toISOString().split('T')[0] : null;
         
         if ((!startDate || today >= startDate) && (!endDate || today <= endDate)) {
+          const parsedUpdatedAt = adToDisplay.updated_at
+            ? new Date(adToDisplay.updated_at).getTime()
+            : null;
+          const versionKey = Number.isFinite(parsedUpdatedAt) ? parsedUpdatedAt : Date.now();
+
           const cacheBustingUrl = adToDisplay.image_url
-            ? `${adToDisplay.image_url}${adToDisplay.image_url.includes('?') ? '&' : '?'}cb=${new Date(adToDisplay.updated_at || adToDisplay.created_at || Date.now()).getTime()}`
+            ? `${adToDisplay.image_url}${adToDisplay.image_url.includes('?') ? '&' : '?'}cb=${versionKey}`
             : null;
           setAd({
             ...adToDisplay,

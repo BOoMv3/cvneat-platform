@@ -12,6 +12,8 @@ const collectImageCandidates = (restaurant) => {
 
   const candidates = [
     restaurant.optimized_image_url,
+    restaurant.banner_image,
+    restaurant.bannerImage,
     restaurant.cover_image,
     restaurant.coverImage,
     restaurant.image_cover,
@@ -24,7 +26,6 @@ const collectImageCandidates = (restaurant) => {
     restaurant.image_url,
     restaurant.imageUrl,
     restaurant.profile_image,
-    restaurant.banner_image,
     restaurant.logo
   ];
 
