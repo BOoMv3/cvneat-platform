@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { notifyDeliverySubscribers } from '../../../../../lib/pushNotifications';
 
 // Initialiser Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -178,7 +179,7 @@ export async function PUT(request, { params }) {
           rows_affected: updatedOrder ? 1 : 0
         });
 
-        if (updateError) {
+    if (updateError) {
           console.error('❌ Erreur mise à jour commande:', updateError);
           console.error('❌ Détails erreur:', JSON.stringify(updateError, null, 2));
           console.error('❌ ID commande tentée:', id);
@@ -188,6 +189,21 @@ export async function PUT(request, { params }) {
             details: updateError.message,
             orderId: id
           }, { status: 500 });
+        }
+
+        if ((status === 'acceptee' || status === 'pret_a_livrer') && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+          try {
+            await notifyDeliverySubscribers(supabaseAdmin, {
+              title: 'Nouvelle commande disponible',
+              body: `Commande #${order.id} - ${parseFloat(order.total || 0).toFixed(2)}€`,
+              data: {
+                url: '/delivery/dashboard',
+                orderId: order.id,
+              },
+            });
+          } catch (error) {
+            console.error('❌ Erreur envoi notification livreur:', error);
+          }
         }
 
         // Si la commande est annulée par le restaurant, rembourser automatiquement

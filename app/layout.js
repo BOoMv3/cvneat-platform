@@ -131,23 +131,6 @@ export default function RootLayout({ children }) {
             <CookieBanner />
           </div>
         </ThemeProvider>
-        
-        {/* Service Worker Registration - DÉSACTIVÉ */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                // Désactiver le Service Worker UNE SEULE FOIS
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                  for(let registration of registrations) {
-                    registration.unregister();
-                    console.log('Service Worker désactivé:', registration.scope);
-                  }
-                });
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   );
