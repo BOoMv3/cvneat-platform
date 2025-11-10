@@ -115,7 +115,7 @@ export default function PushNotificationService() {
     }
 
     // Vérification plus robuste pour autres navigateurs
-    if (typeof window === 'undefined' || !window.Notification) {
+    if (typeof window === 'undefined' || typeof window.Notification === 'undefined') {
       console.log('❌ Notifications non supportées');
       alert('Ce navigateur ne supporte pas les notifications');
       return;
@@ -126,7 +126,7 @@ export default function PushNotificationService() {
 
     try {
       // Vérifier si requestPermission est une fonction
-      if (typeof Notification.requestPermission !== 'function') {
+      if (typeof Notification === 'undefined' || typeof Notification.requestPermission !== 'function') {
         console.log('❌ requestPermission non disponible');
         alert('Demande de permission non disponible sur ce navigateur');
         return;
