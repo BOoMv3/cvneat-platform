@@ -6,14 +6,25 @@ export default function OrderCountdown({ order, onTimeUp }) {
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    if (!order.preparation_time || !order.updated_at) {
+    if (!order.preparation_time) {
       setTimeRemaining(null);
       return;
     }
 
     const calculateTimeRemaining = () => {
       const now = new Date();
-      const preparationStart = new Date(order.updated_at);
+      const preparationStartSource =
+        order.preparation_started_at ||
+        order.accepted_at ||
+        order.updated_at ||
+        order.created_at;
+
+      if (!preparationStartSource) {
+        setTimeRemaining(null);
+        return;
+      }
+
+      const preparationStart = new Date(preparationStartSource);
       const preparationEnd = new Date(preparationStart.getTime() + (order.preparation_time * 60 * 1000));
       const remaining = preparationEnd.getTime() - now.getTime();
       
@@ -38,7 +49,7 @@ export default function OrderCountdown({ order, onTimeUp }) {
     const interval = setInterval(calculateTimeRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [order.preparation_time, order.updated_at, onTimeUp]);
+  }, [order.preparation_time, order.preparation_started_at, order.accepted_at, order.updated_at, order.created_at, onTimeUp]);
 
   if (!timeRemaining && !isExpired) {
     return (

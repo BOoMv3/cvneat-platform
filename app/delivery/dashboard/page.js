@@ -41,6 +41,54 @@ const requestDeliveryNotificationPermission = () => {
   }
 };
 
+const getCustomerName = (order) => {
+  if (!order) return 'Client';
+
+  const firstName =
+    order.customer_first_name ||
+    order.customer_name_first ||
+    order.users?.prenom ||
+    '';
+  const lastName =
+    order.customer_last_name ||
+    order.customer_name_last ||
+    order.users?.nom ||
+    '';
+
+  let combined = [firstName, lastName].filter(Boolean).join(' ').trim();
+
+  if (!combined) {
+    combined =
+      order.customer_name ||
+      [order.users?.prenom || '', order.users?.nom || ''].filter(Boolean).join(' ').trim() ||
+      order.user_addresses?.name ||
+      '';
+  }
+
+  return combined || 'Client';
+};
+
+const getCustomerPhone = (order) => {
+  if (!order) return null;
+  return (
+    order.customer_phone ||
+    order.users?.telephone ||
+    order.delivery_phone ||
+    order.user_addresses?.phone ||
+    null
+  );
+};
+
+const getCustomerEmail = (order) => {
+  if (!order) return null;
+  return (
+    order.customer_email ||
+    order.users?.email ||
+    order.delivery_email ||
+    null
+  );
+};
+
 const urlBase64ToUint8Array = (base64String) => {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -475,7 +523,7 @@ export default function DeliveryDashboard() {
 
     // Notification du navigateur
     showDeliveryNotification('Nouvelle commande disponible !', {
-      body: `Commande #${order.id} - ${order.customer_name} - ${order.total}€`,
+      body: `Commande #${order.id} - ${getCustomerName(order)} - ${order.total}€`,
       icon: '/icon-192x192.png',
       tag: 'new-order'
     });
@@ -723,7 +771,7 @@ export default function DeliveryDashboard() {
               <div>
                 <h3 className="font-bold text-lg">🔔 Nouvelle commande !</h3>
                 <p className="text-sm">Commande #{alertOrder.id}</p>
-                <p className="text-sm">{alertOrder.customer_name} - {alertOrder.total}€</p>
+                <p className="text-sm">{getCustomerName(alertOrder)} - {alertOrder.total}€</p>
                 <p className="text-xs">{alertOrder.delivery_address}</p>
               </div>
               <button
@@ -937,7 +985,7 @@ export default function DeliveryDashboard() {
                         <div className="flex items-center justify-between text-sm">
                           <div>
                             <p className="text-gray-600 font-medium">{order.restaurant?.nom || 'Restaurant'}</p>
-                            <p className="text-gray-500 text-xs">{order.customer_name || (order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client')}</p>
+                            <p className="text-gray-500 text-xs">{getCustomerName(order)}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-blue-600">{order.total?.toFixed(2)}€</p>
@@ -966,12 +1014,12 @@ export default function DeliveryDashboard() {
                           <div className="bg-white p-3 rounded-lg">
                             <h4 className="font-semibold text-gray-900 mb-2 text-sm">👤 Client</h4>
                             <p className="text-gray-700 font-medium text-sm">
-                              {order.customer_name || (order.users?.prenom ? `${order.users.prenom} ${order.users.nom}` : 'Client non trouvé')}
+                              {getCustomerName(order)}
                             </p>
-                            <p className="text-gray-600 text-xs">{order.customer_phone || order.users?.telephone || 'Téléphone non disponible'}</p>
-                            {(order.customer_email || order.users?.email) && (
+                            <p className="text-gray-600 text-xs">{getCustomerPhone(order) || 'Téléphone non disponible'}</p>
+                            {getCustomerEmail(order) && (
                               <p className="text-gray-500 text-xs break-all mt-1">
-                                {order.customer_email || order.users?.email}
+                                {getCustomerEmail(order)}
                               </p>
                             )}
                           </div>
@@ -1147,7 +1195,7 @@ export default function DeliveryDashboard() {
                           </span>
                         </div>
                         <p className="text-orange-800 text-sm">
-                          <strong>Client:</strong> {alert.customer_name}
+                          <strong>Client:</strong> {getCustomerName(alert)}
                         </p>
                         <p className="text-orange-800 text-sm">
                           <strong>Restaurant:</strong> {alert.restaurant_name}
@@ -1227,13 +1275,13 @@ export default function DeliveryDashboard() {
                               
                               <div className="bg-gray-50 p-3 rounded-lg">
                                 <h4 className="font-semibold text-gray-900 mb-1 text-sm">🏠 Livraison</h4>
-                                <p className="text-gray-700 font-medium text-sm">{order.customer_name || 'N/A'}</p>
+                                <p className="text-gray-700 font-medium text-sm">{getCustomerName(order)}</p>
                                 <p className="text-gray-600 text-xs">{order.delivery_address || 'N/A'}</p>
-                                {order.customer_phone && (
-                                  <p className="text-gray-500 text-xs mt-1">📞 {order.customer_phone}</p>
+                                {getCustomerPhone(order) && (
+                                  <p className="text-gray-500 text-xs mt-1">📞 {getCustomerPhone(order)}</p>
                                 )}
-                                {order.customer_email && (
-                                  <p className="text-gray-400 text-xs mt-1 break-all">✉️ {order.customer_email}</p>
+                                {getCustomerEmail(order) && (
+                                  <p className="text-gray-400 text-xs mt-1 break-all">✉️ {getCustomerEmail(order)}</p>
                                 )}
                               </div>
                             </div>

@@ -153,6 +153,10 @@ export async function PUT(request, { params }) {
       updateData.ready_for_delivery = readyForDelivery;
     }
 
+    if ((status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
+      updateData.preparation_started_at = new Date().toISOString();
+    }
+
     if (reason) {
       updateData.rejection_reason = reason;
     }

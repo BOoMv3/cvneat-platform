@@ -142,6 +142,10 @@ async function main() {
         payment_status: 'paid',
         stripe_payment_intent_id: `pi_test_${Date.now()}`,
         ready_for_delivery: false,
+        customer_first_name: user?.prenom || 'Client',
+        customer_last_name: user?.nom || 'Test',
+        customer_phone: user?.telephone || '+33600000000',
+        customer_email: user?.email || 'client@test.com',
       },
     ])
     .select()

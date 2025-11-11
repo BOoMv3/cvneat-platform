@@ -530,6 +530,11 @@ export default function Checkout() {
       });
       
       // Préparer les données de commande (on les stocke pour créer la commande après le paiement)
+      const customerFirstName = orderDetails.prenom?.trim() || '';
+      const customerLastName = orderDetails.nom?.trim() || '';
+      const customerPhone = orderDetails.telephone?.trim() || '';
+      const customerEmail = orderDetails.email?.trim() || (user.email || '');
+
       const orderDataToStore = {
         user_id: user.id,
         restaurant_id: resolvedRestaurant.id,
@@ -538,7 +543,11 @@ export default function Checkout() {
         adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
         security_code: securityCode,
         cart: savedCart.items,
-        orderDetails
+        orderDetails,
+        customer_first_name: customerFirstName,
+        customer_last_name: customerLastName,
+        customer_phone: customerPhone,
+        customer_email: customerEmail
       };
       setOrderData(orderDataToStore);
 
@@ -627,6 +636,19 @@ export default function Checkout() {
       // Ajouter les colonnes Stripe (elles doivent exister - exécuter add-stripe-payment-columns.sql)
       insertData.stripe_payment_intent_id = confirmedPaymentIntentId;
       insertData.payment_status = 'paid';
+
+      if (orderData.customer_first_name) {
+        insertData.customer_first_name = orderData.customer_first_name;
+      }
+      if (orderData.customer_last_name) {
+        insertData.customer_last_name = orderData.customer_last_name;
+      }
+      if (orderData.customer_phone) {
+        insertData.customer_phone = orderData.customer_phone;
+      }
+      if (orderData.customer_email) {
+        insertData.customer_email = orderData.customer_email;
+      }
 
       const { data: order, error: orderError } = await supabase
         .from('commandes')

@@ -555,6 +555,7 @@ export default function Home() {
 
     const boostOrder = (restaurant) => {
       const normalized = normalizeName(restaurant.nom);
+      if (normalized.includes('otoasty')) return -1;
       if (normalized.includes('la bonne pate')) return 0;
       if (normalized.includes('eclipse')) return 1;
       return 2;
