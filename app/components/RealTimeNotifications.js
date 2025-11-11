@@ -798,7 +798,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           {/* Panneau notifications */}
           {showNotifications && (
             <div
-              className="absolute left-1/2 top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border bg-white shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0"
+              className="absolute left-4 right-4 top-full z-50 mt-2 max-w-[calc(100vw-2rem)] rounded-lg border bg-white shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800 sm:left-auto sm:right-0 sm:w-80 sm:max-w-none"
             >
           <div className="p-4 border-b dark:border-gray-700">
             <div className="flex items-center justify-between">
