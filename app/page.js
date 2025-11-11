@@ -264,7 +264,7 @@ export default function Home() {
     },
     {
       id: 'slide-3',
-      image: 'https://images.unsplash.com/photo-1601925260365-9123f5d2822e?auto=format&fit=crop&w=2000&q=80',
+      image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=2000&q=80',
       title: 'Promos exclusives CVN’EAT',
       subtitle: 'Profitez de remises et de programmes fidélité dédiés'
     }
