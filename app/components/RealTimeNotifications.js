@@ -41,6 +41,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const lastOrderCheckRef = useRef(null);
   const soundIntervalRef = useRef(null);
   const soundRepeatCountRef = useRef(0);
+  const triggerRef = useRef(null);
+  const [panelStyle, setPanelStyle] = useState({});
+  const [isSmallScreen, setIsSmallScreen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : true));
   const stopSoundInterval = () => {
     if (soundIntervalRef.current) {
       clearInterval(soundIntervalRef.current);
@@ -69,6 +72,37 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       console.warn('Impossible de sauvegarder la préférence sonore:', error);
     }
   }, [soundEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth < 640);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!showNotifications || !triggerRef.current) return;
+
+    if (isSmallScreen) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPanelStyle({
+        position: 'fixed',
+        left: '16px',
+        right: '16px',
+        top: `${rect.bottom + 12}px`,
+      });
+    } else {
+      setPanelStyle({
+        position: 'absolute',
+        right: 0,
+        top: '100%',
+      });
+    }
+  }, [showNotifications, isSmallScreen]);
 
   useEffect(() => {
     const unlockAudio = () => {
@@ -781,6 +815,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       <div className="relative overflow-visible">
       {/* Bouton notifications */}
       <button
+        ref={triggerRef}
         onClick={() => setShowNotifications(!showNotifications)}
         className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
       >
@@ -798,7 +833,8 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           {/* Panneau notifications */}
           {showNotifications && (
             <div
-              className="absolute left-4 right-4 top-full z-50 mt-2 max-w-[calc(100vw-2rem)] rounded-lg border bg-white shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800 sm:left-auto sm:right-0 sm:w-80 sm:max-w-none"
+              className="z-50 mt-2 w-full max-w-80 rounded-lg border bg-white shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800 sm:absolute sm:right-0 sm:top-full sm:w-80 sm:max-w-none"
+              style={panelStyle}
             >
           <div className="p-4 border-b dark:border-gray-700">
             <div className="flex items-center justify-between">
