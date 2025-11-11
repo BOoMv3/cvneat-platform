@@ -20,7 +20,7 @@ import {
   FaArrowLeft
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
-import OrderCountdown from '../components/OrderCountdown';
+import OrderCountdown from '@/components/OrderCountdown';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
