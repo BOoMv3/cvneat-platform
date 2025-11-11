@@ -778,7 +778,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         </div>
       )}
       
-      <div className="relative">
+      <div className="relative overflow-visible">
       {/* Bouton notifications */}
       <button
         onClick={() => setShowNotifications(!showNotifications)}
@@ -797,7 +797,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
           {/* Panneau notifications */}
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 z-50">
+            <div
+              className="absolute left-1/2 top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border bg-white shadow-lg transition-all dark:border-gray-700 dark:bg-gray-800 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0"
+            >
           <div className="p-4 border-b dark:border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
