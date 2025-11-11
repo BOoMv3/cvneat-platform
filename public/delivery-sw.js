@@ -10,14 +10,16 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || 'Nouvelle commande disponible';
+  const notificationData = data.data || {};
   const options = {
     body: data.body || '',
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
-    data: data.data || {},
-    tag: data.tag || 'delivery-notification',
-    renotify: true,
-    vibrate: [150, 100, 150],
+    data: notificationData,
+    tag: data.tag || (notificationData.orderId ? `delivery-${notificationData.orderId}` : 'delivery-notification'),
+    renotify: false,
+    vibrate: [160, 120, 160],
+    requireInteraction: false,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

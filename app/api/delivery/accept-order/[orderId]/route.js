@@ -137,6 +137,16 @@ export async function POST(request, { params }) {
       }
     }
 
+    let userProfile = enrichedOrder?.users || null;
+    if (!userProfile && enrichedOrder?.user_id) {
+      const { data: fetchedUser } = await supabaseAdmin
+        .from('users')
+        .select('nom, prenom, telephone, email')
+        .eq('id', enrichedOrder.user_id)
+        .single();
+      userProfile = fetchedUser || null;
+    }
+
     const formattedOrder = enrichedOrder
       ? {
           ...enrichedOrder,
@@ -145,11 +155,17 @@ export async function POST(request, { params }) {
           ville_livraison: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,
           instructions_livraison: enrichedOrder.instructions_livraison || deliveryAddress?.delivery_instructions || null,
-          customer_name: enrichedOrder.users?.prenom && enrichedOrder.users?.nom
-            ? `${enrichedOrder.users.prenom} ${enrichedOrder.users.nom}`
-            : enrichedOrder.users?.nom || 'Client',
-          customer_phone: enrichedOrder.users?.telephone || null,
-          customer_email: enrichedOrder.users?.email || null,
+          customer_name: [
+            enrichedOrder.customer_first_name || userProfile?.prenom || '',
+            enrichedOrder.customer_last_name || userProfile?.nom || ''
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .trim() || enrichedOrder.customer_last_name || userProfile?.nom || 'Client',
+          customer_first_name: enrichedOrder.customer_first_name || userProfile?.prenom || null,
+          customer_last_name: enrichedOrder.customer_last_name || userProfile?.nom || null,
+          customer_phone: enrichedOrder.customer_phone || userProfile?.telephone || null,
+          customer_email: enrichedOrder.customer_email || userProfile?.email || null,
           delivery_address: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,

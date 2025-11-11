@@ -1471,7 +1471,7 @@ export default function PartnerDashboard() {
                           )}
                           
                           {/* Timer préparation */}
-                          {order.statut === 'en_preparation' && order.preparation_time && (
+                          {((order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery)) && order.preparation_time && (
                             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded border border-blue-200 dark:border-blue-700">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div>
@@ -1493,21 +1493,37 @@ export default function PartnerDashboard() {
                           <div className="mt-4 pt-3 border-t border-gray-200">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
-                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                                  order.statut === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
-                                  order.statut === 'en_preparation' ? 'bg-blue-100 text-blue-800' :
-                                  order.statut === 'en_livraison' ? 'bg-purple-100 text-purple-800' :
-                                  order.statut === 'livree' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200' :
-                                  order.statut === 'annulee' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' :
-                                  'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                                }`}>
-                                  {order.statut === 'en_attente' ? 'En attente' :
-                                   order.statut === 'en_preparation' ? 'En préparation' :
-                                   order.statut === 'en_livraison' ? 'En livraison' :
-                                   order.statut === 'livree' ? 'Livrée' :
-                                   order.statut === 'annulee' ? 'Annulée' :
-                                   order.statut || 'Inconnu'}
-                                </span>
+                                {(() => {
+                                  const isAwaiting = order.statut === 'en_attente';
+                                  const isPreparing = (order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery);
+                                  const isReady = (order.statut === 'en_preparation' || order.statut === 'en_livraison') && order.ready_for_delivery;
+                                  const isDelivering = order.statut === 'en_livraison' && order.ready_for_delivery;
+                                  const isDelivered = order.statut === 'livree';
+                                  const isCancelled = order.statut === 'annulee';
+
+                                  let badgeClass = 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+                                  if (isAwaiting) badgeClass = 'bg-yellow-100 text-yellow-800';
+                                  else if (isPreparing) badgeClass = 'bg-blue-100 text-blue-800';
+                                  else if (isReady) badgeClass = 'bg-green-100 text-green-800';
+                                  else if (isDelivering) badgeClass = 'bg-purple-100 text-purple-800';
+                                  else if (isDelivered) badgeClass = 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+                                  else if (isCancelled) badgeClass = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+
+                                  let label = 'Inconnu';
+                                  if (isAwaiting) label = 'En attente';
+                                  else if (isPreparing) label = 'En préparation';
+                                  else if (isReady && !isDelivering) label = 'Prête';
+                                  else if (isDelivering) label = 'En livraison';
+                                  else if (isDelivered) label = 'Livrée';
+                                  else if (isCancelled) label = 'Annulée';
+                                  else if (order.statut) label = order.statut;
+
+                                  return (
+                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${badgeClass}`}>
+                                      {label}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                               
                               <div className="flex flex-wrap gap-2 justify-end">
@@ -1531,7 +1547,7 @@ export default function PartnerDashboard() {
                                     </button>
                                   </>
                                 )}
-                                {order.statut === 'en_preparation' && !order.ready_for_delivery && (
+                                {((order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery)) && !order.ready_for_delivery && (
                                   <button
                                     onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
                                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
@@ -1539,12 +1555,12 @@ export default function PartnerDashboard() {
                                     Marquer comme prête
                                   </button>
                                 )}
-                                {order.statut === 'en_preparation' && order.ready_for_delivery && (
+                                {((order.statut === 'en_preparation') || (order.statut === 'en_livraison')) && order.ready_for_delivery && (
                                   <span className="text-sm text-green-600 px-3 py-2 font-medium">
                                     ✓ Prête pour livraison
                                   </span>
                                 )}
-                                {order.statut === 'en_preparation' && order.livreur_id && order.ready_for_delivery && (
+                                {order.statut === 'en_livraison' && order.livreur_id && order.ready_for_delivery && (
                                   <span className="text-sm text-gray-600 dark:text-gray-300 px-3 py-2">
                                     Livreur en route
                                   </span>

@@ -95,6 +95,21 @@ export async function GET(request) {
           deliveryAddress = address || null;
         }
         
+        let userProfile = order.users || null;
+        if (!userProfile && order.user_id) {
+          const { data: fetchedUser } = await supabaseAdmin
+            .from('users')
+            .select('nom, prenom, telephone, email')
+            .eq('id', order.user_id)
+            .single();
+          userProfile = fetchedUser || null;
+        }
+
+        const customerFirstName = order.customer_first_name || userProfile?.prenom || '';
+        const customerLastName = order.customer_last_name || userProfile?.nom || '';
+        const customerPhone = order.customer_phone || userProfile?.telephone || null;
+        const customerEmail = order.customer_email || userProfile?.email || null;
+
         return {
           ...order,
           user_addresses: deliveryAddress,
@@ -103,11 +118,11 @@ export async function GET(request) {
           ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
           instructions_livraison: order.instructions_livraison || deliveryAddress?.delivery_instructions || null,
-          customer_name: order.users?.prenom && order.users?.nom 
-            ? `${order.users.prenom} ${order.users.nom}` 
-            : order.users?.nom || 'Client',
-          customer_phone: order.users?.telephone || null,
-          customer_email: order.users?.email || null,
+          customer_name: [customerFirstName, customerLastName].filter(Boolean).join(' ').trim() || customerLastName || 'Client',
+          customer_first_name: customerFirstName || null,
+          customer_last_name: customerLastName || null,
+          customer_phone: customerPhone,
+          customer_email: customerEmail,
           delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: order.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,

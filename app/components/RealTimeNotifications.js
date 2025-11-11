@@ -15,6 +15,9 @@ const showBrowserNotification = (title, options) => {
   }
 };
 
+const SOUND_REPEAT_INTERVAL = 15000;
+const MAX_SOUND_REPEATS = 3;
+
 const requestBrowserNotificationPermission = () => {
   if (isNotificationSupported() && Notification.permission === 'default') {
     try {
@@ -37,6 +40,14 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const audioContextRef = useRef(null);
   const lastOrderCheckRef = useRef(null);
   const soundIntervalRef = useRef(null);
+  const soundRepeatCountRef = useRef(0);
+  const stopSoundInterval = () => {
+    if (soundIntervalRef.current) {
+      clearInterval(soundIntervalRef.current);
+      soundIntervalRef.current = null;
+    }
+    soundRepeatCountRef.current = 0;
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -147,10 +158,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         (payload) => {
           // Si la commande en attente est mise à jour (acceptée/refusée), arrêter les alertes
           if (pendingOrderId === payload.new.id && payload.new.statut !== 'en_attente') {
-            if (soundIntervalRef.current) {
-              clearInterval(soundIntervalRef.current);
-              soundIntervalRef.current = null;
-            }
+            stopSoundInterval();
             setShowAlert(false);
             setIsBlinking(false);
             setPendingOrderId(null);
@@ -211,10 +219,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               } else if (latestOrderId === pendingOrderId && latestOrder.statut !== 'en_attente') {
                 // Si la commande en attente n'est plus en attente, arrêter les alertes
                 console.log('✅ Commande traitée, arrêt des alertes:', latestOrder.statut);
-                if (soundIntervalRef.current) {
-                  clearInterval(soundIntervalRef.current);
-                  soundIntervalRef.current = null;
-                }
+                stopSoundInterval();
                 setShowAlert(false);
                 setIsBlinking(false);
                 setPendingOrderId(null);
@@ -241,10 +246,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         } else if (pendingOrderId) {
           // Plus de commandes en attente, arrêter les alertes
           console.log('✅ Plus de commandes en attente, arrêt des alertes');
-          if (soundIntervalRef.current) {
-            clearInterval(soundIntervalRef.current);
-            soundIntervalRef.current = null;
-          }
+          stopSoundInterval();
           setShowAlert(false);
           setIsBlinking(false);
           setPendingOrderId(null);
@@ -259,9 +261,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       console.log('🧹 Nettoyage connexion Supabase Realtime et polling');
       channel.unsubscribe();
       clearInterval(pollingInterval);
-      if (soundIntervalRef.current) {
-        clearInterval(soundIntervalRef.current);
-      }
+      stopSoundInterval();
       setIsConnected(false);
     };
   }, [restaurantId]); // Retirer lastOrderId des dépendances pour éviter la boucle infinie
@@ -297,18 +297,20 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     setIsBlinking(true);
     setPendingOrderId(order.id);
     
-    // Jouer une alerte sonore initiale (plusieurs fois)
-    playNotificationSound();
-    setTimeout(() => playNotificationSound(), 500); // Double bip
-    
-    // Démarrer un intervalle pour jouer le son toutes les 4 secondes
-    if (soundIntervalRef.current) {
-      clearInterval(soundIntervalRef.current);
+    // Jouer une alerte sonore initiale (double bip contrôlé)
+    const initialPlayed = playNotificationSound();
+    soundRepeatCountRef.current = initialPlayed ? 1 : 0;
+    if (initialPlayed) {
+      setTimeout(() => {
+        playNotificationSound();
+      }, 400);
     }
+    
+    // Démarrer un intervalle pour jouer le son de rappel avec limite
+    stopSoundInterval();
     soundIntervalRef.current = setInterval(() => {
-      // Vérifier que la commande est toujours en attente avant de jouer le son
       checkOrderStatusAndPlaySound(order.id);
-    }, 4000); // Toutes les 4 secondes
+    }, SOUND_REPEAT_INTERVAL);
     
     // Afficher une notification du navigateur
     showBrowserNotification('🎉 NOUVELLE COMMANDE !', {
@@ -449,6 +451,10 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Fonction pour vérifier le statut de la commande et jouer le son si toujours en attente
   const checkOrderStatusAndPlaySound = async (orderId) => {
+    if (soundRepeatCountRef.current >= MAX_SOUND_REPEATS) {
+      stopSoundInterval();
+      return;
+    }
     try {
       const { data: order, error } = await supabase
         .from('commandes')
@@ -464,18 +470,25 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       // Si la commande n'est plus en attente, arrêter le son et fermer la pop-up
       if (order.statut !== 'en_attente') {
         console.log('✅ Commande traitée, arrêt des alertes:', order.statut);
-        if (soundIntervalRef.current) {
-          clearInterval(soundIntervalRef.current);
-          soundIntervalRef.current = null;
-        }
+        stopSoundInterval();
         setShowAlert(false);
         setIsBlinking(false);
         setPendingOrderId(null);
         return;
       }
 
-      // La commande est toujours en attente, jouer le son
-      playNotificationSound();
+      // La commande est toujours en attente, jouer le son (si limite non atteinte)
+      if (soundRepeatCountRef.current >= MAX_SOUND_REPEATS) {
+        stopSoundInterval();
+        return;
+      }
+
+      if (playNotificationSound()) {
+        soundRepeatCountRef.current += 1;
+        if (soundRepeatCountRef.current >= MAX_SOUND_REPEATS) {
+          stopSoundInterval();
+        }
+      }
     } catch (error) {
       console.warn('⚠️ Erreur vérification statut:', error);
     }
@@ -484,7 +497,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   // Fonction pour jouer une alerte sonore
   const playNotificationSound = () => {
     if (!soundEnabled) {
-      return;
+      return false;
     }
     try {
       let audioContext = audioContextRef.current;
@@ -510,20 +523,24 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
             playFallbackSound();
           }
         });
-        return;
+        return true;
       }
       
       // Si le contexte est actif, jouer le son directement
       playSoundWithContext(audioContext);
+      return true;
     } catch (error) {
       console.warn('Impossible de jouer le son avec AudioContext:', error);
       // Essayer le fallback
       try {
         playFallbackSound();
+        return true;
       } catch (fallbackError) {
         console.warn('Impossible de jouer le son de fallback:', fallbackError);
       }
     }
+
+    return false;
   };
 
   // Fonction helper pour jouer le son avec un contexte audio actif
