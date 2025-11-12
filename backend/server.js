@@ -105,8 +105,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Role', 'X-User-Email']
 }));
 app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const jsonParser = express.json();
+const urlencodedParser = express.urlencoded({ extended: true });
+
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payments/webhook') {
+    return next();
+  }
+  return jsonParser(req, res, next);
+});
+
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payments/webhook') {
+    return next();
+  }
+  return urlencodedParser(req, res, next);
+});
 
 // Servir les fichiers statiques
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

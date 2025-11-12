@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
@@ -9,6 +9,37 @@ const isComboItem = (item) => {
   if (typeof item.id === 'string' && item.id.startsWith('combo-')) return true;
   return false;
 };
+
+let cachedServiceClient = null;
+
+function getServiceClient() {
+  if (supabaseAdminClient) {
+    return supabaseAdminClient;
+  }
+
+  if (cachedServiceClient) {
+    return cachedServiceClient;
+  }
+
+  const supabaseUrl =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceKey) {
+    return null;
+  }
+
+  cachedServiceClient = createClient(supabaseUrl, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  return cachedServiceClient;
+}
 
 // GET /api/orders - Récupérer les commandes de l'utilisateur
 export async function GET(request) {
@@ -28,14 +59,19 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Créer un client admin pour bypasser RLS si nécessaire
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    // Récupérer un client service pour contourner les politiques RLS côté serveur
+    const serviceClient = getServiceClient();
+
+    if (!serviceClient) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY non configurée pour le serveur');
+      return NextResponse.json(
+        { error: 'Configuration Supabase serveur manquante' },
+        { status: 500 }
+      );
+    }
 
     // Vérifier le rôle de l'utilisateur
-    const { data: userData, error: userDataError } = await supabaseAdmin
+    const { data: userData, error: userDataError } = await serviceClient
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -45,7 +81,7 @@ export async function GET(request) {
     const isAdmin = userData && userData.role === 'admin';
 
     // Construire la requête
-    let query = supabaseAdmin
+    let query = serviceClient
       .from('commandes')
       .select(`
         id,
@@ -180,6 +216,16 @@ export async function POST(request) {
     console.log('=== DÉBUT CRÉATION COMMANDE ===');
     
     const body = await request.json();
+    const serviceClient = getServiceClient();
+
+    if (!serviceClient) {
+      console.error('❌ Impossible de créer la commande: clé service Supabase manquante');
+      return NextResponse.json(
+        { error: 'Configuration Supabase manquante côté serveur' },
+        { status: 500 }
+      );
+    }
+
     console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
     const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo } = body;
@@ -231,7 +277,7 @@ export async function POST(request) {
 
     // Verifier que le restaurant existe
     console.log('Verification du restaurant ID:', restaurantId);
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant, error: restaurantError } = await serviceClient
       .from('restaurants')
       .select('*')
       .eq('id', restaurantId)
@@ -264,7 +310,7 @@ export async function POST(request) {
       }
 
       console.log('Verification article ID:', item.id);
-      const { data: menuItem, error: menuError } = await supabase
+      const { data: menuItem, error: menuError } = await serviceClient
         .from('menus')
         .select('*')
         .eq('id', item.id)
@@ -355,7 +401,7 @@ export async function POST(request) {
 
     console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await serviceClient
       .from('commandes')
       .insert([orderData])
       .select()
@@ -451,7 +497,7 @@ export async function POST(request) {
       orderDetailsPayload.push(detailEntry);
     }
 
-    const { error: detailsError } = await supabase
+    const { error: detailsError } = await serviceClient
       .from('details_commande')
       .insert(orderDetailsPayload);
 

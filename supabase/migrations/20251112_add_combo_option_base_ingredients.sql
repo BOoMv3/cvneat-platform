@@ -20,3 +20,4 @@ before update on public.menu_combo_option_base_ingredients
 for each row
 execute function public.set_updated_at_timestamp();
 
+
