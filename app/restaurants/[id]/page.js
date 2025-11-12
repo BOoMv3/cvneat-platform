@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { safeLocalStorage } from '../../../lib/localStorage';
@@ -33,6 +33,155 @@ export default function RestaurantDetail({ params }) {
   const [restaurantHours, setRestaurantHours] = useState([]);
   const [isRestaurantOpen, setIsRestaurantOpen] = useState(true);
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
+  const [comboMenus, setComboMenus] = useState([]);
+  const [comboLoading, setComboLoading] = useState(true);
+  const [comboError, setComboError] = useState(null);
+  const [showComboModal, setShowComboModal] = useState(false);
+  const [activeCombo, setActiveCombo] = useState(null);
+  const [comboSelections, setComboSelections] = useState({});
+  const [comboQuantity, setComboQuantity] = useState(1);
+
+  const getStepKey = (step, index) => step?.id || `step-${index}`;
+
+  const initializeComboSelections = (combo) => {
+    if (!combo?.steps || !Array.isArray(combo.steps)) return {};
+    const initial = {};
+    combo.steps.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      initial[key] = { options: [] };
+    });
+    return initial;
+  };
+
+  const openComboModal = (combo) => {
+    if (!combo) return;
+    setActiveCombo(combo);
+    setComboSelections(initializeComboSelections(combo));
+    setComboQuantity(1);
+    setShowComboModal(true);
+  };
+
+  const closeComboModal = () => {
+    setShowComboModal(false);
+    setActiveCombo(null);
+    setComboSelections({});
+    setComboQuantity(1);
+  };
+
+  const getStepSelections = (step, stepIndex) => {
+    const key = getStepKey(step, stepIndex);
+    return comboSelections[key]?.options || [];
+  };
+
+  const isOptionSelected = (step, option, stepIndex) => {
+    if (!option) return false;
+    return getStepSelections(step, stepIndex).some(sel => sel.optionId === option.id);
+  };
+
+  const handleToggleComboOption = (step, option, stepIndex) => {
+    if (!activeCombo || !step || !option || option.disponible === false) return;
+
+    setComboSelections((prev) => {
+      const key = getStepKey(step, stepIndex);
+      const current = prev[key]?.options || [];
+      const existingIndex = current.findIndex(sel => sel.optionId === option.id);
+      let updatedOptions = [...current];
+
+      if (existingIndex !== -1) {
+        updatedOptions.splice(existingIndex, 1);
+      } else {
+        const max = step?.max_selections ?? 1;
+        if (max === 0) {
+          return prev;
+        }
+        if (max === 1) {
+          updatedOptions = [];
+        } else if (max && current.length >= max) {
+          return prev; // ne pas dépasser le maximum
+        }
+
+        const defaultVariant = option.variants?.length
+          ? option.variants.find(v => v.is_default) || option.variants[0]
+          : null;
+
+        updatedOptions = [
+          ...updatedOptions,
+          {
+            optionId: option.id,
+            stepId: step.id,
+            option,
+            variantId: defaultVariant?.id || null,
+            variant: defaultVariant || null
+          }
+        ];
+      }
+
+      return {
+        ...prev,
+        [key]: {
+          options: updatedOptions
+        }
+      };
+    });
+  };
+
+  const handleVariantChange = (step, option, variant, stepIndex) => {
+    setComboSelections((prev) => {
+      const key = getStepKey(step, stepIndex);
+      const current = prev[key]?.options || [];
+      if (!current.length) return prev;
+
+      const updated = current.map(sel =>
+        sel.optionId === option.id
+          ? {
+              ...sel,
+              variantId: variant?.id || null,
+              variant: variant || null
+            }
+          : sel
+      );
+
+      return {
+        ...prev,
+        [key]: {
+          options: updated
+        }
+      };
+    });
+  };
+
+  const getSelectedVariant = (step, option, stepIndex) => {
+    const selected = getStepSelections(step, stepIndex).find(sel => sel.optionId === option.id);
+    return selected?.variant || null;
+  };
+
+  const loadComboMenus = async (restaurantId) => {
+    if (!restaurantId) {
+      setComboMenus([]);
+      setComboLoading(false);
+      return;
+    }
+
+    setComboLoading(true);
+    setComboError(null);
+
+    try {
+      const response = await fetch(`/api/partner/menu-combos?restaurantId=${restaurantId}`);
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des menus composés');
+      }
+
+      const data = await response.json();
+      const combos = Array.isArray(data) ? data.filter(combo => combo?.actif !== false) : [];
+      setComboMenus(combos);
+    } catch (err) {
+      console.error('Erreur récupération menus composés:', err);
+      setComboMenus([]);
+      setComboError(err.message || 'Impossible de charger les menus composés');
+    } finally {
+      setComboLoading(false);
+    }
+  };
 
   useEffect(() => {
     const checkUser = async () => {
@@ -242,7 +391,11 @@ export default function RestaurantDetail({ params }) {
       console.log('📊 Statut ouvert reçu:', openStatusData);
       console.log('🔓 isRestaurantOpen sera:', isOpen);
       console.log('🔒 isManuallyClosed sera:', hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
+
+      await loadComboMenus(restaurantData.id || params.id);
     } catch (err) {
+      setComboLoading(false);
+      setComboMenus([]);
       setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
@@ -591,6 +744,120 @@ export default function RestaurantDetail({ params }) {
     return getSubtotal() + (deliveryFee || 0);
   };
 
+  const comboValidation = useMemo(() => {
+    if (!activeCombo) return { isValid: false, errors: [] };
+
+    const errors = [];
+    activeCombo.steps?.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      const selections = comboSelections[key]?.options || [];
+      const count = selections.length;
+      const min = Math.max(step?.min_selections ?? 0, 0);
+      const max = step?.max_selections ?? null;
+
+      if (count < min) {
+        errors.push(
+          `Sélectionnez au moins ${min} option${min > 1 ? 's' : ''} pour ${step.title || `l'étape ${index + 1}`}`
+        );
+      }
+
+      if (max && count > max) {
+        errors.push(
+          `Vous ne pouvez sélectionner que ${max} option${max > 1 ? 's' : ''} pour ${step.title || `l'étape ${index + 1}`}`
+        );
+      }
+
+      selections.forEach((selection) => {
+        if (selection.option?.variants?.length && selection.variantId === null) {
+          errors.push(`Choisissez une variante pour ${selection.option?.nom || 'l\'option sélectionnée'}`);
+        }
+      });
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }, [activeCombo, comboSelections]);
+
+  const comboTotalPrice = useMemo(() => {
+    if (!activeCombo) return 0;
+    let total = parseFloat(activeCombo.prix_base || 0) || 0;
+
+    activeCombo.steps?.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      const selections = comboSelections[key]?.options || [];
+      selections.forEach((selection) => {
+        const optionPrice = parseFloat(selection.option?.prix_supplementaire || 0) || 0;
+        const variantPrice = parseFloat(selection.variant?.prix_supplementaire || 0) || 0;
+        total += optionPrice + variantPrice;
+      });
+    });
+
+    return Math.max(total, 0);
+  }, [activeCombo, comboSelections]);
+
+  const handleAddComboToCart = () => {
+    if (!activeCombo) return;
+    const validation = comboValidation;
+    if (!validation.isValid) {
+      alert(validation.errors.join('\n'));
+      return;
+    }
+
+    const supplements = [];
+    const comboDetails = [];
+
+    activeCombo.steps?.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      const selections = comboSelections[key]?.options || [];
+
+      selections.forEach((selection) => {
+        const option = selection.option || step.options?.find(opt => opt.id === selection.optionId);
+        if (!option) return;
+        const variant = selection.variant || option.variants?.find(v => v.id === selection.variantId);
+
+        const labelParts = [step.title, option.nom];
+        if (variant?.nom) {
+          labelParts.push(variant.nom);
+        }
+        const label = labelParts.filter(Boolean).join(' · ');
+
+        const optionPrice = parseFloat(option?.prix_supplementaire || 0) || 0;
+        const variantPrice = parseFloat(variant?.prix_supplementaire || 0) || 0;
+        const supplementPrice = optionPrice + variantPrice;
+
+        supplements.push({
+          id: `${getStepKey(step, index)}-${option.id}${variant ? `-${variant.id}` : ''}`,
+          nom: label,
+          prix: supplementPrice
+        });
+
+        comboDetails.push({
+          stepTitle: step.title,
+          optionName: option.nom,
+          variantName: variant?.nom || null,
+          optionPrice,
+          variantPrice
+        });
+      });
+    });
+
+    const cartItem = {
+      id: `combo-${activeCombo.id}`,
+      nom: activeCombo.nom,
+      prix: parseFloat(activeCombo.prix_base || 0) || 0,
+      type: 'combo',
+      comboId: activeCombo.id,
+      comboName: activeCombo.nom,
+      comboDetails,
+      _fromModal: true
+    };
+
+    addToCart(cartItem, supplements, null, Math.max(1, comboQuantity || 1));
+    closeComboModal();
+  };
+
   const handleCheckout = () => {
     if (!user) {
       router.push('/login?redirect=' + encodeURIComponent(`/restaurants/${params.id}`));
@@ -684,6 +951,106 @@ export default function RestaurantDetail({ params }) {
             />
 
             <div className="space-y-8 sm:space-y-12 pt-12 sm:pt-14 md:pt-16">
+              {(comboLoading || comboError || comboMenus.length > 0) && (
+                <section className="space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Menus composés</h2>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
+                      Composez un menu complet en choisissant les options proposées par le restaurant.
+                    </p>
+                  </div>
+
+                  {comboLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-10 w-10 border-4 border-orange-200 border-t-orange-500"></div>
+                    </div>
+                  ) : comboError ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+                      {comboError}
+                    </div>
+                  ) : comboMenus.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Aucun menu composé n'est disponible pour le moment.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                      {comboMenus.map((combo, comboIndex) => {
+                        const basePrice = parseFloat(combo.prix_base || 0) || 0;
+                        return (
+                          <article
+                            key={combo.id || comboIndex}
+                            className="border border-gray-200 dark:border-gray-700 rounded-2xl p-5 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  {combo.nom}
+                                </h3>
+                                {combo.description && (
+                                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                                    {combo.description}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <span className="inline-flex items-center justify-center rounded-full bg-green-100 text-green-700 px-3 py-1 text-sm font-semibold">
+                                  À partir de {basePrice.toFixed(2)}€
+                                </span>
+                              </div>
+                            </div>
+
+                            {Array.isArray(combo.steps) && combo.steps.length > 0 && (
+                              <div className="mt-4 space-y-3">
+                                {combo.steps.map((step, stepIndex) => {
+                                  const min = Math.max(step?.min_selections ?? 0, 0);
+                                  const max = step?.max_selections ?? null;
+                                  return (
+                                    <div key={step.id || stepIndex} className="flex items-start gap-3">
+                                      <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-sm font-semibold">
+                                        {stepIndex + 1}
+                                      </span>
+                                      <div className="min-w-0">
+                                        <p className="font-medium text-gray-900 dark:text-white">
+                                          {step.title || `Choix ${stepIndex + 1}`}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          {min === max
+                                            ? min === 1
+                                              ? 'Sélection obligatoire de 1 option'
+                                              : `Sélection obligatoire de ${min} options`
+                                            : `Choisir ${min > 0 ? `au moins ${min}` : 'jusqu\'à'} ${max ? `${max} option${max > 1 ? 's' : ''}` : 'options'}`}
+                                        </p>
+                                        {step.description && (
+                                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            {step.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            <div className="mt-5 flex items-center justify-between">
+                              <button
+                                onClick={() => openComboModal(combo)}
+                                className="inline-flex items-center justify-center rounded-xl bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 text-sm font-semibold transition-colors"
+                              >
+                                Personnaliser
+                              </button>
+                              <span className="text-sm text-gray-500 dark:text-gray-400">
+                                {combo.steps?.length || 0} étape{combo.steps?.length > 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
+
               {menu.length === 0 ? (
                 <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                   <p>Aucun plat disponible pour ce restaurant.</p>
@@ -814,6 +1181,240 @@ export default function RestaurantDetail({ params }) {
           </div>
         )}
         {/* Modal panier */}
+        {showComboModal && activeCombo && (
+          <Modal onClose={closeComboModal}>
+            <div className="flex flex-col gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                  {activeCombo.nom}
+                </h2>
+                {activeCombo.description && (
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    {activeCombo.description}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-800/70">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Prix de base</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {(parseFloat(activeCombo.prix_base || 0) || 0).toFixed(2)}€
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Quantité</span>
+                  <div className="flex items-center rounded-full border border-gray-300 dark:border-gray-600 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setComboQuantity(prev => Math.max(1, (prev || 1) - 1))}
+                      className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      <FaMinus />
+                    </button>
+                    <div className="w-12 text-center text-sm font-semibold text-gray-900 dark:text-white">
+                      {comboQuantity}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setComboQuantity(prev => (prev || 1) + 1)}
+                      className="w-10 h-10 flex items-center justify-center bg-orange-500 text-white hover:bg-orange-600"
+                    >
+                      <FaPlus />
+                    </button>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Total estimé</p>
+                  <p className="text-lg font-semibold text-orange-600 dark:text-orange-400">
+                    {(comboTotalPrice * Math.max(1, comboQuantity || 1)).toFixed(2)}€
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+                {Array.isArray(activeCombo.steps) && activeCombo.steps.length > 0 ? (
+                  activeCombo.steps.map((step, stepIndex) => {
+                    const min = Math.max(step?.min_selections ?? 0, 0);
+                    const max = step?.max_selections ?? null;
+                    const selections = getStepSelections(step, stepIndex);
+                    const selectedCount = selections.length;
+                    return (
+                      <div
+                        key={step.id || `combo-step-${stepIndex}`}
+                        className="border border-gray-200 dark:border-gray-700 rounded-2xl p-4 bg-white dark:bg-gray-800"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              Étape {stepIndex + 1} · {step.title || `Choix ${stepIndex + 1}`}
+                            </h3>
+                            {step.description && (
+                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                {step.description}
+                              </p>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {min === max
+                              ? min === 1
+                                ? 'Choix obligatoire'
+                                : `Choisir exactement ${min} options`
+                              : [
+                                  min > 0 ? `Min ${min}` : 'Optionnel',
+                                  max ? `· Max ${max}` : null
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                          {Array.isArray(step.options) && step.options.length > 0 ? (
+                            step.options
+                              .filter(option => option && option.disponible !== false)
+                              .map((option) => {
+                                const selected = isOptionSelected(step, option, stepIndex);
+                                const variant = getSelectedVariant(step, option, stepIndex);
+                                const optionSupplement = parseFloat(option?.prix_supplementaire || 0) || 0;
+                                return (
+                                  <div
+                                    key={option.id}
+                                    className={`border rounded-xl transition-colors ${
+                                      selected
+                                        ? 'border-orange-500 bg-orange-50 dark:bg-orange-500/10'
+                                        : 'border-gray-200 dark:border-gray-700'
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleComboOption(step, option, stepIndex)}
+                                      className="w-full text-left px-4 py-3 focus:outline-none"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="font-medium text-gray-900 dark:text-white">
+                                            {option.nom || 'Option'}
+                                          </p>
+                                          {option.description && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                              {option.description}
+                                            </p>
+                                          )}
+                                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                            {option.type === 'custom' ? 'Option personnalisée' : 'Article du menu'}
+                                          </p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                            {optionSupplement > 0 ? `+${optionSupplement.toFixed(2)}€` : 'Inclus'}
+                                          </p>
+                                          <span
+                                            className={`inline-flex items-center justify-center px-2 py-0.5 mt-2 rounded-full text-xs font-medium ${
+                                              selected
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
+                                            }`}
+                                          >
+                                            {selected ? 'Sélectionné' : 'Choisir'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </button>
+
+                                    {selected && option.variants && option.variants.length > 0 && (
+                                      <div className="px-4 pb-4 pt-0 space-y-2">
+                                        <p className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">
+                                          Variantes disponibles
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {option.variants
+                                            .filter(variantOption => variantOption.disponible !== false)
+                                            .map((variantOption) => {
+                                              const isActiveVariant = variant?.id === variantOption.id;
+                                              const variantPrice = parseFloat(variantOption.prix_supplementaire || 0) || 0;
+                                              return (
+                                                <button
+                                                  type="button"
+                                                  key={variantOption.id}
+                                                  onClick={() => handleVariantChange(step, option, variantOption, stepIndex)}
+                                                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                                    isActiveVariant
+                                                      ? 'border-orange-500 bg-orange-500 text-white'
+                                                      : 'border-gray-300 text-gray-700 hover:border-orange-400 dark:border-gray-600 dark:text-gray-200'
+                                                  }`}
+                                                >
+                                                  {variantOption.nom}
+                                                  {variantPrice > 0 && ` (+${variantPrice.toFixed(2)}€)`}
+                                                </button>
+                                              );
+                                            })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })
+                          ) : (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Aucune option disponible pour cette étape.
+                            </p>
+                          )}
+
+                          {min > 0 && selectedCount < min && (
+                            <p className="text-xs text-red-500 dark:text-red-400">
+                              Il manque {min - selectedCount} sélection{min - selectedCount > 1 ? 's' : ''} pour cette étape.
+                            </p>
+                          )}
+                          {max && selectedCount > max && (
+                            <p className="text-xs text-red-500 dark:text-red-400">
+                              Vous avez dépassé le nombre maximum d'options pour cette étape.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    Ce menu composé ne contient pas encore d'étapes configurées.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {(comboTotalPrice * Math.max(1, comboQuantity || 1)).toFixed(2)}€
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={closeComboModal}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddComboToCart}
+                    disabled={!comboValidation.isValid}
+                    className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-white transition-colors ${
+                      comboValidation.isValid
+                        ? 'bg-orange-500 hover:bg-orange-600'
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Ajouter au panier
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )}
+
         {showCartModal && (
           <Modal onClose={() => setShowCartModal(false)}>
             <h2 className="text-xl font-bold mb-4">Récapitulatif de votre commande</h2>

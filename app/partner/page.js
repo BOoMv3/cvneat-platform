@@ -1375,10 +1375,20 @@ export default function PartnerDashboard() {
 
   const buildComboPayload = () => {
     const stepsPayload = comboForm.steps.map((step, stepIndex) => {
-      const min = Math.max(0, parseInt(step.min_selections, 10) || 0);
+      let min = parseInt(step.min_selections, 10);
+      if (Number.isNaN(min) || min < 0) {
+        min = 0;
+      }
+
       let max = parseInt(step.max_selections, 10);
-      if (Number.isNaN(max) || max < min || max < 1) {
-        max = Math.max(1, min || 1);
+      if (Number.isNaN(max)) {
+        max = min === 0 ? 0 : Math.max(min, 1);
+      }
+      if (max < 0) {
+        max = 0;
+      }
+      if (max < min) {
+        max = min;
       }
 
       return {

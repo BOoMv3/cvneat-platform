@@ -116,10 +116,11 @@ export const sanitizeComboPayload = (payload = {}) => {
     const maxRaw = step.max_selections ?? step.max ?? 1;
 
     const min = Math.max(0, parseInteger(minRaw, 1));
-    let max = parseInteger(maxRaw, min || 1);
-    if (max < 1) {
-      max = Math.max(1, min || 1);
-    }
+    let max = parseInteger(
+      maxRaw,
+      min === 0 ? 0 : Math.max(min, 1)
+    );
+    max = Math.max(0, max);
     if (max < min) {
       max = min;
     }
