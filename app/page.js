@@ -562,11 +562,20 @@ export default function Home() {
     };
 
     return uniqueRestaurants.sort((a, b) => {
+      const statusA = restaurantsOpenStatus[a.id] || {};
+      const statusB = restaurantsOpenStatus[b.id] || {};
+      const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
+      const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
+
+      if (isOpenA !== isOpenB) {
+        return isOpenA ? -1 : 1;
+      }
+
       const boostDiff = boostOrder(a) - boostOrder(b);
       if (boostDiff !== 0) return boostDiff;
       return 0;
     });
-  }, [finalRestaurants]);
+  }, [finalRestaurants, restaurantsOpenStatus]);
 
   if (!isClient) {
     return null;
