@@ -281,18 +281,26 @@ const enrichCombos = async (combos) => {
 
   let baseIngredientsData = [];
   if (optionIds.length > 0) {
-    const { data: baseIngredients, error: baseIngredientsError } = await supabase
-      .from('menu_combo_option_base_ingredients')
-      .select('*')
-      .in('option_id', optionIds)
-      .order('ordre', { ascending: true })
-      .order('created_at', { ascending: true });
+    try {
+      const { data: baseIngredients, error: baseIngredientsError } = await supabase
+        .from('menu_combo_option_base_ingredients')
+        .select('*')
+        .in('option_id', optionIds)
+        .order('ordre', { ascending: true })
+        .order('created_at', { ascending: true });
 
-    if (baseIngredientsError) {
-      throw new ComboApiError('Erreur lors de la récupération des ingrédients de base du menu composé', 500, baseIngredientsError);
+      if (baseIngredientsError) {
+        throw baseIngredientsError;
+      }
+
+      baseIngredientsData = baseIngredients || [];
+    } catch (baseIngredientsError) {
+      if (baseIngredientsError?.code === '42P01') {
+        baseIngredientsData = [];
+      } else {
+        throw new ComboApiError('Erreur lors de la récupération des ingrédients de base du menu composé', 500, baseIngredientsError);
+      }
     }
-
-    baseIngredientsData = baseIngredients || [];
   }
 
   const variantsByOption = variantsData.reduce((acc, variant) => {
