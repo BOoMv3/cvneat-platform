@@ -35,6 +35,72 @@ function getServiceClient() {
   return cachedServiceClient;
 }
 
+function extractNameParts(name = '') {
+  if (!name || typeof name !== 'string') {
+    return { firstName: 'Client', lastName: 'CVNEAT' };
+  }
+
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0] || 'Client', lastName: 'CVNEAT' };
+  }
+
+  const firstName = parts.shift() || 'Client';
+  const lastName = parts.join(' ') || 'CVNEAT';
+  return { firstName, lastName };
+}
+
+async function ensureUserProfile(serviceClient, user, fallback = {}) {
+  try {
+    const { data: existingUser, error: selectError } = await serviceClient
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.warn('⚠️ Impossible de vérifier le profil utilisateur:', selectError);
+    }
+
+    if (existingUser) {
+      return;
+    }
+
+    const metadata = user.user_metadata || {};
+    const { firstName, lastName } = extractNameParts(
+      fallback.name || metadata.prenom || metadata.full_name || metadata.name
+    );
+
+    const payload = {
+      id: user.id,
+      email: (user.email || fallback.email || '').toLowerCase(),
+      nom: fallback.nom || metadata.nom || lastName || 'CVNEAT',
+      prenom: fallback.prenom || metadata.prenom || firstName || 'Client',
+      telephone: fallback.telephone || metadata.telephone || user.phone || '0000000000',
+      adresse: fallback.address || metadata.adresse || 'Adresse à compléter',
+      code_postal: fallback.postalCode || metadata.code_postal || '00000',
+      ville: fallback.city || metadata.ville || 'Ville à compléter',
+      role: fallback.role || metadata.role || 'customer',
+    };
+
+    if (!payload.email) {
+      payload.email = `${user.id}@placeholder.cvneat`;
+    }
+
+    const { error: upsertError } = await serviceClient
+      .from('users')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (upsertError) {
+      console.error('❌ Impossible de créer le profil utilisateur manquant:', upsertError);
+    } else {
+      console.log('✅ Profil utilisateur créé automatiquement pour', payload.email);
+    }
+  } catch (profileError) {
+    console.error('❌ Erreur ensureUserProfile:', profileError);
+  }
+}
+
 // GET /api/users/addresses - Récupérer les adresses de l'utilisateur
 export async function GET(request) {
   try {
@@ -101,6 +167,15 @@ export async function POST(request) {
     if (!address || !city || !normalizedPostalCode) {
       return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
+
+    await ensureUserProfile(serviceClient, user, {
+      name,
+      address,
+      city,
+      postalCode: normalizedPostalCode,
+      email: user.email,
+    });
+
     // Si is_default, mettre toutes les autres adresses à false
     if (is_default) {
       await serviceClient
@@ -177,6 +252,15 @@ export async function PUT(request) {
     if (!id || !address || !city || !normalizedPostalCode) {
       return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
+
+  await ensureUserProfile(serviceClient, user, {
+    name,
+    address,
+    city,
+    postalCode: normalizedPostalCode,
+    email: user.email,
+  });
+
     // Si is_default, mettre toutes les autres adresses à false
     if (is_default) {
       await serviceClient
