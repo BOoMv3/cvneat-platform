@@ -3,6 +3,13 @@ import { supabase } from '../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
+const isComboItem = (item) => {
+  if (!item) return false;
+  if (item.type === 'combo') return true;
+  if (typeof item.id === 'string' && item.id.startsWith('combo-')) return true;
+  return false;
+};
+
 // GET /api/orders - Récupérer les commandes de l'utilisateur
 export async function GET(request) {
   try {
@@ -175,7 +182,7 @@ export async function POST(request) {
     const body = await request.json();
     console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
-    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount } = body;
+    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo } = body;
 
     // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
     console.log('🔍 Validation simplifiée de la commande...');
@@ -251,6 +258,11 @@ export async function POST(request) {
     // Verifier que tous les articles existent
     console.log('Verification des articles...');
     for (const item of items) {
+      if (isComboItem(item)) {
+        console.log('Article combo détecté, validation spécifique ignorée pour ID:', item.id);
+        continue;
+      }
+
       console.log('Verification article ID:', item.id);
       const { data: menuItem, error: menuError } = await supabase
         .from('menus')
@@ -313,7 +325,29 @@ export async function POST(request) {
       statut: 'en_attente', // En attente d'acceptation par le restaurant
       security_code: securityCode // Code de sécurité pour la livraison
     };
-    
+
+    if (customerInfo) {
+      if (customerInfo.firstName) {
+        orderData.customer_first_name = sanitizeInput(customerInfo.firstName);
+      }
+      if (customerInfo.lastName) {
+        orderData.customer_last_name = sanitizeInput(customerInfo.lastName);
+      }
+      if (customerInfo.phone) {
+        orderData.customer_phone = sanitizeInput(customerInfo.phone);
+      }
+      if (customerInfo.email) {
+        orderData.customer_email = sanitizeInput(customerInfo.email);
+      }
+    }
+
+    if (paymentIntentId) {
+      orderData.stripe_payment_intent_id = paymentIntentId;
+    }
+    if (paymentStatus) {
+      orderData.payment_status = sanitizeInput(paymentStatus);
+    }
+
     // Ajouter user_id si l'utilisateur est connecté
     if (userId) {
       orderData.user_id = userId;
@@ -358,16 +392,69 @@ export async function POST(request) {
 
     // Créer les détails de commande
     console.log('Création des détails de commande...');
-    const orderDetails = items.map(item => ({
-      commande_id: order.id,
-      plat_id: item.id,
-      quantite: item.quantity,
-      prix_unitaire: item.price
-    }));
+    const orderDetailsPayload = [];
+
+    for (const item of items) {
+      const isCombo = isComboItem(item);
+      const quantity = parseInt(item?.quantity || 1, 10);
+
+      let supplementsData = [];
+      if (item?.supplements && Array.isArray(item.supplements)) {
+        supplementsData = item.supplements.map((sup) => ({
+          nom: sup.nom || sup.name || 'Supplément',
+          prix: parseFloat(sup.prix || sup.price || 0) || 0
+        }));
+      }
+
+      const customizations = {};
+      const itemCustomizations = item?.customizations || {};
+      if (Array.isArray(itemCustomizations.selectedMeats) && itemCustomizations.selectedMeats.length > 0) {
+        customizations.selectedMeats = itemCustomizations.selectedMeats;
+      }
+      if (Array.isArray(itemCustomizations.selectedSauces) && itemCustomizations.selectedSauces.length > 0) {
+        customizations.selectedSauces = itemCustomizations.selectedSauces;
+      }
+      if (Array.isArray(itemCustomizations.removedIngredients) && itemCustomizations.removedIngredients.length > 0) {
+        customizations.removedIngredients = itemCustomizations.removedIngredients;
+      }
+
+      const comboDetails = item.comboDetails || itemCustomizations.comboDetails;
+      if (isCombo && comboDetails) {
+        customizations.combo = {
+          comboId: item.comboId || (typeof item.id === 'string' ? item.id.replace('combo-', '') : null),
+          comboName: item.comboName || item.nom || 'Menu composé',
+          details: comboDetails
+        };
+      }
+
+      const itemPrice = parseFloat(item.prix || item.price || 0) || 0;
+      const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
+      const meatsPrice = (itemCustomizations.selectedMeats || []).reduce((sum, meat) => sum + (parseFloat(meat.prix || meat.price || 0) || 0), 0);
+      const saucesPrice = (itemCustomizations.selectedSauces || []).reduce((sum, sauce) => sum + (parseFloat(sauce.prix || sauce.price || 0) || 0), 0);
+      const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
+      const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
+
+      const detailEntry = {
+        commande_id: order.id,
+        plat_id: isCombo ? null : item.id,
+        quantite: quantity,
+        prix_unitaire: prixUnitaireTotal
+      };
+
+      if (supplementsData.length > 0) {
+        detailEntry.supplements = supplementsData;
+      }
+      if (Object.keys(customizations).length > 0) {
+        detailEntry.customizations = customizations;
+      }
+
+      orderDetailsPayload.push(detailEntry);
+    }
 
     const { error: detailsError } = await supabase
       .from('details_commande')
-      .insert(orderDetails);
+      .insert(orderDetailsPayload);
+
 
     if (detailsError) {
       console.error('Erreur création détails commande:', detailsError);

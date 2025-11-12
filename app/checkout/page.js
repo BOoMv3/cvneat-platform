@@ -547,7 +547,13 @@ export default function Checkout() {
         customer_first_name: customerFirstName,
         customer_last_name: customerLastName,
         customer_phone: customerPhone,
-        customer_email: customerEmail
+        customer_email: customerEmail,
+        delivery_info: {
+          address: selectedAddress.address,
+          city: selectedAddress.city,
+          postalCode: selectedAddress.postal_code,
+          instructions: orderDetails.instructions?.trim() || ''
+        }
       };
       setOrderData(orderDataToStore);
 
@@ -616,165 +622,68 @@ export default function Checkout() {
       throw new Error('Données de commande manquantes');
     }
 
-    try {
-      // Créer la commande avec le payment_intent_id
-      // Préparer les données d'insertion avec seulement les colonnes qui existent
-      const insertData = {
-        user_id: orderData.user_id,
-        restaurant_id: orderData.restaurant_id,
-        total: orderData.total,
-        frais_livraison: orderData.frais_livraison,
-        adresse_livraison: orderData.adresse_livraison,
-        statut: 'en_attente'
-      };
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
 
-      // Ajouter les colonnes optionnelles si elles existent
-      if (orderData.security_code) {
-        insertData.security_code = orderData.security_code;
+    const payload = {
+      restaurantId: orderData.restaurant_id,
+      deliveryInfo: orderData.delivery_info || {
+        address: orderData.orderDetails?.adresse || '',
+        city: orderData.orderDetails?.ville || '',
+        postalCode: orderData.orderDetails?.code_postal || '',
+        instructions: orderData.orderDetails?.instructions || ''
+      },
+      items: orderData.cart || [],
+      deliveryFee: orderData.frais_livraison || 0,
+      totalAmount: orderData.total || 0,
+      paymentIntentId: confirmedPaymentIntentId,
+      paymentStatus: 'paid',
+      customerInfo: {
+        firstName: orderData.customer_first_name,
+        lastName: orderData.customer_last_name,
+        phone: orderData.customer_phone,
+        email: orderData.customer_email
       }
-      
-      // Ajouter les colonnes Stripe (elles doivent exister - exécuter add-stripe-payment-columns.sql)
-      insertData.stripe_payment_intent_id = confirmedPaymentIntentId;
-      insertData.payment_status = 'paid';
+    };
 
-      if (orderData.customer_first_name) {
-        insertData.customer_first_name = orderData.customer_first_name;
-      }
-      if (orderData.customer_last_name) {
-        insertData.customer_last_name = orderData.customer_last_name;
-      }
-      if (orderData.customer_phone) {
-        insertData.customer_phone = orderData.customer_phone;
-      }
-      if (orderData.customer_email) {
-        insertData.customer_email = orderData.customer_email;
-      }
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    });
 
-      const { data: order, error: orderError } = await supabase
-        .from('commandes')
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (orderError) {
-        console.error('❌ Erreur création commande:', orderError);
-        // Si l'erreur concerne payment_status, informer l'utilisateur
-        if (orderError.message && orderError.message.includes('payment_status')) {
-          throw new Error('Erreur: La colonne payment_status n\'existe pas dans la base de données. Veuillez exécuter le script SQL add-stripe-payment-columns.sql dans Supabase.');
-        }
-        throw orderError;
-      }
-
-      console.log('✅ Commande créée avec succès:', order.id);
-
-      // Ajouter les détails de commande
-      for (const item of orderData.cart) {
-        let supplementsData = [];
-        if (item.supplements && Array.isArray(item.supplements)) {
-          supplementsData = item.supplements.map(sup => ({
-            nom: sup.nom || sup.name || 'Supplément',
-            prix: parseFloat(sup.prix || sup.price || 0) || 0
-          }));
-        }
-
-        // Récupérer les customizations (viandes, sauces, ingrédients retirés)
-        const customizations = item.customizations || {};
-        const selectedMeats = customizations.selectedMeats || [];
-        const selectedSauces = customizations.selectedSauces || [];
-        const removedIngredients = customizations.removedIngredients || [];
-
-        // Calculer le prix total avec toutes les options
-        const itemPrice = parseFloat(item.prix || item.price || 0);
-        const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
-        
-        // Ajouter le prix des viandes sélectionnées
-        const meatsPrice = selectedMeats.reduce((sum, meat) => sum + (parseFloat(meat.prix || meat.price || 0) || 0), 0);
-        
-        // Ajouter le prix des sauces sélectionnées
-        const saucesPrice = selectedSauces.reduce((sum, sauce) => sum + (parseFloat(sauce.prix || sauce.price || 0) || 0), 0);
-        
-        const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-        const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
-
-        const insertData = {
-          commande_id: order.id,
-          plat_id: item.id,
-          quantite: item.quantity || 1,
-          prix_unitaire: prixUnitaireTotal
-        };
-        
-        if (supplementsData.length > 0) {
-          insertData.supplements = supplementsData;
-        }
-
-        // Ajouter les customizations dans un champ JSONB
-        const customizationData = {};
-        if (selectedMeats.length > 0) {
-          customizationData.selectedMeats = selectedMeats;
-        }
-        if (selectedSauces.length > 0) {
-          customizationData.selectedSauces = selectedSauces;
-        }
-        if (removedIngredients.length > 0) {
-          customizationData.removedIngredients = removedIngredients;
-        }
-
-        if (Object.keys(customizationData).length > 0) {
-          insertData.customizations = customizationData;
-        }
-        
-        const { error: detailError } = await supabase
-          .from('details_commande')
-          .insert(insertData);
-
-        if (detailError) {
-          console.error('❌ Erreur détail commande:', detailError);
-          throw new Error(`Erreur lors de l'ajout des détails de commande: ${detailError.message}`);
-        }
-      }
-
-      // Notifier le restaurant
-      try {
-        await fetch('/api/partner/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            restaurantId: orderData.restaurant_id,
-            type: 'new_order',
-            message: `Nouvelle commande #${order.id} - ${(orderData.total + orderData.frais_livraison).toFixed(2)}€`,
-            orderId: order.id
-          })
-        });
-      } catch (notificationError) {
-        console.warn('⚠️ Erreur notification (non bloquante):', notificationError);
-      }
-
-      // Vider le panier
-      safeLocalStorage.removeItem('cart');
-      setCart([]);
-
-      // Rediriger vers la page de suivi (méthode robuste pour mobile)
-      const redirectUrl = `/track-order?orderId=${order.id}`;
-      setTimeout(() => {
-        try {
-          // Essayer d'abord avec replace
-          window.location.replace(redirectUrl);
-        } catch (e) {
-          // Fallback pour mobile
-          try {
-            window.location.href = redirectUrl;
-          } catch (e2) {
-            // Dernier recours
-            router.push(redirectUrl);
-          }
-        }
-      }, 500);
-
-      return order;
-    } catch (error) {
-      console.error('❌ Erreur création commande après paiement:', error);
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erreur lors de la création de la commande' }));
+      throw new Error(errorData.error || 'Erreur lors de la création de la commande');
     }
+
+    const result = await response.json();
+    const orderId = result.orderId || result.order?.id;
+    if (!orderId) {
+      throw new Error('Commande créée mais identifiant introuvable');
+    }
+
+    // Nettoyer le panier après la création de la commande
+    safeLocalStorage.removeItem('cart');
+
+    // Rediriger vers la page de confirmation
+    const redirectUrl = `/order-confirmation/${orderId}`;
+    setTimeout(() => {
+      try {
+        window.location.replace(redirectUrl);
+      } catch (e) {
+        try {
+          window.location.href = redirectUrl;
+        } catch (e2) {
+          router.push(redirectUrl);
+        }
+      }
+    }, 500);
+
+    return result;
   };
 
   // Gestionnaires pour le formulaire de paiement
