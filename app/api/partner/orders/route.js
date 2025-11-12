@@ -32,11 +32,11 @@ async function getUserFromRequest(request) {
     }
 
     // Vérifier le rôle dans la table users
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     console.log('🔍 DEBUG getUserFromRequest - UserData:', userData);
     console.log('🔍 DEBUG getUserFromRequest - UserError:', userError);
@@ -66,7 +66,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide ou expiré' }, { status: 401 });
     }
 
-    if (user.role !== 'restaurant') {
+    if (!['restaurant', 'partner'].includes(user.role)) {
       return NextResponse.json({ error: 'Accès non autorisé - Rôle restaurant requis' }, { status: 403 });
     }
 
@@ -141,7 +141,7 @@ export async function GET(request) {
             )
           )
         `)
-        .eq('restaurant_id', restaurantId)
+      .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });
 
       ordersError = ordersErrorData;
@@ -186,20 +186,76 @@ export async function GET(request) {
     }
 
     console.log('✅ Commandes trouvées:', orders?.length || 0);
+
+    const formattedOrders = (orders || []).map(order => {
+      const subtotal = parseFloat(order.total || 0) || 0;
+      const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+      const totalAmount = subtotal + deliveryFee;
+
+      const orderItems = (order.details_commande || []).map(detail => {
+        let supplements = [];
+        if (detail.supplements) {
+          if (typeof detail.supplements === 'string') {
+            try {
+              supplements = JSON.parse(detail.supplements);
+            } catch {
+              supplements = [];
+            }
+          } else if (Array.isArray(detail.supplements)) {
+            supplements = detail.supplements;
+          }
+        }
+
+        let customizations = {};
+        if (detail.customizations) {
+          if (typeof detail.customizations === 'string') {
+            try {
+              customizations = JSON.parse(detail.customizations);
+            } catch {
+              customizations = {};
+            }
+          } else if (typeof detail.customizations === 'object') {
+            customizations = detail.customizations;
+          }
+        }
+
+        return {
+          id: detail.id,
+          plat_id: detail.plat_id,
+          name: detail.menus?.nom || 'Article',
+          quantity: detail.quantite || 0,
+          price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
+          supplements,
+          customizations
+        };
+      });
+
+      const customerFirstName = order.customer_first_name || order.users?.prenom || '';
+      const customerLastName = order.customer_last_name || order.users?.nom || '';
+      const customerPhone = order.customer_phone || order.users?.telephone || '';
+      const customerEmail = order.customer_email || order.users?.email || '';
+
+      return {
+        ...order,
+        subtotal,
+        delivery_fee: deliveryFee,
+        total_amount: totalAmount,
+        total: subtotal,
+        order_items: orderItems,
+        customer_first_name: customerFirstName,
+        customer_last_name: customerLastName,
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+        customer: {
+          firstName: customerFirstName,
+          lastName: customerLastName,
+          phone: customerPhone,
+          email: customerEmail
+        }
+      };
+    });
     
-    // DEBUG: Afficher les statuts des commandes retournées par l'API
-    if (orders && orders.length > 0) {
-      console.log('🔍 DEBUG API - Statuts des commandes retournées:', 
-        orders.map(o => ({
-          id: o.id?.slice(0, 8),
-          statut: o.statut,
-          statut_type: typeof o.statut,
-          statut_raw: JSON.stringify(o.statut)
-        }))
-      );
-    }
-    
-    return NextResponse.json(Array.isArray(orders) ? orders : []);
+    return NextResponse.json(formattedOrders);
 
   } catch (error) {
     console.error('Erreur API (orders partner):', error);
@@ -215,7 +271,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    if (user.role !== 'restaurant') {
+    if (!['restaurant', 'partner'].includes(user.role)) {
       return NextResponse.json({ error: 'Accès refusé - Rôle restaurant requis' }, { status: 403 });
     }
 

@@ -27,6 +27,49 @@ export default function PartnerOrders() {
     fetchOrders();
   }, []);
 
+  const getCustomerName = (order) => {
+    const firstName = order?.customer?.firstName || order?.customer_first_name || order?.users?.prenom || '';
+    const lastName = order?.customer?.lastName || order?.customer_last_name || order?.users?.nom || '';
+    const full = `${firstName} ${lastName}`.trim();
+    if (full) return full;
+    return order?.customer?.email || order?.customer_email || order?.users?.email || 'Client';
+  };
+
+  const getCustomerPhone = (order) => {
+    return order?.customer?.phone || order?.customer_phone || order?.users?.telephone || '';
+  };
+
+  const getCustomerEmail = (order) => {
+    return order?.customer?.email || order?.customer_email || order?.users?.email || '';
+  };
+
+  const getSubtotal = (order) => {
+    if (typeof order?.subtotal === 'number') return order.subtotal;
+    if (typeof order?.total === 'number') return order.total;
+    return Number(order?.total_amount ?? 0);
+  };
+
+  const getDeliveryFee = (order) => {
+    return Number(order?.delivery_fee ?? order?.frais_livraison ?? 0);
+  };
+
+  const getTotalAmount = (order) => {
+    if (typeof order?.total_amount === 'number') return order.total_amount;
+    return getSubtotal(order) + getDeliveryFee(order);
+  };
+
+  const getOrderItems = (order) => {
+    if (Array.isArray(order?.order_items) && order.order_items.length > 0) {
+      return order.order_items;
+    }
+    return (order?.details_commande || []).map(detail => ({
+      id: detail.id,
+      name: detail.menus?.nom || detail.name || 'Article',
+      quantity: detail.quantite || detail.quantity || 0,
+      price: Number(detail.prix_unitaire || detail.price || detail.menus?.prix || 0)
+    }));
+  };
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -179,8 +222,14 @@ export default function PartnerOrders() {
                         {new Date(order.created_at).toLocaleString('fr-FR')}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Client: {order.users?.nom} {order.users?.prenom}
+                        Client: {getCustomerName(order)}
                       </p>
+                      {getCustomerPhone(order) && (
+                        <p className="text-sm text-gray-600">Téléphone: {getCustomerPhone(order)}</p>
+                      )}
+                      {getCustomerEmail(order) && (
+                        <p className="text-sm text-gray-600">Email: {getCustomerEmail(order)}</p>
+                      )}
                     </div>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statut)}`}>
                       {getStatusText(order.statut)}
@@ -190,7 +239,7 @@ export default function PartnerOrders() {
                   <div className="mb-4">
                     <h4 className="font-medium mb-2">Articles commandés :</h4>
                     <div className="space-y-2">
-                      {order.order_items?.map((item) => (
+                      {getOrderItems(order).map((item) => (
                         <div key={item.id} className="flex justify-between text-sm">
                           <span>{item.quantity}x {item.name}</span>
                           <span>{(item.price * item.quantity).toFixed(2)}€</span>
@@ -201,7 +250,7 @@ export default function PartnerOrders() {
 
                   <div className="flex justify-between items-center">
                     <div className="text-lg font-bold">
-                      Total: {order.total_amount?.toFixed(2)}€
+                      Total: {getTotalAmount(order).toFixed(2)}€
                     </div>
                     <div className="flex gap-2">
                       <button
