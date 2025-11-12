@@ -80,11 +80,18 @@ export default function PartnerDashboard() {
   });
   const [menuForm, setMenuForm] = useState(createDefaultMenuForm());
   const [editingMenu, setEditingMenu] = useState(null);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [preparationTime, setPreparationTime] = useState(15);
-  const [showPreparationModal, setShowPreparationModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [acceptingOrder, setAcceptingOrder] = useState(false);
+  const [rejectingOrder, setRejectingOrder] = useState(false);
+  const [timeEstimation, setTimeEstimation] = useState({
+    preparationTime: 15,
+    deliveryTime: 20,
+    estimatedTotalTime: 35
+  });
+
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
   const router = useRouter();
 
@@ -693,44 +700,13 @@ export default function PartnerDashboard() {
 
   const updateOrderStatus = async (orderId, status, prepTime = null, reason = null) => {
     try {
-      // Si on accepte la commande, prepTime doit être fourni
-      if (status === 'acceptee' && !prepTime) {
-        // Ouvrir le modal pour sélectionner le temps de préparation
-        setSelectedOrderId(orderId);
-        setPreparationTime(15);
-        setShowPreparationModal(true);
-        return;
-      }
-
-      // Si on refuse la commande, ouvrir le modal pour saisir la raison
-      if (status === 'refusee' && !reason) {
-        setSelectedOrderId(orderId);
-        setRejectionReason('');
-        setShowRejectionModal(true);
-        return;
-      }
-
-      const updateData = {
-        status: status
-      };
-
-      // Si un temps de préparation est fourni, l'inclure dans la requête
-      if (prepTime !== null && prepTime > 0) {
-        updateData.preparation_time = prepTime;
-      }
-
-      console.log('🔄 Mise à jour commande:', { orderId, status, reason });
-      
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!session?.access_token) {
         console.error('❌ Aucune session trouvée');
+        router.push('/login');
         return;
       }
-      
-      const token = session.access_token;
-      console.log('🔑 Token présent:', token ? 'Oui' : 'Non');
-      
-      // Préparer le body avec status, preparation_time et reason si fournis
+
       const requestBody = { status };
       if (prepTime !== null && prepTime > 0) {
         requestBody.preparation_time = prepTime;
@@ -739,53 +715,152 @@ export default function PartnerDashboard() {
         requestBody.reason = reason.trim();
       }
 
-      // Utiliser l'API correcte pour mettre à jour le statut
       const response = await fetch(`/api/restaurants/orders/${orderId}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(requestBody)
       });
 
-      console.log('📤 Réponse API:', response.status, response.statusText);
-      
-      if (response.ok) {
-        const responseData = await response.json().catch(() => null);
-        console.log('✅ Commande mise à jour avec succès');
-        console.log('📋 Données retournées par l\'API:', JSON.stringify(responseData, null, 2));
-        
-        // Vérifier le statut retourné par l'API
-        if (responseData && responseData.order) {
-          console.log('🔍 Statut dans la réponse API:', {
-            orderId: responseData.order.id,
-            statut: responseData.order.statut,
-            ready_for_delivery: responseData.order.ready_for_delivery,
-            original_status_sent: status
-          });
-        }
-        
-        // Recharger les données de manière sécurisée avec un petit délai pour laisser la base se mettre à jour
-        try {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Augmenter le délai à 1 seconde
-          await fetchOrders(restaurant?.id);
-          if (restaurant?.id) {
-            await fetchDashboardData(restaurant.id);
-          }
-        } catch (refreshError) {
-          console.error('⚠️ Erreur lors du rafraîchissement:', refreshError);
-          // Ne pas bloquer l'utilisateur, juste loguer l'erreur
-        }
-      } else {
+      if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
-        console.error('❌ Erreur API:', errorData);
-        alert(`Erreur: ${errorData.error || 'Impossible de mettre à jour la commande'}`);
+        throw new Error(errorData.error || 'Impossible de mettre à jour la commande');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await fetchOrders(restaurant?.id);
+      if (restaurant?.id) {
+        await fetchDashboardData(restaurant.id);
       }
     } catch (error) {
       console.error('❌ Erreur mise à jour commande:', error);
       alert(`Erreur: ${error.message || 'Impossible de mettre à jour la commande'}`);
     }
+  };
+
+  const openAcceptModal = (order) => {
+    setSelectedOrder(order);
+    const preparation = order?.preparation_time || 15;
+    const delivery = 20;
+    setTimeEstimation({
+      preparationTime: preparation,
+      deliveryTime: delivery,
+      estimatedTotalTime: preparation + delivery
+    });
+    setShowAcceptModal(true);
+  };
+
+  const openRejectModal = (order) => {
+    setSelectedOrder(order);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const handleAcceptOrderSubmit = async () => {
+    if (!selectedOrder) return;
+    try {
+      setAcceptingOrder(true);
+      await updateOrderStatus(
+        selectedOrder.id,
+        'acceptee',
+        Number(timeEstimation.preparationTime) || 15
+      );
+      setShowAcceptModal(false);
+      setSelectedOrder(null);
+    } catch (error) {
+      console.error('❌ Erreur acceptation commande:', error);
+      alert(`Erreur: ${error.message || 'Impossible d\'accepter la commande'}`);
+    } finally {
+      setAcceptingOrder(false);
+    }
+  };
+
+  const handleRejectOrderSubmit = async () => {
+    if (!selectedOrder) return;
+    try {
+      setRejectingOrder(true);
+      await updateOrderStatus(
+        selectedOrder.id,
+        'refusee',
+        null,
+        rejectReason
+      );
+      setShowRejectModal(false);
+      setRejectReason('');
+      setSelectedOrder(null);
+    } catch (error) {
+      console.error('❌ Erreur refus commande:', error);
+      alert(`Erreur: ${error.message || 'Impossible de refuser la commande'}`);
+    } finally {
+      setRejectingOrder(false);
+    }
+  };
+
+  const handleTimeEstimationChange = (field, value) => {
+    const parsed = Math.max(0, parseInt(value, 10) || 0);
+    setTimeEstimation(prev => {
+      const next = {
+        ...prev,
+        [field]: parsed
+      };
+      next.estimatedTotalTime = (field === 'preparationTime' ? parsed : next.preparationTime) +
+        (field === 'deliveryTime' ? parsed : next.deliveryTime);
+      return next;
+    });
+  };
+
+  const getCustomerName = (order) => {
+    const firstName = order?.customer_first_name || order?.customer?.firstName || order?.users?.prenom || '';
+    const lastName = order?.customer_last_name || order?.customer?.lastName || order?.users?.nom || '';
+    const full = `${firstName} ${lastName}`.trim();
+    if (full) return full;
+    return order?.customer_email || order?.customer?.email || order?.users?.email || 'Client';
+  };
+
+  const getCustomerPhone = (order) => {
+    return order?.customer_phone || order?.customer?.phone || order?.users?.telephone || '';
+  };
+
+  const getCustomerEmail = (order) => {
+    return order?.customer_email || order?.customer?.email || order?.users?.email || '';
+  };
+
+  const getOrderItems = (order) => {
+    if (Array.isArray(order?.order_items) && order.order_items.length > 0) {
+      return order.order_items;
+    }
+    if (Array.isArray(order?.details_commande) && order.details_commande.length > 0) {
+      return order.details_commande.map(detail => ({
+        id: detail.id,
+        name: detail.menus?.nom || detail.name || 'Article',
+        quantity: detail.quantite || detail.quantity || 0,
+        price: Number(detail.prix_unitaire || detail.price || detail.menus?.prix || 0)
+      }));
+    }
+    return [];
+  };
+
+  const getSubtotal = (order) => {
+    if (typeof order?.subtotal === 'number') return order.subtotal;
+    if (typeof order?.total === 'number') return order.total;
+    if (Array.isArray(order?.order_items) && order.order_items.length > 0) {
+      return order.order_items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
+    }
+    if (Array.isArray(order?.details_commande)) {
+      return order.details_commande.reduce((sum, detail) => sum + (Number(detail.prix_unitaire || 0) * Number(detail.quantite || 0)), 0);
+    }
+    return Number(order?.total_amount ?? 0);
+  };
+
+  const getDeliveryFee = (order) => {
+    return Number(order?.delivery_fee ?? order?.frais_livraison ?? 0);
+  };
+
+  const getTotalAmount = (order) => {
+    if (typeof order?.total_amount === 'number') return order.total_amount;
+    return getSubtotal(order) + getDeliveryFee(order);
   };
 
   const addSupplement = () => {
@@ -1886,7 +1961,10 @@ export default function PartnerDashboard() {
                             {order.statut}
                           </span>
                           <button
-                            onClick={() => updateOrderStatus(order.id, 'accepted')}
+                            onClick={() => {
+                              const fullOrder = orders.find(o => o.id === order.id) || order;
+                              openAcceptModal(fullOrder);
+                            }}
                             className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                           >
                             <FaCheck className="h-4 w-4" />
@@ -1896,6 +1974,115 @@ export default function PartnerDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+        {showAcceptModal && selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-3">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Accepter la commande</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Indiquez le temps de préparation estimé pour cette commande.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Temps de préparation (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="90"
+                    value={timeEstimation.preparationTime}
+                    onChange={(e) => handleTimeEstimationChange('preparationTime', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Temps de livraison estimé (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="60"
+                    value={timeEstimation.deliveryTime}
+                    onChange={(e) => handleTimeEstimationChange('deliveryTime', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-sm text-blue-900 font-medium flex justify-between">
+                    Temps total estimé
+                    <span>{timeEstimation.estimatedTotalTime} minutes</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowAcceptModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleAcceptOrderSubmit}
+                  disabled={acceptingOrder}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {acceptingOrder ? 'Acceptation...' : 'Accepter'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRejectModal && selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-3">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Refuser la commande</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Indiquez la raison du refus (visible par le client).
+                </p>
+              </div>
+
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Exemple : Rupture de stock, restaurant fermé..."
+              />
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectReason('');
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleRejectOrderSubmit}
+                  disabled={rejectingOrder}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {rejectingOrder ? 'Refus...' : 'Refuser'}
+                </button>
               </div>
             </div>
           </div>
@@ -2202,17 +2389,13 @@ export default function PartnerDashboard() {
                                 {order.statut === 'en_attente' && (
                                   <>
                                     <button
-                                      onClick={() => updateOrderStatus(order.id, 'acceptee')}
+                                      onClick={() => openAcceptModal(order)}
                                       className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors"
                                     >
                                       Accepter
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        setSelectedOrderId(order.id);
-                                        setRejectionReason('');
-                                        setShowRejectionModal(true);
-                                      }}
+                                      onClick={() => openRejectModal(order)}
                                       className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors"
                                     >
                                       Refuser
