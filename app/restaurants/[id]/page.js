@@ -791,8 +791,14 @@ export default function RestaurantDetail({ params }) {
       const key = getStepKey(step, index);
       const selections = comboSelections[key]?.options || [];
       const count = selections.length;
-      const min = Math.max(step?.min_selections ?? 0, 0);
-      const max = step?.max_selections ?? null;
+      const rawMin = step?.min_selections;
+      const rawMax = step?.max_selections;
+      const min = Math.max(parseInt(rawMin, 10) || 0, 0);
+      const max = rawMax === null || rawMax === undefined ? null : Math.max(parseInt(rawMax, 10) || 0, 0);
+
+      if (min === 0 && (max === 0 || max === null)) {
+        return;
+      }
 
       if (count < min) {
         errors.push(
@@ -800,7 +806,7 @@ export default function RestaurantDetail({ params }) {
         );
       }
 
-      if (max && count > max) {
+      if (max !== null && count > max) {
         errors.push(
           `Vous ne pouvez sélectionner que ${max} option${max > 1 ? 's' : ''} pour ${step.title || `l'étape ${index + 1}`}`
         );
@@ -808,7 +814,7 @@ export default function RestaurantDetail({ params }) {
 
       selections.forEach((selection) => {
         if (selection.option?.variants?.length && selection.variantId === null) {
-          errors.push(`Choisissez une variante pour ${selection.option?.nom || 'l\'option sélectionnée'}`);
+          errors.push(`Choisissez une variante pour ${selection.option?.nom || 'l'option sélectionnée'}`);
         }
       });
     });

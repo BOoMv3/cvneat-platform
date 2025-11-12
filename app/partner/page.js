@@ -369,8 +369,12 @@ export default function PartnerDashboard() {
             steps: Array.isArray(combo?.steps)
               ? combo.steps.map((step) => ({
                   ...step,
-                  min_selections: step?.min_selections ?? 1,
-                  max_selections: step?.max_selections ?? Math.max(1, step?.min_selections ?? 1),
+                  min_selections: step?.min_selections !== undefined && step?.min_selections !== null
+                    ? step.min_selections
+                    : 0,
+                  max_selections: step?.max_selections !== undefined && step?.max_selections !== null
+                    ? step.max_selections
+                    : (step?.min_selections === 0 ? 0 : Math.max(1, step?.min_selections ?? 1)),
                   options: Array.isArray(step?.options)
                     ? step.options.map((option) => ({
                         ...option,
@@ -386,17 +390,17 @@ export default function PartnerDashboard() {
                                   ? parseFloat(variant.prix_supplementaire)
                                   : 0
                             }))
-                        : [],
-                      base_ingredients: Array.isArray(option?.base_ingredients)
-                        ? option.base_ingredients.map((ingredient) => ({
-                            ...ingredient,
-                            prix_supplementaire:
-                              ingredient?.prix_supplementaire !== undefined && ingredient?.prix_supplementaire !== null
-                                ? parseFloat(ingredient.prix_supplementaire)
-                                : 0,
-                            removable: ingredient?.removable !== false
-                          }))
-                        : []
+                          : [],
+                        base_ingredients: Array.isArray(option?.base_ingredients)
+                          ? option.base_ingredients.map((ingredient) => ({
+                              ...ingredient,
+                              prix_supplementaire:
+                                ingredient?.prix_supplementaire !== undefined && ingredient?.prix_supplementaire !== null
+                                  ? parseFloat(ingredient.prix_supplementaire)
+                                  : 0,
+                              removable: ingredient?.removable !== false
+                            }))
+                          : []
                       }))
                     : []
                 }))
@@ -1121,57 +1125,66 @@ export default function PartnerDashboard() {
         actif: combo.actif !== false,
         ordre_affichage: combo.ordre_affichage ?? 0,
         steps: Array.isArray(combo.steps) && combo.steps.length > 0
-          ? combo.steps.map((step, stepIndex) => ({
-              title: step.title || `Étape ${stepIndex + 1}`,
-              description: step.description || '',
-              min_selections: step.min_selections ?? 1,
-              max_selections: step.max_selections ?? Math.max(1, step.min_selections ?? 1),
-              options: Array.isArray(step.options) && step.options.length > 0
-                ? step.options.map((option, optionIndex) => ({
-                    ...option,
-                    prix_supplementaire:
-                      option?.prix_supplementaire !== undefined && option?.prix_supplementaire !== null
-                        ? option.prix_supplementaire.toString()
-                        : '',
-                    image_url: option.image_url || '',
-                    disponible: option.disponible !== false,
-                    variants: Array.isArray(option.variants)
-                      ? option.variants.map((variant, variantIndex) => ({
-                          nom: variant.nom || `Variante ${variantIndex + 1}`,
-                          description: variant.description || '',
-                          prix_supplementaire:
-                            variant.prix_supplementaire !== undefined && variant.prix_supplementaire !== null
-                              ? variant.prix_supplementaire.toString()
-                              : '',
-                          is_default: variant.is_default === true,
-                          disponible: variant.disponible !== false
-                        }))
-                      : [],
-                    base_ingredients: Array.isArray(option.base_ingredients)
-                      ? option.base_ingredients.map((ingredient, ingredientIndex) => ({
-                          id: ingredient.id || `ing-${option.id || optionIndex}-${ingredientIndex}`,
-                          nom: ingredient.nom || '',
-                          removable: ingredient.removable !== false,
-                          prix_supplementaire:
-                            ingredient?.prix_supplementaire !== undefined && ingredient?.prix_supplementaire !== null
-                              ? ingredient.prix_supplementaire.toString()
-                              : '',
-                          ordre: ingredient.ordre ?? ingredientIndex
-                        }))
-                      : []
-                  }))
-                : [{
-                    type: 'link_to_item',
-                    linked_menu_id: '',
-                    nom: '',
-                    description: '',
-                    prix_supplementaire: '',
-                    image_url: '',
-                    disponible: true,
-                    variants: [],
-                    base_ingredients: []
-                  }]
-            }))
+          ? combo.steps.map((step, stepIndex) => {
+              const rawMin = step.min_selections;
+              const rawMax = step.max_selections;
+              const sanitizedMin = rawMin !== undefined && rawMin !== null ? rawMin : 0;
+              const sanitizedMax = rawMax !== undefined && rawMax !== null
+                ? rawMax
+                : (sanitizedMin === 0 ? 0 : Math.max(1, sanitizedMin));
+
+              return {
+                title: step.title || `Étape ${stepIndex + 1}`,
+                description: step.description || '',
+                min_selections: sanitizedMin.toString(),
+                max_selections: sanitizedMax.toString(),
+                options: Array.isArray(step.options) && step.options.length > 0
+                  ? step.options.map((option, optionIndex) => ({
+                      ...option,
+                      prix_supplementaire:
+                        option?.prix_supplementaire !== undefined && option?.prix_supplementaire !== null
+                          ? option.prix_supplementaire.toString()
+                          : '',
+                      image_url: option.image_url || '',
+                      disponible: option.disponible !== false,
+                      variants: Array.isArray(option.variants)
+                        ? option.variants.map((variant, variantIndex) => ({
+                            nom: variant.nom || `Variante ${variantIndex + 1}`,
+                            description: variant.description || '',
+                            prix_supplementaire:
+                              variant.prix_supplementaire !== undefined && variant.prix_supplementaire !== null
+                                ? variant.prix_supplementaire.toString()
+                                : '',
+                            is_default: variant.is_default === true,
+                            disponible: variant.disponible !== false
+                          }))
+                        : [],
+                      base_ingredients: Array.isArray(option.base_ingredients)
+                        ? option.base_ingredients.map((ingredient, ingredientIndex) => ({
+                            id: ingredient.id || `ing-${option.id || optionIndex}-${ingredientIndex}`,
+                            nom: ingredient.nom || '',
+                            removable: ingredient.removable !== false,
+                            prix_supplementaire:
+                              ingredient?.prix_supplementaire !== undefined && ingredient?.prix_supplementaire !== null
+                                ? ingredient.prix_supplementaire.toString()
+                                : '',
+                            ordre: ingredient.ordre ?? ingredientIndex
+                          }))
+                        : []
+                    }))
+                  : [{
+                      type: 'link_to_item',
+                      linked_menu_id: '',
+                      nom: '',
+                      description: '',
+                      prix_supplementaire: '',
+                      image_url: '',
+                      disponible: true,
+                      variants: [],
+                      base_ingredients: []
+                    }]
+              };
+            })
           : createDefaultComboForm().steps
       };
 
