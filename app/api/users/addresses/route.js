@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
 let cachedServiceClient = null;
+
+const tablesToMigrate = [
+  { table: 'user_addresses', column: 'user_id' },
+  { table: 'notifications', column: 'user_id' },
+  { table: 'loyalty_history', column: 'user_id' }
+];
 
 function getServiceClient() {
   if (supabaseAdminClient) {
@@ -50,41 +57,59 @@ function extractNameParts(name = '') {
   return { firstName, lastName };
 }
 
-async function ensureUserProfile(serviceClient, user, fallback = {}) {
-  const normalizeRole = (role) => {
-    const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery']);
-    if (role && allowedRoles.has(role)) {
-      return role;
-    }
-    if (role === 'customer' || role === 'client') {
-      return 'user';
-    }
+function normalizeRole(role) {
+  const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery']);
+  if (role && allowedRoles.has(role)) {
+    return role;
+  }
+  if (role === 'customer' || role === 'client') {
     return 'user';
-  };
+  }
+  return 'user';
+}
 
+function createEmailAlias(email, userId) {
   try {
-    const { data: existingUser, error: selectError } = await serviceClient
-      .from('users')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (selectError && selectError.code !== 'PGRST116') {
-      console.warn('⚠️ Impossible de vérifier le profil utilisateur:', selectError);
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return `user-${userId || randomUUID()}@placeholder.cvneat`;
     }
 
-    if (existingUser) {
-      return;
-    }
+    const [local, domain] = email.split('@');
+    const slug = (userId || randomUUID()).replace(/[^a-z0-9]/gi, '').slice(0, 8);
+    return `${local}+cvneat${slug}@${domain}`;
+  } catch {
+    return `user-${userId || randomUUID()}@placeholder.cvneat`;
+  }
+}
 
+async function migrateUserReferences(serviceClient, oldId, newId) {
+  for (const { table, column } of tablesToMigrate) {
+    try {
+      const { error } = await serviceClient
+        .from(table)
+        .update({ [column]: newId })
+        .eq(column, oldId);
+
+      if (error) {
+        console.error(`❌ Migration échouée sur ${table} (${column}) :`, error);
+      }
+    } catch (migrationError) {
+      console.error(`❌ Exception migration ${table}.${column}:`, migrationError);
+    }
+  }
+}
+
+async function ensureUserProfile(serviceClient, user, fallback = {}) {
+  try {
+    const emailNormalized = (user.email || fallback.email || '').toLowerCase();
     const metadata = user.user_metadata || {};
     const { firstName, lastName } = extractNameParts(
       fallback.name || metadata.prenom || metadata.full_name || metadata.name
     );
 
-    const payload = {
+    const basePayload = {
       id: user.id,
-      email: (user.email || fallback.email || '').toLowerCase(),
+      email: emailNormalized || `${user.id}@placeholder.cvneat`,
       nom: fallback.nom || metadata.nom || lastName || 'CVNEAT',
       prenom: fallback.prenom || metadata.prenom || firstName || 'Client',
       telephone: fallback.telephone || metadata.telephone || user.phone || '0000000000',
@@ -94,21 +119,128 @@ async function ensureUserProfile(serviceClient, user, fallback = {}) {
       role: normalizeRole(fallback.role || metadata.role),
     };
 
-    if (!payload.email) {
-      payload.email = `${user.id}@placeholder.cvneat`;
+    const { data: existingById, error: selectError } = await serviceClient
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.warn('⚠️ Vérification profil utilisateur (par id) impossible:', selectError);
+    }
+
+    if (existingById) {
+      return user.id;
+    }
+
+    const { data: existingByEmail, error: selectByEmailError } = await serviceClient
+      .from('users')
+      .select('id, nom, prenom, telephone, adresse, code_postal, ville, role, email')
+      .eq('email', emailNormalized)
+      .maybeSingle();
+
+    if (selectByEmailError && selectByEmailError.code !== 'PGRST116') {
+      console.warn('⚠️ Vérification profil utilisateur (par email) impossible:', selectByEmailError);
+    }
+
+    if (existingByEmail && existingByEmail.id) {
+      if (existingByEmail.id === user.id) {
+        return user.id;
+      }
+
+      // Préparer réinsertion avec les anciennes données
+      const mergedPayload = {
+        ...basePayload,
+        nom: basePayload.nom || existingByEmail.nom,
+        prenom: basePayload.prenom || existingByEmail.prenom,
+        telephone: basePayload.telephone || existingByEmail.telephone,
+        adresse: basePayload.adresse || existingByEmail.adresse,
+        code_postal: basePayload.code_postal || existingByEmail.code_postal,
+        ville: basePayload.ville || existingByEmail.ville,
+        role: normalizeRole(basePayload.role || existingByEmail.role),
+      };
+
+      const legacyEmail = `${existingByEmail.email || emailNormalized}+legacy-${Date.now()}@cvneat`;
+      const { error: legacyUpdateError } = await serviceClient
+        .from('users')
+        .update({ email: legacyEmail })
+        .eq('id', existingByEmail.id);
+
+      if (legacyUpdateError) {
+        console.error('❌ Impossible de libérer l\'email existant:', legacyUpdateError);
+      }
+
+      const { error: insertNewError } = await serviceClient
+        .from('users')
+        .upsert(mergedPayload, { onConflict: 'id' });
+
+      if (insertNewError) {
+        if (insertNewError.code === '23505') {
+          const aliasPayload = {
+            ...mergedPayload,
+            email: createEmailAlias(emailNormalized || mergedPayload.email, user.id)
+          };
+          const { error: aliasError } = await serviceClient
+            .from('users')
+            .upsert(aliasPayload, { onConflict: 'id' });
+          if (!aliasError) {
+            mergedPayload.email = aliasPayload.email;
+          } else {
+            console.error('❌ Échec insertion profil migré (alias):', aliasError);
+            return existingByEmail.id;
+          }
+        } else {
+        console.error('❌ Échec insertion profil migré:', insertNewError);
+        return existingByEmail.id;
+      }
+      }
+
+      await migrateUserReferences(serviceClient, existingByEmail.id, user.id);
+
+      const { error: deleteLegacyError } = await serviceClient
+        .from('users')
+        .delete()
+        .eq('id', existingByEmail.id);
+
+      if (deleteLegacyError) {
+        console.error('❌ Impossible de supprimer l\'ancien profil utilisateur:', deleteLegacyError);
+      } else {
+        console.log(`✅ Profil utilisateur migré de ${existingByEmail.id} vers ${user.id}`);
+      }
+
+      return user.id;
     }
 
     const { error: upsertError } = await serviceClient
       .from('users')
-      .upsert(payload, { onConflict: 'id' });
+      .upsert(basePayload, { onConflict: 'id' });
 
     if (upsertError) {
-      console.error('❌ Impossible de créer le profil utilisateur manquant:', upsertError);
+      if (upsertError.code === '23505') {
+        const aliasPayload = {
+          ...basePayload,
+          email: createEmailAlias(emailNormalized || basePayload.email, user.id)
+        };
+        const { error: aliasError } = await serviceClient
+          .from('users')
+          .upsert(aliasPayload, { onConflict: 'id' });
+
+        if (aliasError) {
+          console.error('❌ Impossible de créer le profil utilisateur manquant (alias):', aliasError);
+        } else {
+          console.log('✅ Profil utilisateur créé avec alias pour', aliasPayload.email);
+        }
+      } else {
+        console.error('❌ Impossible de créer le profil utilisateur manquant:', upsertError);
+      }
     } else {
-      console.log('✅ Profil utilisateur créé automatiquement pour', payload.email);
+      console.log('✅ Profil utilisateur créé automatiquement pour', basePayload.email);
     }
+
+    return user.id;
   } catch (profileError) {
     console.error('❌ Erreur ensureUserProfile:', profileError);
+    return user.id;
   }
 }
 
@@ -179,7 +311,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
 
-    await ensureUserProfile(serviceClient, user, {
+    const effectiveUserId = await ensureUserProfile(serviceClient, user, {
       name,
       address,
       city,
@@ -192,17 +324,17 @@ export async function POST(request) {
       await serviceClient
         .from('user_addresses')
         .update({ is_default: false })
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUserId);
     }
     // DEBUG : Log du user_id utilisé
-    console.log('🔍 DEBUG - User ID utilisé:', user.id);
+    console.log('🔍 DEBUG - User ID utilisé:', effectiveUserId);
     console.log('🔍 DEBUG - User email:', user.email);
     
     const { data: newAddress, error } = await serviceClient
       .from('user_addresses')
       .insert([
         {
-          user_id: user.id,
+          user_id: effectiveUserId,
           name,
           address,
           city,
@@ -247,7 +379,7 @@ export async function PUT(request) {
         { status: 500 }
       );
     }
-    const {
+  const {
       id,
       name,
       address,
@@ -264,7 +396,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
 
-  await ensureUserProfile(serviceClient, user, {
+  const effectiveUserId = await ensureUserProfile(serviceClient, user, {
     name,
     address,
     city,
@@ -277,7 +409,7 @@ export async function PUT(request) {
       await serviceClient
         .from('user_addresses')
         .update({ is_default: false })
-        .eq('user_id', user.id);
+      .eq('user_id', effectiveUserId);
     }
     const { data: updated, error } = await serviceClient
       .from('user_addresses')
@@ -290,7 +422,7 @@ export async function PUT(request) {
         is_default: !!is_default
       })
       .eq('id', id)
-      .eq('user_id', user.id)
+    .eq('user_id', effectiveUserId)
       .select()
       .single();
     if (error) throw error;

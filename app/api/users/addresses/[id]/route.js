@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 
 let cachedServiceClient = null;
 
@@ -48,17 +49,36 @@ function extractNameParts(name = '') {
   return { firstName, lastName };
 }
 
-async function ensureUserProfile(serviceClient, user, fallback = {}) {
-  const normalizeRole = (role) => {
-    const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery']);
-    if (role && allowedRoles.has(role)) {
-      return role;
-    }
-    if (role === 'customer' || role === 'client') {
-      return 'user';
-    }
+function normalizeRole(role) {
+  const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery']);
+  if (role && allowedRoles.has(role)) {
+    return role;
+  }
+  if (role === 'customer' || role === 'client') {
     return 'user';
-  };
+  }
+  return 'user';
+}
+
+function createEmailAlias(email, userId) {
+  try {
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return `user-${userId || randomUUID()}@placeholder.cvneat`;
+    }
+
+    const [local, domain] = email.split('@');
+    const slug = (userId || randomUUID()).replace(/[^a-z0-9]/gi, '').slice(0, 8);
+    return `${local}+cvneat${slug}@${domain}`;
+  } catch {
+    return `user-${userId || randomUUID()}@placeholder.cvneat`;
+  }
+}
+
+async function ensureUserProfile(serviceClient, user, fallback = {}) {
+  const metadata = user.user_metadata || {};
+  const { firstName, lastName } = extractNameParts(
+    fallback.name || metadata.prenom || metadata.full_name || metadata.name
+  );
 
   try {
     const { data: existingUser, error: selectError } = await serviceClient
@@ -74,11 +94,6 @@ async function ensureUserProfile(serviceClient, user, fallback = {}) {
     if (existingUser) {
       return;
     }
-
-    const metadata = user.user_metadata || {};
-    const { firstName, lastName } = extractNameParts(
-      fallback.name || metadata.prenom || metadata.full_name || metadata.name
-    );
 
     const payload = {
       id: user.id,
@@ -101,7 +116,23 @@ async function ensureUserProfile(serviceClient, user, fallback = {}) {
       .upsert(payload, { onConflict: 'id' });
 
     if (upsertError) {
-      console.error('❌ Impossible de créer le profil utilisateur manquant:', upsertError);
+      if (upsertError.code === '23505') {
+        const aliasPayload = {
+          ...payload,
+          email: createEmailAlias(payload.email, user.id)
+        };
+        const { error: aliasError } = await serviceClient
+          .from('users')
+          .upsert(aliasPayload, { onConflict: 'id' });
+
+        if (aliasError) {
+          console.error('❌ Impossible de créer le profil utilisateur manquant (alias):', aliasError);
+        } else {
+          console.log('✅ Profil utilisateur créé avec alias pour', aliasPayload.email);
+        }
+      } else {
+        console.error('❌ Impossible de créer le profil utilisateur manquant:', upsertError);
+      }
     } else {
       console.log('✅ Profil utilisateur créé automatiquement pour', payload.email);
     }
