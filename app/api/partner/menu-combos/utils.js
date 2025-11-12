@@ -151,6 +151,7 @@ export const sanitizeComboPayload = (payload = {}) => {
       const optionPrice = parsePrice(optionSupplement, 0);
 
       const variantsArray = Array.isArray(option.variants) ? option.variants : [];
+      const baseIngredientsArray = Array.isArray(option.base_ingredients) ? option.base_ingredients : [];
       const sanitizedVariants = variantsArray.map((variant, variantIndex) => {
         const variantNameRaw = variant.nom || variant.name || variant.label || `Variante ${variantIndex + 1}`;
         const sanitizedVariantName = sanitizeInput(variantNameRaw);
@@ -171,6 +172,25 @@ export const sanitizeComboPayload = (payload = {}) => {
         };
       });
 
+      const sanitizedBaseIngredients = baseIngredientsArray
+        .map((ingredient, ingredientIndex) => {
+          const ingredientNameRaw = ingredient?.nom || ingredient?.name || `Ingrédient ${ingredientIndex + 1}`;
+          const sanitizedIngredientName = sanitizeInput(ingredientNameRaw);
+          if (!sanitizedIngredientName) {
+            return null;
+          }
+          const ingredientSupplement = ingredient?.prix_supplementaire ?? ingredient?.prix ?? 0;
+          const ingredientPrice = parsePrice(ingredientSupplement, 0);
+
+          return {
+            nom: sanitizedIngredientName,
+            prix_supplementaire: ingredientPrice,
+            removable: ingredient?.removable !== false,
+            ordre: parseInteger(ingredient?.ordre, ingredientIndex)
+          };
+        })
+        .filter(Boolean);
+
       return {
         type: optionType,
         linked_menu_id: optionType === 'link_to_item' ? linkedMenuId : null,
@@ -180,7 +200,8 @@ export const sanitizeComboPayload = (payload = {}) => {
         image_url: option.image_url || null,
         disponible: option.disponible !== false,
         ordre: parseInteger(option.ordre, optionIndex),
-        variants: sanitizedVariants
+        variants: sanitizedVariants,
+        base_ingredients: sanitizedBaseIngredients
       };
     });
 
@@ -258,6 +279,22 @@ const enrichCombos = async (combos) => {
     variantsData = variants || [];
   }
 
+  let baseIngredientsData = [];
+  if (optionIds.length > 0) {
+    const { data: baseIngredients, error: baseIngredientsError } = await supabase
+      .from('menu_combo_option_base_ingredients')
+      .select('*')
+      .in('option_id', optionIds)
+      .order('ordre', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (baseIngredientsError) {
+      throw new ComboApiError('Erreur lors de la récupération des ingrédients de base du menu composé', 500, baseIngredientsError);
+    }
+
+    baseIngredientsData = baseIngredients || [];
+  }
+
   const variantsByOption = variantsData.reduce((acc, variant) => {
     const optionId = variant.option_id;
     const list = acc.get(optionId) || [];
@@ -269,13 +306,26 @@ const enrichCombos = async (combos) => {
     return acc;
   }, new Map());
 
+  const baseIngredientsByOption = baseIngredientsData.reduce((acc, ingredient) => {
+    const optionId = ingredient.option_id;
+    const list = acc.get(optionId) || [];
+    list.push({
+      ...ingredient,
+      prix_supplementaire: ingredient.prix_supplementaire !== null ? parseFloat(ingredient.prix_supplementaire) : 0,
+      removable: ingredient.removable !== false
+    });
+    acc.set(optionId, list);
+    return acc;
+  }, new Map());
+
   const optionsByStep = optionsData.reduce((acc, option) => {
     const stepId = option.step_id;
     const list = acc.get(stepId) || [];
     list.push({
       ...option,
       prix_supplementaire: option.prix_supplementaire !== null ? parseFloat(option.prix_supplementaire) : 0,
-      variants: variantsByOption.get(option.id) || []
+      variants: variantsByOption.get(option.id) || [],
+      base_ingredients: baseIngredientsByOption.get(option.id) || []
     });
     acc.set(stepId, list);
     return acc;

@@ -101,7 +101,7 @@ export async function POST(request) {
         }
 
         for (const option of options) {
-          const { variants, ...optionData } = option;
+          const { variants, base_ingredients, ...optionData } = option;
 
           const { data: insertedOption, error: optionError } = await supabaseAdmin
             .from('menu_combo_options')
@@ -120,6 +120,25 @@ export async function POST(request) {
               500,
               optionError
             );
+          }
+
+          if (Array.isArray(base_ingredients) && base_ingredients.length > 0) {
+            const preparedBaseIngredients = base_ingredients.map((ingredient) => ({
+              ...ingredient,
+              option_id: insertedOption.id
+            }));
+
+            const { error: baseIngredientsError } = await supabaseAdmin
+              .from('menu_combo_option_base_ingredients')
+              .insert(preparedBaseIngredients);
+
+            if (baseIngredientsError) {
+              throw new ComboApiError(
+                `Erreur lors de la création des ingrédients de base du menu composé`,
+                500,
+                baseIngredientsError
+              );
+            }
           }
 
           if (variants && variants.length > 0) {

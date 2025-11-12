@@ -289,9 +289,25 @@ export default function PartnerDashboard() {
               parsedSupplements = item.supplements;
             }
           }
+
+          let parsedBaseIngredients = [];
+          if (item.base_ingredients) {
+            if (typeof item.base_ingredients === 'string') {
+              try {
+                parsedBaseIngredients = JSON.parse(item.base_ingredients);
+              } catch (e) {
+                console.error('Erreur parsing ingrédients pour item', item.id, ':', e);
+                parsedBaseIngredients = [];
+              }
+            } else if (Array.isArray(item.base_ingredients)) {
+              parsedBaseIngredients = item.base_ingredients;
+            }
+          }
+
           return {
             ...item,
-            supplements: parsedSupplements
+            supplements: parsedSupplements,
+            base_ingredients: parsedBaseIngredients
           };
         });
         setMenu(parsedMenu);
@@ -370,7 +386,17 @@ export default function PartnerDashboard() {
                                   ? parseFloat(variant.prix_supplementaire)
                                   : 0
                             }))
-                          : []
+                        : [],
+                      base_ingredients: Array.isArray(option?.base_ingredients)
+                        ? option.base_ingredients.map((ingredient) => ({
+                            ...ingredient,
+                            prix_supplementaire:
+                              ingredient?.prix_supplementaire !== undefined && ingredient?.prix_supplementaire !== null
+                                ? parseFloat(ingredient.prix_supplementaire)
+                                : 0,
+                            removable: ingredient?.removable !== false
+                          }))
+                        : []
                       }))
                     : []
                 }))
@@ -1120,6 +1146,18 @@ export default function PartnerDashboard() {
                           is_default: variant.is_default === true,
                           disponible: variant.disponible !== false
                         }))
+                      : [],
+                    base_ingredients: Array.isArray(option.base_ingredients)
+                      ? option.base_ingredients.map((ingredient, ingredientIndex) => ({
+                          id: ingredient.id || `ing-${option.id || optionIndex}-${ingredientIndex}`,
+                          nom: ingredient.nom || '',
+                          removable: ingredient.removable !== false,
+                          prix_supplementaire:
+                            ingredient?.prix_supplementaire !== undefined && ingredient?.prix_supplementaire !== null
+                              ? ingredient.prix_supplementaire.toString()
+                              : '',
+                          ordre: ingredient.ordre ?? ingredientIndex
+                        }))
                       : []
                   }))
                 : [{
@@ -1130,7 +1168,8 @@ export default function PartnerDashboard() {
                     prix_supplementaire: '',
                     image_url: '',
                     disponible: true,
-                    variants: []
+                    variants: [],
+                    base_ingredients: []
                   }]
             }))
           : createDefaultComboForm().steps
@@ -1238,7 +1277,8 @@ export default function PartnerDashboard() {
           prix_supplementaire: '',
           image_url: '',
           disponible: true,
-          variants: []
+          variants: [],
+          base_ingredients: []
         }
       ]
     }));
@@ -1261,9 +1301,11 @@ export default function PartnerDashboard() {
         if (option.type === 'custom') {
           option.linked_menu_id = '';
           if (!option.nom) option.nom = '';
+          option.base_ingredients = [];
         } else {
           option.linked_menu_id = '';
           option.nom = '';
+          option.base_ingredients = [];
         }
       } else if (field === 'linked_menu_id') {
         option.linked_menu_id = value;
@@ -1272,6 +1314,18 @@ export default function PartnerDashboard() {
           if (linkedItem) {
             option.nom = linkedItem.nom;
             option.description = option.description || linkedItem.description || '';
+            option.base_ingredients = Array.isArray(linkedItem.base_ingredients)
+              ? linkedItem.base_ingredients.map((ingredient, ingredientIndex) => ({
+                  id: ingredient.id || `ing-${linkedItem.id}-${ingredientIndex}`,
+                  nom: ingredient.nom || '',
+                  removable: ingredient.removable !== false,
+                  prix_supplementaire:
+                    ingredient?.prix_supplementaire !== undefined && ingredient?.prix_supplementaire !== null
+                      ? ingredient.prix_supplementaire
+                      : ingredient?.prix ?? 0,
+                  ordre: ingredient.ordre ?? ingredientIndex
+                }))
+              : [];
           }
         }
       } else {
@@ -1290,6 +1344,16 @@ export default function PartnerDashboard() {
         return step;
       }
 
+      const baseIngredients = Array.isArray(menuItem.base_ingredients)
+        ? menuItem.base_ingredients.map((ingredient, index) => ({
+            id: ingredient.id || `ing-${menuItem.id}-${index}`,
+            nom: ingredient.nom || '',
+            removable: ingredient.removable !== false,
+            prix_supplementaire: parseFloat(ingredient.prix_supplementaire ?? ingredient.prix ?? 0) || 0,
+            ordre: ingredient.ordre ?? index
+          }))
+        : [];
+
       const newOption = {
         type: 'link_to_item',
         linked_menu_id: menuItem.id,
@@ -1298,7 +1362,8 @@ export default function PartnerDashboard() {
         prix_supplementaire: '',
         image_url: menuItem.image_url || '',
         disponible: menuItem.disponible !== false,
-        variants: []
+        variants: [],
+        base_ingredients: baseIngredients
       };
 
       const filteredOptions = step.options.filter((opt) => {
@@ -1403,6 +1468,23 @@ export default function PartnerDashboard() {
 
           const priceValue = parseFloat(option.prix_supplementaire || '0');
 
+          const baseIngredientsPayload = Array.isArray(option.base_ingredients)
+            ? option.base_ingredients
+                .filter((ingredient) => ingredient && (ingredient.nom || ingredient.name))
+                .map((ingredient, ingredientIndex) => {
+                  const ingredientName = ingredient.nom || ingredient.name || `Ingrédient ${ingredientIndex + 1}`;
+                  const ingredientPrice = parseFloat(
+                    ingredient.prix_supplementaire ?? ingredient.prix ?? '0'
+                  );
+                  return {
+                    nom: ingredientName,
+                    prix_supplementaire: Number.isNaN(ingredientPrice) ? 0 : ingredientPrice,
+                    removable: ingredient.removable !== false,
+                    ordre: ingredient.ordre ?? ingredientIndex
+                  };
+                })
+            : [];
+
           return {
             type: isCustom ? 'custom' : 'link_to_item',
             linked_menu_id: isCustom ? null : linkedId,
@@ -1412,6 +1494,7 @@ export default function PartnerDashboard() {
             image_url: option.image_url || null,
             disponible: option.disponible !== false,
             ordre: optionIndex,
+            base_ingredients: baseIngredientsPayload,
             variants: (option.variants || []).map((variant, variantIndex) => {
               const variantPrice = parseFloat(variant.prix_supplementaire || '0');
               return {

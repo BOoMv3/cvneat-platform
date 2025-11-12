@@ -73,20 +73,28 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { data: existingSteps, error: stepsFetchError } = await supabaseAdmin
+    const { data: existingOptionIds, error: existingOptionsError } = await supabaseAdmin
       .from('menu_combo_steps')
-      .select('id')
+      .select('id, menu_combo_options ( id )')
       .eq('combo_id', comboId);
 
-    if (stepsFetchError) {
+    if (existingOptionsError) {
       throw new ComboApiError(
         'Erreur lors de la préparation de la mise à jour des étapes',
         500,
-        stepsFetchError
+        existingOptionsError
       );
     }
 
-    const oldStepIds = (existingSteps || []).map((step) => step.id);
+    const oldStepIds = [];
+    const oldOptionIds = [];
+
+    (existingOptionIds || []).forEach((step) => {
+      oldStepIds.push(step.id);
+      (step.menu_combo_options || []).forEach((option) => {
+        oldOptionIds.push(option.id);
+      });
+    });
     const insertedStepIds = [];
 
     try {
@@ -115,7 +123,7 @@ export async function PUT(request, { params }) {
         insertedStepIds.push(newStep.id);
 
         for (const option of options) {
-          const { variants, ...optionData } = option;
+          const { variants, base_ingredients, ...optionData } = option;
 
           const { data: newOption, error: optionInsertError } = await supabaseAdmin
             .from('menu_combo_options')
@@ -134,6 +142,25 @@ export async function PUT(request, { params }) {
               500,
               optionInsertError
             );
+          }
+
+          if (Array.isArray(base_ingredients) && base_ingredients.length > 0) {
+            const preparedBaseIngredients = base_ingredients.map((ingredient) => ({
+              ...ingredient,
+              option_id: newOption.id
+            }));
+
+            const { error: baseIngredientsError } = await supabaseAdmin
+              .from('menu_combo_option_base_ingredients')
+              .insert(preparedBaseIngredients);
+
+            if (baseIngredientsError) {
+              throw new ComboApiError(
+                `Erreur lors de l'insertion des ingrédients de base`,
+                500,
+                baseIngredientsError
+              );
+            }
           }
 
           if (variants && variants.length > 0) {
@@ -164,6 +191,18 @@ export async function PUT(request, { params }) {
           .in('id', insertedStepIds);
       }
       throw error;
+    }
+
+    if (oldOptionIds.length > 0) {
+      await supabaseAdmin
+        .from('menu_combo_option_variants')
+        .delete()
+        .in('option_id', oldOptionIds);
+
+      await supabaseAdmin
+        .from('menu_combo_option_base_ingredients')
+        .delete()
+        .in('option_id', oldOptionIds);
     }
 
     if (oldStepIds.length > 0) {

@@ -111,7 +111,8 @@ export default function RestaurantDetail({ params }) {
             stepId: step.id,
             option,
             variantId: defaultVariant?.id || null,
-            variant: defaultVariant || null
+            variant: defaultVariant || null,
+            removedIngredients: []
           }
         ];
       }
@@ -153,6 +154,44 @@ export default function RestaurantDetail({ params }) {
   const getSelectedVariant = (step, option, stepIndex) => {
     const selected = getStepSelections(step, stepIndex).find(sel => sel.optionId === option.id);
     return selected?.variant || null;
+  };
+
+  const getRemovedIngredientsForSelection = (step, option, stepIndex) => {
+    const selected = getStepSelections(step, stepIndex).find(sel => sel.optionId === option.id);
+    return selected?.removedIngredients || [];
+  };
+
+  const isIngredientRemovedForSelection = (step, option, ingredientId, stepIndex) => {
+    return getRemovedIngredientsForSelection(step, option, stepIndex).includes(ingredientId);
+  };
+
+  const handleToggleComboIngredient = (step, option, ingredient, stepIndex) => {
+    if (!ingredient || ingredient.removable === false) {
+      return;
+    }
+
+    setComboSelections((prev) => {
+      const key = getStepKey(step, stepIndex);
+      const current = prev[key]?.options || [];
+      const updated = current.map((selection) => {
+        if (selection.optionId !== option.id) return selection;
+        const removed = selection.removedIngredients || [];
+        const updatedRemoved = removed.includes(ingredient.id)
+          ? removed.filter((id) => id !== ingredient.id)
+          : [...removed, ingredient.id];
+        return {
+          ...selection,
+          removedIngredients: updatedRemoved
+        };
+      });
+
+      return {
+        ...prev,
+        [key]: {
+          options: updated
+        }
+      };
+    });
   };
 
   const loadComboMenus = async (restaurantId) => {
@@ -833,12 +872,26 @@ export default function RestaurantDetail({ params }) {
           prix: supplementPrice
         });
 
+        const removedIngredientIds = Array.isArray(selection.removedIngredients) ? selection.removedIngredients : [];
+        const removedIngredients = removedIngredientIds
+          .map((ingredientId) => {
+            const ingredient = option.base_ingredients?.find((ing) => {
+              const possibleId = ing.id || `${option.id}-ingredient-${ing.nom}`;
+              return possibleId === ingredientId;
+            });
+            return ingredient
+              ? { id: ingredientId, nom: ingredient.nom }
+              : { id: ingredientId, nom: 'Ingrédient retiré' };
+          })
+          .filter(Boolean);
+
         comboDetails.push({
           stepTitle: step.title,
           optionName: option.nom,
           variantName: variant?.nom || null,
           optionPrice,
-          variantPrice
+          variantPrice,
+          removedIngredients
         });
       });
     });
@@ -1354,6 +1407,39 @@ export default function RestaurantDetail({ params }) {
                                               );
                                             })}
                                         </div>
+                                      </div>
+                                    )}
+
+                                    {selected && Array.isArray(option.base_ingredients) && option.base_ingredients.length > 0 && (
+                                      <div className="px-4 pb-4 pt-0 space-y-2">
+                                        <p className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">
+                                          Ingrédients à retirer
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {option.base_ingredients.map((ingredient) => {
+                                            const ingredientId = ingredient.id || `${option.id}-ingredient-${ingredient.nom}`;
+                                            const removed = isIngredientRemovedForSelection(step, option, ingredientId, stepIndex);
+                                            const disabled = ingredient.removable === false;
+                                            return (
+                                              <button
+                                                type="button"
+                                                key={ingredientId}
+                                                onClick={() => handleToggleComboIngredient(step, option, { ...ingredient, id: ingredientId }, stepIndex)}
+                                                disabled={disabled}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                                  removed
+                                                    ? 'border-red-400 bg-red-50 text-red-600 dark:border-red-500 dark:bg-red-500/10 dark:text-red-300'
+                                                    : 'border-gray-300 text-gray-700 hover:border-red-400 hover:text-red-600 dark:border-gray-600 dark:text-gray-200 dark:hover:border-red-400'
+                                                } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+                                              >
+                                                {disabled ? `${ingredient.nom} (fixe)` : removed ? `Sans ${ingredient.nom}` : ingredient.nom}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                          Sélectionnez les ingrédients à retirer du burger choisi.
+                                        </p>
                                       </div>
                                     )}
                                   </div>
