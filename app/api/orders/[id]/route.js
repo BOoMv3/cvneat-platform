@@ -4,108 +4,77 @@ import { createClient } from '@supabase/supabase-js';
 export async function GET(request, { params }) {
   try {
     const { id } = params;
-    
-    // Récupérer le token d'authentification
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '') || null;
+    const url = new URL(request.url);
+    const securityCodeParam = url.searchParams.get('code') || request.headers.get('x-order-code');
 
-    if (!token) {
-      return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !anonKey || !serviceKey) {
+      console.error('Configuration Supabase incomplète');
+      return NextResponse.json({ error: 'Configuration serveur manquante' }, { status: 500 });
     }
 
-    // Créer un client Supabase avec le token de l'utilisateur
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+
+    let order = null;
+    let user = null;
+    let isAdmin = false;
+
+    if (token) {
+      const supabaseUser = createClient(
+        supabaseUrl,
+        anonKey,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
           }
         }
-      }
-    );
+      );
 
-    // Vérifier l'utilisateur
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
-    }
+      const { data: { user: sessionUser }, error: userError } = await supabaseUser.auth.getUser(token);
 
-    // Créer aussi un client admin pour bypasser RLS si nécessaire
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    // D'abord essayer avec le client utilisateur (respecte RLS)
-    let { data: order, error } = await supabase
-      .from('commandes')
-      .select(`
-        *,
-        details_commande (
-          id,
-          quantite,
-          prix_unitaire,
-          supplements,
-          customizations,
-          menus (
-            nom,
-            prix
-          )
-        ),
-        restaurants (
-          id,
-          nom,
-          adresse,
-          ville,
-          code_postal
-        )
-      `)
-      .eq('id', id)
-      .single();
-
-    // Si erreur RLS ou pas de résultat, essayer avec admin pour vérifier l'existence
-    if (error || !order) {
-      console.log('Erreur avec client utilisateur, tentative avec admin. Erreur:', error);
-      
-      // Vérifier que la clé admin est disponible
-      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        console.error('SUPABASE_SERVICE_ROLE_KEY non définie');
-        return NextResponse.json({ 
-          error: 'Erreur de configuration serveur' 
-        }, { status: 500 });
+      if (userError || !sessionUser) {
+        return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
       }
 
-      const { data: orderAdmin, error: adminError } = await supabaseAdmin
-        .from('commandes')
-        .select('id, user_id, restaurant_id')
-        .eq('id', id)
-        .single();
+      user = sessionUser;
 
-      if (adminError || !orderAdmin) {
-        console.log('Commande non trouvée avec admin:', adminError);
-        return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
-      }
-
-      // Vérifier le rôle de l'utilisateur
-      const { data: userData, error: userDataError } = await supabaseAdmin
+      const { data: userRoleData } = await supabaseAdmin
         .from('users')
         .select('role')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      // Les admins peuvent voir toutes les commandes
-      const isAdmin = userData && userData.role === 'admin';
-      
-      // Vérifier que la commande appartient à l'utilisateur (sauf si admin)
-      if (!isAdmin && orderAdmin.user_id !== user.id) {
-        console.log('Commande appartient à un autre utilisateur');
-        return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
+      isAdmin = userRoleData?.role === 'admin';
+
+      const { data: orderAccess, error: orderAccessError } = await supabaseAdmin
+        .from('commandes')
+        .select('id, user_id, security_code')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (orderAccessError || !orderAccess) {
+        return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
-      // Si la commande existe et appartient à l'utilisateur, récupérer avec admin
+      const securityMatches = securityCodeParam && orderAccess.security_code === securityCodeParam;
+
+      if (!isAdmin) {
+        if (orderAccess.user_id && orderAccess.user_id !== user.id && !securityMatches) {
+          return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
+        }
+
+        if (!orderAccess.user_id && !securityMatches) {
+          return NextResponse.json({ error: 'Authentification requise pour cette commande' }, { status: 403 });
+        }
+      }
+
       const { data: orderFull, error: orderError } = await supabaseAdmin
         .from('commandes')
         .select(`
@@ -115,6 +84,7 @@ export async function GET(request, { params }) {
             quantite,
             prix_unitaire,
             supplements,
+            customizations,
             menus (
               nom,
               prix
@@ -131,64 +101,93 @@ export async function GET(request, { params }) {
         .eq('id', id)
         .single();
 
-      if (orderError) {
-        console.error('Erreur récupération complète avec admin:', orderError);
-        return NextResponse.json({ 
-          error: 'Erreur lors de la récupération des détails de la commande',
-          details: process.env.NODE_ENV === 'development' ? orderError.message : undefined
-        }, { status: 500 });
-      }
-
-      if (!orderFull) {
-        console.error('Aucune donnée retournée par admin pour la commande:', id);
-        return NextResponse.json({ 
-          error: 'Commande non trouvée' 
-        }, { status: 404 });
+      if (orderError || !orderFull) {
+        return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
       order = orderFull;
+    } else if (securityCodeParam) {
+      const { data: orderFull, error: orderError } = await supabaseAdmin
+        .from('commandes')
+        .select(`
+          *,
+          details_commande (
+            id,
+            quantite,
+            prix_unitaire,
+            supplements,
+            customizations,
+            menus (
+              nom,
+              prix
+            )
+          ),
+          restaurants (
+            id,
+            nom,
+            adresse,
+            ville,
+            code_postal
+          )
+        `)
+        .eq('id', id)
+        .eq('security_code', securityCodeParam)
+        .single();
+
+      if (orderError || !orderFull) {
+        return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+      }
+
+      order = orderFull;
+    } else {
+      return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
     }
 
-    // Formater les données pour le frontend
+    if (!order) {
+      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+    }
+
     const restaurant = order.restaurants;
-    
-    // Récupérer les informations client depuis la table users si elle existe
-    let customerName = 'Client';
-    let customerPhone = '';
-    
+    let customerName = [order.customer_first_name, order.customer_last_name].filter(Boolean).join(' ').trim();
+    let customerPhone = order.customer_phone || '';
+    let customerEmail = order.customer_email || '';
+
     try {
-      // Essayer de récupérer depuis la table users publique
-      const { data: customerData } = await supabaseAdmin
-        .from('users')
-        .select('prenom, nom, telephone, email')
-        .eq('id', order.user_id)
-        .single();
-      
-      if (customerData) {
-        customerName = customerData.prenom && customerData.nom 
-          ? `${customerData.prenom} ${customerData.nom}` 
-          : customerData.email || 'Client';
-        customerPhone = customerData.telephone || '';
-      } else {
-        // Fallback : utiliser l'email depuis auth.users si disponible
-        const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
-        if (authUser && authUser.email) {
-          customerName = authUser.email;
+      if (order.user_id) {
+        const { data: customerData } = await supabaseAdmin
+          .from('users')
+          .select('prenom, nom, telephone, email')
+          .eq('id', order.user_id)
+          .single();
+
+        if (customerData) {
+          const nameParts = [customerData.prenom, customerData.nom].filter(Boolean).join(' ').trim();
+          customerName = nameParts || customerData.email || customerName || 'Client';
+          customerPhone = customerData.telephone || customerPhone;
+          customerEmail = customerData.email || customerEmail;
+        } else {
+          const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
+          if (authUser?.email) {
+            customerName = customerName || authUser.email;
+            customerEmail = authUser.email;
+          }
         }
       }
     } catch (customerError) {
       console.warn('⚠️ Impossible de récupérer les infos client:', customerError);
-      // Continuer avec les valeurs par défaut
     }
-    
+
+    if (!customerName) {
+      customerName = customerEmail || 'Client';
+    }
+
     const items = (order.details_commande || []).map(detail => {
-      // Récupérer les suppléments depuis le détail
       let supplements = [];
       if (detail.supplements) {
         if (typeof detail.supplements === 'string') {
           try {
             supplements = JSON.parse(detail.supplements);
-          } catch (e) {
+          } catch {
             supplements = [];
           }
         } else if (Array.isArray(detail.supplements)) {
@@ -196,81 +195,87 @@ export async function GET(request, { params }) {
         }
       }
 
-      // Récupérer les customisations depuis le détail
       let customizations = {};
       if (detail.customizations) {
         if (typeof detail.customizations === 'string') {
           try {
             customizations = JSON.parse(detail.customizations);
-          } catch (e) {
+          } catch {
             customizations = {};
           }
         } else if (typeof detail.customizations === 'object') {
           customizations = detail.customizations;
         }
       }
-      
+
       return {
         id: detail.id,
         name: detail.menus?.nom || 'Article',
         quantity: detail.quantite || 0,
         price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
-        supplements: supplements,
-        customizations: customizations
+        supplements,
+        customizations
       };
     });
 
-    // Extraire l'adresse de livraison
     const addressParts = (order.adresse_livraison || '').split(',').map(s => s.trim());
     const deliveryAddress = addressParts[0] || '';
     const deliveryCity = addressParts.length > 2 ? addressParts[1] : (addressParts[1] || '');
-    const deliveryPostalCode = addressParts.length > 2 ? addressParts[2]?.split(' ')[0] : '';
-    const deliveryPhone = order.telephone || order.phone || '';
+    const deliveryPostalCode =
+      addressParts.length > 2
+        ? (addressParts[2]?.split(' ')[0] || '')
+        : (addressParts[1]?.split(' ')[0] || '');
+    const deliveryPhone = order.telephone || order.phone || order.customer_phone || '';
+
+    const totalAmount = parseFloat(order.total || 0) || 0;
+    const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
 
     const formattedOrder = {
       id: order.id,
       status: order.statut || order.status,
-      statut: order.statut || order.status, // Ajouter aussi pour compatibilité
+      statut: order.statut || order.status,
       createdAt: order.created_at,
-      created_at: order.created_at || new Date().toISOString(), // Fallback si manquant
-      updated_at: order.updated_at || new Date().toISOString(), // Fallback si manquant
-      user_id: order.user_id, // Ajouter aussi pour compatibilité
-      security_code: order.security_code, // Code de sécurité pour la livraison
-      frais_livraison: parseFloat(order.frais_livraison || 0) || 0, // Ajouter aussi pour compatibilité
-      adresse_livraison: order.adresse_livraison, // Ajouter aussi pour compatibilité
-      preparation_time: order.preparation_time, // Ajouter aussi pour compatibilité
-      livreur_id: order.livreur_id, // Ajouter aussi pour compatibilité
-      customer_name: customerName, // Nom complet du client
-      customer_phone: customerPhone, // Téléphone du client
+      created_at: order.created_at || new Date().toISOString(),
+      updated_at: order.updated_at || new Date().toISOString(),
+      user_id: order.user_id,
+      security_code: order.security_code,
+      frais_livraison: deliveryFee,
+      delivery_fee: deliveryFee,
+      deliveryFee,
+      adresse_livraison: order.adresse_livraison,
+      preparation_time: order.preparation_time,
+      livreur_id: order.livreur_id,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      customer_email: customerEmail,
       restaurant: {
         id: restaurant?.id,
         name: restaurant?.nom || 'Restaurant inconnu',
         address: restaurant?.adresse || '',
-        city: restaurant?.ville || ''
+        city: restaurant?.ville || '',
+        postal_code: restaurant?.code_postal || ''
       },
-      deliveryAddress: deliveryAddress,
-      deliveryCity: deliveryCity,
-      deliveryPostalCode: deliveryPostalCode,
-      deliveryPhone: deliveryPhone || customerPhone, // Fallback sur téléphone client
-      total: parseFloat(order.total || 0) || 0,
-      deliveryFee: parseFloat(order.frais_livraison || 0) || 0,
-      // Informations de remboursement
+      deliveryAddress,
+      deliveryCity,
+      deliveryPostalCode,
+      deliveryPhone: deliveryPhone || customerPhone,
+      total: totalAmount,
+      total_amount: totalAmount,
+      items,
+      delivery_instructions: order.instructions_livraison || order.delivery_instructions || null,
       refund_amount: order.refund_amount ? parseFloat(order.refund_amount) : null,
       refunded_at: order.refunded_at || null,
       stripe_refund_id: order.stripe_refund_id || null,
       payment_status: order.payment_status || 'pending',
-      // Raison de refus
       rejection_reason: order.rejection_reason || null,
-      rejectionReason: order.rejection_reason || null, // Alias pour compatibilité
-      items: items,
+      rejectionReason: order.rejection_reason || null,
       details_commande: (order.details_commande || []).map(detail => {
-        // S'assurer que les suppléments sont inclus dans details_commande
         let supplements = [];
         if (detail.supplements) {
           if (typeof detail.supplements === 'string') {
             try {
               supplements = JSON.parse(detail.supplements);
-            } catch (e) {
+            } catch {
               supplements = [];
             }
           } else if (Array.isArray(detail.supplements)) {
@@ -278,13 +283,12 @@ export async function GET(request, { params }) {
           }
         }
 
-        // Récupérer les customisations depuis le détail
         let customizations = {};
         if (detail.customizations) {
           if (typeof detail.customizations === 'string') {
             try {
               customizations = JSON.parse(detail.customizations);
-            } catch (e) {
+            } catch {
               customizations = {};
             }
           } else if (typeof detail.customizations === 'object') {
@@ -294,8 +298,8 @@ export async function GET(request, { params }) {
 
         return {
           ...detail,
-          supplements: supplements,
-          customizations: customizations
+          supplements,
+          customizations
         };
       })
     };
@@ -303,7 +307,7 @@ export async function GET(request, { params }) {
     return NextResponse.json(formattedOrder);
   } catch (error) {
     console.error('Erreur générale dans GET /api/orders/[id]:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Erreur serveur',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });

@@ -514,6 +514,7 @@ export async function POST(request) {
     return NextResponse.json({
       message: 'Commande créée avec succès',
       orderId: order.id,
+      securityCode: order.security_code,
       total: total,
       status: order.statut, // Utiliser le statut réel de la commande
       debug: {

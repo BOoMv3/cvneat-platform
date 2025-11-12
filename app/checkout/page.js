@@ -662,6 +662,7 @@ export default function Checkout() {
 
     const result = await response.json();
     const orderId = result.orderId || result.order?.id;
+    const securityCode = result.securityCode || result.security_code || result.order?.security_code;
     if (!orderId) {
       throw new Error('Commande créée mais identifiant introuvable');
     }
@@ -670,7 +671,17 @@ export default function Checkout() {
     safeLocalStorage.removeItem('cart');
 
     // Rediriger vers la page de confirmation
-    const redirectUrl = `/order-confirmation/${orderId}`;
+    if (typeof window !== 'undefined' && securityCode) {
+      try {
+        sessionStorage.setItem(`order-code-${orderId}`, securityCode);
+      } catch (e) {
+        console.warn('Impossible de stocker le code commande en session:', e);
+      }
+    }
+
+    const redirectUrl = securityCode
+      ? `/order-confirmation/${orderId}?code=${encodeURIComponent(securityCode)}`
+      : `/order-confirmation/${orderId}`;
     setTimeout(() => {
       try {
         window.location.replace(redirectUrl);

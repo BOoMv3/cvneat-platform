@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { 
   FaCheck, 
   FaClock, 
@@ -23,42 +24,127 @@ import {
 export default function OrderConfirmation() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [securityCode, setSecurityCode] = useState(null);
+  const [authToken, setAuthToken] = useState(null);
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
 
   useEffect(() => {
-    fetchOrder();
-    
-    // Polling pour mettre à jour le statut en temps réel
-    const interval = setInterval(fetchOrder, 3000); // Vérifier toutes les 3 secondes
-    
-    // Timer pour le temps écoulé
-    const timer = setInterval(() => {
+    let isMounted = true;
+
+    const loadSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (isMounted) {
+          setAuthToken(session?.access_token || null);
+        }
+      } catch (e) {
+        console.warn('Impossible de récupérer la session Supabase:', e);
+      }
+    };
+
+    loadSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthToken(session?.access_token || null);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const codeFromUrl = searchParams?.get?.('code');
+    if (codeFromUrl && codeFromUrl !== securityCode) {
+      setSecurityCode(codeFromUrl);
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem(`order-code-${id}`, codeFromUrl);
+        } catch (e) {
+          console.warn('Impossible de stocker le code commande en session:', e);
+        }
+      }
+      return;
+    }
+
+    if (!codeFromUrl && typeof window !== 'undefined') {
+      try {
+        const storedCode = sessionStorage.getItem(`order-code-${id}`);
+        if (storedCode && storedCode !== securityCode) {
+          setSecurityCode(storedCode);
+        }
+      } catch (e) {
+        console.warn('Impossible de récupérer le code commande en session:', e);
+      }
+    }
+  }, [id, searchParams, securityCode]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (!authToken && !securityCode) return;
+
+    let isMounted = true;
+    let firstFetch = true;
+
+    const loadOrder = async () => {
+      try {
+        if (firstFetch) {
+          setLoading(true);
+        }
+
+        const headers = {};
+        if (authToken) {
+          headers.Authorization = `Bearer ${authToken}`;
+        }
+        const query = securityCode ? `?code=${encodeURIComponent(securityCode)}` : '';
+        const response = await fetch(`/api/orders/${id}${query}`, { headers });
+
+        if (!response.ok) {
+          let message = 'Commande non trouvée';
+          if (response.status === 401) {
+            message = 'Accès non autorisé. Connectez-vous ou utilisez le lien sécurisé.';
+          } else if (response.status === 403) {
+            message = 'Vous n’êtes pas autorisé à consulter cette commande.';
+          } else if (response.status >= 500) {
+            message = 'Erreur serveur. Veuillez réessayer.';
+          }
+          throw new Error(message);
+        }
+
+        const data = await response.json();
+        if (!isMounted) return;
+        setOrderData(data);
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        if (!isMounted) return;
+        setError(err.message || 'Commande non trouvée');
+        setLoading(false);
+      } finally {
+        firstFetch = false;
+      }
+    };
+
+    setTimeElapsed(0);
+    loadOrder();
+    const fetchInterval = setInterval(loadOrder, 3000);
+    const timerInterval = setInterval(() => {
       setTimeElapsed(prev => prev + 1);
     }, 1000);
-    
-    return () => {
-      clearInterval(interval);
-      clearInterval(timer);
-    };
-  }, [id]);
 
-  const fetchOrder = async () => {
-    try {
-      const response = await fetch(`/api/orders/${id}`);
-      if (!response.ok) {
-        throw new Error('Commande non trouvée');
-      }
-      const data = await response.json();
-      setOrderData(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      isMounted = false;
+      clearInterval(fetchInterval);
+      clearInterval(timerInterval);
+    };
+  }, [id, authToken, securityCode]);
 
   // Helper pour obtenir le statut (normaliser statut/status)
   const getStatus = () => {
