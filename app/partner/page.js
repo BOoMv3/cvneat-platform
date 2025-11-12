@@ -3436,6 +3436,7 @@ export default function PartnerDashboard() {
                         })
                         .slice(0, 10)
                     : [];
+                  const optionalStep = isStepOptional(step);
 
                   return (
                     <div
@@ -3466,7 +3467,8 @@ export default function PartnerDashboard() {
                               min="0"
                               value={step.min_selections}
                               onChange={(e) => handleStepFieldChange(stepIndex, 'min_selections', e.target.value)}
-                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                              disabled={optionalStep}
+                              className={`w-full border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm ${optionalStep ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'border-gray-300 dark:border-gray-600'}`}
                             />
                           </div>
                           <div className="w-20">
@@ -3478,9 +3480,17 @@ export default function PartnerDashboard() {
                               min="0"
                               value={step.max_selections}
                               onChange={(e) => handleStepFieldChange(stepIndex, 'max_selections', e.target.value)}
-                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                              disabled={optionalStep}
+                              className={`w-full border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm ${optionalStep ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'border-gray-300 dark:border-gray-600'}`}
                             />
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleStepOptional(stepIndex)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${optionalStep ? 'border-orange-400 text-orange-600 bg-orange-50 dark:border-orange-500 dark:text-orange-300 dark:bg-orange-500/10' : 'border-gray-300 text-gray-600 hover:border-orange-400 hover:text-orange-600 dark:border-gray-600 dark:text-gray-300 dark:hover:border-orange-400'}`}
+                          >
+                            {optionalStep ? 'Rendre obligatoire' : 'Rendre facultative'}
+                          </button>
                         </div>
                       </div>
 
