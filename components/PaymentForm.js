@@ -16,6 +16,7 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isElementReady, setIsElementReady] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -28,13 +29,27 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
       return;
     }
 
+    const paymentElement = elements.getElement(PaymentElement);
+    if (!paymentElement) {
+      setError('Le formulaire de paiement n’est pas encore prêt. Veuillez patienter quelques secondes.');
+      setLoading(false);
+      return;
+    }
+
+    if (!isElementReady) {
+      setError('Le formulaire de paiement se charge. Merci de réessayer dans un instant.');
+      setLoading(false);
+      return;
+    }
+
     try {
       // IMPORTANT: Appeler elements.submit() AVANT stripe.confirmPayment()
       // Cela valide les données du formulaire et prépare le paiement
-      const { error: submitError } = await elements.submit();
-
-      if (submitError) {
-        throw new Error(submitError.message);
+      if (typeof elements.submit === 'function') {
+        const { error: submitError } = await elements.submit();
+        if (submitError) {
+          throw new Error(submitError.message);
+        }
       }
 
       // Confirmer le paiement avec le clientSecret existant
@@ -84,6 +99,7 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
           options={{
             layout: 'tabs',
           }}
+          onReady={() => setIsElementReady(true)}
         />
       </div>
       
@@ -93,7 +109,7 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
       
       <button
         type="submit"
-        disabled={!stripe || loading}
+        disabled={!stripe || loading || !isElementReady}
         className="w-full bg-blue-600 dark:bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
       >
         {loading ? (
