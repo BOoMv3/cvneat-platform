@@ -419,16 +419,16 @@ export async function POST(request) {
     
     // Envoyer une notification SSE au restaurant via le broadcaster
     // IMPORTANT: Calculer le montant total avec les frais de livraison pour la notification
-    const totalWithDelivery = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
+    const notificationTotal = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
     try {
       const notificationSent = sseBroadcaster.broadcast(restaurantId, {
         type: 'new_order',
-        message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
+        message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
         order: order,
         timestamp: new Date().toISOString()
       });
       console.log('🔔 Notification SSE envoyée:', notificationSent ? 'Oui' : 'Non (aucun client connecté)');
-      console.log('💰 Montant notification (avec frais):', totalWithDelivery, '€ (sous-total:', order.total, '€ + frais:', order.frais_livraison, '€)');
+      console.log('💰 Montant notification (avec frais):', notificationTotal, '€ (sous-total:', order.total, '€ + frais:', order.frais_livraison, '€)');
     } catch (broadcastError) {
       console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
       // Ne pas faire échouer la création de commande si le broadcast échoue
