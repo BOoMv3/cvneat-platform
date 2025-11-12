@@ -51,6 +51,17 @@ function extractNameParts(name = '') {
 }
 
 async function ensureUserProfile(serviceClient, user, fallback = {}) {
+  const normalizeRole = (role) => {
+    const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery']);
+    if (role && allowedRoles.has(role)) {
+      return role;
+    }
+    if (role === 'customer' || role === 'client') {
+      return 'user';
+    }
+    return 'user';
+  };
+
   try {
     const { data: existingUser, error: selectError } = await serviceClient
       .from('users')
@@ -80,7 +91,7 @@ async function ensureUserProfile(serviceClient, user, fallback = {}) {
       adresse: fallback.address || metadata.adresse || 'Adresse à compléter',
       code_postal: fallback.postalCode || metadata.code_postal || '00000',
       ville: fallback.city || metadata.ville || 'Ville à compléter',
-      role: fallback.role || metadata.role || 'customer',
+      role: normalizeRole(fallback.role || metadata.role),
     };
 
     if (!payload.email) {
