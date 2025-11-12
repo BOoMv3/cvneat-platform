@@ -6,6 +6,10 @@ import { notifyDeliverySubscribers } from '../../../../../lib/pushNotifications'
 
 // Initialiser Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export async function PUT(request, { params }) {
   try {
@@ -37,28 +41,23 @@ export async function PUT(request, { params }) {
     console.log('✅ Utilisateur authentifié:', user.email);
 
     // Vérifier que l'utilisateur est un restaurant
-    const { data: userData, error: userDataError } = await supabase
+    const { data: userData, error: userDataError } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (userDataError || !userData || userData.role !== 'restaurant') {
-      console.error('❌ Utilisateur pas restaurant:', userData);
-      return NextResponse.json({ error: 'Accès non autorisé - Restaurant requis' }, { status: 403 });
+    if (userDataError || !userData || !['restaurant', 'partner'].includes(userData.role)) {
+      console.error('❌ Utilisateur non autorisé:', userData);
+      return NextResponse.json({ error: 'Accès non autorisé - Rôle restaurant requis' }, { status: 403 });
     }
 
-    console.log('✅ Rôle restaurant confirmé');
+    console.log('✅ Rôle restaurant/partner confirmé:', userData.role);
 
     // Vérifier que la commande existe - UTILISER SERVICE ROLE POUR BYPASSER RLS
     console.log('🔍 Recherche commande avec ID:', id);
     
     // Créer un client admin pour bypasser RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-    
     const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
       .select('*')
@@ -75,7 +74,7 @@ export async function PUT(request, { params }) {
     console.log('✅ Commande trouvée:', order.id, 'restaurant_id:', order.restaurant_id);
 
     // Vérifier que la commande appartient à ce restaurant
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
       .select('id')
       .eq('user_id', user.id)
