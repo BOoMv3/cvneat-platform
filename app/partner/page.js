@@ -59,7 +59,7 @@ export default function PartnerDashboard() {
     return 'dashboard';
   });
   const [showMenuModal, setShowMenuModal] = useState(false);
-  const [menuForm, setMenuForm] = useState({
+  const createDefaultMenuForm = () => ({
     nom: '',
     description: '',
     prix: '',
@@ -78,6 +78,7 @@ export default function PartnerDashboard() {
     max_sauces: null, // Limite de sauces (null = illimité)
     max_meats: null // Limite de viandes (null = illimité)
   });
+  const [menuForm, setMenuForm] = useState(createDefaultMenuForm());
   const [editingMenu, setEditingMenu] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [preparationTime, setPreparationTime] = useState(15);
@@ -482,17 +483,7 @@ export default function PartnerDashboard() {
       if (response.ok) {
         console.log('✅ Plat ajouté/modifié avec succès');
         setShowMenuModal(false);
-        setMenuForm({ 
-          nom: '', 
-          description: '', 
-          prix: '', 
-          category: '', 
-          disponible: true,
-          image_url: '',
-          supplements: [],
-          boisson_taille: '',
-          prix_taille: ''
-        });
+        setMenuForm(createDefaultMenuForm());
         setEditingMenu(null);
         
         // Rafraîchir le menu seulement si le restaurant existe
@@ -2283,7 +2274,11 @@ export default function PartnerDashboard() {
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Gestion du menu</h2>
               <button
-                onClick={() => setShowMenuModal(true)}
+                onClick={() => {
+                  setEditingMenu(null);
+                  setMenuForm(createDefaultMenuForm());
+                  setShowMenuModal(true);
+                }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Ajouter un plat
@@ -2834,7 +2829,7 @@ export default function PartnerDashboard() {
                     + Ajouter
                   </button>
                 </div>
-                {menuForm.supplements.length > 0 && (
+                {Array.isArray(menuForm.supplements) && menuForm.supplements.length > 0 && (
                   <div className="space-y-2">
                     {menuForm.supplements.map((supp, index) => (
                       <div key={supp.id || index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -2873,7 +2868,7 @@ export default function PartnerDashboard() {
                         + Ajouter viande
                       </button>
                     </div>
-                    {menuForm.meat_options.length > 0 && (
+                    {Array.isArray(menuForm.meat_options) && menuForm.meat_options.length > 0 && (
                       <div className="space-y-2 mb-3">
                         {menuForm.meat_options.map((meat, index) => (
                           <div key={meat.id || index} className="grid grid-cols-1 md:grid-cols-4 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -2977,7 +2972,7 @@ export default function PartnerDashboard() {
                         + Ajouter sauce
                       </button>
                     </div>
-                    {menuForm.sauce_options.length > 0 && (
+                    {Array.isArray(menuForm.sauce_options) && menuForm.sauce_options.length > 0 && (
                       <div className="space-y-2 mb-3">
                         {menuForm.sauce_options.map((sauce, index) => (
                           <div key={sauce.id || index} className="grid grid-cols-1 md:grid-cols-4 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -3084,7 +3079,7 @@ export default function PartnerDashboard() {
                         + Ajouter ingrédient
                       </button>
                     </div>
-                    {menuForm.base_ingredients.length > 0 && (
+                    {Array.isArray(menuForm.base_ingredients) && menuForm.base_ingredients.length > 0 && (
                       <div className="space-y-2">
                         {menuForm.base_ingredients.map((ing, index) => (
                           <div key={ing.id || index} className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -3172,22 +3167,7 @@ export default function PartnerDashboard() {
                   type="button"
                   onClick={() => {
                     setShowMenuModal(false);
-                    setMenuForm({ 
-                      nom: '', 
-                      description: '', 
-                      prix: '', 
-                      category: '', 
-                      disponible: true,
-                      image_url: '',
-                      supplements: [],
-                      boisson_taille: '',
-                      prix_taille: '',
-                      meat_options: [],
-                      sauce_options: [],
-                      base_ingredients: [],
-                      requires_meat_selection: false,
-                      requires_sauce_selection: false
-                    });
+                    setMenuForm(createDefaultMenuForm());
                     setEditingMenu(null);
                   }}
                   className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
