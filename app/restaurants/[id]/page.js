@@ -1014,11 +1014,13 @@ export default function RestaurantDetail({ params }) {
                                           {step.title || `Choix ${stepIndex + 1}`}
                                         </p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                                          {min === max
-                                            ? min === 1
-                                              ? 'Sélection obligatoire de 1 option'
-                                              : `Sélection obligatoire de ${min} options`
-                                            : `Choisir ${min > 0 ? `au moins ${min}` : 'jusqu\'à'} ${max ? `${max} option${max > 1 ? 's' : ''}` : 'options'}`}
+                                          {min === 0 && (max === 0 || max === null)
+                                            ? 'Étape facultative (aucun choix requis)'
+                                            : min === max
+                                              ? min === 1
+                                                ? 'Sélection obligatoire de 1 option'
+                                                : `Sélection obligatoire de ${min} options`
+                                              : `Choisir ${min > 0 ? `au moins ${min}` : 'jusqu\'à'} ${max ? `${max} option${max > 1 ? 's' : ''}` : 'options'}`}
                                         </p>
                                         {step.description && (
                                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1256,16 +1258,18 @@ export default function RestaurantDetail({ params }) {
                             )}
                           </div>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {min === max
-                              ? min === 1
-                                ? 'Choix obligatoire'
-                                : `Choisir exactement ${min} options`
-                              : [
-                                  min > 0 ? `Min ${min}` : 'Optionnel',
-                                  max ? `· Max ${max}` : null
-                                ]
-                                  .filter(Boolean)
-                                  .join(' ')}
+                            {min === 0 && (max === 0 || max === null)
+                              ? 'Étape facultative (aucun choix requis)'
+                              : min === max
+                                ? min === 1
+                                  ? 'Choix obligatoire'
+                                  : `Choisir exactement ${min} options`
+                                : [
+                                    min > 0 ? `Min ${min}` : 'Optionnel',
+                                    max ? `· Max ${max}` : null
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' ')}
                           </p>
                         </div>
 
