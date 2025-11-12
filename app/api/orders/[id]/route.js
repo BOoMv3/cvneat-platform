@@ -227,8 +227,9 @@ export async function GET(request, { params }) {
         : (addressParts[1]?.split(' ')[0] || '');
     const deliveryPhone = order.telephone || order.phone || order.customer_phone || '';
 
-    const totalAmount = parseFloat(order.total || 0) || 0;
+    const subtotalAmount = parseFloat(order.total || 0) || 0;
     const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+    const totalWithDelivery = subtotalAmount + deliveryFee;
 
     const formattedOrder = {
       id: order.id,
@@ -248,6 +249,7 @@ export async function GET(request, { params }) {
       customer_name: customerName,
       customer_phone: customerPhone,
       customer_email: customerEmail,
+      security_code: order.security_code,
       restaurant: {
         id: restaurant?.id,
         name: restaurant?.nom || 'Restaurant inconnu',
@@ -259,8 +261,11 @@ export async function GET(request, { params }) {
       deliveryCity,
       deliveryPostalCode,
       deliveryPhone: deliveryPhone || customerPhone,
-      total: totalAmount,
-      total_amount: totalAmount,
+      subtotal: subtotalAmount,
+      subtotal_amount: subtotalAmount,
+      total: totalWithDelivery,
+      total_amount: totalWithDelivery,
+      total_with_delivery: totalWithDelivery,
       items,
       delivery_instructions: order.instructions_livraison || order.delivery_instructions || null,
       refund_amount: order.refund_amount ? parseFloat(order.refund_amount) : null,

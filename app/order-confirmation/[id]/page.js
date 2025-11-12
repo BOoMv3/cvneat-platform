@@ -151,6 +151,29 @@ export default function OrderConfirmation() {
     return orderData?.statut || orderData?.status;
   };
 
+  const getDeliveryFee = () => {
+    return Number(orderData?.deliveryFee ?? orderData?.delivery_fee ?? 0);
+  };
+
+  const getSubtotal = () => {
+    if (typeof orderData?.subtotal === 'number') return orderData.subtotal;
+    if (typeof orderData?.subtotal_amount === 'number') return orderData.subtotal_amount;
+    if (typeof orderData?.total_without_delivery === 'number') return orderData.total_without_delivery;
+    const totalAmount = getTotalAmount();
+    return Math.max(totalAmount - getDeliveryFee(), 0);
+  };
+
+  const getTotalAmount = () => {
+    if (typeof orderData?.total === 'number') return orderData.total;
+    if (typeof orderData?.total_amount === 'number') return orderData.total_amount;
+    if (typeof orderData?.total_with_delivery === 'number') return orderData.total_with_delivery;
+    return Number(orderData?.totalAmount ?? 0);
+  };
+
+  const getSecurityCode = () => {
+    return securityCode || orderData?.security_code || orderData?.delivery_code || null;
+  };
+
   const getStatusText = (statut) => {
     const status = statut || getStatus();
     switch (status) {
@@ -282,9 +305,9 @@ export default function OrderConfirmation() {
         `${item.name} x${item.quantity} - ${(item.price * item.quantity).toFixed(2)}€`
       ).join('\n')}
       
-      Sous-total: ${(orderData.total_amount - orderData.delivery_fee).toFixed(2)}€
-      Frais de livraison: ${orderData.delivery_fee.toFixed(2)}€
-      TOTAL: ${orderData.total_amount.toFixed(2)}€
+      Sous-total: ${getSubtotal().toFixed(2)}€
+      Frais de livraison: ${getDeliveryFee().toFixed(2)}€
+      TOTAL: ${getTotalAmount().toFixed(2)}€
       
       Livraison: ${orderData.delivery_address}, ${orderData.delivery_city} ${orderData.delivery_postal_code}
       
@@ -525,17 +548,17 @@ export default function OrderConfirmation() {
                 {/* Totaux */}
                 <div className="border-t pt-4 space-y-3">
                   <div className="flex justify-between text-gray-600">
-                  <span>Sous-total</span>
-                  <span>{(orderData.total_amount - orderData.delivery_fee).toFixed(2)}€</span>
-                </div>
+                    <span>Sous-total</span>
+                    <span>{getSubtotal().toFixed(2)}€</span>
+                  </div>
                   <div className="flex justify-between text-gray-600">
-                  <span>Frais de livraison</span>
-                  <span>{orderData.delivery_fee.toFixed(2)}€</span>
-                </div>
+                    <span>Frais de livraison</span>
+                    <span>{getDeliveryFee().toFixed(2)}€</span>
+                  </div>
                   <div className="border-t pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-gray-900">Total</span>
-                      <span className="text-2xl font-bold text-blue-600">{orderData.total_amount.toFixed(2)}€</span>
+                      <span className="text-2xl font-bold text-blue-600">{getTotalAmount().toFixed(2)}€</span>
                     </div>
                   </div>
                 </div>
@@ -588,6 +611,19 @@ export default function OrderConfirmation() {
                   )}
                 </div>
               </div>
+
+              {/* Code de sécurité pour la livraison */}
+              {getSecurityCode() && (
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Code de sécurité</h3>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Communiquez ce code à votre livreur lors de la remise de la commande.
+                  </p>
+                  <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-lg px-4 py-3 text-center text-2xl font-bold tracking-widest">
+                    {getSecurityCode()}
+                  </div>
+                </div>
+              )}
 
               {/* Actions rapides */}
               <div className="bg-white rounded-xl shadow-sm border p-6">

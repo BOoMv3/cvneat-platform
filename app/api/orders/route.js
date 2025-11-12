@@ -511,11 +511,18 @@ export async function POST(request) {
 
     console.log('🎯 RETOUR DE LA RÉPONSE - Commande créée avec statut:', order.statut);
     
+    const subtotalValue = parseFloat(total) || 0;
+    const deliveryFeeValue = parseFloat(fraisLivraison) || 0;
+    const totalWithDelivery = subtotalValue + deliveryFeeValue;
+
     return NextResponse.json({
       message: 'Commande créée avec succès',
       orderId: order.id,
       securityCode: order.security_code,
-      total: total,
+      subtotal: subtotalValue,
+      deliveryFee: deliveryFeeValue,
+      total: totalWithDelivery,
+      totalAmount: totalWithDelivery,
       status: order.statut, // Utiliser le statut réel de la commande
       debug: {
         orderCreatedAt: order.created_at,
