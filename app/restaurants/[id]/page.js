@@ -814,7 +814,7 @@ export default function RestaurantDetail({ params }) {
 
       selections.forEach((selection) => {
         if (selection.option?.variants?.length && selection.variantId === null) {
-          errors.push(`Choisissez une variante pour ${selection.option?.nom || 'l'option sélectionnée'}`);
+          errors.push(`Choisissez une variante pour ${selection.option?.nom || "l'option sélectionnée"}`);
         }
       });
     });
