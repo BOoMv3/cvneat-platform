@@ -4153,3 +4153,37 @@ export default function PartnerDashboard() {
     </div>
   );
 } 
+
+const isStepOptional = (step) => {
+  if (!step) return false;
+  const min = parseInt(step.min_selections, 10);
+  const max = parseInt(step.max_selections, 10);
+  const normalizedMin = Number.isNaN(min) ? 0 : min;
+  const normalizedMax = Number.isNaN(max) ? 0 : max;
+  return normalizedMin === 0 && normalizedMax === 0;
+};
+
+const toggleStepOptional = (stepIndex) => {
+  updateComboStep(stepIndex, (step) => {
+    if (!step) return step;
+    const currentlyOptional = isStepOptional(step);
+    if (currentlyOptional) {
+      const fallbackMin = 1;
+      let fallbackMax = parseInt(step.max_selections, 10);
+      if (Number.isNaN(fallbackMax) || fallbackMax < fallbackMin) {
+        fallbackMax = fallbackMin;
+      }
+      return {
+        ...step,
+        min_selections: fallbackMin.toString(),
+        max_selections: fallbackMax.toString()
+      };
+    }
+
+    return {
+      ...step,
+      min_selections: '0',
+      max_selections: '0'
+    };
+  });
+};
