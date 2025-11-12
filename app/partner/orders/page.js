@@ -13,7 +13,10 @@ export default function PartnerOrders() {
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [acceptingOrder, setAcceptingOrder] = useState(false);
+  const [rejectingOrder, setRejectingOrder] = useState(false);
   const router = useRouter();
 
   // État pour l'estimation du temps
@@ -103,28 +106,28 @@ export default function PartnerOrders() {
     try {
       setAcceptingOrder(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session.access_token;
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
 
-      const response = await fetch('/api/partner/orders', {
-        method: 'POST',
+      const response = await fetch(`/api/restaurants/orders/${selectedOrder.id}`, {
+        method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          orderId: selectedOrder.id,
-          preparationTime: timeEstimation.preparationTime,
-          deliveryTime: timeEstimation.deliveryTime,
-          estimatedTotalTime: timeEstimation.estimatedTotalTime
+          status: 'acceptee',
+          preparation_time: timeEstimation.preparationTime
         })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Erreur lors de l\'acceptation');
       }
 
-      // Mettre à jour la liste des commandes
       await fetchOrders();
       setShowAcceptModal(false);
       setSelectedOrder(null);
@@ -137,6 +140,45 @@ export default function PartnerOrders() {
       setError(err.message);
     } finally {
       setAcceptingOrder(false);
+    }
+  };
+
+  const handleRejectOrder = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      setRejectingOrder(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`/api/restaurants/orders/${selectedOrder.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'refusee',
+          reason: rejectReason
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors du refus');
+      }
+
+      await fetchOrders();
+      setShowRejectModal(false);
+      setRejectReason('');
+      setSelectedOrder(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRejectingOrder(false);
     }
   };
 
@@ -256,6 +298,11 @@ export default function PartnerOrders() {
                       <button
                         onClick={() => {
                           setSelectedOrder(order);
+                          setTimeEstimation({
+                            preparationTime: 15,
+                            deliveryTime: 20,
+                            estimatedTotalTime: 35
+                          });
                           setShowAcceptModal(true);
                         }}
                         disabled={order.statut !== 'en_attente'}
@@ -267,6 +314,22 @@ export default function PartnerOrders() {
                       >
                         <FaCheck />
                         Accepter
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setRejectReason('');
+                          setShowRejectModal(true);
+                        }}
+                        disabled={order.statut !== 'en_attente'}
+                        className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                          order.statut === 'en_attente'
+                            ? 'bg-red-600 text-white hover:bg-red-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <FaTimes />
+                        Refuser
                       </button>
                     </div>
                   </div>
@@ -281,7 +344,7 @@ export default function PartnerOrders() {
               <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                 <h2 className="text-xl font-bold mb-4">Accepter la commande</h2>
                 <p className="text-gray-600 mb-6">
-                  Estimez le temps de préparation et de livraison pour cette commande.
+                Estimez le temps de préparation et de livraison pour cette commande.
                 </p>
 
                 <div className="space-y-4">
@@ -350,6 +413,45 @@ export default function PartnerOrders() {
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                   >
                     {acceptingOrder ? 'Acceptation...' : 'Accepter la commande'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de refus */}
+          {showRejectModal && selectedOrder && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                <h2 className="text-xl font-bold mb-4">Refuser la commande</h2>
+                <p className="text-gray-600 mb-6">
+                  Indiquez la raison du refus. Elle sera transmises au client.
+                </p>
+
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Raison du refus (optionnel)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[120px]"
+                />
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowRejectModal(false);
+                      setRejectReason('');
+                      setSelectedOrder(null);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleRejectOrder}
+                    disabled={rejectingOrder}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {rejectingOrder ? 'Refus...' : 'Refuser la commande'}
                   </button>
                 </div>
               </div>
