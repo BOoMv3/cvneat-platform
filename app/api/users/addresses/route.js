@@ -1,14 +1,39 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
-// Créer un client avec le service role pour contourner RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 export const dynamic = 'force-dynamic';
+
+let cachedServiceClient = null;
+
+function getServiceClient() {
+  if (supabaseAdminClient) {
+    return supabaseAdminClient;
+  }
+
+  if (cachedServiceClient) {
+    return cachedServiceClient;
+  }
+
+  const supabaseUrl =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceKey) {
+    return null;
+  }
+
+  cachedServiceClient = createClient(supabaseUrl, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+
+  return cachedServiceClient;
+}
 
 // GET /api/users/addresses - Récupérer les adresses de l'utilisateur
 export async function GET(request) {
@@ -48,6 +73,14 @@ export async function POST(request) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
+    const serviceClient = getServiceClient();
+    if (!serviceClient) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquante pour ajouter une adresse');
+      return NextResponse.json(
+        { error: 'Configuration serveur manquante pour Supabase' },
+        { status: 500 }
+      );
+    }
     const body = await request.json();
     const { name, address, city, postal_code, instructions, is_default } = body;
     if (!address || !city || !postal_code) {
@@ -55,7 +88,7 @@ export async function POST(request) {
     }
     // Si is_default, mettre toutes les autres adresses à false
     if (is_default) {
-      await supabase
+      await serviceClient
         .from('user_addresses')
         .update({ is_default: false })
         .eq('user_id', user.id);
@@ -64,7 +97,7 @@ export async function POST(request) {
     console.log('🔍 DEBUG - User ID utilisé:', user.id);
     console.log('🔍 DEBUG - User email:', user.email);
     
-    const { data: newAddress, error } = await supabaseAdmin
+    const { data: newAddress, error } = await serviceClient
       .from('user_addresses')
       .insert([
         {
@@ -99,18 +132,26 @@ export async function PUT(request) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
+    const serviceClient = getServiceClient();
+    if (!serviceClient) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquante pour mettre à jour une adresse');
+      return NextResponse.json(
+        { error: 'Configuration serveur manquante pour Supabase' },
+        { status: 500 }
+      );
+    }
     const { id, name, address, city, postal_code, instructions, is_default } = await request.json();
     if (!id || !address || !city || !postal_code) {
       return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
     // Si is_default, mettre toutes les autres adresses à false
     if (is_default) {
-      await supabase
+      await serviceClient
         .from('user_addresses')
         .update({ is_default: false })
         .eq('user_id', user.id);
     }
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await serviceClient
       .from('user_addresses')
       .update({
         name,
@@ -144,12 +185,20 @@ export async function DELETE(request) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
+    const serviceClient = getServiceClient();
+    if (!serviceClient) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquante pour supprimer une adresse');
+      return NextResponse.json(
+        { error: 'Configuration serveur manquante pour Supabase' },
+        { status: 500 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) {
       return NextResponse.json({ error: 'ID de l\'adresse requis' }, { status: 400 });
     }
-    const { error } = await supabase
+    const { error } = await serviceClient
       .from('user_addresses')
       .delete()
       .eq('id', id)
