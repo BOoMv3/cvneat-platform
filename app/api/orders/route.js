@@ -397,6 +397,21 @@ export async function POST(request) {
     // Ajouter user_id si l'utilisateur est connecté
     if (userId) {
       orderData.user_id = userId;
+    } else if (customerInfo?.email) {
+      try {
+        const { data: existingUser } = await serviceClient
+          .from('users')
+          .select('id')
+          .eq('email', sanitizeInput(customerInfo.email))
+          .single();
+
+        if (existingUser?.id) {
+          orderData.user_id = existingUser.id;
+          console.log('🔄 user_id associé via email pour la commande:', existingUser.id);
+        }
+      } catch (lookupError) {
+        console.warn('⚠️ Impossible de retrouver un utilisateur par email:', lookupError?.message);
+      }
     }
 
     console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
