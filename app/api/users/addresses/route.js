@@ -54,7 +54,11 @@ export async function GET(request) {
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return NextResponse.json(addresses || []);
+    const normalized = (addresses || []).map(address => ({
+      ...address,
+      postalCode: address.postal_code ?? address.postalCode ?? null
+    }));
+    return NextResponse.json(normalized);
   } catch (error) {
     console.error('Erreur dans /api/users/addresses GET:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
@@ -82,8 +86,19 @@ export async function POST(request) {
       );
     }
     const body = await request.json();
-    const { name, address, city, postal_code, instructions, is_default } = body;
-    if (!address || !city || !postal_code) {
+    const {
+      name,
+      address,
+      city,
+      postal_code,
+      postalCode,
+      instructions,
+      is_default
+    } = body;
+
+    const normalizedPostalCode = postal_code ?? postalCode ?? null;
+
+    if (!address || !city || !normalizedPostalCode) {
       return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
     // Si is_default, mettre toutes les autres adresses à false
@@ -105,7 +120,7 @@ export async function POST(request) {
           name,
           address,
           city,
-          postal_code,
+          postal_code: normalizedPostalCode,
           instructions,
           is_default: !!is_default
         }
@@ -113,7 +128,13 @@ export async function POST(request) {
       .select()
       .single();
     if (error) throw error;
-    return NextResponse.json({ message: 'Adresse ajoutée', address: newAddress });
+    return NextResponse.json({
+      message: 'Adresse ajoutée',
+      address: {
+        ...newAddress,
+        postalCode: newAddress.postal_code ?? newAddress.postalCode ?? null
+      }
+    });
   } catch (error) {
     console.error('Erreur dans /api/users/addresses POST:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
@@ -140,8 +161,20 @@ export async function PUT(request) {
         { status: 500 }
       );
     }
-    const { id, name, address, city, postal_code, instructions, is_default } = await request.json();
-    if (!id || !address || !city || !postal_code) {
+    const {
+      id,
+      name,
+      address,
+      city,
+      postal_code,
+      postalCode,
+      instructions,
+      is_default
+    } = await request.json();
+
+    const normalizedPostalCode = postal_code ?? postalCode ?? null;
+
+    if (!id || !address || !city || !normalizedPostalCode) {
       return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
     // Si is_default, mettre toutes les autres adresses à false
@@ -157,7 +190,7 @@ export async function PUT(request) {
         name,
         address,
         city,
-        postal_code,
+        postal_code: normalizedPostalCode,
         instructions,
         is_default: !!is_default
       })
@@ -166,7 +199,13 @@ export async function PUT(request) {
       .select()
       .single();
     if (error) throw error;
-    return NextResponse.json({ message: 'Adresse mise à jour', address: updated });
+    return NextResponse.json({
+      message: 'Adresse mise à jour',
+      address: {
+        ...updated,
+        postalCode: updated.postal_code ?? updated.postalCode ?? null
+      }
+    });
   } catch (error) {
     console.error('Erreur dans /api/users/addresses PUT:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
