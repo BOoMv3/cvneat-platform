@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -52,7 +52,7 @@ export default function PartnerDashboard() {
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '');
-      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard' || hash === 'formulas') {
+      if (['orders', 'menu', 'dashboard', 'formulas', 'combos'].includes(hash)) {
         return hash;
       }
     }
@@ -110,12 +110,13 @@ export default function PartnerDashboard() {
 
   // Variable pour éviter les requêtes simultanées (utiliser useRef pour persister entre renders)
   const isFetchingRef = useRef(false);
+  const isFetchingCombosRef = useRef(false);
 
   // Synchroniser activeTab avec l'URL hash
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (hash === 'orders' || hash === 'menu' || hash === 'dashboard' || hash === 'formulas') {
+      if (['orders', 'menu', 'dashboard', 'formulas', 'combos'].includes(hash)) {
         setActiveTab(hash);
       }
     };
@@ -216,6 +217,7 @@ export default function PartnerDashboard() {
         await fetchMenu(resto.id);
         await fetchOrders(resto.id);
         await fetchFormulas();
+        await fetchCombos(resto.id);
       }
       
       setLoading(false);
@@ -317,6 +319,71 @@ export default function PartnerDashboard() {
     } catch (error) {
       console.error('Erreur récupération formules:', error);
       setFormulas([]);
+    }
+  };
+
+  const fetchCombos = async (restaurantId) => {
+    if (!restaurantId) return;
+    if (isFetchingCombosRef.current) return;
+
+    try {
+      isFetchingCombosRef.current = true;
+      setCombosLoading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || null;
+
+      const response = await fetch(`/api/partner/menu-combos?restaurantId=${restaurantId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de la récupération des menus composés');
+      }
+
+      const data = await response.json();
+      const normalizedCombos = Array.isArray(data)
+        ? data.map((combo) => ({
+            ...combo,
+            prix_base: combo?.prix_base !== undefined && combo?.prix_base !== null
+              ? parseFloat(combo.prix_base)
+              : 0,
+            steps: Array.isArray(combo?.steps)
+              ? combo.steps.map((step) => ({
+                  ...step,
+                  min_selections: step?.min_selections ?? 1,
+                  max_selections: step?.max_selections ?? Math.max(1, step?.min_selections ?? 1),
+                  options: Array.isArray(step?.options)
+                    ? step.options.map((option) => ({
+                        ...option,
+                        prix_supplementaire:
+                          option?.prix_supplementaire !== undefined && option?.prix_supplementaire !== null
+                            ? parseFloat(option.prix_supplementaire)
+                            : 0,
+                        variants: Array.isArray(option?.variants)
+                          ? option.variants.map((variant) => ({
+                              ...variant,
+                              prix_supplementaire:
+                                variant?.prix_supplementaire !== undefined && variant?.prix_supplementaire !== null
+                                  ? parseFloat(variant.prix_supplementaire)
+                                  : 0
+                            }))
+                          : []
+                      }))
+                    : []
+                }))
+              : []
+          }))
+        : [];
+
+      setComboList(normalizedCombos);
+    } catch (error) {
+      console.error('Erreur récupération menus composés:', error);
+      setComboList([]);
+    } finally {
+      setCombosLoading(false);
+      isFetchingCombosRef.current = false;
     }
   };
 
@@ -963,6 +1030,504 @@ export default function PartnerDashboard() {
     }
   };
 
+  const createDefaultComboForm = () => ({
+    nom: '',
+    description: '',
+    prix_base: '',
+    actif: true,
+    ordre_affichage: 0,
+    steps: [
+      {
+        title: 'Choix du burger',
+        description: 'Sélectionnez le burger souhaité',
+        min_selections: 1,
+        max_selections: 1,
+        options: []
+      },
+      {
+        title: "Choix de l'accompagnement",
+        description: 'Frites, salade ou autre accompagnement',
+        min_selections: 1,
+        max_selections: 1,
+        options: []
+      },
+      {
+        title: 'Choix de la boisson',
+        description: 'Choisissez la boisson incluse dans le menu',
+        min_selections: 1,
+        max_selections: 1,
+        options: []
+      }
+    ]
+  });
+
+  const [comboList, setComboList] = useState([]);
+  const [combosLoading, setCombosLoading] = useState(false);
+  const [showComboModal, setShowComboModal] = useState(false);
+  const [editingCombo, setEditingCombo] = useState(null);
+  const [comboForm, setComboForm] = useState(createDefaultComboForm());
+  const [savingCombo, setSavingCombo] = useState(false);
+  const [comboStepSearch, setComboStepSearch] = useState({});
+
+  const groupedMenuByCategory = useMemo(() => {
+    const groups = {};
+    (menu || []).forEach((item) => {
+      const key = item.category || 'Autres';
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+    });
+    return groups;
+  }, [menu]);
+
+  const resetComboForm = () => {
+    const defaultForm = createDefaultComboForm();
+    setComboForm(defaultForm);
+    setEditingCombo(null);
+    const initialSearch = {};
+    defaultForm.steps.forEach((_, index) => {
+      initialSearch[index] = '';
+    });
+    setComboStepSearch(initialSearch);
+  };
+
+  const handleOpenComboModal = (combo = null) => {
+    if (combo) {
+      const normalizedCombo = {
+        nom: combo.nom || '',
+        description: combo.description || '',
+        prix_base:
+          combo.prix_base !== undefined && combo.prix_base !== null
+            ? combo.prix_base.toString()
+            : '',
+        actif: combo.actif !== false,
+        ordre_affichage: combo.ordre_affichage ?? 0,
+        steps: Array.isArray(combo.steps) && combo.steps.length > 0
+          ? combo.steps.map((step, stepIndex) => ({
+              title: step.title || `Étape ${stepIndex + 1}`,
+              description: step.description || '',
+              min_selections: step.min_selections ?? 1,
+              max_selections: step.max_selections ?? Math.max(1, step.min_selections ?? 1),
+              options: Array.isArray(step.options) && step.options.length > 0
+                ? step.options.map((option, optionIndex) => ({
+                    ...option,
+                    prix_supplementaire:
+                      option?.prix_supplementaire !== undefined && option?.prix_supplementaire !== null
+                        ? option.prix_supplementaire.toString()
+                        : '',
+                    image_url: option.image_url || '',
+                    disponible: option.disponible !== false,
+                    variants: Array.isArray(option.variants)
+                      ? option.variants.map((variant, variantIndex) => ({
+                          nom: variant.nom || `Variante ${variantIndex + 1}`,
+                          description: variant.description || '',
+                          prix_supplementaire:
+                            variant.prix_supplementaire !== undefined && variant.prix_supplementaire !== null
+                              ? variant.prix_supplementaire.toString()
+                              : '',
+                          is_default: variant.is_default === true,
+                          disponible: variant.disponible !== false
+                        }))
+                      : []
+                  }))
+                : [{
+                    type: 'link_to_item',
+                    linked_menu_id: '',
+                    nom: '',
+                    description: '',
+                    prix_supplementaire: '',
+                    image_url: '',
+                    disponible: true,
+                    variants: []
+                  }]
+            }))
+          : createDefaultComboForm().steps
+      };
+
+      setEditingCombo(combo);
+      setComboForm(normalizedCombo);
+      const initialSearch = {};
+      (normalizedCombo.steps || []).forEach((_, index) => {
+        initialSearch[index] = '';
+      });
+      setComboStepSearch(initialSearch);
+    } else {
+      resetComboForm();
+    }
+
+    setShowComboModal(true);
+  };
+
+  const handleCloseComboModal = () => {
+    setShowComboModal(false);
+    setTimeout(() => {
+      resetComboForm();
+    }, 200);
+  };
+
+  const updateComboField = (field, value) => {
+    setComboForm((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const updateComboStep = (index, updater) => {
+    setComboForm((prev) => {
+      const steps = [...prev.steps];
+      steps[index] = typeof updater === 'function' ? updater(steps[index]) : { ...steps[index], ...updater };
+      return { ...prev, steps };
+    });
+  };
+
+  const handleStepFieldChange = (index, field, value) => {
+    updateComboStep(index, (step) => ({
+      ...step,
+      [field]: value
+    }));
+  };
+
+  const handleAddComboStep = () => {
+    setComboForm((prev) => {
+      const newSteps = [
+        ...prev.steps,
+        {
+          title: `Choix ${prev.steps.length + 1}`,
+          description: '',
+          min_selections: 1,
+          max_selections: 1,
+          options: []
+        }
+      ];
+      return {
+        ...prev,
+        steps: newSteps
+      };
+    });
+    const nextIndex = comboForm.steps.length;
+    setComboStepSearch((prev) => ({
+      ...prev,
+      [nextIndex]: ''
+    }));
+  };
+
+  const handleRemoveComboStep = (index) => {
+    setComboForm((prev) => {
+      const newSteps = prev.steps.filter((_, stepIndex) => stepIndex !== index);
+      return {
+        ...prev,
+        steps: newSteps
+      };
+    });
+    setComboStepSearch((prev) => {
+      const next = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        const numericKey = parseInt(key, 10);
+        if (numericKey < index) {
+          next[numericKey] = value;
+        } else if (numericKey > index) {
+          next[numericKey - 1] = value;
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleAddComboOption = (stepIndex) => {
+    updateComboStep(stepIndex, (step) => ({
+      ...step,
+      options: [
+        ...step.options,
+        {
+          type: 'link_to_item',
+          linked_menu_id: '',
+          nom: '',
+          description: '',
+          prix_supplementaire: '',
+          image_url: '',
+          disponible: true,
+          variants: []
+        }
+      ]
+    }));
+  };
+
+  const handleRemoveComboOption = (stepIndex, optionIndex) => {
+    updateComboStep(stepIndex, (step) => ({
+      ...step,
+      options: step.options.filter((_, idx) => idx !== optionIndex)
+    }));
+  };
+
+  const handleComboOptionChange = (stepIndex, optionIndex, field, value) => {
+    updateComboStep(stepIndex, (step) => {
+      const options = [...step.options];
+      const option = { ...options[optionIndex] };
+
+      if (field === 'type') {
+        option.type = value === 'custom' ? 'custom' : 'link_to_item';
+        if (option.type === 'custom') {
+          option.linked_menu_id = '';
+          if (!option.nom) option.nom = '';
+        } else {
+          option.linked_menu_id = '';
+          option.nom = '';
+        }
+      } else if (field === 'linked_menu_id') {
+        option.linked_menu_id = value;
+        if (option.type !== 'custom') {
+          const linkedItem = menu.find((item) => item.id === value);
+          if (linkedItem) {
+            option.nom = linkedItem.nom;
+            option.description = option.description || linkedItem.description || '';
+          }
+        }
+      } else {
+        option[field] = value;
+      }
+
+      options[optionIndex] = option;
+      return { ...step, options };
+    });
+  };
+
+  const handleAddExistingMenuAsOption = (stepIndex, menuItem) => {
+    if (!menuItem) return;
+    updateComboStep(stepIndex, (step) => {
+      if (step.options.some((opt) => opt.type !== 'custom' && opt.linked_menu_id === menuItem.id)) {
+        return step;
+      }
+
+      const newOption = {
+        type: 'link_to_item',
+        linked_menu_id: menuItem.id,
+        nom: menuItem.nom || '',
+        description: menuItem.description || '',
+        prix_supplementaire: '',
+        image_url: menuItem.image_url || '',
+        disponible: menuItem.disponible !== false,
+        variants: []
+      };
+
+      const filteredOptions = step.options.filter((opt) => {
+        if (opt.type === 'link_to_item') {
+          const hasLink = opt.linked_menu_id && opt.nom;
+          return hasLink || opt.description || opt.prix_supplementaire;
+        }
+        return opt.nom || opt.description || opt.prix_supplementaire;
+      });
+
+      return {
+        ...step,
+        options: [...filteredOptions, newOption]
+      };
+    });
+  };
+
+  const handleAddCategoryItems = (stepIndex, items) => {
+    (items || []).forEach((item) => {
+      handleAddExistingMenuAsOption(stepIndex, item);
+    });
+  };
+
+  const handleAddComboVariant = (stepIndex, optionIndex) => {
+    updateComboStep(stepIndex, (step) => {
+      const options = [...step.options];
+      const option = { ...options[optionIndex] };
+      option.variants = [
+        ...(option.variants || []),
+        {
+          nom: `Variante ${option.variants.length + 1}`,
+          description: '',
+          prix_supplementaire: '',
+          is_default: false,
+          disponible: true
+        }
+      ];
+      options[optionIndex] = option;
+      return { ...step, options };
+    });
+  };
+
+  const handleRemoveComboVariant = (stepIndex, optionIndex, variantIndex) => {
+    updateComboStep(stepIndex, (step) => {
+      const options = [...step.options];
+      const option = { ...options[optionIndex] };
+      option.variants = option.variants.filter((_, idx) => idx !== variantIndex);
+      options[optionIndex] = option;
+      return { ...step, options };
+    });
+  };
+
+  const handleComboVariantChange = (stepIndex, optionIndex, variantIndex, field, value) => {
+    updateComboStep(stepIndex, (step) => {
+      const options = [...step.options];
+      const option = { ...options[optionIndex] };
+      const variants = [...(option.variants || [])];
+      const variant = { ...variants[variantIndex], [field]: value };
+      variants[variantIndex] = variant;
+      option.variants = variants;
+      options[optionIndex] = option;
+      return { ...step, options };
+    });
+  };
+
+  const buildComboPayload = () => {
+    const stepsPayload = comboForm.steps.map((step, stepIndex) => {
+      const min = Math.max(0, parseInt(step.min_selections, 10) || 0);
+      let max = parseInt(step.max_selections, 10);
+      if (Number.isNaN(max) || max < min || max < 1) {
+        max = Math.max(1, min || 1);
+      }
+
+      return {
+        title: step.title || `Étape ${stepIndex + 1}`,
+        description: step.description || '',
+        min_selections: min,
+        max_selections: max,
+        ordre: stepIndex,
+        options: step.options.map((option, optionIndex) => {
+          const isCustom = option.type === 'custom';
+          const linkedId = isCustom ? null : option.linked_menu_id;
+          let optionName = option.nom;
+          if (!optionName) {
+            if (!isCustom && linkedId) {
+              const linkedItem = menu.find((item) => item.id === linkedId);
+              optionName = linkedItem?.nom || `Option ${optionIndex + 1}`;
+            } else {
+              optionName = `Option ${optionIndex + 1}`;
+            }
+          }
+
+          const priceValue = parseFloat(option.prix_supplementaire || '0');
+
+          return {
+            type: isCustom ? 'custom' : 'link_to_item',
+            linked_menu_id: isCustom ? null : linkedId,
+            nom: optionName,
+            description: option.description || '',
+            prix_supplementaire: Number.isNaN(priceValue) ? 0 : priceValue,
+            image_url: option.image_url || null,
+            disponible: option.disponible !== false,
+            ordre: optionIndex,
+            variants: (option.variants || []).map((variant, variantIndex) => {
+              const variantPrice = parseFloat(variant.prix_supplementaire || '0');
+              return {
+                nom: variant.nom || `Variante ${variantIndex + 1}`,
+                description: variant.description || '',
+                prix_supplementaire: Number.isNaN(variantPrice) ? 0 : variantPrice,
+                is_default: variant.is_default === true,
+                disponible: variant.disponible !== false,
+                ordre: variantIndex
+              };
+            })
+          };
+        })
+      };
+    });
+
+    const payload = {
+      restaurant_id: restaurant?.id,
+      user_email: userData?.email,
+      nom: comboForm.nom,
+      description: comboForm.description || '',
+      prix_base: parseFloat(comboForm.prix_base || '0') || 0,
+      actif: comboForm.actif !== false,
+      ordre_affichage: parseInt(comboForm.ordre_affichage, 10) || 0,
+      steps: stepsPayload
+    };
+
+    return payload;
+  };
+
+  const handleComboSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!restaurant?.id) {
+      alert('Restaurant introuvable. Veuillez actualiser la page.');
+      return;
+    }
+
+    if (!userData?.email) {
+      alert('Session utilisateur expirée. Veuillez vous reconnecter.');
+      return;
+    }
+
+    if (!comboForm.nom.trim()) {
+      alert('Le nom du menu composé est requis.');
+      return;
+    }
+
+    if (!comboForm.steps.length || comboForm.steps.some((step) => !step.options.length)) {
+      alert('Chaque étape doit contenir au moins une option.');
+      return;
+    }
+
+    const payload = buildComboPayload();
+
+    try {
+      setSavingCombo(true);
+      const endpoint = editingCombo
+        ? `/api/partner/menu-combos/${editingCombo.id}`
+        : '/api/partner/menu-combos';
+      const method = editingCombo ? 'PUT' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de l'enregistrement du menu composé");
+      }
+
+      await fetchCombos(restaurant.id);
+      handleCloseComboModal();
+    } catch (error) {
+      console.error('Erreur sauvegarde menu composé:', error);
+      alert(error.message || "Erreur lors de l'enregistrement du menu composé");
+    } finally {
+      setSavingCombo(false);
+    }
+  };
+
+  const handleDeleteCombo = async (comboId) => {
+    if (!comboId || !restaurant?.id) return;
+    if (!userData?.email) {
+      alert('Session utilisateur expirée. Veuillez vous reconnecter.');
+      return;
+    }
+
+    const confirmation = window.confirm('Supprimer ce menu composé ? Cette action est irréversible.');
+    if (!confirmation) return;
+
+    try {
+      setCombosLoading(true);
+      const response = await fetch(`/api/partner/menu-combos/${comboId}?user_email=${encodeURIComponent(userData.email)}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression du menu composé');
+      }
+
+      await fetchCombos(restaurant.id);
+    } catch (error) {
+      console.error('Erreur suppression menu composé:', error);
+      alert(error.message || 'Erreur lors de la suppression du menu composé');
+    } finally {
+      setCombosLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1126,6 +1691,16 @@ export default function PartnerDashboard() {
               }`}
             >
               Menu
+            </button>
+            <button
+              onClick={() => setActiveTab('combos')}
+              className={`py-2 sm:py-3 lg:py-4 px-2 sm:px-3 lg:px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap rounded-t-lg ${
+                activeTab === 'combos'
+                  ? 'border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              Menus composés
             </button>
             <button
               onClick={() => setActiveTab('formulas')}
@@ -1480,7 +2055,7 @@ export default function PartnerDashboard() {
                                   </p>
                                   {order.livreur_id && !order.ready_for_delivery && (
                                     <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                                      Un livreur a déjà accepté la course – marquez la commande comme prête dès qu’elle l’est.
+                                      Un livreur a déjà accepté la course – marquez la commande comme prête dès qu'elle l'est.
                                     </p>
                                   )}
                                 </div>
@@ -1779,7 +2354,6 @@ export default function PartnerDashboard() {
                                     try {
                                       parsedSupplements = JSON.parse(item.supplements);
                                     } catch (e) {
-                                      console.error('Erreur parsing suppléments:', e);
                                       parsedSupplements = [];
                                     }
                                   } else if (Array.isArray(item.supplements)) {
@@ -1904,6 +2478,183 @@ export default function PartnerDashboard() {
                         >
                           {item.disponible ? 'Disponible' : 'Indisponible'}
                         </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'combos' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menus composés</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Créez des menus avec plusieurs étapes (plat + accompagnement + boisson, etc.) en reliant vos articles existants.
+                </p>
+              </div>
+              <button
+                onClick={() => handleOpenComboModal()}
+                className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors"
+              >
+                + Nouveau menu composé
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="p-6">
+                {combosLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+                  </div>
+                ) : !comboList.length ? (
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                    Aucun menu composé pour le moment. Cliquez sur "Nouveau menu composé" pour commencer.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {comboList.map((combo) => (
+                      <div
+                        key={combo.id}
+                        className="border border-gray-200 dark:border-gray-700 rounded-2xl p-4 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                {combo.nom}
+                              </h3>
+                              <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${
+                                  combo.actif !== false
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-red-100 text-red-700'
+                                }`}
+                              >
+                                {combo.actif !== false ? 'Actif' : 'Inactif'}
+                              </span>
+                            </div>
+                            {combo.description && (
+                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                {combo.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 self-end sm:self-start">
+                            <button
+                              onClick={() => handleOpenComboModal(combo)}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/60 px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCombo(combo.id)}
+                              className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/60 px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                          <div>Prix de base : <span className="font-semibold text-gray-900 dark:text-white">{(combo.prix_base || 0).toFixed(2)} €</span></div>
+                          <div>Ordre : <span className="font-medium">{combo.ordre_affichage ?? 0}</span></div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {combo.steps?.map((step, stepIndex) => (
+                            <div key={step.id || stepIndex} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                <div>
+                                  <h4 className="font-semibold text-gray-900 dark:text-white">
+                                    Étape {stepIndex + 1} — {step.title}
+                                  </h4>
+                                  {step.description && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                      {step.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  {step.min_selections} sélection(s) min · {step.max_selections} max
+                                </div>
+                              </div>
+
+                              <div className="mt-3 space-y-2">
+                                {step.options?.map((option, optionIndex) => (
+                                  <div
+                                    key={option.id || `${step.id}-${optionIndex}`}
+                                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-900/80"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                          {option.nom || (option.type === 'custom' ? `Option ${optionIndex + 1}` : 'Article lié')}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          {option.type === 'custom' ? 'Option personnalisée' : 'Article du menu'}
+                                          {option.linked_menu_id && option.type !== 'custom' && (
+                                            <> · <span className="italic">
+                                              {menu.find((item) => item.id === option.linked_menu_id)?.nom || 'Article indisponible'}
+                                            </span></>
+                                          )}
+                                        </p>
+                                        {option.description && (
+                                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            {option.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                          {option.prix_supplementaire ? `+${option.prix_supplementaire.toFixed(2)} €` : 'Inclus'}
+                                        </p>
+                                        <span className={`inline-flex text-[11px] mt-1 px-2 py-0.5 rounded-full ${
+                                          option.disponible !== false
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-red-100 text-red-700'
+                                        }`}>
+                                          {option.disponible !== false ? 'Disponible' : 'Indispo'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {option.variants?.length > 0 && (
+                                      <div className="mt-3 border-t border-dashed border-gray-200 dark:border-gray-700 pt-2">
+                                        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                                          Variantes
+                                        </p>
+                                        <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                                          {option.variants.map((variant, variantIndex) => (
+                                            <li key={variant.id || `${option.id}-${variantIndex}`} className="flex items-center justify-between">
+                                              <span>
+                                                {variant.nom}
+                                                {variant.description && (
+                                                  <span className="text-gray-400"> — {variant.description}</span>
+                                                )}
+                                                {variant.is_default && (
+                                                  <span className="ml-2 text-[10px] uppercase tracking-wide text-blue-500">
+                                                    Par défaut
+                                                  </span>
+                                                )}
+                                              </span>
+                                              <span className="font-medium text-gray-900 dark:text-white">
+                                                {variant.prix_supplementaire ? `+${variant.prix_supplementaire.toFixed(2)} €` : 'Inclus'}
+                                              </span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2439,37 +3190,29 @@ export default function PartnerDashboard() {
         </div>
       )}
 
-      {/* Modal pour ajouter un supplément */}
       {showSupplementModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-md">
-            <h4 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Ajouter un supplément</h4>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Ajouter un supplément</h3>
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nom du supplément
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Nom du supplément</label>
                 <input
                   type="text"
                   value={supplementForm.nom}
-                  onChange={(e) => setSupplementForm({...supplementForm, nom: e.target.value})}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="ex: Extra fromage, Bacon, etc."
+                  onChange={(e) => setSupplementForm({ ...supplementForm, nom: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Prix (€)
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Prix (€)</label>
                 <input
                   type="number"
                   step="0.01"
-                  value={supplementForm.prix || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSupplementForm({...supplementForm, prix: value === '' ? 0 : parseFloat(value) || 0});
-                  }}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  min="0"
+                  value={supplementForm.prix}
+                  onChange={(e) => setSupplementForm({ ...supplementForm, prix: parseFloat(e.target.value) || 0 })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex space-x-3">
@@ -2483,7 +3226,7 @@ export default function PartnerDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowSupplementModal(false)}
-                  className="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
                 >
                   Annuler
                 </button>
@@ -2493,125 +3236,554 @@ export default function PartnerDashboard() {
         </div>
       )}
 
-      {/* Modal pour sélectionner le temps de préparation */}
-      {showPreparationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-              Temps de préparation estimé
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              Sélectionnez le temps de préparation estimé pour cette commande. Le client sera informé et pourra annuler si c'est trop long.
-            </p>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Temps de préparation
-              </label>
-              <select
-                value={preparationTime}
-                onChange={(e) => setPreparationTime(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      {showComboModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={handleCloseComboModal}
+          ></div>
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto w-full max-w-5xl border border-gray-100 dark:border-gray-700">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700">
+              <div>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                  {editingCombo ? 'Modifier le menu composé' : 'Créer un menu composé'}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Définissez les étapes (ex: Burger · Accompagnement · Boisson) et rattachez vos articles existants.
+                </p>
+              </div>
+              <button
+                onClick={handleCloseComboModal}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                type="button"
               >
-                <option value={5}>5 minutes</option>
-                <option value={10}>10 minutes</option>
-                <option value={15}>15 minutes</option>
-                <option value={20}>20 minutes</option>
-                <option value={25}>25 minutes</option>
-                <option value={30}>30 minutes</option>
-                <option value={35}>35 minutes</option>
-                <option value={40}>40 minutes</option>
-                <option value={45}>45 minutes</option>
-                <option value={50}>50 minutes</option>
-                <option value={60}>60 minutes</option>
-              </select>
+                <FaTimes className="h-5 w-5" />
+              </button>
             </div>
 
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  updateOrderStatus(selectedOrderId, 'acceptee', preparationTime);
-                  setShowPreparationModal(false);
-                  setSelectedOrderId(null);
-                }}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-              >
-                Confirmer ({preparationTime} min)
-              </button>
-              <button
-                onClick={() => {
-                  setShowPreparationModal(false);
-                  setSelectedOrderId(null);
-                }}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-gray-300"
-              >
-                Annuler
-              </button>
-            </div>
+            <form onSubmit={handleComboSubmit} className="px-6 py-6 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nom du menu composé *
+                  </label>
+                  <input
+                    type="text"
+                    value={comboForm.nom}
+                    onChange={(e) => updateComboField('nom', e.target.value)}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    placeholder="Ex: Menu Burger complet"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Prix de base (€)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={comboForm.prix_base}
+                      onChange={(e) => updateComboField('prix_base', e.target.value)}
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Ce prix sera additionné aux suppléments choisis par le client.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Ordre d'affichage
+                    </label>
+                    <input
+                      type="number"
+                      value={comboForm.ordre_affichage}
+                      onChange={(e) => updateComboField('ordre_affichage', e.target.value)}
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description (optionnelle)
+                </label>
+                <textarea
+                  value={comboForm.description}
+                  onChange={(e) => updateComboField('description', e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  placeholder="Ajoutez des précisions sur ce menu pour vos clients."
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={comboForm.actif}
+                    onChange={(e) => updateComboField('actif', e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  Menu actif (visible des clients)
+                </label>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                    Étapes du menu ({comboForm.steps.length})
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={handleAddComboStep}
+                    className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-blue-900/40 dark:hover:bg-blue-900/60"
+                  >
+                    + Ajouter une étape
+                  </button>
+                </div>
+
+                {comboForm.steps.map((step, stepIndex) => {
+                  const searchValue = comboStepSearch[stepIndex] || '';
+                  const normalizedSearch = searchValue.trim().toLowerCase();
+                  const searchResults = normalizedSearch
+                    ? (menu || [])
+                        .filter((item) => {
+                          const name = (item.nom || '').toLowerCase();
+                          const category = (item.category || '').toLowerCase();
+                          return name.includes(normalizedSearch) || category.includes(normalizedSearch);
+                        })
+                        .slice(0, 10)
+                    : [];
+
+                  return (
+                    <div
+                      key={stepIndex}
+                      className="border border-gray-200 dark:border-gray-700 rounded-2xl p-4 bg-gray-50 dark:bg-gray-800 space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Titre de l'étape *
+                          </label>
+                          <input
+                            type="text"
+                            value={step.title}
+                            onChange={(e) => handleStepFieldChange(stepIndex, 'title', e.target.value)}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                            placeholder={`Ex: Étape ${stepIndex + 1} — Choix du burger`}
+                            required
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-20">
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                              Minimum
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={step.min_selections}
+                              onChange={(e) => handleStepFieldChange(stepIndex, 'min_selections', e.target.value)}
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                            />
+                          </div>
+                          <div className="w-20">
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                              Maximum
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={step.max_selections}
+                              onChange={(e) => handleStepFieldChange(stepIndex, 'max_selections', e.target.value)}
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Description (optionnelle)
+                        </label>
+                        <textarea
+                          value={step.description}
+                          onChange={(e) => handleStepFieldChange(stepIndex, 'description', e.target.value)}
+                          rows={2}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          placeholder="Indiquez des instructions pour le client"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-semibold text-gray-900 dark:text-white">
+                            Options ({step.options.length})
+                          </h5>
+                          <button
+                            type="button"
+                            onClick={() => handleAddComboOption(stepIndex)}
+                            className="inline-flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-green-900/30 dark:hover:bg-green-900/60"
+                          >
+                            + Ajouter une option
+                          </button>
+                        </div>
+
+                        {(menu || []).length > 0 && (
+                          <div className="space-y-3 bg-white dark:bg-gray-900 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                              <div className="flex-1">
+                                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                                  Ajouter un plat existant
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Rechercher dans vos plats (ex: burger, boisson...)"
+                                  value={searchValue}
+                                  onChange={(e) =>
+                                    setComboStepSearch((prev) => ({
+                                      ...prev,
+                                      [stepIndex]: e.target.value
+                                    }))
+                                  }
+                                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-right">
+                                Cliquez sur un plat pour l'ajouter automatiquement comme option.
+                              </p>
+                            </div>
+
+                            {normalizedSearch && (
+                              <div className="flex flex-wrap gap-2">
+                                {searchResults.length > 0 ? (
+                                  searchResults.map((item) => {
+                                    const alreadyAdded = step.options.some(
+                                      (opt) => opt.type !== 'custom' && opt.linked_menu_id === item.id
+                                    );
+                                    return (
+                                      <button
+                                        key={`search-${item.id}`}
+                                        type="button"
+                                        onClick={() => handleAddExistingMenuAsOption(stepIndex, item)}
+                                        disabled={alreadyAdded}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                                          alreadyAdded
+                                            ? 'border-green-300 text-green-600 bg-green-50 dark:border-green-700 dark:text-green-300 dark:bg-green-900/40 cursor-not-allowed'
+                                            : 'border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-gray-600 dark:text-gray-200 dark:hover:border-blue-500'
+                                        } transition-colors`}
+                                      >
+                                        {item.nom}
+                                        {alreadyAdded && <FaCheck className="inline ml-1 h-3 w-3" />}
+                                      </button>
+                                    );
+                                  })
+                                ) : (
+                                  <span className="text-xs text-gray-400">Aucun plat correspondant</span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              {Object.entries(groupedMenuByCategory || {}).map(([categoryName, items]) => {
+                                const filteredItems = items.filter((item) => {
+                                  if (!normalizedSearch) return true;
+                                  const name = (item.nom || '').toLowerCase();
+                                  const category = (item.category || '').toLowerCase();
+                                  return name.includes(normalizedSearch) || category.includes(normalizedSearch);
+                                });
+
+                                if (!filteredItems.length) return null;
+
+                                const limitedItems = filteredItems.slice(0, 6);
+                                const allAdded = filteredItems.every((item) =>
+                                  step.options.some((opt) => opt.type !== 'custom' && opt.linked_menu_id === item.id)
+                                );
+
+                                return (
+                                  <div
+                                    key={`${stepIndex}-${categoryName}`}
+                                    className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                                        {categoryName} ({filteredItems.length})
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAddCategoryItems(stepIndex, filteredItems)}
+                                        disabled={allAdded}
+                                        className={`text-xs ${
+                                          allAdded
+                                            ? 'text-gray-400 cursor-not-allowed'
+                                            : 'text-blue-600 hover:text-blue-700'
+                                        } transition-colors`}
+                                      >
+                                        Ajouter tout
+                                      </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      {limitedItems.map((item) => {
+                                        const alreadyAdded = step.options.some(
+                                          (opt) => opt.type !== 'custom' && opt.linked_menu_id === item.id
+                                        );
+                                        return (
+                                          <button
+                                            key={`${categoryName}-${item.id}`}
+                                            type="button"
+                                            onClick={() => handleAddExistingMenuAsOption(stepIndex, item)}
+                                            disabled={alreadyAdded}
+                                            className={`px-3 py-1 rounded-full text-xs border ${
+                                              alreadyAdded
+                                                ? 'border-green-300 text-green-600 bg-green-50 dark:border-green-700 dark:text-green-300 dark:bg-green-900/40 cursor-not-allowed'
+                                                : 'border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600 dark:border-gray-600 dark:text-gray-200 dark:hover:border-blue-500'
+                                            } transition-colors`}
+                                          >
+                                            {item.nom}
+                                            {alreadyAdded && <FaCheck className="inline ml-1 h-3 w-3" />}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {step.options.map((option, optionIndex) => (
+                          <div
+                            key={optionIndex}
+                            className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-4"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                    Type d'option
+                                  </label>
+                                  <select
+                                    value={option.type}
+                                    onChange={(e) => handleComboOptionChange(stepIndex, optionIndex, 'type', e.target.value)}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                  >
+                                    <option value="link_to_item">Article existant</option>
+                                    <option value="custom">Option personnalisée</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                    Supplément (€)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={option.prix_supplementaire}
+                                    onChange={(e) => handleComboOptionChange(stepIndex, optionIndex, 'prix_supplementaire', e.target.value)}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveComboOption(stepIndex, optionIndex)}
+                                className="self-start text-red-600 hover:text-red-700 text-sm font-medium"
+                              >
+                                Supprimer
+                              </button>
+                            </div>
+
+                            {option.type !== 'custom' && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                  Lier à un article existant *
+                                </label>
+                                <select
+                                  value={option.linked_menu_id || ''}
+                                  onChange={(e) => handleComboOptionChange(stepIndex, optionIndex, 'linked_menu_id', e.target.value)}
+                                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                  required
+                                >
+                                  <option value="">— Sélectionnez un article —</option>
+                                  {menu.map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                      {item.nom}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                  Nom affiché au client *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={option.nom}
+                                  onChange={(e) => handleComboOptionChange(stepIndex, optionIndex, 'nom', e.target.value)}
+                                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                  placeholder="Ex: Burger au poulet"
+                                  required
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={option.disponible !== false}
+                                  onChange={(e) => handleComboOptionChange(stepIndex, optionIndex, 'disponible', e.target.checked)}
+                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Option disponible</span>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                  Description optionnelle
+                                </label>
+                                <textarea
+                                  value={option.description}
+                                  onChange={(e) => handleComboOptionChange(stepIndex, optionIndex, 'description', e.target.value)}
+                                  rows={2}
+                                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                  placeholder="Détaillez cette option"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                  Image (URL)
+                                </label>
+                                <input
+                                  type="url"
+                                  value={option.image_url || ''}
+                                  onChange={(e) => handleComboOptionChange(stepIndex, optionIndex, 'image_url', e.target.value)}
+                                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                  placeholder="https://..."
+                                />
+                              </div>
+                            </div>
+
+                            <div className="rounded-lg bg-gray-50 dark:bg-gray-800/80 border border-dashed border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                  Variantes (optionnel)
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddComboVariant(stepIndex, optionIndex)}
+                                  className="text-sm text-purple-600 hover:text-purple-700"
+                                >
+                                  + Ajouter une variante
+                                </button>
+                              </div>
+                              {(option.variants || []).length > 0 && (
+                                <div className="space-y-2">
+                                  {option.variants.map((variant, variantIndex) => (
+                                    <div
+                                      key={variantIndex}
+                                      className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-start bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+                                    >
+                                      <div className="sm:col-span-2">
+                                        <input
+                                          type="text"
+                                          value={variant.nom}
+                                          onChange={(e) => handleComboVariantChange(stepIndex, optionIndex, variantIndex, 'nom', e.target.value)}
+                                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                          placeholder="Nom de la variante"
+                                        />
+                                      </div>
+                                      <div className="sm:col-span-2">
+                                        <input
+                                          type="text"
+                                          value={variant.description}
+                                          onChange={(e) => handleComboVariantChange(stepIndex, optionIndex, variantIndex, 'description', e.target.value)}
+                                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                          placeholder="Description"
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={variant.prix_supplementaire}
+                                          onChange={(e) => handleComboVariantChange(stepIndex, optionIndex, variantIndex, 'prix_supplementaire', e.target.value)}
+                                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                                          placeholder="€"
+                                        />
+                                      </div>
+                                      <div className="sm:col-span-2 flex items-center gap-3">
+                                        <label className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+                                          <input
+                                            type="checkbox"
+                                            checked={variant.is_default === true}
+                                            onChange={(e) => handleComboVariantChange(stepIndex, optionIndex, variantIndex, 'is_default', e.target.checked)}
+                                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                          />
+                                          Par défaut
+                                        </label>
+                                        <label className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+                                          <input
+                                            type="checkbox"
+                                            checked={variant.disponible !== false}
+                                            onChange={(e) => handleComboVariantChange(stepIndex, optionIndex, variantIndex, 'disponible', e.target.checked)}
+                                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                          />
+                                          Disponible
+                                        </label>
+                                      </div>
+                                      <div className="text-right">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveComboVariant(stepIndex, optionIndex, variantIndex)}
+                                          className="text-xs text-red-600 hover:text-red-700"
+                                        >
+                                          Supprimer
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={handleCloseComboModal}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCombo}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors disabled:opacity-60"
+                >
+                  {savingCombo ? 'Enregistrement...' : editingCombo ? 'Mettre à jour' : 'Créer le menu'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Modal de refus avec raison */}
-      {showRejectionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              Refuser la commande
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Veuillez indiquer la raison du refus. Cette information sera communiquée au client.
-            </p>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Raison du refus *
-              </label>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Ex: Produits non disponibles, restaurant fermé, commande trop importante..."
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                required
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Minimum 10 caractères requis
-              </p>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  if (rejectionReason.trim().length < 10) {
-                    alert('Veuillez saisir une raison d\'au moins 10 caractères');
-                    return;
-                  }
-                  updateOrderStatus(selectedOrderId, 'refusee', null, rejectionReason);
-                  setShowRejectionModal(false);
-                  setSelectedOrderId(null);
-                  setRejectionReason('');
-                }}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-semibold"
-              >
-                Confirmer le refus
-              </button>
-              <button
-                onClick={() => {
-                  setShowRejectionModal(false);
-                  setSelectedOrderId(null);
-                  setRejectionReason('');
-                }}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-gray-300"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal pour créer/modifier une formule */}
       {showFormulaModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
