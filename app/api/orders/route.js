@@ -352,12 +352,25 @@ export async function POST(request) {
     // Récupérer l'utilisateur si connecté
     const authHeader = request.headers.get('authorization');
     let userId = null;
+    let userData = null;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       if (!authError && user) {
         userId = user.id;
         console.log('✅ Utilisateur connecté pour la commande:', user.email);
+        
+        // Récupérer les informations utilisateur depuis la table users
+        const { data: userInfo, error: userInfoError } = await serviceClient
+          .from('users')
+          .select('nom, prenom, telephone, email')
+          .eq('id', user.id)
+          .single();
+        
+        if (!userInfoError && userInfo) {
+          userData = userInfo;
+          console.log('✅ Informations utilisateur récupérées:', userInfo);
+        }
       }
     }
 
@@ -372,18 +385,41 @@ export async function POST(request) {
       security_code: securityCode // Code de sécurité pour la livraison
     };
 
+    // Prioriser les informations depuis customerInfo, sinon utiliser userData
     if (customerInfo) {
       if (customerInfo.firstName) {
         orderData.customer_first_name = sanitizeInput(customerInfo.firstName);
+      } else if (userData?.prenom) {
+        orderData.customer_first_name = sanitizeInput(userData.prenom);
       }
       if (customerInfo.lastName) {
         orderData.customer_last_name = sanitizeInput(customerInfo.lastName);
+      } else if (userData?.nom) {
+        orderData.customer_last_name = sanitizeInput(userData.nom);
       }
       if (customerInfo.phone) {
         orderData.customer_phone = sanitizeInput(customerInfo.phone);
+      } else if (userData?.telephone) {
+        orderData.customer_phone = sanitizeInput(userData.telephone);
       }
       if (customerInfo.email) {
         orderData.customer_email = sanitizeInput(customerInfo.email);
+      } else if (userData?.email) {
+        orderData.customer_email = sanitizeInput(userData.email);
+      }
+    } else if (userData) {
+      // Si pas de customerInfo mais userData disponible, utiliser userData
+      if (userData.prenom) {
+        orderData.customer_first_name = sanitizeInput(userData.prenom);
+      }
+      if (userData.nom) {
+        orderData.customer_last_name = sanitizeInput(userData.nom);
+      }
+      if (userData.telephone) {
+        orderData.customer_phone = sanitizeInput(userData.telephone);
+      }
+      if (userData.email) {
+        orderData.customer_email = sanitizeInput(userData.email);
       }
     }
 
