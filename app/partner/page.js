@@ -2188,7 +2188,15 @@ export default function PartnerDashboard() {
                                 {order.created_at ? new Date(order.created_at).toLocaleString('fr-FR') : 'Date non disponible'}
                               </p>
                               <p className="text-sm text-gray-600 dark:text-gray-300">
-                                Client: {order.users?.nom || order.customer_name || 'N/A'} {order.users?.prenom || ''}
+                                Client: {
+                                  (order.users?.prenom && order.users?.nom) 
+                                    ? `${order.users.prenom} ${order.users.nom}`.trim()
+                                    : order.users?.nom 
+                                    ? order.users.nom
+                                    : (order.customer?.firstName && order.customer?.lastName)
+                                    ? `${order.customer.firstName} ${order.customer.lastName}`.trim()
+                                    : order.customer_name || order.customer?.lastName || 'Client'
+                                }
                               </p>
                               {/* Afficher les frais de livraison séparément (pour info, mais pas dans le total) */}
                               {deliveryFee > 0 && (

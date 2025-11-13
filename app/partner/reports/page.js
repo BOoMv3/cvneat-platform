@@ -294,7 +294,11 @@ export default function PartnerReports() {
                           <tr key={order.id} className="border-b">
                             <td className="py-2">{order.id}</td>
                             <td className="py-2">{new Date(order.created_at).toLocaleString('fr-FR')}</td>
-                            <td className="py-2">{order.users?.nom} {order.users?.prenom}</td>
+                            <td className="py-2">
+                              {(order.users?.prenom && order.users?.nom) 
+                                ? `${order.users.prenom} ${order.users.nom}`.trim()
+                                : order.users?.nom || order.users?.prenom || 'Client'}
+                            </td>
                             <td className="py-2">{order.total}€</td>
                             <td className="py-2">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${

@@ -340,7 +340,15 @@ export default function RestaurantOrderAlert() {
           <div className="mb-4">
             <h4 className="font-semibold text-gray-700 mb-2">Client:</h4>
             <p className="text-gray-600">
-              {order.customer_name || order.users?.nom || 'N/A'} - {order.customer_phone || order.users?.telephone || 'N/A'}
+              {
+                (order.users?.prenom && order.users?.nom) 
+                  ? `${order.users.prenom} ${order.users.nom}`.trim()
+                  : order.users?.nom 
+                  ? order.users.nom
+                  : (order.customer?.firstName && order.customer?.lastName)
+                  ? `${order.customer.firstName} ${order.customer.lastName}`.trim()
+                  : order.customer_name || order.customer?.lastName || 'Client'
+              } - {order.customer_phone || order.users?.telephone || order.customer?.phone || 'N/A'}
             </p>
             <p className="text-gray-600">
               {order.delivery_address || order.adresse_livraison || 'N/A'}, {order.delivery_city || 'N/A'} {order.delivery_postal_code || 'N/A'}
