@@ -2189,13 +2189,23 @@ export default function PartnerDashboard() {
                               </p>
                               <p className="text-sm text-gray-600 dark:text-gray-300">
                                 Client: {
-                                  (order.users?.prenom && order.users?.nom) 
+                                  // Priorité 1: users avec prénom ET nom (évite "Utilisateur" si c'est juste le nom)
+                                  (order.users?.prenom && order.users?.nom && order.users.nom !== 'Utilisateur') 
                                     ? `${order.users.prenom} ${order.users.nom}`.trim()
-                                    : order.users?.nom 
-                                    ? order.users.nom
+                                    // Priorité 2: customer_name formaté depuis l'API
+                                    : order.customer_name && order.customer_name !== 'Utilisateur'
+                                    ? order.customer_name
+                                    // Priorité 3: customer object
                                     : (order.customer?.firstName && order.customer?.lastName)
                                     ? `${order.customer.firstName} ${order.customer.lastName}`.trim()
-                                    : order.customer_name || order.customer?.lastName || 'Client'
+                                    // Priorité 4: users.nom seul (si pas "Utilisateur")
+                                    : order.users?.nom && order.users.nom !== 'Utilisateur'
+                                    ? order.users.nom
+                                    // Priorité 5: customer_lastName
+                                    : order.customer?.lastName && order.customer.lastName !== 'Utilisateur'
+                                    ? order.customer.lastName
+                                    // Fallback final
+                                    : 'Client'
                                 }
                               </p>
                               {/* Afficher les frais de livraison séparément (pour info, mais pas dans le total) */}
