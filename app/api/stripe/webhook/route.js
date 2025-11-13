@@ -44,6 +44,11 @@ export async function POST(request) {
         await handlePaymentFailed(event.data.object);
         break;
 
+      case 'payment_intent.created':
+        // Log pour tracking - les PaymentIntents incomplets sont normaux
+        console.log('📝 PaymentIntent créé:', event.data.object.id, 'Statut:', event.data.object.status);
+        break;
+
       case 'charge.dispute.created':
         await handleDisputeCreated(event.data.object);
         break;
