@@ -150,23 +150,36 @@ export async function GET(request) {
       // Essayer de récupérer les infos users séparément pour éviter les erreurs de relation
       if (orders.length > 0 && !ordersError) {
         const userIds = [...new Set(orders.map(o => o.user_id).filter(Boolean))];
+        console.log('🔍 DEBUG - UserIds à récupérer:', userIds);
         if (userIds.length > 0) {
           try {
-            const { data: usersData } = await supabaseAdmin
+            const { data: usersData, error: usersError } = await supabaseAdmin
               .from('users')
               .select('id, nom, prenom, telephone, email')
               .in('id', userIds);
             
+            console.log('🔍 DEBUG - UsersData récupérés:', usersData?.length || 0);
+            if (usersData && usersData.length > 0) {
+              console.log('🔍 DEBUG - Exemple user:', JSON.stringify(usersData[0], null, 2));
+            }
+            if (usersError) {
+              console.error('❌ Erreur récupération users:', usersError);
+            }
+            
             // Mapper les users aux commandes
             if (usersData && usersData.length > 0) {
               const usersMap = new Map(usersData.map(u => [u.id, u]));
-              orders = orders.map(order => ({
-                ...order,
-                users: usersMap.get(order.user_id) || null
-              }));
+              orders = orders.map(order => {
+                const userData = usersMap.get(order.user_id);
+                console.log(`🔍 DEBUG - Commande ${order.id?.slice(0, 8)}: user_id=${order.user_id}, userData=${userData ? `${userData.prenom} ${userData.nom}` : 'null'}`);
+                return {
+                  ...order,
+                  users: userData || null
+                };
+              });
             }
           } catch (userError) {
-            console.warn('⚠️ Erreur récupération users (non bloquant):', userError);
+            console.error('❌ Erreur récupération users (non bloquant):', userError);
             // Continuer sans les données users
           }
         }
@@ -230,15 +243,32 @@ export async function GET(request) {
         };
       });
 
+      // Priorité 1: Données stockées dans la commande (customer_first_name, customer_last_name)
+      // Priorité 2: Données depuis users (prenom, nom)
       const customerFirstName = order.customer_first_name || order.users?.prenom || '';
       const customerLastName = order.customer_last_name || order.users?.nom || '';
       const customerPhone = order.customer_phone || order.users?.telephone || '';
       const customerEmail = order.customer_email || order.users?.email || '';
       
       // Construire le nom complet du client
-      const customerName = (customerFirstName && customerLastName) 
-        ? `${customerFirstName} ${customerLastName}`.trim()
-        : customerLastName || customerFirstName || customerEmail || 'Client';
+      // Éviter "Utilisateur" comme valeur par défaut
+      let customerName = '';
+      if (customerFirstName && customerLastName) {
+        customerName = `${customerFirstName} ${customerLastName}`.trim();
+      } else if (customerLastName && customerLastName !== 'Utilisateur') {
+        customerName = customerLastName;
+      } else if (customerFirstName && customerFirstName !== 'Utilisateur') {
+        customerName = customerFirstName;
+      } else if (customerEmail) {
+        customerName = customerEmail;
+      } else {
+        customerName = 'Client';
+      }
+      
+      // Log pour debug
+      if (order.id) {
+        console.log(`🔍 DEBUG - Commande ${order.id.slice(0, 8)}: firstName=${customerFirstName}, lastName=${customerLastName}, name=${customerName}, users=${order.users ? 'présent' : 'absent'}`);
+      }
 
       return {
         ...order,
