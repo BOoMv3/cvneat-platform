@@ -243,31 +243,41 @@ export async function GET(request) {
         };
       });
 
-      // Priorité 1: Données stockées dans la commande (customer_first_name, customer_last_name)
-      // Priorité 2: Données depuis users (prenom, nom)
-      const customerFirstName = order.customer_first_name || order.users?.prenom || '';
-      const customerLastName = order.customer_last_name || order.users?.nom || '';
+      // PRIORITÉ ABSOLUE: Données stockées dans la commande (customer_first_name, customer_last_name)
+      // Ces données sont toujours correctes car stockées au moment de la commande
+      // Ne PAS utiliser order.users?.nom qui peut être "Utilisateur" pour des comptes dupliqués
+      const customerFirstName = order.customer_first_name || '';
+      const customerLastName = order.customer_last_name || '';
       const customerPhone = order.customer_phone || order.users?.telephone || '';
       const customerEmail = order.customer_email || order.users?.email || '';
       
       // Construire le nom complet du client
-      // Éviter "Utilisateur" comme valeur par défaut
+      // TOUJOURS prioriser les données stockées dans la commande
       let customerName = '';
       if (customerFirstName && customerLastName) {
         customerName = `${customerFirstName} ${customerLastName}`.trim();
-      } else if (customerLastName && customerLastName !== 'Utilisateur') {
-        customerName = customerLastName;
-      } else if (customerFirstName && customerFirstName !== 'Utilisateur') {
-        customerName = customerFirstName;
+      } else if (customerLastName && customerLastName !== 'Utilisateur' && customerLastName.trim() !== '') {
+        customerName = customerLastName.trim();
+      } else if (customerFirstName && customerFirstName !== 'Utilisateur' && customerFirstName.trim() !== '') {
+        customerName = customerFirstName.trim();
       } else if (customerEmail) {
         customerName = customerEmail;
       } else {
-        customerName = 'Client';
+        // Fallback: utiliser users seulement si pas de données dans la commande
+        const fallbackFirstName = order.users?.prenom || '';
+        const fallbackLastName = order.users?.nom || '';
+        if (fallbackFirstName && fallbackLastName && fallbackLastName !== 'Utilisateur') {
+          customerName = `${fallbackFirstName} ${fallbackLastName}`.trim();
+        } else if (fallbackLastName && fallbackLastName !== 'Utilisateur') {
+          customerName = fallbackLastName;
+        } else {
+          customerName = 'Client';
+        }
       }
       
       // Log pour debug
       if (order.id) {
-        console.log(`🔍 DEBUG - Commande ${order.id.slice(0, 8)}: firstName=${customerFirstName}, lastName=${customerLastName}, name=${customerName}, users=${order.users ? 'présent' : 'absent'}`);
+        console.log(`🔍 DEBUG - Commande ${order.id.slice(0, 8)}: customer_first_name=${order.customer_first_name}, customer_last_name=${order.customer_last_name}, name=${customerName}`);
       }
 
       return {
