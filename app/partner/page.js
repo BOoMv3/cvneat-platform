@@ -2430,10 +2430,12 @@ export default function PartnerDashboard() {
                                     </button>
                                   </>
                                 )}
+                                {/* Permettre de marquer comme prête même si un livreur a accepté */}
                                 {((order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery)) && !order.ready_for_delivery && (
                                   <button
                                     onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
                                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
+                                    disabled={false}
                                   >
                                     Marquer comme prête
                                   </button>

@@ -104,8 +104,10 @@ export async function PUT(request, { params }) {
 
     console.log('✅ Commande appartient au restaurant');
 
-    // Vérifier si la commande a déjà été acceptée par un livreur
-    if (order.livreur_id && status !== 'livree') {
+    // Permettre au restaurant de marquer comme prête même si un livreur a accepté
+    // Le restaurant doit pouvoir indiquer que la commande est prête pour la livraison
+    // Seulement bloquer les autres modifications si un livreur a accepté ET que ce n'est pas "pret_a_livrer"
+    if (order.livreur_id && status !== 'livree' && status !== 'pret_a_livrer') {
       console.log('⚠️ Commande déjà acceptée par un livreur:', order.livreur_id);
       return NextResponse.json({ 
         error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être modifiée',
