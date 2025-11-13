@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 export default function RestaurantOrderAlert() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [restaurant, setRestaurant] = useState(null);
 
   useEffect(() => {
     fetchPendingOrders();
@@ -57,7 +58,7 @@ export default function RestaurantOrderAlert() {
       // Récupérer le restaurant de l'utilisateur
       const { data: restaurant, error: restoError } = await supabase
         .from('restaurants')
-        .select('id')
+        .select('id, nom')
         .eq('user_id', session.user.id)
         .single();
 
@@ -66,6 +67,9 @@ export default function RestaurantOrderAlert() {
         setLoading(false);
         return;
       }
+      
+      // Stocker le restaurant pour l'utiliser dans le calcul de commission
+      setRestaurant(restaurant);
 
       // Récupérer les commandes en attente pour ce restaurant
       // IMPORTANT: Inclure total_amount, delivery_fee, et tous les champs nécessaires
@@ -295,8 +299,17 @@ export default function RestaurantOrderAlert() {
                 const totalAmount = parseFloat(order.total_amount || order.total || 0);
                 const deliveryFee = parseFloat(order.delivery_fee || order.frais_livraison || 0);
                 const total = totalAmount + deliveryFee;
-                const restaurantGain = totalAmount * 0.80;
-                const commission = totalAmount * 0.20;
+                
+                // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+                const normalizedRestaurantName = (restaurant?.nom || '')
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '')
+                  .toLowerCase();
+                const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+                const commissionRate = isInternalRestaurant ? 0 : 0.20; // 20% pour CVN'EAT
+                
+                const commission = totalAmount * commissionRate;
+                const restaurantGain = totalAmount - commission;
                 
                 return (
                   <>
@@ -308,9 +321,11 @@ export default function RestaurantOrderAlert() {
                         <p className="text-sm font-semibold text-green-600">
                           Votre gain: {restaurantGain.toFixed(2)}€
                         </p>
-                        <p className="text-xs text-gray-500">
-                          (Commission 20%: {commission.toFixed(2)}€)
-                        </p>
+                        {commissionRate > 0 && (
+                          <p className="text-xs text-gray-500">
+                            (Commission 20%: {commission.toFixed(2)}€)
+                          </p>
+                        )}
                       </>
                     )}
                     <p className="text-sm text-gray-500 mt-1">

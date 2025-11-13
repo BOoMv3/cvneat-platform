@@ -37,6 +37,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const [isBlinking, setIsBlinking] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [restaurant, setRestaurant] = useState(null);
   const audioContextRef = useRef(null);
   const lastOrderCheckRef = useRef(null);
   const soundIntervalRef = useRef(null);
@@ -131,6 +132,21 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     if (!restaurantId) {
       return;
     }
+
+    // Récupérer le restaurant pour vérifier si c'est "La Bonne Pâte"
+    const fetchRestaurant = async () => {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, nom')
+        .eq('id', restaurantId)
+        .single();
+      
+      if (!error && data) {
+        setRestaurant(data);
+      }
+    };
+    
+    fetchRestaurant();
 
     setIsConnected(true);
     const channel = supabase
@@ -918,13 +934,25 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {new Date(notification.timestamp).toLocaleTimeString('fr-FR')}
                           </p>
-                          {notification.data && (
-                            <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
-                              <p>Commande #{notification.data.id}</p>
-                              <p className="text-gray-500 dark:text-gray-400">Total: {notification.data.total_amount || notification.data.total}€</p>
-                              <p className="text-green-600 dark:text-green-400 font-semibold">Votre gain: {((notification.data.total_amount || notification.data.total || 0) * 0.80).toFixed(2)}€</p>
-                            </div>
-                          )}
+                          {notification.data && (() => {
+                            const totalAmount = parseFloat(notification.data.total_amount || notification.data.total || 0);
+                            // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+                            const normalizedRestaurantName = (restaurant?.nom || '')
+                              .normalize('NFD')
+                              .replace(/[\u0300-\u036f]/g, '')
+                              .toLowerCase();
+                            const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+                            const commissionRate = isInternalRestaurant ? 0 : 0.20; // 20% pour CVN'EAT
+                            const restaurantGain = totalAmount * (1 - commissionRate);
+                            
+                            return (
+                              <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                                <p>Commande #{notification.data.id}</p>
+                                <p className="text-gray-500 dark:text-gray-400">Total: {totalAmount.toFixed(2)}€</p>
+                                <p className="text-green-600 dark:text-green-400 font-semibold">Votre gain: {restaurantGain.toFixed(2)}€</p>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       <button

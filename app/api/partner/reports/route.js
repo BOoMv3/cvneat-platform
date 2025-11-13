@@ -107,7 +107,15 @@ export async function GET(request) {
       }
       return sum;
     }, 0) || 0;
-    const commissionEarned = totalRevenue * (restaurant.commission_rate / 100);
+    
+    // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+    const normalizedRestaurantName = (restaurant.nom || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+    const commissionRate = isInternalRestaurant ? 0 : (restaurant.commission_rate || 20) / 100;
+    const commissionEarned = totalRevenue * commissionRate;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Commandes livrées vs annulées

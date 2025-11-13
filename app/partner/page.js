@@ -1087,7 +1087,17 @@ export default function PartnerDashboard() {
       console.warn('⚠️ calculateCommission: totalAmount invalide:', totalAmount);
       return { commission: 0, restaurantRevenue: 0 };
     }
-    const commission = amount * 0.20; // 20% pour CVN'EAT
+    
+    // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+    const normalizedRestaurantName = (restaurant?.nom || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+    
+    // Pas de commission pour "La Bonne Pâte"
+    const commissionRate = isInternalRestaurant ? 0 : 0.20; // 20% pour CVN'EAT
+    const commission = amount * commissionRate;
     const restaurantRevenue = amount - commission;
     return { commission, restaurantRevenue };
   };

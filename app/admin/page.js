@@ -147,13 +147,23 @@ export default function AdminPage() {
       orders?.filter(o => o.statut === 'livree').forEach(order => {
         const orderAmount = parseFloat(order.total || 0); // Montant des articles uniquement
         const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
-        const restaurantShare = orderAmount - (orderAmount * COMMISSION_RATE);
+        
+        // Trouver le restaurant associé à la commande
+        const orderRestaurant = restaurants?.find(r => r.id === order.restaurant_id);
+        const normalizedRestaurantName = (orderRestaurant?.nom || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+        const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+        const commissionRate = isInternalRestaurant ? 0 : COMMISSION_RATE;
+        
+        const restaurantShare = orderAmount - (orderAmount * commissionRate);
 
         // CA total = articles + frais de livraison
         totalRevenue += orderAmount + deliveryFee;
         
-        // CA CVN'EAT = 20% des articles uniquement
-        cvneatRevenue += orderAmount * COMMISSION_RATE;
+        // CA CVN'EAT = 20% des articles uniquement (sauf pour "La Bonne Pâte")
+        cvneatRevenue += orderAmount * commissionRate;
         
         // CA Livreur = frais de livraison
         livreurRevenue += deliveryFee;
