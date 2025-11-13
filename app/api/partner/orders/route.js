@@ -234,6 +234,11 @@ export async function GET(request) {
       const customerLastName = order.customer_last_name || order.users?.nom || '';
       const customerPhone = order.customer_phone || order.users?.telephone || '';
       const customerEmail = order.customer_email || order.users?.email || '';
+      
+      // Construire le nom complet du client
+      const customerName = (customerFirstName && customerLastName) 
+        ? `${customerFirstName} ${customerLastName}`.trim()
+        : customerLastName || customerFirstName || customerEmail || 'Client';
 
       return {
         ...order,
@@ -245,6 +250,7 @@ export async function GET(request) {
         items: orderItems, // Alias pour compatibilité
         customer_first_name: customerFirstName,
         customer_last_name: customerLastName,
+        customer_name: customerName, // Nom complet formaté
         customer_phone: customerPhone,
         customer_email: customerEmail,
         customer: {
