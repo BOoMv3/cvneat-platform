@@ -412,9 +412,17 @@ export default function RestaurantOrders() {
                       </div>
                       
                       <div className="space-y-2">
-                        <p><span className="font-medium">Client :</span> {order.user?.nom || 'Client anonyme'}</p>
-                        <p><span className="font-medium">Total :</span> {order.total.toFixed(2)}€</p>
-                        <p><span className="font-medium">Articles :</span> {order.items?.length || 0}</p>
+                        <p><span className="font-medium">Client :</span> {
+                          (order.users?.prenom && order.users?.nom) 
+                            ? `${order.users.prenom} ${order.users.nom}`.trim()
+                            : order.users?.nom 
+                            ? order.users.nom
+                            : (order.customer?.firstName && order.customer?.lastName)
+                            ? `${order.customer.firstName} ${order.customer.lastName}`.trim()
+                            : order.customer?.lastName || 'Client anonyme'
+                        }</p>
+                        <p><span className="font-medium">Total :</span> {order.total?.toFixed(2) || order.total_amount?.toFixed(2) || '0.00'}€</p>
+                        <p><span className="font-medium">Articles :</span> {order.items?.length || order.order_items?.length || order.details_commande?.length || 0}</p>
                       </div>
                     </div>
                   ))}
@@ -432,8 +440,16 @@ export default function RestaurantOrders() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <h3 className="font-medium mb-2">Informations client</h3>
-                    <p><span className="font-medium">Nom :</span> {selectedOrder.user?.nom || 'Client anonyme'}</p>
-                    <p><span className="font-medium">Téléphone :</span> {selectedOrder.user?.telephone || 'Non disponible'}</p>
+                    <p><span className="font-medium">Nom :</span> {
+                      (selectedOrder.users?.prenom && selectedOrder.users?.nom) 
+                        ? `${selectedOrder.users.prenom} ${selectedOrder.users.nom}`.trim()
+                        : selectedOrder.users?.nom 
+                        ? selectedOrder.users.nom
+                        : (selectedOrder.customer?.firstName && selectedOrder.customer?.lastName)
+                        ? `${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}`.trim()
+                        : selectedOrder.customer?.lastName || 'Client anonyme'
+                    }</p>
+                    <p><span className="font-medium">Téléphone :</span> {selectedOrder.users?.telephone || selectedOrder.customer?.phone || selectedOrder.customer_phone || 'Non disponible'}</p>
                   </div>
                   
                   <div>

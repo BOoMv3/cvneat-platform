@@ -242,6 +242,7 @@ export async function GET(request) {
         total_amount: totalAmount,
         total: subtotal,
         order_items: orderItems,
+        items: orderItems, // Alias pour compatibilité
         customer_first_name: customerFirstName,
         customer_last_name: customerLastName,
         customer_phone: customerPhone,
@@ -251,7 +252,14 @@ export async function GET(request) {
           lastName: customerLastName,
           phone: customerPhone,
           email: customerEmail
-        }
+        },
+        // Ajouter aussi un objet user pour compatibilité avec l'ancien code
+        user: order.users ? {
+          nom: order.users.nom || customerLastName,
+          prenom: order.users.prenom || customerFirstName,
+          telephone: order.users.telephone || customerPhone,
+          email: order.users.email || customerEmail
+        } : null
       };
     });
     
