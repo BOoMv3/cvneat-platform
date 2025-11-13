@@ -108,12 +108,23 @@ export async function GET(request) {
         addressError: addressError
       });
       
-      // Construire l'objet de réponse
+      // Construire l'objet de réponse avec les informations client formatées
+      const customerName = user ? `${user.prenom || ''} ${user.nom || ''}`.trim() || user.nom || 'Client' : 'Client';
+      const customerPhone = user?.telephone || null;
+      
       const orderDetails = {
         ...order,
         restaurant: restaurant,
         users: user,
-        user_addresses: address
+        user_addresses: address,
+        // Ajouter les informations client formatées pour compatibilité
+        customer_name: customerName,
+        customer_first_name: user?.prenom || null,
+        customer_last_name: user?.nom || null,
+        customer_phone: customerPhone,
+        delivery_address: address?.address || order.adresse_livraison || null,
+        delivery_city: address?.city || null,
+        delivery_postal_code: address?.postal_code || null
       };
       
       console.log('✅ Détails récupérés avec succès:', {

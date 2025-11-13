@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 
@@ -14,6 +14,12 @@ export default function RestaurantOrders() {
   const [newOrderNotification, setNewOrderNotification] = useState(null);
   const [preparationTime, setPreparationTime] = useState(30);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const audioEnabledRef = useRef(audioEnabled);
+
+  // Mettre à jour la ref quand audioEnabled change
+  useEffect(() => {
+    audioEnabledRef.current = audioEnabled;
+  }, [audioEnabled]);
 
   // Pour l'exemple, on utilise un restaurant ID fixe
   // En production, cela viendrait de l'authentification
@@ -48,11 +54,18 @@ export default function RestaurantOrders() {
   useEffect(() => {
     const interval = setInterval(() => {
       console.log('🔄 Polling automatique des commandes');
+      // TOUJOURS rafraîchir les commandes, indépendamment du son
+      // C'est crucial pour que le partenaire voie les nouvelles commandes
       fetchOrders();
+      // Jouer un son discret pour indiquer le rafraîchissement (si audio activé)
+      // Utiliser la ref pour accéder à la valeur actuelle
+      if (audioEnabledRef.current) {
+        playNotificationSound();
+      }
     }, 15000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Pas de dépendance pour éviter de recréer l'interval à chaque changement
 
   // Fonction pour jouer un son de notification
   const playNotificationSound = () => {
@@ -99,12 +112,12 @@ export default function RestaurantOrders() {
         (payload) => {
           console.log('Nouvelle commande reçue:', payload.new);
           setNewOrderNotification(payload.new);
-          fetchOrders(); // Rafraîchir la liste
+          // TOUJOURS rafraîchir la liste, même si le son est désactivé
+          fetchOrders();
           
-          // Alerte sonore
-          if (audioEnabled) {
-            playNotificationSound();
-          }
+          // Forcer l'alerte sonore pour les nouvelles commandes (important pour la visibilité)
+          // Le son est nécessaire pour que le partenaire voie les nouvelles commandes
+          playNotificationSound();
           
           // Notification du navigateur
           if (Notification.permission === 'granted') {
@@ -130,7 +143,12 @@ export default function RestaurantOrders() {
           console.log('Commande mise à jour:', payload.new);
           console.log('Ancien statut:', payload.old.statut);
           console.log('Nouveau statut:', payload.new.statut);
-          fetchOrders(); // Rafraîchir la liste
+          // TOUJOURS rafraîchir la liste lors des mises à jour
+          fetchOrders();
+          // Jouer un son discret pour les mises à jour importantes (si audio activé)
+          if (audioEnabled && (payload.new.statut === 'en_preparation' || payload.new.statut === 'pret_a_livrer')) {
+            playNotificationSound();
+          }
         }
       )
       .subscribe((status) => {
