@@ -1131,7 +1131,7 @@ export default function RestaurantDetail({ params }) {
           {/* Panier desktop */}
           {cart.length > 0 && (
             <aside className="hidden lg:block w-[320px] xl:w-[360px] flex-shrink-0">
-              <div className="sticky top-28 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border dark:border-gray-700 p-4 space-y-3">
+              <div className="sticky top-24 z-40 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border dark:border-gray-700 p-4 space-y-3">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Panier ({cart.reduce((sum, item) => sum + (item.quantity || 1), 0)})</h2>
                 <button
@@ -1141,7 +1141,7 @@ export default function RestaurantDetail({ params }) {
                   Voir tout
                 </button>
               </div>
-                <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
+                <div className="space-y-2 mb-3 max-h-[50vh] overflow-y-auto pr-1">
                   {cart.slice(0, 3).map((item, idx) => {
                     const itemPrice = parseFloat(item.prix || item.price || 0);
                     const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
