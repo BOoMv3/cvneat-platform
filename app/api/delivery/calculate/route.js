@@ -16,6 +16,8 @@ const MAX_DISTANCE = 10;            // Maximum 10km
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
+// Villes autorisées (fallback si le code postal n'est pas extrait correctement)
+const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'pegairolles', 'pégairolles'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -282,7 +284,16 @@ export async function POST(request) {
       .filter(Boolean)
       .map(code => code.trim());
 
-    const hasAuthorizedPostalCode = postalCodeMatches.some(code => AUTHORIZED_POSTAL_CODES.includes(code));
+    let hasAuthorizedPostalCode = postalCodeMatches.some(code => AUTHORIZED_POSTAL_CODES.includes(code));
+
+    // Fallback: si pas de code postal détecté mais la ville est autorisée via Nominatim
+    if (!hasAuthorizedPostalCode) {
+      const cityNormalized = (clientCoords.city || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (cityNormalized && AUTHORIZED_CITIES.includes(cityNormalized)) {
+        console.log('✅ Ville autorisée détectée via Nominatim:', cityNormalized);
+        hasAuthorizedPostalCode = true;
+      }
+    }
 
     if (!hasAuthorizedPostalCode) {
       console.log('❌ Code postal non autorisé:', postalCodeMatches, 'adresse:', clientCoords.display_name || clientAddress);

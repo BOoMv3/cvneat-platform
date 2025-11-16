@@ -939,7 +939,7 @@ export default function Home() {
                           {/* Badge Promo global */}
                           {!isClosed && (
                             <span className="bg-purple-600/90 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-3.5 md:py-1.5 rounded-full text-[10px] sm:text-xs font-bold shadow-lg border border-white/20">
-                              -20% ce soir
+                              -20% aujourd'hui
                             </span>
                           )}
                           {isClosed && (
