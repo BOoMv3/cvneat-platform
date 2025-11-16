@@ -740,7 +740,7 @@ export default function Home() {
       <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-2">
         <div className="max-w-7xl mx-auto px-4">
           <marquee behavior="scroll" direction="left" scrollamount="6">
-            🎉 Promo exceptionnelle aujourd’hui: -20% sur le sous-total (cap 4€) dès 20€ d’achat • Le restaurant touche toujours 80% • Frais de livraison non remisés • Frais plateforme 0,49€ • Offre limitée dans le temps 🎉
+            🎉 Aujourd’hui seulement: -20% sur votre commande (plafond 4€), dès 20€ d’achat. Frais de livraison exclus. 🎉
           </marquee>
         </div>
       </div>
