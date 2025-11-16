@@ -11,7 +11,7 @@ import {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onError }) => {
+const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onError, discount = 0, platformFee = 0 }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -94,6 +94,12 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Récapitulatif rapide */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-700 text-xs sm:text-sm text-blue-900 dark:text-blue-100">
+        <div className="flex justify-between"><span>Remise CVN’EAT</span><span className="font-semibold">−{Number(discount || 0).toFixed(2)}€</span></div>
+        <div className="flex justify-between"><span>Frais plateforme</span><span className="font-semibold">{Number(platformFee || 0).toFixed(2)}€</span></div>
+        <div className="flex justify-between mt-1 pt-1 border-t border-blue-200 dark:border-blue-700"><span>Total à payer</span><span className="font-bold">{amount.toFixed(2)}€</span></div>
+      </div>
       <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
         <PaymentElement
           options={{
@@ -125,7 +131,7 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
   );
 };
 
-const PaymentForm = ({ amount, paymentIntentId, clientSecret, onSuccess, onError }) => {
+const PaymentForm = ({ amount, paymentIntentId, clientSecret, onSuccess, onError, discount = 0, platformFee = 0 }) => {
   const options = {
     clientSecret,
     appearance: {
@@ -141,6 +147,8 @@ const PaymentForm = ({ amount, paymentIntentId, clientSecret, onSuccess, onError
         paymentIntentId={paymentIntentId}
         onSuccess={onSuccess}
         onError={onError}
+        discount={discount}
+        platformFee={platformFee}
       />
     </Elements>
   );

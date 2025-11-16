@@ -1058,6 +1058,16 @@ export default function Checkout() {
                     clientSecret={clientSecret}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
+                    discount={(orderData?.discount_amount) ?? (() => {
+                      const DISCOUNT_RATE = 0.20;
+                      const DISCOUNT_CAP = 4.0;
+                      const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
+                      return Math.min(
+                        DISCOUNT_CAP,
+                        cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0
+                      );
+                    })()}
+                    platformFee={(orderData?.platform_fee) ?? 0.49}
                   />
                 )}
                 <button
