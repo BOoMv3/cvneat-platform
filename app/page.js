@@ -740,7 +740,7 @@ export default function Home() {
       <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-2">
         <div className="max-w-7xl mx-auto px-4">
           <marquee behavior="scroll" direction="left" scrollamount="6">
-            🎉 Aujourd’hui seulement: -20% sur votre commande (plafond 4€), dès 20€ d’achat. Frais de livraison exclus. 🎉
+            🎉 Aujourd’hui seulement: -20% sur votre commande dès 20€ d’achat. Frais de livraison exclus. 🎉
           </marquee>
         </div>
       </div>

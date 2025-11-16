@@ -515,13 +515,12 @@ export default function Checkout() {
 
       // PROMOTION -20% financée par CVN'EAT avec garde-fous
       const DISCOUNT_RATE = 0.20;          // -20%
-      const DISCOUNT_CAP = 4.0;            // Plafond 4€
       const MIN_SUBTOTAL_FOR_DISCOUNT = 20; // Panier mini 20€
       const PLATFORM_FEE = 0.49;           // Frais plateforme fixe
 
       // Calcul de la remise (sur sous-total uniquement, hors livraison/suppléments déjà inclus dans cartTotal)
       const rawDiscount = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? cartTotal * DISCOUNT_RATE : 0;
-      const discountAmount = Math.min(DISCOUNT_CAP, Math.round((rawDiscount) * 100) / 100);
+      const discountAmount = Math.round((rawDiscount) * 100) / 100;
 
       // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
       // Utiliser finalDeliveryFee qui a été calculé ci-dessus
@@ -969,13 +968,9 @@ export default function Checkout() {
             {(() => {
               // Calcul promo pour l'affichage
               const DISCOUNT_RATE = 0.20;
-              const DISCOUNT_CAP = 4.0;
               const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
               const PLATFORM_FEE = 0.49;
-              const discountDisplay = Math.min(
-                DISCOUNT_CAP,
-                cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0
-              );
+              const discountDisplay = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
               const finalTotalDisplay = Math.max(0, (cartTotal - discountDisplay) + fraisLivraison + PLATFORM_FEE);
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
@@ -1023,13 +1018,9 @@ export default function Checkout() {
                   // Recalculer le total payé avec remise et frais plateforme
                   (() => {
                     const DISCOUNT_RATE = 0.20;
-                    const DISCOUNT_CAP = 4.0;
                     const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
                     const PLATFORM_FEE = 0.49;
-                    const discountDisplay = Math.min(
-                      DISCOUNT_CAP,
-                      cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0
-                    );
+                    const discountDisplay = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
                     const finalTotalDisplay = Math.max(0, (cartTotal - discountDisplay) + fraisLivraison + PLATFORM_FEE);
                     return `Payer ${finalTotalDisplay.toFixed(2)}€`;
                   })()
@@ -1045,13 +1036,9 @@ export default function Checkout() {
                   <PaymentForm
                     amount={(() => {
                       const DISCOUNT_RATE = 0.20;
-                      const DISCOUNT_CAP = 4.0;
                       const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
                       const PLATFORM_FEE = 0.49;
-                      const discountDisplay = Math.min(
-                        DISCOUNT_CAP,
-                        cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0
-                      );
+                      const discountDisplay = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
                       return Math.max(0, (cartTotal - discountDisplay) + fraisLivraison + PLATFORM_FEE);
                     })()}
                     paymentIntentId={paymentIntentId}
@@ -1060,12 +1047,8 @@ export default function Checkout() {
                     onError={handlePaymentError}
                     discount={(orderData?.discount_amount) ?? (() => {
                       const DISCOUNT_RATE = 0.20;
-                      const DISCOUNT_CAP = 4.0;
                       const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
-                      return Math.min(
-                        DISCOUNT_CAP,
-                        cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0
-                      );
+                      return cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
                     })()}
                     platformFee={(orderData?.platform_fee) ?? 0.49}
                   />
