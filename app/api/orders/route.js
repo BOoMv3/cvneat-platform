@@ -228,7 +228,7 @@ export async function POST(request) {
 
     console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
-    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo } = body;
+    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo, discountAmount = 0, platformFee = 0 } = body;
 
     // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
     console.log('🔍 Validation simplifiée de la commande...');
@@ -338,7 +338,10 @@ export async function POST(request) {
 
     // Utiliser le montant total et les frais de livraison envoyes par le frontend
     // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
-    const total = totalAmount || 0;
+    const subtotalBeforeDiscount = totalAmount || 0; // correspond au sous-total articles (S)
+    const discount = Math.max(0, parseFloat(discountAmount) || 0);
+    const platform_fee = Math.max(0, parseFloat(platformFee) || 0);
+    const total = subtotalBeforeDiscount; // on stocke dans 'total' le sous-total articles (hors frais/discount)
     const fraisLivraison = Math.round(parseFloat(deliveryFee || restaurant.frais_livraison || 0) * 100) / 100;
 
     console.log('Total utilise:', total);
@@ -379,7 +382,7 @@ export async function POST(request) {
     const orderData = {
       restaurant_id: restaurantId,
       adresse_livraison: `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`,
-      total: total,
+      total: total, // sous-total articles
       frais_livraison: fraisLivraison,
       statut: 'en_attente', // En attente d'acceptation par le restaurant
       security_code: securityCode // Code de sécurité pour la livraison
@@ -434,6 +437,21 @@ export async function POST(request) {
     if (userId) {
       orderData.user_id = userId;
     }
+
+    // Calculs financiers: commission/payout
+    const COMMISSION_RATE = 0.20; // 20% sur le sous-total (S)
+    const commissionGross = Math.round((total * COMMISSION_RATE) * 100) / 100;
+    const restaurantPayout = Math.round((total * (1 - COMMISSION_RATE)) * 100) / 100; // 80% de S
+    const commissionNet = Math.max(0, commissionGross - discount) + platform_fee; // CVN'EAT compense la remise, récupère frais plateforme
+    // Ne pas stocker ces champs si la colonne n'existe pas dans la base
+    // Conserver uniquement pour logs/analytique
+    console.log('Finance computation:', {
+      commission_gross: commissionGross,
+      commission_net: commissionNet,
+      restaurant_payout: restaurantPayout,
+      discount,
+      platform_fee
+    });
 
     console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
 
