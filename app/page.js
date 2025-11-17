@@ -261,12 +261,6 @@ export default function Home() {
       image: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?q=80&w=2000&auto=format&fit=crop',
       title: 'Partenaires passionnés',
       subtitle: 'Des chefs soigneusement sélectionnés pour la qualité de leurs produits'
-    },
-    {
-      id: 'slide-3',
-      image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=2000&q=80',
-      title: 'Promos exclusives CVN’EAT',
-      subtitle: 'Profitez de remises et de programmes fidélité dédiés'
     }
   ], []);
 
@@ -736,14 +730,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Bandeau promo défilant simple */}
-      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-2">
-        <div className="max-w-7xl mx-auto px-4">
-          <marquee behavior="scroll" direction="left" scrollamount="6">
-            🎉 Aujourd’hui seulement: -20% sur votre commande dès 20€ d’achat. Frais de livraison exclus. 🎉
-          </marquee>
-        </div>
-      </div>
 
 
       {/* Panier flottant - Optimisé mobile */}
@@ -936,12 +922,6 @@ export default function Home() {
                         
                         {/* Badges - Optimisé mobile */}
                         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 flex flex-col space-y-1.5 sm:space-y-2 z-20">
-                          {/* Badge Promo global */}
-                          {!isClosed && (
-                            <span className="bg-purple-600/90 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-3.5 md:py-1.5 rounded-full text-[10px] sm:text-xs font-bold shadow-lg border border-white/20">
-                              -20% aujourd'hui
-                            </span>
-                          )}
                           {isClosed && (
                             <span className="bg-red-600 text-white/95 px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-3.5 md:py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-lg border border-white/40">
                               Fermé

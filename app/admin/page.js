@@ -144,6 +144,10 @@ export default function AdminPage() {
       let livreurRevenue = 0; // CA Livreur
       let restaurantRevenue = 0; // CA Restaurant (total - commission)
       
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
       orders?.filter(o => o.statut === 'livree').forEach(order => {
         const orderAmount = parseFloat(order.total || 0); // Montant des articles uniquement
         const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
@@ -170,6 +174,7 @@ export default function AdminPage() {
 
         // CA Restaurant = articles - commission
         restaurantRevenue += restaurantShare;
+
       });
       
       const totalRestaurants = restaurants?.length || 0;
@@ -567,13 +572,14 @@ export default function AdminPage() {
                   <FaEuroSign className="text-xl" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">CA CVN'EAT</p>
+                  <p className="text-sm font-medium text-gray-600">CA CVN'EAT (brut)</p>
                   <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.cvneatRevenue)}</p>
                 </div>
               </div>
             </div>
             <p className="text-xs text-gray-500">20% des commandes livrées (articles uniquement)</p>
           </div>
+
 
           <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">

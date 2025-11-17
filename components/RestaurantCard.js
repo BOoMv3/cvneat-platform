@@ -29,7 +29,6 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
     delivery_time,
     delivery_fee,
     minimum_order,
-    promotion,
     is_sponsored
   } = restaurant;
 
@@ -87,13 +86,6 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
           {is_sponsored && (
             <div className="absolute top-3 left-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
               Sponsorisé
-            </div>
-          )}
-
-          {/* Promotion */}
-          {promotion && (
-            <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-              {promotion}
             </div>
           )}
 

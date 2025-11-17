@@ -513,20 +513,15 @@ export default function Checkout() {
       // Calculer le total du panier (sous-total articles)
       const cartTotal = orderSubtotal || computeCartTotalWithExtras(savedCart.items);
 
-      // PROMOTION -20% financée par CVN'EAT avec garde-fous
-      const DISCOUNT_RATE = 0.20;          // -20%
-      const MIN_SUBTOTAL_FOR_DISCOUNT = 20; // Panier mini 20€
-      const PLATFORM_FEE = 0.49;           // Frais plateforme fixe
-
-      // Calcul de la remise (sur sous-total uniquement, hors livraison/suppléments déjà inclus dans cartTotal)
-      const rawDiscount = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? cartTotal * DISCOUNT_RATE : 0;
-      const discountAmount = Math.round((rawDiscount) * 100) / 100;
+      // Pas de promotion active
+      const discountAmount = 0;
+      const PLATFORM_FEE = 0.49; // Frais plateforme fixe
 
       // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
       // Utiliser finalDeliveryFee qui a été calculé ci-dessus
       const finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
-      // Montant facturé au client = sous-total - remise + livraison + frais plateforme
-      const totalAmount = Math.max(0, (cartTotal - discountAmount) + finalDeliveryFeeForTotal + PLATFORM_FEE);
+      // Montant facturé au client = sous-total + livraison + frais plateforme
+      const totalAmount = Math.max(0, cartTotal + finalDeliveryFeeForTotal + PLATFORM_FEE);
 
       // Générer un code de sécurité
       const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -966,21 +961,13 @@ export default function Checkout() {
             </div>
 
             {(() => {
-              // Calcul promo pour l'affichage
-              const DISCOUNT_RATE = 0.20;
-              const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
               const PLATFORM_FEE = 0.49;
-              const discountDisplay = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
-              const finalTotalDisplay = Math.max(0, (cartTotal - discountDisplay) + fraisLivraison + PLATFORM_FEE);
+              const finalTotalDisplay = Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                 <span>Sous-total</span>
                 <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
-                <span>Remise -20% (CVN’EAT)</span>
-                <span className="font-semibold text-green-700 dark:text-green-400">−{discountDisplay.toFixed(2)}€</span>
               </div>
               <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                 <span className="flex items-center">
@@ -1015,13 +1002,9 @@ export default function Checkout() {
                     Préparation...
                   </div>
                 ) : (
-                  // Recalculer le total payé avec remise et frais plateforme
                   (() => {
-                    const DISCOUNT_RATE = 0.20;
-                    const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
                     const PLATFORM_FEE = 0.49;
-                    const discountDisplay = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
-                    const finalTotalDisplay = Math.max(0, (cartTotal - discountDisplay) + fraisLivraison + PLATFORM_FEE);
+                    const finalTotalDisplay = Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
                     return `Payer ${finalTotalDisplay.toFixed(2)}€`;
                   })()
                 )}
@@ -1035,21 +1018,14 @@ export default function Checkout() {
                 {clientSecret && (
                   <PaymentForm
                     amount={(() => {
-                      const DISCOUNT_RATE = 0.20;
-                      const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
                       const PLATFORM_FEE = 0.49;
-                      const discountDisplay = cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
-                      return Math.max(0, (cartTotal - discountDisplay) + fraisLivraison + PLATFORM_FEE);
+                      return Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
                     })()}
                     paymentIntentId={paymentIntentId}
                     clientSecret={clientSecret}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
-                    discount={(orderData?.discount_amount) ?? (() => {
-                      const DISCOUNT_RATE = 0.20;
-                      const MIN_SUBTOTAL_FOR_DISCOUNT = 20;
-                      return cartTotal >= MIN_SUBTOTAL_FOR_DISCOUNT ? Math.round(cartTotal * DISCOUNT_RATE * 100) / 100 : 0;
-                    })()}
+                    discount={0}
                     platformFee={(orderData?.platform_fee) ?? 0.49}
                   />
                 )}

@@ -442,7 +442,7 @@ export async function POST(request) {
     const COMMISSION_RATE = 0.20; // 20% sur le sous-total (S)
     const commissionGross = Math.round((total * COMMISSION_RATE) * 100) / 100;
     const restaurantPayout = Math.round((total * (1 - COMMISSION_RATE)) * 100) / 100; // 80% de S
-    const commissionNet = Math.max(0, commissionGross - discount) + platform_fee; // CVN'EAT compense la remise, récupère frais plateforme
+    const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
     // Ne pas stocker ces champs si la colonne n'existe pas dans la base
     // Conserver uniquement pour logs/analytique
     console.log('Finance computation:', {

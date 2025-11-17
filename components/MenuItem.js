@@ -20,7 +20,6 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
     image_url,
     rating,
     review_count,
-    promotion,
     is_popular
   } = item;
 
@@ -114,13 +113,6 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
             <FaPlus className="w-5 h-5" />
           )}
         </button>
-
-        {/* Promotion */}
-        {promotion && (
-          <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
-            {promotion}
-          </div>
-        )}
       </div>
 
       {/* Informations de l'article - Design minimaliste */}
@@ -169,11 +161,6 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
                   Économie: {(item.total_items_price - prix).toFixed(2)}€
                 </span>
               </div>
-            )}
-            {promotion && (
-              <span className="text-sm text-gray-400 dark:text-gray-500 line-through ml-2 font-normal">
-                {typeof prix === 'number' ? (prix * 2).toFixed(2) : prix}€
-              </span>
             )}
           </div>
         </div>

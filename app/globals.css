@@ -37,6 +37,7 @@ html,
 body {
   width: 100%;
   min-height: 100%;
+  overflow-x: hidden; /* Évite tout défilement horizontal intempestif */
 }
 
 body {
@@ -81,6 +82,12 @@ body {
     align-items: center;
     justify-content: center;
   }
+}
+
+/* Garantir que les médias s'adaptent à la largeur de l'écran */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Classes utilitaires personnalisées */
