@@ -50,11 +50,13 @@ export async function GET(request) {
     );
 
     // Récupérer toutes les commandes avec le statut 'livree' pour ce livreur
+    // Exclure les commandes déjà payées (livreur_paid_at IS NULL)
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select('*')
       .eq('statut', 'livree')
-      .eq('livreur_id', user.id);
+      .eq('livreur_id', user.id)
+      .is('livreur_paid_at', null); // Seulement les commandes non payées
 
     if (ordersError) {
       console.error('Erreur récupération commandes:', ordersError);

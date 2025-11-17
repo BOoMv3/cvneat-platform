@@ -261,6 +261,12 @@ export default function Home() {
       image: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?q=80&w=2000&auto=format&fit=crop',
       title: 'Partenaires passionnés',
       subtitle: 'Des chefs soigneusement sélectionnés pour la qualité de leurs produits'
+    },
+    {
+      id: 'slide-3',
+      image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=2070&auto=format&fit=crop',
+      title: 'Commandez en toute simplicité',
+      subtitle: 'Une expérience de commande fluide et sécurisée pour satisfaire vos envies'
     }
   ], []);
 
