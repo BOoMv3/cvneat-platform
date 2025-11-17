@@ -100,83 +100,115 @@ export default function TrackOrder() {
   };
 
   const generateNotifications = (orderData) => {
-    const notifs = [];
-    const now = new Date();
-    
-    // Notification de création
-    notifs.push({
-      id: 1,
-      title: 'Commande créée',
-      message: `Votre commande #${orderData.id} a été créée avec succès`,
-      time: new Date(orderData.created_at),
-      status: 'completed',
-      icon: '📝'
-    });
+    try {
+      const notifs = [];
+      const now = new Date();
+      
+      // Fonction helper pour créer une date de manière sécurisée
+      const safeDate = (dateString) => {
+        if (!dateString) return now;
+        try {
+          const date = new Date(dateString);
+          return isNaN(date.getTime()) ? now : date;
+        } catch (error) {
+          console.warn('Erreur création date notification:', error);
+          return now;
+        }
+      };
+      
+      // Notification de création
+      if (orderData && orderData.id) {
+        notifs.push({
+          id: 1,
+          title: 'Commande créée',
+          message: `Votre commande #${orderData.id.slice(0, 8)} a été créée avec succès`,
+          time: safeDate(orderData.created_at || orderData.createdAt),
+          status: 'completed',
+          icon: '📝'
+        });
+      }
 
-    // Normaliser le statut
-    const status = orderData.statut || orderData.status;
-    
-    // Notification d'acceptation
-    if (['acceptee', 'accepted', 'en_preparation', 'preparing', 'pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
-      notifs.push({
-        id: 2,
-        title: 'Commande acceptée',
-        message: `Le restaurant a accepté votre commande. Temps de préparation estimé : ${orderData.preparation_time || 30} minutes`,
-        time: new Date(orderData.updated_at),
+      // Normaliser le statut
+      const status = orderData?.statut || orderData?.status;
+      
+      if (!status) {
+        setNotifications(notifs);
+        return;
+      }
+      
+      // Notification d'acceptation
+      if (['acceptee', 'accepted', 'en_preparation', 'preparing', 'pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
+        notifs.push({
+          id: 2,
+          title: 'Commande acceptée',
+          message: `Le restaurant a accepté votre commande. Temps de préparation estimé : ${orderData.preparation_time || 30} minutes`,
+          time: safeDate(orderData.updated_at || orderData.updatedAt),
+          status: 'completed',
+          icon: '✅'
+        });
+      }
+
+      // Notification de préparation
+      if (['en_preparation', 'preparing', 'pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
+        notifs.push({
+          id: 3,
+          title: 'Préparation en cours',
+          message: 'Votre commande est en cours de préparation',
+          time: safeDate(orderData.updated_at || orderData.updatedAt),
+          status: 'completed',
+          icon: '👨‍🍳'
+        });
+      }
+
+      // Notification prête
+      if (['pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
+        notifs.push({
+          id: 4,
+          title: 'Commande prête',
+          message: 'Votre commande est prête ! Un livreur va bientôt la récupérer',
+          time: safeDate(orderData.updated_at || orderData.updatedAt),
+          status: 'completed',
+          icon: '📦'
+        });
+      }
+
+      // Notification en cours de livraison
+      if ((status === 'en_livraison' || status === 'livree' || status === 'delivered') && (orderData.livreur_id || orderData.delivery_id)) {
+        notifs.push({
+          id: 5,
+          title: 'En cours de livraison',
+          message: 'Votre commande est en cours de livraison',
+          time: safeDate(orderData.updated_at || orderData.updatedAt),
+          status: 'completed',
+          icon: '🚚'
+        });
+      }
+
+      // Notification livrée
+      if (status === 'livree' || status === 'delivered') {
+        notifs.push({
+          id: 6,
+          title: 'Commande livrée',
+          message: 'Votre commande a été livrée avec succès ! Bon appétit !',
+          time: safeDate(orderData.updated_at || orderData.updatedAt),
+          status: 'completed',
+          icon: '🎉'
+        });
+      }
+
+      setNotifications(notifs);
+    } catch (error) {
+      console.error('Erreur lors de la génération des notifications:', error);
+      // En cas d'erreur, au moins afficher une notification basique
+      setNotifications([{
+        id: 1,
+        title: 'Commande',
+        message: orderData?.id ? `Commande #${orderData.id.slice(0, 8)}` : 'Commande',
+        time: new Date(),
         status: 'completed',
-        icon: '✅'
-      });
+        icon: '📝'
+      }]);
     }
-
-    // Notification de préparation
-    if (['en_preparation', 'preparing', 'pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
-      notifs.push({
-        id: 3,
-        title: 'Préparation en cours',
-        message: 'Votre commande est en cours de préparation',
-        time: new Date(orderData.updated_at),
-        status: 'completed',
-        icon: '👨‍🍳'
-      });
-    }
-
-    // Notification prête
-    if (['pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
-      notifs.push({
-        id: 4,
-        title: 'Commande prête',
-        message: 'Votre commande est prête ! Un livreur va bientôt la récupérer',
-        time: new Date(orderData.updated_at),
-        status: 'completed',
-        icon: '📦'
-      });
-    }
-
-    // Notification en cours de livraison
-    if ((status === 'en_livraison' || status === 'livree' || status === 'delivered') && (orderData.livreur_id || orderData.delivery_id)) {
-      notifs.push({
-        id: 5,
-        title: 'En cours de livraison',
-        message: 'Votre commande est en cours de livraison',
-        time: new Date(orderData.updated_at),
-        status: 'completed',
-        icon: '🚚'
-      });
-    }
-
-    // Notification livrée
-    if (status === 'livree' || status === 'delivered') {
-      notifs.push({
-        id: 6,
-        title: 'Commande livrée',
-        message: 'Votre commande a été livrée avec succès ! Bon appétit !',
-        time: new Date(orderData.updated_at),
-        status: 'completed',
-        icon: '🎉'
-      });
-    }
-
-    setNotifications(notifs);
   };
 
   const getStatusText = (statut) => {
@@ -320,25 +352,72 @@ export default function TrackOrder() {
     return () => clearInterval(interval);
   }, [isTracking, orderId, lastStatus]);
 
-  // Charger l'orderId depuis les query params si présent
+  // Charger l'orderId depuis les query params si présent et auto-rechercher
   useEffect(() => {
     const orderIdParam = searchParams?.get('orderId');
-    if (orderIdParam) {
+    if (orderIdParam && orderIdParam.trim() && orderIdParam !== orderId) {
       setOrderId(orderIdParam);
-    }
-  }, [searchParams]);
-
-  // Auto-rechercher la commande quand orderId est défini depuis l'URL
-  useEffect(() => {
-    if (orderId && searchParams?.get('orderId') === orderId) {
-      // Attendre un peu pour que l'état soit bien mis à jour et que la commande soit créée en BDD
+      // Auto-rechercher la commande après un court délai
       const timer = setTimeout(() => {
-        console.log('🔄 Auto-recherche de la commande:', orderId);
-        fetchOrder();
-      }, 1000); // Augmenter le délai pour laisser le temps à la commande d'être créée
+        console.log('🔄 Auto-recherche de la commande depuis URL:', orderIdParam);
+        // Utiliser directement orderIdParam au lieu de orderId pour éviter les problèmes de timing
+        const fetchOrderFromParam = async () => {
+          if (!orderIdParam.trim()) return;
+          
+          setLoading(true);
+          setError(null);
+
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session) {
+              setError('Vous devez être connecté pour suivre une commande.');
+              setLoading(false);
+              return;
+            }
+
+            const response = await fetch(`/api/orders/${orderIdParam}`, {
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              if (response.status === 404) {
+                setError('Commande non trouvée');
+              } else if (response.status === 403) {
+                setError('Vous n\'êtes pas autorisé à voir cette commande.');
+              } else {
+                setError(`Erreur serveur (${response.status})`);
+              }
+              setLoading(false);
+              return;
+            }
+            
+            const data = await response.json();
+            setOrder(data);
+            setLastStatus(data.statut || data.status);
+            generateNotifications(data);
+            
+            const currentStatut = data.statut || data.status;
+            if (currentStatut !== 'livree' && currentStatut !== 'annulee' && currentStatut !== 'delivered' && currentStatut !== 'rejected') {
+              setIsTracking(true);
+            }
+          } catch (err) {
+            console.error('❌ Erreur fetchOrder depuis URL:', err);
+            setError(err.message || 'Erreur lors de la récupération de la commande');
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        fetchOrderFromParam();
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [orderId, searchParams]);
+  }, [searchParams, orderId]);
 
   // Demander la permission pour les notifications
   useEffect(() => {

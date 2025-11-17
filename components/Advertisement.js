@@ -8,6 +8,28 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4YnFydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0NzQ4NzcsImV4cCI6MjA1MDA1MDg3N30.G7iFlb2vKi1ouABfyI_azLbZ8XGi66tf9kx_dtVIE40'
 );
 
+// Cache en mémoire pour les publicités (durée de vie: 10 minutes)
+const adCache = new Map();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// Fonction pour obtenir une publicité depuis le cache
+const getCachedAd = (position) => {
+  const cached = adCache.get(position);
+  if (cached && Date.now() < cached.expiry) {
+    return cached.data;
+  }
+  adCache.delete(position);
+  return null;
+};
+
+// Fonction pour mettre en cache une publicité
+const setCachedAd = (position, adData) => {
+  adCache.set(position, {
+    data: adData,
+    expiry: Date.now() + CACHE_TTL
+  });
+};
+
 export default function Advertisement({ position, className = '' }) {
   const [ad, setAd] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +42,14 @@ export default function Advertisement({ position, className = '' }) {
 
   const fetchAd = async () => {
     try {
+      // Vérifier d'abord le cache
+      const cachedAd = getCachedAd(position);
+      if (cachedAd) {
+        setAd(cachedAd);
+        setLoading(false);
+        return;
+      }
+
       // Récupérer les publicités actives
       // Afficher les publicités qui sont :
       // 1. is_active = true ET status = 'approved' ou 'active'
@@ -64,10 +94,14 @@ export default function Advertisement({ position, className = '' }) {
           const cacheBustingUrl = adToDisplay.image_url
             ? `${adToDisplay.image_url}${adToDisplay.image_url.includes('?') ? '&' : '?'}cb=${new Date(adToDisplay.updated_at || adToDisplay.created_at || Date.now()).getTime()}`
             : null;
-          setAd({
+          const adData = {
             ...adToDisplay,
             image_url_with_cache_bust: cacheBustingUrl
-          });
+          };
+          
+          // Mettre en cache la publicité
+          setCachedAd(position, adData);
+          setAd(adData);
         } else {
           console.log('Publicité hors période:', { startDate, endDate, today });
         }
