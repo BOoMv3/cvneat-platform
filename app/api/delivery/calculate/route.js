@@ -114,6 +114,8 @@ async function geocodeAddress(address) {
 }
 
 function normalizeAddressForCache(address) {
+  if (!address || typeof address !== 'string') return '';
+  
   return address
     .toLowerCase()
     .trim()
@@ -122,14 +124,45 @@ function normalizeAddressForCache(address) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s\d]/g, '')
     .replace(/\bfrance\b/gi, '')
+    .replace(/\b(fr|france)\b/gi, '')
     .trim();
 }
 
+function extractPostalCode(address) {
+  if (!address || typeof address !== 'string') return null;
+  // Chercher un code postal français (5 chiffres)
+  const match = address.match(/\b(\d{5})\b/);
+  return match ? match[1] : null;
+}
+
+function extractCity(address) {
+  if (!address || typeof address !== 'string') return null;
+  // Extraire la ville (généralement avant le code postal ou après une virgule)
+  const parts = address.split(',').map(p => p.trim());
+  // Chercher dans les parties qui ne sont pas le code postal
+  for (const part of parts) {
+    if (!part.match(/^\d{5}$/)) {
+      const normalized = part.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (normalized.length > 2) {
+        return normalized;
+      }
+    }
+  }
+  return null;
+}
+
 function buildCacheKey(address, prefix = 'addr') {
+  const postalCode = extractPostalCode(address);
+  const city = extractCity(address);
   const normalizedAddress = normalizeAddressForCache(address);
-  const postalCodeMatch = address.match(/\b(\d{5})\b/);
-  const postalCode = postalCodeMatch ? postalCodeMatch[1] : '';
-  return `${prefix}_${postalCode}_${normalizedAddress}`;
+  
+  // Utiliser code postal + ville + adresse normalisée pour un cache plus stable
+  const keyParts = [prefix];
+  if (postalCode) keyParts.push(postalCode);
+  if (city) keyParts.push(city);
+  keyParts.push(normalizedAddress.slice(0, 50)); // Limiter la longueur
+  
+  return keyParts.join('_');
 }
 
 async function getCoordinatesWithCache(address, { prefix = 'addr' } = {}) {
@@ -145,8 +178,10 @@ async function getCoordinatesWithCache(address, { prefix = 'addr' } = {}) {
   const coords = await geocodeAddress(address);
   console.log(`📍 Coordonnées EXACTES depuis Nominatim (${prefix}):`, coords);
 
-  coords.lat = Math.round(coords.lat * 100) / 100;
-  coords.lng = Math.round(coords.lng * 100) / 100;
+  // Arrondir à 3 décimales pour une meilleure précision tout en gardant la cohérence
+  // 3 décimales = précision ~100m, ce qui est suffisant pour les calculs de livraison
+  coords.lat = Math.round(coords.lat * 1000) / 1000;
+  coords.lng = Math.round(coords.lng * 1000) / 1000;
 
   if (cache.size > 1000) {
     const firstKey = cache.keys().next().value;
@@ -154,7 +189,7 @@ async function getCoordinatesWithCache(address, { prefix = 'addr' } = {}) {
   }
 
   cache.set(cacheKey, coords);
-  console.log(`💾 Coordonnées mises en cache (${prefix}) (arrondies à 2 décimales pour stabilité)`);
+  console.log(`💾 Coordonnées mises en cache (${prefix}) (arrondies à 3 décimales pour stabilité)`);
 
   return coords;
 }
@@ -277,30 +312,48 @@ export async function POST(request) {
     }
 
     // Vérifier que le code postal est dans une zone desservie (en se basant sur l'adresse saisie et le géocodage)
+    // Extraire tous les codes postaux possibles
+    const postalCodeFromAddress = extractPostalCode(clientAddress);
+    const postalCodeFromGeocode = clientCoords.postcode ? String(clientCoords.postcode).trim() : null;
+    
     const postalCodeMatches = [
-      ...(clientAddress.match(/\b(\d{5})\b/g) || []),
-      clientCoords.postcode
+      postalCodeFromAddress,
+      postalCodeFromGeocode
     ]
       .filter(Boolean)
-      .map(code => code.trim());
+      .map(code => String(code).trim().padStart(5, '0')); // Normaliser à 5 chiffres
 
+    // Vérifier si au moins un code postal correspond
     let hasAuthorizedPostalCode = postalCodeMatches.some(code => AUTHORIZED_POSTAL_CODES.includes(code));
 
     // Fallback: si pas de code postal détecté mais la ville est autorisée via Nominatim
     if (!hasAuthorizedPostalCode) {
-      const cityNormalized = (clientCoords.city || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (cityNormalized && AUTHORIZED_CITIES.includes(cityNormalized)) {
-        console.log('✅ Ville autorisée détectée via Nominatim:', cityNormalized);
-        hasAuthorizedPostalCode = true;
+      const cityFromAddress = extractCity(clientAddress);
+      const cityFromGeocode = clientCoords.city ? String(clientCoords.city).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : null;
+      
+      const citiesToCheck = [cityFromAddress, cityFromGeocode].filter(Boolean);
+      
+      for (const city of citiesToCheck) {
+        if (AUTHORIZED_CITIES.some(authCity => city.includes(authCity) || authCity.includes(city))) {
+          console.log('✅ Ville autorisée détectée:', city);
+          hasAuthorizedPostalCode = true;
+          break;
+        }
       }
     }
 
     if (!hasAuthorizedPostalCode) {
-      console.log('❌ Code postal non autorisé:', postalCodeMatches, 'adresse:', clientCoords.display_name || clientAddress);
+      console.log('❌ Code postal non autorisé:', {
+        postalCodes: postalCodeMatches,
+        fromAddress: postalCodeFromAddress,
+        fromGeocode: postalCodeFromGeocode,
+        address: clientCoords.display_name || clientAddress,
+        city: clientCoords.city
+      });
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190, 34150, 34260.'
+        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges), 34150 (Laroque), 34260 (Sumène).'
       }, { status: 200 });
     }
 
@@ -309,11 +362,11 @@ export async function POST(request) {
       const lat = parseFloat(restaurantData.latitude);
       const lng = parseFloat(restaurantData.longitude);
       if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-        restaurantCoords = {
-          lat: Math.round(lat * 100) / 100,
-          lng: Math.round(lng * 100) / 100,
-          display_name: restaurantAddress || restaurantName
-        };
+      restaurantCoords = {
+        lat: Math.round(lat * 1000) / 1000, // 3 décimales pour cohérence
+        lng: Math.round(lng * 1000) / 1000,
+        display_name: restaurantAddress || restaurantName
+      };
       }
     }
 
@@ -340,16 +393,22 @@ export async function POST(request) {
     }
 
     // 4. Calculer la distance entre restaurant et client
+    // IMPORTANT: Arrondir les coordonnées AVANT le calcul pour garantir la cohérence
+    const restaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000; // 3 décimales = ~100m
+    const restaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
+    const clientLat = Math.round(clientCoords.lat * 1000) / 1000;
+    const clientLng = Math.round(clientCoords.lng * 1000) / 1000;
+    
     const distance = calculateDistance(
-      restaurantCoords.lat, restaurantCoords.lng,
-      clientCoords.lat, clientCoords.lng
+      restaurantLat, restaurantLng,
+      clientLat, clientLng
     );
 
     // Arrondir la distance à 1 décimale pour éviter les micro-variations
     // Cela garantit que la même adresse donne toujours la même distance (et donc les mêmes frais)
     const roundedDistance = Math.round(distance * 10) / 10; // 1 décimale = précision ~100m
 
-    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km`);
+    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (coords restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)} | client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)})`);
 
     // 5. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
