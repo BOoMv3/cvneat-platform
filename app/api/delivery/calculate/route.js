@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+
+// Client Supabase admin pour le cache (bypass RLS)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 // Configuration par défaut (utilisée si aucune donnée spécifique restaurant)
 const DEFAULT_RESTAURANT = {
@@ -165,31 +173,99 @@ function buildCacheKey(address, prefix = 'addr') {
   return keyParts.join('_');
 }
 
+function buildAddressHash(address) {
+  const postalCode = extractPostalCode(address);
+  const city = extractCity(address);
+  const normalizedAddress = normalizeAddressForCache(address);
+  
+  // Créer un hash stable de l'adresse
+  const hashInput = `${postalCode || ''}_${city || ''}_${normalizedAddress}`;
+  return crypto.createHash('sha256').update(hashInput).digest('hex');
+}
+
 async function getCoordinatesWithCache(address, { prefix = 'addr' } = {}) {
   const cacheKey = buildCacheKey(address, prefix);
+  const addressHash = buildAddressHash(address);
+  
+  // 1. Vérifier le cache en mémoire (rapide)
   const cache = prefix === 'restaurant' ? restaurantCache : coordinatesCache;
-
   if (cache.has(cacheKey)) {
     const cached = cache.get(cacheKey);
-    console.log(`📍 Coordonnées depuis le cache (${prefix}):`, cached);
+    console.log(`📍 Coordonnées depuis le cache mémoire (${prefix}):`, cached);
     return cached;
   }
 
+  // 2. Vérifier le cache Supabase (persistant)
+  try {
+    const { data: cachedData, error: cacheError } = await supabaseAdmin
+      .from('geocoded_addresses_cache')
+      .select('latitude, longitude, postal_code, city, display_name')
+      .eq('address_hash', addressHash)
+      .single();
+
+    if (!cacheError && cachedData) {
+      // Mettre à jour last_used_at
+      await supabaseAdmin
+        .from('geocoded_addresses_cache')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('address_hash', addressHash);
+
+      const coords = {
+        lat: parseFloat(cachedData.latitude),
+        lng: parseFloat(cachedData.longitude),
+        postcode: cachedData.postal_code,
+        city: cachedData.city,
+        display_name: cachedData.display_name || address
+      };
+      
+      // Mettre en cache mémoire aussi
+      cache.set(cacheKey, coords);
+      console.log(`📍 Coordonnées depuis le cache Supabase (${prefix}):`, coords);
+      return coords;
+    }
+  } catch (error) {
+    console.warn('⚠️ Erreur lors de la récupération du cache Supabase:', error.message);
+    // Continuer avec le géocodage si le cache échoue
+  }
+
+  // 3. Géocoder avec Nominatim
   const coords = await geocodeAddress(address);
-  console.log(`📍 Coordonnées EXACTES depuis Nominatim (${prefix}):`, coords);
+  console.log(`📍 Coordonnées depuis Nominatim (${prefix}):`, coords);
 
   // Arrondir à 3 décimales pour une meilleure précision tout en gardant la cohérence
   // 3 décimales = précision ~100m, ce qui est suffisant pour les calculs de livraison
   coords.lat = Math.round(coords.lat * 1000) / 1000;
   coords.lng = Math.round(coords.lng * 1000) / 1000;
 
+  // 4. Stocker dans le cache Supabase (persistant)
+  try {
+    await supabaseAdmin
+      .from('geocoded_addresses_cache')
+      .upsert({
+        address_hash: addressHash,
+        address: address,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        postal_code: coords.postcode || extractPostalCode(address),
+        city: coords.city || extractCity(address),
+        display_name: coords.display_name || address,
+        last_used_at: new Date().toISOString()
+      }, {
+        onConflict: 'address_hash'
+      });
+    console.log(`💾 Coordonnées mises en cache Supabase (${prefix})`);
+  } catch (error) {
+    console.warn('⚠️ Erreur lors de la mise en cache Supabase:', error.message);
+    // Continuer même si le cache échoue
+  }
+
+  // 5. Mettre en cache mémoire aussi
   if (cache.size > 1000) {
     const firstKey = cache.keys().next().value;
     cache.delete(firstKey);
   }
-
   cache.set(cacheKey, coords);
-  console.log(`💾 Coordonnées mises en cache (${prefix}) (arrondies à 3 décimales pour stabilité)`);
+  console.log(`💾 Coordonnées mises en cache mémoire (${prefix})`);
 
   return coords;
 }
