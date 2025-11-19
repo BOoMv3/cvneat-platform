@@ -311,6 +311,66 @@ export async function GET(request) {
     }
 
     console.log('✅ Commandes trouvées:', orders?.length || 0);
+    
+    // Vérifier les commandes sans détails AVANT le formatage
+    const ordersWithoutDetails = (orders || []).filter(o => !o.details_commande || !Array.isArray(o.details_commande) || o.details_commande.length === 0);
+    if (ordersWithoutDetails.length > 0) {
+      console.log(`🔍 Vérification directe BDD pour ${ordersWithoutDetails.length} commandes sans détails...`);
+      
+      // Vérifier directement en BDD pour chaque commande sans détails
+      for (const order of ordersWithoutDetails) {
+        try {
+          const { data: directCheck, error: checkError } = await supabaseAdmin
+            .from('details_commande')
+            .select('id, commande_id, plat_id, quantite, prix_unitaire')
+            .eq('commande_id', order.id)
+            .limit(5);
+          
+          if (checkError) {
+            console.error(`   ❌ Commande ${order.id?.slice(0, 8)}: Erreur vérification BDD:`, checkError.message);
+          } else {
+            if (directCheck && directCheck.length > 0) {
+              console.error(`   ❌ PROBLÈME CRITIQUE - Commande ${order.id?.slice(0, 8)}: ${directCheck.length} détails EXISTENT en BDD mais ne sont PAS récupérés !`);
+              console.error(`      Exemple:`, directCheck[0]);
+              
+              // Essayer de récupérer les détails avec la relation menus
+              const { data: fullDetails, error: fullError } = await supabaseAdmin
+                .from('details_commande')
+                .select(`
+                  id,
+                  commande_id,
+                  plat_id,
+                  quantite,
+                  prix_unitaire,
+                  supplements,
+                  customizations,
+                  menus (
+                    nom,
+                    prix
+                  )
+                `)
+                .eq('commande_id', order.id);
+              
+              if (!fullError && fullDetails && fullDetails.length > 0) {
+                console.log(`      ✅ Récupération complète réussie: ${fullDetails.length} détails avec menus`);
+                // Ajouter les détails à la commande
+                const orderIndex = orders.findIndex(o => o.id === order.id);
+                if (orderIndex !== -1) {
+                  orders[orderIndex].details_commande = fullDetails;
+                  console.log(`      ✅ Détails ajoutés à la commande ${order.id?.slice(0, 8)}`);
+                }
+              } else {
+                console.error(`      ❌ Impossible de récupérer les détails avec menus:`, fullError?.message);
+              }
+            } else {
+              console.warn(`   ⚠️ CONFIRMÉ - Commande ${order.id?.slice(0, 8)}: Aucun détail n'existe en BDD - ils n'ont jamais été créés.`);
+            }
+          }
+        } catch (checkErr) {
+          console.error(`   ❌ Exception lors vérification commande ${order.id?.slice(0, 8)}:`, checkErr.message);
+        }
+      }
+    }
 
     const formattedOrders = (orders || []).map(order => {
       const subtotal = parseFloat(order.total || 0) || 0;
@@ -367,8 +427,11 @@ export async function GET(request) {
       });
 
       // Log pour debug si pas de détails
-      if (!order.details_commande || order.details_commande.length === 0) {
-        console.warn(`⚠️ Commande ${order.id?.slice(0, 8)} : Pas de détails de commande trouvés`);
+      if (!order.details_commande || !Array.isArray(order.details_commande) || order.details_commande.length === 0) {
+        console.warn(`⚠️ Commande ${order.id?.slice(0, 8)} : Pas de détails de commande trouvés après récupération et formatage`);
+        console.warn(`   Type:`, typeof order.details_commande);
+        console.warn(`   Est tableau:`, Array.isArray(order.details_commande));
+        console.warn(`   Valeur brute:`, JSON.stringify(order.details_commande, null, 2));
       } else {
         console.log(`✅ Commande ${order.id?.slice(0, 8)} : ${order.details_commande.length} détails trouvés`);
       }
