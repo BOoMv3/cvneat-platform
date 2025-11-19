@@ -2359,11 +2359,27 @@ export default function PartnerDashboard() {
                             const hasItems = (order.order_items && Array.isArray(order.order_items) && order.order_items.length > 0) ||
                                            (order.items && Array.isArray(order.items) && order.items.length > 0) ||
                                            (order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0);
+                            
+                            // Log pour debug si pas de détails
+                            if (!hasItems) {
+                              console.warn('⚠️ Détails non disponibles pour commande', order.id, {
+                                hasOrderItems: !!(order.order_items && order.order_items.length > 0),
+                                hasItems: !!(order.items && order.items.length > 0),
+                                hasDetailsCommande: !!(order.details_commande && order.details_commande.length > 0),
+                                orderItems: order.order_items,
+                                items: order.items,
+                                details_commande: order.details_commande
+                              });
+                            }
+                            
                             return !hasItems;
                           })() && (
                             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 rounded border border-yellow-200 dark:border-yellow-700">
                               <p className="text-sm text-yellow-700 dark:text-yellow-300">
                                 ⚠️ Détails de commande non disponibles
+                              </p>
+                              <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                                Commande #{order.id?.slice(0, 8)} - Rechargement en cours...
                               </p>
                             </div>
                           )}

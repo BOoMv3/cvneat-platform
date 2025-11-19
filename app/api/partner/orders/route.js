@@ -205,6 +205,7 @@ export async function GET(request) {
       const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
       const totalAmount = subtotal + deliveryFee;
 
+      // Créer les orderItems depuis details_commande
       const orderItems = (order.details_commande || []).map(detail => {
         let supplements = [];
         if (detail.supplements) {
@@ -239,9 +240,20 @@ export async function GET(request) {
           quantity: detail.quantite || 0,
           price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
           supplements,
-          customizations
+          customizations,
+          // Garder aussi les champs bruts pour compatibilité
+          quantite: detail.quantite,
+          prix_unitaire: detail.prix_unitaire,
+          menus: detail.menus
         };
       });
+
+      // Log pour debug si pas de détails
+      if (!order.details_commande || order.details_commande.length === 0) {
+        console.warn(`⚠️ Commande ${order.id?.slice(0, 8)} : Pas de détails de commande trouvés`);
+      } else {
+        console.log(`✅ Commande ${order.id?.slice(0, 8)} : ${order.details_commande.length} détails trouvés`);
+      }
 
       // PRIORITÉ ABSOLUE: Données stockées dans la commande (customer_first_name, customer_last_name)
       // Ces données sont toujours correctes car stockées au moment de la commande
@@ -288,6 +300,7 @@ export async function GET(request) {
         total: subtotal,
         order_items: orderItems,
         items: orderItems, // Alias pour compatibilité
+        details_commande: order.details_commande || [], // Garder les détails bruts pour compatibilité
         customer_first_name: customerFirstName,
         customer_last_name: customerLastName,
         customer_name: customerName, // Nom complet formaté
