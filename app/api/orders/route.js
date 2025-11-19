@@ -132,8 +132,12 @@ export async function GET(request) {
     const { data: orders, error: ordersError } = await query;
 
     if (ordersError) {
-      return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
+      console.error('❌ API /orders: Erreur récupération commandes:', ordersError);
+      console.error('   Détails:', JSON.stringify(ordersError, null, 2));
+      return NextResponse.json({ error: 'Erreur lors de la récupération des commandes', details: ordersError.message }, { status: 500 });
     }
+    
+    console.log(`✅ API /orders: ${orders?.length || 0} commandes récupérées pour utilisateur ${user.id?.slice(0, 8)}`);
 
     // Récupérer les détails séparément si la relation n'a pas fonctionné
     let ordersWithDetails = orders || [];
