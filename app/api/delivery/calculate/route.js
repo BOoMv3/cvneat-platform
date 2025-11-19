@@ -283,17 +283,26 @@ function pickNumeric(candidates = [], fallback, { min } = {}) {
 
 /**
  * Calculer les frais de livraison
+ * FORMULE: 2.50€ de base + 0.80€ par kilomètre
  * IMPORTANT: Arrondir à 2 décimales pour éviter les micro-variations
- * GARANTIR un minimum de 2.50€ (DEFAULT_BASE_FEE)
+ * GARANTIR un minimum de 2.50€ (frais de base)
  */
 function calculateDeliveryFee(distance, {
   baseFee = DEFAULT_BASE_FEE,
   perKmFee = DEFAULT_PER_KM_FEE
 } = {}) {
-  const fee = baseFee + (distance * perKmFee);
+  // S'assurer que la distance n'est pas négative
+  const safeDistance = Math.max(0, distance || 0);
+  
+  // FORMULE: baseFee (2.50€) + (distance en km × perKmFee (0.80€))
+  const fee = baseFee + (safeDistance * perKmFee);
+  
+  // Plafonner à MAX_FEE (10.00€)
   const cappedFee = Math.min(fee, MAX_FEE);
+  
   // GARANTIR un minimum de 2.50€ (frais de base)
   const minFee = Math.max(cappedFee, DEFAULT_BASE_FEE);
+  
   // Arrondir à 2 décimales pour garantir la cohérence
   return Math.round(minFee * 100) / 100;
 }
