@@ -192,6 +192,7 @@ export async function GET(request) {
             
             if (!detailsError && allDetails && allDetails.length > 0) {
               console.log(`✅ ${allDetails.length} détails récupérés séparément depuis BDD`);
+              console.log(`   IDs des commandes avec détails:`, [...new Set(allDetails.map(d => d.commande_id))].map(id => id?.slice(0, 8)));
               
               // Grouper les détails par commande_id
               const detailsByOrderId = new Map();
@@ -207,6 +208,9 @@ export async function GET(request) {
                 const existingDetails = order.details_commande || [];
                 const additionalDetails = detailsByOrderId.get(order.id) || [];
                 
+                // Log pour chaque commande
+                console.log(`   Commande ${order.id?.slice(0, 8)}: détails existants=${existingDetails.length}, détails séparés=${additionalDetails.length}`);
+                
                 // Si pas de détails via la relation mais qu'on en a trouvés séparément
                 if (existingDetails.length === 0 && additionalDetails.length > 0) {
                   console.log(`✅ Détails récupérés séparément pour commande ${order.id?.slice(0, 8)}: ${additionalDetails.length} détails`);
@@ -220,6 +224,10 @@ export async function GET(request) {
               });
             } else if (detailsError) {
               console.error('❌ Erreur récupération détails séparés:', detailsError);
+              console.error('   Détails de l\'erreur:', JSON.stringify(detailsError, null, 2));
+            } else {
+              console.warn(`⚠️ Aucun détail trouvé en BDD pour ${orderIds.length} commandes`);
+              console.warn(`   IDs des commandes recherchées:`, orderIds.map(id => id?.slice(0, 8)));
             }
           } catch (detailsFetchError) {
             console.error('❌ Erreur lors de la récupération séparée des détails:', detailsFetchError);
