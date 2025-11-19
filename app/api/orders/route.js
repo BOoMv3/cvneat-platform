@@ -152,7 +152,7 @@ export async function GET(request) {
       const orderIds = orders.map(o => o.id).filter(Boolean);
       if (orderIds.length > 0) {
         try {
-          // Vérifier quelles commandes n'ont pas de détails
+          // Vérifier quelles commandes n'ont pas de détails (définir AVANT le if/else pour être accessible partout)
           const ordersWithoutDetails = orders.filter(o => !o.details_commande || !Array.isArray(o.details_commande) || o.details_commande.length === 0);
           
           if (ordersWithoutDetails.length > 0) {
@@ -215,8 +215,9 @@ export async function GET(request) {
               console.warn(`⚠️ Aucun détail trouvé en BDD pour ${orderIds.length} commandes`);
               console.warn(`   IDs des commandes recherchées:`, orderIds.map(id => id?.slice(0, 8)));
               
-              // Vérification directe pour chaque commande sans détails
-              for (const order of ordersWithoutDetails) {
+              // Vérification directe pour chaque commande sans détails (redéfinir si nécessaire)
+              const ordersToCheck = orders.filter(o => !o.details_commande || !Array.isArray(o.details_commande) || o.details_commande.length === 0);
+              for (const order of ordersToCheck) {
                 try {
                   const { data: directCheck, error: checkError } = await serviceClient
                     .from('details_commande')
