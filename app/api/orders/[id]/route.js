@@ -109,6 +109,40 @@ export async function GET(request, { params }) {
       }
 
       order = orderFull;
+      
+      // Récupérer les détails séparément si la relation n'a pas fonctionné (pour accès via token)
+      if (!order.details_commande || !Array.isArray(order.details_commande) || order.details_commande.length === 0) {
+        console.log(`⚠️ Commande ${id?.slice(0, 8)} sans détails via relation Supabase (token), récupération séparée...`);
+        try {
+          const { data: allDetails, error: detailsError } = await supabaseAdmin
+            .from('details_commande')
+            .select(`
+              id,
+              commande_id,
+              plat_id,
+              quantite,
+              prix_unitaire,
+              supplements,
+              customizations,
+              menus (
+                nom,
+                prix
+              )
+            `)
+            .eq('commande_id', id);
+          
+          if (!detailsError && allDetails && allDetails.length > 0) {
+            console.log(`✅ ${allDetails.length} détails récupérés séparément pour commande ${id?.slice(0, 8)} (token)`);
+            order.details_commande = allDetails;
+          } else if (detailsError) {
+            console.error('❌ Erreur récupération détails séparés (token):', detailsError);
+          } else {
+            console.warn(`⚠️ Aucun détail trouvé en BDD pour commande ${id?.slice(0, 8)} (token)`);
+          }
+        } catch (detailsFetchError) {
+          console.error('❌ Erreur lors de la récupération séparée des détails (token):', detailsFetchError);
+        }
+      }
     } else if (securityCodeParam) {
       const { data: orderFull, error: orderError } = await supabaseAdmin
         .from('commandes')
