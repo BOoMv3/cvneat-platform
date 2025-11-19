@@ -181,9 +181,15 @@ export async function GET(request) {
       let actualTotal = calculatedSubtotal + actualDeliveryFee + actualPlatformFee;
       
       // Si un PaymentIntent existe, récupérer le montant réellement payé
+      // IMPORTANT: Ne pas faire échouer toute la récupération si Stripe échoue
       if (order.stripe_payment_intent_id && stripe) {
         try {
-          const paymentIntent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
+          // Récupérer le PaymentIntent avec un timeout de 2 secondes
+          const paymentIntent = await Promise.race([
+            stripe.paymentIntents.retrieve(order.stripe_payment_intent_id),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+          ]) as any;
+          
           if (paymentIntent && paymentIntent.amount) {
             // Montant en centimes, convertir en euros
             const paidAmount = paymentIntent.amount / 100;
@@ -213,9 +219,16 @@ export async function GET(request) {
               });
             }
           }
-        } catch (stripeError) {
-          console.warn('⚠️ Impossible de récupérer le PaymentIntent Stripe:', stripeError.message);
-          // Continuer avec les valeurs stockées
+        } catch (stripeError: any) {
+          // Ignorer silencieusement les erreurs Stripe pour ne pas bloquer la récupération des commandes
+          // Les valeurs stockées en BDD seront utilisées
+          if (stripeError?.message && stripeError.message !== 'Timeout') {
+            // Log uniquement en mode développement
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('⚠️ Impossible de récupérer le PaymentIntent Stripe pour commande', order.id?.slice(0, 8), ':', stripeError.message);
+            }
+          }
+          // Continuer avec les valeurs stockées - ne pas propager l'erreur
         }
       }
       
