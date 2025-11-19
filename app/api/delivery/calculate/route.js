@@ -284,6 +284,7 @@ function pickNumeric(candidates = [], fallback, { min } = {}) {
 /**
  * Calculer les frais de livraison
  * IMPORTANT: Arrondir à 2 décimales pour éviter les micro-variations
+ * GARANTIR un minimum de 2.50€ (DEFAULT_BASE_FEE)
  */
 function calculateDeliveryFee(distance, {
   baseFee = DEFAULT_BASE_FEE,
@@ -291,8 +292,10 @@ function calculateDeliveryFee(distance, {
 } = {}) {
   const fee = baseFee + (distance * perKmFee);
   const cappedFee = Math.min(fee, MAX_FEE);
+  // GARANTIR un minimum de 2.50€ (frais de base)
+  const minFee = Math.max(cappedFee, DEFAULT_BASE_FEE);
   // Arrondir à 2 décimales pour garantir la cohérence
-  return Math.round(cappedFee * 100) / 100;
+  return Math.round(minFee * 100) / 100;
 }
 
 export async function POST(request) {
