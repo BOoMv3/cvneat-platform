@@ -204,6 +204,12 @@ export async function GET(request) {
     const formattedOrders = await Promise.all((ordersWithDetails || []).map(async (order) => {
       const restaurant = order.restaurants;
       
+      // Log si pas de détails pour cette commande
+      if (!order.details_commande || !Array.isArray(order.details_commande) || order.details_commande.length === 0) {
+        console.warn(`⚠️ API /orders: Commande ${order.id?.slice(0, 8)} sans détails dans l'objet order après récupération`);
+        console.warn(`   details_commande:`, order.details_commande);
+      }
+      
       // Calculer le vrai sous-total en incluant les suppléments
       let calculatedSubtotal = 0;
       const items = (order.details_commande || []).map(detail => {
