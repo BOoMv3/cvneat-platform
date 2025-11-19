@@ -173,6 +173,8 @@ export async function GET(request) {
         const orderIds = orders.map(o => o.id).filter(Boolean);
         if (orderIds.length > 0) {
           try {
+            console.log(`🔍 Recherche détails pour ${orderIds.length} commandes:`, orderIds.map(id => id?.slice(0, 8)));
+            
             const { data: allDetails, error: detailsError } = await supabaseAdmin
               .from('details_commande')
               .select(`
@@ -189,6 +191,18 @@ export async function GET(request) {
                 )
               `)
               .in('commande_id', orderIds);
+            
+            console.log(`🔍 Résultat requête détails:`, {
+              count: allDetails?.length || 0,
+              error: detailsError ? detailsError.message : null,
+              hasData: !!allDetails,
+              sampleDetail: allDetails && allDetails.length > 0 ? {
+                id: allDetails[0].id,
+                commande_id: allDetails[0].commande_id?.slice(0, 8),
+                plat_id: allDetails[0].plat_id,
+                quantite: allDetails[0].quantite
+              } : null
+            });
             
             if (!detailsError && allDetails && allDetails.length > 0) {
               console.log(`✅ ${allDetails.length} détails récupérés séparément depuis BDD`);
