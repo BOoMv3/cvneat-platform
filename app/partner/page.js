@@ -2238,15 +2238,20 @@ export default function PartnerDashboard() {
                           </div>
                           
                           {/* Articles de la commande */}
-                          {order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0 && (
+                          {(() => {
+                            // Prioriser order_items, puis items, puis details_commande
+                            const items = order.order_items || order.items || order.details_commande || [];
+                            return Array.isArray(items) && items.length > 0;
+                          })() && (
                             <div className="mt-4 p-3 bg-white dark:bg-gray-700 rounded border dark:border-gray-600">
                               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Articles commandés :</p>
                               <div className="space-y-2">
-                                {order.details_commande.map((detail, index) => {
+                                {(order.order_items || order.items || order.details_commande || []).map((detail, index) => {
+                                  // Gérer les deux formats : order_items/items (name, quantity, price) ou details_commande (menus.nom, quantite, prix_unitaire)
                                   const menu = detail.menus || {};
-                                  const nom = menu.nom || 'Article inconnu';
-                                  const quantite = detail.quantite || 1;
-                                  const prixUnitaire = detail.prix_unitaire || menu.prix || 0;
+                                  const nom = detail.name || menu.nom || 'Article inconnu';
+                                  const quantite = detail.quantity || detail.quantite || 1;
+                                  const prixUnitaire = detail.price || detail.prix_unitaire || menu.prix || 0;
                                   const prixTotal = prixUnitaire * quantite;
                                   
                                   // Parser les customisations
@@ -2349,7 +2354,13 @@ export default function PartnerDashboard() {
                               </div>
                             </div>
                           )}
-                          {(!order.details_commande || !Array.isArray(order.details_commande) || order.details_commande.length === 0) && (
+                          {(() => {
+                            // Vérifier order_items, items, et details_commande
+                            const hasItems = (order.order_items && Array.isArray(order.order_items) && order.order_items.length > 0) ||
+                                           (order.items && Array.isArray(order.items) && order.items.length > 0) ||
+                                           (order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0);
+                            return !hasItems;
+                          })() && (
                             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 rounded border border-yellow-200 dark:border-yellow-700">
                               <p className="text-sm text-yellow-700 dark:text-yellow-300">
                                 ⚠️ Détails de commande non disponibles
