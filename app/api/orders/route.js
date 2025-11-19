@@ -138,26 +138,19 @@ export async function GET(request) {
     }
     
     console.log(`✅ API /orders: ${orders?.length || 0} commandes récupérées pour utilisateur ${user.id?.slice(0, 8)}`);
-    
-    // Vérifier si certaines commandes n'ont pas de user_id (commandes créées sans être connecté)
-    const ordersWithoutUserId = (orders || []).filter(o => !o.user_id);
-    if (ordersWithoutUserId.length > 0) {
-      console.log(`⚠️ ${ordersWithoutUserId.length} commandes sans user_id trouvées`);
-      console.log(`   Ces commandes ont été créées sans être connecté`);
-    }
 
-    // Récupérer les détails séparément si la relation n'a pas fonctionné
+    // Récupérer les détails séparément si nécessaire (version simplifiée)
     let ordersWithDetails = orders || [];
     if (orders && orders.length > 0) {
       const orderIds = orders.map(o => o.id).filter(Boolean);
       if (orderIds.length > 0) {
         try {
-          // Vérifier quelles commandes n'ont pas de détails (définir AVANT le if/else pour être accessible partout)
+          // Vérifier quelles commandes n'ont pas de détails
           const ordersWithoutDetails = orders.filter(o => !o.details_commande || !Array.isArray(o.details_commande) || o.details_commande.length === 0);
           
-          if (ordersWithoutDetails.length > 0) {
-            console.log(`⚠️ ${ordersWithoutDetails.length} commandes sans détails via relation Supabase, récupération séparée...`);
-            console.log(`   IDs des commandes:`, ordersWithoutDetails.map(o => o.id?.slice(0, 8)));
+          if (ordersWithoutDetails.length > 0 && ordersWithoutDetails.length === orders.length) {
+            // Toutes les commandes n'ont pas de détails, essayer de récupérer séparément
+            console.log(`⚠️ ${ordersWithoutDetails.length} commandes sans détails, tentative récupération séparée...`);
             
             const { data: allDetails, error: detailsError } = await serviceClient
               .from('details_commande')
@@ -177,8 +170,7 @@ export async function GET(request) {
               .in('commande_id', orderIds);
             
             if (!detailsError && allDetails && allDetails.length > 0) {
-              console.log(`✅ ${allDetails.length} détails récupérés séparément depuis BDD`);
-              console.log(`   IDs des commandes avec détails:`, [...new Set(allDetails.map(d => d.commande_id))].map(id => id?.slice(0, 8)));
+              console.log(`✅ ${allDetails.length} détails récupérés séparément`);
               
               // Grouper les détails par commande_id
               const detailsByOrderId = new Map();
@@ -189,42 +181,22 @@ export async function GET(request) {
                 detailsByOrderId.get(detail.commande_id).push(detail);
               });
               
-              // Ajouter les détails aux commandes qui n'en ont pas
+              // Ajouter les détails aux commandes
               ordersWithDetails = orders.map(order => {
-                const existingDetails = order.details_commande || [];
                 const additionalDetails = detailsByOrderId.get(order.id) || [];
-                
-                // Log pour chaque commande
-                console.log(`   Commande ${order.id?.slice(0, 8)}: détails existants=${existingDetails.length}, détails séparés=${additionalDetails.length}`);
-                
-                // Si pas de détails via la relation mais qu'on en a trouvés séparément
-                if (existingDetails.length === 0 && additionalDetails.length > 0) {
-                  console.log(`✅ Détails récupérés séparément pour commande ${order.id?.slice(0, 8)}: ${additionalDetails.length} détails`);
+                if (additionalDetails.length > 0) {
                   return {
                     ...order,
                     details_commande: additionalDetails
                   };
                 }
-                
                 return order;
               });
-            } else if (detailsError) {
-              console.error('❌ Erreur récupération détails séparés:', detailsError);
-              console.error('   Détails de l\'erreur:', JSON.stringify(detailsError, null, 2));
-            } else {
-              console.warn(`⚠️ Aucun détail trouvé en BDD pour ${orderIds.length} commandes`);
-              console.warn(`   IDs des commandes recherchées:`, orderIds.map(id => id?.slice(0, 8)));
-              
-              // Note: Vérification directe désactivée temporairement pour éviter erreur 500
-              // Si les détails n'existent pas en BDD, on continue avec ordersWithDetails vide
-              console.log(`   ℹ️ Continuation avec ${ordersWithDetails.length} commandes (certaines sans détails)`);
             }
           }
         } catch (detailsFetchError) {
-          console.error('❌ Erreur lors de la récupération séparée des détails:', detailsFetchError);
-          console.error('   Stack:', detailsFetchError.stack);
-          // Continuer même si la récupération séparée échoue
-          ordersWithDetails = orders || [];
+          console.error('❌ Erreur récupération détails séparés (non bloquant):', detailsFetchError?.message);
+          // Continuer avec les commandes même si la récupération échoue
         }
       }
     }
