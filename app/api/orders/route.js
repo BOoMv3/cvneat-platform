@@ -188,7 +188,7 @@ export async function GET(request) {
           const paymentIntent = await Promise.race([
             stripe.paymentIntents.retrieve(order.stripe_payment_intent_id),
             new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
-          ]) as any;
+          ]);
           
           if (paymentIntent && paymentIntent.amount) {
             // Montant en centimes, convertir en euros
@@ -219,7 +219,7 @@ export async function GET(request) {
               });
             }
           }
-        } catch (stripeError: any) {
+        } catch (stripeError) {
           // Ignorer silencieusement les erreurs Stripe pour ne pas bloquer la récupération des commandes
           // Les valeurs stockées en BDD seront utilisées
           if (stripeError?.message && stripeError.message !== 'Timeout') {
