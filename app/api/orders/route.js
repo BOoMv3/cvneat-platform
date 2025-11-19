@@ -50,17 +50,22 @@ export async function GET(request) {
     // Récupérer le token depuis les headers
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.warn('⚠️ API /orders: Token manquant dans les headers');
       return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
     }
 
     const token = authHeader.split(' ')[1];
+    console.log('🔍 API /orders: Token reçu, longueur:', token?.length || 0);
     
     // Vérifier le token avec Supabase
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
+      console.error('❌ API /orders: Erreur authentification:', authError?.message || 'User null');
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
+    
+    console.log('✅ API /orders: Utilisateur authentifié:', user.id?.slice(0, 8));
 
     // Récupérer un client service pour contourner les politiques RLS côté serveur
     const serviceClient = getServiceClient();
