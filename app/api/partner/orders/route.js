@@ -113,6 +113,7 @@ export async function GET(request) {
     try {
       // Requête simplifiée - commencer avec les colonnes de base seulement
       // Éviter les colonnes qui pourraient ne pas exister (customer_*, delivery_*)
+      console.log('🔍 Requête commandes pour restaurant_id:', restaurantId);
       const { data: ordersData, error: ordersErrorData } = await supabaseAdmin
         .from('commandes')
         .select(`
@@ -143,9 +144,41 @@ export async function GET(request) {
         `)
       .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });
+      
+      // Log immédiat après la requête
+      if (ordersErrorData) {
+        console.error('❌ Erreur requête Supabase:', ordersErrorData);
+      } else {
+        console.log(`✅ Requête réussie: ${ordersData?.length || 0} commandes`);
+        if (ordersData && ordersData.length > 0) {
+          // Vérifier si les détails sont récupérés
+          ordersData.forEach(order => {
+            const hasDetails = order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0;
+            console.log(`   Commande ${order.id?.slice(0, 8)}: détails récupérés = ${hasDetails}`);
+            if (!hasDetails) {
+              console.warn(`   ⚠️ Détails manquants pour ${order.id?.slice(0, 8)}`);
+            }
+          });
+        }
+      }
 
       ordersError = ordersErrorData;
       orders = ordersData || [];
+      
+      // Log pour debug des détails de commande
+      if (orders.length > 0) {
+        console.log(`✅ ${orders.length} commandes récupérées depuis BDD`);
+        orders.forEach(order => {
+          const detailsCount = order.details_commande?.length || 0;
+          console.log(`📋 Commande ${order.id?.slice(0, 8)}: ${detailsCount} détails dans BDD`);
+          if (detailsCount === 0) {
+            console.warn(`⚠️ PROBLÈME: Commande ${order.id?.slice(0, 8)} sans détails dans la BDD !`);
+            console.warn(`   Détails bruts:`, order.details_commande);
+          } else {
+            console.log(`   Premier détail:`, order.details_commande[0]);
+          }
+        });
+      }
 
       // Essayer de récupérer les infos users séparément pour éviter les erreurs de relation
       if (orders.length > 0 && !ordersError) {
@@ -205,6 +238,12 @@ export async function GET(request) {
       const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
       const totalAmount = subtotal + deliveryFee;
 
+      // IMPORTANT: Log pour debug si détails manquants
+      if (!order.details_commande || order.details_commande.length === 0) {
+        console.warn(`⚠️ API: Commande ${order.id?.slice(0, 8)} sans détails lors du formatage`);
+        console.warn(`   order.details_commande:`, order.details_commande);
+      }
+      
       // Créer les orderItems depuis details_commande
       const orderItems = (order.details_commande || []).map(detail => {
         let supplements = [];
