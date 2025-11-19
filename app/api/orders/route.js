@@ -88,7 +88,7 @@ export async function GET(request) {
     // Les admins peuvent voir toutes les commandes
     const isAdmin = userData && userData.role === 'admin';
 
-    // Construire la requête
+    // Construire la requête (simplifiée - récupérer détails séparément pour éviter erreurs relation)
     let query = serviceClient
       .from('commandes')
       .select(`
@@ -105,16 +105,6 @@ export async function GET(request) {
         refunded_at,
         stripe_refund_id,
         payment_status,
-        details_commande (
-          id,
-          quantite,
-          prix_unitaire,
-          supplements,
-          menus (
-            nom,
-            prix
-          )
-        ),
         restaurants (
           id,
           nom,
@@ -139,63 +129,55 @@ export async function GET(request) {
     
     console.log(`✅ API /orders: ${orders?.length || 0} commandes récupérées pour utilisateur ${user.id?.slice(0, 8)}`);
 
-    // Récupérer les détails séparément si nécessaire (version simplifiée)
+    // Récupérer les détails séparément pour toutes les commandes (plus sûr)
     let ordersWithDetails = orders || [];
     if (orders && orders.length > 0) {
       const orderIds = orders.map(o => o.id).filter(Boolean);
       if (orderIds.length > 0) {
         try {
-          // Vérifier quelles commandes n'ont pas de détails
-          const ordersWithoutDetails = orders.filter(o => !o.details_commande || !Array.isArray(o.details_commande) || o.details_commande.length === 0);
+          console.log(`🔍 Récupération détails pour ${orderIds.length} commandes...`);
           
-          if (ordersWithoutDetails.length > 0 && ordersWithoutDetails.length === orders.length) {
-            // Toutes les commandes n'ont pas de détails, essayer de récupérer séparément
-            console.log(`⚠️ ${ordersWithoutDetails.length} commandes sans détails, tentative récupération séparée...`);
+          const { data: allDetails, error: detailsError } = await serviceClient
+            .from('details_commande')
+            .select(`
+              id,
+              commande_id,
+              plat_id,
+              quantite,
+              prix_unitaire,
+              supplements,
+              customizations,
+              menus (
+                nom,
+                prix
+              )
+            `)
+            .in('commande_id', orderIds);
+          
+          if (detailsError) {
+            console.error('❌ Erreur récupération détails (non bloquant):', detailsError.message);
+          } else if (allDetails && allDetails.length > 0) {
+            console.log(`✅ ${allDetails.length} détails récupérés séparément`);
             
-            const { data: allDetails, error: detailsError } = await serviceClient
-              .from('details_commande')
-              .select(`
-                id,
-                commande_id,
-                plat_id,
-                quantite,
-                prix_unitaire,
-                supplements,
-                customizations,
-                menus (
-                  nom,
-                  prix
-                )
-              `)
-              .in('commande_id', orderIds);
+            // Grouper les détails par commande_id
+            const detailsByOrderId = new Map();
+            allDetails.forEach(detail => {
+              if (!detailsByOrderId.has(detail.commande_id)) {
+                detailsByOrderId.set(detail.commande_id, []);
+              }
+              detailsByOrderId.get(detail.commande_id).push(detail);
+            });
             
-            if (!detailsError && allDetails && allDetails.length > 0) {
-              console.log(`✅ ${allDetails.length} détails récupérés séparément`);
-              
-              // Grouper les détails par commande_id
-              const detailsByOrderId = new Map();
-              allDetails.forEach(detail => {
-                if (!detailsByOrderId.has(detail.commande_id)) {
-                  detailsByOrderId.set(detail.commande_id, []);
-                }
-                detailsByOrderId.get(detail.commande_id).push(detail);
-              });
-              
-              // Ajouter les détails aux commandes
-              ordersWithDetails = orders.map(order => {
-                const additionalDetails = detailsByOrderId.get(order.id) || [];
-                if (additionalDetails.length > 0) {
-                  return {
-                    ...order,
-                    details_commande: additionalDetails
-                  };
-                }
-                return order;
-              });
-            }
+            // Ajouter les détails aux commandes
+            ordersWithDetails = orders.map(order => ({
+              ...order,
+              details_commande: detailsByOrderId.get(order.id) || []
+            }));
+          } else {
+            console.log(`ℹ️ Aucun détail trouvé pour ${orderIds.length} commandes`);
           }
         } catch (detailsFetchError) {
-          console.error('❌ Erreur récupération détails séparés (non bloquant):', detailsFetchError?.message);
+          console.error('❌ Erreur récupération détails (non bloquant):', detailsFetchError?.message);
           // Continuer avec les commandes même si la récupération échoue
         }
       }
