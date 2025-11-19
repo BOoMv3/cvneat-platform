@@ -168,14 +168,71 @@ export async function GET(request) {
       // Log pour debug des détails de commande
       if (orders.length > 0) {
         console.log(`✅ ${orders.length} commandes récupérées depuis BDD`);
+        
+        // Récupérer les détails séparément si la relation n'a pas fonctionné
+        const orderIds = orders.map(o => o.id).filter(Boolean);
+        if (orderIds.length > 0) {
+          try {
+            const { data: allDetails, error: detailsError } = await supabaseAdmin
+              .from('details_commande')
+              .select(`
+                id,
+                commande_id,
+                plat_id,
+                quantite,
+                prix_unitaire,
+                supplements,
+                customizations,
+                menus (
+                  nom,
+                  prix
+                )
+              `)
+              .in('commande_id', orderIds);
+            
+            if (!detailsError && allDetails && allDetails.length > 0) {
+              console.log(`✅ ${allDetails.length} détails récupérés séparément depuis BDD`);
+              
+              // Grouper les détails par commande_id
+              const detailsByOrderId = new Map();
+              allDetails.forEach(detail => {
+                if (!detailsByOrderId.has(detail.commande_id)) {
+                  detailsByOrderId.set(detail.commande_id, []);
+                }
+                detailsByOrderId.get(detail.commande_id).push(detail);
+              });
+              
+              // Ajouter les détails aux commandes qui n'en ont pas
+              orders = orders.map(order => {
+                const existingDetails = order.details_commande || [];
+                const additionalDetails = detailsByOrderId.get(order.id) || [];
+                
+                // Si pas de détails via la relation mais qu'on en a trouvés séparément
+                if (existingDetails.length === 0 && additionalDetails.length > 0) {
+                  console.log(`✅ Détails récupérés séparément pour commande ${order.id?.slice(0, 8)}: ${additionalDetails.length} détails`);
+                  return {
+                    ...order,
+                    details_commande: additionalDetails
+                  };
+                }
+                
+                return order;
+              });
+            } else if (detailsError) {
+              console.error('❌ Erreur récupération détails séparés:', detailsError);
+            }
+          } catch (detailsFetchError) {
+            console.error('❌ Erreur lors de la récupération séparée des détails:', detailsFetchError);
+          }
+        }
+        
         orders.forEach(order => {
           const detailsCount = order.details_commande?.length || 0;
           console.log(`📋 Commande ${order.id?.slice(0, 8)}: ${detailsCount} détails dans BDD`);
           if (detailsCount === 0) {
             console.warn(`⚠️ PROBLÈME: Commande ${order.id?.slice(0, 8)} sans détails dans la BDD !`);
-            console.warn(`   Détails bruts:`, order.details_commande);
           } else {
-            console.log(`   Premier détail:`, order.details_commande[0]);
+            console.log(`   ✅ Premier détail:`, order.details_commande[0]);
           }
         });
       }
