@@ -138,6 +138,13 @@ export async function GET(request) {
     }
     
     console.log(`✅ API /orders: ${orders?.length || 0} commandes récupérées pour utilisateur ${user.id?.slice(0, 8)}`);
+    
+    // Vérifier si certaines commandes n'ont pas de user_id (commandes créées sans être connecté)
+    const ordersWithoutUserId = (orders || []).filter(o => !o.user_id);
+    if (ordersWithoutUserId.length > 0) {
+      console.log(`⚠️ ${ordersWithoutUserId.length} commandes sans user_id trouvées`);
+      console.log(`   Ces commandes ont été créées sans être connecté`);
+    }
 
     // Récupérer les détails séparément si la relation n'a pas fonctionné
     let ordersWithDetails = orders || [];
@@ -150,6 +157,7 @@ export async function GET(request) {
           
           if (ordersWithoutDetails.length > 0) {
             console.log(`⚠️ ${ordersWithoutDetails.length} commandes sans détails via relation Supabase, récupération séparée...`);
+            console.log(`   IDs des commandes:`, ordersWithoutDetails.map(o => o.id?.slice(0, 8)));
             
             const { data: allDetails, error: detailsError } = await serviceClient
               .from('details_commande')
@@ -222,7 +230,9 @@ export async function GET(request) {
       // Log si pas de détails pour cette commande
       if (!order.details_commande || !Array.isArray(order.details_commande) || order.details_commande.length === 0) {
         console.warn(`⚠️ API /orders: Commande ${order.id?.slice(0, 8)} sans détails dans l'objet order après récupération`);
-        console.warn(`   details_commande:`, order.details_commande);
+        console.warn(`   Type:`, typeof order.details_commande);
+        console.warn(`   Est tableau:`, Array.isArray(order.details_commande));
+        console.warn(`   Valeur brute:`, JSON.stringify(order.details_commande, null, 2));
       }
       
       // Calculer le vrai sous-total en incluant les suppléments
