@@ -130,9 +130,78 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Erreur lors de la récupération des commandes' }, { status: 500 });
     }
 
+    // Récupérer les détails séparément si la relation n'a pas fonctionné
+    let ordersWithDetails = orders || [];
+    if (orders && orders.length > 0) {
+      const orderIds = orders.map(o => o.id).filter(Boolean);
+      if (orderIds.length > 0) {
+        try {
+          // Vérifier quelles commandes n'ont pas de détails
+          const ordersWithoutDetails = orders.filter(o => !o.details_commande || !Array.isArray(o.details_commande) || o.details_commande.length === 0);
+          
+          if (ordersWithoutDetails.length > 0) {
+            console.log(`⚠️ ${ordersWithoutDetails.length} commandes sans détails via relation Supabase, récupération séparée...`);
+            
+            const { data: allDetails, error: detailsError } = await serviceClient
+              .from('details_commande')
+              .select(`
+                id,
+                commande_id,
+                plat_id,
+                quantite,
+                prix_unitaire,
+                supplements,
+                customizations,
+                menus (
+                  nom,
+                  prix
+                )
+              `)
+              .in('commande_id', orderIds);
+            
+            if (!detailsError && allDetails && allDetails.length > 0) {
+              console.log(`✅ ${allDetails.length} détails récupérés séparément depuis BDD`);
+              
+              // Grouper les détails par commande_id
+              const detailsByOrderId = new Map();
+              allDetails.forEach(detail => {
+                if (!detailsByOrderId.has(detail.commande_id)) {
+                  detailsByOrderId.set(detail.commande_id, []);
+                }
+                detailsByOrderId.get(detail.commande_id).push(detail);
+              });
+              
+              // Ajouter les détails aux commandes qui n'en ont pas
+              ordersWithDetails = orders.map(order => {
+                const existingDetails = order.details_commande || [];
+                const additionalDetails = detailsByOrderId.get(order.id) || [];
+                
+                // Si pas de détails via la relation mais qu'on en a trouvés séparément
+                if (existingDetails.length === 0 && additionalDetails.length > 0) {
+                  console.log(`✅ Détails récupérés séparément pour commande ${order.id?.slice(0, 8)}: ${additionalDetails.length} détails`);
+                  return {
+                    ...order,
+                    details_commande: additionalDetails
+                  };
+                }
+                
+                return order;
+              });
+            } else if (detailsError) {
+              console.error('❌ Erreur récupération détails séparés:', detailsError);
+            } else if (allDetails && allDetails.length === 0) {
+              console.warn(`⚠️ Aucun détail trouvé en BDD pour ${orderIds.length} commandes`);
+            }
+          }
+        } catch (detailsFetchError) {
+          console.error('❌ Erreur lors de la récupération séparée des détails:', detailsFetchError);
+        }
+      }
+    }
+
     // Formater les données pour le frontend
     // Note: Utiliser Promise.all car on peut avoir des appels async à Stripe
-    const formattedOrders = await Promise.all((orders || []).map(async (order) => {
+    const formattedOrders = await Promise.all((ordersWithDetails || []).map(async (order) => {
       const restaurant = order.restaurants;
       
       // Calculer le vrai sous-total en incluant les suppléments
@@ -614,17 +683,56 @@ export async function POST(request) {
       orderDetailsPayload.push(detailEntry);
     }
 
-    const { error: detailsError } = await serviceClient
-      .from('details_commande')
-      .insert(orderDetailsPayload);
+    // Vérifier qu'on a des détails à insérer
+    if (!orderDetailsPayload || orderDetailsPayload.length === 0) {
+      console.error('❌ ERREUR CRITIQUE: Aucun détail de commande à insérer !');
+      console.error('   Items reçus:', items?.length || 0);
+      console.error('   Order ID:', order.id);
+      return NextResponse.json(
+        { error: 'Erreur: aucun détail de commande à insérer' },
+        { status: 500 }
+      );
+    }
 
+    console.log(`📋 Insertion de ${orderDetailsPayload.length} détails de commande pour commande ${order.id?.slice(0, 8)}`);
+    
+    const { data: insertedDetails, error: detailsError } = await serviceClient
+      .from('details_commande')
+      .insert(orderDetailsPayload)
+      .select();
 
     if (detailsError) {
-      console.error('Erreur création détails commande:', detailsError);
-      // Ne pas échouer la commande pour ça, juste logger
-    } else {
-      console.log('Détails de commande créés avec succès');
+      console.error('❌ ERREUR CRITIQUE - Erreur création détails commande:', detailsError);
+      console.error('   Détails de l\'erreur:', JSON.stringify(detailsError, null, 2));
+      console.error('   Payload tenté:', JSON.stringify(orderDetailsPayload, null, 2));
+      console.error('   Commande ID:', order.id);
+      
+      // CRITIQUE: Ne pas continuer si les détails n'ont pas été créés
+      // Car la commande sera inutilisable sans détails
+      return NextResponse.json(
+        { 
+          error: 'Erreur lors de la création des détails de commande',
+          details: detailsError.message,
+          orderId: order.id
+        },
+        { status: 500 }
+      );
     }
+
+    if (!insertedDetails || insertedDetails.length !== orderDetailsPayload.length) {
+      console.error('❌ ERREUR: Pas tous les détails ont été créés');
+      console.error(`   Attendu: ${orderDetailsPayload.length}, Créé: ${insertedDetails?.length || 0}`);
+      return NextResponse.json(
+        { 
+          error: 'Erreur: certains détails de commande n\'ont pas été créés',
+          expected: orderDetailsPayload.length,
+          created: insertedDetails?.length || 0
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log(`✅ ${insertedDetails.length} détails de commande créés avec succès pour commande ${order.id?.slice(0, 8)}`);
 
     console.log('🎯 RETOUR DE LA RÉPONSE - Commande créée avec statut:', order.statut);
     
