@@ -131,7 +131,8 @@ export async function GET(request) {
     }
 
     // Formater les données pour le frontend
-    const formattedOrders = (orders || []).map(order => {
+    // Note: Utiliser Promise.all car on peut avoir des appels async à Stripe
+    const formattedOrders = await Promise.all((orders || []).map(async (order) => {
       const restaurant = order.restaurants;
       
       // Calculer le vrai sous-total en incluant les suppléments
@@ -249,7 +250,7 @@ export async function GET(request) {
         refunded_at: order.refunded_at || null,
         payment_status: order.payment_status || 'pending'
       };
-    });
+    }));
 
     return NextResponse.json(formattedOrders);
 

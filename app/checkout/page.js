@@ -609,7 +609,6 @@ export default function Checkout() {
       setClientSecret(paymentData.clientSecret);
       
       // Track Facebook Pixel - InitiateCheckout
-      const cartTotal = computeCartTotalWithExtras(cart);
       FacebookPixelEvents.initiateCheckout(cartTotal, cart);
       
       // Afficher le formulaire de paiement
