@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
+
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 const isComboItem = (item) => {
   if (!item) return false;
@@ -90,6 +93,7 @@ export async function GET(request) {
         statut,
         total,
         frais_livraison,
+        platform_fee,
         adresse_livraison,
         restaurant_id,
         refund_amount,
@@ -170,9 +174,53 @@ export async function GET(request) {
       const deliveryCity = addressParts.length > 2 ? addressParts[1] : (addressParts[1] || '');
       const deliveryPostalCode = addressParts.length > 2 ? addressParts[2]?.split(' ')[0] : '';
 
-      // Le total réel payé = sous-total calculé + frais de livraison
-      const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
-      const realTotal = calculatedSubtotal + deliveryFee;
+      // Récupérer le montant réellement payé depuis Stripe si disponible
+      let actualDeliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+      let actualPlatformFee = parseFloat(order.platform_fee || 0) || 0;
+      let actualTotal = calculatedSubtotal + actualDeliveryFee + actualPlatformFee;
+      
+      // Si un PaymentIntent existe, récupérer le montant réellement payé
+      if (order.stripe_payment_intent_id && stripe) {
+        try {
+          const paymentIntent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
+          if (paymentIntent && paymentIntent.amount) {
+            // Montant en centimes, convertir en euros
+            const paidAmount = paymentIntent.amount / 100;
+            
+            // Calculer les frais réels à partir du montant payé
+            // paidAmount = subtotal + deliveryFee + platformFee
+            // Donc: deliveryFee + platformFee = paidAmount - subtotal
+            const feesTotal = paidAmount - calculatedSubtotal;
+            
+            // Si les frais calculés sont différents de ceux stockés, utiliser les frais réels
+            if (feesTotal > 0 && Math.abs(feesTotal - (actualDeliveryFee + actualPlatformFee)) > 0.01) {
+              // Essayer de séparer les frais de livraison et de plateforme
+              // On connaît le frais de plateforme (0.49€ généralement)
+              const knownPlatformFee = actualPlatformFee || 0.49;
+              actualDeliveryFee = Math.max(0, feesTotal - knownPlatformFee);
+              actualPlatformFee = knownPlatformFee;
+              actualTotal = paidAmount;
+              
+              console.log('💰 Frais réels calculés depuis Stripe:', {
+                orderId: order.id,
+                paidAmount,
+                calculatedSubtotal,
+                actualDeliveryFee,
+                actualPlatformFee,
+                storedDeliveryFee: order.frais_livraison,
+                storedPlatformFee: order.platform_fee
+              });
+            }
+          }
+        } catch (stripeError) {
+          console.warn('⚠️ Impossible de récupérer le PaymentIntent Stripe:', stripeError.message);
+          // Continuer avec les valeurs stockées
+        }
+      }
+      
+      const deliveryFee = actualDeliveryFee;
+      const platformFee = actualPlatformFee;
+      const realTotal = actualTotal;
 
       return {
         id: order.id,
@@ -187,9 +235,10 @@ export async function GET(request) {
           ville: restaurant?.ville || ''
         },
         status: order.statut, // Utiliser statut (français)
-        total: realTotal, // Total réel avec suppléments et frais de livraison
+        total: realTotal, // Total réel avec suppléments, frais de livraison et frais de plateforme
         subtotal: calculatedSubtotal, // Sous-total calculé avec suppléments
         deliveryFee: deliveryFee,
+        platformFee: platformFee,
         deliveryAddress: deliveryAddress,
         deliveryCity: deliveryCity,
         deliveryPostalCode: deliveryPostalCode,

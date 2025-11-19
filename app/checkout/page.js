@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
 import PaymentForm from '@/components/PaymentForm';
+import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { 
   FaMapMarkerAlt, 
   FaPlus, 
@@ -606,6 +607,10 @@ export default function Checkout() {
       
       // Stocker le clientSecret pour le formulaire de paiement
       setClientSecret(paymentData.clientSecret);
+      
+      // Track Facebook Pixel - InitiateCheckout
+      const cartTotal = computeCartTotalWithExtras(cart);
+      FacebookPixelEvents.initiateCheckout(cartTotal, cart);
       
       // Afficher le formulaire de paiement
       setShowPaymentForm(true);

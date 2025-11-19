@@ -11,6 +11,7 @@ import MenuItem from '@/components/MenuItem';
 import MenuByCategories from '@/components/MenuByCategories';
 import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
+import { FacebookPixelEvents } from '@/components/FacebookPixel';
 
 
 export default function RestaurantDetail({ params }) {
@@ -417,6 +418,11 @@ export default function RestaurantDetail({ params }) {
       setMenu(Array.isArray(menuData) ? menuData : []);
       setRestaurantHours(hoursData.hours || []);
       
+      // Track Facebook Pixel - ViewRestaurant
+      if (restaurantData) {
+        FacebookPixelEvents.viewRestaurant(restaurantData);
+      }
+      
       // Forcer le booléen strict - Par défaut FERMÉ si pas explicitement ouvert
       const isOpen = openStatusData.isOpen === true;
       const isManuallyClosed = openStatusData.reason === 'manual' || 
@@ -604,6 +610,13 @@ export default function RestaurantDetail({ params }) {
         return [...prevCart, newItem];
       }
     });
+    
+    // Track Facebook Pixel - AddToCart
+    FacebookPixelEvents.addToCart({
+      ...item,
+      quantity: finalQuantity
+    });
+    
     setLastAddedItem(item);
     setShowCartNotification(true);
     setTimeout(() => setShowCartNotification(false), 3000);

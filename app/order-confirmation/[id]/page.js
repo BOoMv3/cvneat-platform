@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { 
   FaCheck, 
   FaClock, 
@@ -123,6 +124,17 @@ export default function OrderConfirmation() {
         setOrderData(data);
         setError(null);
         setLoading(false);
+        
+        // Track Facebook Pixel - Purchase (une seule fois par commande)
+        if (data && !data._pixelTracked) {
+          // Marquer comme tracké pour éviter les doublons
+          data._pixelTracked = true;
+          FacebookPixelEvents.purchase({
+            id: data.id,
+            total: data.total || data.montant_total || 0,
+            items: data.items || data.details_commande || []
+          });
+        }
       } catch (err) {
         if (!isMounted) return;
         setError(err.message || 'Commande non trouvée');

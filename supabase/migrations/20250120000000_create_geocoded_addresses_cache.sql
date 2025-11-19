@@ -56,3 +56,4 @@ COMMENT ON COLUMN geocoded_addresses_cache.address_hash IS 'Hash de l''adresse n
 COMMENT ON COLUMN geocoded_addresses_cache.latitude IS 'Latitude arrondie à 6 décimales (~10cm de précision)';
 COMMENT ON COLUMN geocoded_addresses_cache.longitude IS 'Longitude arrondie à 6 décimales (~10cm de précision)';
 
+

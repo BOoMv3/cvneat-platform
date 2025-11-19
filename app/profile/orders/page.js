@@ -152,10 +152,10 @@ export default function UserOrders() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center border-t dark:border-gray-700 pt-4">
-                  <div>
+                <div className="space-y-2 border-t dark:border-gray-700 pt-4">
+                  <div className="flex justify-between">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Sous-total</p>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {(() => {
                         // Utiliser le subtotal calculé si disponible, sinon calculer depuis items
                         if (order.subtotal !== undefined) {
@@ -179,20 +179,23 @@ export default function UserOrders() {
                       })()}€
                     </p>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Frais de livraison</p>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">{(parseFloat(order.deliveryFee || 0)).toFixed(2)}€</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{(parseFloat(order.deliveryFee || 0)).toFixed(2)}€</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                  {order.platformFee > 0 && (
+                    <div className="flex justify-between">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Frais de plateforme</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{(parseFloat(order.platformFee || 0)).toFixed(2)}€</p>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Total</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">
                       {(() => {
                         // Utiliser le total réel si disponible, sinon calculer
                         if (order.total !== undefined && order.total > 0) {
-                          // Vérifier si le total inclut déjà les frais
-                          const subtotal = order.subtotal !== undefined ? order.subtotal : (order.total - order.deliveryFee);
-                          const deliveryFee = parseFloat(order.deliveryFee || 0);
-                          return (subtotal + deliveryFee).toFixed(2);
+                          return parseFloat(order.total || 0).toFixed(2);
                         }
                         // Fallback : calculer depuis les items
                         const items = order.items || [];
@@ -208,7 +211,8 @@ export default function UserOrders() {
                           return sum + ((price + supplementsPrice) * quantity);
                         }, 0);
                         const deliveryFee = parseFloat(order.deliveryFee || 0);
-                        return (subtotal + deliveryFee).toFixed(2);
+                        const platformFee = parseFloat(order.platformFee || 0);
+                        return (subtotal + deliveryFee + platformFee).toFixed(2);
                       })()}€
                     </p>
                   </div>

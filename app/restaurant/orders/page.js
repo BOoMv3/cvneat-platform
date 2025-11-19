@@ -260,21 +260,33 @@ export default function RestaurantOrders() {
         throw new Error(`Erreur ${response.status}: ${errorData.error || 'Erreur inconnue'}`);
       }
 
-      // Mettre à jour la commande localement au lieu de recharger
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
-            ? { ...order, statut: status, preparation_time: prepTime || order.preparation_time }
-            : order
-        )
-      );
+      // Recharger les commandes pour avoir les détails complets
+      await fetchOrders();
       
-      // Mettre à jour aussi la commande sélectionnée si c'est la même
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, statut: status, preparation_time: prepTime || prev.preparation_time }));
+      // Si une commande était sélectionnée, la recharger depuis la liste mise à jour
+      if (orderId) {
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        if (newSession) {
+          try {
+            // Recharger les détails de la commande depuis l'API partenaire
+            const orderResponse = await fetch('/api/partner/orders', {
+              headers: { 'Authorization': `Bearer ${newSession.access_token}` }
+            });
+            if (orderResponse.ok) {
+              const updatedOrders = await orderResponse.json();
+              const updatedOrder = updatedOrders.find(o => o.id === orderId);
+              if (updatedOrder) {
+                setSelectedOrder(updatedOrder);
+              }
+            }
+          } catch (err) {
+            console.warn('Erreur lors du rechargement des détails:', err);
+            setSelectedOrder(null);
+          }
+        }
+      } else {
+        setSelectedOrder(null);
       }
-      
-      setSelectedOrder(null);
       setRejectionReason('');
       setPreparationTime(30);
     } catch (err) {
@@ -417,7 +429,29 @@ export default function RestaurantOrders() {
                       className={`p-6 hover:bg-gray-50 cursor-pointer transition-colors ${
                         selectedOrder?.id === order.id ? 'bg-blue-50' : ''
                       } ${order.statut === 'en_attente' ? 'border-l-4 border-yellow-400' : ''}`}
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={async () => {
+                        setSelectedOrder(order);
+                        // Recharger les détails complets de la commande depuis l'API si nécessaire
+                        if (order && (!order.details_commande || order.details_commande.length === 0)) {
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (session) {
+                              const orderResponse = await fetch('/api/partner/orders', {
+                                headers: { 'Authorization': `Bearer ${session.access_token}` }
+                              });
+                              if (orderResponse.ok) {
+                                const updatedOrders = await orderResponse.json();
+                                const updatedOrder = updatedOrders.find(o => o.id === order.id);
+                                if (updatedOrder && updatedOrder.details_commande) {
+                                  setSelectedOrder(updatedOrder);
+                                }
+                              }
+                            }
+                          } catch (err) {
+                            console.warn('Erreur lors du chargement des détails:', err);
+                          }
+                        }
+                      }}
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -484,12 +518,30 @@ export default function RestaurantOrders() {
                   <div>
                     <h3 className="font-medium mb-2">Articles commandés</h3>
                     <div className="space-y-2">
-                      {selectedOrder.details_commande?.map((item, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <span>{item.menus?.nom || 'Article'} x{item.quantite}</span>
-                          <span>{(item.prix_unitaire * item.quantite).toFixed(2)}€</span>
-                        </div>
-                      ))}
+                      {selectedOrder.details_commande && selectedOrder.details_commande.length > 0 ? (
+                        selectedOrder.details_commande.map((item, index) => (
+                          <div key={item.id || index} className="flex justify-between text-sm">
+                            <span>{item.menus?.nom || 'Article'} x{item.quantite || 1}</span>
+                            <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
+                          </div>
+                        ))
+                      ) : selectedOrder.items && selectedOrder.items.length > 0 ? (
+                        selectedOrder.items.map((item, index) => (
+                          <div key={item.id || index} className="flex justify-between text-sm">
+                            <span>{item.name || item.nom || 'Article'} x{item.quantity || item.quantite || 1}</span>
+                            <span>{((item.price || item.prix || 0) * (item.quantity || item.quantite || 1)).toFixed(2)}€</span>
+                          </div>
+                        ))
+                      ) : selectedOrder.order_items && selectedOrder.order_items.length > 0 ? (
+                        selectedOrder.order_items.map((item, index) => (
+                          <div key={item.id || index} className="flex justify-between text-sm">
+                            <span>{item.name || item.nom || 'Article'} x{item.quantity || item.quantite || 1}</span>
+                            <span>{((item.price || item.prix || 0) * (item.quantity || item.quantite || 1)).toFixed(2)}€</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">Chargement des détails...</p>
+                      )}
                     </div>
                     <div className="border-t mt-2 pt-2">
                       <div className="flex justify-between text-sm text-gray-600">

@@ -36,6 +36,7 @@ import {
 import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
+import { FacebookPixelEvents } from '@/components/FacebookPixel';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -208,6 +209,7 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [lastTrackedSearch, setLastTrackedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recommended');
   const [showFilters, setShowFilters] = useState(false);
@@ -283,6 +285,17 @@ export default function Home() {
     }, 5000);
     return () => clearInterval(timer);
   }, [heroSlides.length]);
+
+  // Track Facebook Pixel - Search (avec debounce)
+  useEffect(() => {
+    if (searchTerm && searchTerm.length >= 3 && searchTerm !== lastTrackedSearch) {
+      const timer = setTimeout(() => {
+        FacebookPixelEvents.search(searchTerm);
+        setLastTrackedSearch(searchTerm);
+      }, 1000); // Debounce de 1 seconde
+      return () => clearTimeout(timer);
+    }
+  }, [searchTerm, lastTrackedSearch]);
 
   useEffect(() => {
     // Verifier l'authentification

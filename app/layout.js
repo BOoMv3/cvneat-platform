@@ -2,6 +2,7 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
+import FacebookPixel from '@/components/FacebookPixel';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 
@@ -123,6 +124,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className={`${inter.className} transition-colors duration-300`}>
         <ThemeProvider>
+          <FacebookPixel />
           <div className="min-h-screen flex flex-col">
             <main className="flex-grow">
               {children}

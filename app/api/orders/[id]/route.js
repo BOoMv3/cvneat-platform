@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
+
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 export async function GET(request, { params }) {
   try {
@@ -227,9 +230,66 @@ export async function GET(request, { params }) {
         : (addressParts[1]?.split(' ')[0] || '');
     const deliveryPhone = order.telephone || order.phone || order.customer_phone || '';
 
-    const subtotalAmount = parseFloat(order.total || 0) || 0;
-    const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
-    const totalWithDelivery = subtotalAmount + deliveryFee;
+    // Calculer le sous-total réel depuis les détails de commande
+    let calculatedSubtotal = 0;
+    if (order.details_commande && Array.isArray(order.details_commande)) {
+      calculatedSubtotal = order.details_commande.reduce((sum, detail) => {
+        const prix = parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0;
+        const qty = parseFloat(detail.quantite || 1) || 0;
+        return sum + (prix * qty);
+      }, 0);
+    }
+    
+    // Utiliser le sous-total calculé si disponible, sinon utiliser order.total
+    const subtotalAmount = calculatedSubtotal > 0 ? calculatedSubtotal : parseFloat(order.total || 0) || 0;
+    
+    // Récupérer le montant réellement payé depuis Stripe si disponible
+    let actualDeliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+    let actualPlatformFee = parseFloat(order.platform_fee || 0) || 0;
+    let actualTotal = subtotalAmount + actualDeliveryFee + actualPlatformFee;
+    
+    // Si un PaymentIntent existe, récupérer le montant réellement payé
+    if (order.stripe_payment_intent_id && stripe) {
+      try {
+        const paymentIntent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
+        if (paymentIntent && paymentIntent.amount) {
+          // Montant en centimes, convertir en euros
+          const paidAmount = paymentIntent.amount / 100;
+          
+          // Calculer les frais réels à partir du montant payé
+          // paidAmount = subtotal + deliveryFee + platformFee
+          // Donc: deliveryFee + platformFee = paidAmount - subtotal
+          const feesTotal = paidAmount - subtotalAmount;
+          
+          // Si les frais calculés sont différents de ceux stockés, utiliser les frais réels
+          if (feesTotal > 0 && Math.abs(feesTotal - (actualDeliveryFee + actualPlatformFee)) > 0.01) {
+            // Essayer de séparer les frais de livraison et de plateforme
+            // On connaît le frais de plateforme (0.49€ généralement)
+            const knownPlatformFee = actualPlatformFee || 0.49;
+            actualDeliveryFee = Math.max(0, feesTotal - knownPlatformFee);
+            actualPlatformFee = knownPlatformFee;
+            actualTotal = paidAmount;
+            
+            console.log('💰 Frais réels calculés depuis Stripe (détail):', {
+              orderId: order.id,
+              paidAmount,
+              subtotalAmount,
+              actualDeliveryFee,
+              actualPlatformFee,
+              storedDeliveryFee: order.frais_livraison,
+              storedPlatformFee: order.platform_fee
+            });
+          }
+        }
+      } catch (stripeError) {
+        console.warn('⚠️ Impossible de récupérer le PaymentIntent Stripe:', stripeError.message);
+        // Continuer avec les valeurs stockées
+      }
+    }
+    
+    const deliveryFee = actualDeliveryFee;
+    const platformFee = actualPlatformFee;
+    const totalWithDelivery = actualTotal;
 
     const formattedOrder = {
       id: order.id,
@@ -243,6 +303,8 @@ export async function GET(request, { params }) {
       frais_livraison: deliveryFee,
       delivery_fee: deliveryFee,
       deliveryFee,
+      platform_fee: platformFee,
+      platformFee,
       adresse_livraison: order.adresse_livraison,
       preparation_time: order.preparation_time,
       livreur_id: order.livreur_id,

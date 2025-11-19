@@ -317,10 +317,22 @@ export default function OrderDetail({ params }) {
                     {(parseFloat(order.frais_livraison || order.deliveryFee || 0)).toFixed(2)}€
                   </p>
                 </div>
+                {(order.platform_fee > 0 || order.platformFee > 0) && (
+                  <div className="flex justify-between">
+                    <p className="text-gray-600 dark:text-gray-300">Frais de plateforme</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {(parseFloat(order.platform_fee || order.platformFee || 0)).toFixed(2)}€
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg pt-2 border-t dark:border-gray-700">
                   <p className="text-gray-900 dark:text-white">Total</p>
                   <p className="text-gray-900 dark:text-white">
                     {(() => {
+                      // Utiliser le total réel si disponible, sinon calculer
+                      if (order.total !== undefined && order.total > 0) {
+                        return parseFloat(order.total || 0).toFixed(2);
+                      }
                       // Calculer le total correctement
                       let subtotal = 0;
                       if (order.details_commande && Array.isArray(order.details_commande)) {
@@ -345,7 +357,8 @@ export default function OrderDetail({ params }) {
                         subtotal = parseFloat(order.total || 0) - parseFloat(order.frais_livraison || order.deliveryFee || 0);
                       }
                       const deliveryFee = parseFloat(order.frais_livraison || order.deliveryFee || 0);
-                      const total = subtotal + deliveryFee;
+                      const platformFee = parseFloat(order.platform_fee || order.platformFee || 0);
+                      const total = subtotal + deliveryFee + platformFee;
                       return isNaN(total) ? '0.00' : total.toFixed(2);
                     })()}€
                   </p>
