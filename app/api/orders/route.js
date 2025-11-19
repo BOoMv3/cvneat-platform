@@ -88,7 +88,7 @@ export async function GET(request) {
     // Les admins peuvent voir toutes les commandes
     const isAdmin = userData && userData.role === 'admin';
 
-    // Construire la requête (simplifiée - récupérer détails séparément pour éviter erreurs relation)
+    // Construire la requête (très simplifiée - récupérer relations séparément pour éviter erreurs)
     let query = serviceClient
       .from('commandes')
       .select(`
@@ -101,16 +101,12 @@ export async function GET(request) {
         platform_fee,
         adresse_livraison,
         restaurant_id,
+        user_id,
+        stripe_payment_intent_id,
         refund_amount,
         refunded_at,
         stripe_refund_id,
-        payment_status,
-        restaurants (
-          id,
-          nom,
-          adresse,
-          ville
-        )
+        payment_status
       `)
       .order('created_at', { ascending: false });
 
@@ -129,7 +125,29 @@ export async function GET(request) {
     
     console.log(`✅ API /orders: ${orders?.length || 0} commandes récupérées pour utilisateur ${user.id?.slice(0, 8)}`);
 
-    // Récupérer les détails séparément pour toutes les commandes (plus sûr)
+    // Récupérer les restaurants séparément
+    const restaurantIds = [...new Set((orders || []).map(o => o.restaurant_id).filter(Boolean))];
+    const restaurantsMap = new Map();
+    
+    if (restaurantIds.length > 0) {
+      try {
+        const { data: restaurants, error: restaurantsError } = await serviceClient
+          .from('restaurants')
+          .select('id, nom, adresse, ville')
+          .in('id', restaurantIds);
+        
+        if (!restaurantsError && restaurants) {
+          restaurants.forEach(r => restaurantsMap.set(r.id, r));
+          console.log(`✅ ${restaurants.length} restaurants récupérés`);
+        } else if (restaurantsError) {
+          console.error('❌ Erreur récupération restaurants (non bloquant):', restaurantsError.message);
+        }
+      } catch (restaurantsErr) {
+        console.error('❌ Exception récupération restaurants (non bloquant):', restaurantsErr?.message);
+      }
+    }
+
+    // Récupérer les détails séparément pour toutes les commandes
     let ordersWithDetails = orders || [];
     if (orders && orders.length > 0) {
       const orderIds = orders.map(o => o.id).filter(Boolean);
@@ -168,17 +186,29 @@ export async function GET(request) {
               detailsByOrderId.get(detail.commande_id).push(detail);
             });
             
-            // Ajouter les détails aux commandes
+            // Ajouter les détails et restaurants aux commandes
             ordersWithDetails = orders.map(order => ({
               ...order,
-              details_commande: detailsByOrderId.get(order.id) || []
+              details_commande: detailsByOrderId.get(order.id) || [],
+              restaurants: restaurantsMap.get(order.restaurant_id) || null
             }));
           } else {
             console.log(`ℹ️ Aucun détail trouvé pour ${orderIds.length} commandes`);
+            // Ajouter quand même les restaurants
+            ordersWithDetails = orders.map(order => ({
+              ...order,
+              details_commande: [],
+              restaurants: restaurantsMap.get(order.restaurant_id) || null
+            }));
           }
         } catch (detailsFetchError) {
           console.error('❌ Erreur récupération détails (non bloquant):', detailsFetchError?.message);
-          // Continuer avec les commandes même si la récupération échoue
+          // Ajouter quand même les restaurants même si détails échouent
+          ordersWithDetails = orders.map(order => ({
+            ...order,
+            details_commande: [],
+            restaurants: restaurantsMap.get(order.restaurant_id) || null
+          }));
         }
       }
     }
