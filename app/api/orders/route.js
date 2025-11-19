@@ -89,6 +89,7 @@ export async function GET(request) {
     const isAdmin = userData && userData.role === 'admin';
 
     // Construire la requête (très simplifiée - récupérer relations séparément pour éviter erreurs)
+    // NOTE: platform_fee n'existe pas dans la table commandes, donc on ne le sélectionne pas
     let query = serviceClient
       .from('commandes')
       .select(`
@@ -98,7 +99,6 @@ export async function GET(request) {
         statut,
         total,
         frais_livraison,
-        platform_fee,
         adresse_livraison,
         restaurant_id,
         user_id,
@@ -267,8 +267,9 @@ export async function GET(request) {
       const deliveryPostalCode = addressParts.length > 2 ? addressParts[2]?.split(' ')[0] : '';
 
       // Récupérer le montant réellement payé depuis Stripe si disponible
+      // NOTE: platform_fee n'existe pas dans la table commandes, utiliser valeur par défaut
       let actualDeliveryFee = parseFloat(order.frais_livraison || 0) || 0;
-      let actualPlatformFee = parseFloat(order.platform_fee || 0) || 0;
+      let actualPlatformFee = 0.49; // Frais plateforme fixe par défaut (colonne n'existe pas en BDD)
       let actualTotal = calculatedSubtotal + actualDeliveryFee + actualPlatformFee;
       
       // Si un PaymentIntent existe, récupérer le montant réellement payé
@@ -306,7 +307,7 @@ export async function GET(request) {
                 actualDeliveryFee,
                 actualPlatformFee,
                 storedDeliveryFee: order.frais_livraison,
-                storedPlatformFee: order.platform_fee
+                storedPlatformFee: actualPlatformFee
               });
             }
           }
