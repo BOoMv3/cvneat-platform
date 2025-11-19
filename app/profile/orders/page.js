@@ -44,8 +44,26 @@ export default function UserOrders() {
         throw new Error('Impossible de récupérer les commandes');
       }
       const data = await response.json();
+      
+      // Debug: vérifier si les détails sont présents
+      if (Array.isArray(data)) {
+        data.forEach(order => {
+          const hasItems = order.items && Array.isArray(order.items) && order.items.length > 0;
+          const hasDetails = order.details_commande && Array.isArray(order.details_commande) && order.details_commande.length > 0;
+          if (!hasItems && !hasDetails) {
+            console.warn(`⚠️ Commande ${order.id?.slice(0, 8)} sans détails:`, {
+              hasItems,
+              hasDetails,
+              items: order.items,
+              details_commande: order.details_commande
+            });
+          }
+        });
+      }
+      
       setOrders(data);
     } catch (error) {
+      console.error('Erreur récupération commandes:', error);
       // Erreur silencieuse - l'utilisateur verra "Aucune commande trouvée"
     } finally {
       setLoading(false);
@@ -143,12 +161,18 @@ export default function UserOrders() {
                 <div className="mb-4">
                   <h4 className="font-medium mb-2 text-gray-900 dark:text-white">Items commandés</h4>
                   <div className="space-y-2">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <span className="text-gray-900 dark:text-white">{item.quantity}x {item.name}</span>
-                        <span className="text-gray-900 dark:text-white">{item.price}€</span>
+                    {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
+                      order.items.map((item) => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span className="text-gray-900 dark:text-white">{item.quantity}x {item.name}</span>
+                          <span className="text-gray-900 dark:text-white">{item.price}€</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded border border-yellow-200 dark:border-yellow-800">
+                        ⚠️ Détails de commande non disponibles. Rechargement en cours...
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 
