@@ -215,64 +215,16 @@ export async function GET(request) {
               console.warn(`⚠️ Aucun détail trouvé en BDD pour ${orderIds.length} commandes`);
               console.warn(`   IDs des commandes recherchées:`, orderIds.map(id => id?.slice(0, 8)));
               
-              // Vérification directe pour chaque commande sans détails (redéfinir si nécessaire)
-              const ordersToCheck = orders.filter(o => !o.details_commande || !Array.isArray(o.details_commande) || o.details_commande.length === 0);
-              for (const order of ordersToCheck) {
-                try {
-                  const { data: directCheck, error: checkError } = await serviceClient
-                    .from('details_commande')
-                    .select('id, commande_id, plat_id, quantite')
-                    .eq('commande_id', order.id)
-                    .limit(5);
-                  
-                  if (checkError) {
-                    console.error(`   ❌ Commande ${order.id?.slice(0, 8)}: Erreur vérification BDD:`, checkError.message);
-                  } else {
-                    if (directCheck && directCheck.length > 0) {
-                      console.error(`   ❌ PROBLÈME CRITIQUE - Commande ${order.id?.slice(0, 8)}: ${directCheck.length} détails EXISTENT en BDD mais ne sont PAS récupérés !`);
-                      
-                      // Essayer de récupérer les détails avec la relation menus
-                      const { data: fullDetails, error: fullError } = await serviceClient
-                        .from('details_commande')
-                        .select(`
-                          id,
-                          commande_id,
-                          plat_id,
-                          quantite,
-                          prix_unitaire,
-                          supplements,
-                          customizations,
-                          menus (
-                            nom,
-                            prix
-                          )
-                        `)
-                        .eq('commande_id', order.id);
-                      
-                      if (!fullError && fullDetails && fullDetails.length > 0) {
-                        console.log(`      ✅ Récupération complète réussie: ${fullDetails.length} détails avec menus`);
-                        // Ajouter les détails à la commande
-                        const orderIndex = orders.findIndex(o => o.id === order.id);
-                        if (orderIndex !== -1) {
-                          orders[orderIndex].details_commande = fullDetails;
-                          ordersWithDetails[orderIndex].details_commande = fullDetails;
-                          console.log(`      ✅ Détails ajoutés à la commande ${order.id?.slice(0, 8)}`);
-                        }
-                      } else {
-                        console.error(`      ❌ Impossible de récupérer les détails avec menus:`, fullError?.message);
-                      }
-                    } else {
-                      console.warn(`   ⚠️ CONFIRMÉ - Commande ${order.id?.slice(0, 8)}: Aucun détail n'existe en BDD - ils n'ont jamais été créés.`);
-                    }
-                  }
-                } catch (checkErr) {
-                  console.error(`   ❌ Exception lors vérification commande ${order.id?.slice(0, 8)}:`, checkErr.message);
-                }
-              }
+              // Note: Vérification directe désactivée temporairement pour éviter erreur 500
+              // Si les détails n'existent pas en BDD, on continue avec ordersWithDetails vide
+              console.log(`   ℹ️ Continuation avec ${ordersWithDetails.length} commandes (certaines sans détails)`);
             }
           }
         } catch (detailsFetchError) {
           console.error('❌ Erreur lors de la récupération séparée des détails:', detailsFetchError);
+          console.error('   Stack:', detailsFetchError.stack);
+          // Continuer même si la récupération séparée échoue
+          ordersWithDetails = orders || [];
         }
       }
     }
@@ -423,8 +375,14 @@ export async function GET(request) {
     return NextResponse.json(formattedOrders);
 
   } catch (error) {
-    console.error('Erreur dans /api/orders:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    console.error('❌ Erreur dans /api/orders:', error);
+    console.error('   Message:', error.message);
+    console.error('   Stack:', error.stack);
+    console.error('   Type:', error.name);
+    return NextResponse.json({ 
+      error: 'Erreur serveur lors de la récupération des commandes',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Erreur interne'
+    }, { status: 500 });
   }
 }
 
