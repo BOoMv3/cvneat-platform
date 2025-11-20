@@ -323,6 +323,16 @@ export default function Panier() {
                             </div>
                           )}
                           
+                          {/* Affichage de la boisson sélectionnée pour les formules */}
+                          {item.is_formula && item.selected_drink && (
+                            <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">
+                              <span className="font-medium">🥤 Boisson:</span> {item.selected_drink.nom}
+                              {item.selected_drink.prix > 0 && (
+                                <span className="text-gray-500"> (incluse)</span>
+                              )}
+                            </div>
+                          )}
+                          
                           {/* Affichage des suppléments */}
                           {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">

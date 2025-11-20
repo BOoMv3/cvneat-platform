@@ -11,6 +11,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [removedIngredients, setRemovedIngredients] = useState(new Set());
   const [selectedMeats, setSelectedMeats] = useState(new Set()); // Nouvelles sélections de viandes
   const [selectedSauces, setSelectedSauces] = useState(new Set()); // Nouvelles sélections de sauces
+  const [selectedDrink, setSelectedDrink] = useState(null); // Boisson sélectionnée pour les formules
   const [supplements, setSupplements] = useState([]);
   const [meatOptions, setMeatOptions] = useState([]); // Options de viande depuis la base de données
   const [sauceOptions, setSauceOptions] = useState([]); // Options de sauce depuis la base de données
@@ -302,15 +303,28 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   };
 
   const handleAddToCart = () => {
-    // Pour les formules, ajouter directement sans validation de personnalisation
+    // Pour les formules et menus avec boissons, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
+    if (item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
+      alert('Veuillez choisir une boisson');
+      return;
+    }
+
+    // Si c'est une formule, ajouter directement
     if (item.is_formula) {
       const formulaItem = {
         ...item,
-        quantity: quantity
+        quantity: quantity,
+        selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null
       };
       onAddToCart(formulaItem, [], null, quantity);
       onClose();
       return;
+    }
+
+    // Pour les menus normaux avec boissons, inclure la boisson sélectionnée
+    if (item.drink_options && item.drink_options.length > 0 && selectedDrink) {
+      const selectedDrinkData = item.drink_options.find(d => d.id === selectedDrink);
+      item.selected_drink = selectedDrinkData;
     }
 
     // Validation : vérifier si une sélection de viande est requise
@@ -481,6 +495,52 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Choix de boisson pour les formules et menus avec boissons disponibles */}
+            {item.drink_options && item.drink_options.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                  <FaFlask className="w-5 h-5 text-blue-600 mr-2" />
+                  Choisissez votre boisson <span className="text-red-500 text-sm ml-2">*</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">(incluse dans le prix)</span>
+                </h3>
+                <div className="space-y-2">
+                  {item.drink_options.map((drink) => {
+                    const isSelected = selectedDrink === drink.id;
+                    return (
+                      <div
+                        key={drink.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
+                            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                        }`}
+                        onClick={() => setSelectedDrink(drink.id)}
+                      >
+                        <div className="flex items-center">
+                          <span className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
+                            isSelected
+                              ? 'border-blue-500 bg-blue-500'
+                              : 'border-gray-300 dark:border-gray-500'
+                          }`}>
+                            {isSelected && <span className="text-white text-xs">✓</span>}
+                          </span>
+                          <div>
+                            <span className="font-medium">{drink.nom}</span>
+                            {drink.description && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{drink.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          {drink.prix ? `${drink.prix.toFixed(2)}€` : 'Incluse'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
             

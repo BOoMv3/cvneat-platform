@@ -46,7 +46,7 @@ export async function GET(request, { params }) {
     }
 
     // Transformer les données pour correspondre au format attendu par le frontend
-    const transformedMenu = menus?.map(item => {
+    const transformedMenuPromises = (menus || []).map(async (item) => {
       // Parser les suppléments si présents (JSONB ou string)
       let supplements = [];
       if (item.supplements) {
@@ -104,6 +104,29 @@ export async function GET(request, { params }) {
         }
       }
       
+      // Récupérer les boissons disponibles pour ce menu (si drink_options est présent)
+      let availableDrinks = [];
+      if (item.drink_options && Array.isArray(item.drink_options) && item.drink_options.length > 0) {
+        const { data: drinksData, error: drinksError } = await supabase
+          .from('menus')
+          .select('id, nom, description, prix, is_drink, drink_price_small, drink_price_medium, drink_price_large')
+          .in('id', item.drink_options)
+          .eq('disponible', true);
+
+        if (!drinksError && drinksData) {
+          availableDrinks = drinksData.map(drink => ({
+            id: drink.id,
+            nom: drink.nom,
+            description: drink.description,
+            prix: drink.prix,
+            is_drink: drink.is_drink,
+            drink_price_small: drink.drink_price_small,
+            drink_price_medium: drink.drink_price_medium,
+            drink_price_large: drink.drink_price_large
+          }));
+        }
+      }
+
       return {
         id: item.id,
         nom: item.nom,
@@ -120,6 +143,7 @@ export async function GET(request, { params }) {
         drink_price_small: item.drink_price_small || null,
         drink_price_medium: item.drink_price_medium || null,
         drink_price_large: item.drink_price_large || null,
+        drink_options: availableDrinks, // Boissons disponibles pour ce menu
         // Nouvelles colonnes de customisation
         meat_options: meatOptions,
         sauce_options: sauceOptions,
@@ -129,10 +153,12 @@ export async function GET(request, { params }) {
         max_sauces: item.max_sauces || item.max_sauce_count || null,
         max_meats: item.max_meats || item.max_meat_count || null
       };
-    }) || [];
+    });
+
+    const transformedMenu = await Promise.all(transformedMenuPromises);
 
     // Transformer les formules pour correspondre au format attendu
-    const transformedFormulas = (formulas || []).map(formula => {
+    const transformedFormulas = await Promise.all((formulas || []).map(async (formula) => {
       const items = (formula.formula_items || [])
         .sort((a, b) => a.order_index - b.order_index)
         .map(item => ({
@@ -141,6 +167,29 @@ export async function GET(request, { params }) {
           quantity: item.quantity || 1,
           menu: item.menu
         }));
+
+      // Récupérer les boissons disponibles pour cette formule
+      let availableDrinks = [];
+      if (formula.drink_options && Array.isArray(formula.drink_options) && formula.drink_options.length > 0) {
+        const { data: drinksData, error: drinksError } = await supabase
+          .from('menus')
+          .select('id, nom, description, prix, is_drink, drink_price_small, drink_price_medium, drink_price_large')
+          .in('id', formula.drink_options)
+          .eq('disponible', true);
+
+        if (!drinksError && drinksData) {
+          availableDrinks = drinksData.map(drink => ({
+            id: drink.id,
+            nom: drink.nom,
+            description: drink.description,
+            prix: drink.prix,
+            is_drink: drink.is_drink,
+            drink_price_small: drink.drink_price_small,
+            drink_price_medium: drink.drink_price_medium,
+            drink_price_large: drink.drink_price_large
+          }));
+        }
+      }
 
       return {
         id: formula.id,
@@ -154,6 +203,7 @@ export async function GET(request, { params }) {
         created_at: formula.created_at,
         is_formula: true, // Marqueur pour identifier les formules
         formula_items: items, // Items de la formule
+        drink_options: availableDrinks, // Boissons disponibles pour cette formule
         // Calculer le prix total des items individuels pour afficher l'économie
         total_items_price: items.reduce((sum, item) => {
           const itemPrice = item.menu?.prix || 0;
@@ -161,7 +211,7 @@ export async function GET(request, { params }) {
           return sum + (itemPrice * quantity);
         }, 0)
       };
-    });
+    }));
 
     // Combiner les menus et les formules
     const allItems = [...transformedMenu, ...transformedFormulas];

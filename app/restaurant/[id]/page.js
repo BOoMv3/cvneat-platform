@@ -400,7 +400,7 @@ export default function RestaurantPage({ params }) {
     }
   };
 
-  const handleAddToCartWithAnimation = (item, supplements = [], size = null) => {
+  const handleAddToCartWithAnimation = (item, supplements = [], size = null, quantity = 1) => {
     console.log("🚀 Animation démarrée pour l'article:", item.id);
     
     // Animation d'ajout au panier
@@ -415,32 +415,53 @@ export default function RestaurantPage({ params }) {
     // Récupérer le panier actuel depuis le localStorage
     const currentCart = JSON.parse(localStorage.getItem('cart') || '[]');
     
+    // Pour les formules, inclure la boisson sélectionnée
+    const selectedDrink = item.selected_drink || null;
+    
     // Créer l'article avec suppléments et taille
     const cartItem = {
       id: item.id,
       nom: item.nom || item.name,
       prix: calculateFinalPrice(item, supplements, size),
-      quantity: 1,
+      quantity: quantity || 1,
       restaurant_id: params.id,
       restaurant_name: restaurant?.nom || restaurant?.name,
       restaurant_address: restaurant?.adresse || restaurant?.address,
       image_url: item.image_url,
       supplements: supplements,
       size: size,
-      base_price: item.prix || item.price
+      base_price: item.prix || item.price,
+      // Ajouter les informations de formule si c'est une formule
+      is_formula: item.is_formula || false,
+      formula_items: item.formula_items || null,
+      selected_drink: selectedDrink ? {
+        id: selectedDrink.id,
+        nom: selectedDrink.nom,
+        prix: selectedDrink.prix || 0
+      } : null
     };
     
-    // Vérifier si l'article existe déjà dans le panier
-    const existingItemIndex = currentCart.findIndex(cartItem => 
-      cartItem.id === item.id && 
-      cartItem.restaurant_id === params.id &&
-      JSON.stringify(cartItem.supplements) === JSON.stringify(supplements) &&
-      cartItem.size === size
-    );
+    // Pour les formules, comparer aussi la boisson sélectionnée
+    const existingItemIndex = currentCart.findIndex(existingItem => {
+      const sameId = existingItem.id === item.id;
+      const sameRestaurant = existingItem.restaurant_id === params.id;
+      const sameSupplements = JSON.stringify(existingItem.supplements) === JSON.stringify(supplements);
+      const sameSize = existingItem.size === size;
+      
+      // Pour les formules, vérifier aussi la boisson
+      if (item.is_formula) {
+        const existingDrinkId = existingItem.selected_drink?.id;
+        const newDrinkId = selectedDrink?.id;
+        const sameDrink = existingDrinkId === newDrinkId;
+        return sameId && sameRestaurant && sameSupplements && sameSize && sameDrink;
+      }
+      
+      return sameId && sameRestaurant && sameSupplements && sameSize;
+    });
     
     if (existingItemIndex !== -1) {
       // Incrémenter la quantité
-      currentCart[existingItemIndex].quantity += 1;
+      currentCart[existingItemIndex].quantity += (quantity || 1);
     } else {
       // Ajouter un nouvel article
       currentCart.push(cartItem);
