@@ -107,14 +107,21 @@ export async function GET(request, { params }) {
       // Récupérer les boissons disponibles pour ce menu (si drink_options est présent)
       let availableDrinks = [];
       if (item.drink_options && Array.isArray(item.drink_options) && item.drink_options.length > 0) {
+        console.log(`🔍 Menu ${item.nom}: Récupération de ${item.drink_options.length} boissons`, item.drink_options);
+        
         const { data: drinksData, error: drinksError } = await supabase
           .from('menus')
-          .select('id, nom, description, prix, is_drink, drink_price_small, drink_price_medium, drink_price_large')
-          .in('id', item.drink_options)
-          .eq('disponible', true);
+          .select('id, nom, description, prix, is_drink, drink_price_small, drink_price_medium, drink_price_large, disponible')
+          .in('id', item.drink_options);
 
-        if (!drinksError && drinksData) {
-          availableDrinks = drinksData.map(drink => ({
+        if (drinksError) {
+          console.error(`❌ Erreur récupération boissons pour ${item.nom}:`, drinksError);
+        } else if (drinksData) {
+          // Filtrer seulement les boissons disponibles
+          const availableDrinksData = drinksData.filter(drink => drink.disponible !== false);
+          console.log(`✅ ${availableDrinksData.length}/${drinksData.length} boissons disponibles pour ${item.nom}`);
+          
+          availableDrinks = availableDrinksData.map(drink => ({
             id: drink.id,
             nom: drink.nom,
             description: drink.description,
@@ -124,7 +131,15 @@ export async function GET(request, { params }) {
             drink_price_medium: drink.drink_price_medium,
             drink_price_large: drink.drink_price_large
           }));
+          
+          // Log si certaines boissons ne sont pas disponibles
+          if (availableDrinksData.length < drinksData.length) {
+            const unavailable = drinksData.filter(d => d.disponible === false);
+            console.warn(`⚠️ Boissons non disponibles pour ${item.nom}:`, unavailable.map(d => d.nom));
+          }
         }
+      } else if (item.nom && (item.nom.toLowerCase().includes('menu') || item.category?.toLowerCase().includes('menu'))) {
+        console.warn(`⚠️ Menu ${item.nom} n'a pas de drink_options`);
       }
 
       return {
