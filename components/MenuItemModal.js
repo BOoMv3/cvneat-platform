@@ -409,32 +409,28 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
   const modalContent = (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center"
       onClick={onClose}
       style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        bottom: 0,
         zIndex: 99999
       }}
     >
+      {/* CONTAINER MODAL - Hauteur fixe et réduite sur mobile */}
       <div 
-        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-2xl w-full relative shadow-2xl"
+        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl relative shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{ 
           zIndex: 100000,
-          maxHeight: '95vh',
-          height: '95vh',
-          display: 'flex',
-          flexDirection: 'column'
+          height: '85vh',
+          maxHeight: '85vh',
+          display: 'grid',
+          gridTemplateRows: 'auto 1fr auto'
         }}
       >
-        {/* Header - Fixe */}
-        <div className="relative flex-shrink-0">
+        {/* 1. HEADER - Image + Bouton fermer */}
+        <div className="relative" style={{ minHeight: 0 }}>
           {item.image_url && (
-            <div className="relative h-32 sm:h-64 w-full">
+            <div className="relative w-full h-24 sm:h-48">
               <Image
                 src={item.image_url}
                 alt={item.nom}
@@ -447,18 +443,18 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
           <button
             onClick={onClose}
-            className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-white bg-opacity-90 rounded-full p-2 hover:bg-opacity-100 transition-all z-10"
+            className="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-2 hover:bg-opacity-100 transition-all z-10"
           >
-            <FaTimes className="w-5 h-5 text-gray-600" />
+            <FaTimes className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
           </button>
         </div>
 
-        {/* Content - Scrollable avec padding pour le bouton */}
+        {/* 2. CONTENU SCROLLABLE - Prend l'espace restant */}
         <div 
-          className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6"
+          className="overflow-y-auto overflow-x-hidden p-3 sm:p-6"
           style={{ 
             WebkitOverflowScrolling: 'touch',
-            paddingBottom: '90px'
+            minHeight: 0
           }}
         >
           {/* Titre et description */}
@@ -797,29 +793,26 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
         </div>
 
-        {/* Bouton d'ajout au panier - Position ABSOLUTE en bas */}
+        {/* 3. BOUTON - Toujours visible en bas (grid row 3) */}
         <div 
-          className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 rounded-b-2xl"
+          className="bg-white dark:bg-gray-800 border-t-2 border-gray-300 dark:border-gray-600 p-3"
           style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 1000,
-            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.15)'
+            minHeight: 0,
+            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.2)'
           }}
         >
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-600 text-white py-4 rounded-xl hover:bg-orange-700 active:bg-orange-800 transition-colors flex items-center justify-center space-x-2 font-bold text-lg shadow-lg"
+            className="w-full bg-orange-600 text-white rounded-lg hover:bg-orange-700 active:bg-orange-800 transition-colors flex items-center justify-center gap-2 font-bold shadow-lg"
             style={{
-              minHeight: '56px',
+              height: '50px',
+              fontSize: '16px',
               WebkitTapHighlightColor: 'transparent',
               touchAction: 'manipulation'
             }}
           >
-            <FaShoppingCart className="w-5 h-5 flex-shrink-0" />
-            <span className="truncate">Ajouter au panier - {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
+            <FaShoppingCart className="w-5 h-5" />
+            <span>Ajouter - {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>
       </div>
