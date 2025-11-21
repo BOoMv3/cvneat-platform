@@ -1037,7 +1037,18 @@ export default function Checkout() {
                 ) : (
                   (() => {
                     const PLATFORM_FEE = 0.49;
-                    const finalTotalDisplay = Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
+                    
+                    // PROMO: Appliquer la livraison offerte si conditions remplies
+                    const today = new Date().toISOString().split('T')[0];
+                    const PROMO_DATE = '2025-11-21';
+                    const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
+                    
+                    let finalDeliveryFee = fraisLivraison;
+                    if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+                      finalDeliveryFee = 0; // Livraison gratuite !
+                    }
+                    
+                    const finalTotalDisplay = Math.max(0, cartTotal + finalDeliveryFee + PLATFORM_FEE);
                     return `Payer ${finalTotalDisplay.toFixed(2)}€`;
                   })()
                 )}
