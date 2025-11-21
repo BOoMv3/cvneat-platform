@@ -420,7 +420,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         className="fixed left-0 right-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl z-50"
         onClick={(e) => e.stopPropagation()}
         style={{ 
-          maxHeight: '60vh',
+          maxHeight: '50vh',
           display: 'flex',
           flexDirection: 'column'
         }}
@@ -458,43 +458,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                 </button>
               </div>
             </div>
-            {item.description && (
-              <p className="text-gray-600 dark:text-gray-300 text-xs">{item.description}</p>
-            )}
-            
-            {/* Affichage spécial pour les formules */}
-            {item.is_formula && item.formula_items && item.formula_items.length > 0 && (
-              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Cette formule comprend :</h3>
-                <ul className="space-y-2">
-                  {item.formula_items.map((formulaItem, idx) => (
-                    <li key={idx} className="flex items-center text-sm text-gray-700 dark:text-gray-300">
-                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                      <span className="font-medium">{formulaItem.quantity || 1}x</span>
-                      <span className="ml-2">{formulaItem.menu?.nom || 'Plat'}</span>
-                      {formulaItem.menu?.prix && (
-                        <span className="ml-auto text-gray-500">
-                          ({formulaItem.menu.prix}€)
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {item.total_items_price && item.total_items_price > item.prix && (
-                  <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Prix total si acheté séparément :</span>
-                      <span className="line-through text-gray-500">{item.total_items_price.toFixed(2)}€</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="font-semibold text-green-600 dark:text-green-400">Économie :</span>
-                      <span className="font-bold text-green-600 dark:text-green-400">
-                        {(item.total_items_price - item.prix).toFixed(2)}€
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
+            {item.is_formula && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Formule</span>
             )}
 
             {/* Choix de boisson - VERSION COMPACTE */}
@@ -533,49 +498,32 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             )}
           </div>
 
-          {/* Options de personnalisation - Masquées pour les formules */}
+          {/* Viandes - VERSION MINI */}
           {!item.is_formula && meatOptions.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                <FaUtensils className="w-5 h-5 text-red-600 mr-2" />
-                Choisir vos viandes {item.requires_meat_selection && <span className="text-red-500 text-sm ml-2">*</span>}
-                {(item.max_meats || item.max_meat_count) && (
-                  <span className="text-sm text-gray-500 ml-2">
-                    (Maximum {item.max_meats || item.max_meat_count} viande{(item.max_meats || item.max_meat_count) > 1 ? 's' : ''})
-                  </span>
-                )}
-              </h3>
-              <div className="space-y-2">
+            <div className="mb-2">
+              <h3 className="text-sm font-semibold mb-1.5">Viandes {item.requires_meat_selection && <span className="text-red-500">*</span>}</h3>
+              <div className="space-y-1">
                 {meatOptions.map((meat) => {
                   const meatId = meat.id || meat.nom;
                   const isSelected = selectedMeats.has(meatId);
                   return (
                     <div
                       key={meatId}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-red-50 border-red-300 text-red-800'
-                          : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                      className={`flex items-center justify-between p-2 rounded border cursor-pointer text-sm ${
+                        isSelected ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'
                       }`}
                       onClick={() => handleMeatToggle(meatId)}
                     >
                       <div className="flex items-center">
-                        <span className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
-                          isSelected
-                            ? 'border-red-500 bg-red-500'
-                            : 'border-gray-300'
+                        <span className={`w-4 h-4 rounded border-2 mr-2 flex items-center justify-center ${
+                          isSelected ? 'border-red-500 bg-red-500' : 'border-gray-300'
                         }`}>
                           {isSelected && <span className="text-white text-xs">✓</span>}
                         </span>
-                        <span className="font-medium">{meat.nom || meat.name}</span>
+                        <span className="truncate">{meat.nom || meat.name}</span>
                       </div>
-                      {(meat.prix || meat.price) > 0 ? (
-                        <span className="text-sm font-medium text-red-600">
-                          <span className="text-gray-500 mr-1">Prix:</span>
-                          +{parseFloat(meat.prix || meat.price || 0).toFixed(2)}€
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">Gratuit</span>
+                      {(meat.prix || meat.price) > 0 && (
+                        <span className="text-xs ml-2">+{parseFloat(meat.prix || meat.price || 0).toFixed(2)}€</span>
                       )}
                     </div>
                   );
@@ -584,69 +532,34 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             </div>
           )}
 
-          {/* Options de sauce */}
-          {!item.is_formula && sauceOptions.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                <FaFlask className="w-5 h-5 text-yellow-600 mr-2" />
-                Choisir vos sauces {item.requires_sauce_selection && <span className="text-red-500 text-sm ml-2">*</span>}
-                {(item.max_sauces || item.max_sauce_count) !== null && (item.max_sauces || item.max_sauce_count) !== undefined && (
-                  <span className="text-sm text-gray-500 ml-2">
-                    {(item.max_sauces || item.max_sauce_count) === 0 ? (
-                      <span className="text-green-600 font-medium">(Déjà comprises)</span>
-                    ) : (
-                      `(Maximum ${item.max_sauces || item.max_sauce_count} sauce${(item.max_sauces || item.max_sauce_count) > 1 ? 's' : ''})`
-                    )}
-                  </span>
-                )}
-              </h3>
-              {(item.max_sauces || item.max_sauce_count) === 0 ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                  <p className="text-green-800 font-medium">
-                    ✓ Les sauces sont déjà comprises dans ce plat
-                  </p>
-                  <p className="text-sm text-green-600 mt-1">
-                    Aucune sélection supplémentaire n'est nécessaire
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {sauceOptions.map((sauce) => {
-                    const sauceId = sauce.id || sauce.nom;
-                    const isSelected = selectedSauces.has(sauceId);
-                    return (
-                      <div
-                        key={sauceId}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-yellow-50 border-yellow-300 text-yellow-800'
-                            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                        }`}
-                        onClick={() => handleSauceToggle(sauceId)}
-                      >
-                        <div className="flex items-center">
-                          <span className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
-                            isSelected
-                              ? 'border-yellow-500 bg-yellow-500'
-                              : 'border-gray-300'
-                          }`}>
-                            {isSelected && <span className="text-white text-xs">✓</span>}
-                          </span>
-                          <span className="font-medium">{sauce.nom || sauce.name}</span>
-                        </div>
-                        {(sauce.prix || sauce.price) > 0 ? (
-                          <span className="text-sm font-medium text-yellow-600">
-                            <span className="text-gray-500 mr-1">Prix:</span>
-                            +{parseFloat(sauce.prix || sauce.price || 0).toFixed(2)}€
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">Gratuit</span>
-                        )}
+          {/* Sauces - VERSION MINI */}
+          {!item.is_formula && sauceOptions.length > 0 && (item.max_sauces || item.max_sauce_count) !== 0 && (
+            <div className="mb-2">
+              <h3 className="text-sm font-semibold mb-1.5">Sauces {item.requires_sauce_selection && <span className="text-red-500">*</span>}</h3>
+              <div className="space-y-1">
+                {sauceOptions.map((sauce) => {
+                  const sauceId = sauce.id || sauce.nom;
+                  const isSelected = selectedSauces.has(sauceId);
+                  return (
+                    <div
+                      key={sauceId}
+                      className={`flex items-center justify-between p-2 rounded border cursor-pointer text-sm ${
+                        isSelected ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'
+                      }`}
+                      onClick={() => handleSauceToggle(sauceId)}
+                    >
+                      <div className="flex items-center flex-1 min-w-0">
+                        <span className={`w-4 h-4 rounded border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
+                          isSelected ? 'border-yellow-500 bg-yellow-500' : 'border-gray-300'
+                        }`}>
+                          {isSelected && <span className="text-white text-xs">✓</span>}
+                        </span>
+                        <span className="truncate">{sauce.nom || sauce.name}</span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
