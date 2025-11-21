@@ -317,7 +317,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null
       };
       onAddToCart(formulaItem, [], null, quantity);
-      onClose();
+      
+      // Fermer la modal pour les formules
+      if (onClose && typeof onClose === 'function') {
+        setTimeout(() => {
+          onClose();
+        }, 50);
+      }
       return;
     }
 
@@ -386,7 +392,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     
     // Passer les suppléments explicitement comme paramètre séparé
     onAddToCart(customizedItem, supplementsList, null, quantity);
-    onClose();
+    
+    // Fermer la modal immédiatement
+    if (onClose && typeof onClose === 'function') {
+      setTimeout(() => {
+        onClose();
+      }, 50);
+    }
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body
