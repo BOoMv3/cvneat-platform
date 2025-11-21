@@ -945,15 +945,69 @@ export default function Checkout() {
             </h2>
 
             <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-              {cart.map((item) => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">{item.nom}</p>
-                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Quantité: {item.quantity}</p>
+              {cart.map((item, index) => (
+                <div key={`${item.id}-${index}`} className="border-b border-gray-100 dark:border-gray-700 pb-3 last:border-0">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{item.nom}</p>
+                        {item.is_formula && (
+                          <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full">
+                            Formule
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-1">Quantité: {item.quantity}</p>
+                      
+                      {/* Détails de la formule */}
+                      {item.is_formula && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5 mt-1">
+                          {/* Boisson */}
+                          {item.selected_drink && (
+                            <div className="text-blue-600 dark:text-blue-400">
+                              <span className="font-medium">🥤 Boisson:</span> {item.selected_drink.nom}
+                            </div>
+                          )}
+                          
+                          {/* Customizations */}
+                          {item.customizations && (
+                            <>
+                              {/* Viandes */}
+                              {item.customizations.selectedMeats && item.customizations.selectedMeats.length > 0 && (
+                                <div>
+                                  <span className="font-medium">🥩 Viande(s):</span> {item.customizations.selectedMeats.map(m => m.nom || m.name).join(', ')}
+                                </div>
+                              )}
+                              
+                              {/* Sauces */}
+                              {item.customizations.selectedSauces && item.customizations.selectedSauces.length > 0 && (
+                                <div>
+                                  <span className="font-medium">🍯 Sauce(s):</span> {item.customizations.selectedSauces.map(s => s.nom || s.name).join(', ')}
+                                </div>
+                              )}
+                              
+                              {/* Ingrédients retirés */}
+                              {item.customizations.removedIngredients && item.customizations.removedIngredients.length > 0 && (
+                                <div className="text-red-600 dark:text-red-400">
+                                  <span className="font-medium">🚫 Sans:</span> {item.customizations.removedIngredients.map(ing => ing.nom || ing.name || ing).join(', ')}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Suppléments */}
+                      {item.supplements && item.supplements.length > 0 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <span className="font-medium">Suppléments:</span> {item.supplements.map(s => s.nom || s.name).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base ml-2 flex-shrink-0">
+                      {((typeof item.prix === 'number' ? item.prix : Number(item.prix)) * item.quantity).toFixed(2)}€
+                    </p>
                   </div>
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base ml-2">
-                    {((typeof item.prix === 'number' ? item.prix : Number(item.prix)) * item.quantity).toFixed(2)}€
-                  </p>
                 </div>
               ))}
             </div>

@@ -333,6 +333,49 @@ export default function Panier() {
                             </div>
                           )}
                           
+                          {/* Affichage des personnalisations (viandes, sauces, ingrédients) */}
+                          {item.customizations && (
+                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1 mb-2">
+                              {/* Viandes sélectionnées */}
+                              {item.customizations.selectedMeats && item.customizations.selectedMeats.length > 0 && (
+                                <div>
+                                  <span className="font-medium">🥩 Viande(s):</span>
+                                  <ul className="list-disc list-inside ml-1">
+                                    {item.customizations.selectedMeats.map((meat, idx) => (
+                                      <li key={idx}>
+                                        {meat.nom || meat.name}
+                                        {meat.prix > 0 && <span className="text-orange-600"> (+{meat.prix.toFixed(2)}€)</span>}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {/* Sauces sélectionnées */}
+                              {item.customizations.selectedSauces && item.customizations.selectedSauces.length > 0 && (
+                                <div>
+                                  <span className="font-medium">🍯 Sauce(s):</span>
+                                  <ul className="list-disc list-inside ml-1">
+                                    {item.customizations.selectedSauces.map((sauce, idx) => (
+                                      <li key={idx}>
+                                        {sauce.nom || sauce.name}
+                                        {sauce.prix > 0 && <span className="text-orange-600"> (+{sauce.prix.toFixed(2)}€)</span>}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {/* Ingrédients retirés */}
+                              {item.customizations.removedIngredients && item.customizations.removedIngredients.length > 0 && (
+                                <div>
+                                  <span className="font-medium text-red-600">🚫 Sans:</span>
+                                  <span className="ml-1">{item.customizations.removedIngredients.map(ing => ing.nom || ing.name || ing).join(', ')}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
                           {/* Affichage des suppléments */}
                           {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
