@@ -415,12 +415,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         onClick={onClose}
       />
       
-      {/* MODAL - VERSION ULTRA COMPACTE */}
+      {/* MODAL - VERSION MINUSCULE */}
       <div 
-        className="fixed left-0 right-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl z-50"
+        className="fixed left-0 right-0 bottom-16 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl z-50"
         onClick={(e) => e.stopPropagation()}
         style={{ 
-          maxHeight: '50vh',
+          maxHeight: '40vh',
+          height: '40vh',
           display: 'flex',
           flexDirection: 'column'
         }}
@@ -654,15 +655,25 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
         </div>
+      </div>
 
-        {/* BOUTON - DANS LA MODAL MAIS TOUJOURS VISIBLE */}
-        <div className="flex-shrink-0 p-3 border-t border-gray-200 bg-white">
+      {/* BOUTON FLOTTANT - TOUJOURS AU BAS DE L'ÉCRAN */}
+      <div 
+        className="fixed left-0 right-0 bottom-0 z-[60] bg-gradient-to-t from-orange-600 to-orange-500 shadow-2xl"
+        style={{
+          boxShadow: '0 -8px 24px rgba(251, 146, 60, 0.4)'
+        }}
+      >
+        <div className="px-4 py-3">
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg"
+            className="w-full bg-white text-orange-600 hover:bg-orange-50 font-extrabold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transform transition-transform active:scale-95"
+            style={{
+              fontSize: '18px'
+            }}
           >
-            <FaShoppingCart className="w-5 h-5" />
-            <span>AJOUTER {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
+            <FaShoppingCart className="w-6 h-6" />
+            <span>AJOUTER AU PANIER • {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>
       </div>
