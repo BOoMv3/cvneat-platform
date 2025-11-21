@@ -409,7 +409,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
   const modalContent = (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 sm:p-4"
       onClick={onClose}
       style={{ 
         position: 'fixed', 
@@ -421,7 +421,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       }}
     >
       <div 
-        className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl"
+        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-2xl w-full h-full sm:h-auto sm:max-h-[90vh] flex flex-col relative shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{ zIndex: 100000 }}
       >
@@ -447,8 +447,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Titre et description */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">
@@ -783,12 +783,15 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           </div>
           )}
 
-          {/* Bouton d'ajout au panier */}
+        </div>
+
+        {/* Bouton d'ajout au panier - Fixé en bas sur mobile */}
+        <div className="flex-shrink-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 sm:p-6">
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-600 text-white py-4 rounded-xl hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2 font-semibold text-lg"
+            className="w-full bg-orange-600 text-white py-3 sm:py-4 rounded-xl hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2 font-semibold text-base sm:text-lg shadow-lg"
           >
-            <FaShoppingCart className="w-5 h-5" />
+            <FaShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Ajouter au panier - {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>

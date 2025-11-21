@@ -37,6 +37,22 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   }, [rating, review_count, itemRating, itemReviewCount, is_popular, popularNumber]);
 
   const handleAddToCart = async () => {
+    // Vérifier si l'item a des options de personnalisation
+    const hasCustomization = 
+      item.is_formula || // Formules ont toujours besoin de la modal
+      (item.drink_options && item.drink_options.length > 0) || // A des boissons
+      (item.meat_options && item.meat_options.length > 0) || // A des options de viande
+      (item.sauce_options && item.sauce_options.length > 0) || // A des options de sauce
+      (item.supplements && item.supplements.length > 0) || // A des suppléments
+      (item.base_ingredients && item.base_ingredients.length > 0); // A des ingrédients modifiables
+
+    // Si l'item a des options, ouvrir la modal au lieu d'ajouter directement
+    if (hasCustomization) {
+      setIsModalOpen(true);
+      return;
+    }
+
+    // Sinon, ajouter directement au panier
     setIsAdding(true);
     
     // IMPORTANT: Créer une copie de l'item sans suppléments pour éviter de réutiliser
