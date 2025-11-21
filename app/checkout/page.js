@@ -494,10 +494,13 @@ export default function Checkout() {
           // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
           let roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 2.50) * 100) / 100;
           
-          // PROMO: Livraison offerte pour aujourd'hui uniquement
+          // PROMO: Livraison offerte pour aujourd'hui uniquement si commande >= 25€
           const today = new Date().toISOString().split('T')[0];
           const PROMO_DATE = '2025-11-21'; // Date de la promo
-          if (today === PROMO_DATE) {
+          const MIN_ORDER_FOR_FREE_DELIVERY = 25.00; // Montant minimum
+          const cartTotal = orderSubtotal || computeCartTotalWithExtras(savedCart.items);
+          
+          if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
             roundedDeliveryFee = 0; // Livraison gratuite !
           }
           
@@ -991,8 +994,27 @@ export default function Checkout() {
                   <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Frais de livraison
                 </span>
-                <span className="font-semibold">{fraisLivraison.toFixed(2)}€</span>
+                <span className={`font-semibold ${fraisLivraison === 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
+                  {fraisLivraison === 0 ? 'OFFERT !' : `${fraisLivraison.toFixed(2)}€`}
+                </span>
               </div>
+              {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const PROMO_DATE = '2025-11-21';
+                const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
+                const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
+                
+                if (today === PROMO_DATE && cartTotal < MIN_ORDER_FOR_FREE_DELIVERY && remaining > 0) {
+                  return (
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mt-2">
+                      <p className="text-xs sm:text-sm text-orange-800 dark:text-orange-200 font-medium">
+                        🎉 Plus que <span className="font-bold text-orange-600 dark:text-orange-400">{remaining.toFixed(2)}€</span> pour la livraison offerte !
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
                 <span>Frais plateforme</span>
                 <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>

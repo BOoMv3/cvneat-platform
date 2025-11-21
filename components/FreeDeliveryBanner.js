@@ -53,6 +53,9 @@ export default function FreeDeliveryBanner() {
           <FaTruck className="w-5 h-5" />
           <span className="font-bold text-lg">LIVRAISON OFFERTE</span>
         </div>
+        <div className="bg-yellow-400 text-orange-900 px-3 py-1 rounded-full text-sm font-bold">
+          dès 25€
+        </div>
         {timeLeft && (
           <div className="flex items-center gap-2 bg-black bg-opacity-30 px-3 py-1 rounded-full text-sm">
             <FaClock className="w-4 h-4" />
