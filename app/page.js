@@ -37,6 +37,7 @@ import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
+import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -596,6 +597,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Bannière Livraison Offerte */}
+      <FreeDeliveryBanner />
+      
       {/* Hero Section avec carrousel visuel */}
       <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
         {heroSlides.map((slide, index) => (

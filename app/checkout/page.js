@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
 import PaymentForm from '@/components/PaymentForm';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
+import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import { 
   FaMapMarkerAlt, 
   FaPlus, 
@@ -491,7 +492,15 @@ export default function Checkout() {
             return;
           }
           // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
-          const roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 2.50) * 100) / 100;
+          let roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 2.50) * 100) / 100;
+          
+          // PROMO: Livraison offerte pour aujourd'hui uniquement
+          const today = new Date().toISOString().split('T')[0];
+          const PROMO_DATE = '2024-11-21'; // Date de la promo
+          if (today === PROMO_DATE) {
+            roundedDeliveryFee = 0; // Livraison gratuite !
+          }
+          
           setFraisLivraison(roundedDeliveryFee);
           // Mettre à jour finalCheckData avec la valeur arrondie pour garantir la cohérence
           finalCheckData.frais_livraison = roundedDeliveryFee;
@@ -767,10 +776,14 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-2 fold:py-2 xs:py-4 sm:py-8">
-      <div className="max-w-4xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-4">
-        {/* Bouton retour */}
-        <div className="mb-4 sm:mb-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Bannière Livraison Offerte */}
+      <FreeDeliveryBanner />
+      
+      <div className="py-2 fold:py-2 xs:py-4 sm:py-8">
+        <div className="max-w-4xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-4">
+          {/* Bouton retour */}
+          <div className="mb-4 sm:mb-6">
           <button
             onClick={() => {
               // Retourner au restaurant si on a un panier avec un restaurant, sinon à l'accueil
@@ -1082,6 +1095,7 @@ export default function Checkout() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 } 
