@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaShoppingCart, FaSpinner, FaArrowLeft, FaHeart, FaStar, FaClock, FaMotorcycle, FaSearch } from 'react-icons/fa';
+import { safeLocalStorage } from '../../../lib/localStorage';
 
 // Composant pour la section du menu simplifié
 const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) => {
@@ -359,30 +360,34 @@ export default function RestaurantPage({ params }) {
 
   // Charger le panier depuis localStorage au montage du composant
   useEffect(() => {
-    const loadCart = () => {
-      try {
-        const savedCart = localStorage.getItem('cart');
-        if (savedCart) {
-          const cartData = JSON.parse(savedCart);
-          setCart(cartData.items || cartData || []);
-          console.log('✅ Panier chargé:', cartData.items || cartData);
-        }
-      } catch (error) {
-        console.error('❌ Erreur chargement panier:', error);
-      }
-    };
-    loadCart();
+    console.log('📦 Chargement panier...');
+    const cartData = safeLocalStorage.getJSON('cart');
+    if (cartData) {
+      const items = Array.isArray(cartData) ? cartData : (cartData.items || []);
+      setCart(items);
+      console.log('✅ Panier chargé:', items.length, 'articles');
+    } else {
+      console.log('📦 Panier vide');
+      setCart([]);
+    }
   }, []);
 
-  // Sauvegarder automatiquement le panier à chaque modification (TOUJOURS, même si vide)
+  // Sauvegarder automatiquement le panier à chaque modification
   useEffect(() => {
-    const cartData = {
-      items: cart,
-      restaurant_id: params.id,
-      frais_livraison: restaurant?.frais_livraison || 2.50
-    };
-    localStorage.setItem('cart', JSON.stringify(cartData));
-    console.log('💾 Panier sauvegardé automatiquement:', cart.length, 'articles', cart);
+    if (cart.length >= 0) {
+      const cartData = {
+        items: cart,
+        restaurant: {
+          id: params.id,
+          nom: restaurant?.nom,
+          adresse: restaurant?.adresse,
+          frais_livraison: restaurant?.frais_livraison || 2.50
+        },
+        frais_livraison: restaurant?.frais_livraison || 2.50
+      };
+      safeLocalStorage.setJSON('cart', cartData);
+      console.log('💾 Panier sauvegardé:', cart.length, 'articles');
+    }
   }, [cart, params.id, restaurant]);
 
   useEffect(() => {
@@ -430,19 +435,10 @@ export default function RestaurantPage({ params }) {
   };
 
   const handleAddToCartWithAnimation = (item, supplements = [], size = null, quantity = 1) => {
-    console.log("🚀 Animation démarrée pour l'article:", item.id);
+    console.log("🚀 Ajout au panier:", item.nom, "quantité:", quantity);
     
     // Animation d'ajout au panier
-    setAddingToCart(prev => {
-      console.log("📝 Mise à jour addingToCart:", { ...prev, [item.id]: true });
-      return { ...prev, [item.id]: true };
-    });
-    
-    // Logique d'ajout au panier
-    console.log("Ajout au panier:", item, supplements, size);
-    
-    // Récupérer le panier actuel depuis le localStorage
-    const currentCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    setAddingToCart(prev => ({ ...prev, [item.id]: true }));
     
     // Pour les formules, inclure la boisson sélectionnée
     const selectedDrink = item.selected_drink || null;
@@ -457,10 +453,9 @@ export default function RestaurantPage({ params }) {
       restaurant_name: restaurant?.nom || restaurant?.name,
       restaurant_address: restaurant?.adresse || restaurant?.address,
       image_url: item.image_url,
-      supplements: supplements,
+      supplements: supplements || [],
       size: size,
       base_price: item.prix || item.price,
-      // Ajouter les informations de formule si c'est une formule
       is_formula: item.is_formula || false,
       formula_items: item.formula_items || null,
       selected_drink: selectedDrink ? {
@@ -470,45 +465,38 @@ export default function RestaurantPage({ params }) {
       } : null
     };
     
-    // Pour les formules, comparer aussi la boisson sélectionnée
-    const existingItemIndex = currentCart.findIndex(existingItem => {
-      const sameId = existingItem.id === item.id;
-      const sameRestaurant = existingItem.restaurant_id === params.id;
-      const sameSupplements = JSON.stringify(existingItem.supplements) === JSON.stringify(supplements);
-      const sameSize = existingItem.size === size;
+    // Utiliser le state React directement au lieu de localStorage
+    setCart(prevCart => {
+      // Pour les formules, comparer aussi la boisson sélectionnée
+      const existingItemIndex = prevCart.findIndex(existingItem => {
+        const sameId = existingItem.id === item.id;
+        const sameRestaurant = existingItem.restaurant_id === params.id;
+        const sameSupplements = JSON.stringify(existingItem.supplements) === JSON.stringify(supplements);
+        const sameSize = existingItem.size === size;
+        
+        // Pour les formules, vérifier aussi la boisson
+        if (item.is_formula) {
+          const existingDrinkId = existingItem.selected_drink?.id;
+          const newDrinkId = selectedDrink?.id;
+          const sameDrink = existingDrinkId === newDrinkId;
+          return sameId && sameRestaurant && sameSupplements && sameSize && sameDrink;
+        }
+        
+        return sameId && sameRestaurant && sameSupplements && sameSize;
+      });
       
-      // Pour les formules, vérifier aussi la boisson
-      if (item.is_formula) {
-        const existingDrinkId = existingItem.selected_drink?.id;
-        const newDrinkId = selectedDrink?.id;
-        const sameDrink = existingDrinkId === newDrinkId;
-        return sameId && sameRestaurant && sameSupplements && sameSize && sameDrink;
+      if (existingItemIndex !== -1) {
+        // Incrémenter la quantité
+        const newCart = [...prevCart];
+        newCart[existingItemIndex].quantity += (quantity || 1);
+        console.log('✅ Quantité incrémentée:', newCart[existingItemIndex]);
+        return newCart;
+      } else {
+        // Ajouter un nouvel article
+        console.log('✅ Nouvel article ajouté:', cartItem);
+        return [...prevCart, cartItem];
       }
-      
-      return sameId && sameRestaurant && sameSupplements && sameSize;
     });
-    
-    if (existingItemIndex !== -1) {
-      // Incrémenter la quantité
-      currentCart[existingItemIndex].quantity += (quantity || 1);
-    } else {
-      // Ajouter un nouvel article
-      currentCart.push(cartItem);
-    }
-    
-    // Sauvegarder le panier mis à jour avec les informations du restaurant
-    const cartData = {
-      items: currentCart,
-      restaurant: {
-        id: params.id,
-        nom: restaurant?.nom,
-        adresse: restaurant?.adresse,
-        frais_livraison: restaurant?.frais_livraison || 2.50
-      },
-      frais_livraison: restaurant?.frais_livraison || 2.50
-    };
-    localStorage.setItem('cart', JSON.stringify(cartData));
-    setCart(currentCart);
     
     // Notification de succès
     setShowCartNotification(true);
