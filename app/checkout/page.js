@@ -44,38 +44,15 @@ function computeCartTotalWithExtras(items = []) {
   if (!Array.isArray(items)) return 0;
 
   return items.reduce((sum, item) => {
+    // IMPORTANT: Utiliser le prix DÉJÀ CALCULÉ (item.prix) qui contient tout
+    // Le prix a déjà été calculé à l'ajout au panier avec calculateFinalPrice()
+    // Ne PAS rajouter les suppléments/viandes/sauces car ils sont déjà inclus dans item.prix
     const itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
     const itemQuantity = parseInt(item?.quantity ?? 1, 10);
-
-    let supplementsPrice = 0;
-    if (item?.supplements && Array.isArray(item.supplements)) {
-      supplementsPrice = item.supplements.reduce((supSum, sup) => {
-        return supSum + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0);
-      }, 0);
-    }
-
-    let meatsPrice = 0;
-    if (item?.customizations?.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
-      meatsPrice = item.customizations.selectedMeats.reduce((meatSum, meat) => {
-        return meatSum + (parseFloat(meat?.prix ?? meat?.price ?? 0) || 0);
-      }, 0);
-    }
-
-    let saucesPrice = 0;
-    if (item?.customizations?.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
-      saucesPrice = item.customizations.selectedSauces.reduce((sauceSum, sauce) => {
-        return sauceSum + (parseFloat(sauce?.prix ?? sauce?.price ?? 0) || 0);
-      }, 0);
-    }
-
-    let sizePrice = 0;
-    if (item?.size?.prix) {
-      sizePrice = parseFloat(item.size.prix) || 0;
-    } else if (item?.prix_taille) {
-      sizePrice = parseFloat(item.prix_taille) || 0;
-    }
-
-    const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
+    
+    console.log('💰 Article:', item.nom, 'Prix unitaire:', itemPrice, 'Quantité:', itemQuantity);
+    
+    const totalItemPrice = itemPrice * itemQuantity;
     return sum + totalItemPrice;
   }, 0) || 0;
 }
