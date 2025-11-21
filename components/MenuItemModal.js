@@ -411,54 +411,55 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     <>
       {/* OVERLAY */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50"
+        className="fixed inset-0 bg-black bg-opacity-50 z-50"
         onClick={onClose}
-        style={{ zIndex: 99999 }}
       />
       
-      {/* MODAL CONTENT - Repositionnée */}
+      {/* MODAL - VERSION ULTRA COMPACTE */}
       <div 
-        className="fixed left-0 right-0 bottom-0 sm:left-1/2 sm:bottom-auto sm:top-1/2 bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl"
+        className="fixed left-0 right-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl z-50"
         onClick={(e) => e.stopPropagation()}
         style={{ 
-          zIndex: 100000,
-          height: '75vh',
-          maxHeight: '75vh',
-          transform: 'none',
-          ...(typeof window !== 'undefined' && window.innerWidth >= 640 ? { transform: 'translate(-50%, -50%)' } : {})
+          maxHeight: '60vh',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
-        {/* HEADER COMPACT */}
-        <div className="relative bg-gray-100 dark:bg-gray-900 px-3 py-2 rounded-t-2xl flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white truncate flex-1">{item.nom}</h2>
+        {/* HEADER - UNE SEULE LIGNE */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate flex-1">{item.nom}</h3>
           <button
             onClick={onClose}
-            className="bg-white rounded-full p-1.5 ml-2 flex-shrink-0"
+            className="ml-3 p-1.5 hover:bg-gray-100 rounded-full flex-shrink-0"
           >
             <FaTimes className="w-4 h-4 text-gray-600" />
           </button>
         </div>
 
-        {/* CONTENU - Avec padding-bottom pour le bouton fixed */}
+        {/* CONTENU SCROLLABLE */}
         <div 
-          className="overflow-y-auto overflow-x-hidden h-full px-3 py-2 sm:p-6"
+          className="flex-1 overflow-y-auto px-4 py-3"
           style={{ 
             WebkitOverflowScrolling: 'touch',
-            paddingBottom: '70px'
+            minHeight: 0
           }}
         >
-          {/* Titre et description */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{item.nom}</h2>
-              {item.is_formula && (
-                <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
-                  Formule
-                </span>
-              )}
+          {/* Prix et Quantité - COMPACT */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xl font-bold text-orange-600">{(item.prix * quantity).toFixed(2)}€</span>
+              <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-1">
+                  <FaMinus className="w-3 h-3" />
+                </button>
+                <span className="font-semibold w-6 text-center">{quantity}</span>
+                <button onClick={() => setQuantity(quantity + 1)} className="p-1">
+                  <FaPlus className="w-3 h-3" />
+                </button>
+              </div>
             </div>
             {item.description && (
-              <p className="text-gray-600 dark:text-gray-300 mb-4">{item.description}</p>
+              <p className="text-gray-600 dark:text-gray-300 text-xs">{item.description}</p>
             )}
             
             {/* Affichage spécial pour les formules */}
@@ -496,82 +497,40 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               </div>
             )}
 
-            {/* Choix de boisson pour les formules et menus avec boissons disponibles */}
+            {/* Choix de boisson - VERSION COMPACTE */}
             {item.drink_options && item.drink_options.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                  <FaFlask className="w-5 h-5 text-blue-600 mr-2" />
-                  Choisissez votre boisson <span className="text-red-500 text-sm ml-2">*</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">(incluse dans le prix)</span>
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+                  <FaFlask className="w-4 h-4 text-blue-600 mr-1" />
+                  Boisson <span className="text-red-500 ml-1">*</span>
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {item.drink_options.map((drink) => {
                     const isSelected = selectedDrink === drink.id;
                     return (
                       <div
                         key={drink.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                        className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer text-sm ${
                           isSelected
-                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
-                            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                            ? 'bg-blue-50 border-blue-300'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                         }`}
                         onClick={() => setSelectedDrink(drink.id)}
                       >
-                        <div className="flex items-center">
-                          <span className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
-                            isSelected
-                              ? 'border-blue-500 bg-blue-500'
-                              : 'border-gray-300 dark:border-gray-500'
+                        <div className="flex items-center flex-1 min-w-0">
+                          <span className={`w-4 h-4 rounded-full border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
+                            isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
                           }`}>
                             {isSelected && <span className="text-white text-xs">✓</span>}
                           </span>
-                          <div>
-                            <span className="font-medium">{drink.nom}</span>
-                            {drink.description && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{drink.description}</p>
-                            )}
-                          </div>
+                          <span className="font-medium truncate">{drink.nom}</span>
                         </div>
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                          {drink.prix ? `${drink.prix.toFixed(2)}€` : 'Incluse'}
-                        </span>
                       </div>
                     );
                   })}
                 </div>
               </div>
             )}
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                  {(item.prix * quantity).toFixed(2)}€
-                </span>
-                {quantity > 1 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {item.prix.toFixed(2)}€ × {quantity}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Quantité:</span>
-                <div className="flex items-center border rounded-lg dark:border-gray-600">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <FaMinus className="w-4 h-4" />
-                  </button>
-                  <span className="px-4 py-2 font-medium dark:text-white">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <FaPlus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Options de personnalisation - Masquées pour les formules */}
@@ -782,29 +741,15 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
         </div>
-      </div>
 
-      {/* BOUTON FIXED HORS DE LA MODAL - COLLÉ AU BAS DE L'ÉCRAN */}
-      <div 
-        className="fixed left-0 right-0 bg-orange-600 p-3 shadow-2xl"
-        style={{
-          bottom: 0,
-          zIndex: 100002,
-          maxWidth: '100vw'
-        }}
-      >
-        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+        {/* BOUTON - DANS LA MODAL MAIS TOUJOURS VISIBLE */}
+        <div className="flex-shrink-0 p-3 border-t border-gray-200 bg-white">
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-700 hover:bg-orange-800 active:scale-95 text-white rounded-lg font-extrabold flex items-center justify-center gap-2 transition-transform shadow-xl"
-            style={{
-              height: '56px',
-              fontSize: '17px',
-              touchAction: 'manipulation'
-            }}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg"
           >
             <FaShoppingCart className="w-5 h-5" />
-            <span>AJOUTER AU PANIER {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
+            <span>AJOUTER {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>
       </div>
