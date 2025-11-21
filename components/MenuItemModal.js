@@ -411,47 +411,46 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center"
       onClick={onClose}
-      style={{ 
-        zIndex: 99999
-      }}
+      style={{ zIndex: 99999 }}
     >
-      {/* CONTAINER MODAL - Hauteur fixe et réduite sur mobile */}
+      {/* MODAL ULTRA COMPACTE MOBILE */}
       <div 
-        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl relative shadow-2xl"
+        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{ 
           zIndex: 100000,
-          height: '85vh',
-          maxHeight: '85vh',
+          height: '70vh',
+          maxHeight: '70vh',
           display: 'grid',
           gridTemplateRows: 'auto 1fr auto'
         }}
       >
-        {/* 1. HEADER - Image + Bouton fermer */}
-        <div className="relative" style={{ minHeight: 0 }}>
+        {/* 1. HEADER MINIMALISTE - Pas d'image sur mobile */}
+        <div className="relative bg-gray-100 dark:bg-gray-900 p-3 sm:p-0" style={{ minHeight: 0 }}>
+          {/* Image uniquement sur desktop */}
           {item.image_url && (
-            <div className="relative w-full h-24 sm:h-48">
+            <div className="relative w-full hidden sm:block" style={{ height: '200px' }}>
               <Image
                 src={item.image_url}
                 alt={item.nom}
                 fill
                 className="object-cover rounded-t-2xl"
-                sizes="(max-width: 768px) 100vw, 672px"
+                sizes="672px"
                 priority
               />
             </div>
           )}
           <button
             onClick={onClose}
-            className="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-2 hover:bg-opacity-100 transition-all z-10"
+            className="absolute top-2 right-2 bg-white rounded-full p-1.5 z-10"
           >
-            <FaTimes className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+            <FaTimes className="w-4 h-4 text-gray-600" />
           </button>
         </div>
 
-        {/* 2. CONTENU SCROLLABLE - Prend l'espace restant */}
+        {/* 2. CONTENU SCROLLABLE COMPACT */}
         <div 
-          className="overflow-y-auto overflow-x-hidden p-3 sm:p-6"
+          className="overflow-y-auto overflow-x-hidden px-3 py-2 sm:p-6"
           style={{ 
             WebkitOverflowScrolling: 'touch',
             minHeight: 0
@@ -793,26 +792,25 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
         </div>
 
-        {/* 3. BOUTON - Toujours visible en bas (grid row 3) */}
+        {/* 3. BOUTON FIXE - IMPOSSIBLE À CACHER */}
         <div 
-          className="bg-white dark:bg-gray-800 border-t-2 border-gray-300 dark:border-gray-600 p-3"
+          className="bg-orange-600 p-2.5 sm:p-4 rounded-b-2xl"
           style={{
             minHeight: 0,
-            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.2)'
+            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)'
           }}
         >
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-600 text-white rounded-lg hover:bg-orange-700 active:bg-orange-800 transition-colors flex items-center justify-center gap-2 font-bold shadow-lg"
+            className="w-full bg-orange-700 hover:bg-orange-800 text-white rounded-lg font-bold flex items-center justify-center gap-2"
             style={{
-              height: '50px',
-              fontSize: '16px',
-              WebkitTapHighlightColor: 'transparent',
+              height: '48px',
+              fontSize: '15px',
               touchAction: 'manipulation'
             }}
           >
-            <FaShoppingCart className="w-5 h-5" />
-            <span>Ajouter - {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
+            <FaShoppingCart className="w-4 h-4" />
+            <span>AJOUTER {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>
       </div>
