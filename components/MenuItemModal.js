@@ -782,24 +782,24 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
         </div>
+      </div>
 
-        {/* BOUTON FIXED AU BAS DE LA MODAL - TOUJOURS VISIBLE */}
-        <div 
-          className="fixed left-0 right-0 sm:left-auto sm:right-auto bg-orange-600 p-3 rounded-b-2xl"
-          style={{
-            bottom: 0,
-            zIndex: 100001,
-            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)',
-            maxWidth: typeof window !== 'undefined' && window.innerWidth >= 640 ? '640px' : '100%',
-            margin: '0 auto'
-          }}
-        >
+      {/* BOUTON FIXED HORS DE LA MODAL - COLLÉ AU BAS DE L'ÉCRAN */}
+      <div 
+        className="fixed left-0 right-0 bg-orange-600 p-3 shadow-2xl"
+        style={{
+          bottom: 0,
+          zIndex: 100002,
+          maxWidth: '100vw'
+        }}
+      >
+        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-700 hover:bg-orange-800 active:scale-95 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-transform"
+            className="w-full bg-orange-700 hover:bg-orange-800 active:scale-95 text-white rounded-lg font-extrabold flex items-center justify-center gap-2 transition-transform shadow-xl"
             style={{
-              height: '52px',
-              fontSize: '16px',
+              height: '56px',
+              fontSize: '17px',
               touchAction: 'manipulation'
             }}
           >
