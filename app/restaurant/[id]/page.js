@@ -355,6 +355,23 @@ export default function RestaurantPage({ params }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification
+  const [cart, setCart] = useState([]);
+
+  // Charger le panier depuis localStorage au montage du composant
+  useEffect(() => {
+    const loadCart = () => {
+      try {
+        const savedCart = localStorage.getItem('cart');
+        if (savedCart) {
+          const cartData = JSON.parse(savedCart);
+          setCart(cartData.items || cartData || []);
+        }
+      } catch (error) {
+        console.error('Erreur chargement panier:', error);
+      }
+    };
+    loadCart();
+  }, []);
 
   useEffect(() => {
     const fetchRestaurant = async () => {
@@ -467,8 +484,19 @@ export default function RestaurantPage({ params }) {
       currentCart.push(cartItem);
     }
     
-    // Sauvegarder le panier mis à jour
-    localStorage.setItem('cart', JSON.stringify(currentCart));
+    // Sauvegarder le panier mis à jour avec les informations du restaurant
+    const cartData = {
+      items: currentCart,
+      restaurant: {
+        id: params.id,
+        nom: restaurant?.nom,
+        adresse: restaurant?.adresse,
+        frais_livraison: restaurant?.frais_livraison || 2.50
+      },
+      frais_livraison: restaurant?.frais_livraison || 2.50
+    };
+    localStorage.setItem('cart', JSON.stringify(cartData));
+    setCart(currentCart);
     
     // Notification de succès
     setShowCartNotification(true);
