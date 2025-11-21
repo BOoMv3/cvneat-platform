@@ -57,3 +57,4 @@ COMMENT ON COLUMN geocoded_addresses_cache.latitude IS 'Latitude arrondie à 6 d
 COMMENT ON COLUMN geocoded_addresses_cache.longitude IS 'Longitude arrondie à 6 décimales (~10cm de précision)';
 
 
+

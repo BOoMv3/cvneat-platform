@@ -10,13 +10,7 @@ import PreventiveAlert from '@/components/PreventiveAlert';
 // import SafeGeolocationButton from '@/components/SafeGeolocationButton';
 import { useRouter } from 'next/navigation';
 import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments } from 'react-icons/fa';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialiser Supabase côté client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4YnFydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0NzQ4NzcsImV4cCI6MjA1MDA1MDg3N30.G7iFlb2vKi1ouABfyI_azLbZ8XGi66tf9kx_dtVIE40'
-);
+import { supabase } from '@/lib/supabase';
 import RealTimeNotifications from '../../components/DeliveryNotifications';
 
 const isNotificationSupported = () => typeof window !== 'undefined' && 'Notification' in window;

@@ -11,9 +11,11 @@ export default function FacebookPixel() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Vérifier si le pixel ID est configuré
+    // Vérifier si le pixel ID est configuré (avertissement en mode dev uniquement)
     if (!FACEBOOK_PIXEL_ID) {
-      console.warn('⚠️ Facebook Pixel ID non configuré. Ajoutez NEXT_PUBLIC_FACEBOOK_PIXEL_ID dans vos variables d\'environnement.');
+      if (process.env.NODE_ENV === 'development') {
+        console.info('ℹ️ Facebook Pixel non configuré (optionnel)');
+      }
       return;
     }
 
@@ -153,5 +155,6 @@ export const FacebookPixelEvents = {
     trackFacebookEvent('CompleteRegistration');
   }
 };
+
 
 
