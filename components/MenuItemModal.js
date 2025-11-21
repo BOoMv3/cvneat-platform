@@ -417,23 +417,24 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         left: 0, 
         right: 0, 
         bottom: 0,
-        zIndex: 99999,
-        WebkitOverflowScrolling: 'touch'
+        zIndex: 99999
       }}
     >
       <div 
-        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-2xl w-full flex flex-col relative shadow-2xl"
+        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-2xl w-full relative shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{ 
           zIndex: 100000,
-          maxHeight: '100dvh',
-          height: '100dvh',
+          maxHeight: '95vh',
+          height: '95vh',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
         {/* Header - Fixe */}
         <div className="relative flex-shrink-0">
           {item.image_url && (
-            <div className="relative h-40 sm:h-64 w-full flex-shrink-0">
+            <div className="relative h-32 sm:h-64 w-full">
               <Image
                 src={item.image_url}
                 alt={item.nom}
@@ -452,13 +453,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           </button>
         </div>
 
-        {/* Content - Scrollable - Hauteur calculée pour laisser place au bouton */}
+        {/* Content - Scrollable avec padding pour le bouton */}
         <div 
-          className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 overscroll-contain"
+          className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6"
           style={{ 
-            minHeight: 0,
             WebkitOverflowScrolling: 'touch',
-            paddingBottom: '0'
+            paddingBottom: '90px'
           }}
         >
           {/* Titre et description */}
@@ -797,22 +797,25 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
         </div>
 
-        {/* Bouton d'ajout au panier - Toujours fixé en bas, jamais masqué */}
+        {/* Bouton d'ajout au panier - Position ABSOLUTE en bas */}
         <div 
-          className="flex-shrink-0 p-3 sm:p-6 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 rounded-b-2xl"
           style={{
-            position: 'sticky',
+            position: 'absolute',
             bottom: 0,
-            zIndex: 10,
-            boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1)'
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.15)'
           }}
         >
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-600 text-white py-4 rounded-xl hover:bg-orange-700 active:bg-orange-800 transition-colors flex items-center justify-center space-x-2 font-semibold text-base sm:text-lg shadow-lg touch-manipulation"
+            className="w-full bg-orange-600 text-white py-4 rounded-xl hover:bg-orange-700 active:bg-orange-800 transition-colors flex items-center justify-center space-x-2 font-bold text-lg shadow-lg"
             style={{
               minHeight: '56px',
-              WebkitTapHighlightColor: 'transparent'
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation'
             }}
           >
             <FaShoppingCart className="w-5 h-5 flex-shrink-0" />
