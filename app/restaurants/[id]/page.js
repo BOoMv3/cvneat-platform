@@ -927,11 +927,7 @@ export default function RestaurantDetail({ params }) {
     };
 
     addToCart(cartItem, supplements, null, Math.max(1, comboQuantity || 1));
-    
-    // Fermer la modal immédiatement après l'ajout
-    setTimeout(() => {
-      closeComboModal();
-    }, 100);
+    closeComboModal();
   };
 
   const handleCheckout = () => {
