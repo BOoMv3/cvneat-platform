@@ -365,13 +365,27 @@ export default function RestaurantPage({ params }) {
         if (savedCart) {
           const cartData = JSON.parse(savedCart);
           setCart(cartData.items || cartData || []);
+          console.log('✅ Panier chargé:', cartData.items || cartData);
         }
       } catch (error) {
-        console.error('Erreur chargement panier:', error);
+        console.error('❌ Erreur chargement panier:', error);
       }
     };
     loadCart();
   }, []);
+
+  // Sauvegarder automatiquement le panier à chaque modification
+  useEffect(() => {
+    if (cart.length > 0) {
+      const cartData = {
+        items: cart,
+        restaurant_id: params.id,
+        frais_livraison: restaurant?.frais_livraison || 2.50
+      };
+      localStorage.setItem('cart', JSON.stringify(cartData));
+      console.log('💾 Panier sauvegardé automatiquement:', cart.length, 'articles');
+    }
+  }, [cart, params.id, restaurant]);
 
   useEffect(() => {
     const fetchRestaurant = async () => {
