@@ -927,7 +927,11 @@ export default function RestaurantDetail({ params }) {
     };
 
     addToCart(cartItem, supplements, null, Math.max(1, comboQuantity || 1));
-    closeComboModal();
+    
+    // Fermer la modal immédiatement après l'ajout
+    setTimeout(() => {
+      closeComboModal();
+    }, 100);
   };
 
   const handleCheckout = () => {
@@ -1510,13 +1514,16 @@ export default function RestaurantDetail({ params }) {
                     type="button"
                     onClick={handleAddComboToCart}
                     disabled={!comboValidation.isValid}
-                    className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-white transition-colors ${
+                    className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-white transition-all transform active:scale-95 ${
                       comboValidation.isValid
-                        ? 'bg-orange-500 hover:bg-orange-600'
+                        ? 'bg-orange-500 hover:bg-orange-600 shadow-lg hover:shadow-xl'
                         : 'bg-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    Ajouter au panier
+                    <span className="flex items-center justify-center gap-2">
+                      <FaShoppingCart />
+                      Ajouter au panier
+                    </span>
                   </button>
                 </div>
               </div>
