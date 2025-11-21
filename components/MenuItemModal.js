@@ -425,10 +425,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         onClick={(e) => e.stopPropagation()}
         style={{ zIndex: 100000 }}
       >
-        {/* Header */}
-        <div className="relative">
+        {/* Header - Fixe */}
+        <div className="relative flex-shrink-0">
           {item.image_url && (
-            <div className="relative h-64 w-full">
+            <div className="relative h-48 sm:h-64 w-full">
               <Image
                 src={item.image_url}
                 alt={item.nom}
@@ -441,14 +441,14 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 bg-white bg-opacity-90 rounded-full p-2 hover:bg-opacity-100 transition-all"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-white bg-opacity-90 rounded-full p-2 hover:bg-opacity-100 transition-all z-10"
           >
             <FaTimes className="w-5 h-5 text-gray-600" />
           </button>
         </div>
 
-        {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        {/* Content - Scrollable - S'adapte à l'espace disponible */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6" style={{ minHeight: 0 }}>
           {/* Titre et description */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">
