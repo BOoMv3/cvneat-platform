@@ -408,52 +408,43 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   if (!isOpen || !mounted || typeof window === 'undefined') return null;
 
   const modalContent = (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center"
-      onClick={onClose}
-      style={{ zIndex: 99999 }}
-    >
-      {/* MODAL ULTRA COMPACTE MOBILE */}
+    <>
+      {/* OVERLAY */}
       <div 
-        className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl"
+        className="fixed inset-0 bg-black bg-opacity-50"
+        onClick={onClose}
+        style={{ zIndex: 99999 }}
+      />
+      
+      {/* MODAL CONTENT - Repositionnée */}
+      <div 
+        className="fixed left-0 right-0 bottom-0 sm:left-1/2 sm:bottom-auto sm:top-1/2 bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{ 
           zIndex: 100000,
-          height: '70vh',
-          maxHeight: '70vh',
-          display: 'grid',
-          gridTemplateRows: 'auto 1fr auto'
+          height: '75vh',
+          maxHeight: '75vh',
+          transform: 'none',
+          ...(typeof window !== 'undefined' && window.innerWidth >= 640 ? { transform: 'translate(-50%, -50%)' } : {})
         }}
       >
-        {/* 1. HEADER MINIMALISTE - Pas d'image sur mobile */}
-        <div className="relative bg-gray-100 dark:bg-gray-900 p-3 sm:p-0" style={{ minHeight: 0 }}>
-          {/* Image uniquement sur desktop */}
-          {item.image_url && (
-            <div className="relative w-full hidden sm:block" style={{ height: '200px' }}>
-              <Image
-                src={item.image_url}
-                alt={item.nom}
-                fill
-                className="object-cover rounded-t-2xl"
-                sizes="672px"
-                priority
-              />
-            </div>
-          )}
+        {/* HEADER COMPACT */}
+        <div className="relative bg-gray-100 dark:bg-gray-900 px-3 py-2 rounded-t-2xl flex items-center justify-between">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white truncate flex-1">{item.nom}</h2>
           <button
             onClick={onClose}
-            className="absolute top-2 right-2 bg-white rounded-full p-1.5 z-10"
+            className="bg-white rounded-full p-1.5 ml-2 flex-shrink-0"
           >
             <FaTimes className="w-4 h-4 text-gray-600" />
           </button>
         </div>
 
-        {/* 2. CONTENU SCROLLABLE COMPACT */}
+        {/* CONTENU - Avec padding-bottom pour le bouton fixed */}
         <div 
-          className="overflow-y-auto overflow-x-hidden px-3 py-2 sm:p-6"
+          className="overflow-y-auto overflow-x-hidden h-full px-3 py-2 sm:p-6"
           style={{ 
             WebkitOverflowScrolling: 'touch',
-            minHeight: 0
+            paddingBottom: '70px'
           }}
         >
           {/* Titre et description */}
@@ -792,29 +783,32 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
         </div>
 
-        {/* 3. BOUTON FIXE - IMPOSSIBLE À CACHER */}
+        {/* BOUTON FIXED AU BAS DE LA MODAL - TOUJOURS VISIBLE */}
         <div 
-          className="bg-orange-600 p-2.5 sm:p-4 rounded-b-2xl"
+          className="fixed left-0 right-0 sm:left-auto sm:right-auto bg-orange-600 p-3 rounded-b-2xl"
           style={{
-            minHeight: 0,
-            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)'
+            bottom: 0,
+            zIndex: 100001,
+            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)',
+            maxWidth: typeof window !== 'undefined' && window.innerWidth >= 640 ? '640px' : '100%',
+            margin: '0 auto'
           }}
         >
           <button
             onClick={handleAddToCart}
-            className="w-full bg-orange-700 hover:bg-orange-800 text-white rounded-lg font-bold flex items-center justify-center gap-2"
+            className="w-full bg-orange-700 hover:bg-orange-800 active:scale-95 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-transform"
             style={{
-              height: '48px',
-              fontSize: '15px',
+              height: '52px',
+              fontSize: '16px',
               touchAction: 'manipulation'
             }}
           >
-            <FaShoppingCart className="w-4 h-4" />
-            <span>AJOUTER {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
+            <FaShoppingCart className="w-5 h-5" />
+            <span>AJOUTER AU PANIER {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 
   // Rendre la modal dans le body via un portail
