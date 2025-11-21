@@ -495,16 +495,6 @@ export default function Checkout() {
           // Les frais sont calculés par l'API: 2,50€ + 0,80€/km
           let roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 2.50) * 100) / 100;
           
-          // PROMO: Livraison offerte pour aujourd'hui uniquement si commande >= 25€
-          const today = new Date().toISOString().split('T')[0];
-          const PROMO_DATE = '2025-11-21'; // Date de la promo
-          const MIN_ORDER_FOR_FREE_DELIVERY = 25.00; // Montant minimum
-          const cartTotal = orderSubtotal || computeCartTotalWithExtras(savedCart.items);
-          
-          if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-            roundedDeliveryFee = 0; // Livraison gratuite !
-          }
-          
           setFraisLivraison(roundedDeliveryFee);
           // Mettre à jour finalCheckData avec la valeur arrondie pour garantir la cohérence
           finalCheckData.frais_livraison = roundedDeliveryFee;
@@ -533,7 +523,17 @@ export default function Checkout() {
 
       // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
       // Utiliser finalDeliveryFee qui a été calculé ci-dessus (2,50€ + 0,80€/km)
-      const finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
+      let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
+      
+      // PROMO: Livraison offerte pour aujourd'hui uniquement si commande >= 25€
+      const today = new Date().toISOString().split('T')[0];
+      const PROMO_DATE = '2025-11-21'; // Date de la promo
+      const MIN_ORDER_FOR_FREE_DELIVERY = 25.00; // Montant minimum
+      
+      if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+        finalDeliveryFeeForTotal = 0; // Livraison gratuite !
+        console.log('🎉 PROMO: Livraison offerte appliquée!');
+      }
       // Montant facturé au client = sous-total + livraison + frais plateforme
       const totalAmount = Math.max(0, cartTotal + finalDeliveryFeeForTotal + PLATFORM_FEE);
 
