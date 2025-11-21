@@ -983,7 +983,20 @@ export default function Checkout() {
 
             {(() => {
               const PLATFORM_FEE = 0.49;
-              const finalTotalDisplay = Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
+              
+              // PROMO: Appliquer livraison offerte si >= 25€ aujourd'hui
+              const today = new Date().toISOString().split('T')[0];
+              const PROMO_DATE = '2025-11-21';
+              const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
+              let displayedDeliveryFee = fraisLivraison;
+              
+              if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+                displayedDeliveryFee = 0;
+              }
+              
+              const finalTotalDisplay = Math.max(0, cartTotal + displayedDeliveryFee + PLATFORM_FEE);
+              const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
+              
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
@@ -995,21 +1008,24 @@ export default function Checkout() {
                   <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Frais de livraison
                 </span>
-                <span className={`font-semibold ${fraisLivraison === 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  {fraisLivraison === 0 ? 'OFFERT !' : `${fraisLivraison.toFixed(2)}€`}
+                <span className={`font-semibold ${displayedDeliveryFee === 0 && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY ? 'text-green-600 dark:text-green-400' : ''}`}>
+                  {displayedDeliveryFee === 0 && today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY ? 'OFFERT !' : `${displayedDeliveryFee.toFixed(2)}€`}
                 </span>
               </div>
               {(() => {
-                const today = new Date().toISOString().split('T')[0];
-                const PROMO_DATE = '2025-11-21';
-                const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
-                const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
-                
                 if (today === PROMO_DATE && cartTotal < MIN_ORDER_FOR_FREE_DELIVERY && remaining > 0) {
                   return (
                     <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mt-2">
                       <p className="text-xs sm:text-sm text-orange-800 dark:text-orange-200 font-medium">
                         🎉 Plus que <span className="font-bold text-orange-600 dark:text-orange-400">{remaining.toFixed(2)}€</span> pour la livraison offerte !
+                      </p>
+                    </div>
+                  );
+                } else if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+                  return (
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-300 dark:border-green-700 rounded-lg p-3 mt-2">
+                      <p className="text-xs sm:text-sm text-green-800 dark:text-green-200 font-bold">
+                        ✅ Livraison offerte appliquée !
                       </p>
                     </div>
                   );
