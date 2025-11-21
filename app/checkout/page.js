@@ -86,7 +86,7 @@ export default function Checkout() {
   const [cart, setCart] = useState([]);
   const [restaurant, setRestaurant] = useState(null);
   const [cartTotal, setCartTotal] = useState(0);
-  const [fraisLivraison, setFraisLivraison] = useState(2.50);
+  const [fraisLivraison, setFraisLivraison] = useState(3.30); // 2,50€ + 0,80€
   const [totalAvecLivraison, setTotalAvecLivraison] = useState(0);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -377,7 +377,7 @@ export default function Checkout() {
 
       // SUCCÈS - Mettre à jour les frais
       // IMPORTANT: Arrondir à 2 décimales pour garantir la cohérence
-      const newFrais = Math.round(parseFloat(data.frais_livraison || 2.50) * 100) / 100;
+      const newFrais = Math.round(parseFloat(data.frais_livraison || 3.30) * 100) / 100;
       setFraisLivraison(newFrais);
       
       // Recalculer le total du panier avec suppléments, customisations et tailles
@@ -492,7 +492,7 @@ export default function Checkout() {
             return;
           }
           // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
-          let roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 2.50) * 100) / 100;
+          let roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 3.30) * 100) / 100;
           
           // PROMO: Livraison offerte pour aujourd'hui uniquement si commande >= 25€
           const today = new Date().toISOString().split('T')[0];
@@ -532,7 +532,7 @@ export default function Checkout() {
 
       // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
       // Utiliser finalDeliveryFee qui a été calculé ci-dessus
-      const finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
+      const finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 3.30) * 100) / 100;
       // Montant facturé au client = sous-total + livraison + frais plateforme
       const totalAmount = Math.max(0, cartTotal + finalDeliveryFeeForTotal + PLATFORM_FEE);
 
