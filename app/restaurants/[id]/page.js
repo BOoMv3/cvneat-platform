@@ -1306,7 +1306,7 @@ export default function RestaurantDetail({ params }) {
                 </div>
               </div>
 
-              <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="space-y-6 pr-1">
                 {Array.isArray(activeCombo.steps) && activeCombo.steps.length > 0 ? (
                   activeCombo.steps.map((step, stepIndex) => {
                     const min = Math.max(step?.min_selections ?? 0, 0);
