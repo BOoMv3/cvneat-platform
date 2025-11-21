@@ -4,7 +4,7 @@ import { FaTruck, FaFire, FaClock } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 
 // Date de la promotion (format YYYY-MM-DD)
-const PROMO_DATE = '2024-11-21'; // MODIFIER CETTE DATE POUR ACTIVER LA PROMO
+const PROMO_DATE = '2025-11-21'; // MODIFIER CETTE DATE POUR ACTIVER LA PROMO
 
 export default function FreeDeliveryBanner() {
   const [isPromoActive, setIsPromoActive] = useState(false);

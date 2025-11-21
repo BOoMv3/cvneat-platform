@@ -496,7 +496,7 @@ export default function Checkout() {
           
           // PROMO: Livraison offerte pour aujourd'hui uniquement
           const today = new Date().toISOString().split('T')[0];
-          const PROMO_DATE = '2024-11-21'; // Date de la promo
+          const PROMO_DATE = '2025-11-21'; // Date de la promo
           if (today === PROMO_DATE) {
             roundedDeliveryFee = 0; // Livraison gratuite !
           }
