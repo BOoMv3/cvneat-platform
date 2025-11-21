@@ -18,6 +18,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [baseIngredients, setBaseIngredients] = useState([]); // Ingrédients de base depuis la base de données
   const [loading, setLoading] = useState(false);
 
+  // DEBUG: Vérifier que onClose est bien une fonction
+  useEffect(() => {
+    console.log('🔍 MenuItemModal - onClose type:', typeof onClose, 'isOpen:', isOpen);
+  }, [onClose, isOpen]);
+
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
     if (isOpen) {
@@ -303,7 +308,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   };
 
   const handleAddToCart = () => {
-    console.log('🛒 Ajout au panier démarré...');
+    console.log('🛒 Ajout au panier démarré...', 'onClose:', typeof onClose);
     
     // Pour les formules et menus avec boissons, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
     if (item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
@@ -322,8 +327,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       onAddToCart(formulaItem, [], null, quantity);
       
       // Fermer IMMÉDIATEMENT
-      console.log('🚪 Fermeture modal (formule)...');
-      onClose();
+      console.log('🚪 Fermeture modal (formule)... Type:', typeof onClose);
+      if (typeof onClose === 'function') {
+        onClose();
+      } else {
+        console.error('❌ onClose n\'est PAS une fonction!');
+      }
       return;
     }
 
@@ -395,8 +404,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     onAddToCart(customizedItem, supplementsList, null, quantity);
     
     // Fermer IMMÉDIATEMENT
-    console.log('🚪 Fermeture modal (article)...');
-    onClose();
+    console.log('🚪 Fermeture modal (article)... Type:', typeof onClose);
+    if (typeof onClose === 'function') {
+      onClose();
+    } else {
+      console.error('❌ onClose n\'est PAS une fonction!');
+    }
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body

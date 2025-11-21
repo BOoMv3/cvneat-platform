@@ -374,17 +374,15 @@ export default function RestaurantPage({ params }) {
     loadCart();
   }, []);
 
-  // Sauvegarder automatiquement le panier à chaque modification
+  // Sauvegarder automatiquement le panier à chaque modification (TOUJOURS, même si vide)
   useEffect(() => {
-    if (cart.length > 0) {
-      const cartData = {
-        items: cart,
-        restaurant_id: params.id,
-        frais_livraison: restaurant?.frais_livraison || 2.50
-      };
-      localStorage.setItem('cart', JSON.stringify(cartData));
-      console.log('💾 Panier sauvegardé automatiquement:', cart.length, 'articles');
-    }
+    const cartData = {
+      items: cart,
+      restaurant_id: params.id,
+      frais_livraison: restaurant?.frais_livraison || 2.50
+    };
+    localStorage.setItem('cart', JSON.stringify(cartData));
+    console.log('💾 Panier sauvegardé automatiquement:', cart.length, 'articles', cart);
   }, [cart, params.id, restaurant]);
 
   useEffect(() => {
