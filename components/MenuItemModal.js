@@ -303,6 +303,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   };
 
   const handleAddToCart = () => {
+    console.log('🛒 Ajout au panier démarré...');
+    
     // Pour les formules et menus avec boissons, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
     if (item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
       alert('Veuillez choisir une boisson');
@@ -316,14 +318,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         quantity: quantity,
         selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null
       };
+      console.log('✅ Formule ajoutée:', formulaItem.nom);
       onAddToCart(formulaItem, [], null, quantity);
       
-      // Fermer la modal pour les formules
-      if (onClose && typeof onClose === 'function') {
-        setTimeout(() => {
-          onClose();
-        }, 50);
-      }
+      // Fermer IMMÉDIATEMENT
+      console.log('🚪 Fermeture modal (formule)...');
+      onClose();
       return;
     }
 
@@ -390,15 +390,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       _fromModal: true // Marquer que cet item vient de la modal
     };
     
-    // Passer les suppléments explicitement comme paramètre séparé
+    // Ajouter au panier
+    console.log('✅ Article ajouté:', customizedItem.nom);
     onAddToCart(customizedItem, supplementsList, null, quantity);
     
-    // Fermer la modal immédiatement
-    if (onClose && typeof onClose === 'function') {
-      setTimeout(() => {
-        onClose();
-      }, 50);
-    }
+    // Fermer IMMÉDIATEMENT
+    console.log('🚪 Fermeture modal (article)...');
+    onClose();
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body
