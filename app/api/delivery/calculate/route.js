@@ -756,12 +756,43 @@ export async function POST(request) {
       };
     }
 
-    // 4. Calculer la distance entre restaurant et client
+    // 4. Vérifier que les coordonnées sont valides
+    if (!restaurantCoords || !restaurantCoords.lat || !restaurantCoords.lng) {
+      console.error('❌ ERREUR: Coordonnées restaurant invalides:', restaurantCoords);
+      return NextResponse.json({
+        success: false,
+        error: 'Coordonnées restaurant invalides',
+        message: 'Erreur lors de la récupération des coordonnées du restaurant'
+      }, { status: 500 });
+    }
+    
+    if (!clientCoords || !clientCoords.lat || !clientCoords.lng) {
+      console.error('❌ ERREUR: Coordonnées client invalides:', clientCoords);
+      return NextResponse.json({
+        success: false,
+        error: 'Coordonnées client invalides',
+        message: 'Erreur lors du géocodage de l\'adresse de livraison'
+      }, { status: 500 });
+    }
+
+    // 5. Calculer la distance entre restaurant et client
     // IMPORTANT: Arrondir les coordonnées AVANT le calcul pour garantir la cohérence
     const restaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000; // 3 décimales = ~100m
     const restaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
     const clientLat = Math.round(clientCoords.lat * 1000) / 1000;
     const clientLng = Math.round(clientCoords.lng * 1000) / 1000;
+    
+    // Vérifier que les coordonnées sont des nombres valides
+    if (isNaN(restaurantLat) || isNaN(restaurantLng) || isNaN(clientLat) || isNaN(clientLng)) {
+      console.error('❌ ERREUR: Coordonnées non numériques', {
+        restaurantLat, restaurantLng, clientLat, clientLng
+      });
+      return NextResponse.json({
+        success: false,
+        error: 'Coordonnées invalides',
+        message: 'Erreur lors du calcul de la distance'
+      }, { status: 500 });
+    }
     
     const rawDistance = calculateDistance(
       restaurantLat, restaurantLng,
@@ -781,7 +812,7 @@ export async function POST(request) {
     console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)}`);
     console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)}`);
 
-    // 5. Vérifier la distance maximum
+    // 6. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
       console.log(`❌ REJET: Trop loin: ${roundedDistance.toFixed(2)}km > ${MAX_DISTANCE}km`);
       return NextResponse.json({
@@ -793,7 +824,7 @@ export async function POST(request) {
       }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
     }
 
-    // 6. Déterminer les paramètres tarifaires
+    // 7. Déterminer les paramètres tarifaires
     const resolvedBaseFee = pickNumeric(
       [
         baseFeeOverride,
@@ -827,7 +858,7 @@ export async function POST(request) {
       }
     }
 
-    // 7. Calculer les frais
+    // 8. Calculer les frais
     let deliveryFee = calculateDeliveryFee(roundedDistance, {
       baseFee: resolvedBaseFee,
       perKmFee: resolvedPerKmFee
