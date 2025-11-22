@@ -700,12 +700,28 @@ export async function POST(request) {
 
     console.log('📦 Données de commande à insérer:', JSON.stringify(orderData, null, 2));
     console.log('📦 Nombre de champs:', Object.keys(orderData).length);
+    console.log('📦 Vérification des champs critiques:');
+    console.log('   - restaurant_id:', orderData.restaurant_id, typeof orderData.restaurant_id);
+    console.log('   - user_id:', orderData.user_id, typeof orderData.user_id);
+    console.log('   - total:', orderData.total, typeof orderData.total);
+    console.log('   - frais_livraison:', orderData.frais_livraison, typeof orderData.frais_livraison);
+    console.log('   - adresse_livraison:', orderData.adresse_livraison ? `${orderData.adresse_livraison.substring(0, 50)}...` : 'MANQUANT');
+    console.log('   - statut:', orderData.statut);
+    console.log('   - payment_status:', orderData.payment_status);
 
-    const { data: order, error: orderError } = await serviceClient
-      .from('commandes')
-      .insert([orderData])
-      .select()
-      .single();
+    let order, orderError;
+    try {
+      const result = await serviceClient
+        .from('commandes')
+        .insert([orderData])
+        .select()
+        .single();
+      order = result.data;
+      orderError = result.error;
+    } catch (insertError) {
+      console.error('❌ EXCEPTION lors de l\'insertion:', insertError);
+      orderError = insertError;
+    }
 
     if (orderError) {
       console.error('❌ ERREUR création commande dans Supabase:', orderError);
