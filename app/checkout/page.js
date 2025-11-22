@@ -482,8 +482,7 @@ export default function Checkout() {
       const subtotalAfterDiscount = Math.max(0, cartTotal - discountAmount);
       const totalAmount = Math.max(0, subtotalAfterDiscount + finalDeliveryFeeForTotal + PLATFORM_FEE);
 
-      // Générer un code de sécurité
-      const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // Le code de sécurité est généré côté serveur dans l'API
 
       console.log('💰 Frais de livraison finaux:', {
         finalCheckData: finalCheckData?.frais_livraison,
