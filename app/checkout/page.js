@@ -609,7 +609,19 @@ export default function Checkout() {
         } catch {
           errorData = { error: `Erreur HTTP ${paymentResponse.status}` };
         }
-        throw new Error(errorData.error || `Erreur lors de la création du paiement (${paymentResponse.status})`);
+        
+        // Message d'erreur plus clair pour l'utilisateur
+        const errorMessage = errorData.error || `Erreur lors de la création du paiement (${paymentResponse.status})`;
+        console.error('❌ Erreur création PaymentIntent:', {
+          status: paymentResponse.status,
+          error: errorMessage,
+          totalAmount,
+          cartTotal,
+          discountAmount,
+          finalDeliveryFeeForTotal
+        });
+        
+        throw new Error(errorMessage);
       }
 
       const paymentData = await paymentResponse.json();
