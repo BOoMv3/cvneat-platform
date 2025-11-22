@@ -637,7 +637,9 @@ export default function Checkout() {
           error: errorMessage,
           totalAmount,
           cartTotal,
-          discountAmount,
+          discountAmount: appliedPromoCode?.discountAmount || 0,
+          maxDiscount: typeof maxDiscount !== 'undefined' ? maxDiscount : 'non calculé',
+          subtotalAfterDiscount: typeof subtotalAfterDiscount !== 'undefined' ? subtotalAfterDiscount : 'non calculé',
           finalDeliveryFeeForTotal
         });
         
