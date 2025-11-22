@@ -901,13 +901,25 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('❌ ERREUR API DELIVERY CALCULATE:', error);
+    console.error('❌ Type:', error.name);
+    console.error('❌ Message:', error.message);
     console.error('❌ Stack trace:', error.stack);
+    
+    // Message d'erreur plus détaillé
+    let errorMessage = 'Erreur lors du calcul des frais de livraison';
+    if (error.message) {
+      errorMessage = error.message;
+    }
     
     return NextResponse.json({
       success: false,
-      error: error.message,
-      message: 'Erreur lors du calcul des frais de livraison',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: errorMessage,
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : undefined
     }, { status: 500 });
   }
 }
