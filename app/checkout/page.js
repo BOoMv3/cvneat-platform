@@ -1089,11 +1089,15 @@ export default function Checkout() {
                     // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
                     
                     let finalDeliveryFee = fraisLivraison;
-                    // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-                    //   finalDeliveryFee = 0; // Livraison gratuite !
+                    // Gérer la livraison gratuite si code promo
+                    if (appliedPromoCode?.discountType === 'free_delivery') {
+                      finalDeliveryFee = 0;
                     }
                     
-                    const finalTotalDisplay = Math.max(0, cartTotal + finalDeliveryFee + PLATFORM_FEE);
+                    // Appliquer la réduction du code promo
+                    const discountAmount = appliedPromoCode?.discountAmount || 0;
+                    const subtotalAfterDiscount = Math.max(0, cartTotal - discountAmount);
+                    const finalTotalDisplay = Math.max(0, subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE);
                     return `Payer ${finalTotalDisplay.toFixed(2)}€`;
                   })()
                 )}
