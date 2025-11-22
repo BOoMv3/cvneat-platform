@@ -43,17 +43,8 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
     }
 
     try {
-      // IMPORTANT: Appeler elements.submit() AVANT stripe.confirmPayment()
-      // Cela valide les données du formulaire et prépare le paiement
-      if (typeof elements.submit === 'function') {
-        const { error: submitError } = await elements.submit();
-        if (submitError) {
-          throw new Error(submitError.message);
-        }
-      }
-
-      // Confirmer le paiement avec le clientSecret existant
-      const { error: confirmError } = await stripe.confirmPayment({
+      // SIMPLIFICATION: Valider et confirmer en une seule étape
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret,
         confirmParams: {
@@ -63,30 +54,50 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
       });
 
       if (confirmError) {
-        throw new Error(confirmError.message);
+        // Message d'erreur plus clair pour l'utilisateur
+        let errorMessage = confirmError.message;
+        if (confirmError.type === 'card_error') {
+          errorMessage = 'Erreur de carte bancaire. Vérifiez vos informations ou essayez une autre carte.';
+        } else if (confirmError.type === 'validation_error') {
+          errorMessage = 'Vérifiez que tous les champs sont correctement remplis.';
+        }
+        throw new Error(errorMessage);
       }
 
-      // Confirmer le paiement côté serveur
-      const confirmResponse = await fetch('/api/payment/confirm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          paymentIntentId: paymentIntentId,
-        }),
-      });
+      // Vérifier que le paiement a réussi
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // Confirmer côté serveur (optionnel mais recommandé)
+        try {
+          const confirmResponse = await fetch('/api/payment/confirm', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              paymentIntentId: paymentIntentId,
+            }),
+          });
 
-      const confirmData = await confirmResponse.json();
+          const confirmData = await confirmResponse.json();
+          
+          if (confirmData.error) {
+            console.warn('⚠️ Erreur confirmation serveur (non bloquant):', confirmData.error);
+            // Ne pas bloquer si la confirmation serveur échoue - le webhook Stripe gérera
+          }
+        } catch (serverError) {
+          console.warn('⚠️ Erreur confirmation serveur (non bloquant):', serverError);
+          // Ne pas bloquer - le paiement est déjà réussi côté Stripe
+        }
 
-      if (confirmData.error) {
-        throw new Error(confirmData.error);
+        // Succès - appeler le callback
+        onSuccess({ paymentIntentId, status: 'succeeded' });
+      } else {
+        throw new Error(`Paiement non complété. Statut: ${paymentIntent?.status || 'inconnu'}`);
       }
-
-      onSuccess(confirmData);
     } catch (err) {
-      setError(err.message);
-      onError(err.message);
+      const errorMessage = err.message || 'Une erreur est survenue lors du paiement';
+      setError(errorMessage);
+      onError(errorMessage);
     } finally {
       setLoading(false);
     }

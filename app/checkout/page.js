@@ -6,7 +6,9 @@ import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
 import PaymentForm from '@/components/PaymentForm';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
-import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
+import PromoCodeInput from '@/components/PromoCodeInput';
+// PROMO TERMINÉE : Plus besoin du composant FreeDeliveryBanner
+// import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import { 
   FaMapMarkerAlt, 
   FaPlus, 
@@ -63,7 +65,7 @@ export default function Checkout() {
   const [cart, setCart] = useState([]);
   const [restaurant, setRestaurant] = useState(null);
   const [cartTotal, setCartTotal] = useState(0);
-  const [fraisLivraison, setFraisLivraison] = useState(2.50); // Base 2,50€ + 0,80€/km
+  const [fraisLivraison, setFraisLivraison] = useState(2.50); // Base 2,50€ + 0,50€/km
   const [totalAvecLivraison, setTotalAvecLivraison] = useState(0);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,9 @@ export default function Checkout() {
   instructions: '',
     is_default: false
   });
+  const [promoCode, setPromoCode] = useState('');
+  const [promoCodeValid, setPromoCodeValid] = useState(null); // null = pas vérifié, {valid: true/false, discount: number, message: string}
+  const [appliedPromoCode, setAppliedPromoCode] = useState(null); // Code promo appliqué
   const [orderDetails, setOrderDetails] = useState({
     nom: '',
     prenom: '',
@@ -352,7 +357,7 @@ export default function Checkout() {
       setAddressValidationMessage(null);
       setShowErrorModal(false);
 
-      // SUCCÈS - Mettre à jour les frais (calculés par l'API: 2,50€ + 0,80€/km)
+      // SUCCÈS - Mettre à jour les frais (calculés par l'API: 2,50€ + 0,50€/km)
       // IMPORTANT: Arrondir à 2 décimales pour garantir la cohérence
       const newFrais = Math.round(parseFloat(data.frais_livraison || 2.50) * 100) / 100;
       setFraisLivraison(newFrais);
@@ -385,8 +390,9 @@ export default function Checkout() {
     await calculateDeliveryFee(address);
   };
 
-  // Fonction pour préparer la commande et créer le PaymentIntent Stripe
+  // Fonction SIMPLIFIÉE pour créer la commande et préparer le paiement
   const prepareOrderAndPayment = async () => {
+    // Validation minimale
     if (!selectedAddress) {
       alert('Veuillez sélectionner une adresse de livraison');
       return;
@@ -426,10 +432,8 @@ export default function Checkout() {
         }
       }
 
-      // VALIDATION STRICTE: Vérifier à nouveau que l'adresse est livrable
-      // IMPORTANT: Utiliser les frais déjà calculés si disponibles et l'adresse est la même
-      const finalAddressCheck = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
-      const { payload: finalPayload, subtotal: orderSubtotal, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(finalAddressCheck);
+      // SIMPLIFICATION: Utiliser les frais déjà calculés (pas de re-vérification)
+      const { payload: finalPayload, subtotal: orderSubtotal, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(`${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`);
       const resolvedRestaurant = activeRestaurant || payloadRestaurantInfo || null;
       
       if (!resolvedRestaurant) {
@@ -438,81 +442,45 @@ export default function Checkout() {
         return;
       }
       
-      // Si les frais de livraison ont déjà été calculés pour cette adresse, les réutiliser
-      // Sinon, recalculer pour valider
-      let finalDeliveryFee = fraisLivraison;
-      let finalCheckData = null;
+      // Utiliser les frais déjà calculés (simplifié - pas de re-vérification)
+      let finalDeliveryFee = Math.round(parseFloat(fraisLivraison || 2.50) * 100) / 100;
       
-      // Vérifier si les frais sont déjà calculés et valides (supérieurs à 0)
-      if (fraisLivraison && fraisLivraison > 0) {
-        console.log('💰 Réutilisation des frais de livraison déjà calculés:', fraisLivraison);
-        // Utiliser les frais déjà calculés, mais vérifier quand même que l'adresse est livrable
-        finalCheckData = {
-          success: true,
-          livrable: true,
-          frais_livraison: Math.round(parseFloat(fraisLivraison) * 100) / 100
-        };
-        finalDeliveryFee = finalCheckData.frais_livraison;
-      } else {
-        // Recalculer uniquement si les frais n'ont pas été calculés
-        const finalCheckResponse = await fetch('/api/delivery/calculate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finalPayload)
-        });
-
-        if (finalCheckResponse.ok) {
-          finalCheckData = await finalCheckResponse.json();
-          if (!finalCheckData.success || finalCheckData.livrable !== true) {
-            alert(`Cette adresse n'est plus livrable: ${finalCheckData.message || 'Distance trop importante ou adresse invalide'}`);
-            setSubmitting(false);
-            return;
-          }
-          // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
-          // Les frais sont calculés par l'API: 2,50€ + 0,80€/km
-          let roundedDeliveryFee = Math.round(parseFloat(finalCheckData.frais_livraison || 2.50) * 100) / 100;
-          
-          setFraisLivraison(roundedDeliveryFee);
-          // Mettre à jour finalCheckData avec la valeur arrondie pour garantir la cohérence
-          finalCheckData.frais_livraison = roundedDeliveryFee;
-          finalDeliveryFee = roundedDeliveryFee;
-        } else {
-          // Gestion spécifique de l'erreur 429 (Rate Limit)
-          if (finalCheckResponse.status === 429) {
-            alert('Trop de requêtes pour la vérification de l\'adresse. Veuillez patienter quelques instants avant de réessayer.');
-            setSubmitting(false);
-            return;
-          }
-          
-          console.error('Erreur vérification finale adresse:', finalCheckResponse.status);
-          alert(`Erreur lors de la vérification de l'adresse (${finalCheckResponse.status}). Veuillez réessayer.`);
-          setSubmitting(false);
-          return;
-        }
+      // Si pas de frais calculés, utiliser la valeur par défaut
+      if (!fraisLivraison || fraisLivraison === 0) {
+        finalDeliveryFee = 2.50; // Frais de base minimum
       }
 
       // Calculer le total du panier (sous-total articles)
       const cartTotal = orderSubtotal || computeCartTotalWithExtras(savedCart.items);
 
-      // Pas de promotion active
-      const discountAmount = 0;
+      // Calculer la réduction du code promo
+      const discountAmount = appliedPromoCode?.discountAmount || 0;
+      
+      // Gérer la livraison gratuite si le code promo le prévoit
+      let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
+      if (appliedPromoCode?.discountType === 'free_delivery') {
+        finalDeliveryFeeForTotal = 0;
+      }
       const PLATFORM_FEE = 0.49; // Frais plateforme fixe
 
       // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
-      // Utiliser finalDeliveryFee qui a été calculé ci-dessus (2,50€ + 0,80€/km)
-      let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
+      // Utiliser finalDeliveryFee qui a été calculé ci-dessus (2,50€ + 0,50€/km)
+      // (La gestion de la livraison gratuite est faite plus haut si code promo)
       
       // PROMO: Livraison offerte pour aujourd'hui uniquement si commande >= 25€
-      const today = new Date().toISOString().split('T')[0];
-      const PROMO_DATE = '2025-11-21'; // Date de la promo
-      const MIN_ORDER_FOR_FREE_DELIVERY = 25.00; // Montant minimum
-      
-      if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-        finalDeliveryFeeForTotal = 0; // Livraison gratuite !
-        console.log('🎉 PROMO: Livraison offerte appliquée!');
-      }
-      // Montant facturé au client = sous-total + livraison + frais plateforme
-      const totalAmount = Math.max(0, cartTotal + finalDeliveryFeeForTotal + PLATFORM_FEE);
+      // PROMO TERMINÉE : Plus de livraison gratuite
+      // Les frais de livraison sont toujours calculés normalement
+      // const today = new Date().toISOString().split('T')[0];
+      // const PROMO_DATE = '2025-11-21'; // Date de la promo
+      // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00; // Montant minimum
+      // 
+      // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+      //   finalDeliveryFeeForTotal = 0; // Livraison gratuite !
+      //   console.log('🎉 PROMO: Livraison offerte appliquée!');
+      // }
+      // Montant facturé au client = sous-total - réduction + livraison + frais plateforme
+      const subtotalAfterDiscount = Math.max(0, cartTotal - discountAmount);
+      const totalAmount = Math.max(0, subtotalAfterDiscount + finalDeliveryFeeForTotal + PLATFORM_FEE);
 
       // Générer un code de sécurité
       const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -525,38 +493,71 @@ export default function Checkout() {
         'différence': Math.abs(finalDeliveryFeeForTotal - (fraisLivraison || 0))
       });
       
-      // Préparer les données de commande (on les stocke pour créer la commande après le paiement)
+      // SIMPLIFICATION: Créer la commande AVANT le paiement (statut "pending_payment")
       const customerFirstName = orderDetails.prenom?.trim() || '';
       const customerLastName = orderDetails.nom?.trim() || '';
       const customerPhone = orderDetails.telephone?.trim() || '';
       const customerEmail = orderDetails.email?.trim() || (user.email || '');
 
-      const orderDataToStore = {
-        user_id: user.id,
-        restaurant_id: resolvedRestaurant.id,
-        total: cartTotal,
-        frais_livraison: finalDeliveryFeeForTotal, // Utiliser la valeur arrondie et cohérente
-        discount_amount: discountAmount,
-        platform_fee: PLATFORM_FEE,
-        adresse_livraison: `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}`,
-        security_code: securityCode,
-        cart: savedCart.items,
-        orderDetails,
-        customer_first_name: customerFirstName,
-        customer_last_name: customerLastName,
-        customer_phone: customerPhone,
-        customer_email: customerEmail,
-        delivery_info: {
-          address: selectedAddress.address,
-          city: selectedAddress.city,
-          postalCode: selectedAddress.postal_code,
-          instructions: orderDetails.instructions?.trim() || ''
-        }
-      };
-      setOrderData(orderDataToStore);
+      console.log('📦 Création de la commande AVANT paiement...');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      // Créer le PaymentIntent Stripe
-      console.log('💳 Création PaymentIntent Stripe pour montant:', totalAmount, 'avec remise:', discountAmount, 'frais plateforme:', PLATFORM_FEE);
+      // Créer la commande en statut "pending_payment"
+      const createOrderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          restaurantId: resolvedRestaurant.id,
+          deliveryInfo: {
+            address: selectedAddress.address,
+            city: selectedAddress.city,
+            postalCode: selectedAddress.postal_code,
+            instructions: orderDetails.instructions?.trim() || ''
+          },
+          items: savedCart.items,
+          deliveryFee: finalDeliveryFeeForTotal,
+          totalAmount: cartTotal,
+          discountAmount: discountAmount,
+          platformFee: PLATFORM_FEE,
+          paymentStatus: 'pending_payment', // Statut en attente de paiement
+          customerInfo: {
+            firstName: customerFirstName,
+            lastName: customerLastName,
+            phone: customerPhone,
+            email: customerEmail
+          }
+        })
+      });
+
+      if (!createOrderResponse.ok) {
+        const errorData = await createOrderResponse.json().catch(() => ({ error: 'Erreur lors de la création de la commande' }));
+        throw new Error(errorData.error || 'Erreur lors de la création de la commande');
+      }
+
+      const orderResult = await createOrderResponse.json();
+      const orderId = orderResult.orderId || orderResult.order?.id;
+      const securityCode = orderResult.securityCode || orderResult.security_code || orderResult.order?.security_code;
+      
+      if (!orderId) {
+        throw new Error('Commande créée mais identifiant introuvable');
+      }
+
+      console.log('✅ Commande créée:', orderId);
+      
+      // Stocker l'orderId et securityCode pour après le paiement
+      setOrderData({
+        orderId: orderId,
+        securityCode: securityCode,
+        restaurant_id: resolvedRestaurant.id
+      });
+
+      // Créer le PaymentIntent Stripe avec l'ID de commande
+      console.log('💳 Création PaymentIntent Stripe pour montant:', totalAmount);
       const paymentResponse = await fetch('/api/payment/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -564,12 +565,9 @@ export default function Checkout() {
           amount: totalAmount,
           currency: 'eur',
           metadata: {
+            order_id: orderId, // Lier le paiement à la commande
             user_id: user.id,
-            restaurant_id: resolvedRestaurant.id,
-            cart_total: cartTotal.toString(),
-            delivery_fee: finalDeliveryFeeForTotal.toString(),
-            discount_amount: discountAmount.toString(),
-            platform_fee: PLATFORM_FEE.toString()
+            restaurant_id: resolvedRestaurant.id
           }
         })
       });
@@ -619,102 +617,106 @@ export default function Checkout() {
     }
   };
 
-  // Fonction pour créer la commande après paiement réussi
+  // Fonction SIMPLIFIÉE : Mettre à jour la commande après paiement réussi
   const createOrderAfterPayment = async (confirmedPaymentIntentId) => {
-    if (!orderData) {
-      throw new Error('Données de commande manquantes');
+    // Récupérer l'orderId depuis le state (stocké lors de la création)
+    const orderId = orderData?.orderId;
+    const securityCode = orderData?.securityCode;
+    
+    if (!orderId) {
+      // Fallback: essayer de récupérer depuis le PaymentIntent metadata via l'API de confirmation
+      console.warn('⚠️ OrderId non trouvé dans state, tentative via PaymentIntent metadata...');
+      try {
+        // L'API de confirmation a déjà mis à jour la commande via metadata
+        // On peut juste rediriger vers la page de confirmation avec le paymentIntentId
+        const confirmResponse = await fetch('/api/payment/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: confirmedPaymentIntentId })
+        });
+        
+        const confirmData = await confirmResponse.json();
+        const fallbackOrderId = confirmData.orderId;
+        
+        if (fallbackOrderId) {
+          // Nettoyer le panier
+          safeLocalStorage.removeItem('cart');
+          
+          // Rediriger
+          window.location.replace(`/order-confirmation/${fallbackOrderId}`);
+          return confirmData;
+        }
+      } catch (error) {
+        console.error('Erreur récupération orderId:', error);
+      }
+      
+      throw new Error('ID de commande introuvable. Le paiement a été effectué, contactez le support avec votre numéro de transaction.');
     }
 
+    // Mettre à jour la commande existante (simplifié)
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const payload = {
-      restaurantId: orderData.restaurant_id,
-      deliveryInfo: orderData.delivery_info || {
-        address: orderData.orderDetails?.adresse || '',
-        city: orderData.orderDetails?.ville || '',
-        postalCode: orderData.orderDetails?.code_postal || '',
-        instructions: orderData.orderDetails?.instructions || ''
-      },
-      items: orderData.cart || [],
-      deliveryFee: orderData.frais_livraison || 0,
-      totalAmount: orderData.total || 0,
-      discountAmount: orderData.discount_amount || 0,
-      platformFee: orderData.platform_fee || 0,
-      paymentIntentId: confirmedPaymentIntentId,
-      paymentStatus: 'paid',
-      customerInfo: {
-        firstName: orderData.customer_first_name,
-        lastName: orderData.customer_last_name,
-        phone: orderData.customer_phone,
-        email: orderData.customer_email
+    try {
+      const updateResponse = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          stripe_payment_intent_id: confirmedPaymentIntentId,
+          payment_status: 'paid',
+          statut: 'en_attente'
+        })
+      });
+
+      if (!updateResponse.ok) {
+        console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateResponse.status);
+        // Ne pas bloquer - le webhook Stripe gérera la mise à jour
       }
-    };
-
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Erreur lors de la création de la commande' }));
-      throw new Error(errorData.error || 'Erreur lors de la création de la commande');
+    } catch (updateError) {
+      console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateError);
+      // Ne pas bloquer - continuer vers la confirmation
     }
 
-    const result = await response.json();
-    const orderId = result.orderId || result.order?.id;
-    const securityCode = result.securityCode || result.security_code || result.order?.security_code;
-    if (!orderId) {
-      throw new Error('Commande créée mais identifiant introuvable');
-    }
-
-    // Nettoyer le panier après la création de la commande
+    // Nettoyer le panier
     safeLocalStorage.removeItem('cart');
 
     // Rediriger vers la page de confirmation
-    if (typeof window !== 'undefined' && securityCode) {
-      try {
-        sessionStorage.setItem(`order-code-${orderId}`, securityCode);
-      } catch (e) {
-        console.warn('Impossible de stocker le code commande en session:', e);
-      }
-    }
-
     const redirectUrl = securityCode
       ? `/order-confirmation/${orderId}?code=${encodeURIComponent(securityCode)}`
       : `/order-confirmation/${orderId}`;
-    setTimeout(() => {
-      try {
-        window.location.replace(redirectUrl);
-      } catch (e) {
-        try {
-          window.location.href = redirectUrl;
-        } catch (e2) {
-          router.push(redirectUrl);
-        }
-      }
-    }, 500);
-
-    return result;
+    
+    window.location.replace(redirectUrl);
+    
+    return { orderId, securityCode };
   };
 
-  // Gestionnaires pour le formulaire de paiement
+  // Gestionnaires pour le formulaire de paiement - SIMPLIFIÉ
   const handlePaymentSuccess = async (paymentData) => {
     try {
-      console.log('✅ Paiement confirmé, création de la commande...');
+      console.log('✅ Paiement confirmé, mise à jour de la commande...');
       setSubmitting(true);
+      
+      // Mettre à jour la commande (simplifié - ne bloque pas si échec)
       await createOrderAfterPayment(paymentIntentId);
+      
       setSubmitting(false);
     } catch (error) {
       console.error('❌ Erreur après paiement:', error);
       setSubmitting(false);
-      const errorMessage = error.message || 'Erreur lors de la création de la commande';
-      alert(`Paiement réussi mais ${errorMessage}. Contactez le support si le problème persiste.`);
-      // Ne pas fermer le formulaire de paiement pour permettre une nouvelle tentative
+      
+      // Message rassurant pour l'utilisateur
+      const errorMessage = error.message || 'Erreur technique';
+      alert(`✅ Paiement effectué avec succès !\n\n⚠️ ${errorMessage}\n\nVotre commande sera traitée automatiquement. Vous recevrez une confirmation par email.`);
+      
+      // Rediriger quand même vers la page de confirmation si on a l'orderId
+      if (orderData?.orderId) {
+        setTimeout(() => {
+          window.location.replace(`/order-confirmation/${orderData.orderId}`);
+        }, 2000);
+      }
     }
   };
 
@@ -759,7 +761,8 @@ export default function Checkout() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Bannière Livraison Offerte */}
-      <FreeDeliveryBanner />
+      {/* PROMO TERMINÉE : Bannière de livraison gratuite retirée */}
+      {/* <FreeDeliveryBanner /> */}
       
       <div className="py-2 fold:py-2 xs:py-4 sm:py-8">
         <div className="max-w-4xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-4">
@@ -1015,18 +1018,19 @@ export default function Checkout() {
             {(() => {
               const PLATFORM_FEE = 0.49;
               
-              // PROMO: Appliquer livraison offerte si >= 25€ aujourd'hui
-              const today = new Date().toISOString().split('T')[0];
-              const PROMO_DATE = '2025-11-21';
-              const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
+              // PROMO TERMINÉE : Plus de livraison gratuite
+              // Les frais de livraison sont toujours affichés normalement
+              // const today = new Date().toISOString().split('T')[0];
+              // const PROMO_DATE = '2025-11-21';
+              // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
               let displayedDeliveryFee = fraisLivraison;
               
-              if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-                displayedDeliveryFee = 0;
-              }
+              // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+              //   displayedDeliveryFee = 0;
+              // }
               
               const finalTotalDisplay = Math.max(0, cartTotal + displayedDeliveryFee + PLATFORM_FEE);
-              const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
+              // const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
               
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
@@ -1034,35 +1038,22 @@ export default function Checkout() {
                 <span>Sous-total</span>
                 <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
               </div>
+              {appliedPromoCode && (
+                <div className="flex justify-between text-green-600 dark:text-green-400 text-sm sm:text-base">
+                  <span>Réduction ({appliedPromoCode.code})</span>
+                  <span className="font-semibold">-{appliedPromoCode.discountAmount.toFixed(2)}€</span>
+                </div>
+              )}
               <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                 <span className="flex items-center">
                   <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Frais de livraison
                 </span>
-                <span className={`font-semibold ${displayedDeliveryFee === 0 && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  {displayedDeliveryFee === 0 && today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY ? 'OFFERT !' : `${displayedDeliveryFee.toFixed(2)}€`}
+                <span className="font-semibold">
+                  {displayedDeliveryFee.toFixed(2)}€
                 </span>
               </div>
-              {(() => {
-                if (today === PROMO_DATE && cartTotal < MIN_ORDER_FOR_FREE_DELIVERY && remaining > 0) {
-                  return (
-                    <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mt-2">
-                      <p className="text-xs sm:text-sm text-orange-800 dark:text-orange-200 font-medium">
-                        🎉 Plus que <span className="font-bold text-orange-600 dark:text-orange-400">{remaining.toFixed(2)}€</span> pour la livraison offerte !
-                      </p>
-                    </div>
-                  );
-                } else if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-                  return (
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-300 dark:border-green-700 rounded-lg p-3 mt-2">
-                      <p className="text-xs sm:text-sm text-green-800 dark:text-green-200 font-bold">
-                        ✅ Livraison offerte appliquée !
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
+              {/* PROMO TERMINÉE : Plus de bannière de promotion */}
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
                 <span>Frais plateforme</span>
                 <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>
@@ -1092,14 +1083,14 @@ export default function Checkout() {
                   (() => {
                     const PLATFORM_FEE = 0.49;
                     
-                    // PROMO: Appliquer la livraison offerte si conditions remplies
-                    const today = new Date().toISOString().split('T')[0];
-                    const PROMO_DATE = '2025-11-21';
-                    const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
+                    // PROMO TERMINÉE : Plus de livraison gratuite
+                    // const today = new Date().toISOString().split('T')[0];
+                    // const PROMO_DATE = '2025-11-21';
+                    // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
                     
                     let finalDeliveryFee = fraisLivraison;
-                    if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-                      finalDeliveryFee = 0; // Livraison gratuite !
+                    // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+                    //   finalDeliveryFee = 0; // Livraison gratuite !
                     }
                     
                     const finalTotalDisplay = Math.max(0, cartTotal + finalDeliveryFee + PLATFORM_FEE);

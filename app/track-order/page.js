@@ -26,17 +26,20 @@ export default function TrackOrder() {
     setError(null);
 
     try {
+      console.log(`🔍 [Track Order] Recherche de la commande: ${orderId}`);
+      
       // Vérifier si l'utilisateur est connecté
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
+        console.log('❌ [Track Order] Utilisateur non connecté');
         setError('Vous devez être connecté pour suivre une commande. Veuillez vous connecter d\'abord.');
         setLoading(false);
         return;
       }
 
-      console.log('🔑 Session trouvée:', !!session);
-      console.log('👤 Token:', session.access_token ? 'Présent' : 'Manquant');
+      console.log('✅ [Track Order] Session trouvée:', !!session);
+      console.log('🔑 [Track Order] Token:', session.access_token ? 'Présent' : 'Manquant');
 
       // Récupérer les informations de l'utilisateur
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -51,6 +54,7 @@ export default function TrackOrder() {
       console.log('✅ Utilisateur connecté:', user.email);
       
       // Récupérer la commande avec vérification d'appartenance
+      console.log(`📡 [Track Order] Appel API: /api/orders/${orderId}`);
       const response = await fetch(`/api/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -58,16 +62,16 @@ export default function TrackOrder() {
         }
       });
       
-      console.log('📡 Réponse API:', response.status, response.statusText);
+      console.log(`📡 [Track Order] Réponse API: ${response.status} ${response.statusText}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Erreur API:', errorData);
+        console.error('❌ [Track Order] Erreur API:', errorData);
         
         if (response.status === 404) {
-          throw new Error('Commande non trouvée');
+          throw new Error('Commande non trouvée. Vérifiez le numéro de commande.');
         } else if (response.status === 403) {
-          throw new Error('Vous n\'êtes pas autorisé à voir cette commande. Vérifiez que le nom de la commande correspond à votre nom d\'utilisateur.');
+          throw new Error('Vous n\'êtes pas autorisé à voir cette commande. Vérifiez que le numéro correspond à votre commande.');
         } else if (response.status === 401) {
           throw new Error('Session expirée. Veuillez vous reconnecter.');
         } else {
@@ -76,7 +80,11 @@ export default function TrackOrder() {
       }
       
       const data = await response.json();
-      console.log('✅ Commande récupérée:', data);
+      console.log('✅ [Track Order] Commande récupérée:', {
+        id: data.id,
+        statut: data.statut || data.status,
+        client: data.customer_name
+      });
       
       setOrder(data);
       // Utiliser statut (français) avec fallback sur status (anglais) pour compatibilité
@@ -285,11 +293,14 @@ export default function TrackOrder() {
   useEffect(() => {
     if (!isTracking || !orderId) return;
 
+    console.log(`🔄 [Track Order] Démarrage du polling pour commande ${orderId}`);
+    
     const interval = setInterval(async () => {
       try {
         // Récupérer la session pour le token
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
+          console.log('❌ [Track Order Polling] Session expirée, arrêt du polling');
           setIsTracking(false);
           return;
         }
@@ -306,7 +317,7 @@ export default function TrackOrder() {
           // Vérifier si le statut a changé
           const currentStatus = data.statut || data.status;
           if (currentStatus !== lastStatus) {
-            console.log('🔄 Statut changé:', lastStatus, '→', currentStatus);
+            console.log(`🔄 [Track Order Polling] Statut changé: ${lastStatus} → ${currentStatus}`);
             setOrder(data);
             setLastStatus(currentStatus);
             generateNotifications(data);
@@ -343,13 +354,18 @@ export default function TrackOrder() {
               setIsTracking(false);
             }
           }
+        } else {
+          console.warn(`⚠️ [Track Order Polling] Erreur lors du polling: ${response.status}`);
         }
       } catch (error) {
-        console.error('Erreur polling:', error);
+        console.error('❌ [Track Order Polling] Erreur polling:', error);
       }
     }, 5000); // Vérifier toutes les 5 secondes
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log(`🛑 [Track Order] Arrêt du polling pour commande ${orderId}`);
+      clearInterval(interval);
+    };
   }, [isTracking, orderId, lastStatus]);
 
   // Charger l'orderId depuis les query params si présent et auto-rechercher

@@ -58,3 +58,4 @@ COMMENT ON COLUMN geocoded_addresses_cache.longitude IS 'Longitude arrondie à 6
 
 
 
+

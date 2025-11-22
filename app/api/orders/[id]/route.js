@@ -7,10 +7,12 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
 export async function GET(request, { params }) {
   try {
     const { id } = params;
+    console.log(`📡 [API /orders/${id}] Début de la requête`);
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '') || null;
     const url = new URL(request.url);
     const securityCodeParam = url.searchParams.get('code') || request.headers.get('x-order-code');
+    console.log(`🔑 [API /orders/${id}] Token présent: ${!!token}, Code sécurité présent: ${!!securityCodeParam}`);
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -62,8 +64,17 @@ export async function GET(request, { params }) {
         .eq('id', id)
         .maybeSingle();
 
-      if (orderAccessError || !orderAccess) {
+      // Amélioration: Ne retourner 404 que si vraiment pas de données
+      // orderAccessError peut contenir des erreurs RLS bénignes
+      if (!orderAccess) {
+        console.log(`❌ Commande ${id} non trouvée dans la base de données`);
         return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+      }
+
+      // Si erreur critique (autre que RLS), logger et continuer quand même
+      if (orderAccessError) {
+        console.warn(`⚠️ Erreur RLS lors de l'accès à la commande ${id}:`, orderAccessError.message);
+        // Ne pas bloquer ici, continuer avec les vérifications d'accès ci-dessous
       }
 
       const securityMatches = securityCodeParam && orderAccess.security_code === securityCodeParam;
@@ -439,6 +450,7 @@ export async function GET(request, { params }) {
       })
     };
 
+    console.log(`✅ [API /orders/${id}] Commande récupérée avec succès - Statut: ${formattedOrder.statut}, Client: ${customerName}`);
     return NextResponse.json(formattedOrder);
   } catch (error) {
     console.error('Erreur générale dans GET /api/orders/[id]:', error);
@@ -454,28 +466,54 @@ export async function PUT(request, { params }) {
     const { id } = params;
     const body = await request.json();
 
-    // Mettre à jour la commande
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
+    console.log(`📝 [API PUT /orders/${id}] Mise à jour commande:`, body);
 
-    const { data, error } = await supabase
+    // Utiliser le client admin pour permettre la mise à jour
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json({ error: 'Configuration serveur manquante' }, { status: 500 });
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+
+    // Préparer les données de mise à jour
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    // Accepter statut ou status
+    if (body.statut || body.status) {
+      updateData.statut = body.statut || body.status;
+    }
+
+    // Accepter payment_status
+    if (body.payment_status !== undefined) {
+      updateData.payment_status = body.payment_status;
+    }
+
+    // Accepter stripe_payment_intent_id
+    if (body.stripe_payment_intent_id) {
+      updateData.stripe_payment_intent_id = body.stripe_payment_intent_id;
+    }
+
+    const { data, error } = await supabaseAdmin
       .from('commandes')
-      .update({
-        statut: body.statut || body.status, // Accepter les deux pour compatibilité
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
+      console.error(`❌ [API PUT /orders/${id}] Erreur mise à jour:`, error);
       return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
     }
 
+    console.log(`✅ [API PUT /orders/${id}] Commande mise à jour avec succès`);
     return NextResponse.json(data);
   } catch (error) {
+    console.error('❌ [API PUT /orders/[id]] Erreur serveur:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

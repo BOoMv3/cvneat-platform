@@ -17,15 +17,15 @@ const DEFAULT_RESTAURANT = {
 };
 
 const DEFAULT_BASE_FEE = 2.50;      // 2.50€ de base
-const DEFAULT_PER_KM_FEE = 0.80;    // 0.80€ par kilomètre (tarif standard)
+const DEFAULT_PER_KM_FEE = 0.50;    // 0.50€ par kilomètre (tarif standard)
 const ALTERNATE_PER_KM_FEE = 0.89;  // 0.89€ par kilomètre (tarif premium éventuel)
 const MAX_FEE = 10.00;              // Maximum 10€
 const MAX_DISTANCE = 10;            // Maximum 10km
 
 // Codes postaux autorisés
-const AUTHORIZED_POSTAL_CODES = ['34190', '34150', '34260'];
+const AUTHORIZED_POSTAL_CODES = ['34190', '34260'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
-const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'pegairolles', 'pégairolles'];
+const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -63,64 +63,164 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
 }
 
 /**
- * Géocoder une adresse avec Nominatim
+ * Génère plusieurs variantes d'une adresse pour le géocodage
+ * TRÈS TOLÉRANTE : crée de nombreuses variantes pour gérer les fautes
  */
-async function geocodeAddress(address) {
-  try {
-    console.log('🌐 Géocodage:', address);
-    
-    const encodedAddress = encodeURIComponent(address);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=fr`;
-    
-    console.log('🌐 URL Nominatim:', url);
-    
-    // Timeout de 10 secondes
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'CVNeat-Delivery/1.0'
-      },
-      signal: controller.signal
+function generateAddressVariants(address) {
+  const variants = new Set();
+  
+  // Variante 1 : Adresse nettoyée complète
+  variants.add(cleanAddressForGeocoding(address));
+  
+  // Variante 2 : Adresse originale
+  variants.add(address.trim());
+  
+  // Extraire les composants
+  const postalMatch = address.match(/\b(\d{5})\b/);
+  const postalCode = postalMatch ? postalMatch[1] : null;
+  
+  // Extraire la ville (plusieurs méthodes)
+  const cityPatterns = [
+    address.match(/,\s*([^,]+?)(?:\s+\d{5})?$/),
+    address.match(/\b(saint[- ]?bauzille?|ganges?|laroque?|cazilhac?|sumene?)\b/gi)
+  ];
+  
+  const cities = [];
+  cityPatterns.forEach(pattern => {
+    if (pattern) {
+      const city = Array.isArray(pattern) ? pattern[0] : pattern[1];
+      if (city) {
+        cities.push(city.trim());
+      }
+    }
+  });
+  
+  // Variante 3 : Code postal + Ville seulement
+  if (postalCode && cities.length > 0) {
+    cities.forEach(city => {
+      variants.add(`${postalCode} ${city}, France`);
+      variants.add(`${city}, ${postalCode}, France`);
     });
-    
-    clearTimeout(timeoutId);
-    
-    console.log('🌐 Réponse Nominatim:', response.status, response.statusText);
-    
-    if (!response.ok) {
-      throw new Error(`Erreur Nominatim HTTP: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log('🌐 Données Nominatim:', data);
-    
-    if (!data || data.length === 0) {
-      throw new Error('Adresse non trouvée dans Nominatim');
-    }
-    
-    const result = data[0];
-    const coords = {
-      lat: parseFloat(result.lat),
-      lng: parseFloat(result.lon),
-      display_name: result.display_name,
-      postcode: result.address?.postcode || null,
-      city: result.address?.city || result.address?.town || result.address?.village || null
-    };
-    
-    console.log('🌐 Coordonnées extraites:', coords);
-    return coords;
-    
-  } catch (error) {
-    console.error('❌ Erreur géocodage détaillée:', error);
-    if (error.name === 'AbortError') {
-      throw new Error('Timeout lors du géocodage');
-    }
-    throw error;
   }
+  
+  // Variante 4 : Juste le code postal (si connu)
+  if (postalCode && ['34190', '34260'].includes(postalCode)) {
+    const cityMap = {
+      '34190': 'Ganges',
+      '34260': 'Sumène'
+    };
+    variants.add(`${postalCode} ${cityMap[postalCode]}, France`);
+  }
+  
+  // Variante 5 : Adresse sans accents
+  const withoutAccents = address.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  variants.add(cleanAddressForGeocoding(withoutAccents));
+  
+  // Variante 6 : Adresse avec seulement numéro + code postal + ville
+  if (postalCode && cities.length > 0) {
+    const streetNumber = address.match(/^\d+/);
+    if (streetNumber) {
+      cities.forEach(city => {
+        variants.add(`${streetNumber[0]}, ${postalCode} ${city}, France`);
+      });
+    }
+  }
+  
+  return Array.from(variants).filter(v => v && v.length > 3);
 }
 
+/**
+ * Géocoder une adresse avec Nominatim
+ * TRÈS TOLÉRANTE : essaie de nombreuses variantes pour gérer les fautes
+ */
+async function geocodeAddress(address) {
+  console.log('🌐 Géocodage:', address);
+  
+  // Générer toutes les variantes possibles
+  const addressesToTry = generateAddressVariants(address);
+  console.log(`🌐 ${addressesToTry.length} variantes à essayer`);
+  
+  let lastError = null;
+  let bestMatch = null;
+  
+  for (const addrToTry of addressesToTry) {
+    try {
+      const encodedAddress = encodeURIComponent(addrToTry);
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=3&countrycodes=fr`;
+      
+      // Timeout de 6 secondes
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'CVNeat-Delivery/1.0'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        continue;
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        // Prendre le premier résultat qui a un code postal valide
+        for (const result of data) {
+          const postcode = result.address?.postcode;
+          if (postcode && ['34190', '34260'].includes(String(postcode).trim())) {
+            const coords = {
+              lat: parseFloat(result.lat),
+              lng: parseFloat(result.lon),
+              display_name: result.display_name,
+              postcode: postcode,
+              city: result.address?.city || result.address?.town || result.address?.village || null
+            };
+            
+            console.log('✅ Géocodage réussi avec variante:', addrToTry);
+            return coords;
+          }
+        }
+        
+        // Si aucun n'a le bon code postal mais qu'on a des résultats, garder le meilleur
+        if (!bestMatch) {
+          const result = data[0];
+          bestMatch = {
+            lat: parseFloat(result.lat),
+            lng: parseFloat(result.lon),
+            display_name: result.display_name,
+            postcode: result.address?.postcode || null,
+            city: result.address?.city || result.address?.town || result.address?.village || null
+          };
+        }
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.warn('⚠️ Échec géocodage pour:', addrToTry, error.message);
+      }
+      lastError = error;
+      continue;
+    }
+  }
+  
+  // Si on a un match même sans le bon code postal, l'utiliser
+  if (bestMatch) {
+    console.log('⚠️ Géocodage avec résultat partiel:', bestMatch);
+    return bestMatch;
+  }
+  
+  // Si toutes les tentatives ont échoué
+  console.error('❌ Toutes les tentatives de géocodage ont échoué');
+  throw new Error('Adresse introuvable. Vérifiez le code postal (34190, 34260) et le nom de la ville.');
+}
+
+/**
+ * Normalise une adresse pour le cache et le géocodage
+ * Gère les accents, fautes de frappe communes, et simplifie l'adresse
+ */
 function normalizeAddressForCache(address) {
   if (!address || typeof address !== 'string') return '';
   
@@ -128,12 +228,138 @@ function normalizeAddressForCache(address) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, ' ')
+    // Normaliser les accents (é -> e, à -> a, etc.)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s\d]/g, '')
+    // Corriger les fautes communes
+    .replace(/\b(st|saint|ste|sainte)\s+/gi, 'saint ')
+    .replace(/\b(av|avenue)\s+/gi, 'avenue ')
+    .replace(/\b(bd|boulevard)\s+/gi, 'boulevard ')
+    .replace(/\b(r|rue)\s+/gi, 'rue ')
+    .replace(/\b(pl|place)\s+/gi, 'place ')
+    .replace(/\b(che|chemin)\s+/gi, 'chemin ')
+    .replace(/\b(imp|impasse)\s+/gi, 'impasse ')
+    .replace(/\b(lot|lotissement)\s+/gi, 'lotissement ')
+    // Supprimer les caractères spéciaux sauf les virgules et tirets
+    .replace(/[^\w\s\d,\-]/g, '')
     .replace(/\bfrance\b/gi, '')
     .replace(/\b(fr|france)\b/gi, '')
     .trim();
+}
+
+/**
+ * Nettoie et corrige une adresse avant le géocodage
+ * TRÈS TOLÉRANTE : accepte les fautes d'accent, fautes de frappe, formats variés
+ */
+function cleanAddressForGeocoding(address) {
+  if (!address || typeof address !== 'string') return address;
+  
+  // Étape 1 : Normalisation de base
+  let cleaned = address
+    .trim()
+    // Normaliser les espaces multiples
+    .replace(/\s+/g, ' ')
+    // Corriger les fautes communes de ponctuation
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s*\.\s*/g, ' ')
+    // Supprimer les caractères étranges mais garder les accents
+    .replace(/[^\w\s\dÀ-ÿ,\-']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Étape 2 : Correction intelligente des abréviations et fautes communes
+  const corrections = [
+    // Abréviations de rues
+    { pattern: /\b(st|saint|ste|sainte)\s+/gi, replacement: 'Saint ' },
+    { pattern: /\b(av|avenue|ave)\s+/gi, replacement: 'Avenue ' },
+    { pattern: /\b(bd|boulevard|boul)\s+/gi, replacement: 'Boulevard ' },
+    { pattern: /\b(r|rue)\s+/gi, replacement: 'Rue ' },
+    { pattern: /\b(pl|place)\s+/gi, replacement: 'Place ' },
+    { pattern: /\b(che|chemin|chem)\s+/gi, replacement: 'Chemin ' },
+    { pattern: /\b(imp|impasse)\s+/gi, replacement: 'Impasse ' },
+    { pattern: /\b(lot|lotissement|lotiss)\s+/gi, replacement: 'Lotissement ' },
+    { pattern: /\b(all|allée|allee)\s+/gi, replacement: 'Allée ' },
+    { pattern: /\b(res|residence|résidence)\s+/gi, replacement: 'Résidence ' },
+    
+    // Fautes communes de villes
+    { pattern: /\bgange\b/gi, replacement: 'Ganges' },
+    { pattern: /\blaroq\b/gi, replacement: 'Laroque' },
+    { pattern: /\bsaint\s*bauzil\b/gi, replacement: 'Saint-Bauzille' },
+    { pattern: /\bsaint\s*bauzille\s*de\s*putois\b/gi, replacement: 'Saint-Bauzille-de-Putois' },
+    { pattern: /\bcazilhac\b/gi, replacement: 'Cazilhac' },
+    { pattern: /\bsumene\b/gi, replacement: 'Sumène' },
+  ];
+  
+  corrections.forEach(({ pattern, replacement }) => {
+    cleaned = cleaned.replace(pattern, replacement);
+  });
+  
+  // Étape 3 : Normaliser les codes postaux (s'assurer qu'ils sont à 5 chiffres)
+  cleaned = cleaned.replace(/\b(\d{4})\b/g, (match, digits) => {
+    // Si c'est un code postal de 4 chiffres, ajouter un 0 devant
+    if (digits.length === 4 && !cleaned.includes('34190') && !cleaned.includes('34260')) {
+      return '0' + digits;
+    }
+    return match;
+  });
+  
+  // Étape 4 : Si pas de code postal visible, essayer de l'ajouter depuis la ville
+  if (!/\b\d{5}\b/.test(cleaned)) {
+    // Mapper les villes communes à leurs codes postaux (version très tolérante)
+    const cityPostalMap = {
+      'gange': '34190',
+      'ganges': '34190',
+      'laroq': '34190',
+      'laroque': '34190',
+      'saint-bauzil': '34190',
+      'saint-bauzille': '34190',
+      'saint bauzil': '34190',
+      'saint bauzille': '34190',
+      'bauzil': '34190',
+      'bauzille': '34190',
+      'cazilhac': '34190',
+      'cazilh': '34190',
+      'sumene': '34260',
+      'sumène': '34260',
+      'sumen': '34260'
+    };
+    
+    // Normaliser l'adresse pour la recherche (sans accents, minuscules)
+    const normalizedForSearch = cleaned.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ');
+    
+    // Chercher une correspondance de ville (même partielle)
+    for (const [cityKey, postal] of Object.entries(cityPostalMap)) {
+      const normalizedCity = cityKey.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      
+      // Correspondance exacte ou partielle
+      if (normalizedForSearch.includes(normalizedCity) || 
+          normalizedCity.includes(normalizedForSearch.split(',')[1]?.trim() || '')) {
+        // Ajouter le code postal si pas déjà présent
+        if (!cleaned.includes(postal)) {
+          // Ajouter avant la dernière virgule ou à la fin
+          const parts = cleaned.split(',');
+          if (parts.length > 1) {
+            parts[parts.length - 1] = ` ${postal} ${parts[parts.length - 1].trim()}`;
+            cleaned = parts.join(',');
+          } else {
+            cleaned = `${cleaned}, ${postal}`;
+          }
+        }
+        break;
+      }
+    }
+  }
+  
+  // Étape 5 : Ajouter "France" si pas présent (pour améliorer le géocodage)
+  if (!cleaned.toLowerCase().includes('france')) {
+    cleaned = `${cleaned}, France`;
+  }
+  
+  return cleaned.trim();
 }
 
 function extractPostalCode(address) {
@@ -145,17 +371,35 @@ function extractPostalCode(address) {
 
 function extractCity(address) {
   if (!address || typeof address !== 'string') return null;
+  
   // Extraire la ville (généralement avant le code postal ou après une virgule)
   const parts = address.split(',').map(p => p.trim());
+  
   // Chercher dans les parties qui ne sont pas le code postal
   for (const part of parts) {
-    if (!part.match(/^\d{5}$/)) {
-      const normalized = part.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (normalized.length > 2) {
-        return normalized;
+    // Ignorer les codes postaux et les numéros de rue
+    if (!part.match(/^\d{5}$/) && !part.match(/^\d+$/)) {
+      // Normaliser en gardant les lettres (même avec accents)
+      const normalized = part.toLowerCase().trim();
+      // Retirer les codes postaux qui pourraient être collés
+      const cleaned = normalized.replace(/\s+\d{5}\s*$/, '').trim();
+      
+      if (cleaned.length > 2) {
+        // Retourner la version normalisée sans accents pour la comparaison
+        return cleaned.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       }
     }
   }
+  
+  // Si pas trouvé, chercher après le dernier espace (format "Rue, Ville 34190")
+  const lastSpaceMatch = address.match(/\s+([A-Za-zÀ-ÿ\s-]+?)\s+\d{5}/);
+  if (lastSpaceMatch) {
+    const city = lastSpaceMatch[1].trim();
+    if (city.length > 2) {
+      return city.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+  }
+  
   return null;
 }
 
@@ -283,7 +527,7 @@ function pickNumeric(candidates = [], fallback, { min } = {}) {
 
 /**
  * Calculer les frais de livraison
- * FORMULE: 2.50€ de base + 0.80€ par kilomètre
+ * FORMULE: 2.50€ de base + 0.50€ par kilomètre
  * IMPORTANT: Arrondir à 2 décimales pour éviter les micro-variations
  * GARANTIR un minimum de 2.50€ (frais de base)
  */
@@ -294,7 +538,7 @@ function calculateDeliveryFee(distance, {
   // S'assurer que la distance n'est pas négative
   const safeDistance = Math.max(0, distance || 0);
   
-  // FORMULE: baseFee (2.50€) + (distance en km × perKmFee (0.80€))
+  // FORMULE: baseFee (2.50€) + (distance en km × perKmFee (0.50€))
   const fee = baseFee + (safeDistance * perKmFee);
   
   // Plafonner à MAX_FEE (10.00€)
@@ -391,11 +635,31 @@ export async function POST(request) {
     try {
       clientCoords = await getCoordinatesWithCache(clientAddress, { prefix: 'client' });
     } catch (error) {
-      console.error('❌ Nominatim échoué pour l\'adresse client:', error.message);
+      console.error('❌ Géocodage échoué pour l\'adresse client:', error.message);
+      
+      // Message d'erreur simple et encourageant
+      const postalCode = extractPostalCode(clientAddress);
+      let errorMessage = 'Adresse introuvable. ';
+      let suggestions = [];
+      
+      if (!postalCode) {
+        errorMessage += 'Ajoutez le code postal. ';
+        suggestions.push('Exemple: "123 Rue, 34190 Ganges"');
+      } else if (!AUTHORIZED_POSTAL_CODES.includes(postalCode)) {
+        errorMessage += `Zone non desservie. `;
+        suggestions.push('Codes postaux acceptés: 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac), 34260 (Sumène)');
+      } else {
+        errorMessage += 'Vérifiez l\'adresse. ';
+        suggestions.push('Format: "Numéro + Rue, Code postal + Ville"');
+        suggestions.push('Exemple: "28 Lotissement Aubanel, 34190 Laroque"');
+      }
+      
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: `❌ Impossible de localiser l'adresse de livraison. Vérifiez qu'elle est correcte. (${error.message})`
+        message: errorMessage,
+        suggestions: suggestions,
+        hint: 'Les petites fautes d\'orthographe sont acceptées, mais le code postal doit être correct.'
       }, { status: 200 });
     }
 
@@ -421,8 +685,20 @@ export async function POST(request) {
       
       const citiesToCheck = [cityFromAddress, cityFromGeocode].filter(Boolean);
       
+      // Normaliser les villes autorisées aussi
+      const normalizedAuthCities = AUTHORIZED_CITIES.map(c => c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+      
       for (const city of citiesToCheck) {
-        if (AUTHORIZED_CITIES.some(authCity => city.includes(authCity) || authCity.includes(city))) {
+        // Vérifier si la ville correspond (même partiellement)
+        const matches = normalizedAuthCities.some(authCity => {
+          // Correspondance exacte ou partielle
+          return city.includes(authCity) || authCity.includes(city) || 
+                 // Correspondance avec fautes communes (ex: "saint bauzille" vs "saint-bauzille")
+                 city.replace(/[\s-]/g, '').includes(authCity.replace(/[\s-]/g, '')) ||
+                 authCity.replace(/[\s-]/g, '').includes(city.replace(/[\s-]/g, ''));
+        });
+        
+        if (matches) {
           console.log('✅ Ville autorisée détectée:', city);
           hasAuthorizedPostalCode = true;
           break;
@@ -430,7 +706,7 @@ export async function POST(request) {
       }
     }
 
-    if (!hasAuthorizedPostalCode) {
+      if (!hasAuthorizedPostalCode) {
       console.log('❌ Code postal non autorisé:', {
         postalCodes: postalCodeMatches,
         fromAddress: postalCodeFromAddress,
@@ -441,7 +717,7 @@ export async function POST(request) {
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges), 34150 (Laroque), 34260 (Sumène).'
+        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac), 34260 (Sumène).'
       }, { status: 200 });
     }
 
@@ -550,21 +826,23 @@ export async function POST(request) {
       perKmFee: resolvedPerKmFee
     });
 
-    const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
-    const resolvedFreeThreshold = pickNumeric(
-      [
-        freeDeliveryThreshold,
-        restaurantData?.free_delivery_threshold,
-        restaurantData?.livraison_gratuite_seuil
-      ],
-      null,
-      { min: 0 }
-    );
+    // PROMO TERMINÉE : Plus de livraison gratuite
+    // Les frais de livraison sont toujours calculés normalement
+    // const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
+    // const resolvedFreeThreshold = pickNumeric(
+    //   [
+    //     freeDeliveryThreshold,
+    //     restaurantData?.free_delivery_threshold,
+    //     restaurantData?.livraison_gratuite_seuil
+    //   ],
+    //   null,
+    //   { min: 0 }
+    // );
 
-    if (resolvedFreeThreshold !== null && orderAmountNumeric >= resolvedFreeThreshold) {
-      console.log(`🎁 Livraison offerte (commande ${orderAmountNumeric.toFixed(2)}€ >= seuil ${resolvedFreeThreshold}€)`);
-      deliveryFee = 0;
-    }
+    // if (resolvedFreeThreshold !== null && orderAmountNumeric >= resolvedFreeThreshold) {
+    //   console.log(`🎁 Livraison offerte (commande ${orderAmountNumeric.toFixed(2)}€ >= seuil ${resolvedFreeThreshold}€)`);
+    //   deliveryFee = 0;
+    // }
 
     console.log(`💰 Frais: ${resolvedBaseFee}€ + (${roundedDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
 

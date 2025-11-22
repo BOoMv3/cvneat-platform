@@ -16,9 +16,28 @@ export const validatePassword = (password) => {
   return passwordRegex.test(password);
 };
 
+/**
+ * Valide une adresse de livraison
+ * TRÈS TOLÉRANTE : accepte presque tout tant qu'il y a du contenu valide
+ */
 export const validateAddress = (address) => {
   if (!address || typeof address !== 'string') return false;
-  return address.trim().length >= 5 && address.trim().length <= 200;
+  
+  const trimmed = address.trim();
+  
+  // Longueur minimale très réduite (2 caractères suffisent)
+  if (trimmed.length < 2 || trimmed.length > 500) return false;
+  
+  // Vérifier qu'il y a au moins un caractère alphanumérique ou un accent
+  // Accepter : lettres (avec ou sans accents), chiffres, espaces, virgules, tirets, apostrophes
+  const hasValidChars = /[a-zA-Z0-9À-ÿ]/.test(trimmed);
+  
+  if (!hasValidChars) return false;
+  
+  // Accepter même si l'adresse contient des fautes de frappe
+  // On laisse le serveur faire le nettoyage et la correction
+  
+  return true;
 };
 
 export const validatePostalCode = (postalCode) => {

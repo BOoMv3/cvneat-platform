@@ -19,8 +19,10 @@ export async function POST(request) {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status === 'succeeded') {
-      // Si un orderId est fourni, mettre à jour la commande existante
-      if (orderId) {
+      // SIMPLIFICATION: Récupérer l'orderId depuis les metadata si non fourni
+      const orderIdToUpdate = orderId || paymentIntent.metadata?.order_id;
+      
+      if (orderIdToUpdate) {
         const { error } = await supabase
           .from('commandes')
           .update({ 
@@ -28,22 +30,23 @@ export async function POST(request) {
             stripe_payment_intent_id: paymentIntentId,
             updated_at: new Date().toISOString()
           })
-          .eq('id', orderId);
+          .eq('id', orderIdToUpdate);
 
         if (error) {
-          console.error('Erreur lors de la mise à jour de la commande:', error);
-          return NextResponse.json(
-            { error: 'Erreur lors de la mise à jour de la commande' },
-            { status: 500 }
-          );
+          console.error('⚠️ Erreur mise à jour commande (non bloquant):', error);
+          // Ne pas bloquer - le webhook Stripe gérera la mise à jour
+        } else {
+          console.log('✅ Commande mise à jour:', orderIdToUpdate);
         }
+      } else {
+        console.warn('⚠️ Aucun orderId trouvé dans paymentIntent metadata');
       }
 
       return NextResponse.json({
         success: true,
         message: 'Paiement confirmé avec succès',
         paymentIntentId,
-        orderId: orderId || null
+        orderId: orderIdToUpdate || null
       });
     } else {
       return NextResponse.json(

@@ -10,6 +10,7 @@ const isComboItem = (item) => {
   if (!item) return false;
   if (item.type === 'combo') return true;
   if (typeof item.id === 'string' && item.id.startsWith('combo-')) return true;
+  if (item.is_formula === true) return true; // Les formules sont aussi des combos
   return false;
 };
 
@@ -462,12 +463,31 @@ export async function POST(request) {
 
     console.log('Restaurant trouve:', restaurant.nom);
 
-    // Verifier que tous les articles existent
+    // Verifier que tous les articles existent (sauf formules qui sont validées différemment)
     console.log('Verification des articles...');
     for (const item of items) {
-      if (isComboItem(item)) {
-        console.log('Article combo détecté, validation spécifique ignorée pour ID:', item.id);
+      // Ignorer la validation pour les combos et formules (validées différemment)
+      if (isComboItem(item) || item.is_formula === true) {
+        console.log('Article combo/formule détecté, validation spécifique ignorée pour:', item.id || item.nom);
+        
+        // Pour les formules, vérifier que formula_items existe
+        if (item.is_formula && (!item.formula_items || !Array.isArray(item.formula_items) || item.formula_items.length === 0)) {
+          console.error('❌ Formule sans formula_items:', item);
+          return NextResponse.json(
+            { error: 'Formule invalide: éléments manquants' },
+            { status: 400 }
+          );
+        }
         continue;
+      }
+
+      // Validation pour les articles normaux
+      if (!item.id) {
+        console.error('❌ Article sans ID:', item);
+        return NextResponse.json(
+          { error: 'Article invalide: ID manquant' },
+          { status: 400 }
+        );
       }
 
       console.log('Verification article ID:', item.id);
@@ -545,7 +565,7 @@ export async function POST(request) {
       adresse_livraison: `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`,
       total: total, // sous-total articles
       frais_livraison: fraisLivraison,
-      statut: 'en_attente', // En attente d'acceptation par le restaurant
+      statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation
       security_code: securityCode // Code de sécurité pour la livraison
     };
 
@@ -657,8 +677,79 @@ export async function POST(request) {
 
     for (const item of items) {
       const isCombo = isComboItem(item);
+      const isFormula = item.is_formula === true;
       const quantity = parseInt(item?.quantity || 1, 10);
 
+      // CORRECTION FORMULES: Créer un détail pour chaque élément de la formule
+      if (isFormula && item.formula_items && Array.isArray(item.formula_items) && item.formula_items.length > 0) {
+        console.log(`📦 Formule détectée: ${item.nom || 'Formule'}, ${item.formula_items.length} éléments`);
+        
+        // Calculer le prix total de la formule
+        const totalFormulaPrice = parseFloat(item.prix || item.price || 0) || 0;
+        const pricePerItem = totalFormulaPrice / item.formula_items.length; // Répartir le prix
+        
+        // Créer un détail pour chaque élément de la formule
+        let firstItem = true;
+        for (const formulaItem of item.formula_items) {
+          // Extraire l'ID du menu depuis formulaItem (peut être menu_id, menu.id, ou id)
+          const formulaItemId = formulaItem.menu_id || formulaItem.menu?.id || formulaItem.id;
+          
+          if (!formulaItemId) {
+            console.error('❌ Élément de formule sans ID menu:', formulaItem);
+            continue;
+          }
+
+          // Prix de l'élément : mettre le prix total sur le premier, 0 sur les autres
+          const formulaItemPrice = firstItem ? totalFormulaPrice : 0;
+          const itemQuantity = parseInt(formulaItem.quantity || 1, 10) * quantity;
+          
+          const detailEntry = {
+            commande_id: order.id,
+            plat_id: formulaItemId, // IMPORTANT: Utiliser l'ID du menu, jamais null
+            quantite: itemQuantity,
+            prix_unitaire: formulaItemPrice, // Prix total sur le premier élément
+            customizations: {
+              is_formula_item: true,
+              formula_name: item.nom || 'Formule',
+              formula_id: item.id || item.formula_id,
+              order_index: formulaItem.order_index || 0
+            }
+          };
+
+          orderDetailsPayload.push(detailEntry);
+          firstItem = false;
+        }
+
+        // Ajouter la boisson sélectionnée si présente
+        if (item.selected_drink) {
+          const drinkId = item.selected_drink.id || item.selected_drink.menu_id;
+          if (drinkId) {
+            const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
+            const drinkDetail = {
+              commande_id: order.id,
+              plat_id: drinkId, // ID de la boisson
+              quantite: quantity,
+              prix_unitaire: drinkPrice, // Généralement 0 car inclus dans la formule
+              customizations: {
+                is_formula_drink: true,
+                formula_name: item.nom || 'Formule',
+                formula_id: item.id || item.formula_id
+              }
+            };
+            orderDetailsPayload.push(drinkDetail);
+            console.log(`🥤 Boisson ajoutée à la formule: ${drinkId}`);
+          } else {
+            console.warn('⚠️ Boisson sélectionnée mais sans ID:', item.selected_drink);
+          }
+        } else {
+          console.warn('⚠️ Formule sans boisson sélectionnée:', item.nom);
+        }
+
+        console.log(`✅ ${orderDetailsPayload.length} détails créés pour la formule "${item.nom || 'Formule'}"`);
+        continue; // Passer au prochain item
+      }
+
+      // Pour les items normaux (non-formule)
       let supplementsData = [];
       if (item?.supplements && Array.isArray(item.supplements)) {
         supplementsData = item.supplements.map((sup) => ({
@@ -695,9 +786,15 @@ export async function POST(request) {
       const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
       const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
 
+      // IMPORTANT: Ne jamais mettre plat_id à null - utiliser l'ID réel
+      if (!item.id) {
+        console.error('❌ Item sans ID:', item);
+        continue; // Ignorer cet item
+      }
+
       const detailEntry = {
         commande_id: order.id,
-        plat_id: isCombo ? null : item.id,
+        plat_id: item.id, // TOUJOURS un ID valide
         quantite: quantity,
         prix_unitaire: prixUnitaireTotal
       };
@@ -724,6 +821,20 @@ export async function POST(request) {
     }
 
     console.log(`📋 Insertion de ${orderDetailsPayload.length} détails de commande pour commande ${order.id?.slice(0, 8)}`);
+    
+    // Vérifier qu'aucun plat_id n'est null
+    const nullPlatIds = orderDetailsPayload.filter(d => !d.plat_id);
+    if (nullPlatIds.length > 0) {
+      console.error('❌ ERREUR CRITIQUE: Détails avec plat_id null détectés:', nullPlatIds.length);
+      console.error('   Détails problématiques:', JSON.stringify(nullPlatIds, null, 2));
+      return NextResponse.json(
+        { 
+          error: 'Erreur: certains détails ont un plat_id invalide (null)',
+          details: 'Vérifiez les formules et combos'
+        },
+        { status: 500 }
+      );
+    }
     
     const { data: insertedDetails, error: detailsError } = await serviceClient
       .from('details_commande')
