@@ -143,6 +143,7 @@ export async function GET(request) {
           )
         `)
       .eq('restaurant_id', restaurantId)
+      .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
         .order('created_at', { ascending: false });
       
       // Log immédiat après la requête

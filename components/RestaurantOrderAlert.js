@@ -23,7 +23,12 @@ export default function RestaurantOrderAlert() {
         }, 
         (payload) => {
           console.log('Nouvelle commande reçue:', payload.new);
-          setOrders(prev => [payload.new, ...prev]);
+          // IMPORTANT: Vérifier que la commande est payée avant d'afficher l'alerte
+          if (payload.new.payment_status === 'paid') {
+            setOrders(prev => [payload.new, ...prev]);
+          } else {
+            console.log('⚠️ Commande non payée ignorée:', payload.new.id);
+          }
         }
       )
       .on('postgres_changes', 
@@ -73,6 +78,7 @@ export default function RestaurantOrderAlert() {
 
       // Récupérer les commandes en attente pour ce restaurant
       // IMPORTANT: Inclure total_amount, delivery_fee, et tous les champs nécessaires
+      // IMPORTANT: Seulement les commandes payées (payment_status = 'paid')
       const { data, error } = await supabase
         .from('commandes')
         .select(`
@@ -113,6 +119,7 @@ export default function RestaurantOrderAlert() {
           )
         `)
         .eq('statut', 'en_attente')
+        .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
         .eq('restaurant_id', restaurant.id)
         .order('created_at', { ascending: false });
 

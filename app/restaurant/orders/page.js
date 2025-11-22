@@ -111,6 +111,12 @@ export default function RestaurantOrders() {
         },
         (payload) => {
           console.log('Nouvelle commande reçue:', payload.new);
+          // IMPORTANT: Vérifier que la commande est payée avant d'afficher l'alerte
+          if (payload.new.payment_status !== 'paid') {
+            console.log('⚠️ Commande non payée ignorée:', payload.new.id, 'payment_status:', payload.new.payment_status);
+            return; // Ne pas traiter les commandes non payées
+          }
+          
           setNewOrderNotification(payload.new);
           // TOUJOURS rafraîchir la liste, même si le son est désactivé
           fetchOrders();

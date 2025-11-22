@@ -39,6 +39,7 @@ export async function GET(request, { params }) {
         )
       `)
       .eq('restaurant_id', id)
+      .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
       .order('created_at', { ascending: false });
 
     // Filtrer par statut si spécifié
