@@ -623,20 +623,17 @@ export async function POST(request) {
     }
 
     // Ajouter user_id si l'utilisateur est connecté
-    // IMPORTANT: user_id peut être NULL pour les commandes sans compte
+    // IMPORTANT: Si user_id est NOT NULL dans la table, on doit forcer la connexion
     if (userId) {
       orderData.user_id = userId;
     } else {
-      // Si pas d'utilisateur connecté, on peut quand même créer la commande
-      // mais il faut s'assurer que les infos client sont présentes
-      console.log('⚠️ Commande sans utilisateur connecté - utilisation des infos customerInfo');
-      if (!customerInfo || !customerInfo.email) {
-        console.error('❌ ERREUR: Pas d\'utilisateur connecté et pas d\'email dans customerInfo');
-        return NextResponse.json(
-          { error: 'Email requis pour les commandes sans compte' },
-          { status: 400 }
-        );
-      }
+      // Si pas d'utilisateur connecté, vérifier si user_id est requis
+      // Pour l'instant, on exige un utilisateur connecté pour éviter les erreurs
+      console.error('❌ ERREUR: Pas d\'utilisateur connecté');
+      return NextResponse.json(
+        { error: 'Vous devez être connecté pour passer une commande' },
+        { status: 401 }
+      );
     }
 
     // Calculs financiers: commission/payout
