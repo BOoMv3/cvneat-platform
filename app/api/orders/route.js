@@ -619,7 +619,29 @@ export async function POST(request) {
       orderData.stripe_payment_intent_id = paymentIntentId;
     }
     if (paymentStatus) {
-      orderData.payment_status = sanitizeInput(paymentStatus);
+      // Valider que paymentStatus correspond à la contrainte CHECK
+      const validStatuses = ['pending', 'paid', 'failed', 'cancelled', 'refunded'];
+      const sanitizedStatus = sanitizeInput(paymentStatus);
+      
+      if (!validStatuses.includes(sanitizedStatus)) {
+        console.error('❌ ERREUR: payment_status invalide:', sanitizedStatus);
+        console.error('   Valeurs autorisées:', validStatuses);
+        // Convertir 'pending_payment' en 'pending' pour compatibilité
+        if (sanitizedStatus === 'pending_payment') {
+          orderData.payment_status = 'pending';
+          console.log('   ✅ Conversion: pending_payment -> pending');
+        } else {
+          return NextResponse.json(
+            { error: `Statut de paiement invalide: ${sanitizedStatus}. Valeurs autorisées: ${validStatuses.join(', ')}` },
+            { status: 400 }
+          );
+        }
+      } else {
+        orderData.payment_status = sanitizedStatus;
+      }
+    } else {
+      // Valeur par défaut si non spécifié
+      orderData.payment_status = 'pending';
     }
 
     // Ajouter user_id si l'utilisateur est connecté

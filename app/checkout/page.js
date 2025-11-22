@@ -540,7 +540,7 @@ export default function Checkout() {
           platformFee: PLATFORM_FEE,
           promoCodeId: appliedPromoCode?.promoCodeId || null,
           promoCode: appliedPromoCode?.code || null,
-          paymentStatus: 'pending_payment', // Statut en attente de paiement
+          paymentStatus: 'pending', // Statut en attente de paiement (doit correspondre à la contrainte CHECK)
           customerInfo: {
             firstName: customerFirstName,
             lastName: customerLastName,
