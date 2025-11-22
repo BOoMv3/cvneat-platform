@@ -404,8 +404,16 @@ export async function POST(request) {
     console.log('Montant total recu:', totalAmount);
 
     // Validation des donnees
-    if (!restaurantId || !items || items.length === 0) {
-      console.log('Validation echouee: donnees manquantes');
+    if (!restaurantId) {
+      console.error('❌ Validation échouée: restaurantId manquant');
+      return NextResponse.json(
+        { error: 'Restaurant non spécifié' },
+        { status: 400 }
+      );
+    }
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.error('❌ Validation échouée: items manquants ou vides');
       return NextResponse.json(
         { error: 'Donnees de commande invalides' },
         { status: 400 }
@@ -643,9 +651,30 @@ export async function POST(request) {
       .single();
 
     if (orderError) {
-      console.error('Erreur lors de la création de la commande:', orderError);
+      console.error('❌ ERREUR création commande dans Supabase:', orderError);
+      console.error('❌ Code erreur:', orderError.code);
+      console.error('❌ Détails:', orderError.details);
+      console.error('❌ Hint:', orderError.hint);
+      console.error('❌ Message:', orderError.message);
+      console.error('❌ Données tentées:', JSON.stringify(orderData, null, 2));
+      
+      // Message d'erreur plus clair selon le type d'erreur
+      let errorMessage = 'Erreur lors de la création de la commande';
+      if (orderError.code === '23503') {
+        errorMessage = 'Erreur: Restaurant ou utilisateur invalide';
+      } else if (orderError.code === '23505') {
+        errorMessage = 'Erreur: Commande déjà existante';
+      } else if (orderError.code === '23502') {
+        errorMessage = 'Erreur: Données manquantes pour la commande';
+      } else if (orderError.message) {
+        errorMessage = `Erreur: ${orderError.message}`;
+      }
+      
       return NextResponse.json(
-        { error: `Erreur lors de la création de la commande: ${orderError.message}` },
+        { 
+          error: errorMessage,
+          details: process.env.NODE_ENV === 'development' ? orderError.message : undefined
+        },
         { status: 500 }
       );
     }
@@ -897,9 +926,24 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Erreur générale lors de la création de la commande:', error);
+    console.error('❌ ERREUR GÉNÉRALE lors de la création de la commande:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Type:', error.name);
+    console.error('❌ Message:', error.message);
+    
+    // Message d'erreur plus détaillé pour le client
+    let errorMessage = 'Erreur lors de la création de la commande';
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.code) {
+      errorMessage = `Erreur ${error.code}: ${error.message || 'Erreur inconnue'}`;
+    }
+    
     return NextResponse.json(
-      { error: `Erreur lors de la création de la commande: ${error.message}` },
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }
