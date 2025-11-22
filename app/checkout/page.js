@@ -560,7 +560,25 @@ export default function Checkout() {
       });
 
       // Créer le PaymentIntent Stripe avec l'ID de commande
-      console.log('💳 Création PaymentIntent Stripe pour montant:', totalAmount);
+      // Vérifier que le montant est valide avant d'envoyer à Stripe
+      if (!totalAmount || totalAmount <= 0 || isNaN(totalAmount)) {
+        throw new Error('Montant invalide. Veuillez vérifier votre panier.');
+      }
+
+      if (totalAmount < 0.50) {
+        throw new Error('Le montant minimum de commande est de 0.50€');
+      }
+
+      console.log('💳 Création PaymentIntent Stripe pour montant:', totalAmount, '€');
+      console.log('📊 Détails:', {
+        cartTotal,
+        discountAmount,
+        subtotalAfterDiscount,
+        finalDeliveryFeeForTotal,
+        PLATFORM_FEE,
+        totalAmount
+      });
+
       const paymentResponse = await fetch('/api/payment/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -570,7 +588,8 @@ export default function Checkout() {
           metadata: {
             order_id: orderId, // Lier le paiement à la commande
             user_id: user.id,
-            restaurant_id: resolvedRestaurant.id
+            restaurant_id: resolvedRestaurant.id,
+            promo_code: appliedPromoCode?.code || null
           }
         })
       });

@@ -7,15 +7,35 @@ export async function POST(request) {
   try {
     const { amount, currency = 'eur', metadata = {} } = await request.json();
 
-    if (!amount || amount <= 0) {
+    // Validation du montant
+    const amountNumber = parseFloat(amount);
+    if (!amount || isNaN(amountNumber) || amountNumber <= 0) {
+      console.error('❌ Montant invalide:', amount);
       return NextResponse.json(
-        { error: 'Montant invalide' },
+        { error: 'Montant invalide. Le montant doit être supérieur à 0.' },
         { status: 400 }
       );
     }
 
+    // Stripe exige un minimum de 0.50€ (50 centimes)
+    const amountInCents = Math.round(amountNumber * 100);
+    if (amountInCents < 50) {
+      console.error('❌ Montant trop faible:', amountNumber, '€');
+      return NextResponse.json(
+        { error: 'Le montant minimum est de 0.50€' },
+        { status: 400 }
+      );
+    }
+
+    console.log('💳 Création PaymentIntent:', {
+      amount: amountNumber,
+      amountInCents,
+      currency,
+      metadata
+    });
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe utilise les centimes
+      amount: amountInCents,
       currency,
       metadata,
       automatic_payment_methods: {
