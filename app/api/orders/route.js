@@ -623,8 +623,20 @@ export async function POST(request) {
     }
 
     // Ajouter user_id si l'utilisateur est connecté
+    // IMPORTANT: user_id peut être NULL pour les commandes sans compte
     if (userId) {
       orderData.user_id = userId;
+    } else {
+      // Si pas d'utilisateur connecté, on peut quand même créer la commande
+      // mais il faut s'assurer que les infos client sont présentes
+      console.log('⚠️ Commande sans utilisateur connecté - utilisation des infos customerInfo');
+      if (!customerInfo || !customerInfo.email) {
+        console.error('❌ ERREUR: Pas d\'utilisateur connecté et pas d\'email dans customerInfo');
+        return NextResponse.json(
+          { error: 'Email requis pour les commandes sans compte' },
+          { status: 400 }
+        );
+      }
     }
 
     // Calculs financiers: commission/payout
