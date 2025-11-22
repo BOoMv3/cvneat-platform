@@ -48,9 +48,26 @@ export async function POST(request) {
       paymentIntentId: paymentIntent.id,
     });
   } catch (error) {
-    console.error('Erreur lors de la création du paiement:', error);
+    console.error('❌ Erreur lors de la création du paiement:', error);
+    console.error('❌ Détails erreur Stripe:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode
+    });
+    
+    // Messages d'erreur plus spécifiques selon le type d'erreur Stripe
+    let errorMessage = 'Erreur lors de la création du paiement';
+    if (error.type === 'StripeInvalidRequestError') {
+      errorMessage = 'Erreur de configuration du paiement. Veuillez contacter le support.';
+    } else if (error.type === 'StripeAPIError') {
+      errorMessage = 'Erreur de communication avec le service de paiement. Veuillez réessayer.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return NextResponse.json(
-      { error: 'Erreur lors de la création du paiement' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

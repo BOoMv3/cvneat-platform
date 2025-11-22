@@ -463,24 +463,40 @@ export default function Checkout() {
       }
       const PLATFORM_FEE = 0.49; // Frais plateforme fixe
 
-      // IMPORTANT: Utiliser les frais arrondis pour le calcul du total
-      // Utiliser finalDeliveryFee qui a été calculé ci-dessus (2,50€ + 0,50€/km)
-      // (La gestion de la livraison gratuite est faite plus haut si code promo)
+      // IMPORTANT: Calculer le montant total avec toutes les validations
+      // 1. Calculer le sous-total après réduction (la réduction ne peut pas dépasser le sous-total)
+      const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas être supérieure au panier
+      const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
       
-      // PROMO: Livraison offerte pour aujourd'hui uniquement si commande >= 25€
-      // PROMO TERMINÉE : Plus de livraison gratuite
-      // Les frais de livraison sont toujours calculés normalement
-      // const today = new Date().toISOString().split('T')[0];
-      // const PROMO_DATE = '2025-11-21'; // Date de la promo
-      // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00; // Montant minimum
-      // 
-      // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-      //   finalDeliveryFeeForTotal = 0; // Livraison gratuite !
-      //   console.log('🎉 PROMO: Livraison offerte appliquée!');
-      // }
-      // Montant facturé au client = sous-total - réduction + livraison + frais plateforme
-      const subtotalAfterDiscount = Math.max(0, cartTotal - discountAmount);
-      const totalAmount = Math.max(0, subtotalAfterDiscount + finalDeliveryFeeForTotal + PLATFORM_FEE);
+      // 2. Calculer le total final (sous-total + livraison + frais plateforme)
+      // Le total doit être au minimum 0.50€ (minimum Stripe)
+      const rawTotal = subtotalAfterDiscount + finalDeliveryFeeForTotal + PLATFORM_FEE;
+      const totalAmount = Math.max(0.50, Math.round(rawTotal * 100) / 100); // Minimum 0.50€, arrondi à 2 décimales
+      
+      // 3. Vérification finale de cohérence
+      if (isNaN(totalAmount) || totalAmount <= 0) {
+        console.error('❌ ERREUR: Montant total invalide calculé:', {
+          cartTotal,
+          discountAmount,
+          maxDiscount,
+          subtotalAfterDiscount,
+          finalDeliveryFeeForTotal,
+          PLATFORM_FEE,
+          rawTotal,
+          totalAmount
+        });
+        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
+      }
+      
+      console.log('💰 Calcul montant final:', {
+        cartTotal,
+        discountAmount,
+        maxDiscount,
+        subtotalAfterDiscount,
+        finalDeliveryFeeForTotal,
+        PLATFORM_FEE,
+        totalAmount
+      });
 
       // Le code de sécurité est généré côté serveur dans l'API
 
