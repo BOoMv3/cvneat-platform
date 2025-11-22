@@ -763,16 +763,23 @@ export async function POST(request) {
     const clientLat = Math.round(clientCoords.lat * 1000) / 1000;
     const clientLng = Math.round(clientCoords.lng * 1000) / 1000;
     
-    const distance = calculateDistance(
+    const rawDistance = calculateDistance(
       restaurantLat, restaurantLng,
       clientLat, clientLng
     );
 
+    // MINIMUM DE DISTANCE: Garantir un minimum de 0.5 km pour éviter les frais à 0€/km
+    // Cela garantit qu'il y a toujours une partie "par km" dans les frais de livraison
+    const MIN_DISTANCE = 0.5; // Minimum 0.5 km
+    const distanceWithMinimum = Math.max(rawDistance, MIN_DISTANCE);
+
     // Arrondir la distance à 1 décimale pour éviter les micro-variations
     // Cela garantit que la même adresse donne toujours la même distance (et donc les mêmes frais)
-    const roundedDistance = Math.round(distance * 10) / 10; // 1 décimale = précision ~100m
+    const roundedDistance = Math.round(distanceWithMinimum * 10) / 10; // 1 décimale = précision ~100m
 
-    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (coords restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)} | client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)})`);
+    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km, minimum appliqué: ${rawDistance < MIN_DISTANCE ? 'OUI' : 'NON'})`);
+    console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)}`);
+    console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)}`);
 
     // 5. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
