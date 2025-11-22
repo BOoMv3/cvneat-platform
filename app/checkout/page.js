@@ -639,12 +639,25 @@ export default function Checkout() {
       
     } catch (error) {
       console.error('❌ Erreur préparation commande:', error);
+      console.error('❌ Détails erreur:', {
+        message: error.message,
+        stack: error.stack,
+        cartTotal,
+        discountAmount: appliedPromoCode?.discountAmount,
+        fraisLivraison,
+        totalAmount: cartTotal - (appliedPromoCode?.discountAmount || 0) + fraisLivraison + 0.49
+      });
       
       // Gestion spécifique de l'erreur 429
       if (error.message && (error.message.includes('429') || error.message.includes('Too Many Requests') || error.message.includes('Trop de requêtes'))) {
         alert('⚠️ Trop de requêtes ont été effectuées. Veuillez patienter quelques instants avant de réessayer.');
+      } else if (error.message && error.message.includes('Montant')) {
+        // Erreur liée au montant
+        alert(`❌ ${error.message}\n\nVérifiez que votre panier contient des articles et que le code promo est valide.`);
       } else {
-        alert(error.message || 'Erreur lors de la préparation de la commande');
+        // Message d'erreur générique mais plus informatif
+        const userMessage = error.message || 'Erreur lors de la préparation de la commande';
+        alert(`❌ ${userMessage}\n\nSi le problème persiste, contactez le support.`);
       }
       
       setSubmitting(false);
