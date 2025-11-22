@@ -523,6 +523,8 @@ export default function Checkout() {
           totalAmount: cartTotal,
           discountAmount: discountAmount,
           platformFee: PLATFORM_FEE,
+          promoCodeId: appliedPromoCode?.promoCodeId || null,
+          promoCode: appliedPromoCode?.code || null,
           paymentStatus: 'pending_payment', // Statut en attente de paiement
           customerInfo: {
             firstName: customerFirstName,
@@ -552,7 +554,9 @@ export default function Checkout() {
       setOrderData({
         orderId: orderId,
         securityCode: securityCode,
-        restaurant_id: resolvedRestaurant.id
+        restaurant_id: resolvedRestaurant.id,
+        promoCode: appliedPromoCode,
+        cartTotal: cartTotal
       });
 
       // Créer le PaymentIntent Stripe avec l'ID de commande
@@ -677,6 +681,32 @@ export default function Checkout() {
     } catch (updateError) {
       console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateError);
       // Ne pas bloquer - continuer vers la confirmation
+    }
+
+    // Enregistrer l'utilisation du code promo si présent
+    if (orderData?.promoCode?.promoCodeId) {
+      try {
+        const promoApplyResponse = await fetch('/api/promo-codes/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            promoCodeId: orderData.promoCode.promoCodeId,
+            userId: user?.id || null,
+            orderId: orderId,
+            discountAmount: orderData.promoCode.discountAmount,
+            orderAmount: orderData.cartTotal || 0
+          })
+        });
+        
+        if (!promoApplyResponse.ok) {
+          console.warn('⚠️ Erreur enregistrement code promo (non bloquant):', promoApplyResponse.status);
+        } else {
+          console.log('✅ Utilisation du code promo enregistrée');
+        }
+      } catch (promoError) {
+        console.warn('⚠️ Erreur enregistrement code promo (non bloquant):', promoError);
+        // Ne pas bloquer le processus si l'enregistrement échoue
+      }
     }
 
     // Nettoyer le panier

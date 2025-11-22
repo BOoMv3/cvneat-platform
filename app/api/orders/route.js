@@ -390,7 +390,7 @@ export async function POST(request) {
 
     console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
-    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo, discountAmount = 0, platformFee = 0 } = body;
+    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo, discountAmount = 0, platformFee = 0, promoCodeId = null, promoCode = null } = body;
 
     // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
     console.log('🔍 Validation simplifiée de la commande...');
