@@ -501,7 +501,6 @@ export default function Checkout() {
       // Le code de sécurité est généré côté serveur dans l'API
 
       console.log('💰 Frais de livraison finaux:', {
-        finalCheckData: finalCheckData?.frais_livraison,
         fraisLivraison,
         finalDeliveryFee,
         finalDeliveryFeeForTotal,
