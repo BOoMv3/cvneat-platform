@@ -536,8 +536,8 @@ export default function Checkout() {
           },
           items: savedCart.items,
           deliveryFee: finalDeliveryFeeForTotal,
-          totalAmount: cartTotal,
-          discountAmount: discountAmount,
+          totalAmount: cartTotal, // Sous-total articles (avant réduction)
+          discountAmount: maxDiscount, // Réduction réelle appliquée (limitée au panier)
           platformFee: PLATFORM_FEE,
           promoCodeId: appliedPromoCode?.promoCodeId || null,
           promoCode: appliedPromoCode?.code || null,
@@ -572,17 +572,21 @@ export default function Checkout() {
         securityCode: securityCode,
         restaurant_id: resolvedRestaurant.id,
         promoCode: appliedPromoCode,
-        cartTotal: cartTotal
+        cartTotal: cartTotal,
+        totalAmount: totalAmount // Montant final à payer
       });
 
       // Créer le PaymentIntent Stripe avec l'ID de commande
-      // Vérifier que le montant est valide avant d'envoyer à Stripe
+      // Le montant a déjà été validé et ajusté ci-dessus (minimum 0.50€)
+      // Double vérification de sécurité
       if (!totalAmount || totalAmount <= 0 || isNaN(totalAmount)) {
-        throw new Error('Montant invalide. Veuillez vérifier votre panier.');
+        console.error('❌ ERREUR CRITIQUE: Montant invalide après validation:', totalAmount);
+        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
       }
 
       if (totalAmount < 0.50) {
-        throw new Error('Le montant minimum de commande est de 0.50€');
+        console.error('❌ ERREUR CRITIQUE: Montant trop faible après validation:', totalAmount);
+        throw new Error('Le montant minimum de commande est de 0.50€. Veuillez ajouter des articles à votre panier.');
       }
 
       console.log('💳 Création PaymentIntent Stripe pour montant:', totalAmount, '€');
