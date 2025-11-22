@@ -1189,10 +1189,12 @@ export default function Checkout() {
                       finalDeliveryFee = 0;
                     }
                     
-                    // Appliquer la réduction du code promo
+                    // Appliquer la réduction du code promo (même logique que prepareOrderAndPayment)
                     const discountAmount = appliedPromoCode?.discountAmount || 0;
-                    const subtotalAfterDiscount = Math.max(0, cartTotal - discountAmount);
-                    const finalTotalDisplay = Math.max(0, subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE);
+                    const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas dépasser le panier
+                    const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
+                    const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
+                    const finalTotalDisplay = Math.max(0.50, Math.round(rawTotal * 100) / 100); // Minimum 0.50€
                     return `Payer ${finalTotalDisplay.toFixed(2)}€`;
                   })()
                 )}
