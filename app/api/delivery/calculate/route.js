@@ -866,21 +866,8 @@ export async function POST(request) {
 
     // PROMO TERMINÉE : Plus de livraison gratuite
     // Les frais de livraison sont toujours calculés normalement
-    // const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
-    // const resolvedFreeThreshold = pickNumeric(
-    //   [
-    //     freeDeliveryThreshold,
-    //     restaurantData?.free_delivery_threshold,
-    //     restaurantData?.livraison_gratuite_seuil
-    //   ],
-    //   null,
-    //   { min: 0 }
-    // );
-
-    // if (resolvedFreeThreshold !== null && orderAmountNumeric >= resolvedFreeThreshold) {
-    //   console.log(`🎁 Livraison offerte (commande ${orderAmountNumeric.toFixed(2)}€ >= seuil ${resolvedFreeThreshold}€)`);
-    //   deliveryFee = 0;
-    // }
+    // Calculer orderAmountNumeric pour la réponse (même si on ne l'utilise plus pour la promo)
+    const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
     console.log(`💰 Frais: ${resolvedBaseFee}€ + (${roundedDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
 
