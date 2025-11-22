@@ -654,7 +654,33 @@ export async function POST(request) {
       platform_fee
     });
 
-    console.log('Donnees de commande a inserer:', JSON.stringify(orderData, null, 2));
+    // Validation finale avant insertion
+    if (!orderData.restaurant_id) {
+      console.error('❌ ERREUR: restaurant_id manquant');
+      return NextResponse.json(
+        { error: 'Restaurant non spécifié' },
+        { status: 400 }
+      );
+    }
+    
+    if (!orderData.adresse_livraison || orderData.adresse_livraison.trim().length === 0) {
+      console.error('❌ ERREUR: adresse_livraison manquante');
+      return NextResponse.json(
+        { error: 'Adresse de livraison requise' },
+        { status: 400 }
+      );
+    }
+    
+    if (!orderData.total || orderData.total <= 0 || isNaN(orderData.total)) {
+      console.error('❌ ERREUR: total invalide:', orderData.total);
+      return NextResponse.json(
+        { error: 'Montant de commande invalide' },
+        { status: 400 }
+      );
+    }
+
+    console.log('📦 Données de commande à insérer:', JSON.stringify(orderData, null, 2));
+    console.log('📦 Nombre de champs:', Object.keys(orderData).length);
 
     const { data: order, error: orderError } = await serviceClient
       .from('commandes')
