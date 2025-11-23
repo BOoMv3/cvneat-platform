@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { supabase } from '../../../../lib/supabase';
+import sseBroadcaster from '../../../../lib/sse-broadcast';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -85,10 +86,10 @@ async function handlePaymentSucceeded(paymentIntent) {
   console.log('✅ Paiement réussi:', paymentIntent.id);
   
   try {
-    // Mettre à jour le statut de la commande si nécessaire
+    // Récupérer les informations complètes de la commande
     const { data: order, error: orderError } = await supabase
       .from('commandes')
-      .select('id, order_number, customer_id')
+      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .single();
 
@@ -110,6 +111,24 @@ async function handlePaymentSucceeded(paymentIntent) {
       console.error('❌ Erreur mise à jour commande:', updateError);
     } else {
       console.log('✅ Statut de commande mis à jour:', order.order_number);
+      
+      // IMPORTANT: Envoyer la notification SSE uniquement après confirmation du paiement via webhook
+      if (order.restaurant_id) {
+        try {
+          const notificationTotal = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
+          const notificationSent = sseBroadcaster.broadcast(order.restaurant_id, {
+            type: 'new_order',
+            message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
+            order: order,
+            timestamp: new Date().toISOString()
+          });
+          console.log('🔔 Notification SSE envoyée via webhook:', notificationSent ? 'Oui' : 'Non (aucun client connecté)');
+          console.log('💰 Montant notification (avec frais):', notificationTotal, '€');
+        } catch (broadcastError) {
+          console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
+          // Ne pas faire échouer le traitement du webhook si le broadcast échoue
+        }
+      }
     }
 
   } catch (error) {

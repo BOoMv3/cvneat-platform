@@ -43,7 +43,20 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
     }
 
     try {
-      // SIMPLIFICATION: Valider et confirmer en une seule étape
+      // IMPORTANT: Appeler elements.submit() AVANT confirmPayment()
+      // Cela valide le formulaire et prépare les données de paiement
+      const { error: submitError } = await elements.submit();
+      
+      if (submitError) {
+        // Erreur de validation du formulaire
+        let errorMessage = submitError.message;
+        if (submitError.type === 'validation_error') {
+          errorMessage = 'Vérifiez que tous les champs sont correctement remplis.';
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Maintenant que le formulaire est validé, confirmer le paiement
       const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret,

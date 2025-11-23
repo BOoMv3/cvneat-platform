@@ -753,24 +753,12 @@ export async function POST(request) {
     }
 
     console.log('✅ Commande créée avec succès:', order.id);
-    
-    // Envoyer une notification SSE au restaurant via le broadcaster
-    // IMPORTANT: Calculer le montant total avec les frais de livraison pour la notification
-    const notificationTotal = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
-    try {
-      const notificationSent = sseBroadcaster.broadcast(restaurantId, {
-        type: 'new_order',
-        message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
-        order: order,
-        timestamp: new Date().toISOString()
-      });
-      console.log('🔔 Notification SSE envoyée:', notificationSent ? 'Oui' : 'Non (aucun client connecté)');
-      console.log('💰 Montant notification (avec frais):', notificationTotal, '€ (sous-total:', order.total, '€ + frais:', order.frais_livraison, '€)');
-    } catch (broadcastError) {
-      console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
-      // Ne pas faire échouer la création de commande si le broadcast échoue
-    }
     console.log('📊 Statut initial de la commande:', order.statut);
+    console.log('💳 Statut paiement initial:', order.payment_status);
+    // IMPORTANT: Ne pas envoyer de notification SSE ici car le paiement n'est pas encore validé
+    // La notification sera envoyée uniquement après confirmation du paiement dans:
+    // - app/api/payment/confirm/route.js (confirmation côté client)
+    // - app/api/stripe/webhook/route.js (webhook Stripe)
     console.log('📅 Heure de création:', order.created_at);
 
     // Créer les détails de commande
