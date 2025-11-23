@@ -360,12 +360,70 @@ export async function GET(request) {
                   orders[orderIndex].details_commande = fullDetails;
                   console.log(`      ✅ Détails ajoutés à la commande ${order.id?.slice(0, 8)}`);
                 }
-              } else {
-                console.error(`      ❌ Impossible de récupérer les détails avec menus:`, fullError?.message);
-              }
             } else {
-              console.warn(`   ⚠️ CONFIRMÉ - Commande ${order.id?.slice(0, 8)}: Aucun détail n'existe en BDD - ils n'ont jamais été créés.`);
+              console.error(`      ❌ Impossible de récupérer les détails avec menus:`, fullError?.message);
             }
+          } else {
+            console.warn(`   ⚠️ CONFIRMÉ - Commande ${order.id?.slice(0, 8)}: Aucun détail n'existe en BDD - ils n'ont jamais été créés.`);
+            
+            // Créer un détail générique pour que le partenaire puisse voir la commande
+            try {
+              console.log(`   🔧 Création d'un détail générique pour la commande ${order.id?.slice(0, 8)}...`);
+              
+              // Récupérer un menu du restaurant pour créer un détail valide
+              const { data: restaurantMenus, error: menuError } = await supabaseAdmin
+                .from('menus')
+                .select('id, nom, prix')
+                .eq('restaurant_id', order.restaurant_id)
+                .limit(1)
+                .single();
+              
+              if (!menuError && restaurantMenus) {
+                // Créer un détail générique
+                const { data: genericDetail, error: insertError } = await supabaseAdmin
+                  .from('details_commande')
+                  .insert([{
+                    commande_id: order.id,
+                    plat_id: restaurantMenus.id,
+                    quantite: 1,
+                    prix_unitaire: parseFloat(order.total || 0),
+                    customizations: JSON.stringify({
+                      is_generic: true,
+                      note: 'Détail généré automatiquement - détails originaux non disponibles'
+                    })
+                  }])
+                  .select(`
+                    id,
+                    commande_id,
+                    plat_id,
+                    quantite,
+                    prix_unitaire,
+                    supplements,
+                    customizations,
+                    menus (
+                      nom,
+                      prix
+                    )
+                  `)
+                  .single();
+                
+                if (!insertError && genericDetail) {
+                  console.log(`   ✅ Détail générique créé avec succès`);
+                  const orderIndex = orders.findIndex(o => o.id === order.id);
+                  if (orderIndex !== -1) {
+                    orders[orderIndex].details_commande = [genericDetail];
+                    console.log(`   ✅ Détail générique ajouté à la commande ${order.id?.slice(0, 8)}`);
+                  }
+                } else {
+                  console.error(`   ❌ Erreur création détail générique:`, insertError?.message);
+                }
+              } else {
+                console.error(`   ❌ Impossible de trouver un menu pour créer un détail générique:`, menuError?.message);
+              }
+            } catch (genericError) {
+              console.error(`   ❌ Exception lors création détail générique:`, genericError.message);
+            }
+          }
           }
         } catch (checkErr) {
           console.error(`   ❌ Exception lors vérification commande ${order.id?.slice(0, 8)}:`, checkErr.message);
