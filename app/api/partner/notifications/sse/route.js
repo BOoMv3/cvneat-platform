@@ -126,6 +126,12 @@ export async function GET(request) {
               }, 
               (payload) => {
                 console.log('🔔 Nouvelle commande détectée via Supabase Realtime:', payload.new.id);
+                // IMPORTANT: Vérifier que la commande est payée avant d'envoyer la notification
+                if (payload.new.payment_status !== 'paid') {
+                  console.log('⚠️ Commande non payée ignorée dans SSE:', payload.new.id, 'payment_status:', payload.new.payment_status);
+                  return; // Ne pas envoyer de notification pour les commandes non payées
+                }
+                
                 // IMPORTANT: Calculer le montant total avec les frais de livraison
                 const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
                 sendNotification({

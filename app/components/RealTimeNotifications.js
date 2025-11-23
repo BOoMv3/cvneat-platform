@@ -159,6 +159,12 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           filter: `restaurant_id=eq.${restaurantId}`
         }, 
         (payload) => {
+          // IMPORTANT: Vérifier que la commande est payée avant d'afficher l'alerte
+          if (payload.new.payment_status !== 'paid') {
+            console.log('⚠️ Commande non payée ignorée dans RealTimeNotifications:', payload.new.id, 'payment_status:', payload.new.payment_status);
+            return; // Ne pas traiter les commandes non payées
+          }
+          
           // Déclencher l'alerte pour nouvelle commande
           triggerNewOrderAlert(payload.new);
           
@@ -234,12 +240,13 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session || !restaurantId) return;
 
-        // Récupérer la dernière commande
+        // Récupérer la dernière commande (seulement les commandes payées)
         const { data: orders, error } = await supabase
           .from('commandes')
-          .select('id, created_at, statut, restaurant_id')
+          .select('id, created_at, statut, restaurant_id, payment_status')
           .eq('restaurant_id', restaurantId)
           .eq('statut', 'en_attente')
+          .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -262,9 +269,11 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               .eq('id', latestOrderId)
               .single();
 
-            if (!orderError && fullOrder && fullOrder.statut === 'en_attente') {
+            if (!orderError && fullOrder && fullOrder.statut === 'en_attente' && fullOrder.payment_status === 'paid') {
               triggerNewOrderAlert(fullOrder);
               lastOrderCheckRef.current = latestOrderId;
+            } else if (fullOrder && fullOrder.payment_status !== 'paid') {
+              console.log('⚠️ Commande non payée ignorée dans polling:', latestOrderId, 'payment_status:', fullOrder.payment_status);
             }
               } else if (latestOrderId === pendingOrderId && latestOrder.statut !== 'en_attente') {
                 // Si la commande en attente n'est plus en attente, arrêter les alertes
