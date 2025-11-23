@@ -800,8 +800,9 @@ export async function POST(request) {
     );
 
     // MINIMUM DE DISTANCE: Garantir un minimum de 0.5 km pour éviter les frais à 0€/km
-    // Cela garantit qu'il y a toujours une partie "par km" dans les frais de livraison
-    const MIN_DISTANCE = 0.5; // Minimum 0.5 km
+    // MAIS: Si la distance réelle est très faible (< 0.1 km), utiliser la distance réelle
+    // Cela évite de surcharger les clients très proches du restaurant
+    const MIN_DISTANCE = rawDistance < 0.1 ? rawDistance : 0.5; // Minimum 0.5 km sauf si très proche
     const distanceWithMinimum = Math.max(rawDistance, MIN_DISTANCE);
 
     // Arrondir la distance à 1 décimale pour éviter les micro-variations
@@ -859,7 +860,20 @@ export async function POST(request) {
     }
 
     // 8. Calculer les frais
-    let deliveryFee = calculateDeliveryFee(roundedDistance, {
+    // CORRECTION: Si le client est dans la même ville que le restaurant (Ganges), 
+    // limiter la distance à 2 km maximum pour éviter les surcoûts dus au géocodage imprécis
+    let finalDistance = roundedDistance;
+    const clientCity = clientCoords.city?.toLowerCase() || '';
+    const restaurantCity = restaurantData?.ville?.toLowerCase() || 'ganges';
+    
+    // Si le client est à Ganges et que la distance calculée est > 2 km, 
+    // c'est probablement une erreur de géocodage - limiter à 2 km
+    if ((clientCity.includes('gange') || restaurantCity.includes('gange')) && roundedDistance > 2.0) {
+      console.log(`⚠️ Distance anormale pour Ganges (${roundedDistance.toFixed(1)}km), limitation à 2.0 km`);
+      finalDistance = 2.0;
+    }
+    
+    let deliveryFee = calculateDeliveryFee(finalDistance, {
       baseFee: resolvedBaseFee,
       perKmFee: resolvedPerKmFee
     });
@@ -869,12 +883,16 @@ export async function POST(request) {
     // Calculer orderAmountNumeric pour la réponse (même si on ne l'utilise plus pour la promo)
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
-    console.log(`💰 Frais: ${resolvedBaseFee}€ + (${roundedDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
+    console.log(`💰 Frais: ${resolvedBaseFee}€ + (${finalDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
+    if (finalDistance !== roundedDistance) {
+      console.log(`   (Distance ajustée: ${roundedDistance.toFixed(1)}km → ${finalDistance.toFixed(1)}km)`);
+    }
 
     return NextResponse.json({
       success: true,
       livrable: true,
-      distance: roundedDistance,
+      distance: finalDistance,
+      raw_distance: roundedDistance, // Distance brute pour debug
       frais_livraison: deliveryFee,
       restaurant: restaurantName,
       restaurant_coordinates: restaurantCoords,

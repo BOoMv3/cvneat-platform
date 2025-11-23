@@ -310,8 +310,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const handleAddToCart = () => {
     console.log('🛒 Ajout au panier démarré...', 'onClose:', typeof onClose);
     
-    // Pour les formules et menus avec boissons, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
-    if (item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
+    // Pour les formules uniquement, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
+    if (item.is_formula && item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
       alert('Veuillez choisir une boisson');
       return;
     }
@@ -336,8 +336,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       return;
     }
 
-    // Pour les menus normaux avec boissons, inclure la boisson sélectionnée
-    if (item.drink_options && item.drink_options.length > 0 && selectedDrink) {
+    // Pour les formules uniquement, inclure la boisson sélectionnée
+    // Les plats normaux ne doivent pas avoir de sélection de boisson
+    if (item.is_formula && item.drink_options && item.drink_options.length > 0 && selectedDrink) {
       const selectedDrinkData = item.drink_options.find(d => d.id === selectedDrink);
       item.selected_drink = selectedDrinkData;
     }
@@ -487,7 +488,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             )}
 
             {/* Choix de boisson - VERSION COMPACTE */}
-            {item.drink_options && item.drink_options.length > 0 && (
+            {/* IMPORTANT: Afficher la sélection de boisson UNIQUEMENT pour les formules */}
+            {item.is_formula && item.drink_options && item.drink_options.length > 0 && (
               <div className="mb-3">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
                   <FaFlask className="w-4 h-4 text-blue-600 mr-1" />
