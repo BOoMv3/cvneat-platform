@@ -21,17 +21,11 @@ export default function AdminOrderDetail() {
 
   const fetchOrder = async () => {
     try {
+      // D'abord récupérer la commande avec les relations
       const { data, error } = await supabase
         .from('commandes')
         .select(`
           *,
-          users (
-            id,
-            nom,
-            prenom,
-            telephone,
-            email
-          ),
           restaurants (
             id,
             nom
@@ -53,13 +47,41 @@ export default function AdminOrderDetail() {
 
       if (error) throw error;
       
+      // Ensuite, récupérer les infos utilisateur séparément si user_id existe
+      let userData = null;
+      if (data.user_id) {
+        try {
+          const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('id, nom, prenom, telephone, email')
+            .eq('id', data.user_id)
+            .single();
+          
+          if (!userError && user) {
+            userData = user;
+          }
+        } catch (userErr) {
+          console.warn('Erreur récupération utilisateur:', userErr);
+        }
+      }
+      
+      // Ajouter les données utilisateur à l'objet data
+      if (userData) {
+        data.users = userData;
+      }
+      
       // Formater les données pour l'affichage
       if (data) {
-        // Récupérer les informations client depuis users
+        // Récupérer les informations client depuis users (jointure) ou depuis les colonnes directes
         const user = data.users || {};
-        const customerName = user.prenom && user.nom 
-          ? `${user.prenom} ${user.nom}`.trim()
-          : user.nom || 'Client inconnu';
+        
+        // Priorité: colonnes directes dans commandes, sinon jointure avec users
+        const customerName = data.customer_name 
+          || (user.prenom && user.nom ? `${user.prenom} ${user.nom}`.trim() : user.nom)
+          || 'Client inconnu';
+        
+        const customerPhone = data.customer_phone || user.telephone || '';
+        const customerEmail = data.customer_email || user.email || '';
         
         // Formater les items depuis details_commande
         const items = (data.details_commande || []).map(detail => ({
@@ -72,8 +94,8 @@ export default function AdminOrderDetail() {
         setOrder({
           ...data,
           customer_name: customerName,
-          customer_phone: user.telephone || '',
-          customer_email: user.email || '',
+          customer_phone: customerPhone,
+          customer_email: customerEmail,
           delivery_address: data.adresse_livraison || '',
           delivery_postal_code: data.code_postal || '',
           delivery_city: data.ville || '',
@@ -203,12 +225,18 @@ export default function AdminOrderDetail() {
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-600">Nom</label>
-                <p className="text-gray-900">{order.customer_name}</p>
+                <p className="text-gray-900">{order.customer_name || 'Non renseigné'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Téléphone</label>
-                <p className="text-gray-900">{order.customer_phone}</p>
+                <p className="text-gray-900">{order.customer_phone || 'Non renseigné'}</p>
               </div>
+              {order.customer_email && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Email</label>
+                  <p className="text-gray-900">{order.customer_email}</p>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-gray-600">Adresse de livraison</label>
                 <p className="text-gray-900">{order.delivery_address}</p>
