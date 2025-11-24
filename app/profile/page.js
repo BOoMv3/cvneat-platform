@@ -521,16 +521,17 @@ export default function Profile() {
                           <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Total</p>
                           <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                             {(() => {
+                              // IMPORTANT: Utiliser frais_livraison en priorité (nom de colonne BDD)
+                              const deliveryFee = parseFloat(order.frais_livraison || order.deliveryFee || 0);
                               // Assurer que le total inclut bien les frais de livraison
-                              const subtotal = parseFloat(order.total || 0) - parseFloat(order.deliveryFee || 0);
-                              const deliveryFee = parseFloat(order.deliveryFee || 0);
+                              const subtotal = parseFloat(order.total || 0) - deliveryFee;
                               const total = subtotal + deliveryFee;
                               return total.toFixed(2);
                             })()}€
                           </p>
-                          {order.deliveryFee > 0 && (
+                          {(order.frais_livraison || order.deliveryFee || 0) > 0 && (
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              (dont {order.deliveryFee.toFixed(2)}€ de frais)
+                              (dont {(parseFloat(order.frais_livraison || order.deliveryFee || 0)).toFixed(2)}€ de frais)
                             </p>
                           )}
                           {/* Afficher les infos de remboursement si la commande a été annulée et remboursée */}

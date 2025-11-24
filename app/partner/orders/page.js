@@ -65,12 +65,38 @@ export default function PartnerOrders() {
     if (Array.isArray(order?.order_items) && order.order_items.length > 0) {
       return order.order_items;
     }
-    return (order?.details_commande || []).map(detail => ({
-      id: detail.id,
-      name: detail.menus?.nom || detail.name || 'Article',
-      quantity: detail.quantite || detail.quantity || 0,
-      price: Number(detail.prix_unitaire || detail.price || detail.menus?.prix || 0)
-    }));
+    return (order?.details_commande || []).map(detail => {
+      // Parser les customizations pour détecter les boissons de formule
+      let customizations = {};
+      if (detail.customizations) {
+        if (typeof detail.customizations === 'string') {
+          try {
+            customizations = JSON.parse(detail.customizations);
+          } catch (e) {
+            customizations = {};
+          }
+        } else {
+          customizations = detail.customizations;
+        }
+      }
+      
+      const isFormulaDrink = customizations.is_formula_drink === true;
+      const formulaName = customizations.formula_name;
+      let itemName = detail.menus?.nom || detail.name || 'Article';
+      
+      // Ajouter un indicateur pour les boissons de formule
+      if (isFormulaDrink) {
+        itemName = `${itemName} 🥤 (boisson formule${formulaName ? ` - ${formulaName}` : ''})`;
+      }
+      
+      return {
+        id: detail.id,
+        name: itemName,
+        quantity: detail.quantite || detail.quantity || 0,
+        price: Number(detail.prix_unitaire || detail.price || detail.menus?.prix || 0),
+        customizations: customizations
+      };
+    });
   };
 
   const fetchOrders = async () => {

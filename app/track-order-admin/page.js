@@ -286,11 +286,11 @@ export default function TrackOrderAdmin() {
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Frais de livraison</span>
-                    <span>{order.delivery_fee.toFixed(2)}€</span>
+                    <span>{(parseFloat(order.frais_livraison || order.delivery_fee || 0)).toFixed(2)}€</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total</span>
-                    <span>{(order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.delivery_fee).toFixed(2)}€</span>
+                    <span>{(order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) + parseFloat(order.frais_livraison || order.delivery_fee || 0)).toFixed(2)}€</span>
                   </div>
                 </div>
               </div>

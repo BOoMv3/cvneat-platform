@@ -525,12 +525,38 @@ export default function RestaurantOrders() {
                     <h3 className="font-medium mb-2">Articles commandés</h3>
                     <div className="space-y-2">
                       {selectedOrder.details_commande && selectedOrder.details_commande.length > 0 ? (
-                        selectedOrder.details_commande.map((item, index) => (
-                          <div key={item.id || index} className="flex justify-between text-sm">
-                            <span>{item.menus?.nom || 'Article'} x{item.quantite || 1}</span>
-                            <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
-                          </div>
-                        ))
+                        selectedOrder.details_commande.map((item, index) => {
+                          // Parser les customizations pour détecter les boissons de formule
+                          let customizations = {};
+                          if (item.customizations) {
+                            if (typeof item.customizations === 'string') {
+                              try {
+                                customizations = JSON.parse(item.customizations);
+                              } catch (e) {
+                                customizations = {};
+                              }
+                            } else {
+                              customizations = item.customizations;
+                            }
+                          }
+                          
+                          const isFormulaDrink = customizations.is_formula_drink === true;
+                          const isFormulaItem = customizations.is_formula_item === true;
+                          const formulaName = customizations.formula_name;
+                          
+                          return (
+                            <div key={item.id || index} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>
+                                  {item.menus?.nom || 'Article'} x{item.quantite || 1}
+                                  {isFormulaDrink && <span className="text-blue-600 ml-1">🥤 (boisson formule)</span>}
+                                  {isFormulaItem && formulaName && <span className="text-gray-500 ml-1">📦 ({formulaName})</span>}
+                                </span>
+                                <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
+                              </div>
+                            </div>
+                          );
+                        })
                       ) : selectedOrder.items && selectedOrder.items.length > 0 ? (
                         selectedOrder.items.map((item, index) => (
                           <div key={item.id || index} className="flex justify-between text-sm">

@@ -205,7 +205,7 @@ export default function UserOrders() {
                   </div>
                   <div className="flex justify-between">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Frais de livraison</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{(parseFloat(order.deliveryFee || 0)).toFixed(2)}€</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{(parseFloat(order.frais_livraison || order.deliveryFee || 0)).toFixed(2)}€</p>
                   </div>
                   {order.platformFee > 0 && (
                     <div className="flex justify-between">
@@ -234,7 +234,8 @@ export default function UserOrders() {
                           }
                           return sum + ((price + supplementsPrice) * quantity);
                         }, 0);
-                        const deliveryFee = parseFloat(order.deliveryFee || 0);
+                        // IMPORTANT: Utiliser frais_livraison en priorité (nom de colonne BDD)
+                        const deliveryFee = parseFloat(order.frais_livraison || order.deliveryFee || 0);
                         const platformFee = parseFloat(order.platformFee || 0);
                         return (subtotal + deliveryFee + platformFee).toFixed(2);
                       })()}€

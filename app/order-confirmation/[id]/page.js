@@ -164,7 +164,8 @@ export default function OrderConfirmation() {
   };
 
   const getDeliveryFee = () => {
-    return Number(orderData?.deliveryFee ?? orderData?.delivery_fee ?? 0);
+    // IMPORTANT: Utiliser frais_livraison en priorité (nom de colonne BDD)
+    return Number(orderData?.frais_livraison ?? orderData?.deliveryFee ?? orderData?.delivery_fee ?? 0);
   };
 
   const getSubtotal = () => {

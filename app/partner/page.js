@@ -2348,6 +2348,23 @@ export default function PartnerDashboard() {
                                           </ul>
                                         </div>
                                       )}
+                                      
+                                      {/* Boisson de formule */}
+                                      {customizations.is_formula_drink === true && (
+                                        <div className="text-xs text-blue-600 dark:text-blue-400 ml-2">
+                                          <span className="font-medium">🥤 Boisson (formule):</span> {nom}
+                                          {customizations.formula_name && (
+                                            <span className="text-gray-500"> - {customizations.formula_name}</span>
+                                          )}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Élément de formule */}
+                                      {customizations.is_formula_item === true && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                          <span className="font-medium">📦 Formule:</span> {customizations.formula_name || 'Formule'}
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
