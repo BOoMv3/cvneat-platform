@@ -95,7 +95,7 @@ export default function AdminPayments() {
       // Récupérer tous les restaurants
       const { data: allRestaurants, error: restaurantsError } = await supabase
         .from('restaurants')
-        .select('id, nom, user_id, is_active')
+        .select('id, nom, user_id, status')
         .order('nom', { ascending: true });
 
       if (restaurantsError) throw restaurantsError;
@@ -109,12 +109,15 @@ export default function AdminPayments() {
       const restaurantsWithPayments = await Promise.all(
         (allRestaurants || []).map(async (restaurant) => {
           // Récupérer les commandes livrées pour ce restaurant
+          // IMPORTANT: Ne filtrer que par statut 'livree', payment_status peut ne pas exister ou être différent
           let query = supabase
             .from('commandes')
-            .select('id, total, created_at, statut')
+            .select('id, total, created_at, statut, payment_status')
             .eq('restaurant_id', restaurant.id)
-            .eq('statut', 'livree')
-            .eq('payment_status', 'paid');
+            .eq('statut', 'livree');
+          
+          // Ne pas filtrer par payment_status ici car certaines commandes peuvent ne pas avoir cette colonne
+          // On filtrera après la récupération
 
           if (dateRange) {
             query = query.gte('created_at', dateRange.startDate.toISOString())
@@ -135,9 +138,23 @@ export default function AdminPayments() {
             };
           }
 
+          // Filtrer les commandes payées (si payment_status existe, sinon toutes les livrées sont considérées payées)
+          const paidOrders = (orders || []).filter(order => {
+            // Si payment_status existe, vérifier qu'il est 'paid'
+            // Sinon, considérer toutes les commandes livrées comme payées
+            return !order.payment_status || order.payment_status === 'paid';
+          });
+
+          console.log(`📊 ${restaurant.nom}: ${paidOrders.length} commandes payées sur ${orders?.length || 0} commandes livrées`);
+
           // Calculer les revenus
-          const totalRevenue = (orders || []).reduce((sum, order) => {
-            return sum + parseFloat(order.total || 0);
+          const totalRevenue = paidOrders.reduce((sum, order) => {
+            const orderTotal = parseFloat(order.total || 0);
+            if (isNaN(orderTotal)) {
+              console.warn(`⚠️ Commande ${order.id} avec total invalide:`, order.total);
+              return sum;
+            }
+            return sum + orderTotal;
           }, 0);
 
           // Vérifier si c'est "La Bonne Pâte" (pas de commission)
@@ -159,7 +176,7 @@ export default function AdminPayments() {
             totalRevenue: Math.round(totalRevenue * 100) / 100,
             commission: Math.round(commission * 100) / 100,
             restaurantPayout: Math.round(restaurantPayout * 100) / 100,
-            orderCount: orders?.length || 0,
+            orderCount: paidOrders.length,
             commissionRate: commissionRate * 100
           };
         })
@@ -387,7 +404,7 @@ export default function AdminPayments() {
                         <FaStore className="h-5 w-5 text-gray-400 mr-2" />
                         <div>
                           <div className="text-sm font-medium text-gray-900">{restaurant.nom}</div>
-                          {!restaurant.is_active && (
+                          {restaurant.status && restaurant.status !== 'active' && restaurant.status !== 'approved' && (
                             <div className="text-xs text-red-600">Inactif</div>
                           )}
                         </div>
