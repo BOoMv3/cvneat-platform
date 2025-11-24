@@ -343,10 +343,13 @@ export default function OrderStatus({ params }) {
             </div>
 
             {/* Message de refus si applicable */}
-            {order.status === 'rejected' && order.rejection_reason && (
+            {((order.status === 'rejected' || order.status === 'refusee' || order.statut === 'refusee' || order.statut === 'rejected') && (order.rejection_reason || order.rejectionReason)) && (
               <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <h4 className="font-medium text-red-800 mb-2">Raison du refus</h4>
-                <p className="text-red-700">{order.rejection_reason}</p>
+                <h4 className="font-medium text-red-800 mb-2">📋 Raison du refus</h4>
+                <p className="text-red-700">{order.rejection_reason || order.rejectionReason}</p>
+                <p className="text-sm text-red-600 mt-2">
+                  Votre paiement sera remboursé automatiquement dans les plus brefs délais.
+                </p>
               </div>
             )}
           </div>
