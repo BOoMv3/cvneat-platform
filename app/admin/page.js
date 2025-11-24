@@ -713,6 +713,9 @@ export default function AdminPage() {
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -738,6 +741,15 @@ export default function AdminPage() {
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                           {formatDate(order.created_at)}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                          <button
+                            onClick={() => router.push(`/admin/orders/${order.id}`)}
+                            className="text-blue-600 hover:text-blue-900 p-1 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                            title="Voir les détails"
+                          >
+                            <FaEye className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -804,14 +816,19 @@ export default function AdminPage() {
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                           <div className="flex space-x-1 sm:space-x-2">
-                            <button className="text-blue-600 hover:text-blue-900 p-1">
+                            <button
+                              onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
+                              className="text-blue-600 hover:text-blue-900 p-1 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                              title="Voir les détails"
+                            >
                               <FaEye className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
-                            <button className="text-green-600 hover:text-green-900 p-1">
+                            <button
+                              onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
+                              className="text-green-600 hover:text-green-900 p-1 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                              title="Modifier"
+                            >
                               <FaEdit className="h-3 w-3 sm:h-4 sm:w-4" />
-                            </button>
-                            <button className="text-red-600 hover:text-red-900 p-1">
-                              <FaTrash className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
                           </div>
                         </td>
