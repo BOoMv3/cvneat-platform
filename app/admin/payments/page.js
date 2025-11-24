@@ -11,6 +11,7 @@ export default function AdminPayments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'month', 'week', 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -27,6 +28,8 @@ export default function AdminPayments() {
 
   const checkAuth = async () => {
     try {
+      setAuthLoading(true);
+      
       const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !currentUser) {
@@ -49,6 +52,8 @@ export default function AdminPayments() {
     } catch (err) {
       console.error('Erreur d\'authentification:', err);
       router.push('/login');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -222,12 +227,14 @@ export default function AdminPayments() {
     document.body.removeChild(link);
   };
 
-  if (loading && !restaurants.length) {
+  if (authLoading || (loading && !restaurants.length)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <FaSpinner className="animate-spin h-12 w-12 text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Chargement des données...</p>
+          <p className="text-gray-600">
+            {authLoading ? 'Vérification des permissions...' : 'Chargement des données...'}
+          </p>
         </div>
       </div>
     );
