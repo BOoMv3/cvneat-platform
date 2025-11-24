@@ -23,12 +23,66 @@ export default function AdminOrderDetail() {
     try {
       const { data, error } = await supabase
         .from('commandes')
-        .select('*')
+        .select(`
+          *,
+          users (
+            id,
+            nom,
+            prenom,
+            telephone,
+            email
+          ),
+          restaurants (
+            id,
+            nom
+          ),
+          details_commande (
+            id,
+            quantite,
+            prix_unitaire,
+            supplements,
+            customizations,
+            menus (
+              nom,
+              prix
+            )
+          )
+        `)
         .eq('id', params.id)
         .single();
 
       if (error) throw error;
-      setOrder(data);
+      
+      // Formater les données pour l'affichage
+      if (data) {
+        // Récupérer les informations client depuis users
+        const user = data.users || {};
+        const customerName = user.prenom && user.nom 
+          ? `${user.prenom} ${user.nom}`.trim()
+          : user.nom || 'Client inconnu';
+        
+        // Formater les items depuis details_commande
+        const items = (data.details_commande || []).map(detail => ({
+          id: detail.id,
+          name: detail.menus?.nom || 'Article',
+          quantity: detail.quantite || 1,
+          price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0
+        }));
+        
+        setOrder({
+          ...data,
+          customer_name: customerName,
+          customer_phone: user.telephone || '',
+          customer_email: user.email || '',
+          delivery_address: data.adresse_livraison || '',
+          delivery_postal_code: data.code_postal || '',
+          delivery_city: data.ville || '',
+          items: items,
+          restaurant_name: data.restaurants?.nom || 'Restaurant inconnu'
+        });
+      } else {
+        setOrder(null);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,9 +93,21 @@ export default function AdminOrderDetail() {
   const updateOrderStatus = async (newStatus) => {
     setUpdating(true);
     try {
+      // Convertir les statuts anglais en français si nécessaire
+      const statusMap = {
+        'pending': 'en_attente',
+        'accepted': 'acceptee',
+        'rejected': 'refusee',
+        'preparing': 'en_preparation',
+        'ready': 'pret_a_livrer',
+        'delivered': 'livree'
+      };
+      
+      const frenchStatus = statusMap[newStatus] || newStatus;
+      
       const { error } = await supabase
         .from('commandes')
-        .update({ statut: newStatus })
+        .update({ statut: frenchStatus })
         .eq('id', params.id);
 
       if (error) throw error;
@@ -162,8 +228,8 @@ export default function AdminOrderDetail() {
             <h2 className="text-xl font-semibold mb-4">Détails de la commande</h2>
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-600">Restaurant ID</label>
-                <p className="text-gray-900">{order.restaurant_id}</p>
+                <label className="text-sm font-medium text-gray-600">Restaurant</label>
+                <p className="text-gray-900">{order.restaurant_name || order.restaurant_id}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Date de création</label>
@@ -179,11 +245,15 @@ export default function AdminOrderDetail() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Total</label>
-                <p className="text-2xl font-bold text-gray-900">{order.total_amount.toFixed(2)}€</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(parseFloat(order.total || order.total_amount || 0)).toFixed(2)}€
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Frais de livraison</label>
-                <p className="text-gray-900">{order.delivery_fee}€</p>
+                <p className="text-gray-900">
+                  {(parseFloat(order.frais_livraison || order.delivery_fee || 0)).toFixed(2)}€
+                </p>
               </div>
             </div>
           </div>
@@ -201,8 +271,12 @@ export default function AdminOrderDetail() {
                     <p className="text-sm text-gray-600">Quantité: {item.quantity}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{(item.price * item.quantity).toFixed(2)}€</p>
-                    <p className="text-sm text-gray-600">{item.price}€ l'unité</p>
+                    <p className="font-medium">
+                      {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {(parseFloat(item.price || 0)).toFixed(2)}€ l'unité
+                    </p>
                   </div>
                 </div>
               ))}
@@ -216,7 +290,7 @@ export default function AdminOrderDetail() {
         <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold mb-4">Actions</h2>
           <div className="flex flex-wrap gap-3">
-            {order.status === 'pending' && (
+            {(order.status === 'pending' || order.statut === 'en_attente') && (
               <>
                 <button
                   onClick={() => updateOrderStatus('accepted')}
@@ -234,7 +308,7 @@ export default function AdminOrderDetail() {
                 </button>
               </>
             )}
-            {order.status === 'accepted' && (
+            {(order.status === 'accepted' || order.statut === 'acceptee') && (
               <button
                 onClick={() => updateOrderStatus('preparing')}
                 disabled={updating}
@@ -243,7 +317,7 @@ export default function AdminOrderDetail() {
                 {updating ? <FaSpinner className="animate-spin" /> : 'Marquer en préparation'}
               </button>
             )}
-            {order.status === 'preparing' && (
+            {(order.status === 'preparing' || order.statut === 'en_preparation') && (
               <button
                 onClick={() => updateOrderStatus('ready')}
                 disabled={updating}
@@ -252,7 +326,7 @@ export default function AdminOrderDetail() {
                 {updating ? <FaSpinner className="animate-spin" /> : 'Marquer prête'}
               </button>
             )}
-            {order.status === 'ready' && (
+            {(order.status === 'ready' || order.statut === 'pret_a_livrer') && (
               <button
                 onClick={() => updateOrderStatus('delivered')}
                 disabled={updating}
