@@ -95,7 +95,7 @@ export default function AdminPayments() {
       // Récupérer tous les restaurants
       const { data: allRestaurants, error: restaurantsError } = await supabase
         .from('restaurants')
-        .select('id, nom, user_id, commission_rate, is_active')
+        .select('id, nom, user_id, is_active')
         .order('nom', { ascending: true });
 
       if (restaurantsError) throw restaurantsError;
@@ -147,10 +147,9 @@ export default function AdminPayments() {
             .toLowerCase();
           const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
           
-          // Taux de commission (par défaut 20%, peut être personnalisé)
-          const commissionRate = isInternalRestaurant 
-            ? 0 
-            : ((restaurant.commission_rate || 20) / 100);
+          // Taux de commission (par défaut 20%)
+          // Note: commission_rate n'existe pas dans la table, on utilise toujours 20% sauf pour La Bonne Pâte
+          const commissionRate = isInternalRestaurant ? 0 : 0.20;
           
           const commission = totalRevenue * commissionRate;
           const restaurantPayout = totalRevenue - commission;
