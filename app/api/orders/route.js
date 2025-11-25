@@ -778,72 +778,103 @@ export async function POST(request) {
       const isFormula = item.is_formula === true;
       const quantity = parseInt(item?.quantity || 1, 10);
 
-      // CORRECTION FORMULES: Créer un détail pour chaque élément de la formule
-      if (isFormula && item.formula_items && Array.isArray(item.formula_items) && item.formula_items.length > 0) {
-        console.log(`📦 Formule détectée: ${item.nom || 'Formule'}, ${item.formula_items.length} éléments`);
+      // CORRECTION FORMULES: Gérer les formules avec OU sans formula_items
+      if (isFormula) {
+        console.log(`📦 Formule détectée: ${item.nom || 'Formule'}`);
+        console.log(`   - formula_items: ${item.formula_items?.length || 0}`);
+        console.log(`   - selected_drink: ${item.selected_drink ? 'Oui' : 'Non'}`);
+        console.log(`   - item.id: ${item.id}`);
         
-        // Calculer le prix total de la formule
         const totalFormulaPrice = parseFloat(item.prix || item.price || 0) || 0;
-        const pricePerItem = totalFormulaPrice / item.formula_items.length; // Répartir le prix
         
-        // Créer un détail pour chaque élément de la formule
-        let firstItem = true;
-        for (const formulaItem of item.formula_items) {
-          // Extraire l'ID du menu depuis formulaItem (peut être menu_id, menu.id, ou id)
-          const formulaItemId = formulaItem.menu_id || formulaItem.menu?.id || formulaItem.id;
-          
-          if (!formulaItemId) {
-            console.error('❌ Élément de formule sans ID menu:', formulaItem);
-            continue;
-          }
-
-          // Prix de l'élément : mettre le prix total sur le premier, 0 sur les autres
-          const formulaItemPrice = firstItem ? totalFormulaPrice : 0;
-          const itemQuantity = parseInt(formulaItem.quantity || 1, 10) * quantity;
-          
-          const detailEntry = {
-            commande_id: order.id,
-            plat_id: formulaItemId, // IMPORTANT: Utiliser l'ID du menu, jamais null
-            quantite: itemQuantity,
-            prix_unitaire: formulaItemPrice, // Prix total sur le premier élément
-            customizations: {
-              is_formula_item: true,
-              formula_name: item.nom || 'Formule',
-              formula_id: item.id || item.formula_id,
-              order_index: formulaItem.order_index || 0
+        // CAS 1: Formule AVEC formula_items détaillés
+        if (item.formula_items && Array.isArray(item.formula_items) && item.formula_items.length > 0) {
+          let firstItem = true;
+          for (const formulaItem of item.formula_items) {
+            const formulaItemId = formulaItem.menu_id || formulaItem.menu?.id || formulaItem.id;
+            
+            if (!formulaItemId) {
+              console.error('❌ Élément de formule sans ID menu:', formulaItem);
+              continue;
             }
-          };
 
-          orderDetailsPayload.push(detailEntry);
-          firstItem = false;
+            const formulaItemPrice = firstItem ? totalFormulaPrice : 0;
+            const itemQuantity = parseInt(formulaItem.quantity || 1, 10) * quantity;
+            
+            const detailEntry = {
+              commande_id: order.id,
+              plat_id: formulaItemId,
+              quantite: itemQuantity,
+              prix_unitaire: formulaItemPrice,
+              customizations: {
+                is_formula_item: true,
+                formula_name: item.nom || 'Formule',
+                formula_id: item.id || item.formula_id,
+                order_index: formulaItem.order_index || 0
+              }
+            };
+
+            orderDetailsPayload.push(detailEntry);
+            firstItem = false;
+          }
+        } 
+        // CAS 2: Formule SANS formula_items (cas Cevenol Burger) - créer un détail unique avec l'ID de la formule
+        else {
+          console.log(`⚠️ Formule sans formula_items détaillés, création d'un détail unique`);
+          
+          // Utiliser l'ID de la formule directement comme plat_id
+          // L'ID de formule est un UUID valide qui référence la table menus
+          const formulaId = item.id || item.formula_id;
+          
+          if (formulaId) {
+            const detailEntry = {
+              commande_id: order.id,
+              plat_id: formulaId, // ID de la formule elle-même
+              quantite: quantity,
+              prix_unitaire: totalFormulaPrice,
+              customizations: {
+                is_formula: true,
+                formula_name: item.nom || 'Formule',
+                selected_drink: item.selected_drink ? {
+                  id: item.selected_drink.id,
+                  nom: item.selected_drink.nom || item.selected_drink.name
+                } : null
+              }
+            };
+            orderDetailsPayload.push(detailEntry);
+            console.log(`✅ Détail formule créé avec plat_id: ${formulaId}`);
+          } else {
+            console.error('❌ Formule sans ID valide:', item);
+          }
         }
 
-        // Ajouter la boisson sélectionnée si présente
+        // Ajouter la boisson sélectionnée si présente (dans les deux cas)
         if (item.selected_drink) {
           const drinkId = item.selected_drink.id || item.selected_drink.menu_id;
           if (drinkId) {
             const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
             const drinkDetail = {
               commande_id: order.id,
-              plat_id: drinkId, // ID de la boisson
+              plat_id: drinkId,
               quantite: quantity,
-              prix_unitaire: drinkPrice, // Généralement 0 car inclus dans la formule
+              prix_unitaire: drinkPrice,
               customizations: {
                 is_formula_drink: true,
                 formula_name: item.nom || 'Formule',
-                formula_id: item.id || item.formula_id
+                formula_id: item.id || item.formula_id,
+                drink_name: item.selected_drink.nom || item.selected_drink.name
               }
             };
             orderDetailsPayload.push(drinkDetail);
-            console.log(`🥤 Boisson ajoutée à la formule: ${drinkId}`);
+            console.log(`🥤 Boisson ajoutée à la formule: ${item.selected_drink.nom || drinkId}`);
           } else {
             console.warn('⚠️ Boisson sélectionnée mais sans ID:', item.selected_drink);
           }
         } else {
-          console.warn('⚠️ Formule sans boisson sélectionnée:', item.nom);
+          console.log(`ℹ️ Formule "${item.nom}" sans boisson sélectionnée (peut être normal)`);
         }
 
-        console.log(`✅ ${orderDetailsPayload.length} détails créés pour la formule "${item.nom || 'Formule'}"`);
+        console.log(`✅ Total détails créés pour la formule "${item.nom || 'Formule'}": ${orderDetailsPayload.length}`);
         continue; // Passer au prochain item
       }
 
