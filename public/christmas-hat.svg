@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80">
+  <!-- Bonnet de Père Noël -->
+  <!-- Partie rouge du bonnet -->
+  <path d="M15 70 Q10 50 25 35 Q40 15 60 10 Q80 5 90 25 Q95 40 85 55 L75 70 Z" fill="#c41e3a"/>
+  <!-- Ombre sur le bonnet -->
+  <path d="M20 65 Q15 50 28 38 Q42 20 58 15 Q72 12 82 28 Q88 40 80 52 L72 65 Z" fill="#a01830"/>
+  <!-- Fourrure blanche en bas -->
+  <ellipse cx="45" cy="72" rx="35" ry="8" fill="white"/>
+  <ellipse cx="45" cy="72" rx="35" ry="6" fill="#f5f5f5"/>
+  <!-- Pompon blanc -->
+  <circle cx="92" cy="22" r="10" fill="white"/>
+  <circle cx="92" cy="22" r="8" fill="#f8f8f8"/>
+  <circle cx="89" cy="19" r="3" fill="white"/>
+</svg>

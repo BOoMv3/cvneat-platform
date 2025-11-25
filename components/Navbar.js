@@ -77,16 +77,17 @@ export default function Navbar() {
                 </div>
               </div>
               {/* 🎅 Bonnet de Noël sur le logo */}
-              <span 
-                className="absolute z-20"
+              <img 
+                src="/christmas-hat.svg" 
+                alt="Bonnet de Noël"
+                className="absolute z-20 w-5 h-4 xs:w-6 xs:h-5 sm:w-8 sm:h-6 md:w-10 md:h-8"
                 style={{
-                  top: '-8px',
-                  right: '-4px',
-                  fontSize: '16px',
-                  transform: 'rotate(20deg)',
-                  filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.3))',
+                  top: '-6px',
+                  left: '-2px',
+                  transform: 'rotate(-15deg)',
+                  filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))',
                 }}
-              >🎄</span>
+              />
               <div className="absolute -top-0.5 -right-0.5 fold:-top-0.5 fold:-right-0.5 xs:-top-0.5 xs:-right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2 h-2 fold:w-2 fold:h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-1.5 fold:border-1.5 xs:border-2 sm:border-2 md:border-3 border-white shadow-md animate-pulse"></div>
               <div className="absolute -bottom-0.5 -left-0.5 fold:-bottom-0.5 fold:-left-0.5 xs:-bottom-0.5 xs:-left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1 h-1 fold:w-1 fold:h-1 xs:w-1.5 xs:h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border fold:border xs:border-1.5 sm:border-2 border-white"></div>
             </div>

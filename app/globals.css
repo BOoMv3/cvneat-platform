@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 /* 🎄 THÈME DE NOËL - Supprimer après les fêtes */
-/* Rien à ajouter ici - la neige est gérée par le composant */
+body {
+  padding-top: 24px !important; /* Espace pour la guirlande lumineuse */
+}
 /* FIN THÈME DE NOËL */
 
 /* Variables CSS pour le thème */
