@@ -86,3 +86,7 @@ jspm_packages/
 
 # TernJS port file
 .tern-port
+
+# Capacitor native projects (optionnel - à inclure si vous voulez versionner)
+# android/
+# ios/
