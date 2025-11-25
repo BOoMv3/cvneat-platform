@@ -24,6 +24,7 @@ import OrderCountdown from '@/components/OrderCountdown';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
+  { value: 'burger', label: 'Burger' },
   { value: 'sandwich', label: 'Sandwich' },
   { value: 'plat', label: 'Plat principal' },
   { value: 'dessert', label: 'Dessert' },
