@@ -524,6 +524,14 @@ export async function POST(request) {
     }
 
     console.log('Tous les articles sont valides');
+    console.log('📦 Items reçus pour la commande:', JSON.stringify(items.map(item => ({
+      id: item.id,
+      nom: item.nom || item.name,
+      is_formula: item.is_formula,
+      formula_items: item.formula_items?.length || 0,
+      selected_drink: item.selected_drink ? 'Oui' : 'Non',
+      quantity: item.quantity
+    })), null, 2));
 
     // Utiliser le montant total et les frais de livraison envoyes par le frontend
     // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
