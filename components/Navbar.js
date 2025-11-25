@@ -91,10 +91,22 @@ export default function Navbar() {
               <div className="absolute -top-0.5 -right-0.5 fold:-top-0.5 fold:-right-0.5 xs:-top-0.5 xs:-right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2 h-2 fold:w-2 fold:h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-1.5 fold:border-1.5 xs:border-2 sm:border-2 md:border-3 border-white shadow-md animate-pulse"></div>
               <div className="absolute -bottom-0.5 -left-0.5 fold:-bottom-0.5 fold:-left-0.5 xs:-bottom-0.5 xs:-left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1 h-1 fold:w-1 fold:h-1 xs:w-1.5 xs:h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border fold:border xs:border-1.5 sm:border-2 border-white"></div>
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 relative">
               <span className="text-sm fold:text-sm xs:text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight leading-tight">
                 CVN'EAT
               </span>
+              {/* 🎅 Bonnet de Noël sur le texte CVN'EAT */}
+              <img 
+                src="/christmas-hat.svg" 
+                alt=""
+                className="absolute w-4 h-3 xs:w-5 xs:h-4 sm:w-6 sm:h-5 md:w-8 md:h-6"
+                style={{
+                  top: '-8px',
+                  left: '50%',
+                  transform: 'translateX(-50%) rotate(-10deg)',
+                  filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))',
+                }}
+              />
               <span className="text-[9px] fold:text-[9px] xs:text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 -mt-0.5 fold:-mt-0.5 xs:-mt-0.5 sm:-mt-1 font-medium hidden fold:hidden xs:hidden sm:block">Excellence culinaire</span>
             </div>
           </Link>

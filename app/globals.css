@@ -3,9 +3,7 @@
 @tailwind utilities;
 
 /* 🎄 THÈME DE NOËL - Supprimer après les fêtes */
-body {
-  padding-top: 24px !important; /* Espace pour la guirlande lumineuse */
-}
+/* Aucun padding - la guirlande est par-dessus le contenu */
 /* FIN THÈME DE NOËL */
 
 /* Variables CSS pour le thème */
