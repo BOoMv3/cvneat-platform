@@ -5,6 +5,7 @@ import CookieBanner from './components/CookieBanner';
 import FacebookPixel from '@/components/FacebookPixel';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
+import ChristmasTheme from '@/components/ChristmasTheme';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -125,6 +126,8 @@ export default function RootLayout({ children }) {
       <body className={`${inter.className} transition-colors duration-300`}>
         <ThemeProvider>
           <FacebookPixel />
+          {/* 🎄 Thème de Noël - Supprimer cette ligne après les fêtes */}
+          <ChristmasTheme />
           <div className="min-h-screen flex flex-col">
             <main className="flex-grow">
               {children}

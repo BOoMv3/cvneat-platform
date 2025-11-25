@@ -76,6 +76,8 @@ export default function Navbar() {
                   <FaUtensils className="h-2 w-2 fold:h-2 fold:w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-orange-600" />
                 </div>
               </div>
+              {/* 🎅 Chapeau de Noël sur le logo */}
+              <span className="absolute -top-2 -right-1 fold:-top-2 fold:-right-1 xs:-top-2.5 xs:-right-1.5 sm:-top-3 sm:-right-2 md:-top-4 md:-right-2 text-sm fold:text-sm xs:text-base sm:text-lg md:text-2xl transform rotate-12 drop-shadow-md z-10" role="img" aria-label="Chapeau de Noël">🎅</span>
               <div className="absolute -top-0.5 -right-0.5 fold:-top-0.5 fold:-right-0.5 xs:-top-0.5 xs:-right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2 h-2 fold:w-2 fold:h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-1.5 fold:border-1.5 xs:border-2 sm:border-2 md:border-3 border-white shadow-md animate-pulse"></div>
               <div className="absolute -bottom-0.5 -left-0.5 fold:-bottom-0.5 fold:-left-0.5 xs:-bottom-0.5 xs:-left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1 h-1 fold:w-1 fold:h-1 xs:w-1.5 xs:h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border fold:border xs:border-1.5 sm:border-2 border-white"></div>
             </div>
