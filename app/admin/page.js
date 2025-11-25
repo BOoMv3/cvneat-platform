@@ -93,10 +93,11 @@ export default function AdminPage() {
       setLoading(true);
       setError(null);
 
-      // Récupérer toutes les commandes
+      // Récupérer toutes les commandes PAYÉES uniquement
       const { data: orders, error: ordersError } = await supabase
         .from('commandes')
         .select('*')
+        .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
         .order('created_at', { ascending: false });
 
       if (ordersError) {

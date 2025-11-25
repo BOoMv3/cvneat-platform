@@ -40,6 +40,7 @@ export async function GET(request) {
         *,
         restaurant:restaurants(nom, adresse)
       `)
+      .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

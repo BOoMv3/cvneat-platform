@@ -21,6 +21,7 @@ export default function AdminOrders() {
       let query = supabase
         .from('commandes')
         .select('*')
+        .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
         .order('created_at', { ascending: false });
 
       if (filterStatus !== 'all') {
