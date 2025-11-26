@@ -478,13 +478,21 @@ export async function POST(request) {
       if (isComboItem(item) || item.is_formula === true) {
         console.log('Article combo/formule détecté, validation spécifique ignorée pour:', item.id || item.nom);
         
-        // Pour les formules, vérifier que formula_items existe
-        if (item.is_formula && (!item.formula_items || !Array.isArray(item.formula_items) || item.formula_items.length === 0)) {
-          console.error('❌ Formule sans formula_items:', item);
-          return NextResponse.json(
-            { error: 'Formule invalide: éléments manquants' },
-            { status: 400 }
-          );
+        // Pour les formules, on accepte avec ou sans formula_items
+        // CAS 1: Avec formula_items détaillés
+        // CAS 2: Sans formula_items (la formule elle-même est un article menu valide)
+        if (item.is_formula) {
+          if (item.formula_items && Array.isArray(item.formula_items) && item.formula_items.length > 0) {
+            console.log('✅ Formule avec formula_items:', item.formula_items.length, 'éléments');
+          } else if (item.id) {
+            console.log('✅ Formule sans formula_items, utilisation de l\'ID de la formule:', item.id);
+          } else {
+            console.error('❌ Formule sans ID ni formula_items:', item);
+            return NextResponse.json(
+              { error: 'Formule invalide: ID ou éléments manquants' },
+              { status: 400 }
+            );
+          }
         }
         continue;
       }
