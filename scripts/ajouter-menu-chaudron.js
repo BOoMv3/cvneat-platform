@@ -123,6 +123,61 @@ async function ajouterMenu() {
     });
   });
 
+  // ============ CRÊPES SUCRÉES - Les incontournables ============
+  const crepesIncontournables = [
+    { nom: 'Crêpe Sucre blanc ou roux', description: 'Crêpe au sucre blanc ou roux', prix: 3 },
+    { nom: 'Crêpe Chocolat Maison', description: 'Crêpe au chocolat maison', prix: 5 },
+    { nom: 'Crêpe Caramel au beurre salé', description: 'Crêpe au caramel beurre salé maison', prix: 5.50 },
+    { nom: 'Crêpe Crème de marrons', description: 'Crêpe à la crème de marrons', prix: 5.50 },
+  ];
+
+  crepesIncontournables.forEach(item => {
+    menuItems.push({
+      restaurant_id: restaurantId,
+      nom: item.nom,
+      description: item.description,
+      prix: prixMajore(item.prix),
+      category: 'Crêpes sucrées',
+      disponible: true
+    });
+  });
+
+  // ============ CRÊPES SUCRÉES - Les classiques ============
+  const crepesClassiques = [
+    { nom: 'Crêpe Maya', description: 'Miel, amandes grillées', prix: 6.50 },
+    { nom: 'Crêpe Le Roïc', description: 'Pomme caramélisée, caramel au beurre salé maison, crème fouettée', prix: 7 },
+    { nom: 'Crêpe Calvados', description: 'Pomme caramélisée, flambée au calvados', prix: 8 },
+    { nom: 'Crêpe Flambée alcool au choix', description: 'Crêpe flambée à l\'alcool de votre choix', prix: 6.50 },
+  ];
+
+  crepesClassiques.forEach(item => {
+    menuItems.push({
+      restaurant_id: restaurantId,
+      nom: item.nom,
+      description: item.description,
+      prix: prixMajore(item.prix),
+      category: 'Crêpes sucrées',
+      disponible: true
+    });
+  });
+
+  // ============ CRÊPES SUCRÉES - Les gourmandes ============
+  const crepesGourmandes = [
+    { nom: 'Crêpe Beethoven', description: 'Pomme, caramel au beurre salé maison, amandes grillées', prix: 8.50 },
+    { nom: 'Café ou Thé Gourmands', description: 'Café ou thé accompagné de mignardises', prix: 8.50 },
+  ];
+
+  crepesGourmandes.forEach(item => {
+    menuItems.push({
+      restaurant_id: restaurantId,
+      nom: item.nom,
+      description: item.description,
+      prix: prixMajore(item.prix),
+      category: 'Crêpes sucrées',
+      disponible: true
+    });
+  });
+
   // Insérer tous les articles
   const { data, error } = await supabase
     .from('menus')
