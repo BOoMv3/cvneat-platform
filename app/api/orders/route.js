@@ -939,22 +939,25 @@ export async function POST(request) {
       const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
       const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
 
-      // IMPORTANT: Ne jamais mettre plat_id à null - utiliser l'ID réel
-      // Pour les combos, extraire l'UUID du comboId ou retirer le préfixe "combo-"
-      let platId = item.id;
+      // Pour les combos, plat_id sera null car l'ID combo n'existe pas dans menus
+      // Les détails du combo sont stockés dans customizations
+      let platId = null;
       if (isCombo) {
-        platId = item.comboId || (typeof item.id === 'string' ? item.id.replace('combo-', '') : item.id);
-        console.log(`🔧 Combo détecté, plat_id corrigé: ${item.id} -> ${platId}`);
-      }
-      
-      if (!platId) {
-        console.error('❌ Item sans ID:', item);
-        continue; // Ignorer cet item
+        // Pour les combos, on ne met pas de plat_id car ce n'est pas un article menu
+        // Toutes les infos sont dans customizations.combo
+        console.log(`🔧 Combo détecté: ${item.nom}, plat_id sera null (infos dans customizations)`);
+        platId = null;
+      } else {
+        platId = item.id;
+        if (!platId) {
+          console.error('❌ Item sans ID:', item);
+          continue; // Ignorer cet item
+        }
       }
 
       const detailEntry = {
         commande_id: order.id,
-        plat_id: platId, // UUID valide (sans préfixe combo-)
+        plat_id: platId, // null pour combos, UUID pour articles normaux
         quantite: quantity,
         prix_unitaire: prixUnitaireTotal
       };
