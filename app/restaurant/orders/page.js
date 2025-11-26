@@ -543,17 +543,32 @@ export default function RestaurantOrders() {
                           const isFormulaDrink = customizations.is_formula_drink === true;
                           const isFormulaItem = customizations.is_formula_item === true;
                           const formulaName = customizations.formula_name;
+                          const isCombo = customizations.combo && customizations.combo.comboName;
+                          const comboName = customizations.combo?.comboName;
+                          const comboDetails = customizations.combo?.details || [];
+                          
+                          // Nom à afficher: combo > formule > menu
+                          const displayName = isCombo ? comboName : (item.menus?.nom || 'Article');
                           
                           return (
                             <div key={item.id || index} className="space-y-1">
                               <div className="flex justify-between text-sm">
                                 <span>
-                                  {item.menus?.nom || 'Article'} x{item.quantite || 1}
+                                  {displayName} x{item.quantite || 1}
                                   {isFormulaDrink && <span className="text-blue-600 ml-1">🥤 (boisson formule)</span>}
                                   {isFormulaItem && formulaName && <span className="text-gray-500 ml-1">📦 ({formulaName})</span>}
+                                  {isCombo && <span className="text-purple-600 ml-1">🍔 Menu</span>}
                                 </span>
                                 <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
                               </div>
+                              {/* Détails du combo */}
+                              {isCombo && comboDetails.length > 0 && (
+                                <div className="ml-4 text-xs text-gray-600 space-y-0.5">
+                                  {comboDetails.map((detail, idx) => (
+                                    <div key={idx}>• {detail.stepTitle}: <strong>{detail.optionName}</strong></div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           );
                         })
