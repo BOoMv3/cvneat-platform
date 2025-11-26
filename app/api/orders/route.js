@@ -939,25 +939,34 @@ export async function POST(request) {
       const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
       const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
 
-      // Pour les combos, plat_id sera null car l'ID combo n'existe pas dans menus
-      // Les détails du combo sont stockés dans customizations
-      let platId = null;
+      // Pour les combos, on doit trouver un plat_id valide du restaurant
+      let platId = item.id;
       if (isCombo) {
-        // Pour les combos, on ne met pas de plat_id car ce n'est pas un article menu
-        // Toutes les infos sont dans customizations.combo
-        console.log(`🔧 Combo détecté: ${item.nom}, plat_id sera null (infos dans customizations)`);
-        platId = null;
+        // Récupérer le premier article du menu du restaurant pour avoir un plat_id valide
+        const { data: firstMenuItem } = await serviceClient
+          .from('menus')
+          .select('id')
+          .eq('restaurant_id', restaurantId)
+          .limit(1)
+          .single();
+        
+        if (firstMenuItem) {
+          platId = firstMenuItem.id;
+          console.log(`🔧 Combo détecté: ${item.nom}, utilisation plat_id de référence: ${platId}`);
+        } else {
+          console.error('❌ Aucun article trouvé pour le restaurant, impossible de créer le combo');
+          continue;
+        }
       } else {
-        platId = item.id;
         if (!platId) {
           console.error('❌ Item sans ID:', item);
-          continue; // Ignorer cet item
+          continue;
         }
       }
 
       const detailEntry = {
         commande_id: order.id,
-        plat_id: platId, // null pour combos, UUID pour articles normaux
+        plat_id: platId, // ID valide du menu (référence pour combos)
         quantite: quantity,
         prix_unitaire: prixUnitaireTotal
       };
