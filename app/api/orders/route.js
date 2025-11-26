@@ -244,6 +244,25 @@ export async function GET(request) {
           }
         }
         
+        // Récupérer les customizations pour les combos
+        let customizations = {};
+        if (detail.customizations) {
+          if (typeof detail.customizations === 'string') {
+            try {
+              customizations = JSON.parse(detail.customizations);
+            } catch (e) {
+              customizations = {};
+            }
+          } else {
+            customizations = detail.customizations;
+          }
+        }
+        
+        // Pour les combos, utiliser le nom du combo au lieu du nom du plat de référence
+        const isCombo = customizations.combo && customizations.combo.comboName;
+        const displayName = isCombo ? customizations.combo.comboName : (detail.menus?.nom || 'Article');
+        const comboDetails = isCombo ? customizations.combo.details : null;
+        
         // IMPORTANT: prix_unitaire contient déjà les suppléments (voir checkout/page.js ligne 570)
         // Donc on utilise directement prix_unitaire sans ajouter les suppléments
         const prixUnitaire = parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0; // Déjà avec suppléments
@@ -254,10 +273,12 @@ export async function GET(request) {
         
         return {
           id: detail.id,
-          name: detail.menus?.nom || 'Article',
+          name: displayName,
           quantity: quantity,
           price: prixUnitaire, // Prix unitaire (déjà avec suppléments)
-          supplements: supplements // Garder les suppléments pour l'affichage
+          supplements: supplements, // Garder les suppléments pour l'affichage
+          isCombo: isCombo,
+          comboDetails: comboDetails // Détails du combo pour l'affichage
         };
       });
 

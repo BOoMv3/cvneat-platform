@@ -545,14 +545,27 @@ export default function OrderConfirmation() {
                   <h3 className="font-semibold text-gray-900 mb-4">Articles commandés</h3>
                   <div className="space-y-3">
               {orderData.items && orderData.items.map((item, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{item.name}</p>
-                          <p className="text-sm text-gray-600">x{item.quantity}</p>
+                      <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              {item.name}
+                              {item.isCombo && <span className="ml-2 text-purple-600">🍔 Menu</span>}
+                            </p>
+                            <p className="text-sm text-gray-600">x{item.quantity}</p>
+                          </div>
+                          <p className="font-semibold text-gray-900">
+                            {(item.price * item.quantity).toFixed(2)}€
+                          </p>
                         </div>
-                        <p className="font-semibold text-gray-900">
-                          {(item.price * item.quantity).toFixed(2)}€
-                        </p>
+                        {/* Détails du combo */}
+                        {item.isCombo && item.comboDetails && item.comboDetails.length > 0 && (
+                          <div className="mt-2 ml-2 text-sm text-gray-600 space-y-1">
+                            {item.comboDetails.map((detail, idx) => (
+                              <div key={idx}>• {detail.stepTitle}: <strong>{detail.optionName}</strong></div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
