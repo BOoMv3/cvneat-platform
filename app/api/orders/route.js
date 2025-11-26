@@ -829,12 +829,28 @@ export async function POST(request) {
         // CAS 2: Formule SANS formula_items (cas Cevenol Burger) - créer un détail unique avec l'ID de la formule
         else {
           console.log(`⚠️ Formule sans formula_items détaillés, création d'un détail unique`);
+          console.log(`   Item complet:`, JSON.stringify(item, null, 2));
           
           // Utiliser l'ID de la formule directement comme plat_id
           // L'ID de formule est un UUID valide qui référence la table menus
-          const formulaId = item.id || item.formula_id;
+          const formulaId = item.id || item.formula_id || item.menu_id;
           
           if (formulaId) {
+            // Vérifier que l'ID existe dans la table menus
+            const { data: menuCheck, error: menuCheckError } = await serviceClient
+              .from('menus')
+              .select('id, nom')
+              .eq('id', formulaId)
+              .single();
+            
+            if (menuCheckError || !menuCheck) {
+              console.error(`❌ ID de formule non trouvé dans menus: ${formulaId}`, menuCheckError);
+              // Essayer avec l'ID du plat principal si disponible
+              console.error('   Item:', JSON.stringify({ id: item.id, nom: item.nom, formula_id: item.formula_id }, null, 2));
+            } else {
+              console.log(`✅ ID de formule vérifié dans menus: ${formulaId} -> ${menuCheck.nom}`);
+            }
+            
             const detailEntry = {
               commande_id: order.id,
               plat_id: formulaId, // ID de la formule elle-même
@@ -852,7 +868,7 @@ export async function POST(request) {
             orderDetailsPayload.push(detailEntry);
             console.log(`✅ Détail formule créé avec plat_id: ${formulaId}`);
           } else {
-            console.error('❌ Formule sans ID valide:', item);
+            console.error('❌ Formule sans ID valide:', JSON.stringify(item, null, 2));
           }
         }
 
