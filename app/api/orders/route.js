@@ -940,14 +940,21 @@ export async function POST(request) {
       const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
 
       // IMPORTANT: Ne jamais mettre plat_id à null - utiliser l'ID réel
-      if (!item.id) {
+      // Pour les combos, extraire l'UUID du comboId ou retirer le préfixe "combo-"
+      let platId = item.id;
+      if (isCombo) {
+        platId = item.comboId || (typeof item.id === 'string' ? item.id.replace('combo-', '') : item.id);
+        console.log(`🔧 Combo détecté, plat_id corrigé: ${item.id} -> ${platId}`);
+      }
+      
+      if (!platId) {
         console.error('❌ Item sans ID:', item);
         continue; // Ignorer cet item
       }
 
       const detailEntry = {
         commande_id: order.id,
-        plat_id: item.id, // TOUJOURS un ID valide
+        plat_id: platId, // UUID valide (sans préfixe combo-)
         quantite: quantity,
         prix_unitaire: prixUnitaireTotal
       };
