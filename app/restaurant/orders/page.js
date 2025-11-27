@@ -559,8 +559,7 @@ export default function RestaurantOrders() {
                                   {displayName} x{item.quantite || 1}
                                   {isFormulaDrink && <span className="text-blue-600 ml-1">🥤 (boisson formule)</span>}
                                   {isFormulaItem && formulaName && <span className="text-gray-500 ml-1">📦 ({formulaName})</span>}
-                                  {isFormula && <span className="text-green-600 ml-1">🍽️ Formule</span>}
-                                  {isCombo && <span className="text-purple-600 ml-1">🍔 Menu</span>}
+                                  {(isFormula || isCombo) && <span className="text-purple-600 ml-1">🍔 Menu</span>}
                                 </span>
                                 <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
                               </div>
