@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialiser Resend uniquement si la clé est disponible
+const getResend = () => {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+  return new Resend(process.env.RESEND_API_KEY);
+};
 
 export async function POST(request) {
   try {
@@ -133,6 +139,12 @@ export async function POST(request) {
       </body>
       </html>
     `;
+
+    const resend = getResend();
+    if (!resend) {
+      console.warn('⚠️ RESEND_API_KEY non configurée, email non envoyé');
+      return NextResponse.json({ success: false, message: 'Email service not configured' });
+    }
 
     const { data, error } = await resend.emails.send({
       from: 'CVN\'EAT <noreply@cvneat.fr>',
