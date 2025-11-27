@@ -27,7 +27,13 @@ export async function POST(request) {
         // Récupérer les informations complètes de la commande avant la mise à jour
         const { data: orderData, error: fetchError } = await supabase
           .from('commandes')
-          .select('id, restaurant_id, total, frais_livraison')
+          .select(`
+            id, restaurant_id, total, frais_livraison, security_code,
+            customer_email, customer_first_name, customer_last_name,
+            adresse_livraison,
+            restaurants (nom),
+            details_commande (id, quantite, prix_unitaire, customizations, menus (nom))
+          `)
           .eq('id', orderIdToUpdate)
           .single();
 
@@ -60,7 +66,51 @@ export async function POST(request) {
               console.log('💰 Montant notification (avec frais):', notificationTotal, '€');
             } catch (broadcastError) {
               console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
-              // Ne pas faire échouer la confirmation de paiement si le broadcast échoue
+            }
+          }
+          
+          // Envoyer l'email de confirmation au client
+          if (orderData && orderData.customer_email) {
+            try {
+              // Formater les items pour l'email
+              const items = (orderData.details_commande || []).map(detail => {
+                let customizations = {};
+                if (detail.customizations) {
+                  customizations = typeof detail.customizations === 'string' 
+                    ? JSON.parse(detail.customizations) 
+                    : detail.customizations;
+                }
+                const isCombo = customizations.combo && customizations.combo.comboName;
+                return {
+                  name: isCombo ? customizations.combo.comboName : (detail.menus?.nom || 'Article'),
+                  quantity: detail.quantite || 1,
+                  price: detail.prix_unitaire || 0,
+                  isCombo,
+                  comboDetails: isCombo ? customizations.combo.details : null
+                };
+              });
+
+              await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr'}/api/email/order-confirmation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  order: {
+                    id: orderData.id,
+                    securityCode: orderData.security_code,
+                    customerName: `${orderData.customer_first_name || ''} ${orderData.customer_last_name || ''}`.trim(),
+                    restaurantName: orderData.restaurants?.nom || 'Restaurant',
+                    deliveryAddress: orderData.adresse_livraison,
+                    items,
+                    deliveryFee: parseFloat(orderData.frais_livraison || 0),
+                    platformFee: 0.49
+                  },
+                  customerEmail: orderData.customer_email
+                })
+              });
+              console.log('📧 Email de confirmation envoyé à:', orderData.customer_email);
+            } catch (emailError) {
+              console.warn('⚠️ Erreur envoi email confirmation:', emailError);
+              // Ne pas bloquer si l'email échoue
             }
           }
         }
