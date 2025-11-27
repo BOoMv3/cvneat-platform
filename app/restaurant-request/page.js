@@ -119,7 +119,7 @@ export default function RestaurantRequest() {
           const response = await fetch('/api/auth/send-confirmation-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: formData.email }),
+            body: JSON.stringify({ email: formData.email, sendEmail: false }),
           });
           if (response.ok) {
             const payload = await response.json();
