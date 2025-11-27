@@ -542,7 +542,9 @@ export default function RestaurantOrders() {
                           
                           const isFormulaDrink = customizations.is_formula_drink === true;
                           const isFormulaItem = customizations.is_formula_item === true;
+                          const isFormula = customizations.is_formula === true;
                           const formulaName = customizations.formula_name;
+                          const selectedDrink = customizations.selected_drink;
                           const isCombo = customizations.combo && customizations.combo.comboName;
                           const comboName = customizations.combo?.comboName;
                           const comboDetails = customizations.combo?.details || [];
@@ -557,10 +559,17 @@ export default function RestaurantOrders() {
                                   {displayName} x{item.quantite || 1}
                                   {isFormulaDrink && <span className="text-blue-600 ml-1">🥤 (boisson formule)</span>}
                                   {isFormulaItem && formulaName && <span className="text-gray-500 ml-1">📦 ({formulaName})</span>}
+                                  {isFormula && <span className="text-green-600 ml-1">🍽️ Formule</span>}
                                   {isCombo && <span className="text-purple-600 ml-1">🍔 Menu</span>}
                                 </span>
                                 <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
                               </div>
+                              {/* Boisson sélectionnée pour les formules */}
+                              {isFormula && selectedDrink && (
+                                <div className="ml-4 text-xs text-blue-600">
+                                  🥤 Boisson: <strong>{selectedDrink.nom || selectedDrink.name || 'Boisson'}</strong>
+                                </div>
+                              )}
                               {/* Détails du combo */}
                               {isCombo && comboDetails.length > 0 && (
                                 <div className="ml-4 text-xs text-gray-600 space-y-0.5">
