@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { FaTimes, FaPlus, FaMinus, FaShoppingCart, FaStar, FaClock, FaMapMarkerAlt } from 'react-icons/fa';
 
 export default function MobileMenuModal({ 
@@ -128,15 +127,20 @@ export default function MobileMenuModal({
                         {/* Image du produit */}
                         <div className="flex-shrink-0 w-20 h-20 relative rounded-lg overflow-hidden">
                           {item.image_url ? (
-                            <Image
+                            <img
                               src={item.image_url}
                               alt={item.nom}
-                              fill
-                              className="object-cover"
-                              sizes="80px"
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                const placeholder = e.target.parentElement.querySelector('.image-placeholder');
+                                if (placeholder) placeholder.style.display = 'flex';
+                              }}
                             />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          ) : null}
+                          {(!item.image_url || item.image_url === '') && (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center image-placeholder">
                               <span className="text-gray-400 text-2xl">🍽️</span>
                             </div>
                           )}

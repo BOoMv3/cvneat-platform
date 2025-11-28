@@ -16,7 +16,9 @@
     "capacitor:copy": "npx cap copy",
     "capacitor:update": "npx cap update",
     "capacitor:open:ios": "npx cap open ios",
-    "capacitor:open:android": "npx cap open android"
+    "capacitor:open:android": "npx cap open android",
+    "build:mobile": "node scripts/build-mobile.js",
+    "build:android": "node scripts/build-mobile.js"
   },
   "dependencies": {
     "@capacitor/push-notifications": "^7.0.3",

@@ -3,12 +3,9 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'fr.cvneat.app',
   appName: "CVN'EAT",
-  webDir: '.next',
+  webDir: 'out',
   bundledWebRuntime: false,
-  server: {
-    url: 'https://cvneat.fr',
-    cleartext: false
-  },
+  // Plus de configuration server - l'app utilise les fichiers locaux
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,

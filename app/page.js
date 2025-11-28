@@ -255,19 +255,22 @@ export default function Home() {
   const heroSlides = useMemo(() => [
     {
       id: 'slide-1',
-      image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop',
+      image: null, // Plus d'image Unsplash - utiliser un gradient
+      gradient: 'from-orange-500 via-orange-600 to-red-600',
       title: 'Livraison rapide et repas délicieux',
       subtitle: 'Découvrez les meilleurs restaurants locaux sans bouger de votre canapé'
     },
     {
       id: 'slide-2',
-      image: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?q=80&w=2000&auto=format&fit=crop',
+      image: null,
+      gradient: 'from-purple-500 via-purple-600 to-indigo-600',
       title: 'Partenaires passionnés',
       subtitle: 'Des chefs soigneusement sélectionnés pour la qualité de leurs produits'
     },
     {
       id: 'slide-3',
-      image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=2070&auto=format&fit=crop',
+      image: null,
+      gradient: 'from-blue-500 via-blue-600 to-cyan-600',
       title: 'Commandez en toute simplicité',
       subtitle: 'Une expérience de commande fluide et sécurisée pour satisfaire vos envies'
     }
@@ -607,16 +610,20 @@ export default function Home() {
             key={slide.id}
             className={`absolute inset-0 transition-opacity duration-[1200ms] ease-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
           >
-            <Image
-              src={slide.image}
-              alt={slide.title}
-              fill
-              className="object-cover"
-              priority={index === 0}
-              unoptimized
-              sizes="100vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/30" />
+            {/* Gradient au lieu d'image Unsplash */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient}`} />
+            {slide.image && (
+              <Image
+                src={slide.image}
+                alt={slide.title}
+                fill
+                className="object-cover"
+                priority={index === 0}
+                unoptimized
+                sizes="100vw"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-black/20" />
           </div>
         ))}
         

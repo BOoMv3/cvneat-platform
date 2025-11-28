@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { FaPlus, FaThumbsUp, FaLock } from 'react-icons/fa';
 import MenuItemModal from './MenuItemModal';
 
@@ -90,15 +89,21 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
       {/* Image de l'article - Design épuré */}
       <div className="relative h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 overflow-hidden">
         {image_url ? (
-          <Image
+          <img
             src={image_url}
             alt={nom}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={(e) => {
+              // Si l'image ne charge pas, afficher le placeholder
+              e.target.style.display = 'none';
+              const placeholder = e.target.parentElement.querySelector('.image-placeholder');
+              if (placeholder) placeholder.style.display = 'flex';
+            }}
           />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
+        ) : null}
+        {(!image_url || image_url === '') && (
+          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center image-placeholder">
             <span className="text-4xl opacity-50">🍽️</span>
           </div>
         )}

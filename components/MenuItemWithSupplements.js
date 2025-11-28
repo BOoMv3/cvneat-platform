@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { FaPlus, FaMinus, FaCheck, FaUtensils } from 'react-icons/fa';
 
 export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = false }) {
@@ -62,15 +61,20 @@ export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = 
       {/* Image de l'article avec bords arrondis */}
       <div className="relative h-48 bg-gradient-to-br from-purple-100 to-orange-100 rounded-t-2xl overflow-hidden">
         {item.image_url ? (
-          <Image
+          <img
             src={item.image_url}
             alt={item.nom}
-            fill
-            className="object-cover rounded-t-2xl"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="w-full h-full object-cover rounded-t-2xl"
+            loading="lazy"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              const placeholder = e.target.parentElement.querySelector('.image-placeholder');
+              if (placeholder) placeholder.style.display = 'flex';
+            }}
           />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-purple-200 to-orange-200 flex items-center justify-center rounded-t-2xl">
+        ) : null}
+        {(!item.image_url || item.image_url === '') && (
+          <div className="w-full h-full bg-gradient-to-br from-purple-200 to-orange-200 flex items-center justify-center rounded-t-2xl image-placeholder">
             <span className="text-4xl">🍽️</span>
           </div>
         )}

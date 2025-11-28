@@ -7,6 +7,11 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import ChristmasTheme from '@/components/ChristmasTheme';
 
+// Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
+if (typeof window !== 'undefined') {
+  require('../lib/fetch-interceptor');
+}
+
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
