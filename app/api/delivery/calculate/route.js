@@ -860,15 +860,16 @@ export async function POST(request) {
     }
 
     // 8. Calculer les frais
-    // CORRECTION: Si le client est dans la même ville que le restaurant (Ganges), 
+    // CORRECTION: Si le client ET le restaurant sont tous les deux à Ganges, 
     // limiter la distance à 2 km maximum pour éviter les surcoûts dus au géocodage imprécis
     let finalDistance = roundedDistance;
     const clientCity = clientCoords.city?.toLowerCase() || '';
     const restaurantCity = restaurantData?.ville?.toLowerCase() || 'ganges';
     
-    // Si le client est à Ganges et que la distance calculée est > 2 km, 
+    // Si le client ET le restaurant sont tous les deux à Ganges et que la distance calculée est > 2 km, 
     // c'est probablement une erreur de géocodage - limiter à 2 km
-    if ((clientCity.includes('gange') || restaurantCity.includes('gange')) && roundedDistance > 2.0) {
+    // IMPORTANT: Ne pas limiter si le client est dans une autre ville (ex: St Bauzille)
+    if (clientCity.includes('gange') && restaurantCity.includes('gange') && roundedDistance > 2.0) {
       console.log(`⚠️ Distance anormale pour Ganges (${roundedDistance.toFixed(1)}km), limitation à 2.0 km`);
       finalDistance = 2.0;
     }
