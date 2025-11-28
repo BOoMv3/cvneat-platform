@@ -14,9 +14,10 @@ const path = require('path');
 console.log('🚀 Démarrage du build de l\'app mobile...\n');
 
 try {
-  // Étape 1: Builder Next.js
+  // Étape 1: Builder Next.js avec la variable d'environnement pour l'export statique
   console.log('📦 Étape 1/3: Build Next.js en statique...');
-  execSync('npm run build', { stdio: 'inherit' });
+  process.env.BUILD_MOBILE = 'true';
+  execSync('npm run build', { stdio: 'inherit', env: { ...process.env, BUILD_MOBILE: 'true' } });
   
   // Vérifier que le dossier out existe
   if (!fs.existsSync(path.join(process.cwd(), 'out'))) {

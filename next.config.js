@@ -61,9 +61,10 @@ const nextConfig = {
   // Optimisations pour le build
   swcMinify: true,
   
-  // Export statique pour l'app mobile autonome
+  // Export statique UNIQUEMENT pour l'app mobile (pas pour le déploiement web)
   // Les appels API pointeront vers https://cvneat.fr/api
-  output: 'export',
+  // Conditionné par la variable d'environnement BUILD_MOBILE
+  ...(process.env.BUILD_MOBILE === 'true' ? { output: 'export' } : {}),
   
   // Headers et redirects désactivés pour export statique
   // (Ils ne fonctionnent pas avec output: 'export')
