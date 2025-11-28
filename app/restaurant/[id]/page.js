@@ -214,20 +214,42 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
           </h2>
           <div className="space-y-6">
             {items.map(item => (
-              <div key={item.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-200">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 text-lg">{item.nom || item.name}</h3>
-                    {item.description && (
-                      <p className="text-gray-600 mt-1 text-sm leading-relaxed">{item.description}</p>
+              <div key={item.id} className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all duration-200">
+                {/* Image du plat */}
+                {item.image_url && (
+                  <div className="relative h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                    <img
+                      src={item.image_url}
+                      alt={item.nom || item.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const placeholder = e.target.parentElement.querySelector('.image-placeholder');
+                        if (placeholder) placeholder.style.display = 'flex';
+                      }}
+                    />
+                    {!item.image_url && (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center image-placeholder">
+                        <span className="text-4xl opacity-50">🍽️</span>
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center space-x-3 ml-4">
-                    <span className="font-bold text-orange-600 text-lg">
-                      {typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€
-                    </span>
+                )}
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-lg">{item.nom || item.name}</h3>
+                      {item.description && (
+                        <p className="text-gray-600 mt-1 text-sm leading-relaxed">{item.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3 ml-4">
+                      <span className="font-bold text-orange-600 text-lg">
+                        {typeof item.prix === 'number' ? item.prix.toFixed(2) : 'Prix non disponible'}€
+                      </span>
+                    </div>
                   </div>
-                </div>
 
                 {/* Gestion des tailles pour les boissons */}
                 {item.is_drink && (
@@ -338,6 +360,7 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
                       </span>
                     )}
                   </button>
+                </div>
                 </div>
               </div>
             ))}
