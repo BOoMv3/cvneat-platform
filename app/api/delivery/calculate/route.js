@@ -860,19 +860,9 @@ export async function POST(request) {
     }
 
     // 8. Calculer les frais
-    // CORRECTION: Si le client ET le restaurant sont tous les deux à Ganges, 
-    // limiter la distance à 2 km maximum pour éviter les surcoûts dus au géocodage imprécis
-    let finalDistance = roundedDistance;
-    const clientCity = clientCoords.city?.toLowerCase() || '';
-    const restaurantCity = restaurantData?.ville?.toLowerCase() || 'ganges';
-    
-    // Si le client ET le restaurant sont tous les deux à Ganges et que la distance calculée est > 2 km, 
-    // c'est probablement une erreur de géocodage - limiter à 2 km
-    // IMPORTANT: Ne pas limiter si le client est dans une autre ville (ex: St Bauzille)
-    if (clientCity.includes('gange') && restaurantCity.includes('gange') && roundedDistance > 2.0) {
-      console.log(`⚠️ Distance anormale pour Ganges (${roundedDistance.toFixed(1)}km), limitation à 2.0 km`);
-      finalDistance = 2.0;
-    }
+    // FORMULE SIMPLE: 2.50€ de base + 0.50€ par kilomètre
+    // Pas de limitation, pas d'exception
+    const finalDistance = roundedDistance;
     
     let deliveryFee = calculateDeliveryFee(finalDistance, {
       baseFee: resolvedBaseFee,
@@ -885,9 +875,6 @@ export async function POST(request) {
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
     console.log(`💰 Frais: ${resolvedBaseFee}€ + (${finalDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
-    if (finalDistance !== roundedDistance) {
-      console.log(`   (Distance ajustée: ${roundedDistance.toFixed(1)}km → ${finalDistance.toFixed(1)}km)`);
-    }
 
     return NextResponse.json({
       success: true,
