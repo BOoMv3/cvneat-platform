@@ -20,7 +20,7 @@ const DEFAULT_BASE_FEE = 2.50;      // 2.50€ de base
 const DEFAULT_PER_KM_FEE = 0.50;    // 0.50€ par kilomètre (tarif standard)
 const ALTERNATE_PER_KM_FEE = 0.89;  // 0.89€ par kilomètre (tarif premium éventuel)
 const MAX_FEE = 10.00;              // Maximum 10€
-const MAX_DISTANCE = 15;            // Maximum 15km (augmenté pour inclure Montoulieu)
+const MAX_DISTANCE = 10;            // Maximum 10km - au-delà, livraison non autorisée
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '34260'];
