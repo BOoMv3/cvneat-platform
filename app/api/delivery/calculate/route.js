@@ -799,6 +799,16 @@ export async function POST(request) {
       clientLat, clientLng
     );
 
+    // VÉRIFICATION IMPORTANTE : Si la distance est exactement 0 km, c'est probablement une erreur de géocodage
+    // (même coordonnées = même adresse que le restaurant, ce qui est anormal)
+    if (rawDistance < 0.01) { // Moins de 10 mètres = probablement une erreur
+      console.error('⚠️ ATTENTION: Distance très faible (< 10m) - probable erreur de géocodage');
+      console.error('   Coordonnées restaurant:', restaurantLat, restaurantLng);
+      console.error('   Coordonnées client:', clientLat, clientLng);
+      console.error('   Adresse client:', clientAddress);
+      // On continue quand même, mais avec un minimum pour garantir des frais corrects
+    }
+
     // Garantir un minimum de 0.5 km pour éviter les frais à exactement 2.50€
     // Même les adresses très proches (même bâtiment) doivent avoir au moins 0.5 km
     // Cela garantit : 2.50€ + (0.5 × 0.50€) = 2.75€ minimum
