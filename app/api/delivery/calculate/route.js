@@ -860,40 +860,20 @@ export async function POST(request) {
     }
 
     // 8. Calculer les frais
-    // FORMULE SIMPLE: 2.50€ de base + 0.50€ par kilomètre
+    // FORMULE FIXE: 2.50€ de base + 0.50€ par kilomètre
+    // TOUTES les commandes suivent cette formule, SANS exception
     const finalDistance = roundedDistance;
     
-    // RÈGLE SPÉCIALE : Cazilhac et distances très courtes (< 2km) = livraison gratuite
-    const clientCity = clientCoords.city?.toLowerCase() || '';
-    const isCazilhac = clientCity.includes('cazilhac') || 
-                       clientAddress.toLowerCase().includes('cazilhac');
-    const isVeryClose = finalDistance < 2.0; // Moins de 2km
-    
-    let deliveryFee;
-    if (isCazilhac || isVeryClose) {
-      // Livraison gratuite pour Cazilhac et distances < 2km
-      deliveryFee = 0;
-      console.log(`🎁 Livraison GRATUITE: ${isCazilhac ? 'Cazilhac' : `Distance très courte (${finalDistance.toFixed(1)}km < 2km)`}`);
-    } else {
-      deliveryFee = calculateDeliveryFee(finalDistance, {
-        baseFee: resolvedBaseFee,
-        perKmFee: resolvedPerKmFee
-      });
-      console.log(`💰 Frais: ${resolvedBaseFee}€ + (${finalDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
-    }
+    // TOUJOURS appliquer la formule : baseFee + (distance × perKmFee)
+    const deliveryFee = calculateDeliveryFee(finalDistance, {
+      baseFee: resolvedBaseFee,
+      perKmFee: resolvedPerKmFee
+    });
+
+    console.log(`💰 Frais: ${resolvedBaseFee}€ + (${finalDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
 
     // Calculer orderAmountNumeric pour la réponse
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
-
-    // Message personnalisé selon si la livraison est gratuite
-    let deliveryMessage;
-    if (deliveryFee === 0) {
-      deliveryMessage = isCazilhac 
-        ? `Livraison GRATUITE à Cazilhac (${roundedDistance.toFixed(1)}km)`
-        : `Livraison GRATUITE (${roundedDistance.toFixed(1)}km < 2km)`;
-    } else {
-      deliveryMessage = `Livraison possible: ${deliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`;
-    }
 
     return NextResponse.json({
       success: true,
@@ -908,7 +888,7 @@ export async function POST(request) {
       applied_per_km_fee: resolvedPerKmFee,
       order_amount: orderAmountNumeric,
       client_address: clientCoords.display_name,
-      message: deliveryMessage
+      message: `Livraison possible: ${deliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
     });
 
   } catch (error) {
