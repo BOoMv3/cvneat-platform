@@ -799,17 +799,13 @@ export async function POST(request) {
       clientLat, clientLng
     );
 
-    // MINIMUM DE DISTANCE: Garantir un minimum de 0.5 km pour éviter les frais à 0€/km
-    // MAIS: Si la distance réelle est très faible (< 0.1 km), utiliser la distance réelle
-    // Cela évite de surcharger les clients très proches du restaurant
-    const MIN_DISTANCE = rawDistance < 0.1 ? rawDistance : 0.5; // Minimum 0.5 km sauf si très proche
-    const distanceWithMinimum = Math.max(rawDistance, MIN_DISTANCE);
-
+    // Utiliser la distance RÉELLE calculée entre le restaurant et l'adresse
+    // Pas de minimum artificiel - les frais varient selon la distance réelle
     // Arrondir la distance à 1 décimale pour éviter les micro-variations
     // Cela garantit que la même adresse donne toujours la même distance (et donc les mêmes frais)
-    const roundedDistance = Math.round(distanceWithMinimum * 10) / 10; // 1 décimale = précision ~100m
+    const roundedDistance = Math.round(rawDistance * 10) / 10; // 1 décimale = précision ~100m
 
-    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km, minimum appliqué: ${rawDistance < MIN_DISTANCE ? 'OUI' : 'NON'})`);
+    console.log(`📏 Distance RÉELLE: ${roundedDistance.toFixed(1)}km (calculée: ${rawDistance.toFixed(2)}km)`);
     console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)}`);
     console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)}`);
 
