@@ -25,7 +25,7 @@ const MAX_DISTANCE = 10;            // Maximum 10km
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '34260'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
-const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène'];
+const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'pegairolles'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -45,7 +45,8 @@ const COORDINATES_DB = {
   'laroque': { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
   'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' },
   'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
-  'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' }
+  'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' },
+  'montoulieu': { lat: 43.9200, lng: 3.7050, name: 'Montoulieu' } // Coordonnées approximatives
 };
 
 /**
@@ -82,7 +83,7 @@ function generateAddressVariants(address) {
   // Extraire la ville (plusieurs méthodes)
   const cityPatterns = [
     address.match(/,\s*([^,]+?)(?:\s+\d{5})?$/),
-    address.match(/\b(saint[- ]?bauzille?|ganges?|laroque?|cazilhac?|sumene?)\b/gi)
+    address.match(/\b(saint[- ]?bauzille?|ganges?|laroque?|cazilhac?|sumene?|montoulieu?|pegairolles?)\b/gi)
   ];
   
   const cities = [];
@@ -647,7 +648,7 @@ export async function POST(request) {
         suggestions.push('Exemple: "123 Rue, 34190 Ganges"');
       } else if (!AUTHORIZED_POSTAL_CODES.includes(postalCode)) {
         errorMessage += `Zone non desservie. `;
-        suggestions.push('Codes postaux acceptés: 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac), 34260 (Sumène)');
+        suggestions.push('Codes postaux acceptés: 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 34260 (Sumène)');
       } else {
         errorMessage += 'Vérifiez l\'adresse. ';
         suggestions.push('Format: "Numéro + Rue, Code postal + Ville"');
@@ -717,7 +718,7 @@ export async function POST(request) {
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac), 34260 (Sumène).'
+        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 34260 (Sumène).'
       }, { status: 200 });
     }
 
