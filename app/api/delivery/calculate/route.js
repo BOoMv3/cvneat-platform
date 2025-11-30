@@ -686,6 +686,22 @@ export async function POST(request) {
       }, { status: 200 });
     }
 
+    // Vérifier d'abord si la ville est explicitement exclue (AVANT la vérification du code postal)
+    const normalizedClientCity = (clientCoords.city || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const normalizedClientAddress = clientAddress.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    
+    for (const excludedCity of EXCLUDED_CITIES) {
+      const normalizedExcluded = excludedCity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (normalizedClientCity.includes(normalizedExcluded) || normalizedClientAddress.includes(normalizedExcluded)) {
+        console.log('❌ Ville exclue détectée:', excludedCity);
+        return NextResponse.json({
+          success: false,
+          livrable: false,
+          message: `❌ Livraison non disponible à ${excludedCity.charAt(0).toUpperCase() + excludedCity.slice(1)}. Cette zone n'est pas desservie.`
+        }, { status: 200 });
+      }
+    }
+
     // Vérifier que le code postal est dans une zone desservie (en se basant sur l'adresse saisie et le géocodage)
     // Extraire tous les codes postaux possibles
     const postalCodeFromAddress = extractPostalCode(clientAddress);
