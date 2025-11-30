@@ -365,8 +365,9 @@ function cleanAddressForGeocoding(address) {
             if (parts.length > 1) {
               parts[parts.length - 1] = ` ${postal} ${parts[parts.length - 1].trim()}`;
               cleaned = parts.join(',');
-          } else {
-            cleaned = `${cleaned}, ${postal}`;
+            } else {
+              cleaned = `${cleaned}, ${postal}`;
+            }
           }
         }
         break;
