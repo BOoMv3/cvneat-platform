@@ -57,6 +57,7 @@ const newMenuItems = [
     prix: addMargin(6.50), // 6.50€ -> 7.80€
     category: "Tacos",
     disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1601925260320-608c8d9f2307?auto=format&fit=crop&w=800&q=80',
     // Options de personnalisation pour les tacos composés
     meat_options: [
       { id: 'poulet', nom: 'Poulet', prix: 0, default: true },
@@ -109,6 +110,7 @@ const newMenuItems = [
     prix: addMargin(8.50), // 8.50€ -> 10.20€
     category: "Tacos",
     disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1601925260320-608c8d9f2307?auto=format&fit=crop&w=800&q=80',
     meat_options: [
       { id: 'poulet', nom: 'Poulet', prix: 0, default: true },
       { id: 'tenders', nom: 'Tenders', prix: 0 },
@@ -161,6 +163,7 @@ const newMenuItems = [
     prix: addMargin(11.00), // 11€ -> 13.20€
     category: "Tacos",
     disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1601925260320-608c8d9f2307?auto=format&fit=crop&w=800&q=80',
     meat_options: [
       { id: 'poulet', nom: 'Poulet', prix: 0, default: true },
       { id: 'tenders', nom: 'Tenders', prix: 0 },
@@ -214,14 +217,16 @@ const newMenuItems = [
     description: "Poulet, chèvre, miel - Tacos signature",
     prix: addMargin(9.00), // 9€ -> 10.80€
     category: "Tacos Signature",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1601925260320-608c8d9f2307?auto=format&fit=crop&w=800&q=80'
   },
   {
     nom: "Le Montagnard",
     description: "Poulet, Jambon de dinde, Oignons frits, Raclette - Tacos signature",
     prix: addMargin(9.00), // 9€ -> 10.80€
     category: "Tacos Signature",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1601925260320-608c8d9f2307?auto=format&fit=crop&w=800&q=80'
   },
 
   // ========== BURGERS (pour Menu Enfants) ==========
@@ -230,14 +235,16 @@ const newMenuItems = [
     description: "Burger avec steak, fromage, salade, tomate",
     prix: addMargin(5.00), // Prix approximatif, sera dans le menu
     category: "Burgers",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80'
   },
   {
     nom: "Mini Tacos",
     description: "Tacos mini (pour menu enfants)",
     prix: addMargin(3.00), // Prix approximatif, sera dans le menu
     category: "Tacos",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1601925260320-608c8d9f2307?auto=format&fit=crop&w=800&q=80'
   },
 
   // ========== TEXMEX ==========
@@ -246,28 +253,32 @@ const newMenuItems = [
     description: "6 nuggets de poulet",
     prix: addMargin(4.50), // 4.50€ -> 5.40€
     category: "Texmex",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=800&q=80'
   },
   {
     nom: "4 Bâtonnets de Mozzarella",
     description: "4 bâtonnets de mozzarella",
     prix: addMargin(3.00), // 3€ -> 3.60€
     category: "Texmex",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1604908177266-79ea6b685fb0?auto=format&fit=crop&w=800&q=80'
   },
   {
     nom: "3 Tenders",
     description: "3 tenders de poulet",
     prix: addMargin(5.00), // 5€ -> 6.00€
     category: "Texmex",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1625938145722-6489e5e02294?auto=format&fit=crop&w=800&q=80'
   },
   {
     nom: "6 Wings",
     description: "6 ailes de poulet",
     prix: addMargin(5.00), // 5€ -> 6.00€
     category: "Texmex",
-    disponible: true
+    disponible: true,
+    image_url: 'https://images.unsplash.com/photo-1608032362493-259c0e8a2c5b?auto=format&fit=crop&w=800&q=80'
   },
 
 ];
@@ -398,6 +409,10 @@ async function main() {
 
       if (menuItem.supplements) {
         menuData.supplements = menuItem.supplements;
+      }
+
+      if (menuItem.image_url) {
+        menuData.image_url = menuItem.image_url;
       }
 
       if (menuItem.is_drink && menuItem.drink_price_small) {
