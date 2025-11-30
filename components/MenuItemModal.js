@@ -540,7 +540,15 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           {/* Viandes - VERSION MINI */}
           {!item.is_formula && meatOptions.length > 0 && (
             <div className="mb-2">
-              <h3 className="text-sm font-semibold mb-1.5">Viandes {item.requires_meat_selection && <span className="text-red-500">*</span>}</h3>
+              <h3 className="text-sm font-semibold mb-1.5">
+                Viandes
+                {(item.max_meats || item.max_meat_count) && (
+                  <span className="text-gray-500 font-normal ml-1">
+                    (Max {(item.max_meats || item.max_meat_count)})
+                  </span>
+                )}
+                {item.requires_meat_selection && <span className="text-red-500">*</span>}
+              </h3>
               <div className="space-y-1">
                 {meatOptions.map((meat) => {
                   const meatId = meat.id || meat.nom;

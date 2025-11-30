@@ -81,6 +81,7 @@ const newMenuItems = [
       { id: 'samourai', nom: 'Samouraï', prix: 0 }
     ],
     max_sauces: 2, // 2 choix max
+    max_meats: 1, // 1 seule viande pour le Tacos M
     base_ingredients: [
       { id: 'frites', nom: 'Frites', prix: 0, removable: false },
       { id: 'sauce-fromagere', nom: 'Sauce fromagère maison', prix: 0, removable: false }
