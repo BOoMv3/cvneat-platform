@@ -340,12 +340,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       console.log('✅ Formule ajoutée:', formulaItem.nom);
       onAddToCart(formulaItem, [], null, quantity);
       
-      // Fermer la modal immédiatement après l'ajout
-      requestAnimationFrame(() => {
-        if (typeof onClose === 'function') {
-          onClose();
-        }
-      });
+      // Fermer la modal immédiatement après l'ajout (synchrone)
+      if (typeof onClose === 'function') {
+        onClose();
+      }
       return;
     }
 
@@ -417,12 +415,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     console.log('✅ Article ajouté:', customizedItem.nom);
     onAddToCart(customizedItem, supplementsList, null, quantity);
     
-    // Fermer la modal immédiatement après l'ajout
-    requestAnimationFrame(() => {
-      if (typeof onClose === 'function') {
-        onClose();
-      }
-    });
+    // Fermer la modal immédiatement après l'ajout (synchrone)
+    if (typeof onClose === 'function') {
+      onClose();
+    }
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body
