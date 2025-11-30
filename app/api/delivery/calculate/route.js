@@ -84,7 +84,7 @@ function generateAddressVariants(address) {
   // Extraire la ville (plusieurs méthodes)
   const cityPatterns = [
     address.match(/,\s*([^,]+?)(?:\s+\d{5})?$/),
-    address.match(/\b(saint[- ]?bauzille?|ganges?|laroque?|cazilhac?|sumene?|montoulieu?|pegairolles?)\b/gi)
+    address.match(/\b(saint[- ]?bauzille?|ganges?|laroque?|cazilhac?|sumene?|sumène?|montoulieu?|pegairolles?|brissac?)\b/gi)
   ];
   
   const cities = [];
