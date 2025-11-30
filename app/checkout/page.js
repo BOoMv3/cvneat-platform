@@ -432,22 +432,54 @@ export default function Checkout() {
         }
       }
 
-      // SIMPLIFICATION: Utiliser les frais déjà calculés (pas de re-vérification)
-      const { payload: finalPayload, subtotal: orderSubtotal, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(`${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`);
+      // IMPORTANT: Recalculer les frais de livraison AVANT le paiement pour garantir l'exactitude
+      console.log('🔄 Recalcul des frais de livraison avant paiement...');
+      const fullAddress = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
+      
+      // Recalculer les frais de livraison
+      const recalculateResponse = await fetch('/api/delivery/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: fullAddress,
+          deliveryAddress: fullAddress,
+          restaurantId: activeRestaurant.id
+        })
+      });
+
+      if (!recalculateResponse.ok) {
+        const errorData = await recalculateResponse.json();
+        alert(`Erreur de calcul des frais de livraison: ${errorData.message || 'Adresse non livrable'}`);
+        setSubmitting(false);
+        return;
+      }
+
+      const recalculateData = await recalculateResponse.json();
+      
+      if (!recalculateData.success || !recalculateData.livrable) {
+        alert(`Livraison impossible: ${recalculateData.message || 'Adresse trop éloignée'}`);
+        setSubmitting(false);
+        return;
+      }
+
+      // Utiliser les frais recalculés (garantis corrects)
+      let finalDeliveryFee = Math.round(parseFloat(recalculateData.frais_livraison || 0) * 100) / 100;
+      
+      // Vérification de sécurité : les frais doivent être au minimum 2.50€
+      if (finalDeliveryFee < 2.50) {
+        console.warn('⚠️ Frais de livraison anormalement bas, utilisation du minimum');
+        finalDeliveryFee = 2.50;
+      }
+
+      console.log('✅ Frais de livraison recalculés:', finalDeliveryFee, '€');
+
+      const { payload: finalPayload, subtotal: orderSubtotal, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(fullAddress);
       const resolvedRestaurant = activeRestaurant || payloadRestaurantInfo || null;
       
       if (!resolvedRestaurant) {
         alert('Impossible de déterminer le restaurant pour cette commande.');
         setSubmitting(false);
         return;
-      }
-      
-      // Utiliser les frais déjà calculés (simplifié - pas de re-vérification)
-      let finalDeliveryFee = Math.round(parseFloat(fraisLivraison || 2.50) * 100) / 100;
-      
-      // Si pas de frais calculés, utiliser la valeur par défaut
-      if (!fraisLivraison || fraisLivraison === 0) {
-        finalDeliveryFee = 2.50; // Frais de base minimum
       }
 
       // Calculer le total du panier (sous-total articles)
