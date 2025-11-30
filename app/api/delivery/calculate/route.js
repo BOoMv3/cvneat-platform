@@ -887,10 +887,17 @@ export async function POST(request) {
     );
 
     // VALIDATION CRITIQUE: S'assurer que baseFee est au minimum 2.50€
-    if (resolvedBaseFee < DEFAULT_BASE_FEE) {
-      console.warn(`⚠️ baseFee trop bas (${resolvedBaseFee}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
+    // Protection absolue contre les valeurs incorrectes
+    if (isNaN(resolvedBaseFee) || resolvedBaseFee < DEFAULT_BASE_FEE || resolvedBaseFee <= 0) {
+      console.error(`❌ ERREUR CRITIQUE: baseFee invalide (${resolvedBaseFee}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
+      console.error('   Données restaurant:', {
+        frais_livraison_base: restaurantData?.frais_livraison_base,
+        frais_livraison_minimum: restaurantData?.frais_livraison_minimum,
+        frais_livraison: restaurantData?.frais_livraison,
+        baseFeeOverride
+      });
     }
-    const safeBaseFee = Math.max(resolvedBaseFee, DEFAULT_BASE_FEE);
+    const safeBaseFee = Math.max(DEFAULT_BASE_FEE, Math.max(resolvedBaseFee || DEFAULT_BASE_FEE, DEFAULT_BASE_FEE));
 
     let resolvedPerKmFee = pickNumeric(
       [
@@ -943,13 +950,28 @@ export async function POST(request) {
     });
 
     // VALIDATION FINALE: Les frais ne peuvent JAMAIS être < 2.50€
-    if (deliveryFee < DEFAULT_BASE_FEE) {
-      console.error(`❌ ERREUR CRITIQUE: Frais calculés trop bas (${deliveryFee.toFixed(2)}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
+    // Protection absolue contre les erreurs de calcul
+    if (isNaN(deliveryFee) || deliveryFee < DEFAULT_BASE_FEE || deliveryFee <= 0) {
+      console.error(`❌ ERREUR CRITIQUE: Frais calculés invalides (${deliveryFee}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
       console.error('   Distance:', finalDistance, 'km');
       console.error('   baseFee:', safeBaseFee, '€');
       console.error('   perKmFee:', safePerKmFee, '€');
+      console.error('   Adresse client:', clientAddress);
+      console.error('   Restaurant:', restaurantName);
     }
-    const finalDeliveryFee = Math.max(deliveryFee, DEFAULT_BASE_FEE);
+    // Protection absolue: garantir un minimum de 2.50€ même si le calcul est incorrect
+    const finalDeliveryFee = Math.max(DEFAULT_BASE_FEE, Math.max(deliveryFee || DEFAULT_BASE_FEE, DEFAULT_BASE_FEE));
+    
+    // Vérification finale de sécurité
+    if (finalDeliveryFee < DEFAULT_BASE_FEE) {
+      console.error(`🚨 ALERTE SÉCURITÉ: finalDeliveryFee toujours < 2.50€ après toutes les validations! Valeur: ${finalDeliveryFee}€`);
+      // Forcer le minimum absolu
+      return NextResponse.json({
+        success: false,
+        error: 'Erreur de calcul des frais',
+        message: 'Erreur lors du calcul des frais de livraison. Veuillez réessayer.'
+      }, { status: 500 });
+    }
 
     console.log(`💰 Frais: ${safeBaseFee}€ + (${finalDistance.toFixed(1)}km × ${safePerKmFee}€) = ${finalDeliveryFee.toFixed(2)}€`);
 
