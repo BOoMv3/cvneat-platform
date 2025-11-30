@@ -26,6 +26,8 @@ const MAX_DISTANCE = 10;            // Maximum 10km - au-delà, livraison non au
 const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
 const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'pegairolles', 'brissac'];
+// Villes EXCLUES de la livraison (même si dans un code postal autorisé)
+const EXCLUDED_CITIES = ['crouzet', 'le crouzet'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
