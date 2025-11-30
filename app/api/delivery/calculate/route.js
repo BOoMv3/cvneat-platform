@@ -120,11 +120,23 @@ function generateAddressVariants(address) {
   
   // Variante 6 : Adresse avec seulement numéro + code postal + ville
   if (postalCode && cities.length > 0) {
-    const streetNumber = address.match(/^\d+/);
+    const streetNumber = address.match(/^\d+(\s+(bis|ter|quater))?/i);
     if (streetNumber) {
       cities.forEach(city => {
         variants.add(`${streetNumber[0]}, ${postalCode} ${city}, France`);
+        variants.add(`${streetNumber[0]} ${postalCode} ${city}, France`);
       });
+    }
+  }
+  
+  // Variante 7 : Si Sumène est détectée mais pas de code postal, ajouter 34260
+  const hasSumene = address.toLowerCase().includes('sumene') || address.toLowerCase().includes('sumène');
+  if (hasSumene && !postalCode) {
+    const streetNumber = address.match(/^\d+(\s+(bis|ter|quater))?/i);
+    const streetName = address.replace(/^\d+(\s+(bis|ter|quater))?\s*/i, '').replace(/,\s*\d{5}.*$/, '').replace(/,\s*sumene.*$/i, '').replace(/,\s*sumène.*$/i, '').trim();
+    if (streetNumber && streetName) {
+      variants.add(`${streetNumber[0]} ${streetName}, 34260 Sumène, France`);
+      variants.add(`${streetNumber[0]}, ${streetName}, 34260 Sumène, France`);
     }
   }
   
@@ -337,16 +349,22 @@ function cleanAddressForGeocoding(address) {
     for (const [cityKey, postal] of Object.entries(cityPostalMap)) {
       const normalizedCity = cityKey.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       
-      // Correspondance exacte ou partielle
+      // Correspondance exacte ou partielle (vérifier dans toute l'adresse, pas seulement après la virgule)
       if (normalizedForSearch.includes(normalizedCity) || 
-          normalizedCity.includes(normalizedForSearch.split(',')[1]?.trim() || '')) {
+          normalizedCity.includes(normalizedForSearch.split(',')[1]?.trim() || '') ||
+          normalizedForSearch.includes(normalizedCity)) {
         // Ajouter le code postal si pas déjà présent
         if (!cleaned.includes(postal)) {
-          // Ajouter avant la dernière virgule ou à la fin
-          const parts = cleaned.split(',');
-          if (parts.length > 1) {
-            parts[parts.length - 1] = ` ${postal} ${parts[parts.length - 1].trim()}`;
-            cleaned = parts.join(',');
+          // Si l'adresse contient déjà la ville, ajouter le code postal avant
+          const cityRegex = new RegExp(`\\b${cityKey}\\b`, 'i');
+          if (cityRegex.test(cleaned)) {
+            cleaned = cleaned.replace(cityRegex, `${postal} $&`);
+          } else {
+            // Ajouter avant la dernière virgule ou à la fin
+            const parts = cleaned.split(',');
+            if (parts.length > 1) {
+              parts[parts.length - 1] = ` ${postal} ${parts[parts.length - 1].trim()}`;
+              cleaned = parts.join(',');
           } else {
             cleaned = `${cleaned}, ${postal}`;
           }
