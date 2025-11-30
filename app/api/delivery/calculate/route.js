@@ -702,6 +702,30 @@ export async function POST(request) {
       }
     }
 
+    // Calculer la distance AVANT la validation du code postal pour rejeter les adresses trop éloignées
+    // Cela permet de rejeter Brissac et autres villes trop loin même si elles ont un code postal autorisé
+    const tempRestaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000;
+    const tempRestaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
+    const tempClientLat = Math.round(clientCoords.lat * 1000) / 1000;
+    const tempClientLng = Math.round(clientCoords.lng * 1000) / 1000;
+    
+    if (!isNaN(tempRestaurantLat) && !isNaN(tempRestaurantLng) && !isNaN(tempClientLat) && !isNaN(tempClientLng)) {
+      const tempDistance = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
+      const tempRoundedDistance = Math.round(Math.max(tempDistance, 0.5) * 10) / 10;
+      
+      // REJETER IMMÉDIATEMENT si la distance dépasse 10km
+      if (tempRoundedDistance > MAX_DISTANCE) {
+        console.log(`❌ REJET PRÉCOCE: Distance trop grande (${tempRoundedDistance.toFixed(1)}km > ${MAX_DISTANCE}km) pour: ${clientAddress}`);
+        return NextResponse.json({
+          success: false,
+          livrable: false,
+          distance: tempRoundedDistance,
+          max_distance: MAX_DISTANCE,
+          message: `❌ Livraison impossible: ${tempRoundedDistance.toFixed(1)}km (maximum ${MAX_DISTANCE}km autorisé)`
+        }, { status: 200 });
+      }
+    }
+
     // Vérifier que le code postal est dans une zone desservie (en se basant sur l'adresse saisie et le géocodage)
     // Extraire tous les codes postaux possibles
     const postalCodeFromAddress = extractPostalCode(clientAddress);
