@@ -27,7 +27,7 @@ const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
 const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'pegairolles', 'brissac'];
 // Villes EXCLUES de la livraison (même si dans un code postal autorisé)
-const EXCLUDED_CITIES = ['crouzet', 'le crouzet'];
+const EXCLUDED_CITIES = ['crouzet', 'le crouzet', 'brissac'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -883,8 +883,14 @@ export async function POST(request) {
         restaurantData?.frais_livraison
       ],
       DEFAULT_BASE_FEE,
-      { min: 0 }
+      { min: DEFAULT_BASE_FEE } // GARANTIR un minimum de 2.50€
     );
+
+    // VALIDATION CRITIQUE: S'assurer que baseFee est au minimum 2.50€
+    if (resolvedBaseFee < DEFAULT_BASE_FEE) {
+      console.warn(`⚠️ baseFee trop bas (${resolvedBaseFee}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
+    }
+    const safeBaseFee = Math.max(resolvedBaseFee, DEFAULT_BASE_FEE);
 
     let resolvedPerKmFee = pickNumeric(
       [
@@ -896,7 +902,7 @@ export async function POST(request) {
         restaurantData?.tarif_kilometre
       ],
       undefined,
-      { min: 0 }
+      { min: DEFAULT_PER_KM_FEE } // GARANTIR un minimum de 0.50€
     );
 
     if (resolvedPerKmFee === undefined) {
@@ -908,18 +914,44 @@ export async function POST(request) {
       }
     }
 
+    // VALIDATION CRITIQUE: S'assurer que perKmFee est au minimum 0.50€
+    if (resolvedPerKmFee < DEFAULT_PER_KM_FEE) {
+      console.warn(`⚠️ perKmFee trop bas (${resolvedPerKmFee}€), utilisation du minimum ${DEFAULT_PER_KM_FEE}€`);
+    }
+    const safePerKmFee = Math.max(resolvedPerKmFee, DEFAULT_PER_KM_FEE);
+
     // 8. Calculer les frais
     // FORMULE FIXE: 2.50€ de base + 0.50€ par kilomètre
     // TOUTES les commandes suivent cette formule, SANS exception
     const finalDistance = roundedDistance;
     
+    // VALIDATION CRITIQUE: Vérifier que la distance est valide
+    if (isNaN(finalDistance) || finalDistance < 0) {
+      console.error('❌ ERREUR: Distance invalide pour le calcul des frais:', finalDistance);
+      return NextResponse.json({
+        success: false,
+        error: 'Distance invalide',
+        message: 'Erreur lors du calcul de la distance de livraison'
+      }, { status: 500 });
+    }
+    
     // TOUJOURS appliquer la formule : baseFee + (distance × perKmFee)
+    // Utiliser les valeurs sécurisées (safeBaseFee et safePerKmFee)
     const deliveryFee = calculateDeliveryFee(finalDistance, {
-      baseFee: resolvedBaseFee,
-      perKmFee: resolvedPerKmFee
+      baseFee: safeBaseFee,
+      perKmFee: safePerKmFee
     });
 
-    console.log(`💰 Frais: ${resolvedBaseFee}€ + (${finalDistance.toFixed(1)}km × ${resolvedPerKmFee}€) = ${deliveryFee.toFixed(2)}€`);
+    // VALIDATION FINALE: Les frais ne peuvent JAMAIS être < 2.50€
+    if (deliveryFee < DEFAULT_BASE_FEE) {
+      console.error(`❌ ERREUR CRITIQUE: Frais calculés trop bas (${deliveryFee.toFixed(2)}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
+      console.error('   Distance:', finalDistance, 'km');
+      console.error('   baseFee:', safeBaseFee, '€');
+      console.error('   perKmFee:', safePerKmFee, '€');
+    }
+    const finalDeliveryFee = Math.max(deliveryFee, DEFAULT_BASE_FEE);
+
+    console.log(`💰 Frais: ${safeBaseFee}€ + (${finalDistance.toFixed(1)}km × ${safePerKmFee}€) = ${finalDeliveryFee.toFixed(2)}€`);
 
     // Calculer orderAmountNumeric pour la réponse
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
@@ -929,15 +961,15 @@ export async function POST(request) {
       livrable: true,
       distance: finalDistance,
       raw_distance: roundedDistance, // Distance brute pour debug
-      frais_livraison: deliveryFee,
+      frais_livraison: finalDeliveryFee, // Utiliser finalDeliveryFee (garanti >= 2.50€)
       restaurant: restaurantName,
       restaurant_coordinates: restaurantCoords,
       client_coordinates: clientCoords,
-      applied_base_fee: resolvedBaseFee,
-      applied_per_km_fee: resolvedPerKmFee,
+      applied_base_fee: safeBaseFee,
+      applied_per_km_fee: safePerKmFee,
       order_amount: orderAmountNumeric,
       client_address: clientCoords.display_name,
-      message: `Livraison possible: ${deliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
+      message: `Livraison possible: ${finalDeliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
     });
 
   } catch (error) {
