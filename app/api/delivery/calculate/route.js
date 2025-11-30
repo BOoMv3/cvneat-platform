@@ -23,7 +23,7 @@ const MAX_FEE = 10.00;              // Maximum 10€
 const MAX_DISTANCE = 10;            // Maximum 10km - au-delà, livraison non autorisée
 
 // Codes postaux autorisés
-const AUTHORIZED_POSTAL_CODES = ['34190', '34260'];
+const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
 const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'pegairolles', 'brissac'];
 
@@ -106,10 +106,10 @@ function generateAddressVariants(address) {
   }
   
   // Variante 4 : Juste le code postal (si connu)
-  if (postalCode && ['34190', '34260'].includes(postalCode)) {
+  if (postalCode && ['34190', '30440'].includes(postalCode)) {
     const cityMap = {
       '34190': 'Ganges',
-      '34260': 'Sumène'
+      '30440': 'Sumène'
     };
     variants.add(`${postalCode} ${cityMap[postalCode]}, France`);
   }
@@ -129,14 +129,14 @@ function generateAddressVariants(address) {
     }
   }
   
-  // Variante 7 : Si Sumène est détectée mais pas de code postal, ajouter 34260
+  // Variante 7 : Si Sumène est détectée mais pas de code postal, ajouter 30440
   const hasSumene = address.toLowerCase().includes('sumene') || address.toLowerCase().includes('sumène');
   if (hasSumene && !postalCode) {
     const streetNumber = address.match(/^\d+(\s+(bis|ter|quater))?/i);
     const streetName = address.replace(/^\d+(\s+(bis|ter|quater))?\s*/i, '').replace(/,\s*\d{5}.*$/, '').replace(/,\s*sumene.*$/i, '').replace(/,\s*sumène.*$/i, '').trim();
     if (streetNumber && streetName) {
-      variants.add(`${streetNumber[0]} ${streetName}, 34260 Sumène, France`);
-      variants.add(`${streetNumber[0]}, ${streetName}, 34260 Sumène, France`);
+      variants.add(`${streetNumber[0]} ${streetName}, 30440 Sumène, France`);
+      variants.add(`${streetNumber[0]}, ${streetName}, 30440 Sumène, France`);
     }
   }
   
@@ -185,7 +185,7 @@ async function geocodeAddress(address) {
         // Prendre le premier résultat qui a un code postal valide
         for (const result of data) {
           const postcode = result.address?.postcode;
-          if (postcode && ['34190', '34260'].includes(String(postcode).trim())) {
+          if (postcode && ['34190', '30440'].includes(String(postcode).trim())) {
             const coords = {
               lat: parseFloat(result.lat),
               lng: parseFloat(result.lon),
@@ -228,7 +228,7 @@ async function geocodeAddress(address) {
   
   // Si toutes les tentatives ont échoué
   console.error('❌ Toutes les tentatives de géocodage ont échoué');
-  throw new Error('Adresse introuvable. Vérifiez le code postal (34190, 34260) et le nom de la ville.');
+  throw new Error('Adresse introuvable. Vérifiez le code postal (34190, 30440) et le nom de la ville.');
 }
 
 /**
@@ -312,7 +312,7 @@ function cleanAddressForGeocoding(address) {
   // Étape 3 : Normaliser les codes postaux (s'assurer qu'ils sont à 5 chiffres)
   cleaned = cleaned.replace(/\b(\d{4})\b/g, (match, digits) => {
     // Si c'est un code postal de 4 chiffres, ajouter un 0 devant
-    if (digits.length === 4 && !cleaned.includes('34190') && !cleaned.includes('34260')) {
+    if (digits.length === 4 && !cleaned.includes('34190') && !cleaned.includes('30440')) {
       return '0' + digits;
     }
     return match;
@@ -334,9 +334,9 @@ function cleanAddressForGeocoding(address) {
       'bauzille': '34190',
       'cazilhac': '34190',
       'cazilh': '34190',
-      'sumene': '34260',
-      'sumène': '34260',
-      'sumen': '34260'
+      'sumene': '30440',
+      'sumène': '30440',
+      'sumen': '30440'
     };
     
     // Normaliser l'adresse pour la recherche (sans accents, minuscules)
@@ -668,7 +668,7 @@ export async function POST(request) {
         suggestions.push('Exemple: "123 Rue, 34190 Ganges"');
       } else if (!AUTHORIZED_POSTAL_CODES.includes(postalCode)) {
         errorMessage += `Zone non desservie. `;
-        suggestions.push('Codes postaux acceptés: 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 34260 (Sumène)');
+        suggestions.push('Codes postaux acceptés: 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 30440 (Sumène)');
       } else {
         errorMessage += 'Vérifiez l\'adresse. ';
         suggestions.push('Format: "Numéro + Rue, Code postal + Ville"');
@@ -738,7 +738,7 @@ export async function POST(request) {
       return NextResponse.json({
         success: false,
         livrable: false,
-        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 34260 (Sumène).'
+        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 30440 (Sumène).'
       }, { status: 200 });
     }
 
