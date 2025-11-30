@@ -40,9 +40,19 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const PARTNER_EMAIL = 'molokai@cvneat.fr';
-const PARTNER_PASSWORD = 'molokai1009cvneat';
+// ⚠️ SÉCURITÉ : Ne jamais mettre les mots de passe en dur dans le code
+// Utiliser des variables d'environnement ou des arguments en ligne de commande
+const PARTNER_EMAIL = process.env.MOLOKAI_EMAIL || process.argv[2] || 'molokai@cvneat.fr';
+const PARTNER_PASSWORD = process.env.MOLOKAI_PASSWORD || process.argv[3] || '';
 const RESTAURANT_NAME = 'Molokai';
+
+if (!PARTNER_PASSWORD) {
+  console.error('❌ ERREUR SÉCURITÉ: Le mot de passe doit être fourni via:');
+  console.error('   - Variable d\'environnement: MOLOKAI_PASSWORD');
+  console.error('   - Argument: node scripts/create-molokai.js <email> <password>');
+  console.error('\n⚠️  Ne jamais commiter les mots de passe dans le code source!');
+  process.exit(1);
+}
 
 const restaurantInfo = {
   nom: RESTAURANT_NAME,
@@ -192,10 +202,11 @@ async function main() {
     console.log('\n🎉 Molokai configuré avec succès !');
     console.log(`\n📊 Informations:`);
     console.log(`   - Email: ${PARTNER_EMAIL}`);
-    console.log(`   - Mot de passe: ${PARTNER_PASSWORD}`);
     console.log(`   - Restaurant ID: ${restaurantId}`);
     console.log(`   - User ID: ${userId}`);
     console.log(`\n💡 Vous pouvez maintenant ajouter le menu !\n`);
+    console.log('⚠️  SÉCURITÉ: Le mot de passe a été utilisé pour créer le compte.');
+    console.log('   Changez-le immédiatement si ce script a été commité sur GitHub!\n');
 
   } catch (error) {
     console.error('❌', error.message);

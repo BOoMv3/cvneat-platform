@@ -34,9 +34,19 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const PARTNER_EMAIL = 'otoasty@cvneat.fr';
-const PARTNER_PASSWORD = 'otoastycvneat1114';
+// ⚠️ SÉCURITÉ : Ne jamais mettre les mots de passe en dur dans le code
+// Utiliser des variables d'environnement ou des arguments en ligne de commande
+const PARTNER_EMAIL = process.env.OTOASTY_EMAIL || process.argv[2] || 'otoasty@cvneat.fr';
+const PARTNER_PASSWORD = process.env.OTOASTY_PASSWORD || process.argv[3] || '';
 const RESTAURANT_NAME = "O'Toasty";
+
+if (!PARTNER_PASSWORD) {
+  console.error('❌ ERREUR SÉCURITÉ: Le mot de passe doit être fourni via:');
+  console.error('   - Variable d\'environnement: OTOASTY_PASSWORD');
+  console.error('   - Argument: node scripts/create-otoasty.js <email> <password>');
+  console.error('\n⚠️  Ne jamais commiter les mots de passe dans le code source!');
+  process.exit(1);
+}
 
 const restaurantInfo = {
   nom: RESTAURANT_NAME,
