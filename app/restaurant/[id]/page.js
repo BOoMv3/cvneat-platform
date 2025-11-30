@@ -168,6 +168,44 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
     return <p className="text-red-500 text-center p-4">{error}</p>;
   }
   
+  // Fonction pour ordonner les catégories (même logique que MenuByCategories)
+  const getCategoryOrder = (category) => {
+    const catLower = (category || '').toLowerCase();
+    
+    // Formules (0)
+    if (catLower === 'formule' || catLower === 'formules' || catLower === 'menus') {
+      return 0;
+    }
+    
+    // Catégories Molokai (Sushi/Poke)
+    if (catLower.includes('signatures x6') || catLower === 'signatures') return 1;
+    if (catLower.includes('sushi nigiri') || catLower.includes('nigiri')) return 1.1;
+    if (catLower.includes('spring rolls')) return 1.2;
+    if (catLower.includes('salmon aburi') || catLower.includes('aburi rolls')) return 1.3;
+    if (catLower.includes('makis x6') || (catLower.includes('makis') && !catLower.includes('california'))) return 1.4;
+    if (catLower.includes('california x6') || catLower.includes('california')) return 1.5;
+    if (catLower.includes('crispy x6') || catLower.includes('les crispy')) return 1.6;
+    if (catLower.includes('accompagnements') || catLower.includes('accompagnement')) return 1.7;
+    if (catLower.includes('pokes signatures') || (catLower.includes('poke') && catLower.includes('signature'))) return 1.8;
+    if (catLower.includes('plateaux') || catLower.includes('plateau')) return 1.9;
+    if (catLower.includes('compose ton poke') || catLower.includes('compose ton bowl')) return 1.95;
+    
+    // Catégories générales
+    if (catLower.includes('entree') || catLower.includes('entrée') || catLower === 'entrées' || catLower === 'entrees') return 1;
+    if (catLower.includes('sandwich') || catLower === 'sandwiches') return 1.5;
+    if (catLower.includes('puccia')) return 2;
+    if (catLower === 'plat' || catLower === 'plats' || catLower.includes('plat principal')) return 2;
+    if (catLower.includes('burger')) return 2.5;
+    if (catLower.includes('poke') && !catLower.includes('signature') && !catLower.includes('compose')) return 2.7;
+    if (catLower.includes('salade')) return 2.8;
+    if (catLower.includes('dessert')) return 3;
+    if (catLower.includes('boisson') || catLower.includes('drink') || catLower === 'boissons' || catLower.includes('la sélection')) return 4;
+    if (catLower.includes('sauce') || catLower.includes('supplément') || catLower.includes('supplement')) return 4.5;
+    if (catLower.includes('kebab') || catLower.includes('panini') || catLower.includes('taco') || catLower.includes('pizza')) return 2;
+    
+    return 99;
+  };
+
   // Grouper le menu par catégorie
   const groupedMenu = menu.reduce((acc, item) => {
     const category = item.category || 'Autres';
@@ -190,6 +228,16 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
     return acc;
   }, {});
 
+  // Trier les catégories selon l'ordre personnalisé
+  const sortedCategories = Object.keys(filteredMenu).sort((a, b) => {
+    const orderA = getCategoryOrder(a);
+    const orderB = getCategoryOrder(b);
+    if (orderA === orderB) {
+      return a.localeCompare(b);
+    }
+    return orderA - orderB;
+  });
+
   return (
     <div className="space-y-6">
       {/* Barre de recherche du menu */}
@@ -206,7 +254,9 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
       </div>
 
       {/* Menu groupé par catégorie */}
-      {Object.entries(filteredMenu).map(([category, items]) => (
+      {sortedCategories.map((category) => {
+        const items = filteredMenu[category];
+        return (
         <div key={category} className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold mb-4 text-gray-800 border-b-2 border-orange-200 pb-2 flex items-center">
             <span className="mr-2">🍽️</span>
@@ -366,7 +416,8 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
             ))}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

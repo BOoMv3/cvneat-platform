@@ -49,9 +49,57 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     const catLower = category.toLowerCase();
     
     // Formules (0) - Afficher en premier
-    if (catLower === 'formule' || catLower === 'formules') {
+    if (catLower === 'formule' || catLower === 'formules' || catLower === 'menus') {
       return 0;
     }
+    
+    // ========== CATÉGORIES MOLOKAI (Sushi/Poke) ==========
+    // Signatures x6 (1)
+    if (catLower.includes('signatures x6') || catLower === 'signatures') {
+      return 1;
+    }
+    // Sushi Nigiri x2 (1.1)
+    if (catLower.includes('sushi nigiri') || catLower.includes('nigiri')) {
+      return 1.1;
+    }
+    // Spring Rolls x6 (1.2)
+    if (catLower.includes('spring rolls')) {
+      return 1.2;
+    }
+    // Salmon Aburi Rolls x6 (1.3)
+    if (catLower.includes('salmon aburi') || catLower.includes('aburi rolls')) {
+      return 1.3;
+    }
+    // Makis x6 (1.4)
+    if (catLower.includes('makis x6') || (catLower.includes('makis') && !catLower.includes('california'))) {
+      return 1.4;
+    }
+    // California x6 (1.5)
+    if (catLower.includes('california x6') || catLower.includes('california')) {
+      return 1.5;
+    }
+    // Les Crispy x6 (1.6)
+    if (catLower.includes('crispy x6') || catLower.includes('les crispy')) {
+      return 1.6;
+    }
+    // Accompagnements (1.7)
+    if (catLower.includes('accompagnements') || catLower.includes('accompagnement')) {
+      return 1.7;
+    }
+    // Les Pokes Signatures (1.8)
+    if (catLower.includes('pokes signatures') || (catLower.includes('poke') && catLower.includes('signature'))) {
+      return 1.8;
+    }
+    // Les Plateaux (1.9)
+    if (catLower.includes('plateaux') || catLower.includes('plateau')) {
+      return 1.9;
+    }
+    // Compose ton Poke Bowl (1.95)
+    if (catLower.includes('compose ton poke') || catLower.includes('compose ton bowl')) {
+      return 1.95;
+    }
+    
+    // ========== CATÉGORIES GÉNÉRALES ==========
     // Entrées (1)
     if (catLower.includes('entree') || catLower.includes('entrée') || catLower === 'entrées' || catLower === 'entrees') {
       return 1;
@@ -68,25 +116,29 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
     if (catLower === 'plat' || catLower === 'plats' || catLower.includes('plat principal')) {
       return 2;
     }
-    // Desserts (3)
-    if (catLower.includes('dessert')) {
-      return 3;
-    }
-    // Boissons (4)
-    if (catLower.includes('boisson') || catLower.includes('drink') || catLower === 'boissons') {
-      return 4;
-    }
     // Burgers (2.5)
     if (catLower.includes('burger')) {
       return 2.5;
     }
-    // Poke Bowl (2.7)
-    if (catLower.includes('poke')) {
+    // Poke Bowl générique (2.7) - Si pas déjà catégorisé
+    if (catLower.includes('poke') && !catLower.includes('signature') && !catLower.includes('compose')) {
       return 2.7;
     }
     // Salades (2.8)
     if (catLower.includes('salade')) {
       return 2.8;
+    }
+    // Desserts (3) - Avant boissons
+    if (catLower.includes('dessert')) {
+      return 3;
+    }
+    // Boissons (4) - À la fin
+    if (catLower.includes('boisson') || catLower.includes('drink') || catLower === 'boissons' || catLower.includes('la sélection')) {
+      return 4;
+    }
+    // Sauces et Suppléments (4.5) - Après boissons
+    if (catLower.includes('sauce') || catLower.includes('supplément') || catLower.includes('supplement')) {
+      return 4.5;
     }
     // Autres catégories spécifiques (5)
     if (catLower.includes('kebab') || catLower.includes('panini') || catLower.includes('taco') || catLower.includes('pizza')) {
