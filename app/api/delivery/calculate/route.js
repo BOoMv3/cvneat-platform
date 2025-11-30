@@ -27,7 +27,7 @@ const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
 const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'pegairolles', 'brissac'];
 // Villes EXCLUES de la livraison (même si dans un code postal autorisé)
-const EXCLUDED_CITIES = ['crouzet', 'le crouzet', 'brissac', 'saint bresson', 'saint-bresson', 'saint bresson le crouzet', 'saint-bresson-le-crouzet', 'bresson'];
+const EXCLUDED_CITIES = ['crouzet', 'le crouzet', 'saint bresson', 'saint-bresson', 'saint bresson le crouzet', 'saint-bresson-le-crouzet', 'bresson'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -702,8 +702,46 @@ export async function POST(request) {
       }
     }
 
+    // Définir les coordonnées du restaurant AVANT le calcul de distance
+    // Préférence : utiliser les coordonnées stockées en base si disponibles
+    let restaurantCoords = null;
+    if (restaurantData?.latitude && restaurantData?.longitude) {
+      const lat = parseFloat(restaurantData.latitude);
+      const lng = parseFloat(restaurantData.longitude);
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+        restaurantCoords = {
+          lat: Math.round(lat * 1000) / 1000, // 3 décimales pour cohérence
+          lng: Math.round(lng * 1000) / 1000,
+          display_name: restaurantAddress || restaurantName
+        };
+      }
+    }
+
+    // Sinon, géocoder l'adresse du restaurant (cache séparé)
+    if (!restaurantCoords && restaurantAddress) {
+      try {
+        const coords = await getCoordinatesWithCache(restaurantAddress, { prefix: 'restaurant' });
+        restaurantCoords = {
+          lat: coords.lat,
+          lng: coords.lng,
+          display_name: coords.display_name || restaurantAddress
+        };
+      } catch (error) {
+        console.warn('⚠️ Géocodage restaurant échoué, utilisation des coordonnées par défaut:', error.message);
+      }
+    }
+
+    // Utiliser les coordonnées par défaut si toujours pas définies
+    if (!restaurantCoords) {
+      restaurantCoords = {
+        lat: DEFAULT_RESTAURANT.lat,
+        lng: DEFAULT_RESTAURANT.lng,
+        display_name: DEFAULT_RESTAURANT.name
+      };
+    }
+
     // Calculer la distance AVANT la validation du code postal pour rejeter les adresses trop éloignées
-    // Cela permet de rejeter Brissac et autres villes trop loin même si elles ont un code postal autorisé
+    // Cela permet de rejeter les villes trop loin même si elles ont un code postal autorisé
     const tempRestaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000;
     const tempRestaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
     const tempClientLat = Math.round(clientCoords.lat * 1000) / 1000;
@@ -782,41 +820,6 @@ export async function POST(request) {
         livrable: false,
         message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 30440 (Sumène).'
       }, { status: 200 });
-    }
-
-    // Préférence : utiliser les coordonnées stockées en base si disponibles
-    if (restaurantData?.latitude && restaurantData?.longitude) {
-      const lat = parseFloat(restaurantData.latitude);
-      const lng = parseFloat(restaurantData.longitude);
-      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-      restaurantCoords = {
-        lat: Math.round(lat * 1000) / 1000, // 3 décimales pour cohérence
-        lng: Math.round(lng * 1000) / 1000,
-        display_name: restaurantAddress || restaurantName
-      };
-      }
-    }
-
-    // Sinon, géocoder l'adresse du restaurant (cache séparé)
-    if (!restaurantCoords && restaurantAddress) {
-      try {
-        const coords = await getCoordinatesWithCache(restaurantAddress, { prefix: 'restaurant' });
-        restaurantCoords = {
-          lat: coords.lat,
-          lng: coords.lng,
-          display_name: coords.display_name || restaurantAddress
-        };
-      } catch (error) {
-        console.warn('⚠️ Géocodage restaurant échoué, utilisation des coordonnées par défaut:', error.message);
-      }
-    }
-
-    if (!restaurantCoords) {
-      restaurantCoords = {
-        lat: DEFAULT_RESTAURANT.lat,
-        lng: DEFAULT_RESTAURANT.lng,
-        display_name: DEFAULT_RESTAURANT.name
-      };
     }
 
     // 4. Vérifier que les coordonnées sont valides
