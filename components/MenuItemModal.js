@@ -310,14 +310,15 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const handleAddToCart = () => {
     console.log('🛒 Ajout au panier démarré...', 'onClose:', typeof onClose);
     
-    // Pour les formules uniquement, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
-    if (item.is_formula && item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
+    // Pour les formules et menus, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
+    const isMenuOrFormula = item.is_formula || (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'));
+    if (isMenuOrFormula && item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
       alert('Veuillez choisir une boisson');
       return;
     }
 
-    // Si c'est une formule, ajouter directement
-    if (item.is_formula) {
+    // Si c'est une formule ou un menu, ajouter directement
+    if (item.is_formula || (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'))) {
       const formulaItem = {
         ...item,
         quantity: quantity,
@@ -336,9 +337,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       return;
     }
 
-    // Pour les formules uniquement, inclure la boisson sélectionnée
+    // Pour les formules et menus, inclure la boisson sélectionnée
     // Les plats normaux ne doivent pas avoir de sélection de boisson
-    if (item.is_formula && item.drink_options && item.drink_options.length > 0 && selectedDrink) {
+    if (isMenuOrFormula && item.drink_options && item.drink_options.length > 0 && selectedDrink) {
       const selectedDrinkData = item.drink_options.find(d => d.id === selectedDrink);
       item.selected_drink = selectedDrinkData;
     }
@@ -488,8 +489,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             )}
 
             {/* Choix de boisson - VERSION COMPACTE */}
-            {/* IMPORTANT: Afficher la sélection de boisson UNIQUEMENT pour les formules */}
-            {item.is_formula && item.drink_options && item.drink_options.length > 0 && (
+            {/* IMPORTANT: Afficher la sélection de boisson pour les formules ET les menus avec drink_options */}
+            {/* Un menu est identifié par: is_formula=true OU (category contient "menu" OU nom contient "menu") ET drink_options existe */}
+            {((item.is_formula) || (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'))) && item.drink_options && item.drink_options.length > 0 && (
               <div className="mb-3">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
                   <FaFlask className="w-4 h-4 text-blue-600 mr-1" />
