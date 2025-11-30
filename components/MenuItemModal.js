@@ -23,6 +23,19 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     console.log('🔍 MenuItemModal - onClose type:', typeof onClose, 'isOpen:', isOpen);
   }, [onClose, isOpen]);
 
+  // Réinitialiser les états quand la modal se ferme
+  useEffect(() => {
+    if (!isOpen) {
+      setQuantity(1);
+      setSelectedIngredients(new Set());
+      setRemovedIngredients(new Set());
+      setSelectedMeats(new Set());
+      setSelectedSauces(new Set());
+      setSelectedDrink(null);
+      setSupplements([]);
+    }
+  }, [isOpen]);
+
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
     if (isOpen) {
@@ -327,13 +340,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       console.log('✅ Formule ajoutée:', formulaItem.nom);
       onAddToCart(formulaItem, [], null, quantity);
       
-      // Fermer IMMÉDIATEMENT
-      console.log('🚪 Fermeture modal (formule)... Type:', typeof onClose);
-      if (typeof onClose === 'function') {
-        onClose();
-      } else {
-        console.error('❌ onClose n\'est PAS une fonction!');
-      }
+      // Fermer la modal immédiatement après l'ajout
+      requestAnimationFrame(() => {
+        if (typeof onClose === 'function') {
+          onClose();
+        }
+      });
       return;
     }
 
@@ -405,13 +417,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     console.log('✅ Article ajouté:', customizedItem.nom);
     onAddToCart(customizedItem, supplementsList, null, quantity);
     
-    // Fermer IMMÉDIATEMENT
-    console.log('🚪 Fermeture modal (article)... Type:', typeof onClose);
-    if (typeof onClose === 'function') {
-      onClose();
-    } else {
-      console.error('❌ onClose n\'est PAS une fonction!');
-    }
+    // Fermer la modal immédiatement après l'ajout
+    requestAnimationFrame(() => {
+      if (typeof onClose === 'function') {
+        onClose();
+      }
+    });
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body
