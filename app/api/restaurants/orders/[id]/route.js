@@ -322,7 +322,7 @@ export async function PUT(request, { params }) {
           }
         }
 
-    // Envoyer les notifications par email/WhatsApp au client
+    // Envoyer les notifications par email au client pour chaque changement de statut
     try {
       // Récupérer les infos du restaurant et du client
       const { data: restaurantInfo } = await supabaseAdmin
@@ -337,29 +337,46 @@ export async function PUT(request, { params }) {
         .eq('id', updatedOrder.user_id)
         .single();
 
-      if (clientInfo) {
-        // Appeler l'API de notification
-        // Utiliser le statut original pour les notifications (pas le statut mappé)
-        // car l'API de notification gère les statuts métier
-        const notificationStatus = status === 'refusee' ? 'refusee' : correctedStatus;
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/order-status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: updatedOrder.id,
-            status: notificationStatus,
-            restaurantName: restaurantInfo?.nom,
-            rejectionReason: reason || updatedOrder.rejection_reason, // Utiliser la raison fournie ou celle de la BDD
-            preparationTime: preparation_time
-          })
-        });
-        console.log('📧 Notification envoyée avec:', { 
-          status: notificationStatus, 
-          rejectionReason: reason || updatedOrder.rejection_reason 
-        });
+      if (clientInfo && clientInfo.email) {
+        // Importer le service de notifications par email
+        const { sendOrderStatusEmail } = await import('../../../../../lib/order-email-notifications');
+        
+        // Préparer les données de la commande pour l'email
+        const orderForEmail = {
+          id: updatedOrder.id,
+          restaurantName: restaurantInfo?.nom || 'Le restaurant',
+          total: updatedOrder.total || 0,
+          frais_livraison: updatedOrder.frais_livraison || 0,
+          adresse_livraison: updatedOrder.adresse_livraison || '',
+          security_code: updatedOrder.security_code || null,
+          preparationTime: preparation_time || null,
+          customerName: `${clientInfo.prenom || ''} ${clientInfo.nom || ''}`.trim() || clientInfo.email
+        };
+
+        // Déterminer le statut à utiliser pour l'email
+        // Utiliser le statut original (métier) pour les emails, pas le statut mappé
+        let emailStatus = status;
+        
+        // Si le statut est "acceptee" ou que la commande passe en "en_preparation", envoyer email "acceptée"
+        if (status === 'acceptee' || (status === 'en_preparation' && !order.statut || order.statut === 'en_attente')) {
+          emailStatus = 'acceptee';
+        }
+        
+        // Envoyer l'email selon le statut
+        // 1. Commande acceptée (acceptee ou en_preparation après en_attente)
+        if (status === 'acceptee' || (status === 'en_preparation' && (!order.statut || order.statut === 'en_attente'))) {
+          await sendOrderStatusEmail(orderForEmail, 'acceptee', clientInfo.email);
+          console.log('📧 Email "commande acceptée" envoyé au client:', clientInfo.email);
+        }
+        
+        // 2. Commande prête (pret_a_livrer)
+        if (status === 'pret_a_livrer' || readyForDelivery === true) {
+          await sendOrderStatusEmail(orderForEmail, 'pret_a_livrer', clientInfo.email);
+          console.log('📧 Email "commande prête" envoyé au client:', clientInfo.email);
+        }
       }
     } catch (notificationError) {
-      console.warn('⚠️ Erreur notification client:', notificationError);
+      console.warn('⚠️ Erreur notification email client:', notificationError);
       // Ne pas faire échouer la mise à jour pour une erreur de notification
     }
 

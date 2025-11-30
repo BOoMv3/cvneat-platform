@@ -173,6 +173,30 @@ export async function POST(request, { params }) {
         }
       : updatedOrder;
 
+    // Envoyer email au client quand un livreur accepte la commande (livreur en route)
+    if (shouldMoveToDelivery && formattedOrder && formattedOrder.customer_email) {
+      try {
+        const { sendOrderStatusEmail } = await import('../../../../../lib/order-email-notifications');
+        
+        const orderForEmail = {
+          id: formattedOrder.id,
+          restaurantName: formattedOrder.restaurant?.nom || 'Le restaurant',
+          total: formattedOrder.total || 0,
+          frais_livraison: formattedOrder.frais_livraison || 0,
+          adresse_livraison: formattedOrder.adresse_livraison || formattedOrder.delivery_address || '',
+          security_code: formattedOrder.security_code || null,
+          customerName: formattedOrder.customer_name || 'Cher client',
+          estimatedDeliveryTime: '10-15' // Temps estimé par défaut
+        };
+        
+        await sendOrderStatusEmail(orderForEmail, 'en_livraison', formattedOrder.customer_email);
+        console.log('📧 Email "livreur en route" envoyé au client:', formattedOrder.customer_email);
+      } catch (emailError) {
+        console.warn('⚠️ Erreur envoi email "livreur en route":', emailError);
+        // Ne pas faire échouer la requête si l'email échoue
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Commande acceptée avec succès',

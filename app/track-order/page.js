@@ -647,6 +647,198 @@ export default function TrackOrder() {
                 </div>
               </div>
 
+              {/* Timeline des étapes */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6">
+                <h3 className="font-bold text-lg sm:text-xl mb-4 sm:mb-6 text-gray-900 dark:text-white">📋 Suivi de votre commande</h3>
+                
+                <div className="space-y-4">
+                  {/* Étape 1: Commande passée */}
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${order.statut ? 'bg-green-500' : 'bg-gray-300'}`}>
+                      <span className="text-white font-bold">1</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${order.statut ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                        ✅ Commande passée
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Votre commande a été enregistrée et le paiement a été validé
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        {formatDate(order.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Ligne de connexion */}
+                  <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+                  
+                  {/* Étape 2: Commande acceptée */}
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      ['acceptee', 'en_preparation', 'pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status) 
+                        ? 'bg-green-500' 
+                        : 'bg-gray-300'
+                    }`}>
+                      <span className="text-white font-bold">2</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${
+                        ['acceptee', 'en_preparation', 'pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-gray-400'
+                      }`}>
+                        {['acceptee', 'en_preparation', 'pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? '✅ Commande acceptée'
+                          : '⏳ En attente d\'acceptation'
+                        }
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {['acceptee', 'en_preparation', 'pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? 'Le restaurant a accepté votre commande'
+                          : 'Le restaurant va bientôt accepter votre commande'
+                        }
+                      </p>
+                      {order.preparation_started_at && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          {formatDate(order.preparation_started_at)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Ligne de connexion */}
+                  <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+                  
+                  {/* Étape 3: En préparation */}
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      ['en_preparation', 'pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                        ? 'bg-blue-500'
+                        : 'bg-gray-300'
+                    }`}>
+                      <span className="text-white font-bold">3</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${
+                        ['en_preparation', 'pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-gray-400'
+                      }`}>
+                        {['en_preparation', 'pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? '👨‍🍳 En préparation'
+                          : '⏳ En attente de préparation'
+                        }
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {order.preparation_time 
+                          ? `Le restaurant prépare votre commande (${order.preparation_time} min estimés)`
+                          : 'Le restaurant prépare votre commande'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Ligne de connexion */}
+                  <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+                  
+                  {/* Étape 4: Prête */}
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      ['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                        ? 'bg-purple-500'
+                        : 'bg-gray-300'
+                    }`}>
+                      <span className="text-white font-bold">4</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${
+                        ['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? 'text-purple-600 dark:text-purple-400'
+                          : 'text-gray-400'
+                      }`}>
+                        {['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? '📦 Commande prête'
+                          : '⏳ En attente'
+                        }
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Votre commande est prête, un livreur va bientôt la récupérer
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Ligne de connexion */}
+                  <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+                  
+                  {/* Étape 5: Livreur en route */}
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      ['en_livraison', 'livree'].includes(order.statut || order.status)
+                        ? 'bg-orange-500'
+                        : 'bg-gray-300'
+                    }`}>
+                      <span className="text-white font-bold">5</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${
+                        ['en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? 'text-orange-600 dark:text-orange-400'
+                          : 'text-gray-400'
+                      }`}>
+                        {['en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? '🚚 Livreur en route'
+                          : '⏳ En attente du livreur'
+                        }
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {['en_livraison', 'livree'].includes(order.statut || order.status)
+                          ? 'Un livreur est en route vers vous avec votre commande'
+                          : 'Un livreur va bientôt récupérer votre commande'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Ligne de connexion */}
+                  <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+                  
+                  {/* Étape 6: Livrée */}
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      order.statut === 'livree' || order.status === 'delivered'
+                        ? 'bg-green-500'
+                        : 'bg-gray-300'
+                    }`}>
+                      <span className="text-white font-bold">6</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${
+                        order.statut === 'livree' || order.status === 'delivered'
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-gray-400'
+                      }`}>
+                        {order.statut === 'livree' || order.status === 'delivered'
+                          ? '🎉 Commande livrée'
+                          : '⏳ En attente de livraison'
+                        }
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {order.statut === 'livree' || order.status === 'delivered'
+                          ? 'Votre commande a été livrée avec succès ! Bon appétit !'
+                          : 'Votre commande sera bientôt livrée'
+                        }
+                      </p>
+                      {order.updated_at && (order.statut === 'livree' || order.status === 'delivered') && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          {formatDate(order.updated_at)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Articles commandés */}
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 sm:p-6">
                 <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base text-gray-900 dark:text-white">Articles commandés</h3>
