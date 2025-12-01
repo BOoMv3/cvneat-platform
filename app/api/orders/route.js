@@ -616,12 +616,17 @@ export async function POST(request) {
 
     // Creer la commande dans Supabase
     console.log('Tentative de creation de la commande...');
-    // IMPORTANT: Le code postal est inclus dans adresse_livraison, pas besoin de colonne séparée
+    // IMPORTANT: Le code postal et les instructions sont inclus dans adresse_livraison, pas besoin de colonnes séparées
+    // Si des instructions existent, on peut les ajouter à l'adresse ou les stocker ailleurs
+    let adresseComplete = `${sanitizedDeliveryInfo.address}, ${sanitizedDeliveryInfo.city} ${sanitizedDeliveryInfo.postalCode}`;
+    if (sanitizedDeliveryInfo.instructions && sanitizedDeliveryInfo.instructions.trim()) {
+      adresseComplete += ` (Instructions: ${sanitizedDeliveryInfo.instructions.trim()})`;
+    }
+    
     const orderData = {
       restaurant_id: restaurantId,
-      adresse_livraison: `${sanitizedDeliveryInfo.address}, ${sanitizedDeliveryInfo.city} ${sanitizedDeliveryInfo.postalCode}`,
+      adresse_livraison: adresseComplete,
       ville_livraison: sanitizedDeliveryInfo.city || null,
-      instructions_livraison: sanitizedDeliveryInfo.instructions || null, // Instructions pour le livreur
       total: total, // sous-total articles
       frais_livraison: fraisLivraison,
       statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation

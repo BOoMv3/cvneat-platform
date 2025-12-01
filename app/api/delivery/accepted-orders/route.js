@@ -82,7 +82,7 @@ export async function GET(request) {
             address: order.adresse_livraison,
             city: order.ville_livraison || null,
             postal_code: order.code_postal_livraison || (order.adresse_livraison ? order.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
-            instructions: order.instructions_livraison || null
+            instructions: order.instructions_livraison || (order.adresse_livraison ? (order.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null
           };
         } else {
           // Sinon, chercher dans user_addresses
@@ -117,7 +117,7 @@ export async function GET(request) {
           adresse_livraison: order.adresse_livraison || deliveryAddress?.address || null,
           ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || (order.adresse_livraison ? order.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
-          instructions_livraison: order.instructions_livraison || deliveryAddress?.instructions || null,
+          instructions_livraison: order.instructions_livraison || deliveryAddress?.instructions || (order.adresse_livraison ? (order.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null,
           customer_name: [customerFirstName, customerLastName].filter(Boolean).join(' ').trim() || customerLastName || 'Client',
           customer_first_name: customerFirstName || null,
           customer_last_name: customerLastName || null,

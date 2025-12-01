@@ -125,7 +125,7 @@ export async function POST(request, { params }) {
           address: enrichedOrder.adresse_livraison,
           city: enrichedOrder.ville_livraison || null,
           postal_code: enrichedOrder.code_postal_livraison || (enrichedOrder.adresse_livraison ? enrichedOrder.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
-          delivery_instructions: enrichedOrder.instructions_livraison || null
+          delivery_instructions: enrichedOrder.instructions_livraison || (enrichedOrder.adresse_livraison ? (enrichedOrder.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null
         };
       } else if (enrichedOrder.user_id) {
         const { data: address } = await supabaseAdmin
@@ -154,7 +154,7 @@ export async function POST(request, { params }) {
           adresse_livraison: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           ville_livraison: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || (enrichedOrder.adresse_livraison ? enrichedOrder.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
-          instructions_livraison: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || null,
+          instructions_livraison: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || (enrichedOrder.adresse_livraison ? (enrichedOrder.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null,
           customer_name: [
             enrichedOrder.customer_first_name || userProfile?.prenom || '',
             enrichedOrder.customer_last_name || userProfile?.nom || ''
@@ -169,7 +169,7 @@ export async function POST(request, { params }) {
           delivery_address: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || (enrichedOrder.adresse_livraison ? enrichedOrder.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
-          delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || null
+          delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || (enrichedOrder.adresse_livraison ? (enrichedOrder.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null
         }
       : updatedOrder;
 

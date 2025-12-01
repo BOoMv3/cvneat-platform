@@ -78,7 +78,7 @@ export async function GET(request) {
             address: order.adresse_livraison,
             city: order.ville_livraison || null,
             postal_code: order.code_postal_livraison || (order.adresse_livraison ? order.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
-            instructions: order.instructions_livraison || null
+            instructions: order.instructions_livraison || (order.adresse_livraison ? (order.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null
           };
         } else if (order.user_id) {
           const { data: address } = await supabaseAdmin
@@ -112,7 +112,7 @@ export async function GET(request) {
           adresse_livraison: order.adresse_livraison || deliveryAddress?.address || null,
           ville_livraison: order.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: order.code_postal_livraison || deliveryAddress?.postal_code || null,
-          instructions_livraison: order.instructions_livraison || deliveryAddress?.instructions || null,
+          instructions_livraison: order.instructions_livraison || deliveryAddress?.instructions || (order.adresse_livraison ? (order.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null,
           // Informations client pour compatibilité
           customer_name: [customerFirstName, customerLastName].filter(Boolean).join(' ').trim() || customerLastName || 'Client',
           customer_first_name: customerFirstName || null,
@@ -122,7 +122,7 @@ export async function GET(request) {
           delivery_address: order.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: order.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: order.code_postal_livraison || deliveryAddress?.postal_code || null,
-          delivery_instructions: order.instructions_livraison || deliveryAddress?.instructions || null
+          delivery_instructions: order.instructions_livraison || deliveryAddress?.instructions || (order.adresse_livraison ? (order.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null
         };
       } catch (err) {
         console.warn('⚠️ Erreur enrichissement commande', order.id, err);
