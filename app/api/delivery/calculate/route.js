@@ -691,7 +691,24 @@ export async function POST(request) {
           lng: Math.round(lng * 1000) / 1000,
           display_name: restaurantAddress || restaurantName
         };
+        console.log(`✅ Coordonnées restaurant depuis base: ${restaurantCoords.lat}, ${restaurantCoords.lng}`);
       }
+    }
+
+    // Si le restaurant est à Ganges (vérifier par ville ou code postal), utiliser les coordonnées par défaut
+    // pour éviter les erreurs de géocodage qui donnent des distances incorrectes
+    const isGangesRestaurant = restaurantData?.ville?.toLowerCase().includes('ganges') || 
+                                restaurantData?.code_postal === '34190' ||
+                                restaurantAddress?.toLowerCase().includes('ganges') ||
+                                restaurantAddress?.includes('34190');
+    
+    if (!restaurantCoords && isGangesRestaurant) {
+      console.log('📍 Restaurant à Ganges détecté, utilisation des coordonnées par défaut de Ganges');
+      restaurantCoords = {
+        lat: DEFAULT_RESTAURANT.lat,
+        lng: DEFAULT_RESTAURANT.lng,
+        display_name: DEFAULT_RESTAURANT.name
+      };
     }
 
     // Sinon, géocoder l'adresse du restaurant (cache séparé)
@@ -703,6 +720,7 @@ export async function POST(request) {
           lng: coords.lng,
           display_name: coords.display_name || restaurantAddress
         };
+        console.log(`✅ Coordonnées restaurant depuis géocodage: ${restaurantCoords.lat}, ${restaurantCoords.lng}`);
       } catch (error) {
         console.warn('⚠️ Géocodage restaurant échoué, utilisation des coordonnées par défaut:', error.message);
       }
@@ -710,6 +728,7 @@ export async function POST(request) {
 
     // Utiliser les coordonnées par défaut si toujours pas définies
     if (!restaurantCoords) {
+      console.log('📍 Utilisation des coordonnées par défaut de Ganges');
       restaurantCoords = {
         lat: DEFAULT_RESTAURANT.lat,
         lng: DEFAULT_RESTAURANT.lng,
