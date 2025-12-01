@@ -855,8 +855,11 @@ export async function POST(request) {
     const roundedDistance = Math.round(rawDistance * 10) / 10; // 1 décimale = précision ~100m
 
     console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km)`);
-    console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)}`);
-    console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)}`);
+    console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)} (${restaurantName})`);
+    console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)} (${clientCoords.display_name || clientAddress})`);
+    console.log(`📏 Source coordonnées restaurant: ${restaurantData?.latitude && restaurantData?.longitude ? 'Base de données' : restaurantAddress ? 'Géocodage' : 'Par défaut'}`);
+    console.log(`📏 Adresse restaurant utilisée: ${restaurantAddress || 'Coordonnées par défaut'}`);
+    console.log(`📏 Adresse client: ${clientAddress}`);
 
     // 6. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
