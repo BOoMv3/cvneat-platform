@@ -790,20 +790,66 @@ export async function POST(request) {
       console.error('   Coordonnées restaurant:', restaurantLat, restaurantLng);
       console.error('   Coordonnées client:', clientLat, clientLng);
       console.error('   Adresse client:', clientAddress);
-      // On continue quand même, mais avec un minimum pour garantir des frais corrects
+      // Pour les très courtes distances (< 10m), utiliser un minimum de 0.1 km pour éviter les frais à 0€
+      const roundedDistance = 0.1;
+      console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km, minimum appliqué pour éviter erreur)`);
+      console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)}`);
+      console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)}`);
+      
+      // Calculer les frais avec cette distance minimale
+      const resolvedBaseFee = pickNumeric(
+        [
+          baseFeeOverride,
+          restaurantData?.frais_livraison_base,
+          restaurantData?.frais_livraison_minimum,
+          restaurantData?.frais_livraison
+        ],
+        DEFAULT_BASE_FEE,
+        { min: DEFAULT_BASE_FEE }
+      );
+      const safeBaseFee = Math.max(DEFAULT_BASE_FEE, Math.max(resolvedBaseFee || DEFAULT_BASE_FEE, DEFAULT_BASE_FEE));
+      
+      let resolvedPerKmFee = pickNumeric(
+        [
+          perKmRate,
+          body?.perKmFee,
+          restaurantData?.frais_livraison_par_km,
+          restaurantData?.frais_livraison_km,
+          restaurantData?.delivery_fee_per_km,
+          restaurantData?.tarif_kilometre
+        ],
+        DEFAULT_PER_KM_FEE,
+        { min: DEFAULT_PER_KM_FEE }
+      );
+      const safePerKmFee = Math.max(resolvedPerKmFee, DEFAULT_PER_KM_FEE);
+      
+      const deliveryFee = calculateDeliveryFee(roundedDistance, {
+        baseFee: safeBaseFee,
+        perKmFee: safePerKmFee
+      });
+      const finalDeliveryFee = Math.max(deliveryFee, DEFAULT_BASE_FEE);
+      
+      return NextResponse.json({
+        success: true,
+        livrable: true,
+        distance: roundedDistance,
+        frais_livraison: finalDeliveryFee,
+        restaurant: restaurantName,
+        restaurant_coordinates: restaurantCoords,
+        client_coordinates: clientCoords,
+        applied_base_fee: safeBaseFee,
+        applied_per_km_fee: safePerKmFee,
+        client_address: clientCoords.display_name,
+        message: `Livraison possible: ${finalDeliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
+      });
     }
 
-    // Garantir un minimum de 0.5 km pour éviter les frais à exactement 2.50€
-    // Même les adresses très proches (même bâtiment) doivent avoir au moins 0.5 km
-    // Cela garantit : 2.50€ + (0.5 × 0.50€) = 2.75€ minimum
-    const MIN_DISTANCE = 0.5; // Minimum 0.5 km
-    const distanceWithMinimum = Math.max(rawDistance, MIN_DISTANCE);
-
+    // Utiliser la distance réelle calculée (sans minimum artificiel)
     // Arrondir la distance à 1 décimale pour éviter les micro-variations
     // Cela garantit que la même adresse donne toujours la même distance (et donc les mêmes frais)
-    const roundedDistance = Math.round(distanceWithMinimum * 10) / 10; // 1 décimale = précision ~100m
+    const roundedDistance = Math.round(rawDistance * 10) / 10; // 1 décimale = précision ~100m
 
-    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km, minimum ${MIN_DISTANCE}km appliqué: ${rawDistance < MIN_DISTANCE ? 'OUI' : 'NON'})`);
+    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km)`);
     console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)}`);
     console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)}`);
 
