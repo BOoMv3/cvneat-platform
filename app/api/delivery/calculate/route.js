@@ -607,7 +607,7 @@ export async function POST(request) {
     let restaurantData = null;
     if (restaurantId) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
           .from('restaurants')
           .select('*')
           .eq('id', restaurantId)
@@ -617,6 +617,7 @@ export async function POST(request) {
           console.warn('⚠️ Impossible de récupérer le restaurant', restaurantId, error);
         } else if (data) {
           restaurantData = data;
+          console.log(`✅ Restaurant récupéré: ${data.nom} - Coordonnées: ${data.latitude || 'N/A'}, ${data.longitude || 'N/A'}`);
         }
       } catch (error) {
         console.warn('⚠️ Erreur inattendue lors de la récupération du restaurant', restaurantId, error);
@@ -725,7 +726,11 @@ export async function POST(request) {
     
     if (!isNaN(tempRestaurantLat) && !isNaN(tempRestaurantLng) && !isNaN(tempClientLat) && !isNaN(tempClientLng)) {
       const tempDistance = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
-      const tempRoundedDistance = Math.round(Math.max(tempDistance, 0.5) * 10) / 10;
+      const tempRoundedDistance = Math.round(tempDistance * 10) / 10; // Utiliser la distance réelle, sans minimum
+      
+      console.log(`🔍 Vérification précoce - Distance: ${tempRoundedDistance.toFixed(1)}km`);
+      console.log(`🔍 Restaurant: ${restaurantName} - Coordonnées: ${tempRestaurantLat.toFixed(3)}, ${tempRestaurantLng.toFixed(3)}`);
+      console.log(`🔍 Client - Coordonnées: ${tempClientLat.toFixed(3)}, ${tempClientLng.toFixed(3)}`);
       
       // REJETER si la distance dépasse 10km (peu importe le code postal)
       if (tempRoundedDistance > MAX_DISTANCE) {
