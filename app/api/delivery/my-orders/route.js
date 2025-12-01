@@ -63,7 +63,8 @@ export async function GET(request) {
     const enrichedOrders = (orders || []).map(order => {
       const deliveryAddress = order.adresse_livraison || order.delivery_address || null;
       const deliveryCity = order.ville_livraison || order.delivery_city || null;
-      const deliveryPostal = order.code_postal_livraison || order.delivery_postal_code || null;
+      // Extraire le code postal de l'adresse si pas disponible directement
+      const deliveryPostal = order.code_postal_livraison || order.delivery_postal_code || (order.adresse_livraison ? order.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null;
       return {
         ...order,
         customer_name: order.users?.prenom && order.users?.nom

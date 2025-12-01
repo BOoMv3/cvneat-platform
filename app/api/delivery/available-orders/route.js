@@ -77,7 +77,7 @@ export async function GET(request) {
           deliveryAddress = {
             address: order.adresse_livraison,
             city: order.ville_livraison || null,
-            postal_code: order.code_postal_livraison || null,
+            postal_code: order.code_postal_livraison || (order.adresse_livraison ? order.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
             instructions: order.instructions_livraison || null
           };
         } else if (order.user_id) {

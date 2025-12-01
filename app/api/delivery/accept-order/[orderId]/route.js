@@ -124,7 +124,7 @@ export async function POST(request, { params }) {
         deliveryAddress = {
           address: enrichedOrder.adresse_livraison,
           city: enrichedOrder.ville_livraison || null,
-          postal_code: enrichedOrder.code_postal_livraison || null,
+          postal_code: enrichedOrder.code_postal_livraison || (enrichedOrder.adresse_livraison ? enrichedOrder.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
           delivery_instructions: enrichedOrder.instructions_livraison || null
         };
       } else if (enrichedOrder.user_id) {
@@ -153,7 +153,7 @@ export async function POST(request, { params }) {
           user_addresses: deliveryAddress,
           adresse_livraison: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           ville_livraison: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
-          code_postal_livraison: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,
+          code_postal_livraison: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || (enrichedOrder.adresse_livraison ? enrichedOrder.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
           instructions_livraison: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || null,
           customer_name: [
             enrichedOrder.customer_first_name || userProfile?.prenom || '',
@@ -168,7 +168,7 @@ export async function POST(request, { params }) {
           customer_email: enrichedOrder.customer_email || userProfile?.email || null,
           delivery_address: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
-          delivery_postal_code: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,
+          delivery_postal_code: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || (enrichedOrder.adresse_livraison ? enrichedOrder.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
           delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || null
         }
       : updatedOrder;
