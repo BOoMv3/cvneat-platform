@@ -202,7 +202,7 @@ export async function PUT(request, { params }) {
         address,
         city,
         postal_code: normalizedPostalCode,
-        delivery_instructions: instructions || null, // Sauvegarder les instructions pour le livreur
+        instructions: instructions || null, // Sauvegarder les instructions pour le livreur
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

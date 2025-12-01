@@ -1029,9 +1029,9 @@ export default function DeliveryDashboard() {
                                 {order.ville_livraison || order.user_addresses?.city || ''} {order.code_postal_livraison || order.user_addresses?.postal_code || ''}
                               </p>
                             )}
-                            {(order.instructions_livraison || order.user_addresses?.delivery_instructions) && (
+                            {(order.instructions_livraison || order.user_addresses?.instructions) && (
                               <p className="text-gray-500 text-xs mt-1 italic">
-                                Instructions: {order.instructions_livraison || order.user_addresses?.delivery_instructions}
+                                Instructions: {order.instructions_livraison || order.user_addresses?.instructions}
                               </p>
                             )}
                           </div>

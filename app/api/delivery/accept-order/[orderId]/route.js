@@ -130,7 +130,7 @@ export async function POST(request, { params }) {
       } else if (enrichedOrder.user_id) {
         const { data: address } = await supabaseAdmin
           .from('user_addresses')
-          .select('id, address, city, postal_code, delivery_instructions')
+          .select('id, address, city, postal_code, instructions')
           .eq('user_id', enrichedOrder.user_id)
           .single();
         deliveryAddress = address || null;
@@ -154,7 +154,7 @@ export async function POST(request, { params }) {
           adresse_livraison: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           ville_livraison: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
           code_postal_livraison: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,
-          instructions_livraison: enrichedOrder.instructions_livraison || deliveryAddress?.delivery_instructions || null,
+          instructions_livraison: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || null,
           customer_name: [
             enrichedOrder.customer_first_name || userProfile?.prenom || '',
             enrichedOrder.customer_last_name || userProfile?.nom || ''
@@ -169,7 +169,7 @@ export async function POST(request, { params }) {
           delivery_address: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || null,
-          delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.delivery_instructions || null
+          delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || null
         }
       : updatedOrder;
 

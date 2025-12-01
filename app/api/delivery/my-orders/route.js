@@ -74,7 +74,7 @@ export async function GET(request) {
         delivery_address: deliveryAddress,
         delivery_city: deliveryCity,
         delivery_postal_code: deliveryPostal,
-        delivery_instructions: order.instructions_livraison || order.delivery_instructions || null
+        delivery_instructions: order.instructions_livraison || null
       };
     });
 
