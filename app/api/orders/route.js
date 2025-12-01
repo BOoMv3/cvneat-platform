@@ -608,6 +608,9 @@ export async function POST(request) {
     const orderData = {
       restaurant_id: restaurantId,
       adresse_livraison: `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`,
+      ville_livraison: deliveryInfo.city || null,
+      code_postal_livraison: deliveryInfo.postalCode || null,
+      instructions_livraison: sanitizedDeliveryInfo.instructions || null, // Instructions pour le livreur
       total: total, // sous-total articles
       frais_livraison: fraisLivraison,
       statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation

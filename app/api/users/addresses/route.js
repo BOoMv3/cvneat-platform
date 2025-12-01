@@ -339,7 +339,7 @@ export async function POST(request) {
           address,
           city,
           postal_code: normalizedPostalCode,
-          instructions,
+          delivery_instructions: instructions || null, // Sauvegarder les instructions pour le livreur
           is_default: !!is_default
         }
       ])
