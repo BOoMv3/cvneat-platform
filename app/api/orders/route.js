@@ -457,10 +457,21 @@ export async function POST(request) {
     }
 
     // Sanitisation des informations de livraison
+    // IMPORTANT: Vérifier que le code postal est présent (peut être postalCode ou postal_code)
+    const postalCode = deliveryInfo?.postalCode || deliveryInfo?.postal_code || '';
+    
+    if (!postalCode || postalCode.trim() === '') {
+      console.error('❌ Validation échouée: code postal manquant dans deliveryInfo');
+      return NextResponse.json(
+        { error: 'Le code postal est obligatoire pour la livraison' },
+        { status: 400 }
+      );
+    }
+
     const sanitizedDeliveryInfo = {
       address: sanitizeInput(deliveryInfo?.address || ''),
       city: sanitizeInput(deliveryInfo?.city || ''),
-      postalCode: sanitizeInput(deliveryInfo?.postalCode || ''),
+      postalCode: sanitizeInput(postalCode),
       instructions: sanitizeInput(deliveryInfo?.instructions || '')
     };
 
@@ -607,9 +618,9 @@ export async function POST(request) {
     console.log('Tentative de creation de la commande...');
     const orderData = {
       restaurant_id: restaurantId,
-      adresse_livraison: `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`,
-      ville_livraison: deliveryInfo.city || null,
-      code_postal_livraison: deliveryInfo.postalCode || null,
+      adresse_livraison: `${sanitizedDeliveryInfo.address}, ${sanitizedDeliveryInfo.city} ${sanitizedDeliveryInfo.postalCode}`,
+      ville_livraison: sanitizedDeliveryInfo.city || null,
+      code_postal_livraison: sanitizedDeliveryInfo.postalCode || null,
       instructions_livraison: sanitizedDeliveryInfo.instructions || null, // Instructions pour le livreur
       total: total, // sous-total articles
       frais_livraison: fraisLivraison,

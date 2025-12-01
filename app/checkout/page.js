@@ -550,6 +550,13 @@ export default function Checkout() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
+      // Validation du code postal avant de créer la commande
+      if (!selectedAddress.postal_code || selectedAddress.postal_code.trim() === '') {
+        alert('Erreur: Le code postal est manquant. Veuillez vérifier votre adresse de livraison.');
+        setSubmitting(false);
+        return;
+      }
+
       // Créer la commande en statut "pending_payment"
       const createOrderResponse = await fetch('/api/orders', {
         method: 'POST',
@@ -560,9 +567,9 @@ export default function Checkout() {
         body: JSON.stringify({
           restaurantId: resolvedRestaurant.id,
           deliveryInfo: {
-            address: selectedAddress.address,
-            city: selectedAddress.city,
-            postalCode: selectedAddress.postal_code,
+            address: selectedAddress.address || '',
+            city: selectedAddress.city || '',
+            postalCode: selectedAddress.postal_code || selectedAddress.postalCode || '',
             instructions: orderDetails.instructions?.trim() || ''
           },
           items: savedCart.items,
