@@ -620,13 +620,19 @@ export async function POST(request) {
       restaurant_id: restaurantId,
       adresse_livraison: `${sanitizedDeliveryInfo.address}, ${sanitizedDeliveryInfo.city} ${sanitizedDeliveryInfo.postalCode}`,
       ville_livraison: sanitizedDeliveryInfo.city || null,
-      code_postal_livraison: sanitizedDeliveryInfo.postalCode || null,
+      // code_postal_livraison sera ajouté seulement si la colonne existe (géré par Supabase)
       instructions_livraison: sanitizedDeliveryInfo.instructions || null, // Instructions pour le livreur
       total: total, // sous-total articles
       frais_livraison: fraisLivraison,
       statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation
       security_code: securityCode // Code de sécurité pour la livraison
     };
+
+    // Ajouter code_postal_livraison seulement si disponible (la colonne existe dans la BDD)
+    // Si la colonne n'existe pas encore, elle sera ignorée par Supabase
+    if (sanitizedDeliveryInfo.postalCode) {
+      orderData.code_postal_livraison = sanitizedDeliveryInfo.postalCode;
+    }
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData
     if (customerInfo) {
@@ -762,16 +768,40 @@ export async function POST(request) {
 
     let order, orderError;
     try {
+      // Spécifier explicitement les colonnes à récupérer pour éviter les erreurs de cache de schéma
       const result = await serviceClient
         .from('commandes')
         .insert([orderData])
-        .select()
+        .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, ville_livraison, code_postal_livraison, security_code, created_at, user_id, customer_email, customer_first_name, customer_last_name, customer_phone, payment_status, stripe_payment_intent_id')
         .single();
       order = result.data;
       orderError = result.error;
     } catch (insertError) {
       console.error('❌ EXCEPTION lors de l\'insertion:', insertError);
       orderError = insertError;
+    }
+
+    // Si l'erreur concerne code_postal_livraison, réessayer sans cette colonne
+    if (orderError && (orderError.message?.includes('code_postal_livraison') || orderError.details?.includes('code_postal_livraison'))) {
+      console.warn('⚠️ Colonne code_postal_livraison non trouvée, réessai sans cette colonne...');
+      const orderDataWithoutPostal = { ...orderData };
+      delete orderDataWithoutPostal.code_postal_livraison;
+      
+      try {
+        const retryResult = await serviceClient
+          .from('commandes')
+          .insert([orderDataWithoutPostal])
+          .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, ville_livraison, security_code, created_at, user_id, customer_email, customer_first_name, customer_last_name, customer_phone, payment_status, stripe_payment_intent_id')
+          .single();
+        order = retryResult.data;
+        orderError = retryResult.error;
+        if (!orderError) {
+          console.log('✅ Commande créée sans code_postal_livraison (colonne non disponible)');
+        }
+      } catch (retryError) {
+        console.error('❌ Erreur lors de la nouvelle tentative:', retryError);
+        orderError = retryError;
+      }
     }
 
     if (orderError) {

@@ -1,23 +1,42 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
-// Service d'email simple (peut être remplacé par SendGrid, etc.)
+// Initialiser Resend pour envoyer les emails directement
+const getResend = () => {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY non configurée');
+    return null;
+  }
+  return new Resend(process.env.RESEND_API_KEY);
+};
+
+// Service d'email utilisant Resend directement
 async function sendEmail(to, subject, html) {
   try {
-    // Utiliser le service d'email configuré
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'orderStatusUpdate',
-        data: { subject, html },
-        recipientEmail: to
-      })
+    const resend = getResend();
+    if (!resend) {
+      console.warn('⚠️ Resend non configuré, email non envoyé à:', to);
+      return false;
+    }
+
+    const { data, error } = await resend.emails.send({
+      from: 'CVN\'EAT <noreply@cvneat.fr>',
+      to: to,
+      subject: subject,
+      html: html,
     });
-    return response.ok;
+
+    if (error) {
+      console.error('❌ Erreur envoi email Resend:', error);
+      return false;
+    }
+
+    console.log('✅ Email envoyé avec succès à:', to, 'ID:', data?.id);
+    return true;
   } catch (error) {
-    console.error('Erreur envoi email:', error);
+    console.error('❌ Erreur envoi email:', error);
     return false;
   }
 }
@@ -63,6 +82,8 @@ const emailTemplates = {
           .header { background: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
           .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
           .order-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+          .code-box { background: #FEF3C7; border: 2px dashed #F59E0B; padding: 20px; text-align: center; margin: 20px 0; border-radius: 10px; }
+          .code { font-size: 32px; font-weight: bold; color: #D97706; letter-spacing: 5px; font-family: monospace; }
           .button { display: inline-block; padding: 12px 24px; background: #f59e0b; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 5px; }
           .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
         </style>
@@ -80,13 +101,22 @@ const emailTemplates = {
             <p><strong>Numéro de commande :</strong> #${order.id.slice(0, 8)}</p>
             <p><strong>Restaurant :</strong> ${order.restaurantName || 'Non spécifié'}</p>
             <p><strong>Montant total :</strong> ${(order.total || 0).toFixed(2)}€</p>
+            ${order.deliveryAddress ? `<p><strong>Adresse de livraison :</strong> ${order.deliveryAddress}</p>` : ''}
             ${order.preparationTime ? `<p><strong>Temps de préparation estimé :</strong> ${order.preparationTime} minutes</p>` : ''}
           </div>
+          
+          ${order.securityCode ? `
+          <div class="code-box">
+            <p style="margin: 0 0 10px 0; color: #92400E; font-weight: bold;">🔐 Code de sécurité pour la livraison</p>
+            <div class="code">${order.securityCode}</div>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #92400E;">Communiquez ce code au livreur à la réception</p>
+          </div>
+          ` : ''}
           
           <p>Votre commande est maintenant en cours de préparation. Vous recevrez une notification dès qu'elle sera prête à être livrée.</p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat-platform.vercel.app'}/track-order?id=${order.id}" class="button">
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.fr'}/track-order?code=${order.securityCode || ''}&id=${order.id}" class="button">
               Suivre ma commande
             </a>
           </div>
@@ -100,7 +130,59 @@ const emailTemplates = {
       </body>
       </html>
     `,
-    whatsapp: `✅ Commande acceptée !\n\nVotre commande #${order.id.slice(0, 8)} a été acceptée par ${order.restaurantName || 'le restaurant'}.\n\nMontant: ${(order.total || 0).toFixed(2)}€${order.preparationTime ? `\nTemps de préparation: ${order.preparationTime} min` : ''}\n\nSuivez votre commande: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat-platform.vercel.app'}/track-order?id=${order.id}`
+    whatsapp: `✅ Commande acceptée !\n\nVotre commande #${order.id.slice(0, 8)} a été acceptée par ${order.restaurantName || 'le restaurant'}.\n\nMontant: ${(order.total || 0).toFixed(2)}€${order.preparationTime ? `\nTemps de préparation: ${order.preparationTime} min` : ''}${order.securityCode ? `\n\n🔐 Code de sécurité: ${order.securityCode}` : ''}\n\nSuivez votre commande: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.fr'}/track-order?id=${order.id}`
+  }),
+
+  orderPreparing: (order) => ({
+    subject: `👨‍🍳 Votre commande #${order.id.slice(0, 8)} est en préparation !`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+          .order-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+          .button { display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 5px; }
+          .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>👨‍🍳 En préparation !</h1>
+        </div>
+        <div class="content">
+          <p>Bonjour,</p>
+          <p>Votre commande est maintenant <strong>en cours de préparation</strong> par le restaurant <strong>${order.restaurantName || 'le restaurant'}</strong>.</p>
+          
+          <div class="order-details">
+            <h3>📋 Détails de votre commande</h3>
+            <p><strong>Numéro de commande :</strong> #${order.id.slice(0, 8)}</p>
+            <p><strong>Restaurant :</strong> ${order.restaurantName || 'Non spécifié'}</p>
+            <p><strong>Montant total :</strong> ${(order.total || 0).toFixed(2)}€</p>
+            ${order.preparationTime ? `<p><strong>Temps de préparation estimé :</strong> ${order.preparationTime} minutes</p>` : '<p><strong>Temps de préparation estimé :</strong> 30 minutes</p>'}
+          </div>
+          
+          <p>Vous recevrez une notification dès que votre commande sera prête à être livrée.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.fr'}/track-order?id=${order.id}" class="button">
+              Suivre ma commande
+            </a>
+          </div>
+          
+          <p>Merci de votre patience !</p>
+          <p>L'équipe CVN'Eat</p>
+        </div>
+        <div class="footer">
+          <p>CVN'Eat - Livraison de repas à domicile</p>
+        </div>
+      </body>
+      </html>
+    `,
+    whatsapp: `👨‍🍳 En préparation !\n\nVotre commande #${order.id.slice(0, 8)} est en cours de préparation.\n\nRestaurant: ${order.restaurantName || 'Non spécifié'}\nTemps estimé: ${order.preparationTime || 30} min\n\nSuivez votre commande: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.fr'}/track-order?id=${order.id}`
   }),
 
   orderRejected: (order) => ({
@@ -337,6 +419,9 @@ export async function POST(request) {
         frais_livraison,
         adresse_livraison,
         rejection_reason,
+        security_code,
+        statut,
+        livreur_id,
         user_id,
         users:user_id (
           email,

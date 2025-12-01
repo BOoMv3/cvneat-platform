@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt } from 'react-icons/fa';
+import Link from 'next/link';
 
 export default function AdminPayments() {
   const router = useRouter();
@@ -275,13 +276,22 @@ export default function AdminPayments() {
               <p className="text-gray-600 mt-1">Gestion des paiements aux restaurants partenaires</p>
             </div>
           </div>
-          <button
-            onClick={exportToCSV}
-            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <FaDownload />
-            <span>Exporter CSV</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <Link
+              href="/admin/payments/transfers"
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FaListAlt />
+              <span>Suivi des Virements</span>
+            </Link>
+            <button
+              onClick={exportToCSV}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <FaDownload />
+              <span>Exporter CSV</span>
+            </button>
+          </div>
         </div>
 
         {error && (
