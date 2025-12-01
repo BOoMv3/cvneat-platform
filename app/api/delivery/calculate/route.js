@@ -639,7 +639,6 @@ export async function POST(request) {
     // 3. Géocoder avec cache pour éviter les variations
     console.log('🌐 Géocodage avec cache pour les adresses...');
     let clientCoords;
-    let restaurantCoords;
 
     try {
       clientCoords = await getCoordinatesWithCache(clientAddress, { prefix: 'client' });
