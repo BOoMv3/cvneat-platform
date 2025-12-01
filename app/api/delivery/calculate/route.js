@@ -26,8 +26,9 @@ const MAX_DISTANCE = 10;            // Maximum 10km - au-delà, livraison non au
 const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
 const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'pegairolles', 'brissac'];
-// Villes EXCLUES de la livraison (même si dans un code postal autorisé)
-const EXCLUDED_CITIES = ['crouzet', 'le crouzet', 'saint bresson', 'saint-bresson', 'saint bresson le crouzet', 'saint-bresson-le-crouzet', 'bresson'];
+// Villes EXCLUES de la livraison (même si à moins de 10km)
+// Note: Le Crouzet n'est plus dans cette liste car il est automatiquement rejeté par la vérification de distance (> 10km)
+const EXCLUDED_CITIES = [];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -184,34 +185,19 @@ async function geocodeAddress(address) {
       const data = await response.json();
       
       if (data && data.length > 0) {
-        // Prendre le premier résultat qui a un code postal valide
-        for (const result of data) {
-          const postcode = result.address?.postcode;
-          if (postcode && ['34190', '30440'].includes(String(postcode).trim())) {
-            const coords = {
-              lat: parseFloat(result.lat),
-              lng: parseFloat(result.lon),
-              display_name: result.display_name,
-              postcode: postcode,
-              city: result.address?.city || result.address?.town || result.address?.village || null
-            };
-            
-            console.log('✅ Géocodage réussi avec variante:', addrToTry);
-            return coords;
-          }
-        }
+        // SIMPLIFICATION: Prendre le premier résultat valide (plus de filtrage par code postal)
+        // La distance sera vérifiée après le géocodage
+        const result = data[0];
+        const coords = {
+          lat: parseFloat(result.lat),
+          lng: parseFloat(result.lon),
+          display_name: result.display_name,
+          postcode: result.address?.postcode || null,
+          city: result.address?.city || result.address?.town || result.address?.village || null
+        };
         
-        // Si aucun n'a le bon code postal mais qu'on a des résultats, garder le meilleur
-        if (!bestMatch) {
-          const result = data[0];
-          bestMatch = {
-            lat: parseFloat(result.lat),
-            lng: parseFloat(result.lon),
-            display_name: result.display_name,
-            postcode: result.address?.postcode || null,
-            city: result.address?.city || result.address?.town || result.address?.village || null
-          };
-        }
+        console.log('✅ Géocodage réussi avec variante:', addrToTry);
+        return coords;
       }
     } catch (error) {
       if (error.name !== 'AbortError') {
@@ -230,7 +216,7 @@ async function geocodeAddress(address) {
   
   // Si toutes les tentatives ont échoué
   console.error('❌ Toutes les tentatives de géocodage ont échoué');
-  throw new Error('Adresse introuvable. Vérifiez le code postal (34190, 30440) et le nom de la ville.');
+  throw new Error('Adresse introuvable. Vérifiez l\'adresse et réessayez.');
 }
 
 /**
@@ -660,29 +646,20 @@ export async function POST(request) {
     } catch (error) {
       console.error('❌ Géocodage échoué pour l\'adresse client:', error.message);
       
-      // Message d'erreur simple et encourageant
-      const postalCode = extractPostalCode(clientAddress);
+      // Message d'erreur simple
       let errorMessage = 'Adresse introuvable. ';
       let suggestions = [];
       
-      if (!postalCode) {
-        errorMessage += 'Ajoutez le code postal. ';
-        suggestions.push('Exemple: "123 Rue, 34190 Ganges"');
-      } else if (!AUTHORIZED_POSTAL_CODES.includes(postalCode)) {
-        errorMessage += `Zone non desservie. `;
-        suggestions.push('Codes postaux acceptés: 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 30440 (Sumène)');
-      } else {
-        errorMessage += 'Vérifiez l\'adresse. ';
-        suggestions.push('Format: "Numéro + Rue, Code postal + Ville"');
-        suggestions.push('Exemple: "28 Lotissement Aubanel, 34190 Laroque"');
-      }
+      errorMessage += 'Vérifiez l\'adresse et réessayez. ';
+      suggestions.push('Format: "Numéro + Rue, Code postal + Ville"');
+      suggestions.push('Exemple: "28 Lotissement Aubanel, 34190 Laroque"');
       
       return NextResponse.json({
         success: false,
         livrable: false,
         message: errorMessage,
         suggestions: suggestions,
-        hint: 'Les petites fautes d\'orthographe sont acceptées, mais le code postal doit être correct.'
+        hint: 'Les petites fautes d\'orthographe sont acceptées. La livraison est disponible dans un rayon de 10km.'
       }, { status: 200 });
     }
 
@@ -740,8 +717,8 @@ export async function POST(request) {
       };
     }
 
-    // Calculer la distance AVANT la validation du code postal pour rejeter les adresses trop éloignées
-    // Cela permet de rejeter les villes trop loin même si elles ont un code postal autorisé
+    // Calculer la distance pour vérifier si elle dépasse 10km
+    // SIMPLIFICATION: On ne vérifie plus le code postal, uniquement la distance
     const tempRestaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000;
     const tempRestaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
     const tempClientLat = Math.round(clientCoords.lat * 1000) / 1000;
@@ -751,9 +728,9 @@ export async function POST(request) {
       const tempDistance = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
       const tempRoundedDistance = Math.round(Math.max(tempDistance, 0.5) * 10) / 10;
       
-      // REJETER IMMÉDIATEMENT si la distance dépasse 10km
+      // REJETER si la distance dépasse 10km (peu importe le code postal)
       if (tempRoundedDistance > MAX_DISTANCE) {
-        console.log(`❌ REJET PRÉCOCE: Distance trop grande (${tempRoundedDistance.toFixed(1)}km > ${MAX_DISTANCE}km) pour: ${clientAddress}`);
+        console.log(`❌ REJET: Distance trop grande (${tempRoundedDistance.toFixed(1)}km > ${MAX_DISTANCE}km) pour: ${clientAddress}`);
         return NextResponse.json({
           success: false,
           livrable: false,
@@ -762,64 +739,6 @@ export async function POST(request) {
           message: `❌ Livraison impossible: ${tempRoundedDistance.toFixed(1)}km (maximum ${MAX_DISTANCE}km autorisé)`
         }, { status: 200 });
       }
-    }
-
-    // Vérifier que le code postal est dans une zone desservie (en se basant sur l'adresse saisie et le géocodage)
-    // Extraire tous les codes postaux possibles
-    const postalCodeFromAddress = extractPostalCode(clientAddress);
-    const postalCodeFromGeocode = clientCoords.postcode ? String(clientCoords.postcode).trim() : null;
-    
-    const postalCodeMatches = [
-      postalCodeFromAddress,
-      postalCodeFromGeocode
-    ]
-      .filter(Boolean)
-      .map(code => String(code).trim().padStart(5, '0')); // Normaliser à 5 chiffres
-
-    // Vérifier si au moins un code postal correspond
-    let hasAuthorizedPostalCode = postalCodeMatches.some(code => AUTHORIZED_POSTAL_CODES.includes(code));
-
-    // Fallback: si pas de code postal détecté mais la ville est autorisée via Nominatim
-    if (!hasAuthorizedPostalCode) {
-      const cityFromAddress = extractCity(clientAddress);
-      const cityFromGeocode = clientCoords.city ? String(clientCoords.city).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : null;
-      
-      const citiesToCheck = [cityFromAddress, cityFromGeocode].filter(Boolean);
-      
-      // Normaliser les villes autorisées aussi
-      const normalizedAuthCities = AUTHORIZED_CITIES.map(c => c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-      
-      for (const city of citiesToCheck) {
-        // Vérifier si la ville correspond (même partiellement)
-        const matches = normalizedAuthCities.some(authCity => {
-          // Correspondance exacte ou partielle
-          return city.includes(authCity) || authCity.includes(city) || 
-                 // Correspondance avec fautes communes (ex: "saint bauzille" vs "saint-bauzille")
-                 city.replace(/[\s-]/g, '').includes(authCity.replace(/[\s-]/g, '')) ||
-                 authCity.replace(/[\s-]/g, '').includes(city.replace(/[\s-]/g, ''));
-        });
-        
-        if (matches) {
-          console.log('✅ Ville autorisée détectée:', city);
-          hasAuthorizedPostalCode = true;
-          break;
-        }
-      }
-    }
-
-      if (!hasAuthorizedPostalCode) {
-      console.log('❌ Code postal non autorisé:', {
-        postalCodes: postalCodeMatches,
-        fromAddress: postalCodeFromAddress,
-        fromGeocode: postalCodeFromGeocode,
-        address: clientCoords.display_name || clientAddress,
-        city: clientCoords.city
-      });
-      return NextResponse.json({
-        success: false,
-        livrable: false,
-        message: '❌ Livraison non disponible pour cette adresse. Zones desservies : 34190 (Ganges, Laroque, Saint-Bauzille, Cazilhac, Montoulieu), 30440 (Sumène).'
-      }, { status: 200 });
     }
 
     // 4. Vérifier que les coordonnées sont valides
