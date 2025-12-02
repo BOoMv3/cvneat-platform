@@ -81,12 +81,16 @@ export default function PartnerOrders() {
       }
       
       const isFormulaDrink = customizations.is_formula_drink === true;
+      const isMenuDrink = customizations.is_menu_drink === true;
       const formulaName = customizations.formula_name;
+      const menuName = customizations.menu_name;
       let itemName = detail.menus?.nom || detail.name || 'Article';
       
-      // Ajouter un indicateur pour les boissons de formule
+      // Ajouter un indicateur pour les boissons de formule ou de menu
       if (isFormulaDrink) {
         itemName = `${itemName} 🥤 (boisson formule${formulaName ? ` - ${formulaName}` : ''})`;
+      } else if (isMenuDrink) {
+        itemName = `${itemName} 🥤 (boisson menu${menuName ? ` - ${menuName}` : ''})`;
       }
       
       return {

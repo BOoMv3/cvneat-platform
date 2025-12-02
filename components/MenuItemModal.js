@@ -12,6 +12,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [selectedMeats, setSelectedMeats] = useState(new Set()); // Nouvelles sélections de viandes
   const [selectedSauces, setSelectedSauces] = useState(new Set()); // Nouvelles sélections de sauces
   const [selectedDrink, setSelectedDrink] = useState(null); // Boisson sélectionnée pour les formules
+  const [selectedFormulaOptions, setSelectedFormulaOptions] = useState({}); // Options sélectionnées pour les formules (par choice_group)
   const [supplements, setSupplements] = useState([]);
   const [meatOptions, setMeatOptions] = useState([]); // Options de viande depuis la base de données
   const [sauceOptions, setSauceOptions] = useState([]); // Options de sauce depuis la base de données
@@ -32,6 +33,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       setSelectedMeats(new Set());
       setSelectedSauces(new Set());
       setSelectedDrink(null);
+      setSelectedFormulaOptions({});
       setSupplements([]);
     }
   }, [isOpen]);
@@ -330,14 +332,33 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       return;
     }
 
-    // Si c'est une formule ou un menu, ajouter directement
+    // Si c'est une formule ou un menu, vérifier les choix optionnels requis
     if (item.is_formula || (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'))) {
+      // Vérifier si c'est le Menu Enfants et qu'un choix principal est requis
+      const isMenuEnfants = item.nom?.toLowerCase().includes('enfant') || item.nom?.toLowerCase().includes('enfant');
+      if (isMenuEnfants && (!selectedFormulaOptions['main_choice'] || Object.keys(selectedFormulaOptions).length === 0)) {
+        alert('Veuillez choisir une option principale (Cheese Burger ou 4 Nuggets)');
+        return;
+      }
+      
+      // Vérifier les autres groupes de choix requis
+      if (item.formula_choice_groups && Array.isArray(item.formula_choice_groups)) {
+        const requiredGroups = item.formula_choice_groups.filter(g => g.required);
+        for (const group of requiredGroups) {
+          if (!selectedFormulaOptions[group.id]) {
+            alert(`Veuillez choisir une option pour: ${group.title || 'Ce choix'}`);
+            return;
+          }
+        }
+      }
+      
       const formulaItem = {
         ...item,
         quantity: quantity,
-        selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null
+        selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null,
+        selected_formula_options: selectedFormulaOptions // Inclure les choix optionnels
       };
-      console.log('✅ Formule ajoutée:', formulaItem.nom);
+      console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec options:', selectedFormulaOptions);
       onAddToCart(formulaItem, [], null, quantity);
       
       // Fermer la modal immédiatement après l'ajout (synchrone)
@@ -493,6 +514,107 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             </div>
             {item.is_formula && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Formule</span>
+            )}
+
+            {/* Choix optionnels pour les formules (Menu Enfants par exemple) */}
+            {item.is_formula && item.formula_items && item.formula_items.length > 0 && (
+              (() => {
+                // Détecter si c'est le Menu Enfants ou une formule avec options de choix
+                const isMenuEnfants = item.nom?.toLowerCase().includes('enfant') || item.nom?.toLowerCase().includes('enfant');
+                const hasChoiceGroups = item.formula_choice_groups && Array.isArray(item.formula_choice_groups);
+                
+                // Pour le Menu Enfants, créer des groupes de choix basés sur les formula_items
+                if (isMenuEnfants && item.formula_items) {
+                  // Trouver les items qui font partie d'un choix (Cheese Burger OU 4 Nuggets)
+                  const choiceItems = item.formula_items.filter(fi => {
+                    const menuName = fi.menu?.nom?.toLowerCase() || '';
+                    return menuName.includes('cheese') || menuName.includes('burger') || menuName.includes('nugget') || menuName.includes('4 nuggets');
+                  });
+                  
+                  if (choiceItems.length > 0) {
+                    return (
+                      <div className="mb-3">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+                          <FaUtensils className="w-4 h-4 text-orange-600 mr-1" />
+                          Choix principal <span className="text-red-500 ml-1">*</span>
+                        </h3>
+                        <div className="space-y-1.5">
+                          {choiceItems.map((choiceItem) => {
+                            const menuItem = choiceItem.menu || {};
+                            const choiceId = menuItem.id || choiceItem.menu_id || choiceItem.id;
+                            const isSelected = selectedFormulaOptions['main_choice'] === choiceId;
+                            return (
+                              <div
+                                key={choiceId}
+                                className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer text-sm ${
+                                  isSelected
+                                    ? 'bg-orange-50 border-orange-300'
+                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                }`}
+                                onClick={() => setSelectedFormulaOptions(prev => ({
+                                  ...prev,
+                                  'main_choice': choiceId
+                                }))}
+                              >
+                                <div className="flex items-center flex-1 min-w-0">
+                                  <span className={`w-4 h-4 rounded-full border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
+                                    isSelected ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
+                                  }`}>
+                                    {isSelected && <span className="text-white text-xs">✓</span>}
+                                  </span>
+                                  <span className="font-medium truncate">{menuItem.nom || 'Option'}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+                
+                // Support pour les formules avec formula_choice_groups
+                if (hasChoiceGroups) {
+                  return item.formula_choice_groups.map((group, groupIndex) => (
+                    <div key={group.id || groupIndex} className="mb-3">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+                        <FaUtensils className="w-4 h-4 text-orange-600 mr-1" />
+                        {group.title || 'Choix'} {group.required && <span className="text-red-500 ml-1">*</span>}
+                      </h3>
+                      <div className="space-y-1.5">
+                        {(group.options || []).map((option) => {
+                          const isSelected = selectedFormulaOptions[group.id] === option.id;
+                          return (
+                            <div
+                              key={option.id}
+                              className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer text-sm ${
+                                isSelected
+                                  ? 'bg-orange-50 border-orange-300'
+                                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                              }`}
+                              onClick={() => setSelectedFormulaOptions(prev => ({
+                                ...prev,
+                                [group.id]: option.id
+                              }))}
+                            >
+                              <div className="flex items-center flex-1 min-w-0">
+                                <span className={`w-4 h-4 rounded-full border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
+                                  isSelected ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
+                                }`}>
+                                  {isSelected && <span className="text-white text-xs">✓</span>}
+                                </span>
+                                <span className="font-medium truncate">{option.nom || option.name || 'Option'}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
+                }
+                
+                return null;
+              })()
             )}
 
             {/* Choix de boisson - VERSION COMPACTE */}

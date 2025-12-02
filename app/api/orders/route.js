@@ -839,12 +839,29 @@ export async function POST(request) {
         // CAS 1: Formule AVEC formula_items détaillés
         if (item.formula_items && Array.isArray(item.formula_items) && item.formula_items.length > 0) {
           let firstItem = true;
+          
+          // Gérer les choix optionnels (pour Menu Enfants par exemple)
+          const selectedOptions = item.selected_formula_options || {};
+          const isMenuEnfants = item.nom?.toLowerCase().includes('enfant') || item.nom?.toLowerCase().includes('enfant');
+          
           for (const formulaItem of item.formula_items) {
             const formulaItemId = formulaItem.menu_id || formulaItem.menu?.id || formulaItem.id;
             
             if (!formulaItemId) {
               console.error('❌ Élément de formule sans ID menu:', formulaItem);
               continue;
+            }
+
+            // Si c'est le Menu Enfants et qu'il y a des choix optionnels, vérifier si cet item doit être inclus
+            if (isMenuEnfants && selectedOptions['main_choice']) {
+              const menuName = formulaItem.menu?.nom?.toLowerCase() || '';
+              const isChoiceItem = menuName.includes('cheese') || menuName.includes('burger') || menuName.includes('nugget');
+              
+              // Si c'est un item de choix et qu'il n'est pas sélectionné, le sauter
+              if (isChoiceItem && formulaItemId !== selectedOptions['main_choice']) {
+                console.log(`⏭️ Item ${formulaItem.menu?.nom} non sélectionné, ignoré`);
+                continue;
+              }
             }
 
             const formulaItemPrice = firstItem ? totalFormulaPrice : 0;
@@ -865,6 +882,41 @@ export async function POST(request) {
 
             orderDetailsPayload.push(detailEntry);
             firstItem = false;
+          }
+          
+          // Ajouter l'item sélectionné pour les choix optionnels si ce n'est pas déjà dans formula_items
+          if (isMenuEnfants && selectedOptions['main_choice']) {
+            const alreadyIncluded = item.formula_items.some(fi => {
+              const fiId = fi.menu_id || fi.menu?.id || fi.id;
+              return fiId === selectedOptions['main_choice'];
+            });
+            
+            if (!alreadyIncluded) {
+              // Récupérer les détails de l'item sélectionné
+              const { data: selectedMenu } = await serviceClient
+                .from('menus')
+                .select('id, nom, prix')
+                .eq('id', selectedOptions['main_choice'])
+                .single();
+              
+              if (selectedMenu) {
+                const detailEntry = {
+                  commande_id: order.id,
+                  plat_id: selectedMenu.id,
+                  quantite: quantity,
+                  prix_unitaire: 0, // Inclus dans le prix de la formule
+                  customizations: {
+                    is_formula_item: true,
+                    is_selected_choice: true,
+                    formula_name: item.nom || 'Formule',
+                    formula_id: item.id || item.formula_id,
+                    order_index: 1
+                  }
+                };
+                orderDetailsPayload.push(detailEntry);
+                console.log(`✅ Item sélectionné ajouté: ${selectedMenu.nom}`);
+              }
+            }
           }
         } 
         // CAS 2: Formule SANS formula_items (cas Cevenol Burger) - créer un détail unique avec l'ID de la formule
@@ -1020,6 +1072,31 @@ export async function POST(request) {
       }
 
       orderDetailsPayload.push(detailEntry);
+
+      // IMPORTANT: Ajouter la boisson sélectionnée pour les menus (non-formules) avec drink_options
+      // Les formules sont déjà gérées plus haut, mais les menus normaux ont aussi besoin de leurs boissons
+      if (!isFormula && item.selected_drink) {
+        const drinkId = item.selected_drink.id || item.selected_drink.menu_id;
+        if (drinkId) {
+          const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
+          const drinkDetail = {
+            commande_id: order.id,
+            plat_id: drinkId,
+            quantite: quantity,
+            prix_unitaire: drinkPrice,
+            customizations: {
+              is_menu_drink: true,
+              menu_name: item.nom || 'Menu',
+              menu_id: item.id,
+              drink_name: item.selected_drink.nom || item.selected_drink.name
+            }
+          };
+          orderDetailsPayload.push(drinkDetail);
+          console.log(`🥤 Boisson ajoutée au menu: ${item.selected_drink.nom || drinkId}`);
+        } else {
+          console.warn('⚠️ Boisson sélectionnée pour menu mais sans ID:', item.selected_drink);
+        }
+      }
     }
 
     // Vérifier qu'on a des détails à insérer

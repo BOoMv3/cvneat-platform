@@ -2360,6 +2360,16 @@ export default function PartnerDashboard() {
                                         </div>
                                       )}
                                       
+                                      {/* Boisson de menu */}
+                                      {customizations.is_menu_drink === true && (
+                                        <div className="text-xs text-blue-600 dark:text-blue-400 ml-2">
+                                          <span className="font-medium">🥤 Boisson (menu):</span> {nom}
+                                          {customizations.menu_name && (
+                                            <span className="text-gray-500"> - {customizations.menu_name}</span>
+                                          )}
+                                        </div>
+                                      )}
+                                      
                                       {/* Élément de formule */}
                                       {customizations.is_formula_item === true && (
                                         <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
