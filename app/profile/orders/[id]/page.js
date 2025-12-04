@@ -13,6 +13,7 @@ export default function OrderDetail({ params }) {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [orderId, setOrderId] = useState(null);
+  const [formulaItemsCache, setFormulaItemsCache] = useState({}); // Cache pour les formula_items
 
   // Gérer params qui peut être une Promise dans Next.js App Router
   useEffect(() => {
@@ -44,6 +45,78 @@ export default function OrderDetail({ params }) {
       checkUserAndFetchOrder();
     }
   }, [orderId, router]);
+
+  // Récupérer les formula_items pour les formules qui ont un formula_id
+  useEffect(() => {
+    const fetchFormulaItems = async () => {
+      if (!order || !order.details_commande) return;
+      
+      const formulaIds = new Set();
+      order.details_commande.forEach(item => {
+        let customizations = {};
+        if (item.customizations) {
+          if (typeof item.customizations === 'string') {
+            try {
+              customizations = JSON.parse(item.customizations);
+            } catch (e) {
+              customizations = {};
+            }
+          } else {
+            customizations = item.customizations;
+          }
+        }
+        
+        const formulaId = customizations.formula_id;
+        if (formulaId && customizations.is_formula === true) {
+          formulaIds.add(formulaId);
+        }
+      });
+      
+      if (formulaIds.size === 0) return;
+      
+      // Récupérer les formula_items pour chaque formule
+      const cache = {};
+      for (const formulaId of formulaIds) {
+        if (formulaItemsCache[formulaId]) {
+          cache[formulaId] = formulaItemsCache[formulaId];
+          continue;
+        }
+        
+        try {
+          const { data: formulaItems, error } = await supabase
+            .from('formula_items')
+            .select(`
+              id,
+              order_index,
+              quantity,
+              menu:menus(
+                id,
+                nom,
+                prix
+              )
+            `)
+            .eq('formula_id', formulaId)
+            .order('order_index');
+          
+          if (!error && formulaItems) {
+            cache[formulaId] = formulaItems.map(fi => ({
+              name: fi.menu?.nom || 'Article',
+              price: fi.menu?.prix || 0,
+              quantity: fi.quantity || 1
+            }));
+          }
+        } catch (err) {
+          console.error('Erreur récupération formula_items:', err);
+        }
+      }
+      
+      if (Object.keys(cache).length > 0) {
+        setFormulaItemsCache(prev => ({ ...prev, ...cache }));
+      }
+    };
+    
+    fetchFormulaItems();
+  }, [order, formulaItemsCache]);
 
   const fetchWithAuth = async (url, options = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -235,8 +308,11 @@ export default function OrderDetail({ params }) {
                   const items = order.items || order.details_commande || [];
                   const groupedItems = [];
                   const formulaGroups = {};
+                  const processedIndices = new Set();
                   
                   items.forEach((item, idx) => {
+                    if (processedIndices.has(idx)) return;
+                    
                     // Parser les customizations
                     let customizations = {};
                     if (item.customizations) {
@@ -252,43 +328,87 @@ export default function OrderDetail({ params }) {
                     }
                     
                     const isFormulaItem = customizations.is_formula_item === true;
+                    const isFormulaDrink = customizations.is_formula_drink === true;
                     const isFormula = customizations.is_formula === true;
                     const formulaName = customizations.formula_name;
+                    const formulaId = customizations.formula_id;
+                    
+                    // Si c'est une boisson de formule, la regrouper avec la formule
+                    if (isFormulaDrink && formulaName) {
+                      const formulaKey = formulaName + (formulaId || '');
+                      if (!formulaGroups[formulaKey]) {
+                        formulaGroups[formulaKey] = {
+                          name: formulaName,
+                          items: [],
+                          drinks: [],
+                          totalPrice: 0,
+                          quantity: 1,
+                          formulaId: formulaId
+                        };
+                      }
+                      const drinkPrice = parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0);
+                      formulaGroups[formulaKey].drinks.push({
+                        name: item.name || item.nom || item.menus?.nom || customizations.drink_name || 'Boisson',
+                        price: drinkPrice
+                      });
+                      formulaGroups[formulaKey].totalPrice += drinkPrice * (item.quantity || item.quantite || 1);
+                      processedIndices.add(idx);
+                      return;
+                    }
                     
                     // Si c'est un item de formule, le regrouper
                     if (isFormulaItem && formulaName) {
-                      if (!formulaGroups[formulaName]) {
-                        formulaGroups[formulaName] = {
+                      const formulaKey = formulaName + (formulaId || '');
+                      if (!formulaGroups[formulaKey]) {
+                        formulaGroups[formulaKey] = {
                           name: formulaName,
                           items: [],
+                          drinks: [],
                           totalPrice: 0,
-                          quantity: item.quantity || item.quantite || 1
+                          quantity: item.quantity || item.quantite || 1,
+                          formulaId: formulaId
                         };
                       }
                       const itemPrice = parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0);
-                      formulaGroups[formulaName].items.push({
+                      formulaGroups[formulaKey].items.push({
                         name: item.name || item.nom || item.menus?.nom || 'Article',
                         price: itemPrice
                       });
-                      formulaGroups[formulaName].totalPrice += itemPrice * (item.quantity || item.quantite || 1);
-                    } else if (isFormula && formulaName) {
-                      // Formule complète (sans formula_items détaillés)
-                      groupedItems.push({
-                        type: 'formula',
-                        name: formulaName,
-                        quantity: item.quantity || item.quantite || 1,
-                        price: parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0),
-                        supplements: item.supplements || item.supplements_data || [],
-                        customizations: customizations
-                      });
-                    } else {
-                      // Item normal
-                      groupedItems.push({
-                        type: 'item',
-                        item: item,
-                        idx: idx
-                      });
+                      formulaGroups[formulaKey].totalPrice += itemPrice * (item.quantity || item.quantite || 1);
+                      processedIndices.add(idx);
+                      return;
                     }
+                    
+                    // Si c'est une formule complète (sans formula_items détaillés)
+                    if (isFormula && formulaName) {
+                      const formulaKey = formulaName + (formulaId || '');
+                      if (!formulaGroups[formulaKey]) {
+                        formulaGroups[formulaKey] = {
+                          name: formulaName,
+                          items: [],
+                          drinks: [],
+                          totalPrice: 0,
+                          quantity: item.quantity || item.quantite || 1,
+                          formulaId: formulaId,
+                          isCompleteFormula: true,
+                          formulaItem: item,
+                          supplements: item.supplements || item.supplements_data || [],
+                          customizations: customizations
+                        };
+                      }
+                      const itemPrice = parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0);
+                      formulaGroups[formulaKey].totalPrice += itemPrice * (item.quantity || item.quantite || 1);
+                      processedIndices.add(idx);
+                      return;
+                    }
+                    
+                    // Item normal
+                    groupedItems.push({
+                      type: 'item',
+                      item: item,
+                      idx: idx
+                    });
+                    processedIndices.add(idx);
                   });
                   
                   // Ajouter les groupes de formules
@@ -302,15 +422,95 @@ export default function OrderDetail({ params }) {
                   return groupedItems.map((grouped, idx) => {
                     if (grouped.type === 'formula_group') {
                       const { group } = grouped;
+                      
+                      // Si c'est une formule complète (sans formula_items détaillés)
+                      if (group.isCompleteFormula) {
+                        const supplements = group.supplements || [];
+                        let supplementsPrice = 0;
+                        if (Array.isArray(supplements) && supplements.length > 0) {
+                          supplementsPrice = supplements.reduce((sum, sup) => {
+                            return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                          }, 0) * group.quantity;
+                        }
+                        
+                        // Récupérer les vrais éléments de la formule depuis les customizations (stockés lors de la commande)
+                        // OU depuis le cache si disponibles
+                        let realFormulaItems = [];
+                        if (group.customizations?.formula_items_details && Array.isArray(group.customizations.formula_items_details)) {
+                          // Utiliser les détails stockés dans les customizations (source de vérité)
+                          realFormulaItems = group.customizations.formula_items_details.map(fi => ({
+                            name: fi.nom || 'Article',
+                            quantity: fi.quantity || 1
+                          }));
+                        } else if (group.formulaId && formulaItemsCache[group.formulaId]) {
+                          // Fallback: utiliser le cache si les détails ne sont pas dans customizations
+                          realFormulaItems = formulaItemsCache[group.formulaId];
+                        }
+                        
+                        return (
+                          <div key={`formula-complete-${idx}`} className="flex justify-between items-start border-b dark:border-gray-700 pb-4">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                🍔 {group.name} x{group.quantity}
+                              </p>
+                              <div className="mt-2 ml-4 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                {/* Afficher les vrais éléments de la formule si disponibles */}
+                                {realFormulaItems.length > 0 ? (
+                                  <>
+                                    {realFormulaItems.map((item, itemIdx) => (
+                                      <div key={itemIdx}>• {item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}</div>
+                                    ))}
+                                  </>
+                                ) : (
+                                  <div className="italic">(Formule complète - burger, frites, boisson)</div>
+                                )}
+                                {/* Boissons de la formule */}
+                                {group.drinks.length > 0 && (
+                                  <>
+                                    {group.drinks.map((drink, drinkIdx) => (
+                                      <div key={drinkIdx} className="text-blue-600">🥤 {drink.name}</div>
+                                    ))}
+                                  </>
+                                )}
+                                {/* Boisson depuis customizations si pas dans drinks */}
+                                {group.customizations?.selected_drink && !group.drinks.some(d => d.name === (group.customizations.selected_drink.nom || group.customizations.selected_drink.name)) && (
+                                  <div className="text-blue-600">🥤 {group.customizations.selected_drink.nom || group.customizations.selected_drink.name || 'Boisson'}</div>
+                                )}
+                              </div>
+                              {Array.isArray(supplements) && supplements.length > 0 && (
+                                <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                  <span className="font-medium">Suppléments:</span>
+                                  <ul className="list-disc list-inside ml-2 mt-1">
+                                    {supplements.map((sup, supIdx) => (
+                                      <li key={supIdx}>
+                                        {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {(group.totalPrice + supplementsPrice).toFixed(2)}€
+                            </p>
+                          </div>
+                        );
+                      }
+                      
+                      // Formule avec formula_items détaillés
                       return (
                         <div key={`formula-${idx}`} className="flex justify-between items-start border-b dark:border-gray-700 pb-4">
                           <div className="flex-1">
                             <p className="font-medium text-gray-900 dark:text-white">
-                              {group.name} x{group.quantity}
+                              🍔 {group.name} x{group.quantity}
                             </p>
                             <div className="mt-2 ml-4 text-xs text-gray-600 dark:text-gray-400 space-y-1">
                               {group.items.map((item, itemIdx) => (
                                 <div key={itemIdx}>• {item.name}</div>
+                              ))}
+                              {/* Boissons de la formule */}
+                              {group.drinks.map((drink, drinkIdx) => (
+                                <div key={drinkIdx} className="text-blue-600">🥤 {drink.name}</div>
                               ))}
                             </div>
                           </div>

@@ -875,6 +875,9 @@ export async function POST(request) {
             const formulaItemPrice = firstItem ? totalFormulaPrice : 0;
             const itemQuantity = parseInt(formulaItem.quantity || 1, 10) * quantity;
             
+            // Récupérer les customizations depuis l'item (si disponibles)
+            const itemCustomizations = item.customizations || {};
+            
             const detailEntry = {
               commande_id: order.id,
               plat_id: formulaItemId,
@@ -884,7 +887,12 @@ export async function POST(request) {
                 is_formula_item: true,
                 formula_name: item.nom || 'Formule',
                 formula_id: item.id || item.formula_id,
-                order_index: formulaItem.order_index || 0
+                order_index: formulaItem.order_index || 0,
+                // Inclure les customizations du burger (ingrédients retirés/ajoutés, viandes, sauces)
+                selectedMeats: itemCustomizations.selectedMeats || [],
+                selectedSauces: itemCustomizations.selectedSauces || [],
+                removedIngredients: itemCustomizations.removedIngredients || [],
+                addedIngredients: itemCustomizations.addedIngredients || []
               }
             };
 
@@ -952,6 +960,79 @@ export async function POST(request) {
               console.log(`✅ ID de formule vérifié dans menus: ${formulaId} -> ${menuCheck.nom}`);
             }
             
+            // Vérifier si c'est une formule de la table formulas ou un menu avec is_formula
+            let actualFormulaId = null;
+            let formulaItemsDetails = []; // Stocker les détails des items de la formule
+            
+            const { data: formulaCheck } = await serviceClient
+              .from('formulas')
+              .select('id')
+              .eq('id', formulaId)
+              .maybeSingle();
+            
+            if (formulaCheck) {
+              actualFormulaId = formulaId; // C'est une formule de la table formulas
+            } else {
+              // C'est peut-être un menu avec is_formula, chercher dans formulas par restaurant_id
+              const { data: menuCheck } = await serviceClient
+                .from('menus')
+                .select('restaurant_id')
+                .eq('id', formulaId)
+                .maybeSingle();
+              
+              if (menuCheck) {
+                // Chercher une formule avec le même nom dans ce restaurant
+                const { data: formulaByName } = await serviceClient
+                  .from('formulas')
+                  .select('id')
+                  .eq('restaurant_id', menuCheck.restaurant_id)
+                  .eq('nom', item.nom || '')
+                  .maybeSingle();
+                
+                if (formulaByName) {
+                  actualFormulaId = formulaByName.id;
+                }
+              }
+            }
+            
+            // IMPORTANT: Récupérer les formula_items depuis la base de données pour stocker les détails réels
+            if (actualFormulaId) {
+              try {
+                const { data: formulaItems, error: formulaItemsError } = await serviceClient
+                  .from('formula_items')
+                  .select(`
+                    id,
+                    order_index,
+                    quantity,
+                    menu:menus(
+                      id,
+                      nom,
+                      prix
+                    )
+                  `)
+                  .eq('formula_id', actualFormulaId)
+                  .order('order_index');
+                
+                if (!formulaItemsError && formulaItems && formulaItems.length > 0) {
+                  formulaItemsDetails = formulaItems.map(fi => ({
+                    id: fi.menu?.id,
+                    nom: fi.menu?.nom || 'Article',
+                    prix: fi.menu?.prix || 0,
+                    quantity: fi.quantity || 1,
+                    order_index: fi.order_index || 0
+                  }));
+                  console.log(`✅ ${formulaItemsDetails.length} éléments de formule récupérés pour stockage`);
+                } else {
+                  console.warn(`⚠️ Aucun formula_items trouvé pour formula_id: ${actualFormulaId}`);
+                }
+              } catch (err) {
+                console.error('❌ Erreur récupération formula_items:', err);
+              }
+            }
+            
+            // Récupérer les customizations depuis l'item (si disponibles)
+            const itemCustomizations = item.customizations || {};
+            
             const detailEntry = {
               commande_id: order.id,
               plat_id: formulaId, // ID de la formule elle-même
@@ -960,10 +1041,17 @@ export async function POST(request) {
               customizations: {
                 is_formula: true,
                 formula_name: item.nom || 'Formule',
+                formula_id: actualFormulaId || formulaId, // Stocker l'ID pour récupérer les formula_items
+                formula_items_details: formulaItemsDetails, // IMPORTANT: Stocker les détails réels de la formule
                 selected_drink: item.selected_drink ? {
                   id: item.selected_drink.id,
                   nom: item.selected_drink.nom || item.selected_drink.name
-                } : null
+                } : null,
+                // Inclure les customizations du burger (ingrédients retirés/ajoutés, viandes, sauces)
+                selectedMeats: itemCustomizations.selectedMeats || [],
+                selectedSauces: itemCustomizations.selectedSauces || [],
+                removedIngredients: itemCustomizations.removedIngredients || [],
+                addedIngredients: itemCustomizations.addedIngredients || []
               }
             };
             orderDetailsPayload.push(detailEntry);

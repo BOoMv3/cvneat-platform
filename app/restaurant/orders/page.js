@@ -15,6 +15,7 @@ export default function RestaurantOrders() {
   const [preparationTime, setPreparationTime] = useState(30);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const audioEnabledRef = useRef(audioEnabled);
+  const [formulaItemsCache, setFormulaItemsCache] = useState({}); // Cache pour les formula_items
 
   // Mettre à jour la ref quand audioEnabled change
   useEffect(() => {
@@ -66,6 +67,78 @@ export default function RestaurantOrders() {
     
     return () => clearInterval(interval);
   }, []); // Pas de dépendance pour éviter de recréer l'interval à chaque changement
+
+  // Récupérer les formula_items pour les formules qui ont un formula_id
+  useEffect(() => {
+    const fetchFormulaItems = async () => {
+      if (!selectedOrder || !selectedOrder.details_commande) return;
+      
+      const formulaIds = new Set();
+      selectedOrder.details_commande.forEach(item => {
+        let customizations = {};
+        if (item.customizations) {
+          if (typeof item.customizations === 'string') {
+            try {
+              customizations = JSON.parse(item.customizations);
+            } catch (e) {
+              customizations = {};
+            }
+          } else {
+            customizations = item.customizations;
+          }
+        }
+        
+        const formulaId = customizations.formula_id;
+        if (formulaId && customizations.is_formula === true) {
+          formulaIds.add(formulaId);
+        }
+      });
+      
+      if (formulaIds.size === 0) return;
+      
+      // Récupérer les formula_items pour chaque formule
+      const cache = {};
+      for (const formulaId of formulaIds) {
+        if (formulaItemsCache[formulaId]) {
+          cache[formulaId] = formulaItemsCache[formulaId];
+          continue;
+        }
+        
+        try {
+          const { data: formulaItems, error } = await supabase
+            .from('formula_items')
+            .select(`
+              id,
+              order_index,
+              quantity,
+              menu:menus(
+                id,
+                nom,
+                prix
+              )
+            `)
+            .eq('formula_id', formulaId)
+            .order('order_index');
+          
+          if (!error && formulaItems) {
+            cache[formulaId] = formulaItems.map(fi => ({
+              name: fi.menu?.nom || 'Article',
+              price: fi.menu?.prix || 0,
+              quantity: fi.quantity || 1
+            }));
+          }
+        } catch (err) {
+          console.error('Erreur récupération formula_items:', err);
+        }
+      }
+      
+      if (Object.keys(cache).length > 0) {
+        setFormulaItemsCache(prev => ({ ...prev, ...cache }));
+      }
+    };
+    
+    fetchFormulaItems();
+  }, [selectedOrder, formulaItemsCache]);
 
   // Fonction pour jouer un son de notification
   const playNotificationSound = () => {
@@ -525,61 +598,262 @@ export default function RestaurantOrders() {
                     <h3 className="font-medium mb-2">Articles commandés</h3>
                     <div className="space-y-2">
                       {selectedOrder.details_commande && selectedOrder.details_commande.length > 0 ? (
-                        selectedOrder.details_commande.map((item, index) => {
-                          // Parser les customizations pour détecter les boissons de formule
-                          let customizations = {};
-                          if (item.customizations) {
-                            if (typeof item.customizations === 'string') {
-                              try {
-                                customizations = JSON.parse(item.customizations);
-                              } catch (e) {
-                                customizations = {};
+                        (() => {
+                          // Regrouper les formules avec leurs boissons
+                          const groupedItems = [];
+                          const formulaGroups = {};
+                          const processedIndices = new Set();
+                          
+                          selectedOrder.details_commande.forEach((item, index) => {
+                            if (processedIndices.has(index)) return;
+                            
+                            let customizations = {};
+                            if (item.customizations) {
+                              if (typeof item.customizations === 'string') {
+                                try {
+                                  customizations = JSON.parse(item.customizations);
+                                } catch (e) {
+                                  customizations = {};
+                                }
+                              } else {
+                                customizations = item.customizations;
                               }
-                            } else {
-                              customizations = item.customizations;
                             }
-                          }
+                            
+                            const isFormulaDrink = customizations.is_formula_drink === true;
+                            const isFormulaItem = customizations.is_formula_item === true;
+                            const isFormula = customizations.is_formula === true;
+                            const formulaName = customizations.formula_name;
+                            const formulaId = customizations.formula_id;
+                            
+                            // Si c'est une boisson de formule, la regrouper avec la formule principale
+                            if (isFormulaDrink && formulaName) {
+                              const formulaKey = formulaName + (formulaId || '');
+                              if (!formulaGroups[formulaKey]) {
+                                formulaGroups[formulaKey] = {
+                                  formulaItem: null,
+                                  drinks: [],
+                                  formulaItems: []
+                                };
+                              }
+                              formulaGroups[formulaKey].drinks.push({
+                                item: item,
+                                index: index,
+                                drinkName: item.menus?.nom || customizations.drink_name || 'Boisson'
+                              });
+                              processedIndices.add(index);
+                              return;
+                            }
+                            
+                            // Si c'est un item de formule, le regrouper
+                            if (isFormulaItem && formulaName) {
+                              const formulaKey = formulaName + (formulaId || '');
+                              if (!formulaGroups[formulaKey]) {
+                                formulaGroups[formulaKey] = {
+                                  formulaItem: null,
+                                  drinks: [],
+                                  formulaItems: []
+                                };
+                              }
+                              formulaGroups[formulaKey].formulaItems.push({
+                                item: item,
+                                index: index,
+                                name: item.menus?.nom || 'Article'
+                              });
+                              processedIndices.add(index);
+                              return;
+                            }
+                            
+                            // Si c'est une formule complète (sans formula_items détaillés)
+                            if (isFormula && formulaName) {
+                              const formulaKey = formulaName + (formulaId || '');
+                              if (!formulaGroups[formulaKey]) {
+                                formulaGroups[formulaKey] = {
+                                  formulaItem: null,
+                                  drinks: [],
+                                  formulaItems: []
+                                };
+                              }
+                              formulaGroups[formulaKey].formulaItem = {
+                                item: item,
+                                index: index,
+                                name: item.menus?.nom || formulaName
+                              };
+                              processedIndices.add(index);
+                              return;
+                            }
+                            
+                            // Item normal, l'ajouter tel quel
+                            groupedItems.push({
+                              type: 'normal',
+                              item: item,
+                              index: index,
+                              customizations: customizations
+                            });
+                            processedIndices.add(index);
+                          });
                           
-                          const isFormulaDrink = customizations.is_formula_drink === true;
-                          const isFormulaItem = customizations.is_formula_item === true;
-                          const isFormula = customizations.is_formula === true;
-                          const formulaName = customizations.formula_name;
-                          const selectedDrink = customizations.selected_drink;
-                          const isCombo = customizations.combo && customizations.combo.comboName;
-                          const comboName = customizations.combo?.comboName;
-                          const comboDetails = customizations.combo?.details || [];
+                          // Ajouter les groupes de formules
+                          Object.entries(formulaGroups).forEach(([key, group]) => {
+                            if (group.formulaItem) {
+                              // Formule complète (sans formula_items détaillés)
+                              groupedItems.push({
+                                type: 'formula_complete',
+                                formulaItem: group.formulaItem,
+                                drinks: group.drinks,
+                                formulaName: group.formulaItem.item.menus?.nom || group.formulaItem.name
+                              });
+                            } else if (group.formulaItems.length > 0) {
+                              // Formule avec formula_items détaillés
+                              groupedItems.push({
+                                type: 'formula_detailed',
+                                formulaItems: group.formulaItems,
+                                drinks: group.drinks,
+                                formulaName: group.formulaItems[0]?.item?.customizations?.formula_name || 'Formule'
+                              });
+                            }
+                          });
                           
-                          // Nom à afficher: combo > formule > menu
-                          const displayName = isCombo ? comboName : (item.menus?.nom || 'Article');
-                          
-                          return (
-                            <div key={item.id || index} className="space-y-1">
-                              <div className="flex justify-between text-sm">
-                                <span>
-                                  {displayName} x{item.quantite || 1}
-                                  {isFormulaDrink && <span className="text-blue-600 ml-1">🥤 (boisson formule)</span>}
-                                  {isFormulaItem && formulaName && <span className="text-gray-500 ml-1">📦 ({formulaName})</span>}
-                                  {(isFormula || isCombo) && <span className="text-purple-600 ml-1">🍔 Menu</span>}
-                                </span>
-                                <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
-                              </div>
-                              {/* Boisson sélectionnée pour les formules */}
-                              {isFormula && selectedDrink && (
-                                <div className="ml-4 text-xs text-blue-600">
-                                  🥤 Boisson: <strong>{selectedDrink.nom || selectedDrink.name || 'Boisson'}</strong>
+                          // Afficher les items groupés
+                          return groupedItems.map((group, groupIndex) => {
+                            if (group.type === 'normal') {
+                              const item = group.item;
+                              const customizations = group.customizations;
+                              const isCombo = customizations.combo && customizations.combo.comboName;
+                              const comboName = customizations.combo?.comboName;
+                              const comboDetails = customizations.combo?.details || [];
+                              const displayName = isCombo ? comboName : (item.menus?.nom || 'Article');
+                              
+                              return (
+                                <div key={group.index || groupIndex} className="space-y-1">
+                                  <div className="flex justify-between text-sm">
+                                    <span>
+                                      {displayName} x{item.quantite || 1}
+                                      {isCombo && <span className="text-purple-600 ml-1">🍔 Menu</span>}
+                                    </span>
+                                    <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
+                                  </div>
+                                  {isCombo && comboDetails.length > 0 && (
+                                    <div className="ml-4 text-xs text-gray-600 space-y-0.5">
+                                      {comboDetails.map((detail, idx) => (
+                                        <div key={idx}>• {detail.stepTitle}: <strong>{detail.optionName}</strong></div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                              {/* Détails du combo */}
-                              {isCombo && comboDetails.length > 0 && (
-                                <div className="ml-4 text-xs text-gray-600 space-y-0.5">
-                                  {comboDetails.map((detail, idx) => (
-                                    <div key={idx}>• {detail.stepTitle}: <strong>{detail.optionName}</strong></div>
-                                  ))}
+                              );
+                            } else if (group.type === 'formula_complete') {
+                              // Formule complète (sans formula_items détaillés) - Cas Cevenol Burger
+                              const formulaItem = group.formulaItem.item;
+                              const formulaName = group.formulaName;
+                              const totalPrice = (formulaItem.prix_unitaire || 0) * (formulaItem.quantite || 1);
+                              
+                              // Récupérer les customizations pour obtenir le formula_id
+                              let customizations = {};
+                              if (formulaItem.customizations) {
+                                if (typeof formulaItem.customizations === 'string') {
+                                  try {
+                                    customizations = JSON.parse(formulaItem.customizations);
+                                  } catch (e) {
+                                    customizations = {};
+                                  }
+                                } else {
+                                  customizations = formulaItem.customizations;
+                                }
+                              }
+                              const formulaId = customizations.formula_id;
+                              
+                              // Récupérer les vrais éléments de la formule depuis les customizations (stockés lors de la commande)
+                              // OU depuis le cache si disponibles
+                              let realFormulaItems = [];
+                              if (customizations.formula_items_details && Array.isArray(customizations.formula_items_details)) {
+                                // Utiliser les détails stockés dans les customizations (source de vérité)
+                                realFormulaItems = customizations.formula_items_details.map(fi => ({
+                                  name: fi.nom || 'Article',
+                                  quantity: fi.quantity || 1
+                                }));
+                              } else if (formulaId && formulaItemsCache[formulaId]) {
+                                // Fallback: utiliser le cache si les détails ne sont pas dans customizations
+                                realFormulaItems = formulaItemsCache[formulaId];
+                              }
+                              
+                              return (
+                                <div key={group.formulaItem.index || groupIndex} className="space-y-1 border-l-2 border-purple-300 pl-2">
+                                  <div className="flex justify-between text-sm font-medium">
+                                    <span>
+                                      🍔 {formulaName} x{formulaItem.quantite || 1}
+                                    </span>
+                                    <span>{totalPrice.toFixed(2)}€</span>
+                                  </div>
+                                  <div className="ml-4 text-xs text-gray-600 space-y-0.5">
+                                    {/* Afficher les vrais éléments de la formule si disponibles */}
+                                    {realFormulaItems.length > 0 ? (
+                                      <>
+                                        {realFormulaItems.map((item, itemIdx) => (
+                                          <div key={itemIdx}>• {item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}</div>
+                                        ))}
+                                      </>
+                                    ) : (
+                                      <div className="text-gray-500 italic">(Formule complète - burger, frites, boisson)</div>
+                                    )}
+                                    {/* Boissons de la formule */}
+                                    {group.drinks.length > 0 && (
+                                      <>
+                                        {group.drinks.map((drink, idx) => (
+                                          <div key={idx} className="text-blue-600">🥤 {drink.drinkName}</div>
+                                        ))}
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })
+                              );
+                            } else if (group.type === 'formula_detailed') {
+                              // Formule avec formula_items détaillés
+                              const formulaName = group.formulaName;
+                              let totalPrice = 0;
+                              
+                              return (
+                                <div key={groupIndex} className="space-y-1 border-l-2 border-purple-300 pl-2">
+                                  <div className="text-sm font-medium text-purple-600 mb-1">
+                                    🍔 {formulaName}
+                                  </div>
+                                  <div className="ml-4 space-y-1">
+                                    {group.formulaItems.map((formulaItem, idx) => {
+                                      const itemPrice = (formulaItem.item.prix_unitaire || 0) * (formulaItem.item.quantite || 1);
+                                      totalPrice += itemPrice;
+                                      return (
+                                        <div key={formulaItem.index || idx} className="flex justify-between text-xs">
+                                          <span>• {formulaItem.name} x{formulaItem.item.quantite || 1}</span>
+                                          <span className={itemPrice === 0 ? 'text-gray-400' : ''}>
+                                            {itemPrice === 0 ? '(inclus)' : `${itemPrice.toFixed(2)}€`}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                    {/* Boissons de la formule */}
+                                    {group.drinks.map((drink, idx) => {
+                                      const drinkPrice = (drink.item.prix_unitaire || 0) * (drink.item.quantite || 1);
+                                      totalPrice += drinkPrice;
+                                      return (
+                                        <div key={drink.index || idx} className="flex justify-between text-xs text-blue-600">
+                                          <span>🥤 {drink.drinkName}</span>
+                                          <span className={drinkPrice === 0 ? 'text-gray-400' : ''}>
+                                            {drinkPrice === 0 ? '(inclus)' : `${drinkPrice.toFixed(2)}€`}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="flex justify-between text-sm font-medium mt-1">
+                                    <span>Total formule</span>
+                                    <span>{totalPrice.toFixed(2)}€</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          });
+                        })()
                       ) : selectedOrder.items && selectedOrder.items.length > 0 ? (
                         selectedOrder.items.map((item, index) => (
                           <div key={item.id || index} className="flex justify-between text-sm">

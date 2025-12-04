@@ -41,13 +41,28 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
     if (isOpen) {
-      // Récupérer les options de customisation depuis l'item
+      // Pour les formules, récupérer les ingrédients depuis le premier item de la formule (généralement le burger)
+      let sourceItem = item;
+      if (item.is_formula && item.formula_items && item.formula_items.length > 0) {
+        // Trouver le premier item qui n'est pas une boisson (généralement le burger)
+        const mainItem = item.formula_items.find(fi => {
+          const menuName = (fi.menu?.nom || '').toLowerCase();
+          return !menuName.includes('boisson') && !menuName.includes('drink') && !menuName.includes('frite');
+        }) || item.formula_items[0];
+        
+        if (mainItem && mainItem.menu) {
+          sourceItem = mainItem.menu;
+          console.log('📦 Formule détectée, utilisation des ingrédients du burger:', mainItem.menu.nom);
+        }
+      }
+      
+      // Récupérer les options de customisation depuis l'item (ou depuis le burger de la formule)
       // Options de viande
-      if (item.meat_options) {
-        let parsedMeats = item.meat_options;
-        if (typeof item.meat_options === 'string') {
+      if (sourceItem.meat_options) {
+        let parsedMeats = sourceItem.meat_options;
+        if (typeof sourceItem.meat_options === 'string') {
           try {
-            parsedMeats = JSON.parse(item.meat_options);
+            parsedMeats = JSON.parse(sourceItem.meat_options);
           } catch (e) {
             parsedMeats = [];
           }
@@ -62,11 +77,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       }
 
       // Options de sauce
-      if (item.sauce_options) {
-        let parsedSauces = item.sauce_options;
-        if (typeof item.sauce_options === 'string') {
+      if (sourceItem.sauce_options) {
+        let parsedSauces = sourceItem.sauce_options;
+        if (typeof sourceItem.sauce_options === 'string') {
           try {
-            parsedSauces = JSON.parse(item.sauce_options);
+            parsedSauces = JSON.parse(sourceItem.sauce_options);
           } catch (e) {
             parsedSauces = [];
           }
@@ -74,7 +89,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         setSauceOptions(Array.isArray(parsedSauces) ? parsedSauces : []);
         
         // Sélectionner les sauces par défaut (default: true) seulement si max_sauces !== 0
-        const maxSauces = item.max_sauces || item.max_sauce_count;
+        const maxSauces = sourceItem.max_sauces || sourceItem.max_sauce_count;
         if (maxSauces !== 0) {
           const defaultSauces = parsedSauces.filter(s => s.default === true).map(s => s.id || s.nom);
           setSelectedSauces(new Set(defaultSauces));
@@ -87,11 +102,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       }
 
       // Ingrédients de base
-      if (item.base_ingredients) {
-        let parsedIngredients = item.base_ingredients;
-        if (typeof item.base_ingredients === 'string') {
+      if (sourceItem.base_ingredients) {
+        let parsedIngredients = sourceItem.base_ingredients;
+        if (typeof sourceItem.base_ingredients === 'string') {
           try {
-            parsedIngredients = JSON.parse(item.base_ingredients);
+            parsedIngredients = JSON.parse(sourceItem.base_ingredients);
           } catch (e) {
             parsedIngredients = [];
           }
@@ -356,14 +371,55 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         }
       }
       
+      // Extraire les suppléments depuis selectedIngredients pour les formules aussi
+      const supplementsList = Array.from(selectedIngredients).map(ingId => {
+        const supplement = supplements.find(sup => sup.id === ingId);
+        return supplement ? { id: supplement.id, nom: supplement.name, prix: supplement.price } : null;
+      }).filter(Boolean);
+
+      // Extraire les viandes sélectionnées
+      const selectedMeatsList = Array.from(selectedMeats).map(meatId => {
+        const meat = meatOptions.find(m => (m.id || m.nom) === meatId);
+        return meat ? { 
+          id: meat.id || meat.nom, 
+          nom: meat.nom || meat.name, 
+          prix: parseFloat(meat.prix || meat.price || 0) 
+        } : null;
+      }).filter(Boolean);
+
+      // Extraire les sauces sélectionnées
+      const selectedSaucesList = Array.from(selectedSauces).map(sauceId => {
+        const sauce = sauceOptions.find(s => (s.id || s.nom) === sauceId);
+        return sauce ? { 
+          id: sauce.id || sauce.nom, 
+          nom: sauce.nom || sauce.name, 
+          prix: parseFloat(sauce.prix || sauce.price || 0) 
+        } : null;
+      }).filter(Boolean);
+
+      // Calculer le prix unitaire avec les suppléments
+      const finalPrice = calculateTotalPrice() / quantity; // Prix unitaire (car calculateTotalPrice retourne total * quantity)
+      
       const formulaItem = {
         ...item,
+        prix: finalPrice, // IMPORTANT: Mettre à jour le prix avec le prix total incluant suppléments
         quantity: quantity,
         selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null,
-        selected_formula_options: selectedFormulaOptions // Inclure les choix optionnels
+        selected_formula_options: selectedFormulaOptions, // Inclure les choix optionnels
+        supplements: supplementsList, // Inclure les suppléments
+        customizations: {
+          selectedMeats: selectedMeatsList, // Inclure les viandes personnalisées
+          selectedSauces: selectedSaucesList, // Inclure les sauces personnalisées
+          removedIngredients: Array.from(removedIngredients).map(ingId => {
+            const ing = itemIngredients.find(i => i.id === ingId);
+            return ing ? { id: ing.id, nom: ing.name } : { id: ingId, nom: ingId };
+          }), // Inclure les ingrédients retirés
+          addedIngredients: Array.from(selectedIngredients), // Inclure les ingrédients ajoutés
+          totalPrice: calculateTotalPrice() // Prix total avec personnalisations
+        }
       };
-      console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec boisson:', formulaItem.selected_drink?.nom || 'aucune', 'et options:', selectedFormulaOptions);
-      onAddToCart(formulaItem, [], null, quantity);
+      console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec boisson:', formulaItem.selected_drink?.nom || 'aucune', 'options:', selectedFormulaOptions, 'customizations:', formulaItem.customizations);
+      onAddToCart(formulaItem, supplementsList, null, quantity);
       
       // Fermer la modal immédiatement après l'ajout (synchrone)
       if (typeof onClose === 'function') {
@@ -668,7 +724,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           </div>
 
           {/* Viandes - VERSION MINI */}
-          {!item.is_formula && meatOptions.length > 0 && (
+          {meatOptions.length > 0 && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">
                 Viandes
@@ -710,7 +766,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Sauces - VERSION MINI */}
-          {!item.is_formula && sauceOptions.length > 0 && (item.max_sauces || item.max_sauce_count) !== 0 && (
+          {sauceOptions.length > 0 && (item.max_sauces || item.max_sauce_count) !== 0 && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">Sauces {item.requires_sauce_selection && <span className="text-red-500">*</span>}</h3>
               <div className="space-y-1">
@@ -741,7 +797,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Ingrédients de base */}
-          {!item.is_formula && itemIngredients.length > 0 && (
+          {itemIngredients.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaLeaf className="w-5 h-5 text-green-600 mr-2" />
@@ -780,7 +836,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Ingrédients supplémentaires */}
-          {!item.is_formula && (
+          {(
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
               <FaPlus className="w-5 h-5 text-orange-600 mr-2" />
@@ -849,7 +905,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             }}
           >
             <FaShoppingCart className="w-6 h-6" />
-            <span>AJOUTER AU PANIER • {item.is_formula ? (item.prix * quantity).toFixed(2) : calculateTotalPrice().toFixed(2)}€</span>
+            <span>AJOUTER AU PANIER • {calculateTotalPrice().toFixed(2)}€</span>
           </button>
         </div>
       </div>
