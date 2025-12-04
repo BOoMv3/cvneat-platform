@@ -230,45 +230,175 @@ export default function OrderDetail({ params }) {
             <div className="mb-6">
               <h2 className="text-lg font-medium mb-4 dark:text-gray-100">Items commandés</h2>
               <div className="space-y-4">
-                {(order.items || order.details_commande || []).map((item, idx) => {
-                  const itemName = item.name || item.nom || item.menus?.nom || 'Article';
-                  const itemQuantity = item.quantity || item.quantite || 1;
-                  const itemPrice = parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0);
-                  const supplements = item.supplements || item.supplements_data || [];
-                  const totalItemPrice = itemPrice * itemQuantity;
+                {(() => {
+                  // Regrouper les items de formule
+                  const items = order.items || order.details_commande || [];
+                  const groupedItems = [];
+                  const formulaGroups = {};
                   
-                  // Calculer le prix des suppléments si présents
-                  let supplementsPrice = 0;
-                  if (Array.isArray(supplements) && supplements.length > 0) {
-                    supplementsPrice = supplements.reduce((sum, sup) => {
-                      return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
-                    }, 0) * itemQuantity;
-                  }
+                  items.forEach((item, idx) => {
+                    // Parser les customizations
+                    let customizations = {};
+                    if (item.customizations) {
+                      if (typeof item.customizations === 'string') {
+                        try {
+                          customizations = JSON.parse(item.customizations);
+                        } catch (e) {
+                          customizations = {};
+                        }
+                      } else {
+                        customizations = item.customizations;
+                      }
+                    }
+                    
+                    const isFormulaItem = customizations.is_formula_item === true;
+                    const isFormula = customizations.is_formula === true;
+                    const formulaName = customizations.formula_name;
+                    
+                    // Si c'est un item de formule, le regrouper
+                    if (isFormulaItem && formulaName) {
+                      if (!formulaGroups[formulaName]) {
+                        formulaGroups[formulaName] = {
+                          name: formulaName,
+                          items: [],
+                          totalPrice: 0,
+                          quantity: item.quantity || item.quantite || 1
+                        };
+                      }
+                      const itemPrice = parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0);
+                      formulaGroups[formulaName].items.push({
+                        name: item.name || item.nom || item.menus?.nom || 'Article',
+                        price: itemPrice
+                      });
+                      formulaGroups[formulaName].totalPrice += itemPrice * (item.quantity || item.quantite || 1);
+                    } else if (isFormula && formulaName) {
+                      // Formule complète (sans formula_items détaillés)
+                      groupedItems.push({
+                        type: 'formula',
+                        name: formulaName,
+                        quantity: item.quantity || item.quantite || 1,
+                        price: parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0),
+                        supplements: item.supplements || item.supplements_data || [],
+                        customizations: customizations
+                      });
+                    } else {
+                      // Item normal
+                      groupedItems.push({
+                        type: 'item',
+                        item: item,
+                        idx: idx
+                      });
+                    }
+                  });
                   
-                  return (
-                    <div key={item.id || idx} className="flex justify-between items-start border-b dark:border-gray-700 pb-4">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white">{itemName}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Quantité: {itemQuantity}</p>
-                        {Array.isArray(supplements) && supplements.length > 0 && (
-                          <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                            <span className="font-medium">Suppléments:</span>
-                            <ul className="list-disc list-inside ml-2 mt-1">
-                              {supplements.map((sup, supIdx) => (
-                                <li key={supIdx}>
-                                  {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
-                                </li>
+                  // Ajouter les groupes de formules
+                  Object.values(formulaGroups).forEach(group => {
+                    groupedItems.push({
+                      type: 'formula_group',
+                      group: group
+                    });
+                  });
+                  
+                  return groupedItems.map((grouped, idx) => {
+                    if (grouped.type === 'formula_group') {
+                      const { group } = grouped;
+                      return (
+                        <div key={`formula-${idx}`} className="flex justify-between items-start border-b dark:border-gray-700 pb-4">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {group.name} x{group.quantity}
+                            </p>
+                            <div className="mt-2 ml-4 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                              {group.items.map((item, itemIdx) => (
+                                <div key={itemIdx}>• {item.name}</div>
                               ))}
-                            </ul>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {(totalItemPrice + supplementsPrice).toFixed(2)}€
-                      </p>
-                    </div>
-                  );
-                })}
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {group.totalPrice.toFixed(2)}€
+                          </p>
+                        </div>
+                      );
+                    } else if (grouped.type === 'formula') {
+                      const supplements = grouped.supplements || [];
+                      let supplementsPrice = 0;
+                      if (Array.isArray(supplements) && supplements.length > 0) {
+                        supplementsPrice = supplements.reduce((sum, sup) => {
+                          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                        }, 0) * grouped.quantity;
+                      }
+                      
+                      return (
+                        <div key={`formula-simple-${idx}`} className="flex justify-between items-start border-b dark:border-gray-700 pb-4">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {grouped.name} x{grouped.quantity}
+                            </p>
+                            {grouped.customizations?.selected_drink && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                🥤 Boisson: {grouped.customizations.selected_drink.nom || grouped.customizations.selected_drink.name || 'Boisson'}
+                              </p>
+                            )}
+                            {Array.isArray(supplements) && supplements.length > 0 && (
+                              <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                <span className="font-medium">Suppléments:</span>
+                                <ul className="list-disc list-inside ml-2 mt-1">
+                                  {supplements.map((sup, supIdx) => (
+                                    <li key={supIdx}>
+                                      {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {((grouped.price * grouped.quantity) + supplementsPrice).toFixed(2)}€
+                          </p>
+                        </div>
+                      );
+                    } else {
+                      // Item normal
+                      const item = grouped.item;
+                      const itemName = item.name || item.nom || item.menus?.nom || 'Article';
+                      const itemQuantity = item.quantity || item.quantite || 1;
+                      const itemPrice = parseFloat(item.price || item.prix || item.prix_unitaire || item.menus?.prix || 0);
+                      const supplements = item.supplements || item.supplements_data || [];
+                      const totalItemPrice = itemPrice * itemQuantity;
+                      
+                      let supplementsPrice = 0;
+                      if (Array.isArray(supplements) && supplements.length > 0) {
+                        supplementsPrice = supplements.reduce((sum, sup) => {
+                          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+                        }, 0) * itemQuantity;
+                      }
+                      
+                      return (
+                        <div key={item.id || grouped.idx} className="flex justify-between items-start border-b dark:border-gray-700 pb-4">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 dark:text-white">{itemName}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Quantité: {itemQuantity}</p>
+                            {Array.isArray(supplements) && supplements.length > 0 && (
+                              <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                <span className="font-medium">Suppléments:</span>
+                                <ul className="list-disc list-inside ml-2 mt-1">
+                                  {supplements.map((sup, supIdx) => (
+                                    <li key={supIdx}>
+                                      {sup.nom || sup.name} (+{(sup.prix || sup.price || 0).toFixed(2)}€)
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {(totalItemPrice + supplementsPrice).toFixed(2)}€
+                          </p>
+                        </div>
+                      );
+                    }
+                  });
+                })()}
               </div>
             </div>
 
