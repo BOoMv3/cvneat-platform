@@ -421,8 +421,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       } : null;
     }).filter(Boolean);
 
+    // Calculer le prix total incluant tous les suppléments, viandes, sauces
+    const finalPrice = calculateTotalPrice() / quantity; // Prix unitaire (car calculateTotalPrice retourne total * quantity)
+    
     const customizedItem = {
       ...item,
+      prix: finalPrice, // IMPORTANT: Mettre à jour le prix avec le prix total incluant suppléments
       quantity: quantity, // Utiliser la quantité sélectionnée
       selected_drink: item.selected_drink || (selectedDrink && item.drink_options ? item.drink_options.find(d => d.id === selectedDrink) : null), // S'assurer que selected_drink est inclus
       supplements: supplementsList,

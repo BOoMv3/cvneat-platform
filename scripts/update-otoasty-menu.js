@@ -64,6 +64,7 @@ const newMenuItems = [
       { id: 'tenders', nom: 'Tenders', prix: 0 },
       { id: 'escalope', nom: 'Escalope panée', prix: 0 },
       { id: 'cordon-bleu', nom: 'Cordon bleu', prix: 0 },
+      { id: 'viande-hachee', nom: 'Viande hachée', prix: 0 },
       { id: 'kebab', nom: 'Kebab', prix: 0 },
       { id: 'nuggets', nom: 'Nuggets', prix: 0 }
     ],
@@ -117,6 +118,7 @@ const newMenuItems = [
       { id: 'tenders', nom: 'Tenders', prix: 0 },
       { id: 'escalope', nom: 'Escalope panée', prix: 0 },
       { id: 'cordon-bleu', nom: 'Cordon bleu', prix: 0 },
+      { id: 'viande-hachee', nom: 'Viande hachée', prix: 0 },
       { id: 'kebab', nom: 'Kebab', prix: 0 },
       { id: 'nuggets', nom: 'Nuggets', prix: 0 }
     ],
@@ -170,6 +172,7 @@ const newMenuItems = [
       { id: 'tenders', nom: 'Tenders', prix: 0 },
       { id: 'escalope', nom: 'Escalope panée', prix: 0 },
       { id: 'cordon-bleu', nom: 'Cordon bleu', prix: 0 },
+      { id: 'viande-hachee', nom: 'Viande hachée', prix: 0 },
       { id: 'kebab', nom: 'Kebab', prix: 0 },
       { id: 'nuggets', nom: 'Nuggets', prix: 0 }
     ],

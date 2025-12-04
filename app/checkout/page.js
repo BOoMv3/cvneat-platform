@@ -46,6 +46,7 @@ function computeCartTotalWithExtras(items = []) {
   if (!Array.isArray(items)) return 0;
 
   return items.reduce((sum, item) => {
+<<<<<<< HEAD
     // IMPORTANT: Utiliser le prix DÉJÀ CALCULÉ (item.prix) qui contient tout
     // Le prix a déjà été calculé à l'ajout au panier avec calculateFinalPrice()
     // Ne PAS rajouter les suppléments/viandes/sauces car ils sont déjà inclus dans item.prix
@@ -61,6 +62,49 @@ function computeCartTotalWithExtras(items = []) {
     }
     
     console.log('💰 Article:', item.nom, 'Prix unitaire (avec boisson):', itemPrice, 'Quantité:', itemQuantity);
+=======
+    // Prix de base de l'article
+    let itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
+    
+    // Si le prix n'a pas été mis à jour avec les suppléments (vient d'une ancienne version),
+    // calculer le prix total en ajoutant les suppléments
+    if (item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0) {
+      const supplementsPrice = item.supplements.reduce((supSum, sup) => {
+        return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
+      }, 0);
+      
+      // Si le prix de base ne semble pas inclure les suppléments, les ajouter
+      // (vérifier si le prix semble trop bas par rapport aux suppléments)
+      if (supplementsPrice > 0) {
+        // Vérifier si customizations.totalPrice existe (prix calculé dans la modal)
+        if (item.customizations?.totalPrice) {
+          itemPrice = item.customizations.totalPrice / (item.quantity || 1); // Prix unitaire
+        } else {
+          // Sinon, ajouter les suppléments au prix de base
+          itemPrice = itemPrice + supplementsPrice;
+        }
+      }
+    }
+    
+    // Ajouter aussi les viandes et sauces si elles ont un prix
+    if (item.customizations?.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+      const meatsPrice = item.customizations.selectedMeats.reduce((meatSum, meat) => {
+        return meatSum + (parseFloat(meat.prix || meat.price || 0) || 0);
+      }, 0);
+      itemPrice = itemPrice + meatsPrice;
+    }
+    
+    if (item.customizations?.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+      const saucesPrice = item.customizations.selectedSauces.reduce((sauceSum, sauce) => {
+        return sauceSum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
+      }, 0);
+      itemPrice = itemPrice + saucesPrice;
+    }
+    
+    const itemQuantity = parseInt(item?.quantity ?? 1, 10);
+    
+    console.log('💰 Article:', item.nom, 'Prix unitaire:', itemPrice, 'Quantité:', itemQuantity, 'Suppléments:', item.supplements?.length || 0);
+>>>>>>> 222db9fba1523edf7bb1011568252fc160f5524e
     
     const totalItemPrice = itemPrice * itemQuantity;
     return sum + totalItemPrice;
