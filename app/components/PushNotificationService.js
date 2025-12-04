@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { initPushNotifications } from '@/lib/capacitor-push-notifications';
 
 export default function PushNotificationService() {
   const [isSupported, setIsSupported] = useState(false);
@@ -12,6 +13,20 @@ export default function PushNotificationService() {
     checkPermission();
     checkExistingSubscription();
     setupNotificationClickHandlers();
+    
+    // Initialiser les notifications push natives Capacitor si on est dans l'app mobile
+    if (typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || window.location?.protocol === 'capacitor:')) {
+      console.log('📱 Initialisation des notifications push Capacitor...');
+      initPushNotifications().then((result) => {
+        if (result) {
+          console.log('✅ Notifications push Capacitor initialisées');
+        } else {
+          console.log('⚠️ Notifications push Capacitor non disponibles');
+        }
+      }).catch((error) => {
+        console.error('❌ Erreur initialisation notifications push:', error);
+      });
+    }
   }, []);
 
   const checkNotificationSupport = () => {

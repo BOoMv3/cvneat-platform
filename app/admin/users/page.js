@@ -48,27 +48,123 @@ export default function AdminUsers() {
   }, [router]);
 
   const fetchWithAuth = async (url, options = {}) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Erreur récupération session:', sessionError);
+        throw new Error('Erreur d\'authentification');
+      }
+      
+      const token = session?.access_token;
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      } else {
+        console.warn('Aucun token d\'authentification disponible');
+      }
+      
+      return fetch(url, { ...options, headers });
+    } catch (error) {
+      console.error('Erreur fetchWithAuth:', error);
+      throw error;
     }
-    return fetch(url, { ...options, headers });
   };
 
   const fetchUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetchWithAuth('/api/admin/users');
-      const data = await response.json();
-      // Gérer le cas où l'API retourne un objet avec une propriété users
-      setUsers(Array.isArray(data) ? data : (data.users || []));
+      const isCapacitorApp = typeof window !== 'undefined' &&
+        (window.location?.protocol === 'capacitor:' ||
+         window.location?.href?.startsWith('capacitor://'));
+
+      let usersList = [];
+
+      if (isCapacitorApp) {
+        // Mode Capacitor : utiliser Supabase directement
+        console.log('[Admin Users] Mode Capacitor - Utilisation de Supabase directement');
+        
+        const supabaseClient = (typeof window !== 'undefined' && window.supabase) || supabase;
+        
+        if (!supabaseClient) {
+          throw new Error('Supabase client non initialisé');
+        }
+
+        // Vérifier que l'utilisateur est admin
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+          throw new Error('Utilisateur non authentifié');
+        }
+
+        const { data: userData, error: userError } = await supabaseClient
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (userError || !userData || userData.role !== 'admin') {
+          throw new Error('Accès refusé : vous devez être administrateur');
+        }
+
+        // Récupérer tous les utilisateurs
+        const { data: users, error: fetchError } = await supabaseClient
+          .from('users')
+          .select('id, nom, prenom, email, telephone, role, created_at')
+          .order('created_at', { ascending: false });
+
+        if (fetchError) {
+          console.error('[Admin Users] Erreur Supabase:', fetchError);
+          throw new Error(`Erreur Supabase: ${fetchError.message || 'Erreur inconnue'}`);
+        }
+
+        // Formater les données comme l'API
+        usersList = (users || []).map(user => ({
+          id: user.id,
+          name: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
+          email: user.email,
+          phone: user.telephone || '',
+          role: user.role || 'user',
+          created_at: user.created_at
+        }));
+
+        console.log('[Admin Users] Utilisateurs récupérés via Supabase:', usersList.length);
+      } else {
+        // Mode Web : utiliser l'API Next.js
+        console.log('[Admin Users] Mode Web - Utilisation de l\'API Next.js');
+        
+        const response = await fetchWithAuth('/api/admin/users');
+        
+        // Vérifier si la réponse est OK
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+          const errorMessage = errorData.error || `Erreur ${response.status}: ${response.statusText}`;
+          console.error('Erreur API utilisateurs:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        // Gérer le cas où l'API retourne un objet avec une propriété users
+        usersList = Array.isArray(data) ? data : (data.users || []);
+      }
+      
+      setUsers(usersList);
+      
+      if (usersList.length === 0) {
+        // Pas d'erreur, juste aucun utilisateur
+        setError(null);
+      }
     } catch (error) {
-      setError('Erreur lors du chargement des utilisateurs');
+      console.error('Erreur fetch utilisateurs:', error);
+      setError(`Erreur lors du chargement des utilisateurs: ${error.message || 'Erreur de connexion'}`);
       setUsers([]); // S'assurer que users est toujours un tableau
     } finally {
       setLoading(false);

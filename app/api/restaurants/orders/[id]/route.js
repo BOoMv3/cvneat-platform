@@ -196,18 +196,49 @@ export async function PUT(request, { params }) {
           }, { status: 500 });
         }
 
-        if ((status === 'acceptee' || status === 'pret_a_livrer') && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+        // Notifier les livreurs via push notification FCM (app mobile)
+        if (status === 'en_preparation' || status === 'pret_a_livrer') {
           try {
-            await notifyDeliverySubscribers(supabaseAdmin, {
-              title: 'Nouvelle commande disponible',
-              body: `Commande #${order.id} - ${parseFloat(order.total || 0).toFixed(2)}€`,
-              data: {
-                url: '/delivery/dashboard',
-                orderId: order.id,
+            // Envoyer notification push à tous les livreurs disponibles
+            const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
               },
+              body: JSON.stringify({
+                role: 'delivery', // Envoyer à tous les livreurs
+                title: 'Nouvelle commande disponible 🚚',
+                body: `Commande #${order.id?.slice(0, 8)} - ${parseFloat(order.total || 0).toFixed(2)}€`,
+                data: {
+                  type: 'new_order',
+                  orderId: order.id,
+                  url: '/delivery/dashboard',
+                }
+              })
             });
+            
+            if (pushResponse.ok) {
+              const result = await pushResponse.json();
+              console.log('✅ Notification push envoyée aux livreurs:', result.sent, '/', result.total);
+            }
           } catch (error) {
-            console.error('❌ Erreur envoi notification livreur:', error);
+            console.error('❌ Erreur envoi notification push livreur:', error);
+          }
+          
+          // Aussi utiliser l'ancien système web-push si configuré
+          if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+            try {
+              await notifyDeliverySubscribers(supabaseAdmin, {
+                title: 'Nouvelle commande disponible',
+                body: `Commande #${order.id} - ${parseFloat(order.total || 0).toFixed(2)}€`,
+                data: {
+                  url: '/delivery/dashboard',
+                  orderId: order.id,
+                },
+              });
+            } catch (error) {
+              console.error('❌ Erreur envoi notification web-push livreur:', error);
+            }
           }
         }
 
@@ -373,6 +404,47 @@ export async function PUT(request, { params }) {
         if (status === 'pret_a_livrer' || readyForDelivery === true) {
           await sendOrderStatusEmail(orderForEmail, 'pret_a_livrer', clientInfo.email);
           console.log('📧 Email "commande prête" envoyé au client:', clientInfo.email);
+        }
+        
+        // Envoyer notification push FCM au client pour chaque changement de statut
+        try {
+          const statusMessages = {
+            'acceptee': { title: 'Commande acceptée ! 🎉', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été acceptée et sera préparée bientôt.` },
+            'en_preparation': { title: 'En préparation 👨‍🍳', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est en cours de préparation.` },
+            'pret_a_livrer': { title: 'Commande prête ! 📦', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est prête et sera livrée bientôt.` },
+            'en_livraison': { title: 'En livraison 🚚', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est en route vers vous !` },
+            'livree': { title: 'Commande livrée ! ✅', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été livrée. Bon appétit !` },
+            'refusee': { title: 'Commande refusée ❌', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été refusée.` },
+            'annulee': { title: 'Commande annulée ❌', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été annulée.` }
+          };
+          
+          const message = statusMessages[status];
+          if (message) {
+            const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: updatedOrder.user_id, // Envoyer au client spécifique
+                title: message.title,
+                body: message.body,
+                data: {
+                  type: 'order_status_update',
+                  orderId: updatedOrder.id,
+                  status: status,
+                  url: `/orders/${updatedOrder.id}`,
+                }
+              })
+            });
+            
+            if (pushResponse.ok) {
+              const result = await pushResponse.json();
+              console.log('✅ Notification push envoyée au client:', result.sent, '/', result.total);
+            }
+          }
+        } catch (pushError) {
+          console.warn('⚠️ Erreur notification push client:', pushError);
         }
       }
     } catch (notificationError) {

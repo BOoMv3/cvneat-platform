@@ -6,6 +6,7 @@ import FacebookPixel from '@/components/FacebookPixel';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import ChristmasTheme from '@/components/ChristmasTheme';
+import PushNotificationService from './components/PushNotificationService';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
 if (typeof window !== 'undefined') {
@@ -89,6 +90,45 @@ export default function RootLayout({ children }) {
   return (
     <html lang="fr" className="scroll-smooth">
       <head>
+        {/* Intercepteur fetch pour Capacitor - DOIT être chargé en premier */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  if (typeof window === 'undefined' || !window.location) return;
+                  var isCapacitor = window.location.protocol === 'capacitor:' || window.location.href.indexOf('capacitor://') === 0;
+                  if (!isCapacitor) return;
+                  var API_BASE_URL = 'https://cvneat.fr';
+                  var originalFetch = window.fetch;
+                  console.log('[API Interceptor] Intercepteur inline chargé !');
+                  window.fetch = function(input, init) {
+                    if (typeof input === 'string' && input.indexOf('/api/') === 0 && input.indexOf('http') !== 0) {
+                      var fullUrl = API_BASE_URL + input;
+                      console.log('[API Interceptor] Interception:', input, '→', fullUrl);
+                      var opts = init || {};
+                      var headers = opts.headers || {};
+                      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+                      headers['Accept'] = headers['Accept'] || 'application/json';
+                      opts.headers = headers;
+                      return originalFetch(fullUrl, opts).then(function(r) {
+                        console.log('[API Interceptor] Réponse:', r.status, fullUrl);
+                        return r;
+                      }).catch(function(e) {
+                        console.error('[API Interceptor] Erreur:', e.message);
+                        throw e;
+                      });
+                    }
+                    return originalFetch(input, init);
+                  };
+                  console.log('[API Interceptor] Fetch intercepté !');
+                } catch (e) {
+                  console.error('[API Interceptor] Erreur chargement:', e);
+                }
+              })();
+            `
+          }}
+        />
         {/* Manifest PWA */}
         <link rel="manifest" href="/manifest.json" />
         
@@ -139,6 +179,7 @@ export default function RootLayout({ children }) {
             </main>
             <Footer />
             <CookieBanner />
+            <PushNotificationService />
           </div>
         </ThemeProvider>
       </body>

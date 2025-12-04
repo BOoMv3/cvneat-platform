@@ -199,9 +199,9 @@ const formatStatusHoursLabel = (statusData, fallback) => {
   return fallback || null;
 };
 
-// Desactiver le rendu statique pour cette page
-export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
+// Runtime edge désactivé pour permettre l'export statique (mobile)
+// export const dynamic = 'force-dynamic';
+// export const runtime = 'edge';
 
 export default function Home() {
   const router = useRouter();
@@ -329,88 +329,303 @@ export default function Home() {
 
     const fetchRestaurants = async () => {
       try {
-        const response = await fetch('/api/restaurants');
-        const data = await response.json();
+        setLoading(true);
+        setError(null);
         
-        if (!response.ok) {
-          throw new Error(data.message || 'Erreur lors du chargement des restaurants');
+        // Détecter Capacitor
+        const isCapacitorApp = typeof window !== 'undefined' && 
+          (window.location?.protocol === 'capacitor:' || 
+           window.location?.href?.startsWith('capacitor://') ||
+           window.Capacitor !== undefined);
+        
+        console.log('[Restaurants] Détection Capacitor:', {
+          protocol: typeof window !== 'undefined' ? window.location?.protocol : 'N/A',
+          href: typeof window !== 'undefined' ? window.location?.href : 'N/A',
+          hasCapacitor: typeof window !== 'undefined' ? !!window.Capacitor : 'N/A',
+          isCapacitorApp
+        });
+        
+        let data;
+        
+        // Dans Capacitor, utiliser Supabase directement pour éviter les problèmes CORS
+        if (isCapacitorApp) {
+          console.log('[Restaurants] Mode Capacitor - Utilisation de Supabase directement');
+          console.log('[Restaurants] URL Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+          console.log('[Restaurants] Supabase client (import):', !!supabase);
+          console.log('[Restaurants] Supabase client (window):', !!(typeof window !== 'undefined' && window.supabase));
+          
+          // Utiliser window.supabase si disponible (initialisé dans layout.js), sinon utiliser l'import
+          const supabaseClient = (typeof window !== 'undefined' && window.supabase) || supabase;
+          
+          // Vérifier que Supabase est bien initialisé
+          if (!supabaseClient) {
+            console.error('[Restaurants] Supabase client non disponible');
+            throw new Error('Supabase client non initialisé');
+          }
+          
+          console.log('[Restaurants] Utilisation du client Supabase:', supabaseClient ? 'OK' : 'ERREUR');
+          
+          // Récupérer les restaurants depuis Supabase
+          console.log('[Restaurants] Début requête Supabase...');
+          const { data: restaurants, error: supabaseError } = await supabaseClient
+            .from('restaurants')
+            .select('*, frais_livraison');
+          
+          console.log('[Restaurants] Requête Supabase terminée');
+          console.log('[Restaurants] Résultat Supabase:', {
+            hasData: !!restaurants,
+            dataLength: restaurants?.length || 0,
+            hasError: !!supabaseError,
+            error: supabaseError
+          });
+          
+          if (supabaseError) {
+            console.error('[Restaurants] Erreur Supabase complète:', supabaseError);
+            console.error('[Restaurants] Code erreur:', supabaseError.code);
+            console.error('[Restaurants] Message erreur:', supabaseError.message);
+            console.error('[Restaurants] Détails erreur:', supabaseError.details);
+            console.error('[Restaurants] Hint erreur:', supabaseError.hint);
+            throw new Error(`Erreur Supabase: ${supabaseError.message || 'Erreur inconnue'}`);
+          }
+          
+          if (!restaurants || restaurants.length === 0) {
+            console.warn('[Restaurants] Aucun restaurant retourné par Supabase');
+            console.warn('[Restaurants] Vérifiez les permissions RLS sur la table restaurants');
+            setRestaurants([]);
+            setRestaurantsOpenStatus({});
+            setLoading(false);
+            return;
+          }
+          
+          console.log('[Restaurants] Restaurants récupérés:', restaurants.length);
+          
+          // Calculer les notes depuis les avis pour chaque restaurant
+          const restaurantsWithRatings = await Promise.all((restaurants || []).map(async (restaurant) => {
+            const { data: reviews } = await supabaseClient
+              .from('reviews')
+              .select('rating')
+              .eq('restaurant_id', restaurant.id);
+            
+            let calculatedRating = 0;
+            let reviewsCount = 0;
+            if (reviews && reviews.length > 0) {
+              const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
+              calculatedRating = Math.round((totalRating / reviews.length) * 10) / 10;
+              reviewsCount = reviews.length;
+            }
+            
+            return {
+              ...restaurant,
+              rating: calculatedRating || restaurant.rating || 0,
+              reviews_count: reviewsCount || restaurant.reviews_count || 0
+            };
+          }));
+          
+          data = restaurantsWithRatings;
+          console.log('[Restaurants] Restaurants récupérés depuis Supabase:', data.length);
+        } else {
+          // Sur le web, utiliser l'API Next.js
+          console.log('[Restaurants] Mode Web - Utilisation de l\'API Next.js');
+          
+          const response = await fetch('/api/restaurants', {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          console.log('[Restaurants] Réponse reçue:', {
+            ok: response.ok,
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url
+          });
+          
+          if (!response.ok) {
+            let errorData;
+            try {
+              errorData = await response.json();
+            } catch (e) {
+              errorData = { message: `Erreur ${response.status}: ${response.statusText}` };
+            }
+            const errorMessage = errorData.message || errorData.error || `Erreur ${response.status}: ${response.statusText}`;
+            console.error('[Restaurants] Erreur API:', errorMessage, errorData);
+            throw new Error(errorMessage);
+          }
+          
+          // Parser le JSON avec gestion d'erreur
+          try {
+            const text = await response.text();
+            console.log('[Restaurants] Réponse texte (premiers 200 caractères):', text.substring(0, 200));
+            data = JSON.parse(text);
+          } catch (parseError) {
+            console.error('[Restaurants] Erreur parsing JSON:', parseError);
+            throw new Error(`Erreur lors du parsing de la réponse JSON: ${parseError.message}`);
+          }
         }
+        
+        console.log('[Restaurants] Données parsées:', {
+          type: Array.isArray(data) ? 'array' : typeof data,
+          length: Array.isArray(data) ? data.length : 'N/A'
+        });
         
         if (!Array.isArray(data)) {
-          throw new Error('Format de donnees invalide');
+          console.error('[Restaurants] Format de données invalide:', typeof data, data);
+          throw new Error('Format de données invalide: la réponse n\'est pas un tableau');
         }
         
-        const normalizedRestaurants = data
-          .filter((restaurant) => {
+        if (data.length === 0) {
+          console.warn('[Restaurants] Aucun restaurant trouvé dans la réponse');
+          setRestaurants([]);
+          setRestaurantsOpenStatus({});
+          setLoading(false);
+          return;
+        }
+        
+        // Normaliser les restaurants avec gestion d'erreur pour chaque restaurant
+        const normalizedRestaurants = [];
+        for (const restaurant of data) {
+          try {
+            // Vérifier que le restaurant a au moins un nom
+            if (!restaurant || !restaurant.nom) {
+              console.warn('[Restaurants] Restaurant ignoré (pas de nom):', restaurant?.id);
+              continue;
+            }
+            
             const normalized = normalizeName(restaurant.nom);
-            return normalized && normalized !== '.';
-          })
-          .map((restaurant) => {
-          const primaryImage =
-            restaurant.profile_image ||
-            restaurant.image_url ||
-            restaurant.logo_image ||
-            restaurant.profileImage ||
-            restaurant.imageUrl;
+            if (!normalized || normalized === '.') {
+              console.warn('[Restaurants] Restaurant ignoré (nom invalide):', restaurant.nom);
+              continue;
+            }
+            
+            const primaryImage =
+              restaurant.profile_image ||
+              restaurant.image_url ||
+              restaurant.logo_image ||
+              restaurant.profileImage ||
+              restaurant.imageUrl;
 
-          const bannerImage =
-            restaurant.banner_image ||
-            restaurant.bannerImage ||
-            restaurant.cover_image ||
-            restaurant.banniere_image;
+            const bannerImage =
+              restaurant.banner_image ||
+              restaurant.bannerImage ||
+              restaurant.cover_image ||
+              restaurant.banniere_image;
 
-          const logoImage =
-            restaurant.logo_image ||
-            restaurant.logoImage ||
-            restaurant.profile_image ||
-            restaurant.profileImage;
+            const logoImage =
+              restaurant.logo_image ||
+              restaurant.logoImage ||
+              restaurant.profile_image ||
+              restaurant.profileImage;
 
-          const categoryTokens = getCategoryTokensForRestaurant(restaurant);
-          const todayHoursLabel = getTodayHoursLabel(restaurant);
+            let categoryTokens = [];
+            let todayHoursLabel = null;
+            
+            try {
+              categoryTokens = getCategoryTokensForRestaurant(restaurant);
+            } catch (e) {
+              console.warn('[Restaurants] Erreur getCategoryTokensForRestaurant:', e);
+            }
+            
+            try {
+              todayHoursLabel = getTodayHoursLabel(restaurant);
+            } catch (e) {
+              console.warn('[Restaurants] Erreur getTodayHoursLabel:', e);
+            }
 
-          return {
-            ...restaurant,
-            image_url: primaryImage,
-            banner_image: bannerImage,
-            logo_image: logoImage,
-            cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
-            category: restaurant.category || restaurant.categorie,
-            category_tokens: categoryTokens,
-            today_hours_label: todayHoursLabel
-          };
-        });
+            normalizedRestaurants.push({
+              ...restaurant,
+              image_url: primaryImage,
+              banner_image: bannerImage,
+              logo_image: logoImage,
+              cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
+              category: restaurant.category || restaurant.categorie,
+              category_tokens: categoryTokens,
+              today_hours_label: todayHoursLabel
+            });
+          } catch (restaurantError) {
+            console.error('[Restaurants] Erreur normalisation restaurant:', restaurantError, restaurant);
+            // Continuer avec les autres restaurants même si un échoue
+          }
+        }
 
+        console.log('[Restaurants] Restaurants normalisés:', normalizedRestaurants.length);
         setRestaurants(normalizedRestaurants);
         
         // Vérifier le statut d'ouverture pour chaque restaurant
         const openStatusMap = {};
+        const supabaseClientForHours = isCapacitorApp 
+          ? ((typeof window !== 'undefined' && window.supabase) || supabase)
+          : null;
+        
         await Promise.all(normalizedRestaurants.map(async (restaurant) => {
           try {
-            const statusResponse = await fetch(`/api/restaurants/${restaurant.id}/hours`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            });
-            if (statusResponse.ok) {
-              const statusData = await statusResponse.json();
-              // Utiliser une comparaison stricte === true pour éviter les cas undefined/null
-              const isOpen = statusData.isOpen === true;
-              const isManuallyClosed = statusData.is_manually_closed === true || statusData.reason === 'manual';
-              const hoursLabel = formatStatusHoursLabel(statusData, restaurant.today_hours_label) || restaurant.today_hours_label || 'Horaires non communiquées';
-              openStatusMap[restaurant.id] = {
-                isOpen,
-                isManuallyClosed,
-                hoursLabel
-              };
+            let statusData;
+            
+            if (isCapacitorApp && supabaseClientForHours) {
+              // Mode Capacitor - Utiliser Supabase directement
+              const { data: hoursData, error: hoursError } = await supabaseClientForHours
+                .from('restaurant_hours')
+                .select('*')
+                .eq('restaurant_id', restaurant.id)
+                .single();
+              
+              if (hoursError) {
+                console.warn(`[Restaurants] Erreur Supabase récupération horaires pour ${restaurant.id}:`, hoursError);
+                statusData = { isOpen: false, is_manually_closed: true, reason: 'supabase_error' };
+              } else {
+                // Simuler la logique de l'API /api/restaurants/[id]/hours
+                const now = new Date();
+                const dayOfWeek = now.getDay(); // 0 for Sunday, 1 for Monday, etc.
+                const currentTime = now.getHours() * 60 + now.getMinutes();
+                
+                let isOpen = false;
+                let isManuallyClosed = hoursData?.is_manually_closed || false;
+                let reason = hoursData?.reason || null;
+                let currentDayHours = hoursData?.hours?.find(h => h.day === dayOfWeek);
+                
+                if (isManuallyClosed) {
+                  isOpen = false;
+                  reason = 'manual';
+                } else if (currentDayHours && currentDayHours.periods) {
+                  for (const period of currentDayHours.periods) {
+                    const [startHour, startMinute] = period.open.time.split(':').map(Number);
+                    const [endHour, endMinute] = period.close.time.split(':').map(Number);
+                    const openTime = startHour * 60 + startMinute;
+                    const closeTime = endHour * 60 + endMinute;
+                    
+                    if (currentTime >= openTime && currentTime < closeTime) {
+                      isOpen = true;
+                      break;
+                    }
+                  }
+                }
+                statusData = { isOpen, is_manually_closed: isManuallyClosed, reason, hours: hoursData?.hours };
+              }
             } else {
-              // Si erreur, vérifier au moins ferme_manuellement
-              openStatusMap[restaurant.id] = {
-                isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
-                isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false,
-                hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
-              };
+              // Mode Web - Utilisation de l'API Next.js
+              const statusResponse = await fetch(`/api/restaurants/${restaurant.id}/hours`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+              });
+              if (statusResponse.ok) {
+                statusData = await statusResponse.json();
+              } else {
+                console.warn('⚠️ Erreur récupération statut (Web):', statusResponse.status, statusResponse.statusText);
+                statusData = { isOpen: false, is_manually_closed: restaurant.ferme_manuellement || restaurant.is_closed || false, reason: 'api_error' };
+              }
             }
+            
+            // Utiliser une comparaison stricte === true pour éviter les cas undefined/null
+            const isOpen = statusData.isOpen === true;
+            const isManuallyClosed = statusData.is_manually_closed === true || statusData.reason === 'manual';
+            const hoursLabel = formatStatusHoursLabel(statusData, restaurant.today_hours_label) || restaurant.today_hours_label || 'Horaires non communiquées';
+            openStatusMap[restaurant.id] = {
+              isOpen,
+              isManuallyClosed,
+              hoursLabel
+            };
           } catch (err) {
-            console.error(`Erreur vérification statut restaurant ${restaurant.id}:`, err);
+            console.error(`[Restaurants] Erreur vérification statut restaurant ${restaurant.id}:`, err);
             // Si erreur, considérer comme fermé par défaut sauf si pas de ferme_manuellement
             openStatusMap[restaurant.id] = {
               isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
@@ -420,9 +635,14 @@ export default function Home() {
           }
         }));
         setRestaurantsOpenStatus(openStatusMap);
+        console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
-        console.error('Erreur lors du chargement des restaurants:', error);
-        setError(error.message);
+        console.error('[Restaurants] Erreur lors du chargement des restaurants:', error);
+        console.error('[Restaurants] Stack trace:', error.stack);
+        const errorMessage = error.message || error.toString() || 'Erreur inconnue';
+        setError(`Erreur lors du chargement des restaurants: ${errorMessage}`);
+        setRestaurants([]);
+        setRestaurantsOpenStatus({});
       } finally {
         setLoading(false);
       }

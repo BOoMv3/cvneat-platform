@@ -49,10 +49,18 @@ function computeCartTotalWithExtras(items = []) {
     // IMPORTANT: Utiliser le prix DÉJÀ CALCULÉ (item.prix) qui contient tout
     // Le prix a déjà été calculé à l'ajout au panier avec calculateFinalPrice()
     // Ne PAS rajouter les suppléments/viandes/sauces car ils sont déjà inclus dans item.prix
-    const itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
+    let itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
     const itemQuantity = parseInt(item?.quantity ?? 1, 10);
     
-    console.log('💰 Article:', item.nom, 'Prix unitaire:', itemPrice, 'Quantité:', itemQuantity);
+    // IMPORTANT: Ajouter le prix de la boisson si présente (pour les menus)
+    // Les boissons des menus ne sont pas incluses dans item.prix, elles sont ajoutées séparément
+    if (item.selected_drink && item.selected_drink.prix) {
+      const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
+      itemPrice += drinkPrice;
+      console.log('💰 Boisson ajoutée au calcul:', item.selected_drink.nom || 'Boisson', drinkPrice, '€');
+    }
+    
+    console.log('💰 Article:', item.nom, 'Prix unitaire (avec boisson):', itemPrice, 'Quantité:', itemQuantity);
     
     const totalItemPrice = itemPrice * itemQuantity;
     return sum + totalItemPrice;

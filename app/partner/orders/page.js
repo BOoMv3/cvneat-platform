@@ -47,6 +47,31 @@ export default function PartnerOrders() {
   };
 
   const getSubtotal = (order) => {
+    // IMPORTANT: Toujours recalculer depuis details_commande pour garantir l'exactitude
+    // Ne pas utiliser order.total qui peut être incorrect pour les anciennes commandes
+    // prix_unitaire contient DÉJÀ les suppléments, ne pas les ajouter à nouveau
+    if (Array.isArray(order?.details_commande) && order.details_commande.length > 0) {
+      const calculated = order.details_commande.reduce((sum, detail) => {
+        // prix_unitaire contient déjà le prix de base + suppléments + viandes + sauces + taille
+        const prixUnitaire = Number(detail.prix_unitaire || 0);
+        const quantite = Number(detail.quantite || 1);
+        const totalItemPrice = prixUnitaire * quantite;
+        
+        console.log(`💰 Item: ${detail.menus?.nom || 'Sans nom'}, prix_unitaire: ${prixUnitaire}€, quantite: ${quantite}, total: ${totalItemPrice}€`);
+        
+        return sum + totalItemPrice;
+      }, 0);
+      
+      console.log(`💰 Commande ${order.id?.slice(0, 8)}: Total calculé = ${calculated}€, order.total = ${order.total}€`);
+      return calculated;
+    }
+    
+    // Fallback : utiliser order_items si disponible
+    if (Array.isArray(order?.order_items) && order.order_items.length > 0) {
+      return order.order_items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
+    }
+    
+    // Dernier fallback : utiliser subtotal ou total (mais ce n'est pas fiable)
     if (typeof order?.subtotal === 'number') return order.subtotal;
     if (typeof order?.total === 'number') return order.total;
     return Number(order?.total_amount ?? 0);

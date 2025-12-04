@@ -325,15 +325,19 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const handleAddToCart = () => {
     console.log('🛒 Ajout au panier démarré...', 'onClose:', typeof onClose);
     
-    // Pour les formules et menus, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
-    const isMenuOrFormula = item.is_formula || (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'));
+    // Pour les formules et menus UNIQUEMENT, vérifier qu'une boisson est sélectionnée si des boissons sont disponibles
+    // IMPORTANT: Seuls les menus (détectés par nom/catégorie) et les formules ont des boissons obligatoires
+    // Les sandwiches, burgers seuls n'ont PAS de boissons obligatoires
+    const isMenuOrFormula = item.is_formula || 
+                            (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'));
+    // Seulement pour les menus et formules, la boisson est obligatoire
     if (isMenuOrFormula && item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
       alert('Veuillez choisir une boisson');
       return;
     }
 
-    // Si c'est une formule ou un menu, vérifier les choix optionnels requis
-    if (item.is_formula || (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'))) {
+    // Si c'est une formule (pas juste un menu), vérifier les choix optionnels requis
+    if (item.is_formula) {
       // Vérifier si c'est le Menu Enfants et qu'un choix principal est requis
       const isMenuEnfants = item.nom?.toLowerCase().includes('enfant') || item.nom?.toLowerCase().includes('enfant');
       if (isMenuEnfants && (!selectedFormulaOptions['main_choice'] || Object.keys(selectedFormulaOptions).length === 0)) {
@@ -358,7 +362,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null,
         selected_formula_options: selectedFormulaOptions // Inclure les choix optionnels
       };
-      console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec options:', selectedFormulaOptions);
+      console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec boisson:', formulaItem.selected_drink?.nom || 'aucune', 'et options:', selectedFormulaOptions);
       onAddToCart(formulaItem, [], null, quantity);
       
       // Fermer la modal immédiatement après l'ajout (synchrone)
@@ -368,11 +372,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       return;
     }
 
-    // Pour les formules et menus, inclure la boisson sélectionnée
-    // Les plats normaux ne doivent pas avoir de sélection de boisson
-    if (isMenuOrFormula && item.drink_options && item.drink_options.length > 0 && selectedDrink) {
+    // Pour les menus (non-formules) UNIQUEMENT, inclure la boisson sélectionnée
+    // Les sandwiches, burgers seuls n'ont PAS de boisson
+    // isMenuOrFormula est déjà défini plus haut et ne détecte que les vrais menus (par nom/catégorie) et formules
+    if (isMenuOrFormula && !item.is_formula && item.drink_options && item.drink_options.length > 0 && selectedDrink) {
       const selectedDrinkData = item.drink_options.find(d => d.id === selectedDrink);
       item.selected_drink = selectedDrinkData;
+      console.log('✅ Menu ajouté avec boisson:', item.nom, 'boisson:', selectedDrinkData?.nom || 'non trouvée');
     }
 
     // Validation : vérifier si une sélection de viande est requise
@@ -418,6 +424,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     const customizedItem = {
       ...item,
       quantity: quantity, // Utiliser la quantité sélectionnée
+      selected_drink: item.selected_drink || (selectedDrink && item.drink_options ? item.drink_options.find(d => d.id === selectedDrink) : null), // S'assurer que selected_drink est inclus
       supplements: supplementsList,
       customizations: {
         selectedMeats: selectedMeatsList,
@@ -433,7 +440,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     };
     
     // Ajouter au panier
-    console.log('✅ Article ajouté:', customizedItem.nom);
+    console.log('✅ Article ajouté:', customizedItem.nom, 'avec boisson:', customizedItem.selected_drink?.nom || 'aucune');
     onAddToCart(customizedItem, supplementsList, null, quantity);
     
     // Fermer la modal immédiatement après l'ajout (synchrone)
@@ -618,8 +625,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             )}
 
             {/* Choix de boisson - VERSION COMPACTE */}
-            {/* IMPORTANT: Afficher la sélection de boisson pour les formules ET les menus avec drink_options */}
-            {/* Un menu est identifié par: is_formula=true OU (category contient "menu" OU nom contient "menu") ET drink_options existe */}
+            {/* IMPORTANT: Afficher la sélection de boisson UNIQUEMENT pour les formules ET les menus (détectés par nom/catégorie) */}
+            {/* Un menu est identifié par: is_formula=true OU (category contient "menu" OU nom contient "menu") */}
+            {/* Les sandwiches et burgers seuls n'affichent PAS la sélection de boisson */}
             {((item.is_formula) || (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'))) && item.drink_options && item.drink_options.length > 0 && (
               <div className="mb-3">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center">

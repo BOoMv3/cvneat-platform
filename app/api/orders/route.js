@@ -826,6 +826,14 @@ export async function POST(request) {
       const isCombo = isComboItem(item);
       const isFormula = item.is_formula === true;
       const quantity = parseInt(item?.quantity || 1, 10);
+      
+      // Log pour déboguer les boissons
+      console.log(`📦 Traitement item: ${item.nom || 'Sans nom'}`, {
+        isFormula,
+        hasSelectedDrink: !!item.selected_drink,
+        selectedDrink: item.selected_drink?.nom || item.selected_drink?.name || null,
+        drinkOptions: item.drink_options?.length || 0
+      });
 
       // CORRECTION FORMULES: Gérer les formules avec OU sans formula_items
       if (isFormula) {
@@ -1075,6 +1083,8 @@ export async function POST(request) {
 
       // IMPORTANT: Ajouter la boisson sélectionnée pour les menus (non-formules) avec drink_options
       // Les formules sont déjà gérées plus haut, mais les menus normaux ont aussi besoin de leurs boissons
+      // Détecter aussi les items avec drink_options même sans "menu" dans le nom
+      const hasDrinkOptions = item.drink_options && Array.isArray(item.drink_options) && item.drink_options.length > 0;
       if (!isFormula && item.selected_drink) {
         const drinkId = item.selected_drink.id || item.selected_drink.menu_id;
         if (drinkId) {
@@ -1092,10 +1102,12 @@ export async function POST(request) {
             }
           };
           orderDetailsPayload.push(drinkDetail);
-          console.log(`🥤 Boisson ajoutée au menu: ${item.selected_drink.nom || drinkId}`);
+          console.log(`🥤 Boisson ajoutée au menu "${item.nom || 'Sans nom'}": ${item.selected_drink.nom || drinkId}`);
         } else {
           console.warn('⚠️ Boisson sélectionnée pour menu mais sans ID:', item.selected_drink);
         }
+      } else if (!isFormula && hasDrinkOptions && !item.selected_drink) {
+        console.warn(`⚠️ Menu "${item.nom || 'Sans nom'}" a des drink_options mais aucune boisson sélectionnée`);
       }
     }
 
@@ -1164,9 +1176,42 @@ export async function POST(request) {
 
     console.log(`✅ ${insertedDetails.length} détails de commande créés avec succès pour commande ${order.id?.slice(0, 8)}`);
 
+    // IMPORTANT: Recalculer le sous-total réel depuis les détails créés pour inclure TOUT (boissons, suppléments, etc.)
+    // Le total initial peut ne pas inclure les boissons des menus qui sont ajoutées séparément
+    let calculatedSubtotal = 0;
+    if (insertedDetails && insertedDetails.length > 0) {
+      calculatedSubtotal = insertedDetails.reduce((sum, detail) => {
+        const prixUnitaire = parseFloat(detail.prix_unitaire || 0) || 0;
+        const quantite = parseFloat(detail.quantite || 1) || 0;
+        return sum + (prixUnitaire * quantite);
+      }, 0);
+      // Arrondir à 2 décimales pour éviter les erreurs d'arrondi
+      calculatedSubtotal = Math.round(calculatedSubtotal * 100) / 100;
+      console.log(`💰 Sous-total recalculé depuis détails: ${calculatedSubtotal}€ (initial: ${total}€)`);
+    } else {
+      // Fallback : utiliser le total initial si pas de détails (ne devrait pas arriver)
+      calculatedSubtotal = parseFloat(total) || 0;
+      console.warn('⚠️ Pas de détails pour recalculer, utilisation du total initial');
+    }
+
+    // Mettre à jour le total dans la commande si le sous-total recalculé est différent
+    if (Math.abs(calculatedSubtotal - parseFloat(total || 0)) > 0.01) {
+      console.log(`⚠️ Correction du total: ${total}€ → ${calculatedSubtotal}€`);
+      const { error: updateError } = await serviceClient
+        .from('commandes')
+        .update({ total: calculatedSubtotal })
+        .eq('id', order.id);
+      
+      if (updateError) {
+        console.error('❌ Erreur mise à jour total:', updateError);
+      } else {
+        console.log('✅ Total corrigé dans la commande');
+      }
+    }
+
     console.log('🎯 RETOUR DE LA RÉPONSE - Commande créée avec statut:', order.statut);
     
-    const subtotalValue = parseFloat(total) || 0;
+    const subtotalValue = calculatedSubtotal; // Utiliser le sous-total recalculé
     const deliveryFeeValue = parseFloat(fraisLivraison) || 0;
     const totalWithDelivery = subtotalValue + deliveryFeeValue;
 
@@ -1182,7 +1227,9 @@ export async function POST(request) {
       debug: {
         orderCreatedAt: order.created_at,
         orderStatus: order.statut,
-        orderId: order.id
+        orderId: order.id,
+        calculatedSubtotal: subtotalValue,
+        originalSubtotal: parseFloat(total || 0)
       }
     });
 

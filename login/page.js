@@ -43,8 +43,25 @@ export default function Login() {
 
       if (data.user) {
         console.log('Connexion réussie:', data.user);
-        // Redirection vers la page demandée ou la page d'accueil
-        router.push(redirect);
+        
+        // Récupérer le rôle de l'utilisateur pour rediriger correctement
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        // Rediriger selon le rôle
+        if (userData?.role === 'admin') {
+          router.push('/admin');
+        } else if (userData?.role === 'delivery') {
+          router.push('/delivery');
+        } else if (userData?.role === 'restaurant') {
+          router.push('/partner');
+        } else {
+          // Pour les clients, rediriger vers la page demandée ou la page d'accueil
+          router.push(redirect);
+        }
       }
 
     } catch (error) {

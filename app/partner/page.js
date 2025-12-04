@@ -844,14 +844,36 @@ export default function PartnerDashboard() {
   };
 
   const getSubtotal = (order) => {
-    if (typeof order?.subtotal === 'number') return order.subtotal;
-    if (typeof order?.total === 'number') return order.total;
+    // IMPORTANT: Toujours recalculer depuis details_commande pour garantir l'exactitude
+    // Ne pas utiliser order.total qui peut être incorrect pour les anciennes commandes
+    // IMPORTANT: prix_unitaire contient DÉJÀ les suppléments, ne pas les ajouter à nouveau
+    if (Array.isArray(order?.details_commande) && order.details_commande.length > 0) {
+      const calculated = order.details_commande.reduce((sum, detail) => {
+        // prix_unitaire contient déjà le prix de base + suppléments + viandes + sauces + taille
+        const prixUnitaire = Number(detail.prix_unitaire || 0);
+        const quantite = Number(detail.quantite || 1);
+        
+        // Calculer le total pour cet item
+        const totalItemPrice = prixUnitaire * quantite;
+        
+        // Log pour déboguer
+        console.log(`💰 Item: ${detail.menus?.nom || 'Sans nom'}, prix_unitaire: ${prixUnitaire}€, quantite: ${quantite}, total: ${totalItemPrice}€`);
+        
+        return sum + totalItemPrice;
+      }, 0);
+      
+      console.log(`💰 Commande ${order.id?.slice(0, 8)}: Total calculé = ${calculated}€, order.total = ${order.total}€`);
+      return calculated;
+    }
+    
+    // Fallback : utiliser order_items si disponible
     if (Array.isArray(order?.order_items) && order.order_items.length > 0) {
       return order.order_items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
     }
-    if (Array.isArray(order?.details_commande)) {
-      return order.details_commande.reduce((sum, detail) => sum + (Number(detail.prix_unitaire || 0) * Number(detail.quantite || 0)), 0);
-    }
+    
+    // Dernier fallback : utiliser subtotal ou total (mais ce n'est pas fiable)
+    if (typeof order?.subtotal === 'number') return order.subtotal;
+    if (typeof order?.total === 'number') return order.total;
     return Number(order?.total_amount ?? 0);
   };
 
@@ -1036,7 +1058,7 @@ export default function PartnerDashboard() {
         if (order.statut === 'livree') {
           // order.total contient UNIQUEMENT le montant des articles (sans frais de livraison)
           // Les frais de livraison ne font pas partie du chiffre d'affaires du restaurant
-          const amount = parseFloat(order.total || 0) || 0;
+          const amount = getSubtotal(order); // Recalculé depuis details_commande
           return sum + amount;
         }
         return sum;
@@ -1047,7 +1069,7 @@ export default function PartnerDashboard() {
         if (!order) return sum;
         // Compter uniquement les commandes livrées aujourd'hui
         if (order.statut === 'livree') {
-          const amount = parseFloat(order.total || 0) || 0;
+          const amount = getSubtotal(order); // Recalculé depuis details_commande
           return sum + amount;
         }
         return sum;
@@ -1959,7 +1981,7 @@ export default function PartnerDashboard() {
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">Commande #{order.id}</p>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {(parseFloat(order.total || 0) || 0).toFixed(2)} €
+                            {getSubtotal(order).toFixed(2)} €
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -2170,13 +2192,25 @@ export default function PartnerDashboard() {
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
                     {orders.map((order) => {
-                      // Récupérer total (colonne réelle dans la base) avec fallback, puis 0
-                      // IMPORTANT : order.total contient UNIQUEMENT le montant des articles (sans frais de livraison)
-                      // Les frais de livraison ne font PAS partie du chiffre d'affaires du restaurant
-                      const totalAmount = parseFloat(order.total || 0) || 0;
+                      // IMPORTANT: Utiliser getSubtotal() qui recalcule depuis details_commande
+                      // Ne pas utiliser order.total qui peut être incorrect pour les anciennes commandes
+                      // getSubtotal() inclut correctement les suppléments, boissons, etc.
+                      const totalAmount = getSubtotal(order); // Recalculé depuis details_commande
                       const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
                       // Ne PAS ajouter les frais de livraison pour l'affichage côté restaurant
                       // Le total affiché est uniquement le montant des articles
+                      
+                      // Log pour déboguer si le total diffère
+                      const storedTotal = parseFloat(order.total || 0);
+                      if (Math.abs(totalAmount - storedTotal) > 0.01) {
+                        console.warn(`⚠️ Commande ${order.id?.slice(0, 8)}: Total stocké (${storedTotal}€) ≠ Total calculé (${totalAmount}€)`);
+                        console.warn(`   Détails:`, order.details_commande?.map(d => ({
+                          nom: d.menus?.nom,
+                          prix_unitaire: d.prix_unitaire,
+                          quantite: d.quantite,
+                          total: d.prix_unitaire * d.quantite
+                        })));
+                      }
                       
                       const { commission, restaurantRevenue } = calculateCommission(totalAmount);
                       
