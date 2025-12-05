@@ -421,9 +421,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec boisson:', formulaItem.selected_drink?.nom || 'aucune', 'options:', selectedFormulaOptions, 'customizations:', formulaItem.customizations);
       onAddToCart(formulaItem, supplementsList, null, quantity);
       
-      // Fermer la modal immédiatement après l'ajout (synchrone)
+      // Fermer la modal immédiatement après l'ajout
+      console.log('🔒 Fermeture de la modal (formule)...');
       if (typeof onClose === 'function') {
         onClose();
+      } else {
+        console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
       }
       return;
     }
@@ -503,9 +506,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     console.log('✅ Article ajouté:', customizedItem.nom, 'avec boisson:', customizedItem.selected_drink?.nom || 'aucune');
     onAddToCart(customizedItem, supplementsList, null, quantity);
     
-    // Fermer la modal immédiatement après l'ajout (synchrone)
+    // Fermer la modal immédiatement après l'ajout
+    console.log('🔒 Fermeture de la modal...');
     if (typeof onClose === 'function') {
       onClose();
+    } else {
+      console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
     }
   };
 

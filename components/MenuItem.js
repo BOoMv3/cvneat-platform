@@ -75,9 +75,11 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
     setIsModalOpen(true);
   };
 
-  const handleModalAddToCart = (customizedItem) => {
-    onAddToCart(customizedItem);
-    setIsModalOpen(false);
+  const handleModalAddToCart = (customizedItem, supplements = [], size = null, quantity = 1) => {
+    // Ajouter au panier
+    onAddToCart(customizedItem, supplements, size, quantity);
+    // La modal sera fermée par MenuItemModal après l'ajout
+    // Pas besoin de fermer ici car onClose est déjà appelé dans MenuItemModal
   };
 
   return (
@@ -191,7 +193,10 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
       <MenuItemModal
         item={item}
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          console.log('🔒 MenuItem: Fermeture de la modal demandée');
+          setIsModalOpen(false);
+        }}
         onAddToCart={handleModalAddToCart}
         restaurantId={restaurantId}
       />
