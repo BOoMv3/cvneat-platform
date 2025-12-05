@@ -9,8 +9,16 @@ import ChristmasTheme from '@/components/ChristmasTheme';
 import PushNotificationService from './components/PushNotificationService';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
+// IMPORTANT: Charger APRÈS Supabase pour éviter les conflits
 if (typeof window !== 'undefined') {
-  require('../lib/fetch-interceptor');
+  // Attendre que Supabase soit chargé avant d'intercepter
+  setTimeout(() => {
+    try {
+      require('../lib/fetch-interceptor');
+    } catch (e) {
+      console.warn('Intercepteur fetch non chargé:', e);
+    }
+  }, 0);
 }
 
 const inter = Inter({ subsets: ['latin'] });
