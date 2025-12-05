@@ -206,7 +206,7 @@ export default function RestaurantOrders() {
           
           // Forcer l'alerte sonore pour les nouvelles commandes (important pour la visibilité)
           // Le son est nécessaire pour que le partenaire voie les nouvelles commandes
-          playNotificationSound();
+          playNotificationSound().catch(err => console.warn('Erreur son nouvelle commande:', err));
           
           // Notification du navigateur
           if (Notification.permission === 'granted') {
