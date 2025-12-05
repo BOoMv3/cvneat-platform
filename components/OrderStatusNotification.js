@@ -185,43 +185,6 @@ export default function OrderStatusNotification({ orderId }) {
         </div>
       )}
 
-      {/* Widget de statut permanent */}
-      <div className="fixed bottom-4 right-4 z-40">
-        <div className="bg-white p-4 rounded-lg shadow-lg border max-w-sm">
-          <div className="flex items-center space-x-3 mb-2">
-            {getStatusIcon(order.statut)}
-            <div>
-              <h4 className="font-semibold text-sm">Commande #{order.id}</h4>
-              <p className="text-xs text-gray-600">
-                {new Date(order.created_at).toLocaleString('fr-FR')}
-              </p>
-            </div>
-          </div>
-          
-          <div className="text-sm">
-            <p className={getStatusColor(order.statut).split(' ')[2]}>
-              {getStatusMessage(order.statut, order.rejection_reason)}
-            </p>
-            
-            {(order.statut === 'en_preparation' || order.statut === 'preparing') && order.preparation_time && (
-              <p className="text-xs text-gray-600 mt-1">
-                ⏱️ Temps estimé: {order.preparation_time} minutes
-              </p>
-            )}
-            
-            {(order.statut === 'refusee' || order.statut === 'rejected') && order.refund_amount && (
-              <div className="mt-2 p-2 bg-red-50 rounded text-xs">
-                <p className="text-red-800">
-                  💰 Remboursement de {order.refund_amount}€ en cours...
-                </p>
-                <p className="text-red-600 mt-1">
-                  Vous recevrez un email de confirmation sous 24h.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
     </>
   );
 }
