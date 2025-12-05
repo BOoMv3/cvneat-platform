@@ -1254,6 +1254,30 @@ export default function RestaurantDetail({ params }) {
             </button>
           </div>
         )}
+
+        {/* Panier flottant PC - Toujours visible en bas à droite */}
+        {cart.length > 0 && (
+          <div className="hidden lg:flex fixed bottom-6 right-6 z-50">
+            <button
+              type="button"
+              onClick={() => setShowCartModal(true)}
+              className="flex items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-4 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300 min-w-[280px]"
+            >
+              <div className="flex flex-col text-left">
+                <span className="text-xs uppercase tracking-wide opacity-90 font-medium">Panier</span>
+                <span className="text-lg font-bold">
+                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)} article{cart.reduce((sum, item) => sum + (item.quantity || 1), 0) > 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-2xl font-bold">
+                  {(deliveryFee !== null ? getTotal() : getSubtotal()).toFixed(2)}€
+                </span>
+                <FaShoppingCart className="h-5 w-5 mt-1" />
+              </div>
+            </button>
+          </div>
+        )}
         {/* Modal panier */}
         {showComboModal && activeCombo && (
           <Modal onClose={closeComboModal}>

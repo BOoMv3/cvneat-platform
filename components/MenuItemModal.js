@@ -18,15 +18,21 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [sauceOptions, setSauceOptions] = useState([]); // Options de sauce depuis la base de données
   const [baseIngredients, setBaseIngredients] = useState([]); // Ingrédients de base depuis la base de données
   const [loading, setLoading] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(isOpen); // State interne pour forcer la fermeture
+
+  // Synchroniser le state interne avec la prop isOpen
+  useEffect(() => {
+    setInternalIsOpen(isOpen);
+  }, [isOpen]);
 
   // DEBUG: Vérifier que onClose est bien une fonction
   useEffect(() => {
-    console.log('🔍 MenuItemModal - onClose type:', typeof onClose, 'isOpen:', isOpen);
-  }, [onClose, isOpen]);
+    console.log('🔍 MenuItemModal - onClose type:', typeof onClose, 'isOpen:', isOpen, 'internalIsOpen:', internalIsOpen);
+  }, [onClose, isOpen, internalIsOpen]);
 
   // Réinitialiser les états quand la modal se ferme
   useEffect(() => {
-    if (!isOpen) {
+    if (!internalIsOpen) {
       setQuantity(1);
       setSelectedIngredients(new Set());
       setRemovedIngredients(new Set());
@@ -36,11 +42,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       setSelectedFormulaOptions({});
       setSupplements([]);
     }
-  }, [isOpen]);
+  }, [internalIsOpen]);
 
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
-    if (isOpen) {
+    if (internalIsOpen) {
       // Pour les formules, récupérer les ingrédients depuis le premier item de la formule (généralement le burger)
       let sourceItem = item;
       if (item.is_formula && item.formula_items && item.formula_items.length > 0) {
@@ -423,6 +429,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       
       // Fermer la modal immédiatement après l'ajout
       console.log('🔒 Fermeture de la modal (formule)...');
+      setInternalIsOpen(false); // Forcer la fermeture interne
       if (typeof onClose === 'function') {
         onClose();
       } else {
@@ -508,6 +515,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     
     // Fermer la modal immédiatement après l'ajout
     console.log('🔒 Fermeture de la modal...');
+    setInternalIsOpen(false); // Forcer la fermeture interne
     if (typeof onClose === 'function') {
       onClose();
     } else {
@@ -521,7 +529,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   useEffect(() => {
     setMounted(true);
     // Empêcher le scroll du body quand la modal est ouverte
-    if (isOpen) {
+    if (internalIsOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -529,16 +537,19 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [internalIsOpen]);
 
-  if (!isOpen || !mounted || typeof window === 'undefined') return null;
+  if (!internalIsOpen || !mounted || typeof window === 'undefined') return null;
 
   const modalContent = (
     <>
       {/* OVERLAY */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 z-50"
-        onClick={onClose}
+        onClick={() => {
+          setInternalIsOpen(false);
+          if (typeof onClose === 'function') onClose();
+        }}
       />
       
       {/* MODAL - VERSION MINUSCULE */}
@@ -556,7 +567,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate flex-1">{item.nom}</h3>
           <button
-            onClick={onClose}
+            onClick={() => {
+              setInternalIsOpen(false);
+              if (typeof onClose === 'function') onClose();
+            }}
             className="ml-3 p-1.5 hover:bg-gray-100 rounded-full flex-shrink-0"
           >
             <FaTimes className="w-4 h-4 text-gray-600" />
