@@ -61,7 +61,7 @@ export default function RestaurantOrders() {
       // Jouer un son discret pour indiquer le rafraîchissement (si audio activé)
       // Utiliser la ref pour accéder à la valeur actuelle
       if (audioEnabledRef.current) {
-        playNotificationSound();
+        playNotificationSound().catch(err => console.warn('Erreur son rafraîchissement:', err));
       }
     }, 15000);
     
@@ -141,9 +141,19 @@ export default function RestaurantOrders() {
   }, [selectedOrder, formulaItemsCache]);
 
   // Fonction pour jouer un son de notification
-  const playNotificationSound = () => {
+  const playNotificationSound = async () => {
+    if (!audioEnabledRef.current) {
+      return;
+    }
+    
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // IMPORTANT: Résumer l'AudioContext s'il est suspendu (requis par les navigateurs modernes)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
@@ -226,7 +236,7 @@ export default function RestaurantOrders() {
           fetchOrders();
           // Jouer un son discret pour les mises à jour importantes (si audio activé)
           if (audioEnabled && (payload.new.statut === 'en_preparation' || payload.new.statut === 'pret_a_livrer')) {
-            playNotificationSound();
+            playNotificationSound().catch(err => console.warn('Erreur son mise à jour:', err));
           }
         }
       )
