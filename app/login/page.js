@@ -21,12 +21,15 @@ export default function LoginPage() {
     setError('');
 
     try {
+      console.log('🔐 Tentative de connexion pour:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: email.trim(),
+        password: password,
       });
 
       if (error) {
+        console.error('❌ Erreur de connexion:', error);
         // Traduire les messages d'erreur en français
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
@@ -37,33 +40,64 @@ export default function LoginPage() {
           errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
         } else if (error.message.includes('User not found')) {
           errorMessage = 'Aucun compte trouvé avec cet email';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('load failed')) {
+          errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
         }
         setError(errorMessage);
+        setLoading(false);
         return;
       }
 
-      if (data.user) {
+      if (data?.user) {
+        console.log('✅ Connexion réussie, utilisateur:', data.user.id);
+        
         // Rediriger selon le rôle
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', data.user.id)
+            .single();
 
-        if (userData?.role === 'admin') {
-          router.push('/admin');
-        } else if (userData?.role === 'delivery') {
-          router.push('/delivery');
-        } else if (userData?.role === 'restaurant') {
-          router.push('/partner');
-        } else {
-          // Pour les clients, rediriger vers la page d'accueil (ou maintenance si activée)
+          if (userError) {
+            console.warn('⚠️ Erreur récupération rôle:', userError);
+            // Continuer quand même, rediriger vers la page d'accueil
+            router.push('/');
+            return;
+          }
+
+          console.log('✅ Rôle utilisateur:', userData?.role);
+
+          if (userData?.role === 'admin') {
+            router.push('/admin');
+          } else if (userData?.role === 'delivery') {
+            router.push('/delivery');
+          } else if (userData?.role === 'restaurant') {
+            router.push('/partner');
+          } else {
+            // Pour les clients, rediriger vers la page d'accueil
+            router.push('/');
+          }
+        } catch (userError) {
+          console.error('❌ Erreur récupération utilisateur:', userError);
+          // Rediriger vers la page d'accueil en cas d'erreur
           router.push('/');
         }
+      } else {
+        setError('Erreur: Aucune donnée utilisateur reçue');
+        setLoading(false);
       }
     } catch (error) {
-      setError('Erreur de connexion');
-    } finally {
+      console.error('❌ Erreur inattendue lors de la connexion:', error);
+      let errorMessage = 'Erreur de connexion';
+      
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('load failed')) {
+        errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
+      } else if (error.message) {
+        errorMessage = `Erreur: ${error.message}`;
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
