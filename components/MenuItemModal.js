@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { FaPlus, FaMinus, FaTimes, FaShoppingCart, FaLeaf, FaUtensils, FaFlask } from 'react-icons/fa';
@@ -23,12 +24,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   // Synchroniser le state interne avec la prop isOpen uniquement quand isOpen devient true
   // Ne pas synchroniser quand isOpen devient false pour éviter de rouvrir après fermeture manuelle
   useEffect(() => {
-    if (isOpen) {
-      // Si la modal est ouverte depuis l'extérieur, on synchronise
+    if (isOpen && !manuallyClosed) {
+      // Si la modal est ouverte depuis l'extérieur et qu'on ne l'a pas fermée manuellement, on synchronise
       setInternalIsOpen(true);
+      setManuallyClosed(false); // Réinitialiser le flag
     }
     // On ne synchronise pas quand isOpen devient false pour préserver la fermeture manuelle
-  }, [isOpen]);
+  }, [isOpen, manuallyClosed]);
 
   // DEBUG: Vérifier que onClose est bien une fonction
   useEffect(() => {
@@ -433,15 +435,26 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       
       // Fermer la modal IMMÉDIATEMENT et de manière synchrone
       console.log('🔒 Fermeture de la modal (formule)...');
-      setInternalIsOpen(false); // Forcer la fermeture interne immédiatement
+      
+      // Marquer comme fermé manuellement AVANT de fermer
+      setManuallyClosed(true);
+      
+      // Utiliser flushSync pour forcer une mise à jour synchrone
+      flushSync(() => {
+        setInternalIsOpen(false);
+      });
+      
+      // Appeler onClose pour mettre à jour le state parent
       if (typeof onClose === 'function') {
-        onClose(); // Appeler onClose pour mettre à jour le state parent
+        onClose();
       } else {
         console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
       }
       
-      // Ajouter au panier immédiatement (pas besoin de délai)
-      onAddToCart(formulaItem, supplementsList, null, quantity);
+      // Ajouter au panier après un petit délai pour s'assurer que la modal est fermée
+      setTimeout(() => {
+        onAddToCart(formulaItem, supplementsList, null, quantity);
+      }, 0);
       return;
     }
 
@@ -518,16 +531,27 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     
     // Fermer la modal IMMÉDIATEMENT et de manière synchrone
     console.log('🔒 Fermeture de la modal...');
-    setInternalIsOpen(false); // Forcer la fermeture interne immédiatement
+    
+    // Marquer comme fermé manuellement AVANT de fermer
+    setManuallyClosed(true);
+    
+    // Utiliser flushSync pour forcer une mise à jour synchrone
+    flushSync(() => {
+      setInternalIsOpen(false);
+    });
+    
+    // Appeler onClose pour mettre à jour le state parent
     if (typeof onClose === 'function') {
-      onClose(); // Appeler onClose pour mettre à jour le state parent
+      onClose();
     } else {
       console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
     }
     
-    // Ajouter au panier immédiatement (pas besoin de délai)
+    // Ajouter au panier après un petit délai pour s'assurer que la modal est fermée
     console.log('✅ Article ajouté:', customizedItem.nom, 'avec boisson:', customizedItem.selected_drink?.nom || 'aucune');
-    onAddToCart(customizedItem, supplementsList, null, quantity);
+    setTimeout(() => {
+      onAddToCart(customizedItem, supplementsList, null, quantity);
+    }, 0);
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body

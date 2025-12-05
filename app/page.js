@@ -848,7 +848,7 @@ export default function Home() {
         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 z-20">
           <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
             <div className="relative">
-              <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-2xl transform rotate-3 hover:rotate-0 hover:scale-110 transition-all duration-300 hover:shadow-orange-500/50">
                 <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 bg-white rounded-lg flex items-center justify-center">
                   <FaUtensils className="h-2.5 w-2.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-orange-600" />
                 </div>
@@ -857,7 +857,7 @@ export default function Home() {
               <div className="absolute -bottom-0.5 -left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border-1.5 sm:border-2 border-white"></div>
             </div>
             <div className="flex flex-col">
-              <span className="text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent tracking-tight leading-tight">
+              <span className="text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent tracking-tight leading-tight drop-shadow-lg animate-pulse">
                 CVN'EAT
               </span>
               <span className="text-[10px] sm:text-xs text-gray-300 -mt-0.5 sm:-mt-1 font-medium hidden sm:block">Excellence culinaire</span>
@@ -1052,8 +1052,12 @@ export default function Home() {
                     isSelected ? 'scale-105 shadow-2xl' : 'hover:scale-105 hover:shadow-xl'
                   }`}
                 >
-                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${category.color} ${isSelected ? 'opacity-100' : 'opacity-85 group-hover:opacity-100'} transition-opacity`} />
-                  <div className={`absolute inset-0 rounded-3xl border-2 ${isSelected ? 'border-white/70' : 'border-white/30 group-hover:border-white/50'} transition-colors`} />
+                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${category.color} ${isSelected ? 'opacity-100 shadow-2xl' : 'opacity-85 group-hover:opacity-100 group-hover:shadow-xl'} transition-all duration-300`} />
+                  <div className={`absolute inset-0 rounded-3xl border-2 ${isSelected ? 'border-white/80 shadow-inner' : 'border-white/30 group-hover:border-white/60'} transition-all duration-300`} />
+                  {/* Effet de brillance au hover */}
+                  {!isSelected && (
+                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 opacity-0 group-hover:opacity-100"></div>
+                  )}
                   <div className="relative h-full w-full p-3 sm:p-4 flex flex-col justify-between text-left text-white">
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center shadow-md">
                       <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1080,12 +1084,12 @@ export default function Home() {
         <section className="mb-12">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Restaurants populaires</h2>
-              <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">Découvrez les meilleurs restaurants de votre région</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent mb-2">Restaurants populaires</h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base font-medium">Découvrez les meilleurs restaurants de votre région</p>
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-2xl hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-lg transition-all duration-200 text-sm sm:text-base font-semibold min-h-[48px] sm:min-h-[52px] touch-manipulation active:scale-95"
+              className="flex items-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-2xl hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-xl hover:shadow-orange-500/20 hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base font-bold min-h-[48px] sm:min-h-[52px] touch-manipulation active:scale-95"
             >
               <FaFilter className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span className="font-semibold">Filtres</span>
@@ -1151,7 +1155,7 @@ export default function Home() {
                   className={`group transform transition-all duration-300 ${isClosed ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'}`}
                   onClick={() => !isClosed && handleRestaurantClick(restaurant)}
                 >
-                  <div className={`bg-white rounded-3xl shadow-lg transition-all duration-300 overflow-hidden border ${isClosed ? 'border-gray-300' : 'border-gray-100 hover:shadow-2xl'}`}>
+                  <div className={`bg-white dark:bg-gray-800 rounded-3xl shadow-xl transition-all duration-500 overflow-hidden border-2 ${isClosed ? 'border-gray-300 dark:border-gray-600' : 'border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-1'}`}>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
                       {/* Image du restaurant - Optimisé mobile */}
                       <div className="relative sm:col-span-1 overflow-hidden h-48 sm:h-56 md:h-64 lg:h-72">
@@ -1164,8 +1168,12 @@ export default function Home() {
                           />
                         </div>
                         
-                        {/* Overlay */}
-                        <div className={`absolute inset-0 ${isClosed ? 'bg-gradient-to-t from-black/70 via-black/40 to-transparent' : 'bg-gradient-to-t from-black/60 via-transparent to-transparent'} z-0`}></div>
+                        {/* Overlay avec effet de brillance */}
+                        <div className={`absolute inset-0 ${isClosed ? 'bg-gradient-to-t from-black/70 via-black/40 to-transparent' : 'bg-gradient-to-t from-black/60 via-transparent to-transparent group-hover:from-black/50 group-hover:via-black/20 group-hover:to-transparent'} z-0 transition-all duration-500`}></div>
+                        {/* Effet de lumière au hover */}
+                        {!isClosed && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 z-10"></div>
+                        )}
                         
                         {/* Badges - Optimisé mobile */}
                         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 flex flex-col space-y-1.5 sm:space-y-2 z-20">
@@ -1175,12 +1183,12 @@ export default function Home() {
                             </span>
                           )}
                           {!isClosed && restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
-                            <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg">
+                            <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-sm border border-white/30 animate-pulse">
                               ⭐ Sponsorisé
                             </span>
                           )}
                           {!isClosed && favorites.includes(restaurant.id) && (
-                            <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg">
+                            <span className="bg-gradient-to-r from-red-500 via-pink-500 to-red-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-sm border border-white/30">
                               ❤️ Favori
                             </span>
                           )}
@@ -1199,8 +1207,8 @@ export default function Home() {
                           </button>
                         )}
                         
-                        {/* Temps de livraison - Optimisé mobile */}
-                        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/90 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg shadow-lg z-20">
+                        {/* Temps de livraison - Optimisé mobile avec glassmorphism */}
+                        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-xl border border-white/20 dark:border-gray-700/50 z-20 group-hover:bg-white dark:group-hover:bg-gray-900 transition-all duration-300">
                           <div className="flex flex-col">
                             <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
                               <FaClock className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-gray-600 flex-shrink-0" />
@@ -1224,9 +1232,9 @@ export default function Home() {
                             <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors flex-1 min-w-0 break-words">
                               {restaurant.nom}
                             </h3>
-                            <div className="flex items-center bg-yellow-100 dark:bg-yellow-900/30 px-2 sm:px-2.5 md:px-3 py-1 rounded-full flex-shrink-0">
-                              <FaStar className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-yellow-500 dark:text-yellow-400 mr-0.5 sm:mr-1 flex-shrink-0" />
-                              <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200">{restaurant.rating || '4.5'}</span>
+                            <div className="flex items-center bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/40 dark:to-amber-900/40 px-2 sm:px-2.5 md:px-3 py-1 rounded-full flex-shrink-0 shadow-md border border-yellow-200/50 dark:border-yellow-700/50">
+                              <FaStar className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-yellow-500 dark:text-yellow-400 mr-0.5 sm:mr-1 flex-shrink-0 drop-shadow-sm" />
+                              <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 dark:text-gray-200">{restaurant.rating || '4.5'}</span>
                             </div>
                           </div>
                           
@@ -1255,10 +1263,10 @@ export default function Home() {
                             }
                           }}
                           disabled={isClosed}
-                          className={`w-full py-4 sm:py-4 px-4 sm:px-6 rounded-2xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[48px] sm:min-h-[52px] touch-manipulation ${
+                          className={`w-full py-4 sm:py-4 px-4 sm:px-6 rounded-2xl font-bold transition-all duration-300 shadow-xl text-base sm:text-base lg:text-lg min-h-[48px] sm:min-h-[52px] touch-manipulation relative overflow-hidden ${
                             isClosed
-                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700 hover:shadow-xl transform hover:scale-105 active:scale-95'
+                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white hover:from-orange-600 hover:via-amber-600 hover:to-orange-700 hover:shadow-2xl hover:shadow-orange-500/50 transform hover:scale-[1.02] active:scale-95'
                           }`}
                         >
                           {isClosed ? 'Restaurant fermé pour le moment' : 'Voir le menu'}
