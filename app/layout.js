@@ -6,7 +6,6 @@ import FacebookPixel from '@/components/FacebookPixel';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import ChristmasTheme from '@/components/ChristmasTheme';
-import PushNotificationService from './components/PushNotificationService';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
 // IMPORTANT: Charger APRÈS Supabase pour éviter les conflits
@@ -187,7 +186,6 @@ export default function RootLayout({ children }) {
             </main>
             <Footer />
             <CookieBanner />
-            <PushNotificationService />
           </div>
         </ThemeProvider>
       </body>
