@@ -76,10 +76,10 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   };
 
   const handleModalAddToCart = (customizedItem, supplements = [], size = null, quantity = 1) => {
+    // Fermer la modal immédiatement
+    setIsModalOpen(false);
     // Ajouter au panier
     onAddToCart(customizedItem, supplements, size, quantity);
-    // La modal sera fermée par MenuItemModal après l'ajout
-    // Pas besoin de fermer ici car onClose est déjà appelé dans MenuItemModal
   };
 
   return (

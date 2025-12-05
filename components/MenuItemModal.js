@@ -19,19 +19,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [baseIngredients, setBaseIngredients] = useState([]); // Ingrédients de base depuis la base de données
   const [loading, setLoading] = useState(false);
   const [internalIsOpen, setInternalIsOpen] = useState(isOpen); // State interne pour forcer la fermeture
-  const [manuallyClosed, setManuallyClosed] = useState(false); // Flag pour indiquer qu'on a fermé manuellement
 
-  // Synchroniser le state interne avec la prop isOpen, sauf si on a fermé manuellement
+  // Synchroniser le state interne avec la prop isOpen uniquement quand isOpen devient true
+  // Ne pas synchroniser quand isOpen devient false pour éviter de rouvrir après fermeture manuelle
   useEffect(() => {
-    if (!manuallyClosed) {
-      setInternalIsOpen(isOpen);
-    }
-    // Réinitialiser le flag si la modal est rouverte depuis l'extérieur
-    if (isOpen && manuallyClosed) {
-      setManuallyClosed(false);
+    if (isOpen) {
+      // Si la modal est ouverte depuis l'extérieur, on synchronise
       setInternalIsOpen(true);
     }
-  }, [isOpen, manuallyClosed]);
+    // On ne synchronise pas quand isOpen devient false pour préserver la fermeture manuelle
+  }, [isOpen]);
 
   // DEBUG: Vérifier que onClose est bien une fonction
   useEffect(() => {
@@ -434,20 +431,17 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       };
       console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec boisson:', formulaItem.selected_drink?.nom || 'aucune', 'options:', selectedFormulaOptions, 'customizations:', formulaItem.customizations);
       
-      // Fermer la modal AVANT d'ajouter au panier pour éviter les problèmes de re-render
+      // Fermer la modal IMMÉDIATEMENT et de manière synchrone
       console.log('🔒 Fermeture de la modal (formule)...');
-      setManuallyClosed(true); // Marquer comme fermé manuellement
       setInternalIsOpen(false); // Forcer la fermeture interne immédiatement
       if (typeof onClose === 'function') {
-        onClose();
+        onClose(); // Appeler onClose pour mettre à jour le state parent
       } else {
         console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
       }
       
-      // Ajouter au panier après la fermeture
-      requestAnimationFrame(() => {
-        onAddToCart(formulaItem, supplementsList, null, quantity);
-      });
+      // Ajouter au panier immédiatement (pas besoin de délai)
+      onAddToCart(formulaItem, supplementsList, null, quantity);
       return;
     }
 
@@ -522,21 +516,18 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       _fromModal: true // Marquer que cet item vient de la modal
     };
     
-    // Fermer la modal AVANT d'ajouter au panier pour éviter les problèmes de re-render
+    // Fermer la modal IMMÉDIATEMENT et de manière synchrone
     console.log('🔒 Fermeture de la modal...');
-    setManuallyClosed(true); // Marquer comme fermé manuellement
     setInternalIsOpen(false); // Forcer la fermeture interne immédiatement
     if (typeof onClose === 'function') {
-      onClose();
+      onClose(); // Appeler onClose pour mettre à jour le state parent
     } else {
       console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
     }
     
-    // Ajouter au panier après la fermeture
+    // Ajouter au panier immédiatement (pas besoin de délai)
     console.log('✅ Article ajouté:', customizedItem.nom, 'avec boisson:', customizedItem.selected_drink?.nom || 'aucune');
-    requestAnimationFrame(() => {
-      onAddToCart(customizedItem, supplementsList, null, quantity);
-    });
+    onAddToCart(customizedItem, supplementsList, null, quantity);
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body
@@ -563,7 +554,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 z-50"
         onClick={() => {
-          setManuallyClosed(true);
           setInternalIsOpen(false);
           if (typeof onClose === 'function') onClose();
         }}
@@ -585,7 +575,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate flex-1">{item.nom}</h3>
           <button
             onClick={() => {
-              setManuallyClosed(true);
               setInternalIsOpen(false);
               if (typeof onClose === 'function') onClose();
             }}
