@@ -20,6 +20,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [baseIngredients, setBaseIngredients] = useState([]); // Ingrédients de base depuis la base de données
   const [loading, setLoading] = useState(false);
   const [internalIsOpen, setInternalIsOpen] = useState(isOpen); // State interne pour forcer la fermeture
+  const [manuallyClosed, setManuallyClosed] = useState(false); // Flag pour indiquer qu'on a fermé manuellement
 
   // Synchroniser le state interne avec la prop isOpen uniquement quand isOpen devient true
   // Ne pas synchroniser quand isOpen devient false pour éviter de rouvrir après fermeture manuelle
