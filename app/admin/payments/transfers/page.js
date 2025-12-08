@@ -145,12 +145,13 @@ export default function TransfersTracking() {
       // Pour chaque restaurant, calculer les revenus dus
       const restaurantsWithPaymentsData = await Promise.all(
         (allRestaurants || []).map(async (restaurant) => {
-          // Récupérer les commandes livrées et payées
+          // Récupérer les commandes livrées, payées par le client, mais pas encore payées au restaurant
           const { data: orders, error: ordersError } = await supabase
             .from('commandes')
-            .select('id, total, created_at, statut, payment_status')
+            .select('id, total, created_at, statut, payment_status, restaurant_paid_at')
             .eq('restaurant_id', restaurant.id)
-            .eq('statut', 'livree');
+            .eq('statut', 'livree')
+            .is('restaurant_paid_at', null); // Seulement les commandes non payées au restaurant
 
           if (ordersError) {
             console.error(`Erreur récupération commandes pour ${restaurant.nom}:`, ordersError);
@@ -163,7 +164,7 @@ export default function TransfersTracking() {
             };
           }
 
-          // Filtrer les commandes payées
+          // Filtrer les commandes payées par le client (mais pas encore payées au restaurant)
           const paidOrders = (orders || []).filter(order => 
             !order.payment_status || order.payment_status === 'paid'
           );
@@ -273,12 +274,28 @@ export default function TransfersTracking() {
 
       if (error) throw error;
 
+      // Marquer toutes les commandes non payées du restaurant comme payées
+      const { error: markPaidError } = await supabase
+        .from('commandes')
+        .update({
+          restaurant_paid_at: new Date().toISOString()
+        })
+        .eq('restaurant_id', selectedRestaurantForValidation.id)
+        .eq('statut', 'livree')
+        .is('restaurant_paid_at', null);
+
+      if (markPaidError) {
+        console.error('Erreur marquage commandes comme payées:', markPaidError);
+        // Ne pas faire échouer la validation si le marquage échoue
+        alert('⚠️ Virement enregistré mais erreur lors du marquage des commandes. Veuillez vérifier manuellement.');
+      }
+
       alert('✅ Virement validé et enregistré avec succès!');
       setShowQuickValidateModal(false);
       setSelectedRestaurantForValidation(null);
       setQuickValidateAmount('');
       fetchTransfers();
-      fetchRestaurantPayments(); // Recharger les montants dus
+      fetchRestaurantPayments(); // Recharger les montants dus (devrait maintenant être à 0)
     } catch (err) {
       console.error('Erreur validation virement:', err);
       const errorMessage = err?.message || err?.error || err?.details || 'Erreur inconnue';
