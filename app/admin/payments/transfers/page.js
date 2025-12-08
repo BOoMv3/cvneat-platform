@@ -31,6 +31,11 @@ export default function TransfersTracking() {
   const [showQuickValidateModal, setShowQuickValidateModal] = useState(false);
   const [selectedRestaurantForValidation, setSelectedRestaurantForValidation] = useState(null);
   const [quickValidateAmount, setQuickValidateAmount] = useState('');
+  const [globalStats, setGlobalStats] = useState({
+    totalDue: 0,
+    totalTransferred: 0,
+    remainingToPay: 0
+  });
   
   // Formulaire nouveau virement
   const [formData, setFormData] = useState({
@@ -181,12 +186,15 @@ export default function TransfersTracking() {
           try {
             const { data: transfers, error: transfersError } = await supabase
               .from('restaurant_transfers')
-              .select('amount')
+              .select('amount, transfer_date, notes')
               .eq('restaurant_id', restaurant.id)
               .eq('status', 'completed');
 
             if (!transfersError && transfers) {
               totalTransfers = transfers.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+              console.log(`💰 ${restaurant.nom}: ${transfers.length} virement(s) = ${totalTransfers.toFixed(2)}€`);
+            } else if (transfersError) {
+              console.error(`❌ Erreur récupération virements pour ${restaurant.nom}:`, transfersError);
             }
           } catch (err) {
             console.warn(`Erreur récupération virements pour ${restaurant.nom}:`, err);
@@ -225,6 +233,16 @@ export default function TransfersTracking() {
       // Trier par montant dû (décroissant)
       restaurantsWithPaymentsData.sort((a, b) => b.restaurantPayout - a.restaurantPayout);
       setRestaurantsWithPayments(restaurantsWithPaymentsData);
+      
+      // Calculer le total global
+      const globalTotal = restaurantsWithPaymentsData.reduce((sum, r) => sum + r.restaurantPayout, 0);
+      const globalTransfers = restaurantsWithPaymentsData.reduce((sum, r) => sum + r.totalTransfers, 0);
+      const globalRemaining = restaurantsWithPaymentsData.reduce((sum, r) => sum + r.remainingToPay, 0);
+      setGlobalStats({
+        totalDue: globalTotal,
+        totalTransferred: globalTransfers,
+        remainingToPay: globalRemaining
+      });
     } catch (err) {
       console.error('Erreur récupération paiements dus:', err);
     } finally {
@@ -458,6 +476,39 @@ export default function TransfersTracking() {
         {error && (
           <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+
+        {/* Total global */}
+        {!loadingPayments && globalStats.totalDue > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Total dû aux restaurants</p>
+                  <p className="text-3xl font-bold mt-1">{globalStats.totalDue.toFixed(2)}€</p>
+                </div>
+                <FaStore className="h-10 w-10 opacity-80" />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Total déjà versé</p>
+                  <p className="text-3xl font-bold mt-1">{globalStats.totalTransferred.toFixed(2)}€</p>
+                </div>
+                <FaEuroSign className="h-10 w-10 opacity-80" />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Reste à payer</p>
+                  <p className="text-3xl font-bold mt-1">{globalStats.remainingToPay.toFixed(2)}€</p>
+                </div>
+                <FaCheck className="h-10 w-10 opacity-80" />
+              </div>
+            </div>
           </div>
         )}
 
