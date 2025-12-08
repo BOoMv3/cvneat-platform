@@ -175,13 +175,21 @@ export default function TransfersTracking() {
           }, 0);
 
           // Récupérer les virements déjà effectués pour ce restaurant
-          const { data: transfers, error: transfersError } = await supabase
-            .from('restaurant_transfers')
-            .select('amount')
-            .eq('restaurant_id', restaurant.id)
-            .eq('status', 'completed');
+          let totalTransfers = 0;
+          try {
+            const { data: transfers, error: transfersError } = await supabase
+              .from('restaurant_transfers')
+              .select('amount')
+              .eq('restaurant_id', restaurant.id)
+              .eq('status', 'completed');
 
-          const totalTransfers = transfers?.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) || 0;
+            if (!transfersError && transfers) {
+              totalTransfers = transfers.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+            }
+          } catch (err) {
+            console.warn(`Erreur récupération virements pour ${restaurant.nom}:`, err);
+            // Continuer avec totalTransfers = 0
+          }
 
           // Vérifier si c'est "La Bonne Pâte" (pas de commission)
           const normalizedRestaurantName = (restaurant.nom || '')
