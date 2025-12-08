@@ -664,6 +664,34 @@ export default function DeliveryDashboard() {
     }
   };
 
+  const markOrderAsPickedUp = async (orderId) => {
+    try {
+      const response = await fetchWithAuth(`/api/delivery/order/${orderId}/picked-up`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert("✅ Commande marquée comme récupérée ! Le client a été notifié.");
+        
+        // Mettre à jour la commande dans la liste des commandes acceptées
+        setAcceptedOrders(prev => prev.map(order => 
+          order.id === orderId 
+            ? { ...order, picked_up_at: new Date().toISOString() }
+            : order
+        ));
+        
+        // Rafraîchir les commandes
+        fetchCurrentOrder();
+      } else {
+        const error = await response.json();
+        alert(`Erreur: ${formatApiError(error)}`);
+      }
+    } catch (error) {
+      alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
+    }
+  };
+
   const completeDelivery = async (orderId, providedCode = null) => {
     try {
       // TOUJOURS demander le code au livreur - ne jamais l'utiliser automatiquement
@@ -1036,6 +1064,28 @@ export default function DeliveryDashboard() {
                             )}
                           </div>
                           
+                          {/* Timer de préparation - affiché pour toutes les commandes acceptées */}
+                          {order.preparation_time && (
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-semibold text-orange-800 mb-1 text-sm">⏰ Temps de préparation</h4>
+                                  <p className="text-xs text-orange-600">
+                                    {order.statut === 'en_preparation' ? 'Commande en préparation' : 
+                                     order.statut === 'pret_a_livrer' ? 'Commande prête' : 
+                                     'En livraison'} - {order.preparation_time} min estimées
+                                  </p>
+                                </div>
+                                <OrderCountdown 
+                                  order={order} 
+                                  onTimeUp={(orderId) => {
+                                    // Optionnel : notification ou action
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
                           {/* Code de sécurité */}
                           {order.security_code && (
                             <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-3">
@@ -1143,6 +1193,36 @@ export default function DeliveryDashboard() {
                               🚗 Ouvrir dans Waze
                             </button>
                           </div>
+                          
+                          {/* Bouton "J'ai récupéré la commande" */}
+                          {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer') && !order.picked_up_at && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markOrderAsPickedUp(order.id);
+                              }}
+                              className="w-full py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm mb-2"
+                            >
+                              📦 J'ai récupéré la commande
+                            </button>
+                          )}
+                          
+                          {/* Indicateur que la commande a été récupérée */}
+                          {order.picked_up_at && (
+                            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                              <p className="text-sm text-blue-800 font-semibold">
+                                ✅ Commande récupérée
+                              </p>
+                              <p className="text-xs text-blue-600">
+                                {new Date(order.picked_up_at).toLocaleString('fr-FR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                          )}
                           
                           {/* Bouton marquer comme livrée */}
                           {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') && (
@@ -1286,14 +1366,16 @@ export default function DeliveryDashboard() {
                               <span>Est. {order.preparation_time || 'N/A'} min</span>
                             </div>
                           
-                          {/* Décompte en temps réel */}
-                          {order.statut === 'en_preparation' && order.preparation_time && (
+                          {/* Décompte en temps réel - affiché pour toutes les commandes avec temps de préparation */}
+                          {order.preparation_time && (order.statut === 'en_preparation' || order.statut === 'pret_a_livrer' || order.statut === 'en_livraison') && (
                             <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                               <div className="flex items-center justify-between">
                                 <div>
                                   <h4 className="font-semibold text-orange-800">⏰ Temps de préparation</h4>
                                   <p className="text-sm text-orange-600">
-                                    Commande en préparation - {order.preparation_time} min estimées
+                                    {order.statut === 'en_preparation' ? 'Commande en préparation' : 
+                                     order.statut === 'pret_a_livrer' ? 'Commande prête' : 
+                                     'En livraison'} - {order.preparation_time} min estimées
                                   </p>
                                 </div>
                                 <OrderCountdown 

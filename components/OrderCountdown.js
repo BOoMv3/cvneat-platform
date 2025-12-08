@@ -8,8 +8,11 @@ export default function OrderCountdown({ order, onTimeUp }) {
   useEffect(() => {
     if (!order.preparation_time) {
       setTimeRemaining(null);
+      setIsExpired(false);
       return;
     }
+
+    let intervalId = null;
 
     const calculateTimeRemaining = () => {
       const now = new Date();
@@ -21,6 +24,7 @@ export default function OrderCountdown({ order, onTimeUp }) {
 
       if (!preparationStartSource) {
         setTimeRemaining(null);
+        setIsExpired(false);
         return;
       }
 
@@ -29,8 +33,13 @@ export default function OrderCountdown({ order, onTimeUp }) {
       const remaining = preparationEnd.getTime() - now.getTime();
       
       if (remaining <= 0) {
+        // Arrêter le timer une fois expiré
         setIsExpired(true);
-        setTimeRemaining(0);
+        setTimeRemaining({ minutes: 0, seconds: 0, total: 0 });
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
         if (onTimeUp) onTimeUp(order.id);
         return;
       }
@@ -45,11 +54,19 @@ export default function OrderCountdown({ order, onTimeUp }) {
     // Calculer immédiatement
     calculateTimeRemaining();
 
-    // Mettre à jour toutes les secondes
-    const interval = setInterval(calculateTimeRemaining, 1000);
+    // Mettre à jour toutes les secondes seulement si pas expiré
+    if (!isExpired) {
+      intervalId = setInterval(() => {
+        calculateTimeRemaining();
+      }, 1000);
+    }
 
-    return () => clearInterval(interval);
-  }, [order.preparation_time, order.preparation_started_at, order.accepted_at, order.updated_at, order.created_at, onTimeUp]);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [order.preparation_time, order.preparation_started_at, order.accepted_at, order.updated_at, order.created_at, onTimeUp, isExpired]);
 
   if (!timeRemaining && !isExpired) {
     return (
