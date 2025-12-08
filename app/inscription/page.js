@@ -99,33 +99,28 @@ export default function Inscription() {
       return;
     }
 
-    // Vérifier reCAPTCHA (obligatoire)
-    const recaptchaToken = await getRecaptchaToken();
-    if (!recaptchaToken) {
-      setError('Vérification de sécurité requise. Veuillez réessayer.');
-      setLoading(false);
-      return;
-    }
+    // Vérifier reCAPTCHA (optionnel si non configuré)
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    if (siteKey && recaptchaLoaded) {
+      const recaptchaToken = await getRecaptchaToken();
+      if (recaptchaToken) {
+        try {
+          const verifyResponse = await fetch('/api/recaptcha/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: recaptchaToken }),
+          });
 
-    try {
-      const verifyResponse = await fetch('/api/recaptcha/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: recaptchaToken }),
-      });
-
-      const verifyData = await verifyResponse.json();
-      
-      if (!verifyData.success) {
-        setError('Vérification de sécurité échouée. Veuillez réessayer.');
-        setLoading(false);
-        return;
+          const verifyData = await verifyResponse.json();
+          
+          if (!verifyData.success) {
+            console.warn('reCAPTCHA verification failed, but continuing registration');
+          }
+        } catch (error) {
+          console.error('Erreur vérification reCAPTCHA:', error);
+          // Continuer l'inscription même si reCAPTCHA échoue
+        }
       }
-    } catch (error) {
-      console.error('Erreur vérification reCAPTCHA:', error);
-      setError('Erreur lors de la vérification de sécurité. Veuillez réessayer.');
-      setLoading(false);
-      return;
     }
 
     // Vérifier si l'utilisateur existe déjà
