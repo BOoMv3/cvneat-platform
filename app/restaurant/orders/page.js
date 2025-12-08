@@ -999,6 +999,74 @@ export default function RestaurantOrders() {
                                   </div>
                                 </div>
                               );
+                            } else if (group.type === 'menu_with_drink') {
+                              // Menu avec boisson (non-formule)
+                              const menuItem = group.menuItem.item;
+                              const menuName = group.menuName;
+                              const totalPrice = (menuItem.prix_unitaire || 0) * (menuItem.quantite || 1);
+                              
+                              // Récupérer les customizations
+                              let customizations = {};
+                              if (menuItem.customizations) {
+                                if (typeof menuItem.customizations === 'string') {
+                                  try {
+                                    customizations = JSON.parse(menuItem.customizations);
+                                  } catch (e) {
+                                    customizations = {};
+                                  }
+                                } else {
+                                  customizations = menuItem.customizations;
+                                }
+                              }
+                              
+                              return (
+                                <div key={group.menuItem.index || groupIndex} className="space-y-1 border-l-2 border-blue-300 pl-2">
+                                  <div className="flex justify-between text-sm font-medium">
+                                    <span>
+                                      🍽️ {menuName} x{menuItem.quantite || 1}
+                                    </span>
+                                    <span>{totalPrice.toFixed(2)}€</span>
+                                  </div>
+                                  
+                                  {/* Afficher les viandes sélectionnées */}
+                                  {customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
+                                    <div className="ml-4 text-xs text-orange-600">
+                                      🥩 {customizations.selectedMeats.map(m => m.nom || m.name).join(', ')}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Afficher les sauces sélectionnées */}
+                                  {customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
+                                    <div className="ml-4 text-xs text-teal-600">
+                                      🧂 {customizations.selectedSauces.map(s => s.nom || s.name).join(', ')}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Afficher les ingrédients retirés */}
+                                  {customizations.removedIngredients && Array.isArray(customizations.removedIngredients) && customizations.removedIngredients.length > 0 && (
+                                    <div className="ml-4 text-xs text-red-600 line-through">
+                                      ❌ Sans: {customizations.removedIngredients.map(i => i.nom || i.name).join(', ')}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Boissons du menu */}
+                                  {group.drinks.length > 0 && (
+                                    <div className="ml-4 mt-1">
+                                      {group.drinks.map((drink, idx) => {
+                                        const drinkPrice = (drink.item.prix_unitaire || 0) * (drink.item.quantite || 1);
+                                        return (
+                                          <div key={drink.index || idx} className="flex justify-between text-xs text-blue-600">
+                                            <span>🥤 {drink.drinkName}</span>
+                                            <span className={drinkPrice === 0 ? 'text-gray-400' : ''}>
+                                              {drinkPrice === 0 ? '(inclus)' : `${drinkPrice.toFixed(2)}€`}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
                             } else if (group.type === 'formula_detailed') {
                               // Formule avec formula_items détaillés
                               const formulaName = group.formulaName;
