@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { safeLocalStorage } from '../../lib/localStorage';
+import { supabase } from '../../lib/supabase';
 import { 
   FaArrowLeft, 
   FaTrash, 
@@ -16,7 +17,9 @@ import {
   FaHeart,
   FaMapMarkerAlt,
   FaPhone,
-  FaUtensils
+  FaUtensils,
+  FaUserPlus,
+  FaSignInAlt
 } from 'react-icons/fa';
 
 export default function Panier() {
@@ -25,10 +28,22 @@ export default function Panier() {
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(null); // null = en cours de vérification
 
   useEffect(() => {
     loadCart();
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+    } catch (error) {
+      console.error('Erreur vérification auth:', error);
+      setIsLoggedIn(false);
+    }
+  };
 
   const loadCart = () => {
     try {
@@ -492,6 +507,53 @@ export default function Panier() {
                   {restaurant?.deliveryTime || 30} minutes
                 </p>
               </div>
+
+              {/* Message d'incitation à la connexion si non connecté */}
+              {isLoggedIn === false && (
+                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3 sm:p-4 mb-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <FaUserPlus className="h-5 w-5 text-orange-500 mt-0.5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-orange-800 mb-2">
+                        Pensez à vous connecter ou créer un compte pour passer commande !
+                      </p>
+                      <p className="text-xs text-orange-600 mb-3">
+                        Votre panier sera sauvegardé automatiquement.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => {
+                            // Sauvegarder l'intention de checkout avant de rediriger
+                            if (typeof window !== 'undefined') {
+                              localStorage.setItem('redirectAfterLogin', '/checkout');
+                            }
+                            router.push('/login?redirect=checkout');
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-md hover:bg-orange-600 transition-colors"
+                        >
+                          <FaSignInAlt className="h-3 w-3 mr-1.5" />
+                          Se connecter
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Sauvegarder l'intention de checkout avant de rediriger
+                            if (typeof window !== 'undefined') {
+                              localStorage.setItem('redirectAfterLogin', '/checkout');
+                            }
+                            router.push('/register');
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 bg-white text-orange-600 border border-orange-300 text-xs font-medium rounded-md hover:bg-orange-50 transition-colors"
+                        >
+                          <FaUserPlus className="h-3 w-3 mr-1.5" />
+                          Créer un compte
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Boutons d'action */}
               <div className="space-y-2 sm:space-y-3">

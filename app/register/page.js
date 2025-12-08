@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 // import Navbar from '@/components/Navbar';
 import FormInput from '@/components/FormInput';
 import { supabase } from '@/lib/supabase';
@@ -18,9 +19,8 @@ export default function Register() {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [manualConfirmationLink, setManualConfirmationLink] = useState('');
   const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+  const router = useRouter();
 
   // Charger le script reCAPTCHA
   useEffect(() => {
@@ -82,8 +82,6 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
-    setSuccess('');
-    setManualConfirmationLink('');
     setLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
@@ -183,30 +181,31 @@ export default function Register() {
       return;
     }
 
+    // Confirmer automatiquement l'email
     try {
-      const response = await fetch('/api/auth/send-confirmation-email', {
+      const confirmResponse = await fetch('/api/auth/auto-confirm-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email, sendEmail: false }),
+        body: JSON.stringify({ userId: signUpData.user.id }),
       });
-      if (response.ok) {
-        const payload = await response.json();
-        if (payload?.confirmationUrl) {
-          setManualConfirmationLink(payload.confirmationUrl);
-          if (typeof window !== 'undefined') {
-            window.open(payload.confirmationUrl, '_blank', 'noopener,noreferrer');
-          }
-        }
-      } else {
-        const payload = await response.json().catch(() => ({}));
-        console.warn('Impossible d’envoyer l’email de confirmation:', payload?.error || response.statusText);
+      
+      if (!confirmResponse.ok) {
+        console.warn('Impossible de confirmer automatiquement l\'email, mais l\'inscription est réussie');
       }
-    } catch (confirmationError) {
-      console.warn('Erreur lors de la génération du lien de confirmation:', confirmationError);
+    } catch (confirmError) {
+      console.warn('Erreur lors de la confirmation automatique de l\'email:', confirmError);
     }
 
-    setSuccess('Inscription réussie !');
+    // Vérifier s'il y a une intention de redirection (ex: checkout)
+    const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
+    
+    // Rediriger vers la page de connexion avec un message de succès
     setLoading(false);
+    if (redirectAfterLogin) {
+      router.push(`/login?registered=true&redirect=${encodeURIComponent(redirectAfterLogin)}`);
+    } else {
+      router.push('/login?registered=true');
+    }
   };
 
   const handleChange = (e) => {
@@ -217,40 +216,6 @@ export default function Register() {
     }));
   };
 
-  if (success) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
-        <div className="w-full max-w-md bg-white rounded-lg shadow p-8 text-center">
-          <h1 className="text-2xl font-bold mb-4 text-green-600">Confirmez votre inscription</h1>
-          <p className="text-gray-700">
-            Cliquez sur le lien sécurisé ci-dessous afin de valider votre compte CVN&apos;EAT.
-          </p>
-          {manualConfirmationLink ? (
-            <p className="mt-6">
-              <a
-                href={manualConfirmationLink}
-                className="inline-flex items-center justify-center px-5 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Valider mon compte
-              </a>
-              <span className="block mt-2 text-xs text-gray-500 break-words">
-                {manualConfirmationLink}
-              </span>
-            </p>
-          ) : (
-            <p className="mt-4 text-sm text-gray-500">
-              Le lien n’a pas pu être généré automatiquement. Réessayez ou contactez-nous pour recevoir votre confirmation.
-            </p>
-          )}
-          <p className="mt-6 text-sm text-gray-500">
-            Une fois le lien ouvert, suivez les instructions affichées pour activer le compte.
-          </p>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-gray-50">

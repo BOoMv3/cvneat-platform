@@ -110,7 +110,16 @@ export default function Checkout() {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/login');
+        // Sauvegarder l'intention de checkout avant de rediriger
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('redirectAfterLogin', '/checkout');
+          // S'assurer que le panier est bien sauvegardé
+          const savedCart = safeLocalStorage.getJSON('cart');
+          if (savedCart) {
+            safeLocalStorage.setJSON('cart', savedCart);
+          }
+        }
+        router.push('/login?redirect=checkout');
         return;
       }
       setUser(user);
