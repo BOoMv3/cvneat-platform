@@ -1195,7 +1195,7 @@ export default function DeliveryDashboard() {
                           </div>
                           
                           {/* Bouton "J'ai récupéré la commande" */}
-                          {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer') && !order.picked_up_at && (
+                          {(order.statut === 'en_livraison' || order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') && !order.picked_up_at && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

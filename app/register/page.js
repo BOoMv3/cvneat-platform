@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 // import Navbar from '@/components/Navbar';
 import FormInput from '@/components/FormInput';
 import { supabase } from '@/lib/supabase';
@@ -20,6 +20,64 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [manualConfirmationLink, setManualConfirmationLink] = useState('');
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+
+  // Charger le script reCAPTCHA
+  useEffect(() => {
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    
+    if (!siteKey) {
+      console.warn('NEXT_PUBLIC_RECAPTCHA_SITE_KEY non configurée - reCAPTCHA désactivé');
+      return;
+    }
+
+    // Vérifier si le script est déjà chargé
+    if (typeof window !== 'undefined' && window.grecaptcha) {
+      setRecaptchaLoaded(true);
+      return;
+    }
+
+    // Charger le script reCAPTCHA
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.grecaptcha) {
+        window.grecaptcha.ready(() => {
+          setRecaptchaLoaded(true);
+        });
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      // Nettoyage optionnel
+    };
+  }, []);
+
+  // Obtenir le token reCAPTCHA
+  const getRecaptchaToken = async () => {
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    
+    if (!siteKey) {
+      console.warn('NEXT_PUBLIC_RECAPTCHA_SITE_KEY non configurée');
+      return null;
+    }
+
+    if (typeof window === 'undefined' || !window.grecaptcha) {
+      console.warn('reCAPTCHA non chargé');
+      return null;
+    }
+
+    try {
+      const token = await window.grecaptcha.execute(siteKey, { action: 'register' });
+      return token;
+    } catch (error) {
+      console.error('Erreur lors de l\'exécution de reCAPTCHA:', error);
+      return null;
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,6 +88,35 @@ export default function Register() {
 
     if (formData.password !== formData.confirmPassword) {
       setErrors({ confirmPassword: 'Les mots de passe ne correspondent pas' });
+      setLoading(false);
+      return;
+    }
+
+    // Vérifier reCAPTCHA (obligatoire)
+    const recaptchaToken = await getRecaptchaToken();
+    if (!recaptchaToken) {
+      setErrors({ global: 'Vérification de sécurité requise. Veuillez réessayer.' });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const verifyResponse = await fetch('/api/recaptcha/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: recaptchaToken }),
+      });
+
+      const verifyData = await verifyResponse.json();
+      
+      if (!verifyData.success) {
+        setErrors({ global: 'Vérification de sécurité échouée. Veuillez réessayer.' });
+        setLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Erreur vérification reCAPTCHA:', error);
+      setErrors({ global: 'Erreur lors de la vérification de sécurité. Veuillez réessayer.' });
       setLoading(false);
       return;
     }
