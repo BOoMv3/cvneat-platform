@@ -335,6 +335,22 @@ export default function TransfersTracking() {
 
       if (error) throw error;
 
+      // Marquer toutes les commandes non payées du restaurant comme payées
+      const { error: markPaidError } = await supabase
+        .from('commandes')
+        .update({
+          restaurant_paid_at: new Date().toISOString()
+        })
+        .eq('restaurant_id', formData.restaurant_id)
+        .eq('statut', 'livree')
+        .is('restaurant_paid_at', null);
+
+      if (markPaidError) {
+        console.error('Erreur marquage commandes comme payées:', markPaidError);
+        // Ne pas faire échouer la validation si le marquage échoue
+        alert('⚠️ Virement enregistré mais erreur lors du marquage des commandes. Veuillez vérifier manuellement.');
+      }
+
       // Réinitialiser le formulaire
       setFormData({
         restaurant_id: '',
@@ -349,6 +365,7 @@ export default function TransfersTracking() {
       
       setShowModal(false);
       fetchTransfers();
+      fetchRestaurantPayments(); // Recharger les montants dus
       alert('✅ Virement enregistré avec succès!');
     } catch (err) {
       console.error('Erreur création virement:', err);
