@@ -111,11 +111,20 @@ export default function TransfersTracking() {
         .select('*')
         .order('transfer_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Vérifier si c'est une erreur de table inexistante
+        if (error.message?.includes('does not exist') || error.code === '42P01') {
+          setError('La table restaurant_transfers n\'existe pas. Veuillez exécuter la migration SQL dans Supabase.');
+        } else {
+          throw error;
+        }
+        return;
+      }
       setTransfers(data || []);
     } catch (err) {
       console.error('Erreur récupération virements:', err);
-      setError(err.message);
+      const errorMessage = err?.message || err?.error || err?.details || 'Erreur inconnue';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -272,7 +281,8 @@ export default function TransfersTracking() {
       fetchRestaurantPayments(); // Recharger les montants dus
     } catch (err) {
       console.error('Erreur validation virement:', err);
-      alert('Erreur lors de la validation: ' + err.message);
+      const errorMessage = err?.message || err?.error || err?.details || 'Erreur inconnue';
+      alert('Erreur lors de la validation: ' + errorMessage);
     } finally {
       setLoading(false);
     }
