@@ -209,14 +209,15 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
     let horaires = restaurant.horaires;
     if (!horaires) {
-      return { isOpen: true, isManuallyClosed: false, reason: 'no_hours' };
+      // Pas d'horaires = restaurant fermé par défaut
+      return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
     }
 
     if (typeof horaires === 'string') {
       try {
         horaires = JSON.parse(horaires);
       } catch {
-        return { isOpen: true, isManuallyClosed: false, reason: 'parse_error' };
+        return { isOpen: false, isManuallyClosed: false, reason: 'parse_error' };
       }
     }
 
