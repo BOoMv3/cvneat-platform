@@ -326,10 +326,19 @@ export default function TrackOrder() {
         if (response.ok) {
           const data = await response.json();
           
-          // Vérifier si le statut a changé
+          // Toujours mettre à jour les données, même si le statut n'a pas changé
+          // Cela permet de récupérer les nouvelles informations comme picked_up_at
           const currentStatus = data.statut || data.status;
-          if (currentStatus !== lastStatus) {
-            console.log(`🔄 [Track Order Polling] Statut changé: ${lastStatus} → ${currentStatus}`);
+          const hasStatusChanged = currentStatus !== lastStatus;
+          const hasPickedUpChanged = data.picked_up_at !== order?.picked_up_at;
+          
+          if (hasStatusChanged || hasPickedUpChanged || !order) {
+            if (hasStatusChanged) {
+              console.log(`🔄 [Track Order Polling] Statut changé: ${lastStatus} → ${currentStatus}`);
+            }
+            if (hasPickedUpChanged) {
+              console.log(`📦 [Track Order Polling] Commande récupérée par le livreur`);
+            }
             setOrder(data);
             setLastStatus(currentStatus);
             generateNotifications(data);
