@@ -93,7 +93,42 @@ async function resetTheoEarnings() {
       console.log('📊 Aucune stat trouvée (sera créée)\n');
     }
 
-    // 3. Réinitialiser les gains à 0
+    // 3. Marquer toutes les commandes livrées comme payées
+    const { data: ordersToMark, error: ordersError } = await supabaseAdmin
+      .from('commandes')
+      .select('id, statut, frais_livraison, livreur_paid_at')
+      .eq('livreur_id', theo.id)
+      .eq('statut', 'livree')
+      .is('livreur_paid_at', null);
+
+    if (ordersError) {
+      console.warn('⚠️ Erreur lors de la récupération des commandes:', ordersError);
+    } else {
+      const ordersCount = ordersToMark?.length || 0;
+      if (ordersCount > 0) {
+        console.log(`📦 ${ordersCount} commande(s) à marquer comme payée(s)\n`);
+        
+        const { error: markPaidError } = await supabaseAdmin
+          .from('commandes')
+          .update({
+            livreur_paid_at: new Date().toISOString()
+          })
+          .eq('livreur_id', theo.id)
+          .eq('statut', 'livree')
+          .is('livreur_paid_at', null);
+
+        if (markPaidError) {
+          console.warn('⚠️ Erreur lors du marquage des commandes comme payées:', markPaidError);
+          // Continuer quand même si la colonne n'existe pas encore
+        } else {
+          console.log(`✅ ${ordersCount} commande(s) marquée(s) comme payée(s)\n`);
+        }
+      } else {
+        console.log('ℹ️ Aucune commande à marquer comme payée\n');
+      }
+    }
+
+    // 4. Réinitialiser les gains à 0 dans delivery_stats
     let updatedStats;
     
     if (currentStats) {
@@ -120,7 +155,7 @@ async function resetTheoEarnings() {
         .insert({
           delivery_id: theo.id,
           total_earnings: 0.00,
-          total_deliveries: 0,
+          total_deliveries: currentStats?.total_deliveries || 0,
           updated_at: new Date().toISOString()
         })
         .select()
