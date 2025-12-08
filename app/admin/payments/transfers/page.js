@@ -174,6 +174,15 @@ export default function TransfersTracking() {
             return sum + (parseFloat(order.total || 0) || 0);
           }, 0);
 
+          // Récupérer les virements déjà effectués pour ce restaurant
+          const { data: transfers, error: transfersError } = await supabase
+            .from('restaurant_transfers')
+            .select('amount')
+            .eq('restaurant_id', restaurant.id)
+            .eq('status', 'completed');
+
+          const totalTransfers = transfers?.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) || 0;
+
           // Vérifier si c'est "La Bonne Pâte" (pas de commission)
           const normalizedRestaurantName = (restaurant.nom || '')
             .normalize('NFD')
@@ -186,12 +195,17 @@ export default function TransfersTracking() {
           
           const commission = totalRevenue * commissionRate;
           const restaurantPayout = totalRevenue - commission;
+          
+          // Calculer ce qui reste à payer (revenus dus - virements déjà effectués)
+          const remainingToPay = Math.max(0, restaurantPayout - totalTransfers);
 
           return {
             ...restaurant,
             totalRevenue: Math.round(totalRevenue * 100) / 100,
             commission: Math.round(commission * 100) / 100,
             restaurantPayout: Math.round(restaurantPayout * 100) / 100,
+            totalTransfers: Math.round(totalTransfers * 100) / 100,
+            remainingToPay: Math.round(remainingToPay * 100) / 100,
             orderCount: paidOrders.length,
             commissionRate: commissionRate * 100
           };
@@ -218,11 +232,11 @@ export default function TransfersTracking() {
   };
 
   const handleQuickPayment = (restaurant) => {
-    if (restaurant.restaurantPayout > 0) {
+    if (restaurant.remainingToPay > 0) {
       setFormData({
         restaurant_id: restaurant.id,
         restaurant_name: restaurant.nom,
-        amount: restaurant.restaurantPayout.toFixed(2),
+        amount: restaurant.remainingToPay.toFixed(2),
         transfer_date: new Date().toISOString().split('T')[0],
         reference_number: '',
         period_start: '',
@@ -235,7 +249,7 @@ export default function TransfersTracking() {
 
   const handleQuickValidateClick = (restaurant) => {
     setSelectedRestaurantForValidation(restaurant);
-    setQuickValidateAmount(restaurant.restaurantPayout.toFixed(2));
+    setQuickValidateAmount(restaurant.remainingToPay.toFixed(2));
     setShowQuickValidateModal(true);
   };
 
@@ -443,7 +457,7 @@ export default function TransfersTracking() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">💰 Montants dus aux restaurants</h2>
             <div className="space-y-3">
               {restaurantsWithPayments
-                .filter(r => r.restaurantPayout > 0)
+                .filter(r => r.remainingToPay > 0)
                 .map((restaurant) => (
                   <div key={restaurant.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex-1">
@@ -460,13 +474,18 @@ export default function TransfersTracking() {
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <p className="text-sm text-gray-600">Montant dû</p>
-                        <p className="text-xl font-bold text-purple-600">{restaurant.restaurantPayout.toFixed(2)}€</p>
+                        <p className="text-xl font-bold text-purple-600">{restaurant.remainingToPay.toFixed(2)}€</p>
+                        {restaurant.totalTransfers > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Déjà versé: {restaurant.totalTransfers.toFixed(2)}€
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleQuickValidateClick(restaurant)}
                           className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                          disabled={loading}
+                          disabled={loading || restaurant.remainingToPay <= 0}
                         >
                           <FaCheck />
                           <span>J'ai effectué ce virement</span>
@@ -482,7 +501,7 @@ export default function TransfersTracking() {
                     </div>
                   </div>
                 ))}
-              {restaurantsWithPayments.filter(r => r.restaurantPayout > 0).length === 0 && (
+              {restaurantsWithPayments.filter(r => r.remainingToPay > 0).length === 0 && (
                 <p className="text-gray-500 text-center py-4">Aucun montant dû pour le moment</p>
               )}
             </div>
