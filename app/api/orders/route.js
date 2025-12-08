@@ -1172,11 +1172,13 @@ export async function POST(request) {
       // IMPORTANT: Ajouter la boisson sélectionnée pour les menus (non-formules) avec drink_options
       // Les formules sont déjà gérées plus haut, mais les menus normaux ont aussi besoin de leurs boissons
       // Détecter aussi les items avec drink_options même sans "menu" dans le nom
+      // NOTE: Les boissons de menu sont COMPRISES dans le prix du menu, donc prix_unitaire = 0
       const hasDrinkOptions = item.drink_options && Array.isArray(item.drink_options) && item.drink_options.length > 0;
       if (!isFormula && item.selected_drink) {
         const drinkId = item.selected_drink.id || item.selected_drink.menu_id;
         if (drinkId) {
-          const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
+          // Les boissons de menu sont comprises, donc prix = 0€
+          const drinkPrice = 0;
           const drinkDetail = {
             commande_id: order.id,
             plat_id: drinkId,
@@ -1190,7 +1192,7 @@ export async function POST(request) {
             }
           };
           orderDetailsPayload.push(drinkDetail);
-          console.log(`🥤 Boisson ajoutée au menu "${item.nom || 'Sans nom'}": ${item.selected_drink.nom || drinkId}`);
+          console.log(`🥤 Boisson ajoutée au menu "${item.nom || 'Sans nom'}": ${item.selected_drink.nom || drinkId} (comprise dans le menu, prix: 0€)`);
         } else {
           console.warn('⚠️ Boisson sélectionnée pour menu mais sans ID:', item.selected_drink);
         }
