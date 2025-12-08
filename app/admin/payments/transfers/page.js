@@ -28,6 +28,9 @@ export default function TransfersTracking() {
   const [filterRestaurant, setFilterRestaurant] = useState('all');
   const [restaurantsWithPayments, setRestaurantsWithPayments] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [showQuickValidateModal, setShowQuickValidateModal] = useState(false);
+  const [selectedRestaurantForValidation, setSelectedRestaurantForValidation] = useState(null);
+  const [quickValidateAmount, setQuickValidateAmount] = useState('');
   
   // Formulaire nouveau virement
   const [formData, setFormData] = useState({
@@ -220,8 +223,22 @@ export default function TransfersTracking() {
     }
   };
 
-  const handleQuickValidate = async (restaurant) => {
-    if (!confirm(`Confirmer le virement de ${restaurant.restaurantPayout.toFixed(2)}€ à ${restaurant.nom} ?`)) {
+  const handleQuickValidateClick = (restaurant) => {
+    setSelectedRestaurantForValidation(restaurant);
+    setQuickValidateAmount(restaurant.restaurantPayout.toFixed(2));
+    setShowQuickValidateModal(true);
+  };
+
+  const handleQuickValidate = async () => {
+    if (!selectedRestaurantForValidation) return;
+    
+    const amount = parseFloat(quickValidateAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Veuillez entrer un montant valide');
+      return;
+    }
+
+    if (!confirm(`Confirmer le virement de ${amount.toFixed(2)}€ à ${selectedRestaurantForValidation.nom} ?`)) {
       return;
     }
 
@@ -231,14 +248,14 @@ export default function TransfersTracking() {
       const { data, error } = await supabase
         .from('restaurant_transfers')
         .insert([{
-          restaurant_id: restaurant.id,
-          restaurant_name: restaurant.nom,
-          amount: parseFloat(restaurant.restaurantPayout.toFixed(2)),
+          restaurant_id: selectedRestaurantForValidation.id,
+          restaurant_name: selectedRestaurantForValidation.nom,
+          amount: amount,
           transfer_date: new Date().toISOString().split('T')[0],
           reference_number: null,
           period_start: null,
           period_end: null,
-          notes: `Virement validé rapidement - ${restaurant.orderCount} commande(s)`,
+          notes: `Virement validé rapidement - ${selectedRestaurantForValidation.orderCount} commande(s)`,
           created_by: user.id,
           status: 'completed'
         }])
@@ -248,6 +265,9 @@ export default function TransfersTracking() {
       if (error) throw error;
 
       alert('✅ Virement validé et enregistré avec succès!');
+      setShowQuickValidateModal(false);
+      setSelectedRestaurantForValidation(null);
+      setQuickValidateAmount('');
       fetchTransfers();
       fetchRestaurantPayments(); // Recharger les montants dus
     } catch (err) {
@@ -400,7 +420,7 @@ export default function TransfersTracking() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleQuickValidate(restaurant)}
+                          onClick={() => handleQuickValidateClick(restaurant)}
                           className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                           disabled={loading}
                         >
@@ -694,6 +714,97 @@ export default function TransfersTracking() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal validation rapide */}
+      {showQuickValidateModal && selectedRestaurantForValidation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Valider le virement</h2>
+                <button
+                  onClick={() => {
+                    setShowQuickValidateModal(false);
+                    setSelectedRestaurantForValidation(null);
+                    setQuickValidateAmount('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Restaurant</p>
+                  <p className="text-lg font-semibold text-gray-900">{selectedRestaurantForValidation.nom}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Montant du virement (€) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={quickValidateAmount}
+                    onChange={(e) => setQuickValidateAmount(e.target.value)}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-lg font-semibold"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Montant dû: {selectedRestaurantForValidation.restaurantPayout.toFixed(2)}€
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date du virement
+                  </label>
+                  <input
+                    type="date"
+                    value={new Date().toISOString().split('T')[0]}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowQuickValidateModal(false);
+                      setSelectedRestaurantForValidation(null);
+                      setQuickValidateAmount('');
+                    }}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleQuickValidate}
+                    disabled={loading || !quickValidateAmount || parseFloat(quickValidateAmount) <= 0}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        <span>Validation...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaCheck />
+                        <span>Valider</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
