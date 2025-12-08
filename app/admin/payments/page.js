@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt, FaCheck, FaTimes } from 'react-icons/fa';
 import Link from 'next/link';
 
 export default function AdminPayments() {
@@ -16,6 +16,16 @@ export default function AdminPayments() {
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'month', 'week', 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: '',
+    transfer_date: new Date().toISOString().split('T')[0],
+    reference_number: '',
+    period_start: '',
+    period_end: '',
+    notes: ''
+  });
 
   useEffect(() => {
     checkAuth();
@@ -404,6 +414,9 @@ export default function AdminPayments() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Taux
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -444,6 +457,28 @@ export default function AdminPayments() {
                       <div className="text-sm text-gray-500">
                         {restaurant.commissionRate.toFixed(1)}%
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {restaurant.restaurantPayout > 0 && (
+                        <button
+                          onClick={() => {
+                            setSelectedRestaurant(restaurant);
+                            setPaymentFormData({
+                              amount: restaurant.restaurantPayout.toFixed(2),
+                              transfer_date: new Date().toISOString().split('T')[0],
+                              reference_number: '',
+                              period_start: '',
+                              period_end: '',
+                              notes: `Paiement ${restaurant.nom} - ${dateFilter === 'all' ? 'Toutes périodes' : dateFilter === 'month' ? 'Ce mois' : dateFilter === 'week' ? '7 derniers jours' : 'Période personnalisée'}`
+                            });
+                            setShowPaymentModal(true);
+                          }}
+                          className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <FaCheck />
+                          <span>Valider paiement</span>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

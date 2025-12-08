@@ -734,6 +734,20 @@ export default function RestaurantOrders() {
                               const comboDetails = customizations.combo?.details || [];
                               const displayName = isCombo ? comboName : (item.menus?.nom || 'Article');
                               
+                              // Récupérer les suppléments depuis l'item
+                              let supplements = [];
+                              if (item.supplements) {
+                                if (typeof item.supplements === 'string') {
+                                  try {
+                                    supplements = JSON.parse(item.supplements);
+                                  } catch (e) {
+                                    supplements = [];
+                                  }
+                                } else if (Array.isArray(item.supplements)) {
+                                  supplements = item.supplements;
+                                }
+                              }
+                              
                               return (
                                 <div key={group.index || groupIndex} className="space-y-1">
                                   <div className="flex justify-between text-sm">
@@ -743,6 +757,35 @@ export default function RestaurantOrders() {
                                     </span>
                                     <span>{((item.prix_unitaire || 0) * (item.quantite || 1)).toFixed(2)}€</span>
                                   </div>
+                                  
+                                  {/* Afficher les viandes sélectionnées */}
+                                  {customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
+                                    <div className="ml-4 text-xs text-orange-600">
+                                      🥩 {customizations.selectedMeats.map(m => m.nom || m.name).join(', ')}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Afficher les sauces sélectionnées */}
+                                  {customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
+                                    <div className="ml-4 text-xs text-teal-600">
+                                      🧂 {customizations.selectedSauces.map(s => s.nom || s.name).join(', ')}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Afficher les suppléments */}
+                                  {supplements.length > 0 && (
+                                    <div className="ml-4 text-xs text-green-600">
+                                      ➕ Suppléments: {supplements.map(s => s.nom || s.name || 'Supplément').join(', ')}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Afficher les ingrédients retirés */}
+                                  {customizations.removedIngredients && Array.isArray(customizations.removedIngredients) && customizations.removedIngredients.length > 0 && (
+                                    <div className="ml-4 text-xs text-red-600 line-through">
+                                      ❌ Sans: {customizations.removedIngredients.map(i => i.nom || i.name).join(', ')}
+                                    </div>
+                                  )}
+                                  
                                   {isCombo && comboDetails.length > 0 && (
                                     <div className="ml-4 text-xs text-gray-600 space-y-0.5">
                                       {comboDetails.map((detail, idx) => (
@@ -806,6 +849,51 @@ export default function RestaurantOrders() {
                                     ) : (
                                       <div className="text-gray-500 italic">(Formule complète - burger, frites, boisson)</div>
                                     )}
+                                    
+                                    {/* Afficher les viandes sélectionnées */}
+                                    {customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
+                                      <div className="mt-1 pt-1 border-t border-gray-200">
+                                        <div className="font-semibold text-orange-600">Viandes :</div>
+                                        {customizations.selectedMeats.map((meat, idx) => (
+                                          <div key={idx} className="text-orange-600">🥩 {meat.nom || meat.name || 'Viande'}</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Afficher les sauces sélectionnées */}
+                                    {customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
+                                      <div className="mt-1 pt-1 border-t border-gray-200">
+                                        <div className="font-semibold text-teal-600">Sauces :</div>
+                                        {customizations.selectedSauces.map((sauce, idx) => (
+                                          <div key={idx} className="text-teal-600">🧂 {sauce.nom || sauce.name || 'Sauce'}</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Afficher les ingrédients retirés */}
+                                    {customizations.removedIngredients && Array.isArray(customizations.removedIngredients) && customizations.removedIngredients.length > 0 && (
+                                      <div className="mt-1 pt-1 border-t border-gray-200">
+                                        <div className="font-semibold text-red-600">Ingrédients retirés :</div>
+                                        {customizations.removedIngredients.map((ing, idx) => (
+                                          <div key={idx} className="text-red-600 line-through">❌ {ing.nom || ing.name || 'Ingrédient'}</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Afficher les ingrédients ajoutés */}
+                                    {customizations.addedIngredients && Array.isArray(customizations.addedIngredients) && customizations.addedIngredients.length > 0 && (
+                                      <div className="mt-1 pt-1 border-t border-gray-200">
+                                        <div className="font-semibold text-green-600">Suppléments ajoutés :</div>
+                                        {customizations.addedIngredients.map((ingId, idx) => {
+                                          // Essayer de trouver le nom du supplément depuis les suppléments de l'item
+                                          const supplementName = `Supplément ${idx + 1}`;
+                                          return (
+                                            <div key={idx} className="text-green-600">➕ {supplementName}</div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                    
                                     {/* Boissons de la formule */}
                                     {group.drinks.length > 0 && (
                                       <>
@@ -831,12 +919,50 @@ export default function RestaurantOrders() {
                                     {group.formulaItems.map((formulaItem, idx) => {
                                       const itemPrice = (formulaItem.item.prix_unitaire || 0) * (formulaItem.item.quantite || 1);
                                       totalPrice += itemPrice;
+                                      
+                                      // Récupérer les customizations pour cet item
+                                      let itemCustomizations = {};
+                                      if (formulaItem.item.customizations) {
+                                        if (typeof formulaItem.item.customizations === 'string') {
+                                          try {
+                                            itemCustomizations = JSON.parse(formulaItem.item.customizations);
+                                          } catch (e) {
+                                            itemCustomizations = {};
+                                          }
+                                        } else {
+                                          itemCustomizations = formulaItem.item.customizations;
+                                        }
+                                      }
+                                      
                                       return (
-                                        <div key={formulaItem.index || idx} className="flex justify-between text-xs">
-                                          <span>• {formulaItem.name} x{formulaItem.item.quantite || 1}</span>
-                                          <span className={itemPrice === 0 ? 'text-gray-400' : ''}>
-                                            {itemPrice === 0 ? '(inclus)' : `${itemPrice.toFixed(2)}€`}
-                                          </span>
+                                        <div key={formulaItem.index || idx} className="space-y-0.5">
+                                          <div className="flex justify-between text-xs">
+                                            <span>• {formulaItem.name} x{formulaItem.item.quantite || 1}</span>
+                                            <span className={itemPrice === 0 ? 'text-gray-400' : ''}>
+                                              {itemPrice === 0 ? '(inclus)' : `${itemPrice.toFixed(2)}€`}
+                                            </span>
+                                          </div>
+                                          
+                                          {/* Afficher les viandes sélectionnées pour cet item */}
+                                          {itemCustomizations.selectedMeats && Array.isArray(itemCustomizations.selectedMeats) && itemCustomizations.selectedMeats.length > 0 && (
+                                            <div className="ml-2 text-xs text-orange-600">
+                                              🥩 {itemCustomizations.selectedMeats.map(m => m.nom || m.name).join(', ')}
+                                            </div>
+                                          )}
+                                          
+                                          {/* Afficher les sauces sélectionnées pour cet item */}
+                                          {itemCustomizations.selectedSauces && Array.isArray(itemCustomizations.selectedSauces) && itemCustomizations.selectedSauces.length > 0 && (
+                                            <div className="ml-2 text-xs text-teal-600">
+                                              🧂 {itemCustomizations.selectedSauces.map(s => s.nom || s.name).join(', ')}
+                                            </div>
+                                          )}
+                                          
+                                          {/* Afficher les ingrédients retirés */}
+                                          {itemCustomizations.removedIngredients && Array.isArray(itemCustomizations.removedIngredients) && itemCustomizations.removedIngredients.length > 0 && (
+                                            <div className="ml-2 text-xs text-red-600">
+                                              ❌ Sans: {itemCustomizations.removedIngredients.map(i => i.nom || i.name).join(', ')}
+                                            </div>
+                                          )}
                                         </div>
                                       );
                                     })}

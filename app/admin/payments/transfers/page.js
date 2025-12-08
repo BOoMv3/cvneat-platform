@@ -26,6 +26,8 @@ export default function TransfersTracking() {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRestaurant, setFilterRestaurant] = useState('all');
+  const [restaurantsWithPayments, setRestaurantsWithPayments] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
   
   // Formulaire nouveau virement
   const [formData, setFormData] = useState({
@@ -47,6 +49,7 @@ export default function TransfersTracking() {
     if (user) {
       fetchTransfers();
       fetchRestaurants();
+      fetchRestaurantPayments();
     }
   }, [user]);
 
@@ -115,6 +118,83 @@ export default function TransfersTracking() {
     }
   };
 
+  const fetchRestaurantPayments = async () => {
+    try {
+      setLoadingPayments(true);
+      
+      // Récupérer tous les restaurants
+      const { data: allRestaurants, error: restaurantsError } = await supabase
+        .from('restaurants')
+        .select('id, nom, user_id, status')
+        .order('nom', { ascending: true });
+
+      if (restaurantsError) throw restaurantsError;
+
+      // Pour chaque restaurant, calculer les revenus dus
+      const restaurantsWithPaymentsData = await Promise.all(
+        (allRestaurants || []).map(async (restaurant) => {
+          // Récupérer les commandes livrées et payées
+          const { data: orders, error: ordersError } = await supabase
+            .from('commandes')
+            .select('id, total, created_at, statut, payment_status')
+            .eq('restaurant_id', restaurant.id)
+            .eq('statut', 'livree');
+
+          if (ordersError) {
+            console.error(`Erreur récupération commandes pour ${restaurant.nom}:`, ordersError);
+            return {
+              ...restaurant,
+              totalRevenue: 0,
+              commission: 0,
+              restaurantPayout: 0,
+              orderCount: 0
+            };
+          }
+
+          // Filtrer les commandes payées
+          const paidOrders = (orders || []).filter(order => 
+            !order.payment_status || order.payment_status === 'paid'
+          );
+
+          // Calculer les revenus
+          const totalRevenue = paidOrders.reduce((sum, order) => {
+            return sum + (parseFloat(order.total || 0) || 0);
+          }, 0);
+
+          // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+          const normalizedRestaurantName = (restaurant.nom || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+          const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+          
+          // Taux de commission (par défaut 20%)
+          const commissionRate = isInternalRestaurant ? 0 : 0.20;
+          
+          const commission = totalRevenue * commissionRate;
+          const restaurantPayout = totalRevenue - commission;
+
+          return {
+            ...restaurant,
+            totalRevenue: Math.round(totalRevenue * 100) / 100,
+            commission: Math.round(commission * 100) / 100,
+            restaurantPayout: Math.round(restaurantPayout * 100) / 100,
+            orderCount: paidOrders.length,
+            commissionRate: commissionRate * 100
+          };
+        })
+      );
+
+      // Trier par montant dû (décroissant)
+      restaurantsWithPaymentsData.sort((a, b) => b.restaurantPayout - a.restaurantPayout);
+      setRestaurantsWithPayments(restaurantsWithPaymentsData);
+    } catch (err) {
+      console.error('Erreur récupération paiements dus:', err);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
   const handleRestaurantChange = (restaurantId) => {
     const restaurant = restaurants.find(r => r.id === restaurantId);
     setFormData({
@@ -122,6 +202,60 @@ export default function TransfersTracking() {
       restaurant_id: restaurantId,
       restaurant_name: restaurant?.nom || ''
     });
+  };
+
+  const handleQuickPayment = (restaurant) => {
+    if (restaurant.restaurantPayout > 0) {
+      setFormData({
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.nom,
+        amount: restaurant.restaurantPayout.toFixed(2),
+        transfer_date: new Date().toISOString().split('T')[0],
+        reference_number: '',
+        period_start: '',
+        period_end: '',
+        notes: `Paiement ${restaurant.nom} - ${restaurant.orderCount} commande(s)`
+      });
+      setShowModal(true);
+    }
+  };
+
+  const handleQuickValidate = async (restaurant) => {
+    if (!confirm(`Confirmer le virement de ${restaurant.restaurantPayout.toFixed(2)}€ à ${restaurant.nom} ?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('restaurant_transfers')
+        .insert([{
+          restaurant_id: restaurant.id,
+          restaurant_name: restaurant.nom,
+          amount: parseFloat(restaurant.restaurantPayout.toFixed(2)),
+          transfer_date: new Date().toISOString().split('T')[0],
+          reference_number: null,
+          period_start: null,
+          period_end: null,
+          notes: `Virement validé rapidement - ${restaurant.orderCount} commande(s)`,
+          created_by: user.id,
+          status: 'completed'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      alert('✅ Virement validé et enregistré avec succès!');
+      fetchTransfers();
+      fetchRestaurantPayments(); // Recharger les montants dus
+    } catch (err) {
+      console.error('Erreur validation virement:', err);
+      alert('Erreur lors de la validation: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -236,6 +370,58 @@ export default function TransfersTracking() {
         {error && (
           <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+
+        {/* Section : Montants dus aux restaurants */}
+        {!loadingPayments && restaurantsWithPayments.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">💰 Montants dus aux restaurants</h2>
+            <div className="space-y-3">
+              {restaurantsWithPayments
+                .filter(r => r.restaurantPayout > 0)
+                .map((restaurant) => (
+                  <div key={restaurant.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <FaStore className="text-blue-600" />
+                        <div>
+                          <p className="font-semibold text-gray-900">{restaurant.nom}</p>
+                          <p className="text-sm text-gray-600">
+                            {restaurant.orderCount} commande(s) • CA: {restaurant.totalRevenue.toFixed(2)}€ • Commission: {restaurant.commission.toFixed(2)}€
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">Montant dû</p>
+                        <p className="text-xl font-bold text-purple-600">{restaurant.restaurantPayout.toFixed(2)}€</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleQuickValidate(restaurant)}
+                          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                          disabled={loading}
+                        >
+                          <FaCheck />
+                          <span>J'ai effectué ce virement</span>
+                        </button>
+                        <button
+                          onClick={() => handleQuickPayment(restaurant)}
+                          className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          disabled={loading}
+                        >
+                          <span>Détails</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {restaurantsWithPayments.filter(r => r.restaurantPayout > 0).length === 0 && (
+                <p className="text-gray-500 text-center py-4">Aucun montant dû pour le moment</p>
+              )}
+            </div>
           </div>
         )}
 

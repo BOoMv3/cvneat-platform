@@ -116,6 +116,8 @@ async function handlePaymentSucceeded(paymentIntent) {
       if (order.restaurant_id) {
         try {
           const notificationTotal = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
+          
+          // 1. Notification SSE (pour les clients connectés)
           const notificationSent = sseBroadcaster.broadcast(order.restaurant_id, {
             type: 'new_order',
             message: `Nouvelle commande #${order.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
@@ -123,6 +125,70 @@ async function handlePaymentSucceeded(paymentIntent) {
             timestamp: new Date().toISOString()
           });
           console.log('🔔 Notification SSE envoyée via webhook:', notificationSent ? 'Oui' : 'Non (aucun client connecté)');
+          
+          // 2. Notification push FCM pour le restaurant
+          try {
+            // Récupérer le user_id du restaurant depuis la table restaurants
+            const { data: restaurantData, error: restaurantError } = await supabase
+              .from('restaurants')
+              .select('user_id')
+              .eq('id', order.restaurant_id)
+              .single();
+            
+            if (!restaurantError && restaurantData && restaurantData.user_id) {
+              const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: restaurantData.user_id,
+                  title: 'Nouvelle commande ! 🎉',
+                  body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                  data: {
+                    type: 'new_order',
+                    orderId: order.id,
+                    url: '/partner/orders'
+                  }
+                })
+              });
+              
+              if (pushResponse.ok) {
+                const result = await pushResponse.json();
+                console.log('✅ Notification push envoyée au restaurant:', result.sent, '/', result.total);
+              } else {
+                console.warn('⚠️ Erreur réponse push notification restaurant:', pushResponse.status);
+              }
+            } else {
+              console.warn('⚠️ Restaurant ou user_id non trouvé:', restaurantError?.message || 'Aucun user_id');
+            }
+          } catch (pushError) {
+            console.warn('⚠️ Erreur envoi notification push restaurant:', pushError);
+          }
+          
+          // 3. Notification push FCM pour les livreurs (commande disponible)
+          try {
+            const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                role: 'delivery',
+                title: 'Nouvelle commande disponible 🚚',
+                body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                data: {
+                  type: 'new_order_available',
+                  orderId: order.id,
+                  url: '/delivery/dashboard'
+                }
+              })
+            });
+            
+            if (pushResponse.ok) {
+              const result = await pushResponse.json();
+              console.log('✅ Notification push envoyée aux livreurs:', result.sent, '/', result.total);
+            }
+          } catch (pushError) {
+            console.warn('⚠️ Erreur envoi notification push livreurs:', pushError);
+          }
+          
           console.log('💰 Montant notification (avec frais):', notificationTotal, '€');
         } catch (broadcastError) {
           console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
