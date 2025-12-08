@@ -631,10 +631,13 @@ export default function RestaurantOrders() {
                             }
                             
                             const isFormulaDrink = customizations.is_formula_drink === true;
+                            const isMenuDrink = customizations.is_menu_drink === true;
                             const isFormulaItem = customizations.is_formula_item === true;
                             const isFormula = customizations.is_formula === true;
                             const formulaName = customizations.formula_name;
                             const formulaId = customizations.formula_id;
+                            const menuName = customizations.menu_name;
+                            const menuId = customizations.menu_id;
                             
                             // Si c'est une boisson de formule, la regrouper avec la formule principale
                             if (isFormulaDrink && formulaName) {
@@ -647,6 +650,26 @@ export default function RestaurantOrders() {
                                 };
                               }
                               formulaGroups[formulaKey].drinks.push({
+                                item: item,
+                                index: index,
+                                drinkName: item.menus?.nom || customizations.drink_name || 'Boisson'
+                              });
+                              processedIndices.add(index);
+                              return;
+                            }
+                            
+                            // Si c'est une boisson de menu (non-formule), la regrouper avec le menu principal
+                            if (isMenuDrink && menuName) {
+                              const menuKey = menuName + (menuId || '');
+                              if (!formulaGroups[menuKey]) {
+                                formulaGroups[menuKey] = {
+                                  formulaItem: null,
+                                  drinks: [],
+                                  formulaItems: [],
+                                  isMenu: true
+                                };
+                              }
+                              formulaGroups[menuKey].drinks.push({
                                 item: item,
                                 index: index,
                                 drinkName: item.menus?.nom || customizations.drink_name || 'Boisson'
@@ -693,6 +716,69 @@ export default function RestaurantOrders() {
                               return;
                             }
                             
+                            // Si c'est un menu avec boisson, vérifier si la boisson est déjà dans formulaGroups
+                            if (isMenuDrink && menuName) {
+                              // Déjà traité plus haut
+                              return;
+                            }
+                            
+                            // Vérifier si cet item est un menu qui a une boisson associée (is_menu_drink avec menu_id = plat_id de cet item)
+                            const associatedMenuDrink = selectedOrder.details_commande.find((otherItem, otherIndex) => {
+                              if (otherIndex === index || processedIndices.has(otherIndex)) return false;
+                              let otherCustomizations = {};
+                              if (otherItem.customizations) {
+                                if (typeof otherItem.customizations === 'string') {
+                                  try {
+                                    otherCustomizations = JSON.parse(otherItem.customizations);
+                                  } catch (e) {
+                                    otherCustomizations = {};
+                                  }
+                                } else {
+                                  otherCustomizations = otherItem.customizations;
+                                }
+                              }
+                              return otherCustomizations.is_menu_drink === true && 
+                                     otherCustomizations.menu_id === item.plat_id;
+                            });
+                            
+                            // Si c'est un menu avec boisson associée, créer un groupe
+                            if (associatedMenuDrink) {
+                              let drinkCustomizations = {};
+                              if (associatedMenuDrink.customizations) {
+                                if (typeof associatedMenuDrink.customizations === 'string') {
+                                  try {
+                                    drinkCustomizations = JSON.parse(associatedMenuDrink.customizations);
+                                  } catch (e) {
+                                    drinkCustomizations = {};
+                                  }
+                                } else {
+                                  drinkCustomizations = associatedMenuDrink.customizations;
+                                }
+                              }
+                              
+                              const menuKey = (item.menus?.nom || 'Menu') + item.plat_id;
+                              if (!formulaGroups[menuKey]) {
+                                formulaGroups[menuKey] = {
+                                  formulaItem: {
+                                    item: item,
+                                    index: index,
+                                    name: item.menus?.nom || 'Menu'
+                                  },
+                                  drinks: [],
+                                  formulaItems: [],
+                                  isMenu: true
+                                };
+                              }
+                              formulaGroups[menuKey].drinks.push({
+                                item: associatedMenuDrink,
+                                index: selectedOrder.details_commande.indexOf(associatedMenuDrink),
+                                drinkName: associatedMenuDrink.menus?.nom || drinkCustomizations.drink_name || 'Boisson'
+                              });
+                              processedIndices.add(index);
+                              processedIndices.add(selectedOrder.details_commande.indexOf(associatedMenuDrink));
+                              return;
+                            }
+                            
                             // Item normal, l'ajouter tel quel
                             groupedItems.push({
                               type: 'normal',
@@ -703,9 +789,17 @@ export default function RestaurantOrders() {
                             processedIndices.add(index);
                           });
                           
-                          // Ajouter les groupes de formules
+                          // Ajouter les groupes de formules et menus
                           Object.entries(formulaGroups).forEach(([key, group]) => {
-                            if (group.formulaItem) {
+                            if (group.isMenu && group.formulaItem) {
+                              // Menu avec boisson
+                              groupedItems.push({
+                                type: 'menu_with_drink',
+                                menuItem: group.formulaItem,
+                                drinks: group.drinks,
+                                menuName: group.formulaItem.item.menus?.nom || group.formulaItem.name
+                              });
+                            } else if (group.formulaItem) {
                               // Formule complète (sans formula_items détaillés)
                               groupedItems.push({
                                 type: 'formula_complete',
