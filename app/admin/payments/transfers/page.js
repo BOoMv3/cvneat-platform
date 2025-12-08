@@ -145,13 +145,13 @@ export default function TransfersTracking() {
       // Pour chaque restaurant, calculer les revenus dus
       const restaurantsWithPaymentsData = await Promise.all(
         (allRestaurants || []).map(async (restaurant) => {
-          // Récupérer les commandes livrées, payées par le client, mais pas encore payées au restaurant
+          // Récupérer TOUTES les commandes livrées et payées par le client
+          // (même si elles ont été marquées comme payées au restaurant)
           const { data: orders, error: ordersError } = await supabase
             .from('commandes')
             .select('id, total, created_at, statut, payment_status, restaurant_paid_at')
             .eq('restaurant_id', restaurant.id)
-            .eq('statut', 'livree')
-            .is('restaurant_paid_at', null); // Seulement les commandes non payées au restaurant
+            .eq('statut', 'livree');
 
           if (ordersError) {
             console.error(`Erreur récupération commandes pour ${restaurant.nom}:`, ordersError);
@@ -160,11 +160,13 @@ export default function TransfersTracking() {
               totalRevenue: 0,
               commission: 0,
               restaurantPayout: 0,
+              totalTransfers: 0,
+              remainingToPay: 0,
               orderCount: 0
             };
           }
 
-          // Filtrer les commandes payées par le client (mais pas encore payées au restaurant)
+          // Filtrer les commandes payées par le client
           const paidOrders = (orders || []).filter(order => 
             !order.payment_status || order.payment_status === 'paid'
           );
