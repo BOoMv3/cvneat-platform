@@ -199,6 +199,90 @@ const formatStatusHoursLabel = (statusData, fallback) => {
   return fallback || null;
 };
 
+// Fonction pour vérifier si un restaurant est ouvert (calcul local, pas d'API)
+const checkRestaurantOpenStatus = (restaurant = {}) => {
+  try {
+    // Vérifier si fermé manuellement
+    if (restaurant.ferme_manuellement || restaurant.is_closed) {
+      return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
+    }
+
+    let horaires = restaurant.horaires;
+    if (!horaires) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'no_hours' };
+    }
+
+    if (typeof horaires === 'string') {
+      try {
+        horaires = JSON.parse(horaires);
+      } catch {
+        return { isOpen: true, isManuallyClosed: false, reason: 'parse_error' };
+      }
+    }
+
+    // Obtenir le jour actuel en français
+    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long' });
+    const todayName = todayFormatter.format(new Date()).toLowerCase();
+    const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
+    
+    let heuresJour = null;
+    for (const key of variants) {
+      if (horaires?.[key]) {
+        heuresJour = horaires[key];
+        break;
+      }
+    }
+
+    if (!heuresJour || heuresJour.ouvert === false) {
+      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
+    }
+
+    // Obtenir l'heure actuelle
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    // Vérifier les plages horaires
+    if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
+      for (const plage of heuresJour.plages) {
+        if (plage?.ouverture && plage?.fermeture) {
+          const [startHour, startMinute] = plage.ouverture.split(':').map(Number);
+          const [endHour, endMinute] = plage.fermeture.split(':').map(Number);
+          const openTime = startHour * 60 + startMinute;
+          const closeTime = endHour * 60 + endMinute;
+          
+          if (currentTime >= openTime && currentTime < closeTime) {
+            return { isOpen: true, isManuallyClosed: false, reason: 'open' };
+          }
+        }
+      }
+      return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
+    }
+
+    // Vérifier les horaires simples
+    if (heuresJour.ouverture && heuresJour.fermeture) {
+      const [startHour, startMinute] = heuresJour.ouverture.split(':').map(Number);
+      const [endHour, endMinute] = heuresJour.fermeture.split(':').map(Number);
+      const openTime = startHour * 60 + startMinute;
+      const closeTime = endHour * 60 + endMinute;
+      
+      if (currentTime >= openTime && currentTime < closeTime) {
+        return { isOpen: true, isManuallyClosed: false, reason: 'open' };
+      }
+      return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
+    }
+
+    // Si ouvert est true mais pas d'horaires précis, considérer comme ouvert
+    if (heuresJour.ouvert === true) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'open_no_hours' };
+    }
+
+    return { isOpen: false, isManuallyClosed: false, reason: 'unknown' };
+  } catch (e) {
+    console.warn('[checkRestaurantOpenStatus] Erreur:', e);
+    return { isOpen: true, isManuallyClosed: false, reason: 'error' };
+  }
+};
+
 // Runtime edge désactivé pour permettre l'export statique (mobile)
 // export const dynamic = 'force-dynamic';
 // export const runtime = 'edge';
@@ -552,88 +636,16 @@ export default function Home() {
         setRestaurants(normalizedRestaurants);
         
         // Vérifier le statut d'ouverture pour chaque restaurant
+        // Vérifier le statut d'ouverture localement (sans appel API)
         const openStatusMap = {};
-        const supabaseClientForHours = isCapacitorApp 
-          ? ((typeof window !== 'undefined' && window.supabase) || supabase)
-          : null;
-        
-        await Promise.all(normalizedRestaurants.map(async (restaurant) => {
-          try {
-            let statusData;
-            
-            if (isCapacitorApp && supabaseClientForHours) {
-              // Mode Capacitor - Utiliser Supabase directement
-              const { data: hoursData, error: hoursError } = await supabaseClientForHours
-                .from('restaurant_hours')
-                .select('*')
-                .eq('restaurant_id', restaurant.id)
-                .single();
-              
-              if (hoursError) {
-                console.warn(`[Restaurants] Erreur Supabase récupération horaires pour ${restaurant.id}:`, hoursError);
-                statusData = { isOpen: false, is_manually_closed: true, reason: 'supabase_error' };
-              } else {
-                // Simuler la logique de l'API /api/restaurants/[id]/hours
-                const now = new Date();
-                const dayOfWeek = now.getDay(); // 0 for Sunday, 1 for Monday, etc.
-                const currentTime = now.getHours() * 60 + now.getMinutes();
-                
-                let isOpen = false;
-                let isManuallyClosed = hoursData?.is_manually_closed || false;
-                let reason = hoursData?.reason || null;
-                let currentDayHours = hoursData?.hours?.find(h => h.day === dayOfWeek);
-                
-                if (isManuallyClosed) {
-                  isOpen = false;
-                  reason = 'manual';
-                } else if (currentDayHours && currentDayHours.periods) {
-                  for (const period of currentDayHours.periods) {
-                    const [startHour, startMinute] = period.open.time.split(':').map(Number);
-                    const [endHour, endMinute] = period.close.time.split(':').map(Number);
-                    const openTime = startHour * 60 + startMinute;
-                    const closeTime = endHour * 60 + endMinute;
-                    
-                    if (currentTime >= openTime && currentTime < closeTime) {
-                      isOpen = true;
-                      break;
-                    }
-                  }
-                }
-                statusData = { isOpen, is_manually_closed: isManuallyClosed, reason, hours: hoursData?.hours };
-              }
-            } else {
-              // Mode Web - Utilisation de l'API Next.js
-              const statusResponse = await fetch(`/api/restaurants/${restaurant.id}/hours`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-              });
-              if (statusResponse.ok) {
-                statusData = await statusResponse.json();
-              } else {
-                console.warn('⚠️ Erreur récupération statut (Web):', statusResponse.status, statusResponse.statusText);
-                statusData = { isOpen: false, is_manually_closed: restaurant.ferme_manuellement || restaurant.is_closed || false, reason: 'api_error' };
-              }
-            }
-            
-            // Utiliser une comparaison stricte === true pour éviter les cas undefined/null
-            const isOpen = statusData.isOpen === true;
-            const isManuallyClosed = statusData.is_manually_closed === true || statusData.reason === 'manual';
-            const hoursLabel = formatStatusHoursLabel(statusData, restaurant.today_hours_label) || restaurant.today_hours_label || 'Horaires non communiquées';
-            openStatusMap[restaurant.id] = {
-              isOpen,
-              isManuallyClosed,
-              hoursLabel
-            };
-          } catch (err) {
-            console.error(`[Restaurants] Erreur vérification statut restaurant ${restaurant.id}:`, err);
-            // Si erreur, considérer comme fermé par défaut sauf si pas de ferme_manuellement
-            openStatusMap[restaurant.id] = {
-              isOpen: !restaurant.ferme_manuellement && !restaurant.is_closed,
-              isManuallyClosed: restaurant.ferme_manuellement || restaurant.is_closed || false,
-              hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
-            };
-          }
-        }));
+        for (const restaurant of normalizedRestaurants) {
+          const status = checkRestaurantOpenStatus(restaurant);
+          openStatusMap[restaurant.id] = {
+            isOpen: status.isOpen,
+            isManuallyClosed: status.isManuallyClosed,
+            hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
+          };
+        }
         setRestaurantsOpenStatus(openStatusMap);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
