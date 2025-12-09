@@ -1,18 +1,38 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaGift, FaStar } from 'react-icons/fa';
 
+// Vérifier si l'utilisateur a déjà joué pour une commande
+const hasPlayedForOrder = (orderId) => {
+  if (typeof window === 'undefined') return true;
+  const played = JSON.parse(localStorage.getItem('luckyWheelPlayed') || '[]');
+  return played.includes(orderId);
+};
+
+// Marquer une commande comme jouée
+const markOrderAsPlayed = (orderId) => {
+  if (typeof window === 'undefined') return;
+  const played = JSON.parse(localStorage.getItem('luckyWheelPlayed') || '[]');
+  if (!played.includes(orderId)) {
+    played.push(orderId);
+    // Garder seulement les 50 dernières commandes pour ne pas surcharger
+    if (played.length > 50) played.shift();
+    localStorage.setItem('luckyWheelPlayed', JSON.stringify(played));
+  }
+};
+
 // Configuration des segments avec probabilités (total = 100%)
+// 92% de chance de ne rien gagner !
 const SEGMENTS = [
-  { label: "Pas de chance", color: "#6b7280", probability: 40, prize: null },
-  { label: "Réessayez !", color: "#9ca3af", probability: 25, prize: null },
-  { label: "Presque...", color: "#d1d5db", probability: 20, prize: null },
-  { label: "-10%", color: "#fbbf24", probability: 8, prize: { type: 'discount', value: 10, code: 'CHANCE10' } },
-  { label: "Livraison offerte", color: "#f97316", probability: 4, prize: { type: 'free_delivery', code: 'CHANCEFREE' } },
-  { label: "Dessert offert", color: "#ef4444", probability: 2, prize: { type: 'free_dessert', code: 'CHANCEDESSERT' } },
-  { label: "-50% !", color: "#10b981", probability: 0.8, prize: { type: 'discount', value: 50, code: 'CHANCE50' } },
-  { label: "🎉 JACKPOT", color: "#8b5cf6", probability: 0.2, prize: { type: 'free_order', code: 'JACKPOT' } },
+  { label: "Pas de chance", color: "#6b7280", probability: 45, prize: null },
+  { label: "Réessayez !", color: "#9ca3af", probability: 30, prize: null },
+  { label: "Presque...", color: "#d1d5db", probability: 17, prize: null },
+  { label: "-10%", color: "#fbbf24", probability: 4, prize: { type: 'discount', value: 10, code: 'CHANCE10' } },
+  { label: "Livraison offerte", color: "#f97316", probability: 2.5, prize: { type: 'free_delivery', code: 'CHANCEFREE' } },
+  { label: "Dessert offert", color: "#ef4444", probability: 1, prize: { type: 'free_dessert', code: 'CHANCEDESSERT' } },
+  { label: "-50% !", color: "#10b981", probability: 0.4, prize: { type: 'discount', value: 50, code: 'CHANCE50' } },
+  { label: "🎉 JACKPOT", color: "#8b5cf6", probability: 0.1, prize: { type: 'free_order', code: 'JACKPOT' } },
 ];
 
 // Calculer les angles des segments
@@ -42,17 +62,31 @@ const spinWheel = () => {
   return SEGMENTS[0]; // Fallback
 };
 
-export default function LuckyWheel({ isOpen, onClose, onWin }) {
+export default function LuckyWheel({ isOpen, onClose, onWin, orderId }) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState(null);
   const [rotation, setRotation] = useState(0);
+  const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const wheelRef = useRef(null);
 
+  // Vérifier si déjà joué pour cette commande
+  useEffect(() => {
+    if (orderId) {
+      setAlreadyPlayed(hasPlayedForOrder(orderId));
+    }
+  }, [orderId]);
+
   const handleSpin = () => {
-    if (isSpinning) return;
+    if (isSpinning || alreadyPlayed) return;
     
     setIsSpinning(true);
     setResult(null);
+    
+    // Marquer comme joué immédiatement
+    if (orderId) {
+      markOrderAsPlayed(orderId);
+      setAlreadyPlayed(true);
+    }
     
     // Déterminer le résultat
     const winner = spinWheel();
@@ -199,21 +233,28 @@ export default function LuckyWheel({ isOpen, onClose, onWin }) {
         )}
         
         {/* Bouton tourner */}
-        <button
-          onClick={handleSpin}
-          disabled={isSpinning}
-          className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
-            isSpinning
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transform hover:scale-[1.02] active:scale-[0.98]'
-          }`}
-        >
-          {isSpinning ? '🎰 La roue tourne...' : result ? '🔄 Rejouer' : '🎰 Tourner la roue !'}
-        </button>
+        {alreadyPlayed && !result ? (
+          <div className="text-center p-4 bg-gray-100 rounded-2xl">
+            <p className="text-gray-600 font-medium">😅 Vous avez déjà joué pour cette commande !</p>
+            <p className="text-gray-400 text-sm mt-1">Revenez après votre prochaine commande</p>
+          </div>
+        ) : (
+          <button
+            onClick={handleSpin}
+            disabled={isSpinning || (alreadyPlayed && !result)}
+            className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
+              isSpinning || alreadyPlayed
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transform hover:scale-[1.02] active:scale-[0.98]'
+            }`}
+          >
+            {isSpinning ? '🎰 La roue tourne...' : '🎰 Tourner la roue !'}
+          </button>
+        )}
         
         {/* Disclaimer */}
         <p className="text-center text-xs text-gray-400 mt-4">
-          1 chance par jour • Les lots sont valables 7 jours
+          1 chance par commande • Les lots sont valables 7 jours
         </p>
       </div>
     </div>

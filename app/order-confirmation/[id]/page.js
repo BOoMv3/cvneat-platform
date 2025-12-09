@@ -32,6 +32,7 @@ export default function OrderConfirmation() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [showLuckyWheel, setShowLuckyWheel] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -693,20 +694,46 @@ export default function OrderConfirmation() {
                 </div>
               </div>
 
+              
+              {/* Roue de la Chance */}
+              <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-6 text-white">
+                <h3 className="text-lg font-bold mb-2">🎰 Tentez votre chance !</h3>
+                <p className="text-sm text-white/90 mb-4">
+                  Tournez la roue et gagnez peut-être une réduction sur votre prochaine commande !
+                </p>
+                <button 
+                  onClick={() => setShowLuckyWheel(true)}
+                  className="w-full bg-white text-purple-600 py-3 px-4 rounded-lg hover:bg-purple-50 transition-colors font-bold"
+                >
+                  🎰 Tourner la roue !
+                </button>
+              </div>
+
               {/* Support */}
               <div className="bg-blue-50 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">Besoin d'aide ?</h3>
                 <p className="text-sm text-blue-700 mb-4">
                   Notre équipe est là pour vous aider avec votre commande.
                 </p>
-                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium" onClick={() => window.location.href = "mailto:contact@cvneat.fr"}>
                   Contacter le support
             </button>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Roue de la Chance Modal */}
+        <LuckyWheel
+          isOpen={showLuckyWheel}
+          onClose={() => setShowLuckyWheel(false)}
+          orderId={id}
+          onWin={(prize) => {
+            console.log('Gain:', prize);
+          }}
+        />
       </div>
     </div>
   );
+
 } 
