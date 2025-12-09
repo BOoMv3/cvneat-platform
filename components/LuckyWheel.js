@@ -22,24 +22,28 @@ const markOrderAsPlayed = (orderId) => {
   }
 };
 
-// Configuration des segments avec probabilités (total = 100%)
-// 92% de chance de ne rien gagner !
+// Configuration des segments - Affichage équilibré mais probabilités très faibles !
+// Chaque segment fait la même taille visuellement (12.5% de la roue = 8 segments)
+// Mais les VRAIES probabilités de gain sont minuscules
 const SEGMENTS = [
-  { label: "Pas de chance", color: "#6b7280", probability: 45, prize: null },
-  { label: "Réessayez !", color: "#9ca3af", probability: 30, prize: null },
-  { label: "Presque...", color: "#d1d5db", probability: 17, prize: null },
-  { label: "-10%", color: "#fbbf24", probability: 4, prize: { type: 'discount', value: 10, code: 'CHANCE10' } },
-  { label: "Livraison offerte", color: "#f97316", probability: 2.5, prize: { type: 'free_delivery', code: 'CHANCEFREE' } },
-  { label: "Dessert offert", color: "#ef4444", probability: 1, prize: { type: 'free_dessert', code: 'CHANCEDESSERT' } },
-  { label: "-50% !", color: "#10b981", probability: 0.4, prize: { type: 'discount', value: 50, code: 'CHANCE50' } },
-  { label: "🎉 JACKPOT", color: "#8b5cf6", probability: 0.1, prize: { type: 'free_order', code: 'JACKPOT' } },
+  { label: "-10%", color: "#fbbf24", visualSize: 12.5, probability: 3, prize: { type: 'discount', value: 10, code: 'CHANCE10' } },
+  { label: "Perdu", color: "#1f2937", visualSize: 12.5, probability: 35, prize: null },
+  { label: "Livraison offerte", color: "#f97316", visualSize: 12.5, probability: 2, prize: { type: 'free_delivery', code: 'CHANCEFREE' } },
+  { label: "Retentez !", color: "#374151", visualSize: 12.5, probability: 30, prize: null },
+  { label: "Dessert offert", color: "#ef4444", visualSize: 12.5, probability: 1, prize: { type: 'free_dessert', code: 'CHANCEDESSERT' } },
+  { label: "Dommage...", color: "#4b5563", visualSize: 12.5, probability: 27, prize: null },
+  { label: "-50% !", color: "#10b981", visualSize: 12.5, probability: 1.5, prize: { type: 'discount', value: 50, code: 'CHANCE50' } },
+  { label: "🎉 JACKPOT", color: "#8b5cf6", visualSize: 12.5, probability: 0.5, prize: { type: 'free_order', code: 'JACKPOT' } },
 ];
 
-// Calculer les angles des segments
+// Total probabilités perdantes = 35 + 30 + 27 = 92%
+// Total probabilités gagnantes = 3 + 2 + 1 + 1.5 + 0.5 = 8%
+
+// Calculer les angles des segments (basé sur visualSize pour l'affichage)
 const calculateSegments = () => {
   let currentAngle = 0;
   return SEGMENTS.map(segment => {
-    const angle = (segment.probability / 100) * 360;
+    const angle = (segment.visualSize / 100) * 360; // Utilise visualSize pour l'affichage
     const startAngle = currentAngle;
     currentAngle += angle;
     return { ...segment, startAngle, endAngle: currentAngle, angle };
