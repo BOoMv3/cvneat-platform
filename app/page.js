@@ -38,6 +38,7 @@ import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
+import LuckyWheel from '@/components/LuckyWheel';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -306,6 +307,7 @@ export default function Home() {
   const [showFloatingCart, setShowFloatingCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
+  const [showLuckyWheel, setShowLuckyWheel] = useState(false); // Roue de la chance
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
 
   const nextOpeningDate = useMemo(() => getNextOpeningDate(), []);
@@ -1298,6 +1300,27 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
           <Advertisement position="footer" />
         </div>
+
+        {/* Bouton flottant Roue de la Chance */}
+        {user && (
+          <button
+            onClick={() => setShowLuckyWheel(true)}
+            className="fixed bottom-24 right-4 sm:bottom-8 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 transition-all z-40 flex items-center justify-center animate-bounce"
+            title="Roue de la Chance"
+          >
+            <span className="text-2xl sm:text-3xl">🎰</span>
+          </button>
+        )}
+
+        {/* Roue de la Chance */}
+        <LuckyWheel
+          isOpen={showLuckyWheel}
+          onClose={() => setShowLuckyWheel(false)}
+          onWin={(prize) => {
+            console.log('Gain:', prize);
+            // TODO: Sauvegarder le gain en BDD
+          }}
+        />
       </main>
     </div>
   );
