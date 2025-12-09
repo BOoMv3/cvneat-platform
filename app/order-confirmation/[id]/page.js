@@ -695,7 +695,8 @@ export default function OrderConfirmation() {
               </div>
 
               
-              {/* Roue de la Chance */}
+              {/* Roue de la Chance - DÉSACTIVÉE TEMPORAIREMENT */}
+              {/* 
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-6 text-white">
                 <h3 className="text-lg font-bold mb-2">🎰 Tentez votre chance !</h3>
                 <p className="text-sm text-white/90 mb-4">
@@ -708,6 +709,7 @@ export default function OrderConfirmation() {
                   🎰 Tourner la roue !
                 </button>
               </div>
+              */}
 
               {/* Support */}
               <div className="bg-blue-50 rounded-xl p-6">
@@ -723,7 +725,8 @@ export default function OrderConfirmation() {
           </div>
         </div>
 
-        {/* Roue de la Chance Modal */}
+        {/* Roue de la Chance Modal - DÉSACTIVÉE TEMPORAIREMENT
+        
         <LuckyWheel
           isOpen={showLuckyWheel}
           onClose={() => setShowLuckyWheel(false)}
@@ -732,6 +735,7 @@ export default function OrderConfirmation() {
             console.log('Gain:', prize);
           }}
         />
+        */}
       </div>
     </div>
   );
