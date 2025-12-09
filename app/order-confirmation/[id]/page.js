@@ -33,6 +33,26 @@ export default function OrderConfirmation() {
   const [error, setError] = useState(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [showLuckyWheel, setShowLuckyWheel] = useState(false);
+  
+  // Timer séparé qui calcule le temps écoulé depuis la commande
+  useEffect(() => {
+    if (!orderData) return;
+    
+    const startTime = orderData.accepted_at || orderData.created_at;
+    if (!startTime) return;
+    
+    const calculateElapsed = () => {
+      const start = new Date(startTime).getTime();
+      const now = Date.now();
+      const elapsed = Math.floor((now - start) / 1000);
+      setTimeElapsed(elapsed > 0 ? elapsed : 0);
+    };
+    
+    calculateElapsed(); // Calculer immédiatement
+    const interval = setInterval(calculateElapsed, 1000);
+    
+    return () => clearInterval(interval);
+  }, [orderData?.accepted_at, orderData?.created_at]);
 
   useEffect(() => {
     let isMounted = true;
@@ -145,17 +165,12 @@ export default function OrderConfirmation() {
       }
     };
 
-    setTimeElapsed(0);
     loadOrder();
     const fetchInterval = setInterval(loadOrder, 3000);
-    const timerInterval = setInterval(() => {
-      setTimeElapsed(prev => prev + 1);
-    }, 1000);
-
+    
     return () => {
       isMounted = false;
       clearInterval(fetchInterval);
-      clearInterval(timerInterval);
     };
   }, [id, authToken, securityCode]);
 
