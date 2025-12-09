@@ -112,14 +112,6 @@ export default function AppWelcome() {
           >
             Créer un compte
           </button>
-          
-          {/* Lien pour continuer sans compte */}
-          <button
-            onClick={() => router.push('/')}
-            className="w-full py-3 text-white/80 font-medium text-base hover:text-white transition-colors"
-          >
-            Continuer sans compte →
-          </button>
         </div>
         
         {/* Footer */}
