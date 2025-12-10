@@ -36,3 +36,4 @@ export async function GET() {
 
   return NextResponse.json(restaurantsWithRatings);
 } // Cache invalidation Wed Dec 10 18:45:36 CET 2025
+// Wed Dec 10 19:10:44 CET 2025
