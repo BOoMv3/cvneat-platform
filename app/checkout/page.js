@@ -110,16 +110,7 @@ export default function Checkout() {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        // Sauvegarder l'intention de checkout avant de rediriger
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('redirectAfterLogin', '/checkout');
-          // S'assurer que le panier est bien sauvegardé
-          const savedCart = safeLocalStorage.getJSON('cart');
-          if (savedCart) {
-            safeLocalStorage.setJSON('cart', savedCart);
-          }
-        }
-        router.push('/login?redirect=checkout');
+        router.push('/login');
         return;
       }
       setUser(user);
@@ -1165,21 +1156,38 @@ export default function Checkout() {
               ))}
             </div>
 
+            {/* Code promo */}
+            <div className="mb-4 sm:mb-6">
+              <PromoCodeInput
+                onCodeApplied={(codeData) => {
+                  setAppliedPromoCode(codeData);
+                  setForceUpdate(prev => prev + 1); // Force recalcul du total
+                }}
+                appliedCode={appliedPromoCode}
+                cartTotal={cartTotal}
+                restaurantId={restaurant?.id}
+                userId={user?.id}
+                isFirstOrder={false}
+              />
+            </div>
+
             {(() => {
               const PLATFORM_FEE = 0.49;
               
-              // PROMO TERMINÉE : Plus de livraison gratuite
-              // Les frais de livraison sont toujours affichés normalement
-              // const today = new Date().toISOString().split('T')[0];
-              // const PROMO_DATE = '2025-11-21';
-              // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
+              // Calculer les frais de livraison (gratuits si code promo free_delivery)
               let displayedDeliveryFee = fraisLivraison;
+              if (appliedPromoCode?.discountType === 'free_delivery') {
+                displayedDeliveryFee = 0;
+              }
               
-              // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-              //   displayedDeliveryFee = 0;
-              // }
+              // Calculer la réduction du code promo
+              const discountAmount = appliedPromoCode?.discountAmount || 0;
+              const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas dépasser le panier
+              const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
               
-              const finalTotalDisplay = Math.max(0, cartTotal + displayedDeliveryFee + PLATFORM_FEE);
+              // Total final avec réduction et livraison
+              const rawTotal = subtotalAfterDiscount + displayedDeliveryFee + PLATFORM_FEE;
+              const finalTotalDisplay = Math.max(0.50, Math.round(rawTotal * 100) / 100); // Minimum 0.50€
               // const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
               
               return (
@@ -1194,12 +1202,15 @@ export default function Checkout() {
                   <span className="font-semibold">-{appliedPromoCode.discountAmount.toFixed(2)}€</span>
                 </div>
               )}
-              <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
-                <span className="flex items-center">
+              <div key={`frais-${forceUpdate}`} className="flex justify-between text-sm sm:text-base">
+                <span className={`flex items-center ${displayedDeliveryFee === 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}>
                   <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Frais de livraison
+                  {displayedDeliveryFee === 0 && appliedPromoCode && (
+                    <span className="ml-2 text-xs">(Offert)</span>
+                  )}
                 </span>
-                <span className="font-semibold">
+                <span className={`font-semibold ${displayedDeliveryFee === 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}>
                   {displayedDeliveryFee.toFixed(2)}€
                 </span>
               </div>
