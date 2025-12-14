@@ -143,11 +143,46 @@ export async function POST(request) {
       
       const promises = batch.map(async (email) => {
         try {
+          // Ajouter automatiquement le lien de désinscription et le footer
+          const unsubscribeLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.fr'}/unsubscribe?email=${encodeURIComponent(email)}`;
+          
+          // Améliorer le HTML avec footer et désinscription
+          const htmlWithFooter = `
+            ${html}
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+              <p style="margin: 10px 0;">
+                Vous recevez cet email car vous êtes membre de CVN'EAT.
+              </p>
+              <p style="margin: 10px 0;">
+                <a href="${unsubscribeLink}" style="color: #3b82f6; text-decoration: underline;">
+                  Se désabonner
+                </a>
+              </p>
+              <p style="margin: 10px 0; color: #9ca3af;">
+                CVN'EAT - Plateforme de livraison de repas<br>
+                ${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.fr'}
+              </p>
+            </div>
+          `;
+          
+          // Améliorer le texte avec footer et désinscription
+          const textWithFooter = `
+${text || html.replace(/<[^>]*>/g, '').trim()}
+
+---
+Vous recevez cet email car vous êtes membre de CVN'EAT.
+
+Pour vous désabonner : ${unsubscribeLink}
+
+CVN'EAT - Plateforme de livraison de repas
+${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvneat.fr'}
+          `.trim();
+
           const result = await emailService.sendEmail({
             to: email,
             subject,
-            html,
-            text: text || html.replace(/<[^>]*>/g, '').trim()
+            html: htmlWithFooter,
+            text: textWithFooter
           });
           console.log(`✅ Email envoyé avec succès à ${email}`);
           return { email, success: true, messageId: result?.messageId };
