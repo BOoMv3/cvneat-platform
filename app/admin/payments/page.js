@@ -103,10 +103,10 @@ export default function AdminPayments() {
       setLoading(true);
       setError(null);
 
-      // Récupérer tous les restaurants
+      // Récupérer tous les restaurants avec leur commission_rate
       const { data: allRestaurants, error: restaurantsError } = await supabase
         .from('restaurants')
-        .select('id, nom, user_id, status')
+        .select('id, nom, user_id, status, commission_rate')
         .order('nom', { ascending: true });
 
       if (restaurantsError) throw restaurantsError;
@@ -123,7 +123,7 @@ export default function AdminPayments() {
           // IMPORTANT: Ne filtrer que par statut 'livree', payment_status peut ne pas exister ou être différent
           let query = supabase
             .from('commandes')
-            .select('id, total, created_at, statut, payment_status')
+            .select('id, total, created_at, statut, payment_status, commission_amount, restaurant_payout, commission_rate')
             .eq('restaurant_id', restaurant.id)
             .eq('statut', 'livree');
           
@@ -158,37 +158,63 @@ export default function AdminPayments() {
 
           console.log(`📊 ${restaurant.nom}: ${paidOrders.length} commandes payées sur ${orders?.length || 0} commandes livrées`);
 
-          // Calculer les revenus
-          const totalRevenue = paidOrders.reduce((sum, order) => {
+          // Calculer les revenus et commissions
+          // Si les commandes ont déjà commission_amount et restaurant_payout stockés, les utiliser
+          // Sinon, recalculer avec le taux du restaurant
+          let totalRevenue = 0;
+          let totalCommission = 0;
+          let totalRestaurantPayout = 0;
+          let hasStoredCommissions = false;
+
+          paidOrders.forEach(order => {
             const orderTotal = parseFloat(order.total || 0);
             if (isNaN(orderTotal)) {
               console.warn(`⚠️ Commande ${order.id} avec total invalide:`, order.total);
-              return sum;
+              return;
             }
-            return sum + orderTotal;
-          }, 0);
+            totalRevenue += orderTotal;
 
-          // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-          const normalizedRestaurantName = (restaurant.nom || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
-          const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-          
-          // Taux de commission (par défaut 20%)
-          // Note: commission_rate n'existe pas dans la table, on utilise toujours 20% sauf pour La Bonne Pâte
-          const commissionRate = isInternalRestaurant ? 0 : 0.20;
-          
-          const commission = totalRevenue * commissionRate;
-          const restaurantPayout = totalRevenue - commission;
+            // Si la commande a déjà les données de commission stockées, les utiliser
+            if (order.commission_amount !== null && order.commission_amount !== undefined && 
+                order.restaurant_payout !== null && order.restaurant_payout !== undefined) {
+              totalCommission += parseFloat(order.commission_amount || 0);
+              totalRestaurantPayout += parseFloat(order.restaurant_payout || 0);
+              hasStoredCommissions = true;
+            }
+          });
+
+          // Si les commandes n'ont pas de commissions stockées, recalculer
+          if (!hasStoredCommissions) {
+            // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+            const normalizedRestaurantName = (restaurant.nom || '')
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase();
+            const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+            
+            // Taux de commission : utiliser commission_rate du restaurant (par défaut 20% si non défini)
+            // La Bonne Pâte = 0%, sinon utiliser le commission_rate du restaurant
+            const restaurantCommissionRate = restaurant.commission_rate 
+              ? parseFloat(restaurant.commission_rate) / 100 
+              : 0.20; // 20% par défaut
+            const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
+            
+            totalCommission = totalRevenue * commissionRate;
+            totalRestaurantPayout = totalRevenue - totalCommission;
+          }
+
+          // Calculer le taux de commission moyen pour l'affichage
+          const avgCommissionRate = totalRevenue > 0 
+            ? (totalCommission / totalRevenue) * 100 
+            : (restaurant.commission_rate || 20);
 
           return {
             ...restaurant,
             totalRevenue: Math.round(totalRevenue * 100) / 100,
-            commission: Math.round(commission * 100) / 100,
-            restaurantPayout: Math.round(restaurantPayout * 100) / 100,
+            commission: Math.round(totalCommission * 100) / 100,
+            restaurantPayout: Math.round(totalRestaurantPayout * 100) / 100,
             orderCount: paidOrders.length,
-            commissionRate: commissionRate * 100
+            commissionRate: Math.round(avgCommissionRate * 100) / 100
           };
         })
       );

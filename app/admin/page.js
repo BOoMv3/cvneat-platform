@@ -20,7 +20,8 @@ import {
   FaRedo,
   FaUser,
   FaUserPlus,
-  FaSignInAlt
+  FaSignInAlt,
+  FaEnvelope
 } from 'react-icons/fa';
 
 export default function AdminPage() {
@@ -452,6 +453,14 @@ export default function AdminPage() {
                   <FaEuroSign className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Paiements Partenaires</span>
                   <span className="sm:hidden">Paiements</span>
+                </button>
+                <button
+                  onClick={() => router.push('/admin/newsletter')}
+                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
+                >
+                  <FaEnvelope className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Newsletter</span>
+                  <span className="sm:hidden">Email</span>
                 </button>
                 <button
                   onClick={() => router.push('/')}
