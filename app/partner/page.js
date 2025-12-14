@@ -1153,6 +1153,13 @@ export default function PartnerDashboard() {
         setIsManuallyClosed(newStatus);
         setRestaurant(prev => ({ ...prev, ferme_manuellement: newStatus }));
         alert(newStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
+        
+        // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
+        // On peut aussi forcer un rechargement côté client si nécessaire
+        if (typeof window !== 'undefined') {
+          // Déclencher un événement pour forcer le rafraîchissement (si la page d'accueil est ouverte)
+          window.dispatchEvent(new Event('restaurant-status-changed'));
+        }
       } else {
         const error = await response.json();
         alert(`Erreur: ${error.error || 'Impossible de mettre à jour le statut'}`);
