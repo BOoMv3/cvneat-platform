@@ -22,22 +22,20 @@ const markOrderAsPlayed = (orderId) => {
   }
 };
 
-// Configuration des segments - Affichage équilibré mais probabilités très faibles !
-// Chaque segment fait la même taille visuellement (12.5% de la roue = 8 segments)
-// Mais les VRAIES probabilités de gain sont minuscules
+// Configuration des segments - 100% GAGNANT !
+// Tous les segments sont des gains pour inciter à recommander
 const SEGMENTS = [
-  { label: "-10%", color: "#fbbf24", visualSize: 12.5, probability: 3, prize: { type: 'discount', value: 10, code: 'CHANCE10' } },
-  { label: "Perdu", color: "#1f2937", visualSize: 12.5, probability: 35, prize: null },
-  { label: "Livraison offerte", color: "#f97316", visualSize: 12.5, probability: 2, prize: { type: 'free_delivery', code: 'CHANCEFREE' } },
-  { label: "Retentez !", color: "#374151", visualSize: 12.5, probability: 30, prize: null },
-  { label: "Dessert offert", color: "#ef4444", visualSize: 12.5, probability: 1, prize: { type: 'free_dessert', code: 'CHANCEDESSERT' } },
-  { label: "Dommage...", color: "#4b5563", visualSize: 12.5, probability: 27, prize: null },
-  { label: "-50% !", color: "#10b981", visualSize: 12.5, probability: 1.5, prize: { type: 'discount', value: 50, code: 'CHANCE50' } },
-  { label: "🎉 JACKPOT", color: "#8b5cf6", visualSize: 12.5, probability: 0.5, prize: { type: 'free_order', code: 'JACKPOT' } },
+  { label: "-10%", color: "#fbbf24", visualSize: 12.5, probability: 30, prize: { type: 'discount', value: 10 } },
+  { label: "Livraison offerte", color: "#f97316", visualSize: 12.5, probability: 25, prize: { type: 'free_delivery' } },
+  { label: "-15%", color: "#3b82f6", visualSize: 12.5, probability: 20, prize: { type: 'discount', value: 15 } },
+  { label: "Dessert offert", color: "#ef4444", visualSize: 12.5, probability: 15, prize: { type: 'free_dessert' } },
+  { label: "-20%", color: "#10b981", visualSize: 12.5, probability: 5, prize: { type: 'discount', value: 20 } },
+  { label: "-25%", color: "#8b5cf6", visualSize: 12.5, probability: 3, prize: { type: 'discount', value: 25 } },
+  { label: "-50% !", color: "#ec4899", visualSize: 12.5, probability: 1.5, prize: { type: 'discount', value: 50 } },
+  { label: "🎉 JACKPOT", color: "#f59e0b", visualSize: 12.5, probability: 0.5, prize: { type: 'free_order' } },
 ];
 
-// Total probabilités perdantes = 35 + 30 + 27 = 92%
-// Total probabilités gagnantes = 3 + 2 + 1 + 1.5 + 0.5 = 8%
+// Total = 100% de gains !
 
 // Calculer les angles des segments (basé sur visualSize pour l'affichage)
 const calculateSegments = () => {
@@ -66,11 +64,12 @@ const spinWheel = () => {
   return SEGMENTS[0]; // Fallback
 };
 
-export default function LuckyWheel({ isOpen, onClose, onWin, orderId }) {
+export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState(null);
   const [rotation, setRotation] = useState(0);
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState(null);
   const wheelRef = useRef(null);
 
   // Vérifier si déjà joué pour cette commande
@@ -107,12 +106,47 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId }) {
     
     setRotation(totalRotation);
     
-    // Après l'animation, afficher le résultat
-    setTimeout(() => {
+    // Après l'animation, afficher le résultat et générer le code promo
+    setTimeout(async () => {
       setIsSpinning(false);
       setResult(winner);
       
-      if (winner.prize && onWin) {
+      // Générer un code promo automatiquement si l'utilisateur a gagné
+      if (winner.prize && userId) {
+        try {
+          const response = await fetch('/api/promo-codes/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              prizeType: winner.prize.type,
+              prizeValue: winner.prize.value,
+              orderId
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            setGeneratedCode(data.code);
+            // Appeler onWin avec le code généré
+            if (onWin) {
+              onWin({ ...winner, generatedCode: data.code, validUntil: data.validUntil });
+            }
+          } else {
+            console.error('Erreur génération code:', data.error);
+            // Même si la génération échoue, on affiche le gain
+            if (onWin) {
+              onWin(winner);
+            }
+          }
+        } catch (error) {
+          console.error('Erreur génération code promo:', error);
+          if (onWin) {
+            onWin(winner);
+          }
+        }
+      } else if (winner.prize && onWin) {
         onWin(winner);
       }
     }, 4000);
@@ -222,9 +256,24 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId }) {
                 <div className="text-3xl mb-2">🎉</div>
                 <p className="font-bold text-green-600 text-lg">Félicitations !</p>
                 <p className="text-green-700">Vous avez gagné : <strong>{result.label}</strong></p>
-                <p className="text-sm text-green-600 mt-2">
-                  Code : <span className="font-mono bg-green-100 px-2 py-1 rounded">{result.prize.code}</span>
-                </p>
+                {generatedCode ? (
+                  <>
+                    <p className="text-sm text-green-600 mt-3 font-semibold">Votre code promo :</p>
+                    <p className="text-lg font-mono bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 my-2">
+                      {generatedCode}
+                    </p>
+                    <p className="text-xs text-green-600 mt-2">
+                      Valable 1 semaine • 1 seule utilisation
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Utilisez ce code lors de votre prochaine commande !
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-green-600 mt-2">
+                    Génération du code en cours...
+                  </p>
+                )}
               </>
             ) : (
               <>
