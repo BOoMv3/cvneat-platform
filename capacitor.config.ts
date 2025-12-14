@@ -5,7 +5,11 @@ const config: CapacitorConfig = {
   appName: "CVN'EAT",
   webDir: 'out',
   bundledWebRuntime: false,
-  // Plus de configuration server - l'app utilise les fichiers locaux
+  // Utiliser le serveur web directement pour avoir toutes les fonctionnalités
+  server: {
+    url: 'https://cvneat.fr',
+    cleartext: false
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
@@ -27,7 +31,10 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'automatic',
-    scrollEnabled: true
+    scrollEnabled: true,
+    // Permettre les cookies et sessions
+    allowsLinkPreview: true,
+    limitsNavigationsToAppBoundDomains: false
   },
   android: {
     allowMixedContent: false,

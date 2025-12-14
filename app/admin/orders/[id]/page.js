@@ -88,7 +88,9 @@ export default function AdminOrderDetail() {
           id: detail.id,
           name: detail.menus?.nom || 'Article',
           quantity: detail.quantite || 1,
-          price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0
+          price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
+          customizations: detail.customizations || null,
+          isFreeDrink: detail.customizations?.is_free_drink === true
         }));
         
         setOrder({
@@ -283,6 +285,29 @@ export default function AdminOrderDetail() {
                   {(parseFloat(order.frais_livraison || order.delivery_fee || 0)).toFixed(2)}€
                 </p>
               </div>
+              {/* Code promo / Gain de la roue */}
+              {(order.promo_code || order.discount_amount > 0) && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <label className="text-sm font-medium text-gray-600">Code promo / Gain</label>
+                  {order.promo_code && (
+                    <div className="mt-2 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-purple-800">🎁 Code utilisé: {order.promo_code}</p>
+                          {order.discount_amount > 0 && (
+                            <p className="text-sm text-purple-600 mt-1">
+                              Réduction appliquée: -{order.discount_amount.toFixed(2)}€
+                            </p>
+                          )}
+                        </div>
+                        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                          Gain roue
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -293,15 +318,33 @@ export default function AdminOrderDetail() {
           {order.items && order.items.length > 0 ? (
             <div className="space-y-3">
               {order.items.map((item, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div key={index} className={`flex justify-between items-center p-3 rounded-lg ${
+                  item.isFreeDrink ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200' : 'bg-gray-50'
+                }`}>
                   <div>
-                    <p className="font-medium">{item.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{item.name}</p>
+                      {item.isFreeDrink && (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                          🎁 Boisson offerte (Roue)
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">Quantité: {item.quantity}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">
-                      {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
-                    </p>
+                    {item.isFreeDrink ? (
+                      <div>
+                        <p className="font-semibold text-green-600 line-through text-gray-400 text-sm">
+                          {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
+                        </p>
+                        <p className="font-bold text-green-700">GRATUIT</p>
+                      </div>
+                    ) : (
+                      <p className="font-medium">
+                        {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
+                      </p>
+                    )}
                     <p className="text-sm text-gray-600">
                       {(parseFloat(item.price || 0)).toFixed(2)}€ l'unité
                     </p>

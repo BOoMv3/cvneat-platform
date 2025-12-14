@@ -630,7 +630,15 @@ export async function POST(request) {
       total: total, // sous-total articles
       frais_livraison: fraisLivraison,
       statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation
-      security_code: securityCode // Code de sécurité pour la livraison
+      security_code: securityCode, // Code de sécurité pour la livraison
+      // Stocker les informations du code promo si présent
+      promo_code_id: promoCodeId || null,
+      promo_code: promoCode || null,
+      discount_amount: discountAmount || 0,
+      // Stocker les informations de commission
+      commission_rate: restaurantCommissionRate * 100, // En pourcentage (ex: 15.00)
+      commission_amount: commissionGross,
+      restaurant_payout: restaurantPayout
     };
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData
@@ -715,13 +723,17 @@ export async function POST(request) {
     }
 
     // Calculs financiers: commission/payout
-    const COMMISSION_RATE = 0.20; // 20% sur le sous-total (S)
-    const commissionGross = Math.round((total * COMMISSION_RATE) * 100) / 100;
-    const restaurantPayout = Math.round((total * (1 - COMMISSION_RATE)) * 100) / 100; // 80% de S
+    // Utiliser le commission_rate du restaurant (par défaut 20% si non défini)
+    const restaurantCommissionRate = restaurant?.commission_rate 
+      ? parseFloat(restaurant.commission_rate) / 100 
+      : 0.20; // 20% par défaut
+    const commissionGross = Math.round((total * restaurantCommissionRate) * 100) / 100;
+    const restaurantPayout = Math.round((total * (1 - restaurantCommissionRate)) * 100) / 100;
     const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
     // Ne pas stocker ces champs si la colonne n'existe pas dans la base
     // Conserver uniquement pour logs/analytique
     console.log('Finance computation:', {
+      commission_rate: restaurantCommissionRate * 100,
       commission_gross: commissionGross,
       commission_net: commissionNet,
       restaurant_payout: restaurantPayout,
@@ -771,7 +783,7 @@ export async function POST(request) {
       const result = await serviceClient
         .from('commandes')
         .insert([orderData])
-        .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, ville_livraison, security_code, created_at, user_id, customer_email, customer_first_name, customer_last_name, customer_phone, payment_status, stripe_payment_intent_id')
+        .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, ville_livraison, security_code, created_at, user_id, customer_email, customer_first_name, customer_last_name, customer_phone, payment_status, stripe_payment_intent_id, promo_code_id, promo_code, discount_amount, commission_rate, commission_amount, restaurant_payout')
         .single();
       order = result.data;
       orderError = result.error;

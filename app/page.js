@@ -641,10 +641,12 @@ export default function Home() {
         const openStatusMap = {};
         for (const restaurant of normalizedRestaurants) {
           const status = checkRestaurantOpenStatus(restaurant);
+          // Calculer le label des horaires à partir des horaires du restaurant
+          const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
           openStatusMap[restaurant.id] = {
             isOpen: status.isOpen,
             isManuallyClosed: status.isManuallyClosed,
-            hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
+            hoursLabel: todayHoursLabel || 'Horaires non communiquées'
           };
         }
         setRestaurantsOpenStatus(openStatusMap);
@@ -1190,14 +1192,14 @@ export default function Home() {
                 const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { 
                   isOpen: true, 
                   isManuallyClosed: false,
-                  hoursLabel: restaurant.today_hours_label || 'Horaires non communiquées'
+                  hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
                 };
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 const displayHoursLabel = restaurantStatus.isManuallyClosed
                   ? 'Fermé temporairement'
-                  : (restaurantStatus.hoursLabel || restaurant.today_hours_label || 'Horaires non communiquées');
+                  : (restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées');
                 
                 return (
                 <div

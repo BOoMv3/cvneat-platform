@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import Head from 'next/head';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -13,28 +13,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    // Vérifier si l'utilisateur vient de s'inscrire
-    if (searchParams?.get('registered') === 'true') {
-      setSuccess('Inscription réussie ! Votre compte a été créé et votre email a été confirmé automatiquement. Vous pouvez maintenant vous connecter.');
-    }
-    
-    // Vérifier s'il y a une redirection demandée (ex: depuis checkout)
-    const redirectParam = searchParams?.get('redirect');
-    if (redirectParam && typeof window !== 'undefined') {
-      localStorage.setItem('redirectAfterLogin', redirectParam);
-      // Afficher un message informatif si c'est depuis checkout
-      if (redirectParam === 'checkout') {
-        setSuccess('Votre panier a été sauvegardé. Connectez-vous ou créez un compte pour continuer votre commande.');
-      }
-      // Nettoyer l'URL
-      router.replace('/login', { scroll: false });
-    }
-  }, [searchParams, router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -55,6 +34,8 @@ export default function LoginPage() {
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
           errorMessage = 'Email ou mot de passe incorrect';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
         } else if (error.message.includes('User not found')) {
@@ -86,14 +67,6 @@ export default function LoginPage() {
           }
 
           console.log('✅ Rôle utilisateur:', userData?.role);
-
-          // Vérifier s'il y a une intention de redirection (ex: checkout)
-          const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
-          if (redirectAfterLogin) {
-            localStorage.removeItem('redirectAfterLogin');
-            router.push(redirectAfterLogin);
-            return;
-          }
 
           if (userData?.role === 'admin') {
             router.push('/admin');
@@ -198,11 +171,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {success && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                {success}
-              </div>
-            )}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
                 {error}

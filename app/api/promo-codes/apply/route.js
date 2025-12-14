@@ -53,6 +53,31 @@ export async function POST(request) {
       // Ne pas bloquer si l'incrémentation échoue
     }
 
+    // Si c'est un code de la roue (ROULETTE), marquer le gain comme utilisé dans wheel_wins
+    const { data: promoCode } = await supabaseAdmin
+      .from('promo_codes')
+      .select('code')
+      .eq('id', promoCodeId)
+      .single();
+
+    if (promoCode && promoCode.code && promoCode.code.toUpperCase().startsWith('ROULETTE')) {
+      // Marquer le gain comme utilisé dans wheel_wins
+      const { error: wheelWinUpdateError } = await supabaseAdmin
+        .from('wheel_wins')
+        .update({
+          used_at: new Date().toISOString(),
+          used_in_order_id: orderId
+        })
+        .eq('promo_code', promoCode.code.toUpperCase())
+        .eq('user_id', userId)
+        .is('used_at', null); // Seulement si pas encore utilisé
+
+      if (wheelWinUpdateError) {
+        console.warn('Erreur mise à jour wheel_wins (non bloquant):', wheelWinUpdateError);
+        // Ne pas bloquer si la mise à jour échoue
+      }
+    }
+
     return NextResponse.json({
       success: true,
       usageId: usage.id
