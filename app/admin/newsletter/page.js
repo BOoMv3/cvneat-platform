@@ -124,15 +124,22 @@ export default function NewsletterPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
-                <FaEnvelope className="h-6 w-6 sm:h-8 sm:w-8 mr-3 text-blue-600" />
-                Newsletter - Email en masse
-              </h1>
-              <p className="text-gray-600 mt-2">Envoyer un email à tous les membres du site</p>
-            </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
+                  <FaEnvelope className="h-6 w-6 sm:h-8 sm:w-8 mr-3 text-blue-600" />
+                  Newsletter - Email en masse
+                </h1>
+                <p className="text-gray-600 mt-2">Envoyer un email à tous les membres du site</p>
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-800">
+                    ⚠️ <strong>Configuration requise :</strong> Assurez-vous d'avoir configuré SendGrid, Gmail ou Resend dans les variables d'environnement Vercel.
+                    <br />
+                    📖 Voir le guide : <code className="bg-yellow-100 px-1 rounded">GUIDE_CONFIGURATION_EMAIL_NEWSLETTER.md</code>
+                  </p>
+                </div>
+              </div>
             <button
               onClick={fetchUsersPreview}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"
