@@ -133,7 +133,7 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
       {/* Récapitulatif rapide */}
       <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-700 text-xs sm:text-sm text-blue-900 dark:text-blue-100">
         <div className="flex justify-between"><span>Frais plateforme</span><span className="font-semibold">{Number(platformFee || 0).toFixed(2)}€</span></div>
-        <div className="flex justify-between mt-1 pt-1 border-t border-blue-200 dark:border-blue-700"><span>Total à payer</span><span className="font-bold">{amount.toFixed(2)}€</span></div>
+        <div className="flex justify-between mt-1 pt-1 border-t border-blue-200 dark:border-blue-700"><span>Total à payer</span><span className="font-bold">{Number(amount || 0).toFixed(2)}€</span></div>
       </div>
       <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
         <PaymentElement
@@ -159,7 +159,7 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
             Traitement...
           </div>
         ) : (
-          `Payer ${amount.toFixed(2)}€`
+          `Payer ${Number(amount || 0).toFixed(2)}€`
         )}
       </button>
     </form>
