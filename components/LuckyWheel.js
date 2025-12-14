@@ -135,6 +135,14 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
       
       // Générer un code promo automatiquement si l'utilisateur a gagné
       if (winner.prize && userId) {
+        console.log('🎰 Génération code promo pour:', {
+          userId,
+          prizeType: winner.prize.type,
+          prizeValue: winner.prize.value,
+          orderId,
+          label: winner.label
+        });
+        
         try {
           const response = await fetch('/api/promo-codes/generate', {
             method: 'POST',
@@ -147,9 +155,14 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
             })
           });
           
-          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           
-          if (data.success) {
+          const data = await response.json();
+          console.log('📦 Réponse API génération code:', data);
+          
+          if (data.success && data.code) {
             // Pour "boisson offerte", il n'y a pas de code promo
             if (data.prizeType === 'free_drink') {
               setGeneratedCode('BOISSON_OFFERTE'); // Marqueur spécial
@@ -166,14 +179,14 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
               });
             }
           } else {
-            console.error('Erreur génération code:', data.error);
+            console.error('❌ Erreur génération code:', data.error || 'Pas de code retourné');
             // Même si la génération échoue, on affiche le gain
             if (onWin) {
               onWin(winner);
             }
           }
         } catch (error) {
-          console.error('Erreur génération code promo:', error);
+          console.error('❌ Erreur génération code promo:', error);
           if (onWin) {
             onWin(winner);
           }

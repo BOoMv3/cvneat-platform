@@ -167,7 +167,7 @@ export async function POST(request) {
       // Non bloquant, on continue
     }
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       code: prizeType === 'free_drink' ? null : (promoCode?.code || code),
       description: description,
@@ -175,7 +175,16 @@ export async function POST(request) {
       discountType: discountType,
       discountValue: discountValue,
       prizeType: prizeType // Pour que le frontend sache que c'est une boisson offerte
+    };
+    
+    console.log('✅ Code promo généré:', {
+      prizeType,
+      code: responseData.code,
+      description,
+      promoCodeId
     });
+    
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Erreur génération code promo:', error);
