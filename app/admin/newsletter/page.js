@@ -132,11 +132,13 @@ export default function NewsletterPage() {
                   Newsletter - Email en masse
                 </h1>
                 <p className="text-gray-600 mt-2">Envoyer un email à tous les membres du site</p>
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-xs text-yellow-800">
-                    ⚠️ <strong>Configuration requise :</strong> Assurez-vous d'avoir configuré SendGrid, Gmail ou Resend dans les variables d'environnement Vercel.
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    📧 <strong>Configuration Brevo :</strong> Les emails seront envoyés depuis <code className="bg-blue-100 px-1 rounded">contact@cvneat.fr</code> via Brevo.
                     <br />
-                    📖 Voir le guide : <code className="bg-yellow-100 px-1 rounded">GUIDE_CONFIGURATION_EMAIL_NEWSLETTER.md</code>
+                    ⚙️ Assurez-vous d'avoir configuré les variables d'environnement dans Vercel (EMAIL_HOST, EMAIL_USER, EMAIL_PASS).
+                    <br />
+                    📖 Guide complet : <code className="bg-blue-100 px-1 rounded">GUIDE_CONFIGURATION_BREVO.md</code>
                   </p>
                 </div>
               </div>
