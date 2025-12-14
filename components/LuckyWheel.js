@@ -3,6 +3,29 @@
 import { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaGift, FaStar } from 'react-icons/fa';
 
+// Son de roulette (utilise l'API Web Audio)
+const playWheelSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 200;
+    oscillator.type = 'square';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 4);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 4);
+  } catch (error) {
+    console.log('Son désactivé:', error);
+  }
+};
+
 // Vérifier si l'utilisateur a déjà joué pour une commande
 const hasPlayedForOrder = (orderId) => {
   if (typeof window === 'undefined') return true;
@@ -80,6 +103,9 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
     
     setIsSpinning(true);
     setResult(null);
+    
+    // Jouer le son de roulette
+    playWheelSound();
     
     // Marquer comme joué immédiatement
     if (orderId) {
@@ -161,14 +187,50 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 relative overflow-hidden">
-        {/* Confettis décoratifs */}
+    <div className="fixed inset-0 bg-gradient-to-br from-purple-900/90 via-blue-900/90 to-pink-900/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      {/* Neige animée en arrière-plan */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(30)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute text-white/60 text-2xl animate-fall"
+            style={{
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${3 + Math.random() * 4}s`,
+              fontSize: `${10 + Math.random() * 15}px`
+            }}
+          >
+            ❄️
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-gradient-to-br from-white via-yellow-50 to-orange-50 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl border-4 border-yellow-300">
+        {/* Effet de lumière pulsante */}
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-transparent to-pink-400/20 animate-pulse pointer-events-none"></div>
+        
+        {/* Éléments festifs - Papa Noël et cadeaux */}
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-          <div className="absolute top-4 left-4 text-2xl animate-bounce">🎉</div>
-          <div className="absolute top-8 right-8 text-xl animate-bounce delay-100">✨</div>
-          <div className="absolute bottom-20 left-8 text-xl animate-bounce delay-200">🎁</div>
-          <div className="absolute bottom-16 right-4 text-2xl animate-bounce delay-300">⭐</div>
+          {/* Papa Noël */}
+          <div className="absolute -top-8 -left-8 text-6xl animate-bounce" style={{ animationDuration: '2s' }}>
+            🎅
+          </div>
+          <div className="absolute -top-4 -right-4 text-5xl animate-bounce" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}>
+            🎄
+          </div>
+          
+          {/* Cadeaux animés */}
+          <div className="absolute top-4 left-4 text-3xl animate-bounce" style={{ animationDuration: '1.5s' }}>🎁</div>
+          <div className="absolute top-8 right-8 text-2xl animate-bounce" style={{ animationDuration: '1.8s', animationDelay: '0.3s' }}>🎁</div>
+          <div className="absolute bottom-20 left-8 text-2xl animate-bounce" style={{ animationDuration: '2s', animationDelay: '0.6s' }}>🎁</div>
+          <div className="absolute bottom-16 right-4 text-3xl animate-bounce" style={{ animationDuration: '1.7s', animationDelay: '0.9s' }}>🎁</div>
+          
+          {/* Confettis */}
+          <div className="absolute top-12 left-12 text-xl animate-bounce delay-100">🎉</div>
+          <div className="absolute top-16 right-16 text-lg animate-bounce delay-200">✨</div>
+          <div className="absolute bottom-24 left-16 text-lg animate-bounce delay-300">⭐</div>
+          <div className="absolute bottom-20 right-12 text-xl animate-bounce delay-400">💫</div>
         </div>
         
         {/* Bouton fermer */}
@@ -179,33 +241,46 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
           <FaTimes />
         </button>
         
-        {/* Titre */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-black text-gray-800 mb-1">
-            🎰 Roue de la Chance
+        {/* Titre avec effet lumineux */}
+        <div className="text-center mb-6 relative z-10">
+          <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 bg-clip-text text-transparent drop-shadow-lg">
+            🎰 Roue de la Chance 🎰
           </h2>
-          <p className="text-gray-500 text-sm">
-            Tentez votre chance et gagnez des récompenses !
+          <p className="text-gray-700 font-semibold text-sm bg-white/80 px-4 py-1 rounded-full inline-block">
+            Tentez votre chance et gagnez des récompenses magiques ! ✨
           </p>
         </div>
         
-        {/* Roue */}
-        <div className="relative w-64 h-64 mx-auto mb-6">
-          {/* Flèche indicateur */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10">
-            <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[25px] border-t-orange-500 drop-shadow-lg" />
+        {/* Roue avec effets lumineux */}
+        <div className="relative w-72 h-72 mx-auto mb-6">
+          {/* Halo de lumière autour de la roue */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/50 via-orange-400/50 to-pink-400/50 blur-2xl animate-pulse -z-10"></div>
+          
+          {/* Flèche indicateur améliorée */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-3 z-20">
+            <div className="relative">
+              <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[35px] border-t-red-600 drop-shadow-2xl filter drop-shadow-lg" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[28px] border-t-yellow-400" />
+            </div>
+            {/* Lueur autour de la flèche */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 w-0 h-0 border-l-[22px] border-l-transparent border-r-[22px] border-r-transparent border-t-[38px] border-t-yellow-300/50 blur-sm"></div>
           </div>
           
-          {/* Roue SVG */}
-          <svg
-            ref={wheelRef}
-            viewBox="0 0 200 200"
-            className="w-full h-full drop-shadow-xl"
-            style={{
-              transform: `rotate(${rotation}deg)`,
-              transition: isSpinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none'
-            }}
-          >
+          {/* Roue SVG avec effets */}
+          <div className="relative">
+            {/* Ombre portée lumineuse */}
+            <div className="absolute inset-0 rounded-full bg-yellow-400/30 blur-xl"></div>
+            
+            <svg
+              ref={wheelRef}
+              viewBox="0 0 200 200"
+              className="w-full h-full drop-shadow-2xl relative z-10"
+              style={{
+                transform: `rotate(${rotation}deg)`,
+                transition: isSpinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+                filter: 'drop-shadow(0 0 20px rgba(255, 215, 0, 0.6))'
+              }}
+            >
             {segmentsWithAngles.map((segment, index) => {
               const startRad = (segment.startAngle - 90) * (Math.PI / 180);
               const endRad = (segment.endAngle - 90) * (Math.PI / 180);
@@ -221,47 +296,95 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
               const textY = 100 + 60 * Math.sin(midAngle);
               const textRotation = (segment.startAngle + segment.endAngle) / 2;
               
+              // Définir les gradients pour chaque segment
+              const gradients = {
+                "#f97316": ["#f97316", "#fb923c", "#fdba74"], // Orange
+                "#3b82f6": ["#3b82f6", "#60a5fa", "#93c5fd"], // Bleu
+                "#fbbf24": ["#fbbf24", "#fcd34d", "#fde68a"], // Jaune
+                "#8b5cf6": ["#8b5cf6", "#a78bfa", "#c4b5fd"], // Violet
+              };
+              
+              const gradientColors = gradients[segment.color] || [segment.color, segment.color, segment.color];
+              const gradientId = `gradient-${index}`;
+              
               return (
                 <g key={index}>
+                  {/* Définition du gradient */}
+                  <defs>
+                    <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={gradientColors[0]} stopOpacity="1" />
+                      <stop offset="50%" stopColor={gradientColors[1]} stopOpacity="1" />
+                      <stop offset="100%" stopColor={gradientColors[2]} stopOpacity="1" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Segment avec gradient et ombre */}
                   <path
                     d={`M 100 100 L ${x1} ${y1} A 95 95 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                    fill={segment.color}
+                    fill={`url(#${gradientId})`}
                     stroke="white"
-                    strokeWidth="2"
+                    strokeWidth="3"
+                    className="brightness-110"
+                    style={{
+                      filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))'
+                    }}
                   />
+                  
+                  {/* Texte avec effet lumineux */}
                   <text
                     x={textX}
                     y={textY}
                     fill="white"
-                    fontSize={segment.label.length > 10 ? "6" : "8"}
-                    fontWeight="bold"
+                    fontSize={segment.label.length > 10 ? "7" : "9"}
+                    fontWeight="900"
                     textAnchor="middle"
                     dominantBaseline="middle"
                     transform={`rotate(${textRotation}, ${textX}, ${textY})`}
-                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                    style={{
+                      textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(255,255,255,0.5)',
+                      stroke: 'rgba(0,0,0,0.3)',
+                      strokeWidth: '0.5px'
+                    }}
                   >
                     {segment.label}
                   </text>
                 </g>
               );
             })}
-            {/* Centre de la roue */}
-            <circle cx="100" cy="100" r="20" fill="#1f2937" />
-            <circle cx="100" cy="100" r="15" fill="#374151" />
-            <text x="100" y="100" fill="white" fontSize="10" textAnchor="middle" dominantBaseline="middle">
-              GO
+            {/* Centre de la roue amélioré */}
+            <defs>
+              <radialGradient id="centerGradient">
+                <stop offset="0%" stopColor="#fbbf24" stopOpacity="1" />
+                <stop offset="50%" stopColor="#f97316" stopOpacity="1" />
+                <stop offset="100%" stopColor="#dc2626" stopOpacity="1" />
+              </radialGradient>
+            </defs>
+            <circle cx="100" cy="100" r="25" fill="url(#centerGradient)" stroke="white" strokeWidth="3" style={{ filter: 'drop-shadow(0 0 10px rgba(251, 191, 36, 0.8))' }} />
+            <circle cx="100" cy="100" r="18" fill="#fbbf24" style={{ filter: 'drop-shadow(0 0 5px rgba(255, 255, 255, 0.8))' }} />
+            <text x="100" y="100" fill="white" fontSize="14" fontWeight="900" textAnchor="middle" dominantBaseline="middle" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+              🎁
             </text>
           </svg>
+          </div>
         </div>
         
-        {/* Résultat */}
+        {/* Résultat amélioré */}
         {result && (
-          <div className={`text-center mb-4 p-4 rounded-2xl ${result.prize ? 'bg-green-50 border-2 border-green-200' : 'bg-gray-50'}`}>
+          <div className={`text-center mb-4 p-5 rounded-2xl relative overflow-hidden ${
+            result.prize 
+              ? 'bg-gradient-to-br from-green-100 via-yellow-50 to-orange-100 border-4 border-green-400 shadow-xl' 
+              : 'bg-gray-50 border-2 border-gray-200'
+          }`}>
+            {result.prize && (
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-transparent to-pink-400/20 animate-pulse pointer-events-none"></div>
+            )}
             {result.prize ? (
               <>
-                <div className="text-3xl mb-2">🎉</div>
-                <p className="font-bold text-green-600 text-lg">Félicitations !</p>
-                <p className="text-green-700">Vous avez gagné : <strong>{result.label}</strong></p>
+                <div className="text-5xl mb-3 animate-bounce">🎉</div>
+                <p className="font-black text-2xl bg-gradient-to-r from-green-600 via-yellow-500 to-orange-500 bg-clip-text text-transparent mb-2 drop-shadow-lg">
+                  Félicitations !
+                </p>
+                <p className="text-green-700 font-bold text-lg mb-2">Vous avez gagné : <strong className="text-green-800 text-xl">{result.label}</strong></p>
                 {generatedCode ? (
                   generatedCode === 'BOISSON_OFFERTE' ? (
                     <>
@@ -311,31 +434,80 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
           </div>
         )}
         
-        {/* Bouton tourner */}
+        {/* Bouton tourner amélioré */}
         {alreadyPlayed && !result ? (
-          <div className="text-center p-4 bg-gray-100 rounded-2xl">
-            <p className="text-gray-600 font-medium">😅 Vous avez déjà joué pour cette commande !</p>
-            <p className="text-gray-400 text-sm mt-1">Revenez après votre prochaine commande</p>
+          <div className="text-center p-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-2xl border-2 border-gray-300">
+            <p className="text-gray-700 font-bold">😅 Vous avez déjà joué pour cette commande !</p>
+            <p className="text-gray-500 text-sm mt-1">Revenez après votre prochaine commande 🎁</p>
           </div>
         ) : (
           <button
             onClick={handleSpin}
             disabled={isSpinning || (alreadyPlayed && !result)}
-            className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
+            className={`w-full py-5 rounded-2xl font-black text-xl transition-all relative overflow-hidden ${
               isSpinning || alreadyPlayed
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transform hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white hover:from-yellow-300 hover:via-orange-400 hover:to-red-400 transform hover:scale-[1.03] active:scale-[0.97] shadow-2xl hover:shadow-yellow-500/50 border-4 border-yellow-300'
             }`}
           >
-            {isSpinning ? '🎰 La roue tourne...' : '🎰 Tourner la roue !'}
+            {isSpinning ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="animate-spin">🎰</span>
+                <span>La roue tourne...</span>
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2 drop-shadow-lg">
+                <span className="text-2xl">🎰</span>
+                <span>Tourner la roue !</span>
+                <span className="text-2xl">✨</span>
+              </span>
+            )}
+            {/* Effet de brillance sur le bouton */}
+            {!isSpinning && !alreadyPlayed && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shimmer"></div>
+            )}
           </button>
         )}
         
         {/* Disclaimer */}
-        <p className="text-center text-xs text-gray-400 mt-4">
-          1 chance par commande • Les lots sont valables 7 jours
+        <p className="text-center text-xs text-gray-600 font-semibold mt-4 bg-white/60 px-3 py-2 rounded-full">
+          1 chance par commande • Les lots sont valables 7 jours ✨
         </p>
       </div>
+
+      {/* Styles CSS pour les animations */}
+      <style jsx>{`
+        @keyframes fall {
+          0% {
+            transform: translateY(-100vh) rotate(0deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+          }
+          90% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotate(360deg);
+            opacity: 0;
+          }
+        }
+        .animate-fall {
+          animation: fall linear infinite;
+        }
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s infinite;
+        }
+      `}</style>
     </div>
   );
 }
