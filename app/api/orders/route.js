@@ -614,6 +614,24 @@ export async function POST(request) {
       }
     }
 
+    // Calculs financiers: commission/payout (AVANT la création de orderData)
+    // Utiliser le commission_rate du restaurant (par défaut 20% si non défini)
+    const restaurantCommissionRate = restaurant?.commission_rate 
+      ? parseFloat(restaurant.commission_rate) / 100 
+      : 0.20; // 20% par défaut
+    const commissionGross = Math.round((total * restaurantCommissionRate) * 100) / 100;
+    const restaurantPayout = Math.round((total * (1 - restaurantCommissionRate)) * 100) / 100;
+    const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
+    
+    console.log('Finance computation:', {
+      commission_rate: restaurantCommissionRate * 100,
+      commission_gross: commissionGross,
+      commission_net: commissionNet,
+      restaurant_payout: restaurantPayout,
+      discount,
+      platform_fee
+    });
+
     // Creer la commande dans Supabase
     console.log('Tentative de creation de la commande...');
     // IMPORTANT: Le code postal et les instructions sont inclus dans adresse_livraison, pas besoin de colonnes séparées
@@ -721,25 +739,6 @@ export async function POST(request) {
         { status: 401 }
       );
     }
-
-    // Calculs financiers: commission/payout
-    // Utiliser le commission_rate du restaurant (par défaut 20% si non défini)
-    const restaurantCommissionRate = restaurant?.commission_rate 
-      ? parseFloat(restaurant.commission_rate) / 100 
-      : 0.20; // 20% par défaut
-    const commissionGross = Math.round((total * restaurantCommissionRate) * 100) / 100;
-    const restaurantPayout = Math.round((total * (1 - restaurantCommissionRate)) * 100) / 100;
-    const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
-    // Ne pas stocker ces champs si la colonne n'existe pas dans la base
-    // Conserver uniquement pour logs/analytique
-    console.log('Finance computation:', {
-      commission_rate: restaurantCommissionRate * 100,
-      commission_gross: commissionGross,
-      commission_net: commissionNet,
-      restaurant_payout: restaurantPayout,
-      discount,
-      platform_fee
-    });
 
     // Validation finale avant insertion
     if (!orderData.restaurant_id) {
