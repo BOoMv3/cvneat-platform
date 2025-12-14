@@ -3,7 +3,6 @@ SELECT
   id,
   nom,
   ferme_manuellement,
-  is_closed,
   horaires,
   created_at
 FROM restaurants
