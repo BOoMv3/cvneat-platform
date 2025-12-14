@@ -178,11 +178,13 @@ export default function Advertisement({ position, className = '' }) {
       case 'banner_top':
         return 'w-full h-24 sm:h-32 md:h-36 mb-6 sm:mb-8 rounded-xl overflow-hidden';
       case 'banner_middle':
+        // Bannière moyenne avec hauteur fixe pour un meilleur recadrage
         return 'w-full h-48 sm:h-64 md:h-80 my-6 sm:my-8 rounded-2xl overflow-hidden';
       case 'sidebar_left':
       case 'sidebar_right':
         return 'w-full h-64 sm:h-80 mb-6 rounded-xl overflow-hidden sticky top-4';
       case 'footer':
+        // Footer avec hauteur fixe pour un meilleur recadrage
         return 'w-full h-40 sm:h-56 md:h-64 mt-8 sm:mt-12 rounded-xl overflow-hidden';
       case 'popup':
         return 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
@@ -192,10 +194,9 @@ export default function Advertisement({ position, className = '' }) {
   };
 
   const renderAdContent = () => {
-    // Utiliser object-contain pour banner_middle et footer pour que toute l'image soit visible
-    const imageClass = (position === 'banner_middle' || position === 'footer') 
-      ? 'w-full h-full object-contain bg-gray-100 dark:bg-gray-800'
-      : 'w-full h-full object-cover';
+    // Utiliser object-cover pour toutes les positions pour remplir complètement la bannière
+    // object-cover recadre l'image pour remplir l'espace sans déformation
+    const imageClass = 'w-full h-full object-cover';
 
     // Style différent pour banner_top (plus discret et mieux intégré)
     if (position === 'banner_top') {
@@ -238,18 +239,23 @@ export default function Advertisement({ position, className = '' }) {
       );
     }
 
-    // Style pour les autres positions (banner_middle et footer avec object-contain)
+    // Style pour les autres positions (banner_middle et footer avec object-cover pour remplir la bannière)
     return (
       <div 
         className={`relative bg-white dark:bg-gray-800 rounded-xl overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 ${getPositionStyles()}`}
         onClick={handleClick}
       >
-        <div className="relative h-full flex items-center justify-center">
+        <div className="relative h-full w-full">
           <div className="absolute top-2 left-2 z-10 bg-yellow-400/95 text-yellow-900 text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider shadow">Publicité</div>
           <img
             src={ad.image_url_with_cache_bust || ad.image_url}
             alt={ad.title}
             className={imageClass}
+            style={{
+              objectPosition: 'center', // Centre l'image lors du recadrage
+              minHeight: '100%',
+              minWidth: '100%'
+            }}
             onError={(e) => {
               e.target.style.display = 'none';
               e.target.nextSibling.style.display = 'flex';
