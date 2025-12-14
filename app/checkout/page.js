@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
-import PaymentForm from '@/components/PaymentForm';
+import dynamic from 'next/dynamic';
+
+// Charger PaymentForm de manière dynamique pour éviter les problèmes d'initialisation
+const PaymentForm = dynamic(() => import('@/components/PaymentForm'), {
+  ssr: false,
+  loading: () => <div className="text-center p-4">Chargement du formulaire de paiement...</div>
+});
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import PromoCodeInput from '@/components/PromoCodeInput';
 // PROMO TERMINÉE : Plus besoin du composant FreeDeliveryBanner
