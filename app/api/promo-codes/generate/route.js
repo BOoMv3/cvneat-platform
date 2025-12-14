@@ -74,7 +74,7 @@ export async function POST(request) {
         // Boisson offerte = pas de code promo, mais un item spécial à livrer
         discountType = 'free_drink';
         discountValue = 0; // Pas de réduction, c'est un item offert
-        description = 'Boisson offerte - Une boisson vous sera livrée avec votre prochaine commande';
+        description = 'Boisson offerte - Une boisson vous sera automatiquement ajoutée à votre prochaine commande';
         minOrderAmount = 15;
         break;
       
