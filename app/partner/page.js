@@ -1929,6 +1929,51 @@ export default function PartnerDashboard() {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
+            {/* Message Partenaires - Partage Réseaux Sociaux - PRIORITAIRE */}
+            <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-xl shadow-2xl p-6 sm:p-8 text-white border-4 border-yellow-300 animate-pulse">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="relative">
+                    <FaShareAlt className="h-10 w-10 text-yellow-300" />
+                    <FaArrowUp className="h-6 w-6 text-yellow-300 absolute -top-2 -right-2" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center gap-3 flex-wrap">
+                    <FaInstagram className="h-6 w-6 sm:h-7 sm:w-7" />
+                    <FaFacebook className="h-6 w-6 sm:h-7 sm:w-7" />
+                    Partagez CVN'EAT sur vos réseaux sociaux !
+                  </h3>
+                  <div className="space-y-3 text-base sm:text-lg text-orange-50 bg-black/20 rounded-lg p-4 backdrop-blur-sm">
+                    <p className="flex items-start gap-3 font-semibold">
+                      <FaArrowUp className="h-5 w-5 text-yellow-300 mt-1 flex-shrink-0" />
+                      <span><strong className="text-yellow-300 text-lg">1. Boostez vos ventes</strong> - Plus vous partagez CVN'EAT, plus vous recevez de commandes !</span>
+                    </p>
+                    <p className="flex items-start gap-3 font-semibold">
+                      <FaChartLine className="h-5 w-5 text-yellow-300 mt-1 flex-shrink-0" />
+                      <span><strong className="text-yellow-300 text-lg">2. Montez dans le classement</strong> - Les restaurants qui partagent le plus apparaissent <strong className="text-white">EN HAUT</strong> de la liste, les autres se retrouvent <strong className="text-red-200 underline">EN BAS</strong> !</span>
+                    </p>
+                    <div className="mt-4 pt-4 border-t-2 border-yellow-300/50 bg-red-900/30 rounded-lg p-4">
+                      <p className="text-xl font-bold text-yellow-200 mb-2">
+                        ⚠️ ATTENTION : Classement des restaurants
+                      </p>
+                      <p className="text-white font-semibold">
+                        Les restaurants qui <strong className="text-yellow-300">partagent activement</strong> CVN'EAT sur leurs réseaux sociaux (Instagram, Facebook, etc.) sont <strong className="text-green-300">priorisés</strong> et apparaissent <strong className="text-green-300">EN PREMIER</strong> dans les résultats de recherche.
+                      </p>
+                      <p className="text-white font-semibold mt-2">
+                        Les restaurants qui <strong className="text-red-300">ne partagent PAS</strong> CVN'EAT se retrouvent automatiquement <strong className="text-red-300">EN BAS de la liste</strong> et sont beaucoup moins visibles par les clients.
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-yellow-300/30">
+                      <p className="text-sm font-semibold text-yellow-200">
+                        💡 <strong>Conseil :</strong> Partagez régulièrement vos plats, vos promotions et CVN'EAT sur Instagram, Facebook, etc. Cela augmente significativement votre nombre de commandes et votre position dans les résultats !
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -1965,41 +2010,6 @@ export default function PartnerDashboard() {
                     <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                       {(stats.totalRevenue || 0).toFixed(2)} €
                     </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Message Partenaires - Partage Réseaux Sociaux */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 mt-1">
-                  <FaShareAlt className="h-8 w-8 text-yellow-300" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
-                    <FaInstagram className="h-5 w-5" />
-                    <FaFacebook className="h-5 w-5" />
-                    Partagez CVN'EAT sur vos réseaux sociaux !
-                  </h3>
-                  <div className="space-y-2 text-blue-50">
-                    <p className="flex items-start gap-2">
-                      <FaArrowUp className="h-4 w-4 text-yellow-300 mt-1 flex-shrink-0" />
-                      <span><strong className="text-white">Boostez vos ventes</strong> - Plus vous partagez, plus vous recevez de commandes !</span>
-                    </p>
-                    <p className="flex items-start gap-2">
-                      <FaChartLine className="h-4 w-4 text-yellow-300 mt-1 flex-shrink-0" />
-                      <span><strong className="text-white">Améliorez votre classement</strong> - Les restaurants les plus partagés apparaissent en premier dans les résultats de recherche.</span>
-                    </p>
-                    <p className="flex items-start gap-2">
-                      <span className="text-yellow-300 font-bold text-lg mt-1 flex-shrink-0">📈</span>
-                      <span><strong className="text-white">Visibilité maximale</strong> - Plus vous parlez de CVN'EAT, plus vous serez visibles et plus vos clients vous trouveront facilement.</span>
-                    </p>
-                    <div className="mt-4 pt-4 border-t border-blue-400/30">
-                      <p className="text-sm font-semibold text-yellow-200">
-                        💡 Conseil : Partagez régulièrement vos plats, vos promotions et CVN'EAT sur Instagram, Facebook, etc. Cela augmente significativement votre nombre de commandes !
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
