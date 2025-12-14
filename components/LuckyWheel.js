@@ -401,7 +401,9 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
                 <p className="font-black text-2xl bg-gradient-to-r from-green-600 via-yellow-500 to-orange-500 bg-clip-text text-transparent mb-2 drop-shadow-lg">
                   Félicitations !
                 </p>
-                <p className="text-green-700 font-bold text-lg mb-2">Vous avez gagné : <strong className="text-green-800 text-xl">{result.label}</strong></p>
+                <p className="text-green-700 font-bold text-lg mb-2">
+                  Vous avez gagné : <strong className="text-green-800 text-xl">{result.label}</strong>
+                </p>
                 {generatedCode ? (
                   generatedCode === 'BOISSON_OFFERTE' ? (
                     <>
@@ -421,11 +423,14 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
                   ) : (
                     <>
                       <p className="text-sm text-green-600 mt-3 font-semibold">Votre code promo :</p>
-                      <p className="text-lg font-mono bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 my-2">
+                      <p className="text-lg font-mono bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 my-2 tracking-wider">
                         {generatedCode}
                       </p>
                       <p className="text-xs text-green-600 mt-2">
-                        Valable 1 semaine • 1 seule utilisation
+                        {result.prize?.type === 'free_delivery' 
+                          ? 'Valable avant le 24 décembre • 1 seule utilisation'
+                          : 'Valable 1 semaine • 1 seule utilisation'
+                        }
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         Utilisez ce code lors de votre prochaine commande !
