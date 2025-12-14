@@ -22,20 +22,16 @@ const markOrderAsPlayed = (orderId) => {
   }
 };
 
-// Configuration des segments - 100% GAGNANT !
-// Tous les segments sont des gains pour inciter à recommander
+// Configuration des segments - 4 gains uniquement
+// Chaque segment = 25% (4 segments égaux)
 const SEGMENTS = [
-  { label: "-10%", color: "#fbbf24", visualSize: 12.5, probability: 30, prize: { type: 'discount', value: 10 } },
-  { label: "Livraison offerte", color: "#f97316", visualSize: 12.5, probability: 25, prize: { type: 'free_delivery' } },
-  { label: "-15%", color: "#3b82f6", visualSize: 12.5, probability: 20, prize: { type: 'discount', value: 15 } },
-  { label: "Dessert offert", color: "#ef4444", visualSize: 12.5, probability: 15, prize: { type: 'free_dessert' } },
-  { label: "-20%", color: "#10b981", visualSize: 12.5, probability: 5, prize: { type: 'discount', value: 20 } },
-  { label: "-25%", color: "#8b5cf6", visualSize: 12.5, probability: 3, prize: { type: 'discount', value: 25 } },
-  { label: "-50% !", color: "#ec4899", visualSize: 12.5, probability: 1.5, prize: { type: 'discount', value: 50 } },
-  { label: "🎉 JACKPOT", color: "#f59e0b", visualSize: 12.5, probability: 0.5, prize: { type: 'free_order' } },
+  { label: "Livraison offerte", color: "#f97316", visualSize: 25, probability: 25, prize: { type: 'free_delivery' } },
+  { label: "Boisson offerte", color: "#3b82f6", visualSize: 25, probability: 25, prize: { type: 'free_drink' } },
+  { label: "-10%", color: "#fbbf24", visualSize: 25, probability: 25, prize: { type: 'discount', value: 10 } },
+  { label: "🎁 Surprise", color: "#8b5cf6", visualSize: 25, probability: 25, prize: { type: 'surprise' } },
 ];
 
-// Total = 100% de gains !
+// Total = 100% de gains, 4 options équilibrées
 
 // Calculer les angles des segments (basé sur visualSize pour l'affichage)
 const calculateSegments = () => {

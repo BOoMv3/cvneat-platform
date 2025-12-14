@@ -66,22 +66,29 @@ export async function POST(request) {
       case 'free_delivery':
         discountType = 'free_delivery';
         discountValue = 0;
-        description = 'Livraison offerte sur votre prochaine commande';
+        description = 'Livraison offerte sur votre prochaine commande (valable avant le 24 décembre)';
         minOrderAmount = 15;
         break;
       
-      case 'free_dessert':
+      case 'free_drink':
         discountType = 'fixed';
-        discountValue = 5; // Valeur approximative d'un dessert
-        description = 'Dessert offert (5€) sur votre prochaine commande';
-        minOrderAmount = 20;
+        discountValue = 3; // Valeur approximative d'une boisson
+        description = 'Boisson offerte (3€) sur votre prochaine commande';
+        minOrderAmount = 15;
         break;
       
-      case 'free_order':
-        discountType = 'percentage';
-        discountValue = 100;
-        description = 'Commande offerte ! 100% de réduction';
-        minOrderAmount = 0;
+      case 'surprise':
+        // Surprise = tirage aléatoire entre plusieurs petits gains
+        const surprises = [
+          { type: 'fixed', value: 2, desc: 'Réduction surprise de 2€' },
+          { type: 'fixed', value: 3, desc: 'Réduction surprise de 3€' },
+          { type: 'percentage', value: 5, desc: 'Réduction surprise de 5%' },
+        ];
+        const surprise = surprises[Math.floor(Math.random() * surprises.length)];
+        discountType = surprise.type;
+        discountValue = surprise.value;
+        description = `${surprise.desc} sur votre prochaine commande`;
+        minOrderAmount = 15;
         break;
       
       default:
@@ -90,9 +97,16 @@ export async function POST(request) {
         description = 'Réduction de 10% sur votre prochaine commande';
     }
 
-    // Date d'expiration : 1 semaine
+    // Date d'expiration : 1 semaine (sauf livraison offerte = avant le 24 décembre)
     const validUntil = new Date();
-    validUntil.setDate(validUntil.getDate() + 7);
+    if (prizeType === 'free_delivery') {
+      // Livraison offerte : valable jusqu'au 23 décembre 23h59
+      validUntil.setFullYear(2024, 11, 23); // 11 = décembre (0-indexé)
+      validUntil.setHours(23, 59, 59, 999);
+    } else {
+      // Autres gains : 1 semaine
+      validUntil.setDate(validUntil.getDate() + 7);
+    }
 
     // Créer le code promo
     const { data: promoCode, error: createError } = await supabaseAdmin
@@ -123,21 +137,9 @@ export async function POST(request) {
       );
     }
 
-    // Enregistrer l'association user -> code promo (pour tracking)
-    const { error: linkError } = await supabaseAdmin
-      .from('promo_code_usage')
-      .insert({
-        promo_code_id: promoCode.id,
-        user_id: userId,
-        order_id: orderId || null,
-        discount_amount: 0, // Sera calculé à l'utilisation
-        order_amount: 0 // Sera calculé à l'utilisation
-      });
-
-    if (linkError) {
-      console.error('Erreur lien user-code:', linkError);
-      // Ne pas échouer si le lien échoue, le code est créé
-    }
+    // Note: On ne crée PAS d'entrée dans promo_code_usage ici
+    // car cela compterait comme une utilisation. L'entrée sera créée
+    // uniquement quand le code sera réellement utilisé lors d'une commande.
 
     return NextResponse.json({
       success: true,
