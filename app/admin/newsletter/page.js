@@ -155,6 +155,9 @@ export default function NewsletterPage() {
                       Aperçu: {preview.emails.join(', ')}...
                     </p>
                   )}
+                  <p className="text-xs text-blue-600 mt-2 font-medium">
+                    📮 Email envoyé depuis: <span className="font-semibold">contact@cvneat.fr</span>
+                  </p>
                 </div>
               </div>
             </div>

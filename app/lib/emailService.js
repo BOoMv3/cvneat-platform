@@ -5,7 +5,7 @@ import nodemailer from 'nodemailer';
 class EmailService {
   constructor() {
     this.provider = process.env.EMAIL_PROVIDER || 'sendgrid';
-    this.fromEmail = process.env.EMAIL_FROM || 'noreply@cvneat.com';
+    this.fromEmail = process.env.EMAIL_FROM || 'contact@cvneat.fr';
     
     // Configuration SendGrid
     if (process.env.SENDGRID_API_KEY) {

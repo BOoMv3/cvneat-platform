@@ -168,7 +168,7 @@ export async function POST(request) {
     const htmlContent = data.html || emailContent.html;
     
     const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@cvneat.com',
+      from: process.env.EMAIL_FROM || 'contact@cvneat.fr',
       to: recipientEmail,
       subject: emailContent.subject,
       html: htmlContent
