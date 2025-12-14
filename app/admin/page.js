@@ -693,6 +693,12 @@ export default function AdminPage() {
                   📋 Voir toutes les Commandes
                 </button>
                 <button 
+                  onClick={() => router.push('/admin/newsletter')}
+                  className="p-3 sm:p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
+                >
+                  📧 Envoyer Newsletter (Email en masse)
+                </button>
+                <button 
                   onClick={() => router.push('/admin/bugs')}
                   className="p-3 sm:p-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
