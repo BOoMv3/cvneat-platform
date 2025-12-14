@@ -48,10 +48,10 @@ const markOrderAsPlayed = (orderId) => {
 // Configuration des segments - 4 gains uniquement
 // Chaque segment = 25% (4 segments égaux)
 const SEGMENTS = [
-  { label: "Livraison offerte", color: "#f97316", visualSize: 25, probability: 25, prize: { type: 'free_delivery' } },
-  { label: "Boisson offerte", color: "#3b82f6", visualSize: 25, probability: 25, prize: { type: 'free_drink' } },
+  { label: "Livraison offerte", color: "#f97316", visualSize: 25, probability: 25, prize: { type: 'free_delivery', value: 0 } },
+  { label: "Boisson offerte", color: "#3b82f6", visualSize: 25, probability: 25, prize: { type: 'free_drink', value: 0 } },
   { label: "-10%", color: "#fbbf24", visualSize: 25, probability: 25, prize: { type: 'discount', value: 10 } },
-  { label: "🎁 Surprise", color: "#8b5cf6", visualSize: 25, probability: 25, prize: { type: 'surprise' } },
+  { label: "🎁 Surprise", color: "#8b5cf6", visualSize: 25, probability: 25, prize: { type: 'surprise', value: 0 } },
 ];
 
 // Total = 100% de gains, 4 options équilibrées
@@ -162,13 +162,17 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
           const data = await response.json();
           console.log('📦 Réponse API génération code:', data);
           
-          if (data.success && data.code) {
+          if (data.success) {
             // Pour "boisson offerte", il n'y a pas de code promo
             if (data.prizeType === 'free_drink') {
               setGeneratedCode('BOISSON_OFFERTE'); // Marqueur spécial
-            } else {
+            } else if (data.code) {
+              // Pour les autres gains, on a un code promo
               setGeneratedCode(data.code);
+            } else {
+              console.error('❌ Pas de code retourné pour:', data.prizeType);
             }
+            
             // Appeler onWin avec le code généré
             if (onWin) {
               onWin({ 
@@ -179,7 +183,7 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
               });
             }
           } else {
-            console.error('❌ Erreur génération code:', data.error || 'Pas de code retourné');
+            console.error('❌ Erreur génération code:', data.error || 'Erreur inconnue');
             // Même si la génération échoue, on affiche le gain
             if (onWin) {
               onWin(winner);
