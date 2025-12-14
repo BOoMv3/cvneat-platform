@@ -9,7 +9,19 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+// Initialiser Stripe de manière sécurisée
+let stripePromise = null;
+const getStripePromise = () => {
+  if (!stripePromise) {
+    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    if (!publishableKey) {
+      console.error('❌ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY non définie');
+      return null;
+    }
+    stripePromise = loadStripe(publishableKey);
+  }
+  return stripePromise;
+};
 
 const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onError, discount = 0, platformFee = 0 }) => {
   const stripe = useStripe();
@@ -155,6 +167,32 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
 };
 
 const PaymentForm = ({ amount, paymentIntentId, clientSecret, onSuccess, onError, discount = 0, platformFee = 0 }) => {
+  // Vérifier que les paramètres requis sont présents
+  if (!clientSecret) {
+    return (
+      <div className="text-red-600 p-4 bg-red-50 rounded-lg">
+        Erreur : Le formulaire de paiement n'est pas encore prêt. Veuillez patienter.
+      </div>
+    );
+  }
+
+  if (!amount || amount <= 0) {
+    return (
+      <div className="text-red-600 p-4 bg-red-50 rounded-lg">
+        Erreur : Montant invalide. Veuillez réessayer.
+      </div>
+    );
+  }
+
+  const stripePromiseInstance = getStripePromise();
+  if (!stripePromiseInstance) {
+    return (
+      <div className="text-red-600 p-4 bg-red-50 rounded-lg">
+        Erreur : Configuration de paiement manquante. Veuillez contacter le support.
+      </div>
+    );
+  }
+
   const options = {
     clientSecret,
     appearance: {
@@ -163,7 +201,7 @@ const PaymentForm = ({ amount, paymentIntentId, clientSecret, onSuccess, onError
   };
 
   return (
-    <Elements stripe={stripePromise} options={options}>
+    <Elements stripe={stripePromiseInstance} options={options}>
       <CheckoutForm
         clientSecret={clientSecret}
         amount={amount}
