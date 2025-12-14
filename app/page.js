@@ -828,17 +828,36 @@ export default function Home() {
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
-      // Le boostOrder (partage réseaux sociaux) est LA priorité principale
-      // Même si un restaurant est ouvert, s'il ne partage pas, il reste en bas
-      const boostDiff = boostOrder(a) - boostOrder(b);
-      if (boostDiff !== 0) return boostDiff;
+      // Calculer le boostOrder pour chaque restaurant
+      const boostA = boostOrder(a);
+      const boostB = boostOrder(b);
 
-      // Si même boostOrder, alors prioriser les restaurants ouverts
+      // Priorité 1 : Si l'un est ouvert et l'autre fermé, l'ouvert passe devant
+      // EXCEPTION : Si les deux sont prioritaires (boostOrder < 5), on respecte le boostOrder même si l'un est fermé
+      // Cela permet à La Bonne Pâte (boostOrder 0) de rester en haut même fermée par rapport aux autres prioritaires
+      
       if (isOpenA !== isOpenB) {
+        // Si les deux sont prioritaires (boostOrder < 5), celui qui est ouvert passe devant
+        if (boostA < 5 && boostB < 5) {
+          return isOpenA ? -1 : 1;
+        }
+        
+        // Si un prioritaire (boostOrder < 5) est fermé et l'autre est un restaurant normal (boostOrder >= 5) ouvert
+        // Le restaurant normal ouvert passe devant le prioritaire fermé
+        if (boostA < 5 && !isOpenA && isOpenB && boostB >= 5) {
+          return 1; // Normal ouvert passe devant prioritaire fermé
+        }
+        if (boostB < 5 && !isOpenB && isOpenA && boostA >= 5) {
+          return -1; // Normal ouvert passe devant prioritaire fermé
+        }
+        
+        // Pour tous les autres cas, l'ouvert passe devant le fermé
         return isOpenA ? -1 : 1;
       }
 
-      return 0;
+      // Priorité 2 : Même statut ouvert/fermé, on respecte le boostOrder (partage réseaux sociaux)
+      // Les restaurants qui partagent le plus passent devant
+      return boostA - boostB;
     });
   }, [finalRestaurants, restaurantsOpenStatus]);
 
