@@ -57,9 +57,6 @@ export async function PUT(request, { params }) {
     if (body.ferme_manuellement !== undefined) {
       updateData.ferme_manuellement = body.ferme_manuellement;
     }
-    if (body.is_closed !== undefined) {
-      updateData.is_closed = body.is_closed;
-    }
 
     // Mettre à jour le restaurant
     const { data: updatedRestaurant, error: updateError } = await supabaseAdmin

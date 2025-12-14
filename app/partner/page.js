@@ -223,7 +223,7 @@ export default function PartnerDashboard() {
       }
 
       setRestaurant(resto);
-      setIsManuallyClosed(resto?.ferme_manuellement || resto?.is_closed || false);
+      setIsManuallyClosed(resto?.ferme_manuellement || false);
       
       if (resto?.id) {
         await fetchDashboardData(resto.id);

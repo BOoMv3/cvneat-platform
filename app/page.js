@@ -203,7 +203,7 @@ const formatStatusHoursLabel = (statusData, fallback) => {
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
     // Vérifier si fermé manuellement
-    if (restaurant.ferme_manuellement || restaurant.is_closed) {
+    if (restaurant.ferme_manuellement) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
