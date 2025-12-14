@@ -802,10 +802,20 @@ export default function Home() {
 
     const boostOrder = (restaurant) => {
       const normalized = normalizeName(restaurant.nom);
-      if (normalized.includes('otoasty')) return -1;
-      if (normalized.includes('la bonne pate')) return 0;
-      if (normalized.includes('eclipse')) return 1;
-      return 2;
+      
+      // Restaurants prioritaires (partagent activement CVN'EAT)
+      if (normalized.includes('la bonne pate') || normalized.includes('la bonne pâte')) return 0; // 1er
+      if (normalized.includes('99 street food') || normalized.includes('99street')) return 1; // 2ème
+      if (normalized.includes('cinq pizza') || normalized.includes('le cinq pizza')) return 2; // 3ème
+      if (normalized.includes('assiette des saison') || normalized.includes('assiette des saisons')) return 3;
+      if (normalized.includes('smaash')) return 4;
+      
+      // Restaurants pénalisés (ne partagent jamais CVN'EAT)
+      if (normalized.includes('all\'ovale') || normalized.includes('all ovale') || normalized.includes('allovale')) return 999; // Toujours en bas
+      if (normalized.includes('burger cevenol') || normalized.includes('burger cévenol') || normalized.includes('burgercevenol')) return 998; // Presque toujours en bas
+      
+      // Autres restaurants = ordre normal (5+)
+      return 5;
     };
 
     return uniqueRestaurants.sort((a, b) => {
@@ -814,12 +824,16 @@ export default function Home() {
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
+      // Le boostOrder (partage réseaux sociaux) est LA priorité principale
+      // Même si un restaurant est ouvert, s'il ne partage pas, il reste en bas
+      const boostDiff = boostOrder(a) - boostOrder(b);
+      if (boostDiff !== 0) return boostDiff;
+
+      // Si même boostOrder, alors prioriser les restaurants ouverts
       if (isOpenA !== isOpenB) {
         return isOpenA ? -1 : 1;
       }
 
-      const boostDiff = boostOrder(a) - boostOrder(b);
-      if (boostDiff !== 0) return boostDiff;
       return 0;
     });
   }, [finalRestaurants, restaurantsOpenStatus]);
