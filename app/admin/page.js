@@ -413,65 +413,58 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-full mx-auto px-2 fold:px-2 xs:px-3 sm:px-4 py-2 fold:py-2 xs:py-3 sm:py-8">
         {/* Header avec bouton retour et info utilisateur - Optimisé mobile et foldable */}
-        <div className="flex flex-col space-y-2 fold:space-y-2 xs:space-y-3 sm:space-y-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 fold:space-y-2 xs:space-y-3 sm:space-y-0">
-            <div className="flex items-center justify-between w-full gap-2 fold:gap-2">
-              <h1 className="text-base fold:text-base xs:text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">🚀 Dashboard Admin</h1>
+        <div className="mb-3 fold:mb-3 xs:mb-4 sm:mb-6">
+          <div className="flex items-center justify-between w-full gap-2 mb-3">
+            <h1 className="text-base fold:text-base xs:text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate flex-1 min-w-0">🚀 Dashboard Admin</h1>
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base flex-shrink-0 px-2 py-1"
+            >
+              <FaArrowLeft className="mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Retour</span>
+            </button>
+          </div>
+          
+          {/* Boutons d'action - Scroll horizontal sur mobile */}
+          <div className="overflow-x-auto scrollbar-hide -mx-2 px-2">
+            <div className="flex gap-2 sm:gap-3 min-w-max pb-2">
               <button
-                onClick={() => router.push('/')}
-                className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base"
+                onClick={() => router.push('/admin/reset')}
+                className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Réinitialiser"
               >
-                <FaArrowLeft className="mr-2" />
-                Retour
+                <FaRedo className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Réinitialiser</span>
+              </button>
+              <button
+                onClick={() => router.push('/admin/ads')}
+                className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Publicités"
+              >
+                <FaEye className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Publicités</span>
+              </button>
+              <button
+                onClick={() => router.push('/admin/payments')}
+                className="flex items-center justify-center px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Paiements"
+              >
+                <FaEuroSign className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Paiements</span>
+              </button>
+              <button
+                onClick={() => router.push('/admin/newsletter')}
+                className="flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Newsletter"
+              >
+                <FaEnvelope className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Newsletter</span>
               </button>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-              <span className="text-xs sm:text-sm text-gray-600">
-                Connecté en tant qu'admin
-              </span>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <button
-                  onClick={() => router.push('/admin/reset')}
-                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
-                >
-                  <FaRedo className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Réinitialiser</span>
-                  <span className="sm:hidden">Reset</span>
-                </button>
-                <button
-                  onClick={() => router.push('/admin/ads')}
-                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
-                >
-                  <FaEye className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Publicités</span>
-                  <span className="sm:hidden">Ads</span>
-                </button>
-                <button
-                  onClick={() => router.push('/admin/payments')}
-                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
-                >
-                  <FaEuroSign className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Paiements Partenaires</span>
-                  <span className="sm:hidden">Paiements</span>
-                </button>
-                <button
-                  onClick={() => router.push('/admin/newsletter')}
-                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
-                >
-                  <FaEnvelope className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Newsletter</span>
-                  <span className="sm:hidden">Email</span>
-                </button>
-                <button
-                  onClick={() => router.push('/')}
-                  className="flex items-center px-3 sm:px-4 py-2.5 sm:py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors text-sm font-medium min-h-[44px] sm:min-h-[40px] touch-manipulation"
-                >
-                  <FaArrowLeft className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Retour à l'Accueil</span>
-                  <span className="sm:hidden">Retour</span>
-                </button>
-              </div>
-            </div>
+          </div>
+          
+          <div className="text-xs sm:text-sm text-gray-600 mt-2">
+            Connecté en tant qu'admin
           </div>
         </div>
 
@@ -718,26 +711,26 @@ export default function AdminPage() {
             )}
           </div>
           {stats.recentOrders.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Commande
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Restaurant
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Montant
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Statut
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell whitespace-nowrap">
                       Date
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
@@ -749,30 +742,30 @@ export default function AdminPage() {
                     
                     return (
                       <tr key={order?.id || Math.random()} className="hover:bg-gray-50">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                           #{getOrderDisplayId(order)}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 max-w-[120px] sm:max-w-none truncate sm:whitespace-nowrap">
                           {restaurant?.nom || 'Restaurant inconnu'}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                           {formatPrice(order.total)}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.statut)}`}>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full ${getStatusColor(order.statut)}`}>
                             {getStatusText(order.statut)}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell">
                           {formatDate(order.created_at)}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                           <button
                             onClick={() => router.push(`/admin/orders/${order.id}`)}
-                            className="text-blue-600 hover:text-blue-900 p-1 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                            className="text-blue-600 hover:text-blue-900 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                             title="Voir les détails"
                           >
-                            <FaEye className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <FaEye className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>
@@ -797,23 +790,23 @@ export default function AdminPage() {
             )}
           </div>
           {stats.recentRestaurants.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Nom
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Adresse
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Statut
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell whitespace-nowrap">
                       Date création
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
@@ -822,37 +815,37 @@ export default function AdminPage() {
                   {stats.recentRestaurants.map((restaurant) => {
                     return (
                       <tr key={restaurant?.id || Math.random()} className="hover:bg-gray-50">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900 max-w-[120px] sm:max-w-none truncate sm:whitespace-nowrap">
                           {restaurant?.nom || 'Nom non renseigné'}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 max-w-[150px] sm:max-w-none truncate sm:whitespace-nowrap">
                           {restaurant?.adresse || restaurant?.ville || 'Adresse non renseignée'}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full ${
                             restaurant?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {restaurant?.status === 'active' ? 'Actif' : 'Inactif'}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell">
                           {formatDate(restaurant?.created_at)}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                           <div className="flex space-x-1 sm:space-x-2">
                             <button
                               onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
-                              className="text-blue-600 hover:text-blue-900 p-1 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                              className="text-blue-600 hover:text-blue-900 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                               title="Voir les détails"
                             >
-                              <FaEye className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <FaEye className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
-                              className="text-green-600 hover:text-green-900 p-1 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                              className="text-green-600 hover:text-green-900 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                               title="Modifier"
                             >
-                              <FaEdit className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <FaEdit className="h-4 w-4" />
                             </button>
                           </div>
                         </td>

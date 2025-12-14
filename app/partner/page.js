@@ -1927,10 +1927,8 @@ export default function PartnerDashboard() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Message Partenaires - Partage Réseaux Sociaux - PRIORITAIRE */}
-            <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-xl shadow-2xl p-6 sm:p-8 text-white border-4 border-yellow-300 animate-pulse">
+        {/* Message Partenaires - Partage Réseaux Sociaux - PRIORITAIRE - TOUJOURS VISIBLE */}
+        <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-xl shadow-2xl p-4 sm:p-6 lg:p-8 text-white border-4 border-yellow-300 animate-pulse mb-6 sticky top-4 z-50">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 mt-1">
                   <div className="relative">
@@ -1972,8 +1970,10 @@ export default function PartnerDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
+        </div>
 
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
