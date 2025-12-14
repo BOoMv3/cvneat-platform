@@ -71,9 +71,10 @@ export async function POST(request) {
         break;
       
       case 'free_drink':
-        discountType = 'fixed';
-        discountValue = 3; // Valeur approximative d'une boisson
-        description = 'Boisson offerte (3€) sur votre prochaine commande';
+        // Boisson offerte = pas de code promo, mais un item spécial à livrer
+        discountType = 'free_drink';
+        discountValue = 0; // Pas de réduction, c'est un item offert
+        description = 'Boisson offerte - Une boisson vous sera livrée avec votre prochaine commande';
         minOrderAmount = 15;
         break;
       
@@ -108,46 +109,72 @@ export async function POST(request) {
       validUntil.setDate(validUntil.getDate() + 7);
     }
 
-    // Créer le code promo
-    const { data: promoCode, error: createError } = await supabaseAdmin
-      .from('promo_codes')
-      .insert({
-        code,
-        description,
-        discount_type: discountType,
-        discount_value: discountValue,
-        min_order_amount: minOrderAmount,
-        max_uses: 1, // 1 seule utilisation
-        max_uses_per_user: 1, // 1 seule fois par utilisateur
-        current_uses: 0,
-        valid_from: new Date().toISOString(),
-        valid_until: validUntil.toISOString(),
-        is_active: true,
-        first_order_only: false,
-        new_users_only: false
-      })
-      .select()
-      .single();
+    let promoCode = null;
+    let promoCodeId = null;
 
-    if (createError) {
-      console.error('Erreur création code promo:', createError);
-      return NextResponse.json(
-        { error: 'Erreur lors de la création du code promo' },
-        { status: 500 }
-      );
+    // Pour "boisson offerte", on ne crée PAS de code promo de réduction
+    // C'est un item spécial qui sera ajouté à la commande
+    if (prizeType !== 'free_drink') {
+      // Créer le code promo (sauf pour boisson offerte)
+      const { data: createdCode, error: createError } = await supabaseAdmin
+        .from('promo_codes')
+        .insert({
+          code,
+          description,
+          discount_type: discountType,
+          discount_value: discountValue,
+          min_order_amount: minOrderAmount,
+          max_uses: 1, // 1 seule utilisation
+          max_uses_per_user: 1, // 1 seule fois par utilisateur
+          current_uses: 0,
+          valid_from: new Date().toISOString(),
+          valid_until: validUntil.toISOString(),
+          is_active: true,
+          first_order_only: false,
+          new_users_only: false
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Erreur création code promo:', createError);
+        return NextResponse.json(
+          { error: 'Erreur lors de la création du code promo' },
+          { status: 500 }
+        );
+      }
+
+      promoCode = createdCode;
+      promoCodeId = createdCode.id;
     }
 
-    // Note: On ne crée PAS d'entrée dans promo_code_usage ici
-    // car cela compterait comme une utilisation. L'entrée sera créée
-    // uniquement quand le code sera réellement utilisé lors d'une commande.
+    // Sauvegarder le gain dans wheel_wins pour que le client puisse le voir
+    const { error: wheelWinError } = await supabaseAdmin
+      .from('wheel_wins')
+      .insert({
+        user_id: userId,
+        order_id: orderId || null,
+        prize_type: prizeType,
+        prize_value: prizeType === 'free_drink' ? null : (prizeValue || discountValue),
+        promo_code_id: promoCodeId,
+        promo_code: prizeType === 'free_drink' ? null : code,
+        description: description,
+        valid_until: validUntil.toISOString()
+      });
+
+    if (wheelWinError) {
+      console.error('Erreur sauvegarde gain roue:', wheelWinError);
+      // Non bloquant, on continue
+    }
 
     return NextResponse.json({
       success: true,
-      code: promoCode.code,
-      description: promoCode.description,
-      validUntil: promoCode.valid_until,
-      discountType: promoCode.discount_type,
-      discountValue: promoCode.discount_value
+      code: prizeType === 'free_drink' ? null : (promoCode?.code || code),
+      description: description,
+      validUntil: validUntil.toISOString(),
+      discountType: discountType,
+      discountValue: discountValue,
+      prizeType: prizeType // Pour que le frontend sache que c'est une boisson offerte
     });
 
   } catch (error) {

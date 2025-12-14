@@ -124,10 +124,20 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
           const data = await response.json();
           
           if (data.success) {
-            setGeneratedCode(data.code);
+            // Pour "boisson offerte", il n'y a pas de code promo
+            if (data.prizeType === 'free_drink') {
+              setGeneratedCode('BOISSON_OFFERTE'); // Marqueur spécial
+            } else {
+              setGeneratedCode(data.code);
+            }
             // Appeler onWin avec le code généré
             if (onWin) {
-              onWin({ ...winner, generatedCode: data.code, validUntil: data.validUntil });
+              onWin({ 
+                ...winner, 
+                generatedCode: data.code || 'BOISSON_OFFERTE',
+                validUntil: data.validUntil,
+                prizeType: data.prizeType
+              });
             }
           } else {
             console.error('Erreur génération code:', data.error);
@@ -253,18 +263,38 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
                 <p className="font-bold text-green-600 text-lg">Félicitations !</p>
                 <p className="text-green-700">Vous avez gagné : <strong>{result.label}</strong></p>
                 {generatedCode ? (
-                  <>
-                    <p className="text-sm text-green-600 mt-3 font-semibold">Votre code promo :</p>
-                    <p className="text-lg font-mono bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 my-2">
-                      {generatedCode}
-                    </p>
-                    <p className="text-xs text-green-600 mt-2">
-                      Valable 1 semaine • 1 seule utilisation
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Utilisez ce code lors de votre prochaine commande !
-                    </p>
-                  </>
+                  generatedCode === 'BOISSON_OFFERTE' ? (
+                    <>
+                      <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 my-3">
+                        <p className="text-lg font-bold text-blue-800 mb-2">🥤 Boisson offerte !</p>
+                        <p className="text-sm text-blue-700">
+                          Une boisson vous sera automatiquement ajoutée à votre prochaine commande.
+                        </p>
+                        <p className="text-xs text-blue-600 mt-2">
+                          Valable 1 semaine • Aucun code nécessaire
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Consultez "Mes gains" dans votre profil pour voir votre gain actif !
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-green-600 mt-3 font-semibold">Votre code promo :</p>
+                      <p className="text-lg font-mono bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 my-2">
+                        {generatedCode}
+                      </p>
+                      <p className="text-xs text-green-600 mt-2">
+                        Valable 1 semaine • 1 seule utilisation
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Utilisez ce code lors de votre prochaine commande !
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Consultez "Mes gains" dans votre profil pour voir tous vos codes actifs.
+                      </p>
+                    </>
+                  )
                 ) : (
                   <p className="text-sm text-green-600 mt-2">
                     Génération du code en cours...

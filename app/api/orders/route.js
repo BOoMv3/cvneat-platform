@@ -822,6 +822,53 @@ export async function POST(request) {
     console.log('Création des détails de commande...');
     const orderDetailsPayload = [];
 
+    // Vérifier si le client a un gain "boisson offerte" actif
+    let freeDrinkAdded = false;
+    if (userId) {
+      const { data: freeDrinkWin, error: freeDrinkError } = await serviceClient
+        .from('wheel_wins')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('prize_type', 'free_drink')
+        .is('used_at', null) // Non utilisé
+        .gte('valid_until', new Date().toISOString()) // Valide
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!freeDrinkError && freeDrinkWin) {
+        console.log('🥤 Gain "boisson offerte" détecté, ajout d\'une boisson gratuite...');
+        
+        // Chercher une boisson standard du restaurant (catégorie "Boissons" ou nom contenant "boisson")
+        const { data: drinks, error: drinksError } = await serviceClient
+          .from('menus')
+          .select('id, nom, prix, categorie')
+          .eq('restaurant_id', restaurantId)
+          .or('categorie.ilike.%boisson%,nom.ilike.%boisson%,nom.ilike.%coca%,nom.ilike.%soda%')
+          .order('prix', { ascending: true })
+          .limit(1);
+
+        if (!drinksError && drinks && drinks.length > 0) {
+          const freeDrink = drinks[0];
+          orderDetailsPayload.push({
+            commande_id: order.id,
+            plat_id: freeDrink.id,
+            quantite: 1,
+            prix_unitaire: 0, // Gratuit
+            customizations: {
+              is_free_drink: true,
+              wheel_win_id: freeDrinkWin.id,
+              note: 'Boisson offerte - Gain de la roue de la chance'
+            }
+          });
+          freeDrinkAdded = true;
+          console.log(`✅ Boisson offerte ajoutée: ${freeDrink.nom} (gratuite)`);
+        } else {
+          console.log('⚠️ Aucune boisson trouvée pour ce restaurant, gain non appliqué');
+        }
+      }
+    }
+
     for (const item of items) {
       const isCombo = isComboItem(item);
       const isFormula = item.is_formula === true;
@@ -1265,6 +1312,31 @@ export async function POST(request) {
     }
 
     console.log(`✅ ${insertedDetails.length} détails de commande créés avec succès pour commande ${order.id?.slice(0, 8)}`);
+
+    // Marquer le gain "boisson offerte" comme utilisé si une boisson a été ajoutée
+    if (freeDrinkAdded && userId) {
+      const { data: freeDrinkWin } = await serviceClient
+        .from('wheel_wins')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('prize_type', 'free_drink')
+        .is('used_at', null)
+        .gte('valid_until', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (freeDrinkWin) {
+        await serviceClient
+          .from('wheel_wins')
+          .update({
+            used_at: new Date().toISOString(),
+            used_in_order_id: order.id
+          })
+          .eq('id', freeDrinkWin.id);
+        console.log('✅ Gain "boisson offerte" marqué comme utilisé');
+      }
+    }
 
     // IMPORTANT: Recalculer le sous-total réel depuis les détails créés pour inclure TOUT (boissons, suppléments, etc.)
     // Le total initial peut ne pas inclure les boissons des menus qui sont ajoutées séparément

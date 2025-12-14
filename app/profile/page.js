@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug } from 'react-icons/fa';
+import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug, FaTicketAlt } from 'react-icons/fa';
 import LoyaltyProgram from '../components/LoyaltyProgram';
 import PushNotificationService from '../components/PushNotificationService';
 import PageHeader from '@/components/PageHeader';
@@ -25,6 +25,7 @@ export default function Profile() {
   const [authChecked, setAuthChecked] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
+  const [wheelWins, setWheelWins] = useState([]);
 
   useEffect(() => {
     checkAuth();
@@ -113,6 +114,18 @@ export default function Profile() {
         if (!response.ok) throw new Error('Erreur lors de la récupération des commandes');
         const data = await response.json();
         setOrders(data);
+      } else if (activeTab === 'gains') {
+        // Récupérer les gains actifs de la roue
+        const { data: wins, error: winsError } = await supabase
+          .from('wheel_wins')
+          .select('*')
+          .eq('user_id', user.id)
+          .is('used_at', null) // Seulement les gains non utilisés
+          .gte('valid_until', new Date().toISOString()) // Seulement les gains valides
+          .order('created_at', { ascending: false });
+        
+        if (winsError) throw winsError;
+        setWheelWins(wins || []);
       } else {
         const response = await fetch('/api/users/addresses', {
           headers: {
@@ -437,6 +450,18 @@ export default function Profile() {
               <span className="xs:hidden">Favoris</span>
             </button>
             <button
+              onClick={() => setActiveTab('gains')}
+              className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
+                activeTab === 'gains'
+                  ? 'bg-black text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
+              }`}
+            >
+              <FaTicketAlt className="inline-block mr-1 text-xs" />
+              <span className="hidden xs:inline">Mes gains</span>
+              <span className="xs:hidden">Gains</span>
+            </button>
+            <button
               onClick={() => router.push('/profile/advertising')}
               className="px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
             >
@@ -657,6 +682,131 @@ export default function Profile() {
                   Voir mes favoris
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Onglet Mes gains */}
+          {activeTab === 'gains' && (
+            <div className="space-y-4 sm:space-y-6">
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg p-4 sm:p-6 text-white mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">🎰 Mes gains de la roue</h2>
+                <p className="text-sm sm:text-base opacity-90">
+                  Utilisez vos codes promo lors de votre prochaine commande !
+                </p>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-500 dark:text-gray-400">Chargement...</p>
+                </div>
+              ) : wheelWins.length === 0 ? (
+                <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                  <FaTicketAlt className="text-4xl text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Aucun gain actif</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+                    Tournez la roue après votre prochaine commande pour gagner des réductions !
+                  </p>
+                </div>
+              ) : (
+                wheelWins.map((win) => {
+                  const isValid = new Date(win.valid_until) > new Date();
+                  const isUsed = win.used_at !== null;
+                  
+                  return (
+                    <div
+                      key={win.id}
+                      className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 border-2 ${
+                        isValid && !isUsed
+                          ? 'border-green-500 dark:border-green-400'
+                          : 'border-gray-300 dark:border-gray-600 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FaGift className={`h-5 w-5 ${
+                              isValid && !isUsed
+                                ? 'text-green-500'
+                                : 'text-gray-400'
+                            }`} />
+                            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                              {win.description}
+                            </h3>
+                          </div>
+                          
+                          {win.promo_code && (
+                            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-3">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Code promo :</p>
+                              <p className="text-xl font-mono font-bold text-blue-600 dark:text-blue-400">
+                                {win.promo_code}
+                              </p>
+                            </div>
+                          )}
+
+                          {win.prize_type === 'free_drink' && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-3 border border-blue-200 dark:border-blue-800">
+                              <p className="text-sm text-blue-800 dark:text-blue-200">
+                                🥤 <strong>Boisson offerte</strong> - Une boisson vous sera automatiquement ajoutée à votre prochaine commande
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <span>
+                              Valable jusqu'au {new Date(win.valid_until).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            {win.prize_value && (
+                              <span className="text-green-600 dark:text-green-400 font-semibold">
+                                {win.prize_type === 'discount' || win.prize_type === 'surprise' 
+                                  ? `-${win.prize_value}%`
+                                  : `-${win.prize_value}€`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="ml-4">
+                          {isValid && !isUsed ? (
+                            <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs font-semibold">
+                              Actif
+                            </span>
+                          ) : isUsed ? (
+                            <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full text-xs font-semibold">
+                              Utilisé
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-full text-xs font-semibold">
+                              Expiré
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {isValid && !isUsed && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            💡 <strong>Comment utiliser :</strong>
+                          </p>
+                          {win.promo_code ? (
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              Entrez le code <strong className="font-mono">{win.promo_code}</strong> lors de votre prochaine commande au checkout.
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              Votre boisson sera automatiquement ajoutée lors de votre prochaine commande. Aucun code nécessaire !
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
 
