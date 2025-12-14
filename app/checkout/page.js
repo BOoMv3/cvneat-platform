@@ -1271,17 +1271,25 @@ export default function Checkout() {
                   <FaCreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
                   Paiement
                 </h3>
-                {clientSecret && (
+                {clientSecret && orderData && (
                   <PaymentForm
-                    amount={(() => {
+                    amount={orderData.totalAmount || (() => {
                       const PLATFORM_FEE = 0.49;
-                      return Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
+                      const discountAmount = appliedPromoCode?.discountAmount || 0;
+                      const maxDiscount = Math.min(discountAmount, cartTotal);
+                      const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
+                      let finalDeliveryFee = fraisLivraison;
+                      if (appliedPromoCode?.discountType === 'free_delivery') {
+                        finalDeliveryFee = 0;
+                      }
+                      const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
+                      return Math.max(0.50, Math.round(rawTotal * 100) / 100);
                     })()}
                     paymentIntentId={paymentIntentId}
                     clientSecret={clientSecret}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
-                    discount={0}
+                    discount={appliedPromoCode?.discountAmount || 0}
                     platformFee={(orderData?.platform_fee) ?? 0.49}
                   />
                 )}

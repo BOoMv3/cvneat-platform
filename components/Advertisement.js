@@ -194,9 +194,11 @@ export default function Advertisement({ position, className = '' }) {
   };
 
   const renderAdContent = () => {
-    // Utiliser object-cover pour toutes les positions pour remplir complètement la bannière
-    // object-cover recadre l'image pour remplir l'espace sans déformation
-    const imageClass = 'w-full h-full object-cover';
+    // Utiliser object-contain pour voir l'image entière (sauf banner_top qui reste discret)
+    // object-contain affiche l'image entière sans recadrage
+    const imageClass = position === 'banner_top' 
+      ? 'w-full h-full object-cover' 
+      : 'w-full h-full object-contain';
 
     // Style différent pour banner_top (plus discret et mieux intégré)
     if (position === 'banner_top') {
@@ -210,7 +212,7 @@ export default function Advertisement({ position, className = '' }) {
             <img
               src={ad.image_url_with_cache_bust || ad.image_url}
               alt={ad.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain bg-gray-100"
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextSibling.style.display = 'flex';
@@ -252,9 +254,8 @@ export default function Advertisement({ position, className = '' }) {
             alt={ad.title}
             className={imageClass}
             style={{
-              objectPosition: 'center', // Centre l'image lors du recadrage
-              minHeight: '100%',
-              minWidth: '100%'
+              objectPosition: 'center',
+              backgroundColor: '#f3f4f6' // Fond gris clair pour les espaces vides
             }}
             onError={(e) => {
               e.target.style.display = 'none';
