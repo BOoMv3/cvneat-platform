@@ -15,16 +15,18 @@ export default function NewsletterPage() {
   // Récupérer le nombre d'utilisateurs et un aperçu des emails
   const fetchUsersPreview = async () => {
     try {
+      // Récupérer depuis la table users
       const { data: users, error } = await supabase
         .from('users')
         .select('email, nom, prenom, role')
         .not('email', 'is', null)
         .limit(10);
 
-      if (error) throw error;
+      if (error) {
+        console.warn('Erreur récupération table users:', error);
+      }
 
-      // Compter tous les utilisateurs depuis auth.users
-      // On utilise la table users qui contient les emails
+      // Compter tous les utilisateurs depuis la table users
       const { count: totalCount, error: countError } = await supabase
         .from('users')
         .select('email', { count: 'exact', head: true })
@@ -35,15 +37,20 @@ export default function NewsletterPage() {
       }
 
       const finalCount = totalCount || users?.length || 0;
-      const previewEmails = users?.slice(0, 5).map(u => u.email) || [];
+      const previewEmails = users?.slice(0, 5).map(u => u.email).filter(Boolean) || [];
 
       setPreview({
         count: finalCount,
         emails: previewEmails
       });
+
+      // Afficher un avertissement si aucun utilisateur trouvé
+      if (finalCount === 0) {
+        console.warn('⚠️ Aucun utilisateur trouvé dans la table users');
+      }
     } catch (error) {
       console.error('Erreur récupération utilisateurs:', error);
-      alert('Erreur lors de la récupération des utilisateurs');
+      alert('Erreur lors de la récupération des utilisateurs: ' + error.message);
     }
   };
 

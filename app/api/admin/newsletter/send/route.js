@@ -52,30 +52,75 @@ export async function POST(request) {
     }
 
     // Récupérer tous les emails des utilisateurs
-    // On récupère depuis auth.users (source de vérité pour les emails)
-    const { data: authUsers, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers();
+    // On récupère depuis auth.users ET la table users pour être sûr de tout avoir
+    let allEmails = new Set();
 
-    if (authUsersError) {
-      console.error('Erreur récupération utilisateurs auth:', authUsersError);
-      return NextResponse.json(
-        { error: 'Erreur lors de la récupération des utilisateurs' },
-        { status: 500 }
-      );
+    // 1. Récupérer depuis auth.users (avec pagination)
+    let authUsersList = [];
+    let page = 1;
+    const perPage = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: authUsersPage, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage
+      });
+
+      if (authUsersError) {
+        console.error('Erreur récupération utilisateurs auth page', page, ':', authUsersError);
+        break;
+      }
+
+      if (authUsersPage?.users && authUsersPage.users.length > 0) {
+        authUsersPage.users.forEach(user => {
+          if (user.email && user.email.includes('@')) {
+            allEmails.add(user.email.toLowerCase());
+          }
+        });
+        hasMore = authUsersPage.users.length === perPage;
+        page++;
+      } else {
+        hasMore = false;
+      }
     }
 
-    // Filtrer les utilisateurs avec email valide
-    const validEmails = (authUsers?.users || [])
-      .map(u => u.email)
-      .filter(email => email && email.includes('@'));
+    // 2. Récupérer aussi depuis la table users (au cas où certains ne seraient pas dans auth.users)
+    const { data: usersFromTable, error: usersError } = await supabaseAdmin
+      .from('users')
+      .select('email')
+      .not('email', 'is', null);
+
+    if (!usersError && usersFromTable) {
+      usersFromTable.forEach(user => {
+        if (user.email && user.email.includes('@')) {
+          allEmails.add(user.email.toLowerCase());
+        }
+      });
+    }
+
+    // Convertir le Set en array
+    const validEmails = Array.from(allEmails);
 
     if (validEmails.length === 0) {
+      console.error('❌ Aucun utilisateur avec email valide trouvé');
+      console.log('Debug - auth.users count:', authUsersList.length);
+      console.log('Debug - users table count:', usersFromTable?.length || 0);
       return NextResponse.json(
-        { error: 'Aucun utilisateur avec email valide trouvé' },
+        { 
+          error: 'Aucun utilisateur avec email valide trouvé',
+          debug: {
+            authUsersCount: authUsersList.length,
+            usersTableCount: usersFromTable?.length || 0,
+            totalEmails: validEmails.length
+          }
+        },
         { status: 400 }
       );
     }
 
     console.log(`📧 Envoi newsletter à ${validEmails.length} utilisateurs`);
+    console.log('📧 Premiers emails:', validEmails.slice(0, 5));
 
     // Envoyer les emails par batch pour éviter les limites de rate
     const BATCH_SIZE = 10; // Envoyer 10 emails à la fois
