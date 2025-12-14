@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
+import LuckyWheel from '@/components/LuckyWheel';
 import { 
   FaCheck, 
   FaClock, 
@@ -32,6 +33,8 @@ export default function OrderConfirmation() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [showLuckyWheel, setShowLuckyWheel] = useState(false);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -41,6 +44,7 @@ export default function OrderConfirmation() {
         const { data: { session } } = await supabase.auth.getSession();
         if (isMounted) {
           setAuthToken(session?.access_token || null);
+          setUserId(session?.user?.id || null);
         }
       } catch (e) {
         console.warn('Impossible de récupérer la session Supabase:', e);
@@ -51,6 +55,7 @@ export default function OrderConfirmation() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthToken(session?.access_token || null);
+      setUserId(session?.user?.id || null);
     });
 
     return () => {
@@ -124,6 +129,27 @@ export default function OrderConfirmation() {
         setOrderData(data);
         setError(null);
         setLoading(false);
+        
+        // Afficher la roulette si le paiement est réussi ou si un paiement a été initié
+        // Conditions: payment_status = 'paid'/'succeeded' OU stripe_payment_intent_id existe (paiement initié)
+        const hasPaid = data && (
+          data.payment_status === 'paid' || 
+          data.payment_status === 'succeeded' ||
+          (data.stripe_payment_intent_id && data.statut !== 'annulee')
+        );
+        
+        if (hasPaid && userId) {
+          // Vérifier si l'utilisateur a déjà joué pour cette commande
+          if (typeof window !== 'undefined') {
+            const played = JSON.parse(localStorage.getItem('luckyWheelPlayed') || '[]');
+            if (!played.includes(data.id)) {
+              // Afficher la roulette après un court délai pour laisser la page se charger
+              setTimeout(() => {
+                setShowLuckyWheel(true);
+              }, 1500);
+            }
+          }
+        }
         
         // Track Facebook Pixel - Purchase (une seule fois par commande)
         if (data && !data._pixelTracked) {
@@ -707,6 +733,20 @@ export default function OrderConfirmation() {
           </div>
         </div>
       </div>
+
+      {/* Roue de la chance */}
+      {showLuckyWheel && userId && (
+        <LuckyWheel
+          isOpen={showLuckyWheel}
+          onClose={() => setShowLuckyWheel(false)}
+          onWin={(prize) => {
+            console.log('🎉 Gain obtenu:', prize);
+            setShowLuckyWheel(false);
+          }}
+          orderId={id}
+          userId={userId}
+        />
+      )}
     </div>
   );
 } 
