@@ -811,8 +811,12 @@ export default function Home() {
       if (normalized.includes('smaash')) return 4;
       
       // Restaurants pénalisés (ne partagent jamais CVN'EAT)
-      if (normalized.includes('all\'ovale') || normalized.includes('all ovale') || normalized.includes('allovale')) return 999; // Toujours en bas
-      if (normalized.includes('burger cevenol') || normalized.includes('burger cévenol') || normalized.includes('burgercevenol')) return 998; // Presque toujours en bas
+      if (normalized.includes('all\'ovale') || normalized.includes('all ovale') || normalized.includes('allovale')) return 997; // Toujours en bas
+      if (normalized.includes('burger cevenol') || normalized.includes('burger cévenol') || normalized.includes('burgercevenol')) return 996; // Presque toujours en bas
+      
+      // Derniers restaurants (ne partagent jamais)
+      if (normalized.includes('molokai')) return 999; // Avant-dernier
+      if (normalized.includes('dolce vita')) return 1000; // Dernier
       
       // Autres restaurants = ordre normal (5+)
       return 5;
