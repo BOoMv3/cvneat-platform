@@ -121,6 +121,15 @@ export async function POST(request) {
 
     console.log(`📧 Envoi newsletter à ${validEmails.length} utilisateurs`);
     console.log('📧 Premiers emails:', validEmails.slice(0, 5));
+    
+    // Vérifier la configuration email
+    console.log('📧 Configuration email:', {
+      EMAIL_HOST: process.env.EMAIL_HOST || 'smtp-relay.brevo.com (défaut)',
+      EMAIL_PORT: process.env.EMAIL_PORT || '587',
+      EMAIL_USER: process.env.EMAIL_USER ? '✓ Configuré' : '✗ Manquant',
+      EMAIL_PASS: process.env.EMAIL_PASS ? '✓ Configuré' : '✗ Manquant',
+      EMAIL_FROM: process.env.EMAIL_FROM || 'contact@cvneat.fr'
+    });
 
     // Envoyer les emails par batch pour éviter les limites de rate
     const BATCH_SIZE = 10; // Envoyer 10 emails à la fois
@@ -134,16 +143,24 @@ export async function POST(request) {
       
       const promises = batch.map(async (email) => {
         try {
-          await emailService.sendEmail({
+          const result = await emailService.sendEmail({
             to: email,
             subject,
             html,
             text: text || html.replace(/<[^>]*>/g, '').trim()
           });
-          return { email, success: true };
+          console.log(`✅ Email envoyé avec succès à ${email}`);
+          return { email, success: true, messageId: result?.messageId };
         } catch (error) {
-          console.error(`Erreur envoi à ${email}:`, error);
-          return { email, success: false, error: error.message };
+          console.error(`❌ Erreur envoi à ${email}:`, error.message);
+          console.error('Stack:', error.stack);
+          return { 
+            email, 
+            success: false, 
+            error: error.message,
+            code: error.code,
+            response: error.response
+          };
         }
       });
 
