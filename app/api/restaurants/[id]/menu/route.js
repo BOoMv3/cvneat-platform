@@ -102,11 +102,6 @@ export async function GET(request, { params }) {
               }
             });
             
-            console.log(`✅ Suppléments récupérés depuis menu_supplements pour ${item.nom}:`, menuSupplements.length, 'suppléments ajoutés, total:', supplements.length);
-          } else if (menuSupplementsError) {
-            console.warn(`⚠️ Erreur récupération menu_supplements pour ${item.nom}:`, menuSupplementsError.message);
-          } else {
-            console.log(`ℹ️ Aucun supplément trouvé dans menu_supplements pour ${item.nom}`);
           }
         } catch (err) {
           // Ignorer les erreurs silencieusement
