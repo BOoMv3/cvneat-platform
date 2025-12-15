@@ -111,7 +111,6 @@ export async function GET(request, { params }) {
       // Fonction helper pour parser les options JSONB
       const parseJsonbArray = (value, name) => {
         if (!value) {
-          console.log(`ℹ️ API ${item.nom} - ${name}: null/undefined`);
           return [];
         }
         if (Array.isArray(value)) {
