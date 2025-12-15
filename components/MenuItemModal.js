@@ -833,7 +833,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
                   Aucune option de viande trouvee. Verifiez les logs de la console.
                   <br />
-                  <small>Item: {item.nom || 'N/A'}, meatOptions length: {meatOptions.length}, sourceItem meat_options type: {typeof (item.is_formula && item.formula_items?.[0]?.menu?.meat_options) ? typeof item.formula_items[0].menu.meat_options : typeof item.meat_options}, isArray: {Array.isArray(item.meat_options) ? 'true' : 'false'}</small>
+                  <small>Item: {item.nom || 'N/A'}, meatOptions length: {meatOptions.length}, meat_options type: {typeof item.meat_options}, isArray: {Array.isArray(item.meat_options) ? 'true' : 'false'}</small>
                 </div>
               ) : (
                 <div className="space-y-1">
