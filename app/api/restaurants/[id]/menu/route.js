@@ -115,7 +115,6 @@ export async function GET(request, { params }) {
           return [];
         }
         if (Array.isArray(value)) {
-          console.log(`✅ API ${item.nom} - ${name}: tableau de`, value.length, 'éléments');
           return value;
         }
         if (typeof value === 'string') {
