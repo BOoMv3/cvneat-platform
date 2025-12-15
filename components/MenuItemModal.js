@@ -813,7 +813,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
                   ⚠️ Aucune option de viande trouvée. Vérifiez les logs de la console.
                   <br />
-                  <small>Item: {item.nom}, meat_options: {JSON.stringify(item.meat_options)}</small>
+                  <small>Item: {item.nom || 'N/A'}, meat_options type: {typeof item.meat_options}, isArray: {Array.isArray(item.meat_options) ? 'true' : 'false'}</small>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -854,7 +854,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
                   ⚠️ Aucune option de sauce trouvée. Vérifiez les logs de la console.
                   <br />
-                  <small>Item: {item.nom}, sauce_options: {JSON.stringify(item.sauce_options)}</small>
+                  <small>Item: {item.nom || 'N/A'}, sauce_options type: {typeof item.sauce_options}, isArray: {Array.isArray(item.sauce_options) ? 'true' : 'false'}</small>
                 </div>
               ) : (
                 <div className="space-y-1">
