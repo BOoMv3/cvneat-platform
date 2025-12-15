@@ -106,11 +106,21 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier si fermé manuellement
-    if (restaurant.ferme_manuellement) {
+    if (restaurant.ferme_manuellement === true) {
       return NextResponse.json({
         isOpen: false,
         message: 'Restaurant fermé manuellement',
         reason: 'manual'
+      });
+    }
+
+    // Si ferme_manuellement = false (explicitement ouvert), considérer comme ouvert
+    // même si les horaires indiquent qu'il devrait être fermé
+    if (restaurant.ferme_manuellement === false) {
+      return NextResponse.json({
+        isOpen: true,
+        message: 'Restaurant ouvert manuellement',
+        reason: 'manually_opened'
       });
     }
 
