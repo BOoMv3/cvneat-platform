@@ -191,8 +191,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       setBaseIngredients(baseIngredientsNormalized);
 
       // D'abord, vérifier si l'item a des suppléments intégrés
+      console.log('🔍 MenuItemModal - Item reçu:', item.nom);
+      console.log('🔍 MenuItemModal - item.supplements:', item.supplements, 'Type:', typeof item.supplements, 'IsArray:', Array.isArray(item.supplements));
+      
       const supplementsNormalized = normalizeOptions(item.supplements, 'supplements');
       console.log('🔍 Suppléments normalisés depuis item:', supplementsNormalized.length, 'suppléments');
+      console.log('🔍 Suppléments normalisés (premiers):', supplementsNormalized.slice(0, 2));
       
       if (supplementsNormalized.length > 0) {
         // Formater les suppléments pour correspondre au format attendu
@@ -203,19 +207,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           description: sup.description || ''
         }));
         console.log('✅ Suppléments parsés depuis item:', formattedSupplements.length, 'suppléments');
+        console.log('✅ Suppléments formatés (premiers):', formattedSupplements.slice(0, 2));
         setSupplements(formattedSupplements);
         setLoading(false);
-      } else if (restaurantId) {
-        // Sinon, récupérer depuis l'API
-        console.log('ℹ️ Suppléments non trouvés dans item, récupération depuis API...');
-        fetchSupplements();
       } else {
-        console.warn('WARNING Aucun supplément trouvé et pas de restaurantId');
-        // Essayer quand même de récupérer depuis l'API si on a l'ID de l'item
-        if (item.id) {
-          console.log('ℹ️ Tentative récupération suppléments via API menu item...');
+        // TOUJOURS essayer de récupérer depuis l'API, même si on a des suppléments vides
+        console.log('ℹ️ Suppléments non trouvés dans item ou tableau vide, récupération depuis API...');
+        if (restaurantId || item.id) {
           fetchSupplements();
         } else {
+          console.warn('WARNING Aucun restaurantId ni item.id pour récupérer les suppléments');
           setSupplements([]);
           setLoading(false);
         }
