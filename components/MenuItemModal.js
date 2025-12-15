@@ -226,7 +226,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         }
       }
     }
-  }, [isOpen, restaurantId, item]);
+  }, [internalIsOpen, restaurantId, item]);
 
   const fetchSupplements = async () => {
     setLoading(true);
