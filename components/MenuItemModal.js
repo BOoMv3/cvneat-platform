@@ -837,7 +837,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                         <span className="truncate">{meat.nom || meat.name}</span>
                       </div>
                       {(meat.prix || meat.price) > 0 && (
-                        <span className="text-xs ml-2">+{parseFloat(meat.prix || meat.price || 0).toFixed(2)}€</span>
+                        <span className="text-xs ml-2">+{parseFloat(meat.prix || meat.price || 0).toFixed(2)} &euro;</span>
                       )}
                     </div>
                   );
@@ -924,7 +924,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Ingrédients supplémentaires */}
-          {(
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
               <FaPlus className="w-5 h-5 text-orange-600 mr-2" />
@@ -972,7 +971,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               </div>
             )}
           </div>
-          )}
 
         </div>
       </div>
