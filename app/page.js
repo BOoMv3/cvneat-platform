@@ -249,7 +249,13 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       }
     }
 
+    // Si le jour n'a pas d'horaires configurés ou est explicitement fermé
     if (!heuresJour || heuresJour.ouvert === false) {
+      // Si ferme_manuellement = false, considérer comme ouvert quand même
+      if (restaurant.ferme_manuellement === false) {
+        return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
+      }
+      // Sinon, restaurant fermé
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
 
@@ -271,6 +277,11 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
           }
         }
       }
+      // Hors des heures d'ouverture
+      // Si ferme_manuellement = false, considérer comme ouvert quand même
+      if (restaurant.ferme_manuellement === false) {
+        return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
+      }
       return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
     }
 
@@ -284,12 +295,22 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       if (currentTime >= openTime && currentTime < closeTime) {
         return { isOpen: true, isManuallyClosed: false, reason: 'open' };
       }
+      // Hors des heures d'ouverture
+      // Si ferme_manuellement = false, considérer comme ouvert quand même
+      if (restaurant.ferme_manuellement === false) {
+        return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
+      }
       return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
     }
 
     // Si ouvert est true mais pas d'horaires précis, considérer comme ouvert
     if (heuresJour.ouvert === true) {
       return { isOpen: true, isManuallyClosed: false, reason: 'open_no_hours' };
+    }
+
+    // Cas inconnu - si ferme_manuellement = false, considérer comme ouvert
+    if (restaurant.ferme_manuellement === false) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
     }
 
     return { isOpen: false, isManuallyClosed: false, reason: 'unknown' };
