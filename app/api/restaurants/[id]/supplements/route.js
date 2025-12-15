@@ -6,7 +6,45 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
 
-    // Essayer d'abord avec la table 'supplements' (format standard)
+    // Récupérer tous les suppléments depuis menu_supplements pour tous les menus du restaurant
+    const { data: menus, error: menusError } = await supabase
+      .from('menus')
+      .select('id')
+      .eq('restaurant_id', id)
+      .eq('disponible', true);
+
+    if (menusError) {
+      console.warn('⚠️ Erreur récupération menus:', menusError);
+    }
+
+    const menuIds = menus && menus.length > 0 ? menus.map(m => m.id) : [];
+
+    // Récupérer les suppléments depuis menu_supplements
+    let allSupplements = [];
+    if (menuIds.length > 0) {
+      const { data: menuSupplements, error: menuSupplementsError } = await supabase
+        .from('menu_supplements')
+        .select('*')
+        .in('menu_item_id', menuIds)
+        .eq('disponible', true)
+        .order('ordre');
+
+      if (!menuSupplementsError && menuSupplements && menuSupplements.length > 0) {
+        allSupplements = menuSupplements.map(ms => ({
+          id: ms.id,
+          nom: ms.nom || ms.name || 'Supplément',
+          name: ms.nom || ms.name || 'Supplément',
+          prix: parseFloat(ms.prix || ms.price || 0),
+          price: parseFloat(ms.prix || ms.price || 0),
+          description: ms.description || '',
+          disponible: ms.disponible !== false,
+          menu_item_id: ms.menu_item_id
+        }));
+        console.log(`✅ Suppléments récupérés depuis menu_supplements pour restaurant ${id}:`, allSupplements.length);
+      }
+    }
+
+    // Essayer aussi avec la table 'supplements' (format standard) et combiner
     const { data: supplementsData, error: supplementsError } = await supabase
       .from('supplements')
       .select('*')
@@ -14,9 +52,7 @@ export async function GET(request, { params }) {
       .eq('is_active', true)
       .order('name');
 
-    // Si la table 'supplements' existe et retourne des données, les utiliser
     if (!supplementsError && supplementsData && supplementsData.length > 0) {
-      // Formater les données pour correspondre au format attendu (nom, prix)
       const formattedSupplements = supplementsData.map(sup => ({
         id: sup.id,
         nom: sup.name || sup.nom || 'Supplément',
@@ -28,20 +64,18 @@ export async function GET(request, { params }) {
         disponible: sup.is_active !== false,
         is_active: sup.is_active !== false
       }));
-      return NextResponse.json(formattedSupplements);
+      // Combiner avec les suppléments de menu_supplements (éviter les doublons)
+      const existingIds = new Set(allSupplements.map(s => s.id));
+      formattedSupplements.forEach(sup => {
+        if (!existingIds.has(sup.id)) {
+          allSupplements.push(sup);
+        }
+      });
+      console.log(`✅ Suppléments combinés (supplements + menu_supplements) pour restaurant ${id}:`, allSupplements.length);
     }
 
-    // Si aucune erreur mais pas de données, retourner un tableau vide
-    if (!supplementsError) {
-      return NextResponse.json([]);
-    }
-
-    // Si erreur, vérifier si c'est parce que la table n'existe pas
-    // Essayer avec une autre structure possible
-    console.warn('⚠️ Table supplements non trouvée ou erreur:', supplementsError.message);
-    
-    // Retourner un tableau vide plutôt qu'une erreur pour permettre au client de continuer
-    return NextResponse.json([]);
+    // Retourner tous les suppléments trouvés
+    return NextResponse.json(allSupplements);
   } catch (error) {
     console.error('Erreur serveur:', error);
     // Retourner un tableau vide plutôt qu'une erreur
