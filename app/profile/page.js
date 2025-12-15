@@ -714,7 +714,7 @@ export default function Profile() {
                     </p>
                   </div>
                   <div className="space-y-4">
-                wheelWins.map((win) => {
+                    {wheelWins.map((win) => {
                   const isValid = new Date(win.valid_until) > new Date();
                   const isUsed = win.used_at !== null;
                   
