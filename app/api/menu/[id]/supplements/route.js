@@ -65,7 +65,25 @@ export async function GET(request, { params }) {
       .order('ordre');
 
     if (!error && supplements && supplements.length > 0) {
-      return NextResponse.json(supplements);
+      // Formater pour correspondre au format attendu
+      const formattedSupplements = supplements.map((sup, idx) => ({
+        id: sup.id || `supp-${idx}`,
+        nom: sup.nom || sup.name || 'Supplément',
+        name: sup.nom || sup.name || 'Supplément',
+        prix: parseFloat(sup.prix || sup.price || 0),
+        price: parseFloat(sup.prix || sup.price || 0),
+        description: sup.description || '',
+        disponible: sup.disponible !== false,
+        ordre: sup.ordre || idx
+      }));
+      console.log(`✅ API menu supplements - ${formattedSupplements.length} suppléments retournés pour menu ${id}`);
+      return NextResponse.json(formattedSupplements);
+    }
+    
+    if (error) {
+      console.warn(`⚠️ Erreur récupération menu_supplements pour menu ${id}:`, error.message);
+    } else {
+      console.log(`ℹ️ Aucun supplément trouvé dans menu_supplements pour menu ${id}`);
     }
 
     // Si aucune erreur mais pas de données, retourner un tableau vide
