@@ -84,7 +84,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       // Fonction helper pour normaliser les options (gérer tous les cas)
       const normalizeOptions = (value, name) => {
         if (!value) {
-          console.warn(`⚠️ ${name} est null/undefined`);
+          console.warn(`WARNING ${name} est null/undefined`);
           return [];
         }
         // Si c'est déjà un tableau, le retourner
@@ -100,7 +100,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               console.log(`✅ ${name} parsé depuis string:`, parsed.length, 'éléments');
               return parsed;
             }
-            console.warn(`⚠️ ${name} parsé mais n'est pas un tableau`);
+            console.warn(`WARNING ${name} parsé mais n'est pas un tableau`);
             return [];
           } catch (e) {
             console.error(`❌ Erreur parsing ${name} string:`, e);
@@ -118,10 +118,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             return array;
           }
           // Sinon, essayer de l'envelopper dans un tableau
-          console.warn(`⚠️ ${name} est un objet non-tableau, tentative de conversion`);
+          console.warn(`WARNING ${name} est un objet non-tableau, tentative de conversion`);
           return [value];
         }
-        console.warn(`⚠️ ${name} type inconnu:`, typeof value);
+        console.warn(`WARNING ${name} type inconnu:`, typeof value);
         return [];
       };
       
@@ -175,7 +175,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         console.log('ℹ️ Suppléments non trouvés dans item, récupération depuis API...');
         fetchSupplements();
       } else {
-        console.warn('⚠️ Aucun supplément trouvé et pas de restaurantId');
+        console.warn('WARNING Aucun supplément trouvé et pas de restaurantId');
         setSupplements([]);
         setLoading(false);
       }
@@ -191,7 +191,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       let response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
       
       if (!response.ok) {
-        console.warn('⚠️ API restaurant supplements non disponible, essai menu item');
+        console.warn('WARNING API restaurant supplements non disponible, essai menu item');
         // Fallback : essayer l'API spécifique au menu item
         response = await fetch(`/api/menu/${item.id}/supplements`);
       }
@@ -211,7 +211,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         console.log('✅ Suppléments formatés:', formattedData);
         setSupplements(formattedData);
       } else {
-        console.warn('⚠️ Aucune réponse valide pour les suppléments');
+        console.warn('WARNING Aucune réponse valide pour les suppléments');
         setSupplements([]);
       }
     } catch (error) {
@@ -471,7 +471,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       if (typeof onClose === 'function') {
         onClose();
       } else {
-        console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
+        console.warn('WARNING onClose n\'est pas une fonction:', typeof onClose);
       }
       
       // Ajouter au panier après un petit délai pour s'assurer que la modal est fermée
@@ -567,7 +567,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     if (typeof onClose === 'function') {
       onClose();
     } else {
-      console.warn('⚠️ onClose n\'est pas une fonction:', typeof onClose);
+      console.warn('WARNING onClose n\'est pas une fonction:', typeof onClose);
     }
     
     // Ajouter au panier après un petit délai pour s'assurer que la modal est fermée
@@ -701,7 +701,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                                   <span className={`w-4 h-4 rounded-full border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
                                     isSelected ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
                                   }`}>
-                                    {isSelected && <span className="text-white text-xs">✓</span>}
+                                    {isSelected && <span className="text-white text-xs">OK</span>}
                                   </span>
                                   <span className="font-medium truncate">{menuItem.nom || 'Option'}</span>
                                 </div>
@@ -742,7 +742,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                                 <span className={`w-4 h-4 rounded-full border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
                                   isSelected ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
                                 }`}>
-                                  {isSelected && <span className="text-white text-xs">✓</span>}
+                                  {isSelected && <span className="text-white text-xs">OK</span>}
                                 </span>
                                 <span className="font-medium truncate">{option.nom || option.name || 'Option'}</span>
                               </div>
@@ -785,7 +785,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                           <span className={`w-4 h-4 rounded-full border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
                             isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
                           }`}>
-                            {isSelected && <span className="text-white text-xs">✓</span>}
+                            {isSelected && <span className="text-white text-xs">OK</span>}
                           </span>
                           <span className="font-medium truncate">{drink.nom}</span>
                         </div>
@@ -798,12 +798,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           </div>
 
           {/* Viandes - VERSION MINI - TOUJOURS AFFICHER POUR TACOS */}
-          {(() => {
-            const hasMeatOptions = meatOptions.length > 0;
-            const isTacosCategory = item.category && item.category.toLowerCase().includes('tacos');
-            const isTacosName = item.nom && item.nom.toLowerCase().includes('tacos');
-            return (hasMeatOptions || isTacosCategory || isTacosName);
-          })() && (
+          {((meatOptions.length > 0 || (item.category && item.category.toLowerCase().indexOf('tacos') !== -1) || (item.nom && item.nom.toLowerCase().indexOf('tacos') !== -1))) && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">
                 Viandes
@@ -816,82 +811,78 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
               </h3>
               {meatOptions.length === 0 ? (
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
-                  ⚠️ Aucune option de viande trouvée. Vérifiez les logs de la console.
+                  Aucune option de viande trouvee. Verifiez les logs de la console.
                   <br />
                   <small>Item: {item.nom || 'N/A'}, meat_options type: {typeof item.meat_options}, isArray: {Array.isArray(item.meat_options) ? 'true' : 'false'}</small>
                 </div>
               ) : (
                 <div className="space-y-1">
                   {meatOptions.map((meat) => {
-                  const meatId = meat.id || meat.nom;
-                  const isSelected = selectedMeats.has(meatId);
-                  return (
-                    <div
-                      key={meatId}
-                      className={`flex items-center justify-between p-2 rounded border cursor-pointer text-sm ${
-                        isSelected ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'
-                      }`}
-                      onClick={() => handleMeatToggle(meatId)}
-                    >
-                      <div className="flex items-center">
-                        <span className={`w-4 h-4 rounded border-2 mr-2 flex items-center justify-center ${
-                          isSelected ? 'border-red-500 bg-red-500' : 'border-gray-300'
-                        }`}>
-                          {isSelected && <span className="text-white text-xs">✓</span>}
-                        </span>
-                        <span className="truncate">{meat.nom || meat.name}</span>
+                    const meatId = meat.id || meat.nom;
+                    const isSelected = selectedMeats.has(meatId);
+                    return (
+                      <div
+                        key={meatId}
+                        className={`flex items-center justify-between p-2 rounded border cursor-pointer text-sm ${
+                          isSelected ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'
+                        }`}
+                        onClick={() => handleMeatToggle(meatId)}
+                      >
+                        <div className="flex items-center">
+                          <span className={`w-4 h-4 rounded border-2 mr-2 flex items-center justify-center ${
+                            isSelected ? 'border-red-500 bg-red-500' : 'border-gray-300'
+                          }`}>
+                            {isSelected && <span className="text-white text-xs">OK</span>}
+                          </span>
+                          <span className="truncate">{meat.nom || meat.name}</span>
+                        </div>
+                        {(meat.prix || meat.price) > 0 && (
+                          <span className="text-xs ml-2">+{parseFloat(meat.prix || meat.price || 0).toFixed(2)} EUR</span>
+                        )}
                       </div>
-                      {(meat.prix || meat.price) > 0 && (
-                        <span className="text-xs ml-2">+{parseFloat(meat.prix || meat.price || 0).toFixed(2)} EUR</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* Sauces - VERSION MINI - TOUJOURS AFFICHER POUR TACOS */}
-          {(() => {
-            const hasSauceOptions = sauceOptions.length > 0;
-            const isTacosCategory = item.category && item.category.toLowerCase().includes('tacos');
-            const isTacosName = item.nom && item.nom.toLowerCase().includes('tacos');
-            const maxSauces = item.max_sauces || item.max_sauce_count;
-            return (hasSauceOptions || isTacosCategory || isTacosName) && maxSauces !== 0;
-          })() && (
+          {((sauceOptions.length > 0 || (item.category && item.category.toLowerCase().indexOf('tacos') !== -1) || (item.nom && item.nom.toLowerCase().indexOf('tacos') !== -1)) && (item.max_sauces || item.max_sauce_count) !== 0) && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">Sauces {item.requires_sauce_selection && <span className="text-red-500">*</span>}</h3>
               {sauceOptions.length === 0 ? (
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
-                  ⚠️ Aucune option de sauce trouvée. Vérifiez les logs de la console.
+                  Aucune option de sauce trouvee. Verifiez les logs de la console.
                   <br />
                   <small>Item: {item.nom || 'N/A'}, sauce_options type: {typeof item.sauce_options}, isArray: {Array.isArray(item.sauce_options) ? 'true' : 'false'}</small>
                 </div>
               ) : (
                 <div className="space-y-1">
                   {sauceOptions.map((sauce) => {
-                  const sauceId = sauce.id || sauce.nom;
-                  const isSelected = selectedSauces.has(sauceId);
-                  return (
-                    <div
-                      key={sauceId}
-                      className={`flex items-center justify-between p-2 rounded border cursor-pointer text-sm ${
-                        isSelected ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'
-                      }`}
-                      onClick={() => handleSauceToggle(sauceId)}
-                    >
-                      <div className="flex items-center flex-1 min-w-0">
-                        <span className={`w-4 h-4 rounded border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected ? 'border-yellow-500 bg-yellow-500' : 'border-gray-300'
-                        }`}>
-                          {isSelected && <span className="text-white text-xs">✓</span>}
-                        </span>
-                        <span className="truncate">{sauce.nom || sauce.name}</span>
+                    const sauceId = sauce.id || sauce.nom;
+                    const isSelected = selectedSauces.has(sauceId);
+                    return (
+                      <div
+                        key={sauceId}
+                        className={`flex items-center justify-between p-2 rounded border cursor-pointer text-sm ${
+                          isSelected ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'
+                        }`}
+                        onClick={() => handleSauceToggle(sauceId)}
+                      >
+                        <div className="flex items-center flex-1 min-w-0">
+                          <span className={`w-4 h-4 rounded border-2 mr-2 flex items-center justify-center flex-shrink-0 ${
+                            isSelected ? 'border-yellow-500 bg-yellow-500' : 'border-gray-300'
+                          }`}>
+                            {isSelected && <span className="text-white text-xs">OK</span>}
+                          </span>
+                          <span className="truncate">{sauce.nom || sauce.name}</span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -919,7 +910,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                           ? 'border-red-400 bg-red-400'
                           : 'border-green-400 bg-green-400'
                       }`}>
-                        {removedIngredients.has(ingredient.id) && <span className="text-white text-xs">✕</span>}
+                        {removedIngredients.has(ingredient.id) && <span className="text-white text-xs">X</span>}
                       </span>
                       <span className={removedIngredients.has(ingredient.id) ? 'line-through' : ''}>
                         {ingredient.name}
