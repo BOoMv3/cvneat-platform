@@ -62,47 +62,58 @@ export async function GET(request, { params }) {
         }
       }
 
-      // Parser les options de viande
-      let meatOptions = [];
-      if (item.meat_options) {
-        if (typeof item.meat_options === 'string') {
-          try {
-            meatOptions = JSON.parse(item.meat_options);
-          } catch (e) {
-            meatOptions = [];
-          }
-        } else if (Array.isArray(item.meat_options)) {
-          meatOptions = item.meat_options;
+      // Fonction helper pour parser les options JSONB
+      const parseJsonbArray = (value, name) => {
+        if (!value) {
+          console.log(`ℹ️ API ${item.nom} - ${name}: null/undefined`);
+          return [];
         }
-      }
+        if (Array.isArray(value)) {
+          console.log(`✅ API ${item.nom} - ${name}: tableau de`, value.length, 'éléments');
+          return value;
+        }
+        if (typeof value === 'string') {
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+              console.log(`✅ API ${item.nom} - ${name}: parsé depuis string,`, parsed.length, 'éléments');
+              return parsed;
+            }
+            console.warn(`⚠️ API ${item.nom} - ${name}: parsé mais pas un tableau`);
+            return [];
+          } catch (e) {
+            console.warn(`⚠️ API ${item.nom} - Erreur parsing ${name} string:`, e);
+            return [];
+          }
+        }
+        // Si c'est un objet (JSONB de Supabase), essayer de le convertir
+        if (typeof value === 'object' && value !== null) {
+          // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau)
+          const keys = Object.keys(value);
+          if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
+            // C'est probablement un tableau sérialisé comme objet
+            const array = Object.values(value);
+            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet,`, array.length, 'éléments');
+            return array;
+          }
+          console.warn(`⚠️ API ${item.nom} - ${name}: objet non-tableau, type:`, typeof value, 'keys:', keys);
+          return [];
+        }
+        console.warn(`⚠️ API ${item.nom} - ${name}: type inconnu:`, typeof value);
+        return [];
+      };
+
+      // Parser les options de viande
+      let meatOptions = parseJsonbArray(item.meat_options, 'meat_options');
+      console.log(`✅ API Menu ${item.nom} - meat_options final:`, meatOptions.length, 'options');
 
       // Parser les options de sauce
-      let sauceOptions = [];
-      if (item.sauce_options) {
-        if (typeof item.sauce_options === 'string') {
-          try {
-            sauceOptions = JSON.parse(item.sauce_options);
-          } catch (e) {
-            sauceOptions = [];
-          }
-        } else if (Array.isArray(item.sauce_options)) {
-          sauceOptions = item.sauce_options;
-        }
-      }
+      let sauceOptions = parseJsonbArray(item.sauce_options, 'sauce_options');
+      console.log(`✅ API Menu ${item.nom} - sauce_options final:`, sauceOptions.length, 'options');
 
       // Parser les ingrédients de base
-      let baseIngredients = [];
-      if (item.base_ingredients) {
-        if (typeof item.base_ingredients === 'string') {
-          try {
-            baseIngredients = JSON.parse(item.base_ingredients);
-          } catch (e) {
-            baseIngredients = [];
-          }
-        } else if (Array.isArray(item.base_ingredients)) {
-          baseIngredients = item.base_ingredients;
-        }
-      }
+      let baseIngredients = parseJsonbArray(item.base_ingredients, 'base_ingredients');
+      console.log(`✅ API Menu ${item.nom} - base_ingredients final:`, baseIngredients.length, 'ingrédients');
       
       // Récupérer les boissons disponibles pour ce menu (si drink_options est présent)
       let availableDrinks = [];
@@ -160,9 +171,9 @@ export async function GET(request, { params }) {
         drink_price_large: item.drink_price_large || null,
         drink_options: availableDrinks, // Boissons disponibles pour ce menu
         // Nouvelles colonnes de customisation
-        meat_options: meatOptions,
-        sauce_options: sauceOptions,
-        base_ingredients: baseIngredients,
+        meat_options: Array.isArray(meatOptions) ? meatOptions : [],
+        sauce_options: Array.isArray(sauceOptions) ? sauceOptions : [],
+        base_ingredients: Array.isArray(baseIngredients) ? baseIngredients : [],
         requires_meat_selection: item.requires_meat_selection || false,
         requires_sauce_selection: item.requires_sauce_selection || false,
         max_sauces: item.max_sauces || item.max_sauce_count || null,

@@ -72,88 +72,107 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       
       // Récupérer les options de customisation depuis l'item (ou depuis le burger de la formule)
       // Options de viande
-      if (sourceItem.meat_options) {
-        let parsedMeats = sourceItem.meat_options;
-        if (typeof sourceItem.meat_options === 'string') {
+      console.log('🔍 MenuItemModal - sourceItem:', sourceItem.nom);
+      console.log('🔍 MenuItemModal - meat_options:', sourceItem.meat_options, 'Type:', typeof sourceItem.meat_options, 'IsArray:', Array.isArray(sourceItem.meat_options));
+      console.log('🔍 MenuItemModal - sauce_options:', sourceItem.sauce_options, 'Type:', typeof sourceItem.sauce_options, 'IsArray:', Array.isArray(sourceItem.sauce_options));
+      console.log('🔍 MenuItemModal - supplements:', sourceItem.supplements, 'Type:', typeof sourceItem.supplements, 'IsArray:', Array.isArray(sourceItem.supplements));
+      console.log('🔍 MenuItemModal - base_ingredients:', sourceItem.base_ingredients, 'Type:', typeof sourceItem.base_ingredients, 'IsArray:', Array.isArray(sourceItem.base_ingredients));
+      
+      // Fonction helper pour normaliser les options (gérer tous les cas)
+      const normalizeOptions = (value, name) => {
+        if (!value) {
+          console.warn(`⚠️ ${name} est null/undefined`);
+          return [];
+        }
+        // Si c'est déjà un tableau, le retourner
+        if (Array.isArray(value)) {
+          console.log(`✅ ${name} est déjà un tableau:`, value.length, 'éléments');
+          return value;
+        }
+        // Si c'est une string, essayer de la parser
+        if (typeof value === 'string') {
           try {
-            parsedMeats = JSON.parse(sourceItem.meat_options);
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+              console.log(`✅ ${name} parsé depuis string:`, parsed.length, 'éléments');
+              return parsed;
+            }
+            console.warn(`⚠️ ${name} parsé mais n'est pas un tableau`);
+            return [];
           } catch (e) {
-            parsedMeats = [];
+            console.error(`❌ Erreur parsing ${name} string:`, e);
+            return [];
           }
         }
-        setMeatOptions(Array.isArray(parsedMeats) ? parsedMeats : []);
-        
-        // Sélectionner les viandes par défaut (default: true)
-        const defaultMeats = parsedMeats.filter(m => m.default === true).map(m => m.id || m.nom);
-        setSelectedMeats(new Set(defaultMeats));
-      } else {
-        setMeatOptions([]);
-      }
+        // Si c'est un objet (JSONB de Supabase), essayer de le convertir
+        if (typeof value === 'object' && value !== null) {
+          // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau)
+          const keys = Object.keys(value);
+          if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
+            // C'est probablement un tableau sérialisé comme objet
+            const array = Object.values(value);
+            console.log(`✅ ${name} converti depuis objet:`, array.length, 'éléments');
+            return array;
+          }
+          // Sinon, essayer de l'envelopper dans un tableau
+          console.warn(`⚠️ ${name} est un objet non-tableau, tentative de conversion`);
+          return [value];
+        }
+        console.warn(`⚠️ ${name} type inconnu:`, typeof value);
+        return [];
+      };
+      
+      const meatOptionsNormalized = normalizeOptions(sourceItem.meat_options, 'meat_options');
+      console.log('✅ Meat options finales:', meatOptionsNormalized.length, 'options');
+      setMeatOptions(meatOptionsNormalized);
+      
+      // Sélectionner les viandes par défaut (default: true)
+      const defaultMeats = meatOptionsNormalized.filter(m => m.default === true).map(m => m.id || m.nom);
+      console.log('✅ Viandes par défaut sélectionnées:', defaultMeats);
+      setSelectedMeats(new Set(defaultMeats));
 
       // Options de sauce
-      if (sourceItem.sauce_options) {
-        let parsedSauces = sourceItem.sauce_options;
-        if (typeof sourceItem.sauce_options === 'string') {
-          try {
-            parsedSauces = JSON.parse(sourceItem.sauce_options);
-          } catch (e) {
-            parsedSauces = [];
-          }
-        }
-        setSauceOptions(Array.isArray(parsedSauces) ? parsedSauces : []);
-        
-        // Sélectionner les sauces par défaut (default: true) seulement si max_sauces !== 0
-        const maxSauces = sourceItem.max_sauces || sourceItem.max_sauce_count;
-        if (maxSauces !== 0) {
-          const defaultSauces = parsedSauces.filter(s => s.default === true).map(s => s.id || s.nom);
-          setSelectedSauces(new Set(defaultSauces));
-        } else {
-          // Si max_sauces = 0, ne pas sélectionner de sauces (elles sont déjà comprises)
-          setSelectedSauces(new Set());
-        }
+      const sauceOptionsNormalized = normalizeOptions(sourceItem.sauce_options, 'sauce_options');
+      console.log('✅ Sauce options finales:', sauceOptionsNormalized.length, 'options');
+      setSauceOptions(sauceOptionsNormalized);
+      
+      // Sélectionner les sauces par défaut (default: true) seulement si max_sauces !== 0
+      const maxSauces = sourceItem.max_sauces || sourceItem.max_sauce_count;
+      console.log('🔍 max_sauces:', maxSauces);
+      if (maxSauces !== 0) {
+        const defaultSauces = sauceOptionsNormalized.filter(s => s.default === true).map(s => s.id || s.nom);
+        console.log('✅ Sauces par défaut sélectionnées:', defaultSauces);
+        setSelectedSauces(new Set(defaultSauces));
       } else {
-        setSauceOptions([]);
+        // Si max_sauces = 0, ne pas sélectionner de sauces (elles sont déjà comprises)
+        console.log('ℹ️ max_sauces = 0, aucune sauce sélectionnée par défaut');
+        setSelectedSauces(new Set());
       }
 
       // Ingrédients de base
-      if (sourceItem.base_ingredients) {
-        let parsedIngredients = sourceItem.base_ingredients;
-        if (typeof sourceItem.base_ingredients === 'string') {
-          try {
-            parsedIngredients = JSON.parse(sourceItem.base_ingredients);
-          } catch (e) {
-            parsedIngredients = [];
-          }
-        }
-        setBaseIngredients(Array.isArray(parsedIngredients) ? parsedIngredients : []);
-      } else {
-        setBaseIngredients([]);
-      }
+      const baseIngredientsNormalized = normalizeOptions(sourceItem.base_ingredients, 'base_ingredients');
+      console.log('✅ Base ingredients finales:', baseIngredientsNormalized.length, 'ingrédients');
+      setBaseIngredients(baseIngredientsNormalized);
 
       // D'abord, vérifier si l'item a des suppléments intégrés
-      if (item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0) {
-        // Parser les suppléments si c'est une chaîne JSON
-        let parsedSupplements = item.supplements;
-        if (typeof item.supplements === 'string') {
-          try {
-            parsedSupplements = JSON.parse(item.supplements);
-          } catch (e) {
-            parsedSupplements = [];
-          }
-        }
+      const supplementsNormalized = normalizeOptions(item.supplements, 'supplements');
+      if (supplementsNormalized.length > 0) {
         // Formater les suppléments pour correspondre au format attendu
-        const formattedSupplements = parsedSupplements.map((sup, idx) => ({
+        const formattedSupplements = supplementsNormalized.map((sup, idx) => ({
           id: sup.id || `supp-${idx}`,
           name: sup.nom || sup.name || 'Supplément',
           price: parseFloat(sup.prix || sup.price || 0),
           description: sup.description || ''
         }));
+        console.log('✅ Suppléments parsés:', formattedSupplements.length, 'suppléments');
         setSupplements(formattedSupplements);
         setLoading(false);
       } else if (restaurantId) {
         // Sinon, récupérer depuis l'API
+        console.log('ℹ️ Suppléments non trouvés dans item, récupération depuis API...');
         fetchSupplements();
       } else {
+        console.warn('⚠️ Aucun supplément trouvé et pas de restaurantId');
         setSupplements([]);
         setLoading(false);
       }
@@ -776,7 +795,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           </div>
 
           {/* Viandes - VERSION MINI */}
-          {meatOptions.length > 0 && (
+          {(meatOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos'))) && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">
                 Viandes
@@ -787,8 +806,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                 )}
                 {item.requires_meat_selection && <span className="text-red-500">*</span>}
               </h3>
-              <div className="space-y-1">
-                {meatOptions.map((meat) => {
+              {meatOptions.length === 0 ? (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                  ⚠️ Options de viande en cours de chargement...
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {meatOptions.map((meat) => {
                   const meatId = meat.id || meat.nom;
                   const isSelected = selectedMeats.has(meatId);
                   return (
@@ -818,11 +842,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Sauces - VERSION MINI */}
-          {sauceOptions.length > 0 && (item.max_sauces || item.max_sauce_count) !== 0 && (
+          {((sauceOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos'))) && (item.max_sauces || item.max_sauce_count) !== 0) && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">Sauces {item.requires_sauce_selection && <span className="text-red-500">*</span>}</h3>
-              <div className="space-y-1">
-                {sauceOptions.map((sauce) => {
+              {sauceOptions.length === 0 ? (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                  ⚠️ Options de sauce en cours de chargement...
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {sauceOptions.map((sauce) => {
                   const sauceId = sauce.id || sauce.nom;
                   const isSelected = selectedSauces.has(sauceId);
                   return (

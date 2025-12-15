@@ -36,17 +36,54 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   }, [rating, review_count, itemRating, itemReviewCount, is_popular, popularNumber]);
 
   const handleAddToCart = async () => {
+    // Debug: Log des options disponibles
+    console.log('🔍 MenuItem - Item:', item.nom);
+    console.log('🔍 MenuItem - meat_options:', item.meat_options, 'Type:', typeof item.meat_options, 'Length:', Array.isArray(item.meat_options) ? item.meat_options.length : 'N/A');
+    console.log('🔍 MenuItem - sauce_options:', item.sauce_options, 'Type:', typeof item.sauce_options, 'Length:', Array.isArray(item.sauce_options) ? item.sauce_options.length : 'N/A');
+    console.log('🔍 MenuItem - supplements:', item.supplements, 'Type:', typeof item.supplements, 'Length:', Array.isArray(item.supplements) ? item.supplements.length : 'N/A');
+    
+    // Normaliser les options pour la vérification (gérer les cas où c'est une string JSON)
+    const normalizeArray = (value) => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    };
+    
+    const meatOptions = normalizeArray(item.meat_options);
+    const sauceOptions = normalizeArray(item.sauce_options);
+    const supplements = normalizeArray(item.supplements);
+    const baseIngredients = normalizeArray(item.base_ingredients);
+    
+    console.log('✅ MenuItem - Options normalisées:', {
+      meatOptions: meatOptions.length,
+      sauceOptions: sauceOptions.length,
+      supplements: supplements.length,
+      baseIngredients: baseIngredients.length
+    });
+    
     // Vérifier si l'item a des options de personnalisation
     const hasCustomization = 
       item.is_formula || // Formules ont toujours besoin de la modal
       (item.drink_options && item.drink_options.length > 0) || // A des boissons
-      (item.meat_options && item.meat_options.length > 0) || // A des options de viande
-      (item.sauce_options && item.sauce_options.length > 0) || // A des options de sauce
-      (item.supplements && item.supplements.length > 0) || // A des suppléments
-      (item.base_ingredients && item.base_ingredients.length > 0); // A des ingrédients modifiables
+      meatOptions.length > 0 || // A des options de viande
+      sauceOptions.length > 0 || // A des options de sauce
+      supplements.length > 0 || // A des suppléments
+      baseIngredients.length > 0 || // A des ingrédients modifiables
+      (item.category && item.category.toLowerCase().includes('tacos')); // FORCER pour les tacos
+
+    console.log('🔍 MenuItem - hasCustomization:', hasCustomization);
 
     // Si l'item a des options, ouvrir la modal au lieu d'ajouter directement
     if (hasCustomization) {
+      console.log('✅ MenuItem - Ouverture de la modal');
       setIsModalOpen(true);
       return;
     }
