@@ -52,13 +52,49 @@ export async function GET(request, { params }) {
       if (item.supplements) {
         if (typeof item.supplements === 'string') {
           try {
-            supplements = JSON.parse(item.supplements);
+            const parsed = JSON.parse(item.supplements);
+            if (Array.isArray(parsed)) {
+              supplements = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+              // Si c'est un objet, essayer de le convertir en tableau
+              supplements = Object.values(parsed);
+            }
           } catch (e) {
             console.warn('Erreur parsing supplements string:', e);
             supplements = [];
           }
         } else if (Array.isArray(item.supplements)) {
           supplements = item.supplements;
+        } else if (item.supplements && typeof item.supplements === 'object') {
+          // Si c'est un objet JSONB, essayer de le convertir en tableau
+          supplements = Object.values(item.supplements);
+        }
+      }
+      
+      // Si pas de suppléments dans la colonne, essayer la table menu_supplements
+      if (supplements.length === 0 && item.id) {
+        try {
+          const { data: menuSupplements, error: menuSupplementsError } = await supabase
+            .from('menu_supplements')
+            .select('*')
+            .eq('menu_item_id', item.id)
+            .eq('disponible', true)
+            .order('ordre');
+          
+          if (!menuSupplementsError && menuSupplements && menuSupplements.length > 0) {
+            supplements = menuSupplements.map(ms => ({
+              id: ms.id,
+              nom: ms.nom || ms.name || 'Supplément',
+              name: ms.nom || ms.name || 'Supplément',
+              prix: parseFloat(ms.prix || ms.price || 0),
+              price: parseFloat(ms.prix || ms.price || 0),
+              description: ms.description || '',
+              disponible: ms.disponible !== false
+            }));
+            console.log(`✅ Suppléments récupérés depuis menu_supplements pour ${item.nom}:`, supplements.length);
+          }
+        } catch (err) {
+          console.warn('⚠️ Erreur récupération menu_supplements:', err);
         }
       }
 
