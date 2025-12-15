@@ -1035,8 +1035,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-4 text-gray-500">
-                    <p>Aucun supplément disponible</p>
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">Aucun supplément disponible</p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Debug: supplements.length = {supplements.length}, 
+                      item.supplements = {item.supplements ? 'présent' : 'absent'},
+                      restaurantId = {restaurantId || 'N/A'}
+                    </p>
                   </div>
                 )}
               </div>
