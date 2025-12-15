@@ -331,6 +331,16 @@ export async function GET(request, { params }) {
     
     // Combiner les menus et les formules
     const allItems = [...transformedMenu, ...validFormulas];
+    
+    // Log pour debug: compter les suppléments
+    const totalSupplements = allItems.reduce((sum, item) => {
+      const supplementsCount = Array.isArray(item.supplements) ? item.supplements.length : 0;
+      if (supplementsCount > 0) {
+        console.log(`📊 ${item.nom}: ${supplementsCount} suppléments`);
+      }
+      return sum + supplementsCount;
+    }, 0);
+    console.log(`📊 TOTAL suppléments dans la réponse API: ${totalSupplements} pour ${allItems.length} items`);
 
     return NextResponse.json(allItems);
   } catch (error) {
