@@ -185,8 +185,14 @@ export async function GET(request, { params }) {
 
     // Transformer les formules pour correspondre au format attendu
     const transformedFormulas = await Promise.all((formulas || []).map(async (formula) => {
-      const items = (formula.formula_items || [])
-        .sort((a, b) => a.order_index - b.order_index)
+      // Vérifier que formula_items existe et est un tableau
+      if (!formula.formula_items || !Array.isArray(formula.formula_items) || formula.formula_items.length === 0) {
+        console.warn(`⚠️ Formule ${formula.id} n'a pas de formula_items valides`);
+        return null;
+      }
+      
+      const items = formula.formula_items
+        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
         .map(item => ({
           id: item.id,
           order_index: item.order_index,
