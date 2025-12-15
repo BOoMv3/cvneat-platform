@@ -202,14 +202,29 @@ const formatStatusHoursLabel = (statusData, fallback) => {
 // Fonction pour vérifier si un restaurant est ouvert (calcul local, pas d'API)
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
-    // Vérifier si fermé manuellement
-    if (restaurant.ferme_manuellement) {
+    // Vérifier si fermé manuellement - si ferme_manuellement = false, le restaurant est ouvert
+    // même si les horaires indiquent qu'il devrait être fermé
+    if (restaurant.ferme_manuellement === true) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
+    }
+
+    // Si ferme_manuellement = false (explicitement ouvert), considérer comme ouvert
+    // même si les horaires ne sont pas parfaitement configurés
+    if (restaurant.ferme_manuellement === false) {
+      // Vérifier quand même les horaires pour l'affichage, mais considérer comme ouvert
+      let horaires = restaurant.horaires;
+      if (!horaires) {
+        return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened_no_hours' };
+      }
+      
+      // Si horaires existent, vérifier mais toujours considérer comme ouvert si ferme_manuellement = false
+      // (le partenaire a explicitement ouvert le restaurant)
+      return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
     }
 
     let horaires = restaurant.horaires;
     if (!horaires) {
-      // Pas d'horaires = restaurant fermé par défaut
+      // Si pas d'horaires et pas d'info sur ferme_manuellement, considérer comme fermé par défaut
       return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
     }
 
