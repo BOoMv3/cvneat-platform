@@ -5,9 +5,20 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     
+    // Récupérer les menus avec leurs suppléments depuis menu_supplements
     const { data: menus, error } = await supabase
       .from('menus')
-      .select('*')
+      .select(`
+        *,
+        menu_supplements:menu_supplements(
+          id,
+          nom,
+          description,
+          prix,
+          disponible,
+          ordre
+        )
+      `)
       .eq('restaurant_id', id)
       .eq('disponible', true)
       .order('created_at', { ascending: true });
@@ -72,7 +83,22 @@ export async function GET(request, { params }) {
       }
       
       // Si pas de suppléments dans la colonne, essayer la table menu_supplements
-      if (supplements.length === 0 && item.id) {
+      // D'abord, vérifier si menu_supplements est déjà inclus dans la requête (via select)
+      if (supplements.length === 0 && item.menu_supplements && Array.isArray(item.menu_supplements) && item.menu_supplements.length > 0) {
+        supplements = item.menu_supplements
+          .filter(ms => ms.disponible !== false)
+          .map(ms => ({
+            id: ms.id,
+            nom: ms.nom || ms.name || 'Supplément',
+            name: ms.nom || ms.name || 'Supplément',
+            prix: parseFloat(ms.prix || ms.price || 0),
+            price: parseFloat(ms.prix || ms.price || 0),
+            description: ms.description || '',
+            disponible: ms.disponible !== false
+          }));
+        console.log(`✅ Suppléments récupérés depuis menu_supplements (via select) pour ${item.nom}:`, supplements.length);
+      } else if (supplements.length === 0 && item.id) {
+        // Fallback: requête séparée si pas inclus dans le select
         try {
           const { data: menuSupplements, error: menuSupplementsError } = await supabase
             .from('menu_supplements')
@@ -91,7 +117,9 @@ export async function GET(request, { params }) {
               description: ms.description || '',
               disponible: ms.disponible !== false
             }));
-            console.log(`✅ Suppléments récupérés depuis menu_supplements pour ${item.nom}:`, supplements.length);
+            console.log(`✅ Suppléments récupérés depuis menu_supplements (via requête séparée) pour ${item.nom}:`, supplements.length);
+          } else if (menuSupplementsError) {
+            console.warn(`⚠️ Erreur récupération menu_supplements pour ${item.nom}:`, menuSupplementsError);
           }
         } catch (err) {
           console.warn('⚠️ Erreur récupération menu_supplements:', err);
