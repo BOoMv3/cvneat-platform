@@ -56,7 +56,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   useEffect(() => {
     if (internalIsOpen && item) {
       console.log('🚀🚀🚀 MenuItemModal useEffect - Item reçu:', item.nom);
-      console.log('🚀🚀🚀 Item complet:', JSON.stringify(item, null, 2));
+      console.log('🚀🚀🚀 Item.supplements:', item.supplements, 'Type:', typeof item.supplements);
+      console.log('🚀🚀🚀 Item.base_ingredients:', item.base_ingredients, 'Type:', typeof item.base_ingredients);
+      console.log('🚀🚀🚀 Item.meat_options:', item.meat_options, 'Type:', typeof item.meat_options);
+      console.log('🚀🚀🚀 Item.sauce_options:', item.sauce_options, 'Type:', typeof item.sauce_options);
       
       // Pour les formules, récupérer les ingrédients depuis le premier item de la formule (généralement le burger)
       let sourceItem = item;
@@ -950,7 +953,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Ingrédients de base */}
-          {itemIngredients.length > 0 && (
+          {(() => {
+            console.log('🔍 Rendu baseIngredients - baseIngredients.length:', baseIngredients.length, 'itemIngredients.length:', itemIngredients.length);
+            return itemIngredients.length > 0;
+          })() && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaLeaf className="w-5 h-5 text-green-600 mr-2" />
