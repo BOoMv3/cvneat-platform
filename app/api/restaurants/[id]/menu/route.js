@@ -113,7 +113,7 @@ export async function GET(request, { params }) {
         }
       }
       
-      console.log(`📊 Suppléments finaux pour ${item.nom}:`, supplements.length);
+      console.log(`📊 Suppléments finaux pour ${item.nom}:`, supplements.length, supplements.length > 0 ? JSON.stringify(supplements.slice(0, 2)) : 'AUCUN');
 
       // Fonction helper pour parser les options JSONB
       const parseJsonbArray = (value, name) => {
@@ -228,6 +228,12 @@ export async function GET(request, { params }) {
         console.warn(`⚠️ Menu ${item.nom} n'a pas de drink_options`);
       }
 
+      // S'assurer que supplements est toujours un tableau
+      const finalSupplements = Array.isArray(supplements) ? supplements : [];
+      if (finalSupplements.length > 0) {
+        console.log(`✅ ${item.nom} - ${finalSupplements.length} suppléments inclus dans la réponse API`);
+      }
+      
       return {
         id: item.id,
         nom: item.nom,
@@ -237,7 +243,7 @@ export async function GET(request, { params }) {
         category: item.category || 'Autres',
         disponible: item.disponible,
         created_at: item.created_at,
-        supplements: supplements, // Inclure les suppléments
+        supplements: finalSupplements, // Inclure les suppléments (toujours un tableau)
         // Colonnes pour les boissons
         is_drink: item.is_drink || false,
         drink_size: item.drink_size || null,
