@@ -262,10 +262,6 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
         }
       }
       // Hors des heures d'ouverture
-      // Si ferme_manuellement = false, considérer comme ouvert quand même
-      if (restaurant.ferme_manuellement === false) {
-        return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
-      }
       return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
     }
 
@@ -280,10 +276,6 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
         return { isOpen: true, isManuallyClosed: false, reason: 'open' };
       }
       // Hors des heures d'ouverture
-      // Si ferme_manuellement = false, considérer comme ouvert quand même
-      if (restaurant.ferme_manuellement === false) {
-        return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
-      }
       return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
     }
 
