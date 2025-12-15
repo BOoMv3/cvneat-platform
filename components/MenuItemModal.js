@@ -847,7 +847,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Sauces - VERSION MINI - TOUJOURS AFFICHER POUR TACOS */}
-          {(((sauceOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos')) || (item.nom && item.nom.toLowerCase().includes('tacos'))) && (item.max_sauces || item.max_sauce_count) !== 0)) && (
+          {((sauceOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos')) || (item.nom && item.nom.toLowerCase().includes('tacos'))) && (item.max_sauces || item.max_sauce_count) !== 0) && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">Sauces {item.requires_sauce_selection && <span className="text-red-500">*</span>}</h3>
               {sauceOptions.length === 0 ? (
