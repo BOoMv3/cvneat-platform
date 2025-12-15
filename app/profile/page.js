@@ -115,13 +115,11 @@ export default function Profile() {
         const data = await response.json();
         setOrders(data);
       } else if (activeTab === 'gains') {
-        // Récupérer les gains actifs de la roue
+        // Récupérer TOUS les gains de la roue (actifs, utilisés et expirés)
         const { data: wins, error: winsError } = await supabase
           .from('wheel_wins')
           .select('*')
           .eq('user_id', user.id)
-          .is('used_at', null) // Seulement les gains non utilisés
-          .gte('valid_until', new Date().toISOString()) // Seulement les gains valides
           .order('created_at', { ascending: false });
         
         if (winsError) throw winsError;
@@ -703,12 +701,19 @@ export default function Profile() {
               ) : wheelWins.length === 0 ? (
                 <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                   <FaTicketAlt className="text-4xl text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Aucun gain actif</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Aucun gain</h3>
                   <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                     Tournez la roue après votre prochaine commande pour gagner des réductions !
                   </p>
                 </div>
               ) : (
+                <>
+                  <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 font-semibold">
+                      {wheelWins.filter(w => new Date(w.valid_until) > new Date() && !w.used_at).length} gain(s) actif(s) sur {wheelWins.length} total
+                    </p>
+                  </div>
+                  <div className="space-y-4">
                 wheelWins.map((win) => {
                   const isValid = new Date(win.valid_until) > new Date();
                   const isUsed = win.used_at !== null;
@@ -805,7 +810,9 @@ export default function Profile() {
                       )}
                     </div>
                   );
-                })
+                })}
+                  </div>
+                </>
               )}
             </div>
           )}
