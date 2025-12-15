@@ -87,7 +87,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           console.warn(`WARNING ${name} est null/undefined`);
           return [];
         }
-        // Si c'est déjà un tableau, le retourner
+        // Si c'est déjà un tableau, le retourner (vérifier AVANT typeof)
         if (Array.isArray(value)) {
           console.log(`✅ ${name} est déjà un tableau:`, value.length, 'éléments');
           return value;
@@ -109,13 +109,33 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         }
         // Si c'est un objet (JSONB de Supabase), essayer de le convertir
         if (typeof value === 'object' && value !== null) {
-          // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau)
+          // Double vérification: parfois Array.isArray peut retourner true même si typeof est 'object'
+          if (Array.isArray(value)) {
+            console.log(`✅ ${name} est un tableau (détecté via Array.isArray):`, value.length, 'éléments');
+            return value;
+          }
+          // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau sérialisé)
           const keys = Object.keys(value);
           if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
             // C'est probablement un tableau sérialisé comme objet
             const array = Object.values(value);
-            console.log(`✅ ${name} converti depuis objet:`, array.length, 'éléments');
+            console.log(`✅ ${name} converti depuis objet avec clés numériques:`, array.length, 'éléments');
             return array;
+          }
+          // Si c'est un objet avec des propriétés nommées, essayer de le convertir en tableau
+          if (keys.length > 0) {
+            // Peut-être que c'est un objet avec une seule propriété qui contient le tableau
+            const firstValue = Object.values(value)[0];
+            if (Array.isArray(firstValue)) {
+              console.log(`✅ ${name} converti depuis objet contenant tableau:`, firstValue.length, 'éléments');
+              return firstValue;
+            }
+            // Peut-être que toutes les valeurs sont des objets similaires (format {0: {...}, 1: {...}})
+            const allValues = Object.values(value);
+            if (allValues.length > 0 && allValues.every(v => typeof v === 'object' && v !== null)) {
+              console.log(`✅ ${name} converti depuis objet avec valeurs objets:`, allValues.length, 'éléments');
+              return allValues;
+            }
           }
           // Sinon, essayer de l'envelopper dans un tableau
           console.warn(`WARNING ${name} est un objet non-tableau, tentative de conversion`);
