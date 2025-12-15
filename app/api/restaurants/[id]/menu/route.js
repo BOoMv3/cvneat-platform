@@ -124,13 +124,35 @@ export async function GET(request, { params }) {
         }
         // Si c'est un objet (JSONB de Supabase), essayer de le convertir
         if (typeof value === 'object' && value !== null) {
-          // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau)
+          // Double vérification: parfois Array.isArray peut retourner true même si typeof est 'object'
+          if (Array.isArray(value)) {
+            console.log(`✅ API ${item.nom} - ${name}: tableau (détecté via Array.isArray),`, value.length, 'éléments');
+            return value;
+          }
+          // Vérifier si c'est un objet vide
           const keys = Object.keys(value);
+          if (keys.length === 0) {
+            console.warn(`⚠️ API ${item.nom} - ${name}: objet VIDE {}`);
+            return [];
+          }
+          // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau)
           if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
             // C'est probablement un tableau sérialisé comme objet
             const array = Object.values(value);
-            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet,`, array.length, 'éléments');
+            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet avec clés numériques,`, array.length, 'éléments');
             return array;
+          }
+          // Si c'est un objet avec une propriété qui contient un tableau
+          const firstValue = Object.values(value)[0];
+          if (Array.isArray(firstValue)) {
+            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet contenant tableau,`, firstValue.length, 'éléments');
+            return firstValue;
+          }
+          // Si toutes les valeurs sont des objets (format {0: {...}, 1: {...}})
+          const allValues = Object.values(value);
+          if (allValues.length > 0 && allValues.every(v => typeof v === 'object' && v !== null)) {
+            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet avec valeurs objets,`, allValues.length, 'éléments');
+            return allValues;
           }
           console.warn(`⚠️ API ${item.nom} - ${name}: objet non-tableau, type:`, typeof value, 'keys:', keys);
           return [];
