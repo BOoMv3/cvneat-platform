@@ -60,12 +60,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       
       // Pour les formules, récupérer les ingrédients depuis le premier item de la formule (généralement le burger)
       let sourceItem = item;
-      if (item.is_formula && item.formula_items && item.formula_items.length > 0) {
+      if (item.is_formula && item.formula_items && Array.isArray(item.formula_items) && item.formula_items.length > 0) {
         // Trouver le premier item qui n'est pas une boisson (généralement le burger)
         const mainItem = item.formula_items.find(fi => {
           const menuName = (fi.menu?.nom || '').toLowerCase();
           return !menuName.includes('boisson') && !menuName.includes('drink') && !menuName.includes('frite');
-        }) || item.formula_items[0];
+        }) || (item.formula_items.length > 0 ? item.formula_items[0] : null);
         
         if (mainItem && mainItem.menu) {
           sourceItem = mainItem.menu;
