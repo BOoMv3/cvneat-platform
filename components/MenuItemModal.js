@@ -642,7 +642,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           {/* Prix et Quantité - COMPACT */}
           <div className="mb-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xl font-bold text-orange-600">{(item.prix * quantity).toFixed(2)} &euro;</span>
+              <span className="text-xl font-bold text-orange-600">{(item.prix * quantity).toFixed(2)} EUR</span>
               <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-1">
                   <FaMinus className="w-3 h-3" />
@@ -837,7 +837,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                         <span className="truncate">{meat.nom || meat.name}</span>
                       </div>
                       {(meat.prix || meat.price) > 0 && (
-                        <span className="text-xs ml-2">+{parseFloat(meat.prix || meat.price || 0).toFixed(2)} &euro;</span>
+                        <span className="text-xs ml-2">+{parseFloat(meat.prix || meat.price || 0).toFixed(2)} EUR</span>
                       )}
                     </div>
                   );
@@ -915,7 +915,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                       </span>
                     </div>
                     {ingredient.price > 0 && (
-                      <span className="text-sm font-medium">+{ingredient.price} &euro;</span>
+                      <span className="text-sm font-medium">+{ingredient.price} EUR</span>
                     )}
                   </div>
                 ))}
@@ -960,7 +960,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                           )}
                         </div>
                       </div>
-                      <span className="text-sm font-medium text-orange-600">+{supplement.price.toFixed(2)} &euro;</span>
+                      <span className="text-sm font-medium text-orange-600">+{supplement.price.toFixed(2)} EUR</span>
                     </div>
                   ))
                 ) : (
@@ -991,7 +991,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             }}
           >
             <FaShoppingCart className="w-6 h-6" />
-            <span>AJOUTER AU PANIER • {calculateTotalPrice().toFixed(2)} &euro;</span>
+            <span>AJOUTER AU PANIER • {calculateTotalPrice().toFixed(2)} EUR</span>
           </button>
         </div>
       </div>
