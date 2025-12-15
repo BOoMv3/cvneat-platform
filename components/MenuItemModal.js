@@ -100,6 +100,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           }
           return value;
         }
+        // Vérifier si c'est un objet vide {}
+        if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+          console.warn(`⚠️ ${name} est un objet vide {}`);
+          return [];
+        }
         // Si c'est une string, essayer de la parser
         if (typeof value === 'string') {
           try {
