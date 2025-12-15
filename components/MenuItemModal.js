@@ -76,13 +76,18 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       // Récupérer les options de customisation depuis l'item (ou depuis le burger de la formule)
       // Options de viande
       console.log('🔍 MenuItemModal - sourceItem:', sourceItem.nom);
-      console.log('🔍 MenuItemModal - meat_options:', sourceItem.meat_options, 'Type:', typeof sourceItem.meat_options, 'IsArray:', Array.isArray(sourceItem.meat_options));
+      console.log('🔍 MenuItemModal - meat_options RAW:', sourceItem.meat_options);
+      console.log('🔍 MenuItemModal - meat_options Type:', typeof sourceItem.meat_options);
+      console.log('🔍 MenuItemModal - meat_options IsArray:', Array.isArray(sourceItem.meat_options));
+      console.log('🔍 MenuItemModal - meat_options Length:', Array.isArray(sourceItem.meat_options) ? sourceItem.meat_options.length : 'N/A');
+      console.log('🔍 MenuItemModal - meat_options Keys:', sourceItem.meat_options && typeof sourceItem.meat_options === 'object' ? Object.keys(sourceItem.meat_options) : 'N/A');
       console.log('🔍 MenuItemModal - sauce_options:', sourceItem.sauce_options, 'Type:', typeof sourceItem.sauce_options, 'IsArray:', Array.isArray(sourceItem.sauce_options));
       console.log('🔍 MenuItemModal - supplements:', sourceItem.supplements, 'Type:', typeof sourceItem.supplements, 'IsArray:', Array.isArray(sourceItem.supplements));
       console.log('🔍 MenuItemModal - base_ingredients:', sourceItem.base_ingredients, 'Type:', typeof sourceItem.base_ingredients, 'IsArray:', Array.isArray(sourceItem.base_ingredients));
       
       // Fonction helper pour normaliser les options (gérer tous les cas)
       const normalizeOptions = (value, name) => {
+        console.log(`🔧 normalizeOptions(${name}) - Input:`, value, 'Type:', typeof value, 'IsArray:', Array.isArray(value));
         if (!value) {
           console.warn(`WARNING ${name} est null/undefined`);
           return [];
@@ -90,6 +95,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         // Si c'est déjà un tableau, le retourner (vérifier AVANT typeof)
         if (Array.isArray(value)) {
           console.log(`✅ ${name} est déjà un tableau:`, value.length, 'éléments');
+          if (value.length === 0) {
+            console.warn(`⚠️ ${name} est un tableau mais VIDE!`);
+          }
           return value;
         }
         // Si c'est une string, essayer de la parser
