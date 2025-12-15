@@ -458,9 +458,14 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
                       <p className="text-xs text-gray-500 mt-1">
                         Utilisez ce code lors de votre prochaine commande !
                       </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Consultez "Mes gains" dans votre profil pour voir tous vos codes actifs.
-                      </p>
+                      <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs text-blue-800 dark:text-blue-200 font-semibold">
+                          💡 Où retrouver ce code ?
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                          Allez dans <strong>Mon compte → Mes gains</strong> pour voir tous vos codes actifs et les utiliser lors de vos prochaines commandes.
+                        </p>
+                      </div>
                     </>
                   )
                 ) : (
