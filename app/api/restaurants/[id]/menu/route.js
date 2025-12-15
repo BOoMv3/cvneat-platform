@@ -5,20 +5,10 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     
-    // Récupérer les menus avec leurs suppléments depuis menu_supplements
+    // Récupérer les menus
     const { data: menus, error } = await supabase
       .from('menus')
-      .select(`
-        *,
-        menu_supplements:menu_supplements(
-          id,
-          nom,
-          description,
-          prix,
-          disponible,
-          ordre
-        )
-      `)
+      .select('*')
       .eq('restaurant_id', id)
       .eq('disponible', true)
       .order('created_at', { ascending: true });
@@ -82,23 +72,9 @@ export async function GET(request, { params }) {
         }
       }
       
-      // Si pas de suppléments dans la colonne, essayer la table menu_supplements
-      // D'abord, vérifier si menu_supplements est déjà inclus dans la requête (via select)
-      if (supplements.length === 0 && item.menu_supplements && Array.isArray(item.menu_supplements) && item.menu_supplements.length > 0) {
-        supplements = item.menu_supplements
-          .filter(ms => ms.disponible !== false)
-          .map(ms => ({
-            id: ms.id,
-            nom: ms.nom || ms.name || 'Supplément',
-            name: ms.nom || ms.name || 'Supplément',
-            prix: parseFloat(ms.prix || ms.price || 0),
-            price: parseFloat(ms.prix || ms.price || 0),
-            description: ms.description || '',
-            disponible: ms.disponible !== false
-          }));
-        console.log(`✅ Suppléments récupérés depuis menu_supplements (via select) pour ${item.nom}:`, supplements.length);
-      } else if (supplements.length === 0 && item.id) {
-        // Fallback: requête séparée si pas inclus dans le select
+      // TOUJOURS essayer de récupérer depuis menu_supplements, même si la colonne supplements a des données
+      // Cela permet de combiner les deux sources
+      if (item.id) {
         try {
           const { data: menuSupplements, error: menuSupplementsError } = await supabase
             .from('menu_supplements')
@@ -108,7 +84,7 @@ export async function GET(request, { params }) {
             .order('ordre');
           
           if (!menuSupplementsError && menuSupplements && menuSupplements.length > 0) {
-            supplements = menuSupplements.map(ms => ({
+            const menuSupplementsFormatted = menuSupplements.map(ms => ({
               id: ms.id,
               nom: ms.nom || ms.name || 'Supplément',
               name: ms.nom || ms.name || 'Supplément',
@@ -117,14 +93,27 @@ export async function GET(request, { params }) {
               description: ms.description || '',
               disponible: ms.disponible !== false
             }));
-            console.log(`✅ Suppléments récupérés depuis menu_supplements (via requête séparée) pour ${item.nom}:`, supplements.length);
+            
+            // Combiner avec les suppléments de la colonne (éviter les doublons)
+            const existingIds = new Set(supplements.map(s => s.id || s.nom));
+            menuSupplementsFormatted.forEach(ms => {
+              if (!existingIds.has(ms.id) && !existingIds.has(ms.nom)) {
+                supplements.push(ms);
+              }
+            });
+            
+            console.log(`✅ Suppléments récupérés depuis menu_supplements pour ${item.nom}:`, menuSupplements.length, 'suppléments ajoutés, total:', supplements.length);
           } else if (menuSupplementsError) {
-            console.warn(`⚠️ Erreur récupération menu_supplements pour ${item.nom}:`, menuSupplementsError);
+            console.warn(`⚠️ Erreur récupération menu_supplements pour ${item.nom}:`, menuSupplementsError.message);
+          } else {
+            console.log(`ℹ️ Aucun supplément trouvé dans menu_supplements pour ${item.nom}`);
           }
         } catch (err) {
           console.warn('⚠️ Erreur récupération menu_supplements:', err);
         }
       }
+      
+      console.log(`📊 Suppléments finaux pour ${item.nom}:`, supplements.length);
 
       // Fonction helper pour parser les options JSONB
       const parseJsonbArray = (value, name) => {
