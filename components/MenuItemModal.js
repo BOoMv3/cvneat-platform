@@ -187,6 +187,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
       // D'abord, vérifier si l'item a des suppléments intégrés
       const supplementsNormalized = normalizeOptions(item.supplements, 'supplements');
+      console.log('🔍 Suppléments normalisés depuis item:', supplementsNormalized.length, 'suppléments');
+      
       if (supplementsNormalized.length > 0) {
         // Formater les suppléments pour correspondre au format attendu
         const formattedSupplements = supplementsNormalized.map((sup, idx) => ({
@@ -195,7 +197,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           price: parseFloat(sup.prix || sup.price || 0),
           description: sup.description || ''
         }));
-        console.log('✅ Suppléments parsés:', formattedSupplements.length, 'suppléments');
+        console.log('✅ Suppléments parsés depuis item:', formattedSupplements.length, 'suppléments');
         setSupplements(formattedSupplements);
         setLoading(false);
       } else if (restaurantId) {
@@ -204,8 +206,14 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         fetchSupplements();
       } else {
         console.warn('WARNING Aucun supplément trouvé et pas de restaurantId');
-        setSupplements([]);
-        setLoading(false);
+        // Essayer quand même de récupérer depuis l'API si on a l'ID de l'item
+        if (item.id) {
+          console.log('ℹ️ Tentative récupération suppléments via API menu item...');
+          fetchSupplements();
+        } else {
+          setSupplements([]);
+          setLoading(false);
+        }
       }
     }
   }, [isOpen, restaurantId, item]);
@@ -213,33 +221,54 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const fetchSupplements = async () => {
     setLoading(true);
     try {
-      console.log('🔍 Récupération suppléments pour restaurant:', restaurantId);
+      console.log('🔍 Récupération suppléments - restaurantId:', restaurantId, 'item.id:', item?.id);
       
       // Essayer d'abord l'API du restaurant (plus fiable)
-      let response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+      let response = null;
+      let data = null;
       
-      if (!response.ok) {
-        console.warn('WARNING API restaurant supplements non disponible, essai menu item');
-        // Fallback : essayer l'API spécifique au menu item
-        response = await fetch(`/api/menu/${item.id}/supplements`);
+      if (restaurantId) {
+        try {
+          response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
+          if (response.ok) {
+            data = await response.json();
+            console.log('✅ Suppléments récupérés depuis API restaurant:', data?.length || 0, 'suppléments');
+          } else {
+            console.warn('⚠️ API restaurant supplements non disponible (status:', response.status, ')');
+          }
+        } catch (err) {
+          console.warn('⚠️ Erreur API restaurant supplements:', err);
+        }
       }
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Suppléments récupérés:', data);
-        
+      // Si pas de données du restaurant, essayer l'API menu item
+      if ((!data || data.length === 0) && item?.id) {
+        try {
+          response = await fetch(`/api/menu/${item.id}/supplements`);
+          if (response.ok) {
+            data = await response.json();
+            console.log('✅ Suppléments récupérés depuis API menu item:', data?.length || 0, 'suppléments');
+          } else {
+            console.warn('⚠️ API menu item supplements non disponible (status:', response.status, ')');
+          }
+        } catch (err) {
+          console.warn('⚠️ Erreur API menu item supplements:', err);
+        }
+      }
+      
+      if (data && Array.isArray(data) && data.length > 0) {
         // Formater les données pour correspondre au format attendu
-        const formattedData = (data || []).map((sup, idx) => ({
+        const formattedData = data.map((sup, idx) => ({
           id: sup.id || `supp-${idx}`,
           name: sup.nom || sup.name || 'Supplément',
           price: parseFloat(sup.prix || sup.price || 0),
           description: sup.description || ''
         }));
         
-        console.log('✅ Suppléments formatés:', formattedData);
+        console.log('✅ Suppléments formatés:', formattedData.length, 'suppléments');
         setSupplements(formattedData);
       } else {
-        console.warn('WARNING Aucune réponse valide pour les suppléments');
+        console.warn('⚠️ Aucun supplément trouvé via API');
         setSupplements([]);
       }
     } catch (error) {
