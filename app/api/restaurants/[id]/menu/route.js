@@ -245,8 +245,11 @@ export async function GET(request, { params }) {
       };
     }));
 
+    // Filtrer les formules invalides (null) avant de les combiner
+    const validFormulas = transformedFormulas.filter(f => f !== null);
+    
     // Combiner les menus et les formules
-    const allItems = [...transformedMenu, ...transformedFormulas];
+    const allItems = [...transformedMenu, ...validFormulas];
 
     return NextResponse.json(allItems);
   } catch (error) {
