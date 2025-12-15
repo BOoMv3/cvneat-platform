@@ -25,7 +25,8 @@ import {
   FaEnvelope,
   FaShoppingCart,
   FaMotorcycle,
-  FaCheck
+  FaCheck,
+  FaTicketAlt
 } from 'react-icons/fa';
 
 // Réduire les warnings Stripe non critiques en développement
@@ -1164,6 +1165,21 @@ export default function Checkout() {
 
             {/* Code promo */}
             <div className="mb-4 sm:mb-6">
+              {/* Message pour retrouver les codes de gain */}
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-3">
+                <div className="flex items-start gap-2">
+                  <FaTicketAlt className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+                      🎰 Vous avez un code de la roue de la chance ?
+                    </p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                      Retrouvez tous vos codes promo actifs dans <strong>Mon compte → Mes gains</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               <PromoCodeInput
                 onCodeApplied={(codeData) => {
                   setAppliedPromoCode(codeData);

@@ -21,7 +21,8 @@ import {
   FaUser,
   FaUserPlus,
   FaSignInAlt,
-  FaEnvelope
+  FaEnvelope,
+  FaGift
 } from 'react-icons/fa';
 
 export default function AdminPage() {
@@ -690,6 +691,12 @@ export default function AdminPage() {
                   className="p-3 sm:p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   📧 Envoyer Newsletter (Email en masse)
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/wheel-wins')}
+                  className="p-3 sm:p-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
+                >
+                  🎰 Gains de la roue de la chance
                 </button>
                 <button 
                   onClick={() => router.push('/admin/bugs')}

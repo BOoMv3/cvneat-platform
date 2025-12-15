@@ -56,11 +56,26 @@ export async function POST(request) {
     // Si c'est un code de la roue (ROULETTE), marquer le gain comme utilisé dans wheel_wins
     const { data: promoCode } = await supabaseAdmin
       .from('promo_codes')
-      .select('code')
+      .select('code, description, discount_type, discount_value')
       .eq('id', promoCodeId)
       .single();
 
     if (promoCode && promoCode.code && promoCode.code.toUpperCase().startsWith('ROULETTE')) {
+      // Récupérer les infos utilisateur pour la notification
+      let userEmail = null;
+      let userName = null;
+      if (userId) {
+        const { data: userData } = await supabaseAdmin
+          .from('users')
+          .select('email, nom, prenom')
+          .eq('id', userId)
+          .single();
+        if (userData) {
+          userEmail = userData.email;
+          userName = `${userData.prenom || ''} ${userData.nom || ''}`.trim() || userEmail;
+        }
+      }
+
       // Marquer le gain comme utilisé dans wheel_wins
       const { error: wheelWinUpdateError } = await supabaseAdmin
         .from('wheel_wins')
@@ -75,6 +90,46 @@ export async function POST(request) {
       if (wheelWinUpdateError) {
         console.warn('Erreur mise à jour wheel_wins (non bloquant):', wheelWinUpdateError);
         // Ne pas bloquer si la mise à jour échoue
+      } else {
+        // Envoyer une notification admin pour informer qu'un code de gain a été utilisé
+        try {
+          const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://cvneat.fr'}/api/notifications/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: process.env.ADMIN_EMAIL || 'admin@cvneat.fr',
+              subject: '🎰 Code de la roue utilisé !',
+              html: `
+                <h2>Un client a utilisé un code de la roue de la chance</h2>
+                <p><strong>Client:</strong> ${userName || 'Inconnu'} (${userEmail || 'Email non disponible'})</p>
+                <p><strong>Code promo:</strong> <code>${promoCode.code}</code></p>
+                <p><strong>Gain:</strong> ${promoCode.description || 'Non spécifié'}</p>
+                <p><strong>Réduction:</strong> ${promoCode.discount_type === 'percentage' ? `${promoCode.discount_value}%` : promoCode.discount_type === 'free_delivery' ? 'Livraison offerte' : `${promoCode.discount_value}€`}</p>
+                <p><strong>Montant de la réduction:</strong> ${parseFloat(discountAmount).toFixed(2)}€</p>
+                <p><strong>Commande:</strong> ${orderId}</p>
+                <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
+              `,
+              text: `
+                Un client a utilisé un code de la roue de la chance
+                Client: ${userName || 'Inconnu'} (${userEmail || 'Email non disponible'})
+                Code promo: ${promoCode.code}
+                Gain: ${promoCode.description || 'Non spécifié'}
+                Réduction: ${promoCode.discount_type === 'percentage' ? `${promoCode.discount_value}%` : promoCode.discount_type === 'free_delivery' ? 'Livraison offerte' : `${promoCode.discount_value}€`}
+                Montant de la réduction: ${parseFloat(discountAmount).toFixed(2)}€
+                Commande: ${orderId}
+                Date: ${new Date().toLocaleString('fr-FR')}
+              `
+            })
+          });
+
+          if (notificationResponse.ok) {
+            console.log('✅ Notification admin envoyée pour utilisation code roue');
+          } else {
+            console.warn('⚠️ Erreur envoi notification admin (non bloquant)');
+          }
+        } catch (notifError) {
+          console.warn('⚠️ Erreur notification admin (non bloquant):', notifError);
+        }
       }
     }
 

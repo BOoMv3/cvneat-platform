@@ -1328,7 +1328,7 @@ export async function POST(request) {
     if (freeDrinkAdded && userId) {
       const { data: freeDrinkWin } = await serviceClient
         .from('wheel_wins')
-        .select('id')
+        .select('id, description')
         .eq('user_id', userId)
         .eq('prize_type', 'free_drink')
         .is('used_at', null)
@@ -1338,6 +1338,19 @@ export async function POST(request) {
         .single();
 
       if (freeDrinkWin) {
+        // Récupérer les infos utilisateur pour la notification
+        let userEmail = null;
+        let userName = null;
+        const { data: userData } = await serviceClient
+          .from('users')
+          .select('email, nom, prenom')
+          .eq('id', userId)
+          .single();
+        if (userData) {
+          userEmail = userData.email;
+          userName = `${userData.prenom || ''} ${userData.nom || ''}`.trim() || userEmail;
+        }
+
         await serviceClient
           .from('wheel_wins')
           .update({
@@ -1346,6 +1359,42 @@ export async function POST(request) {
           })
           .eq('id', freeDrinkWin.id);
         console.log('✅ Gain "boisson offerte" marqué comme utilisé');
+
+        // Envoyer une notification admin pour informer qu'une boisson offerte a été utilisée
+        try {
+          const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://cvneat.fr'}/api/notifications/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: process.env.ADMIN_EMAIL || 'admin@cvneat.fr',
+              subject: '🥤 Boisson offerte utilisée !',
+              html: `
+                <h2>Un client a utilisé son gain "boisson offerte"</h2>
+                <p><strong>Client:</strong> ${userName || 'Inconnu'} (${userEmail || 'Email non disponible'})</p>
+                <p><strong>Gain:</strong> ${freeDrinkWin.description || 'Boisson offerte'}</p>
+                <p><strong>Commande:</strong> ${order.id}</p>
+                <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
+                <p><em>Une boisson a été automatiquement ajoutée à cette commande.</em></p>
+              `,
+              text: `
+                Un client a utilisé son gain "boisson offerte"
+                Client: ${userName || 'Inconnu'} (${userEmail || 'Email non disponible'})
+                Gain: ${freeDrinkWin.description || 'Boisson offerte'}
+                Commande: ${order.id}
+                Date: ${new Date().toLocaleString('fr-FR')}
+                Une boisson a été automatiquement ajoutée à cette commande.
+              `
+            })
+          });
+
+          if (notificationResponse.ok) {
+            console.log('✅ Notification admin envoyée pour boisson offerte');
+          } else {
+            console.warn('⚠️ Erreur envoi notification admin (non bloquant)');
+          }
+        } catch (notifError) {
+          console.warn('⚠️ Erreur notification admin (non bloquant):', notifError);
+        }
       }
     }
 

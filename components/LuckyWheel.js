@@ -3,24 +3,47 @@
 import { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaGift, FaStar } from 'react-icons/fa';
 
-// Son de roulette (utilise l'API Web Audio)
+// Son de roulette amélioré (utilise l'API Web Audio)
 const playWheelSound = () => {
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    const duration = 3.5; // Durée en secondes
     
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    // Créer plusieurs oscillateurs pour un son plus riche
+    const frequencies = [150, 200, 250]; // Fréquences harmoniques
+    const oscillators = [];
     
-    oscillator.frequency.value = 200;
-    oscillator.type = 'square';
+    frequencies.forEach((freq, index) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.type = 'sine'; // Type sine pour un son plus doux
+      oscillator.frequency.value = freq;
+      
+      // Volume décroissant avec un effet de ralentissement
+      const startGain = 0.15 / (index + 1); // Volume plus faible pour les harmoniques
+      gainNode.gain.setValueAtTime(startGain, audioContext.currentTime);
+      
+      // Ralentissement progressif avec courbe plus douce
+      const slowDownPoint = duration * 0.6; // Commence à ralentir à 60%
+      gainNode.gain.linearRampToValueAtTime(startGain, audioContext.currentTime + slowDownPoint);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+      
+      // Ralentir la fréquence progressivement
+      oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(freq * 0.3, audioContext.currentTime + duration);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillators.push({ oscillator, gainNode });
+    });
     
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 4);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 4);
+    // Démarrer tous les oscillateurs
+    oscillators.forEach(({ oscillator }) => {
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration);
+    });
   } catch (error) {
     console.log('Son désactivé:', error);
   }
