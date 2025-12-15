@@ -109,11 +109,9 @@ export async function GET(request, { params }) {
             console.log(`ℹ️ Aucun supplément trouvé dans menu_supplements pour ${item.nom}`);
           }
         } catch (err) {
-          console.warn('⚠️ Erreur récupération menu_supplements:', err);
+          // Ignorer les erreurs silencieusement
         }
       }
-      
-      console.log(`📊 Suppléments finaux pour ${item.nom}:`, supplements.length, supplements.length > 0 ? JSON.stringify(supplements.slice(0, 2)) : 'AUCUN');
 
       // Fonction helper pour parser les options JSONB
       const parseJsonbArray = (value, name) => {
@@ -129,13 +127,10 @@ export async function GET(request, { params }) {
           try {
             const parsed = JSON.parse(value);
             if (Array.isArray(parsed)) {
-              console.log(`✅ API ${item.nom} - ${name}: parsé depuis string,`, parsed.length, 'éléments');
               return parsed;
             }
-            console.warn(`⚠️ API ${item.nom} - ${name}: parsé mais pas un tableau`);
             return [];
           } catch (e) {
-            console.warn(`⚠️ API ${item.nom} - Erreur parsing ${name} string:`, e);
             return [];
           }
         }
@@ -143,52 +138,41 @@ export async function GET(request, { params }) {
         if (typeof value === 'object' && value !== null) {
           // Double vérification: parfois Array.isArray peut retourner true même si typeof est 'object'
           if (Array.isArray(value)) {
-            console.log(`✅ API ${item.nom} - ${name}: tableau (détecté via Array.isArray),`, value.length, 'éléments');
             return value;
           }
           // Vérifier si c'est un objet vide
           const keys = Object.keys(value);
           if (keys.length === 0) {
-            console.warn(`⚠️ API ${item.nom} - ${name}: objet VIDE {}`);
             return [];
           }
           // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau)
           if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
             // C'est probablement un tableau sérialisé comme objet
-            const array = Object.values(value);
-            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet avec clés numériques,`, array.length, 'éléments');
-            return array;
+            return Object.values(value);
           }
           // Si c'est un objet avec une propriété qui contient un tableau
           const firstValue = Object.values(value)[0];
           if (Array.isArray(firstValue)) {
-            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet contenant tableau,`, firstValue.length, 'éléments');
             return firstValue;
           }
           // Si toutes les valeurs sont des objets (format {0: {...}, 1: {...}})
           const allValues = Object.values(value);
           if (allValues.length > 0 && allValues.every(v => typeof v === 'object' && v !== null)) {
-            console.log(`✅ API ${item.nom} - ${name}: converti depuis objet avec valeurs objets,`, allValues.length, 'éléments');
             return allValues;
           }
-          console.warn(`⚠️ API ${item.nom} - ${name}: objet non-tableau, type:`, typeof value, 'keys:', keys);
           return [];
         }
-        console.warn(`⚠️ API ${item.nom} - ${name}: type inconnu:`, typeof value);
         return [];
       };
 
       // Parser les options de viande
       let meatOptions = parseJsonbArray(item.meat_options, 'meat_options');
-      console.log(`✅ API Menu ${item.nom} - meat_options final:`, meatOptions.length, 'options');
 
       // Parser les options de sauce
       let sauceOptions = parseJsonbArray(item.sauce_options, 'sauce_options');
-      console.log(`✅ API Menu ${item.nom} - sauce_options final:`, sauceOptions.length, 'options');
 
       // Parser les ingrédients de base
       let baseIngredients = parseJsonbArray(item.base_ingredients, 'base_ingredients');
-      console.log(`✅ API Menu ${item.nom} - base_ingredients final:`, baseIngredients.length, 'ingrédients');
       
       // Récupérer les boissons disponibles pour ce menu (si drink_options est présent)
       let availableDrinks = [];
@@ -230,9 +214,6 @@ export async function GET(request, { params }) {
 
       // S'assurer que supplements est toujours un tableau
       const finalSupplements = Array.isArray(supplements) ? supplements : [];
-      if (finalSupplements.length > 0) {
-        console.log(`✅ ${item.nom} - ${finalSupplements.length} suppléments inclus dans la réponse API`);
-      }
       
       return {
         id: item.id,
@@ -331,16 +312,6 @@ export async function GET(request, { params }) {
     
     // Combiner les menus et les formules
     const allItems = [...transformedMenu, ...validFormulas];
-    
-    // Log pour debug: compter les suppléments
-    const totalSupplements = allItems.reduce((sum, item) => {
-      const supplementsCount = Array.isArray(item.supplements) ? item.supplements.length : 0;
-      if (supplementsCount > 0) {
-        console.log(`📊 ${item.nom}: ${supplementsCount} suppléments`);
-      }
-      return sum + supplementsCount;
-    }, 0);
-    console.log(`📊 TOTAL suppléments dans la réponse API: ${totalSupplements} pour ${allItems.length} items`);
 
     return NextResponse.json(allItems);
   } catch (error) {
