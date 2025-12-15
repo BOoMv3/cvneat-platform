@@ -54,10 +54,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
+    console.log('🔍 useEffect déclenché - internalIsOpen:', internalIsOpen, 'item:', item?.nom || 'N/A');
     if (internalIsOpen && item) {
       console.log('🚀🚀🚀 MenuItemModal useEffect - Item reçu:', item.nom);
-      console.log('🚀🚀🚀 Item.supplements:', item.supplements, 'Type:', typeof item.supplements);
-      console.log('🚀🚀🚀 Item.base_ingredients:', item.base_ingredients, 'Type:', typeof item.base_ingredients);
+      console.log('🚀🚀🚀 Item.supplements:', item.supplements, 'Type:', typeof item.supplements, 'IsArray:', Array.isArray(item.supplements));
+      console.log('🚀🚀🚀 Item.base_ingredients:', item.base_ingredients, 'Type:', typeof item.base_ingredients, 'IsArray:', Array.isArray(item.base_ingredients));
       console.log('🚀🚀🚀 Item.meat_options:', item.meat_options, 'Type:', typeof item.meat_options);
       console.log('🚀🚀🚀 Item.sauce_options:', item.sauce_options, 'Type:', typeof item.sauce_options);
       
