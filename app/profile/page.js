@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug, FaTicketAlt } from 'react-icons/fa';
+import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug, FaTicketAlt, FaCopy, FaEnvelope } from 'react-icons/fa';
 import LoyaltyProgram from '../components/LoyaltyProgram';
 import PushNotificationService from '../components/PushNotificationService';
 import PageHeader from '@/components/PageHeader';
@@ -742,10 +742,58 @@ export default function Profile() {
                           
                           {win.promo_code && (
                             <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-3">
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Code promo :</p>
-                              <p className="text-xl font-mono font-bold text-blue-600 dark:text-blue-400">
-                                {win.promo_code}
-                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Code promo :</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xl font-mono font-bold text-blue-600 dark:text-blue-400 flex-1">
+                                  {win.promo_code}
+                                </p>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(win.promo_code);
+                                      alert('✓ Code copié dans le presse-papiers !');
+                                    } catch (err) {
+                                      console.error('Erreur copie:', err);
+                                      alert('Impossible de copier le code. Veuillez le noter manuellement.');
+                                    }
+                                  }}
+                                  className="p-2 bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-lg transition-colors"
+                                  title="Copier le code"
+                                >
+                                  <FaCopy className="text-blue-700 dark:text-blue-300" />
+                                </button>
+                                {isValid && !isUsed && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch('/api/promo-codes/send-email', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            userId: user.id,
+                                            code: win.promo_code,
+                                            description: win.description,
+                                            validUntil: win.valid_until
+                                          })
+                                        });
+                                        const data = await response.json();
+                                        if (data.success) {
+                                          alert('✅ Code promo envoyé par email avec succès !');
+                                        } else {
+                                          throw new Error(data.error || 'Erreur lors de l\'envoi');
+                                        }
+                                      } catch (err) {
+                                        console.error('Erreur envoi email:', err);
+                                        alert('❌ Erreur lors de l\'envoi de l\'email. Veuillez réessayer plus tard.');
+                                      }
+                                    }}
+                                    className="p-2 bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 rounded-lg transition-colors"
+                                    title="Envoyer par email"
+                                  >
+                                    <FaEnvelope className="text-green-700 dark:text-green-300" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
 

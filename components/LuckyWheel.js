@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { FaTimes, FaGift, FaStar } from 'react-icons/fa';
+import { FaTimes, FaGift, FaStar, FaCopy, FaEnvelope } from 'react-icons/fa';
 
 // Son de roulette amélioré (utilise l'API Web Audio)
 const playWheelSound = () => {
@@ -112,6 +112,8 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
   const [rotation, setRotation] = useState(0);
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [generatedCode, setGeneratedCode] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const wheelRef = useRef(null);
 
   // Vérifier si déjà joué pour cette commande
@@ -446,9 +448,68 @@ export default function LuckyWheel({ isOpen, onClose, onWin, orderId, userId }) 
                   ) : (
                     <>
                       <p className="text-sm text-green-600 mt-3 font-semibold">Votre code promo :</p>
-                      <p className="text-lg font-mono bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 my-2 tracking-wider">
-                        {generatedCode}
-                      </p>
+                      <div className="flex items-center gap-2 bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 my-2">
+                        <p className="text-lg font-mono font-bold text-green-800 tracking-wider flex-1">
+                          {generatedCode}
+                        </p>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(generatedCode);
+                              setCopySuccess(true);
+                              setTimeout(() => setCopySuccess(false), 2000);
+                            } catch (err) {
+                              console.error('Erreur copie:', err);
+                              alert('Impossible de copier le code. Veuillez le noter manuellement.');
+                            }
+                          }}
+                          className="p-2 bg-green-200 hover:bg-green-300 rounded-lg transition-colors"
+                          title="Copier le code"
+                        >
+                          <FaCopy className="text-green-700" />
+                        </button>
+                      </div>
+                      {copySuccess && (
+                        <p className="text-xs text-green-600 font-semibold animate-pulse">
+                          ✓ Code copié dans le presse-papiers !
+                        </p>
+                      )}
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={async () => {
+                            if (!userId || !generatedCode) return;
+                            setSendingEmail(true);
+                            try {
+                              const response = await fetch('/api/promo-codes/send-email', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  userId,
+                                  code: generatedCode,
+                                  description: result.label,
+                                  validUntil: result.validUntil
+                                })
+                              });
+                              const data = await response.json();
+                              if (data.success) {
+                                alert('✅ Code promo envoyé par email avec succès !');
+                              } else {
+                                throw new Error(data.error || 'Erreur lors de l\'envoi');
+                              }
+                            } catch (err) {
+                              console.error('Erreur envoi email:', err);
+                              alert('❌ Erreur lors de l\'envoi de l\'email. Veuillez réessayer plus tard.');
+                            } finally {
+                              setSendingEmail(false);
+                            }
+                          }}
+                          disabled={sendingEmail}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <FaEnvelope />
+                          <span>{sendingEmail ? 'Envoi...' : 'Envoyer par email'}</span>
+                        </button>
+                      </div>
                       <p className="text-xs text-green-600 mt-2">
                         {result.prize?.type === 'free_delivery' 
                           ? 'Valable avant le 24 décembre • 1 seule utilisation'
