@@ -54,7 +54,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
-    if (internalIsOpen) {
+    if (internalIsOpen && item) {
+      console.log('🚀🚀🚀 MenuItemModal useEffect - Item reçu:', item.nom);
+      console.log('🚀🚀🚀 Item complet:', JSON.stringify(item, null, 2));
+      
       // Pour les formules, récupérer les ingrédients depuis le premier item de la formule (généralement le burger)
       let sourceItem = item;
       if (item.is_formula && item.formula_items && item.formula_items.length > 0) {
@@ -794,8 +797,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             )}
           </div>
 
-          {/* Viandes - VERSION MINI */}
-          {(meatOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos'))) && (
+          {/* Viandes - VERSION MINI - TOUJOURS AFFICHER POUR TACOS */}
+          {((meatOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos'))) || (item.nom && item.nom.toLowerCase().includes('tacos'))) && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">
                 Viandes
@@ -807,8 +810,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                 {item.requires_meat_selection && <span className="text-red-500">*</span>}
               </h3>
               {meatOptions.length === 0 ? (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                  ⚠️ Options de viande en cours de chargement...
+                <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+                  ⚠️ Aucune option de viande trouvée. Vérifiez les logs de la console.
+                  <br />
+                  <small>Item: {item.nom}, meat_options: {JSON.stringify(item.meat_options)}</small>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -841,13 +846,15 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
             </div>
           )}
 
-          {/* Sauces - VERSION MINI */}
-          {((sauceOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos'))) && (item.max_sauces || item.max_sauce_count) !== 0) && (
+          {/* Sauces - VERSION MINI - TOUJOURS AFFICHER POUR TACOS */}
+          {(((sauceOptions.length > 0 || (item.category && item.category.toLowerCase().includes('tacos')) || (item.nom && item.nom.toLowerCase().includes('tacos'))) && (item.max_sauces || item.max_sauce_count) !== 0)) && (
             <div className="mb-2">
               <h3 className="text-sm font-semibold mb-1.5">Sauces {item.requires_sauce_selection && <span className="text-red-500">*</span>}</h3>
               {sauceOptions.length === 0 ? (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                  ⚠️ Options de sauce en cours de chargement...
+                <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+                  ⚠️ Aucune option de sauce trouvée. Vérifiez les logs de la console.
+                  <br />
+                  <small>Item: {item.nom}, sauce_options: {JSON.stringify(item.sauce_options)}</small>
                 </div>
               ) : (
                 <div className="space-y-1">
