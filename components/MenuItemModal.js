@@ -33,10 +33,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     // On ne synchronise pas quand isOpen devient false pour préserver la fermeture manuelle
   }, [isOpen, manuallyClosed]);
 
-  // DEBUG: Vérifier que onClose est bien une fonction
-  useEffect(() => {
-    console.log('🔍 MenuItemModal - onClose type:', typeof onClose, 'isOpen:', isOpen, 'internalIsOpen:', internalIsOpen);
-  }, [onClose, isOpen, internalIsOpen]);
 
   // Réinitialiser les états quand la modal se ferme
   useEffect(() => {
@@ -54,13 +50,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
 
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
-    console.log('🔍 useEffect déclenché - internalIsOpen:', internalIsOpen, 'item:', item?.nom || 'N/A');
     if (internalIsOpen && item) {
-      console.log('🚀🚀🚀 MenuItemModal useEffect - Item reçu:', item.nom);
-      console.log('🚀🚀🚀 Item.supplements:', item.supplements, 'Type:', typeof item.supplements, 'IsArray:', Array.isArray(item.supplements));
-      console.log('🚀🚀🚀 Item.base_ingredients:', item.base_ingredients, 'Type:', typeof item.base_ingredients, 'IsArray:', Array.isArray(item.base_ingredients));
-      console.log('🚀🚀🚀 Item.meat_options:', item.meat_options, 'Type:', typeof item.meat_options);
-      console.log('🚀🚀🚀 Item.sauce_options:', item.sauce_options, 'Type:', typeof item.sauce_options);
       
       // Pour les formules, récupérer les ingrédients depuis le premier item de la formule (généralement le burger)
       let sourceItem = item;
@@ -79,34 +69,18 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       
       // Récupérer les options de customisation depuis l'item (ou depuis le burger de la formule)
       // Options de viande
-      console.log('🔍 MenuItemModal - sourceItem:', sourceItem.nom);
-      console.log('🔍 MenuItemModal - meat_options RAW:', sourceItem.meat_options);
-      console.log('🔍 MenuItemModal - meat_options Type:', typeof sourceItem.meat_options);
-      console.log('🔍 MenuItemModal - meat_options IsArray:', Array.isArray(sourceItem.meat_options));
-      console.log('🔍 MenuItemModal - meat_options Length:', Array.isArray(sourceItem.meat_options) ? sourceItem.meat_options.length : 'N/A');
-      console.log('🔍 MenuItemModal - meat_options Keys:', sourceItem.meat_options && typeof sourceItem.meat_options === 'object' ? Object.keys(sourceItem.meat_options) : 'N/A');
-      console.log('🔍 MenuItemModal - sauce_options:', sourceItem.sauce_options, 'Type:', typeof sourceItem.sauce_options, 'IsArray:', Array.isArray(sourceItem.sauce_options));
-      console.log('🔍 MenuItemModal - supplements:', sourceItem.supplements, 'Type:', typeof sourceItem.supplements, 'IsArray:', Array.isArray(sourceItem.supplements));
-      console.log('🔍 MenuItemModal - base_ingredients:', sourceItem.base_ingredients, 'Type:', typeof sourceItem.base_ingredients, 'IsArray:', Array.isArray(sourceItem.base_ingredients));
       
       // Fonction helper pour normaliser les options (gérer tous les cas)
       const normalizeOptions = (value, name) => {
-        console.log(`🔧 normalizeOptions(${name}) - Input:`, value, 'Type:', typeof value, 'IsArray:', Array.isArray(value));
         if (!value) {
-          console.warn(`WARNING ${name} est null/undefined`);
           return [];
         }
         // Si c'est déjà un tableau, le retourner (vérifier AVANT typeof)
         if (Array.isArray(value)) {
-          console.log(`✅ ${name} est déjà un tableau:`, value.length, 'éléments');
-          if (value.length === 0) {
-            console.warn(`⚠️ ${name} est un tableau mais VIDE!`);
-          }
           return value;
         }
         // Vérifier si c'est un objet vide {}
         if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-          console.warn(`⚠️ ${name} est un objet vide {}`);
           return [];
         }
         // Si c'est une string, essayer de la parser
@@ -114,13 +88,10 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           try {
             const parsed = JSON.parse(value);
             if (Array.isArray(parsed)) {
-              console.log(`✅ ${name} parsé depuis string:`, parsed.length, 'éléments');
               return parsed;
             }
-            console.warn(`WARNING ${name} parsé mais n'est pas un tableau`);
             return [];
           } catch (e) {
-            console.error(`❌ Erreur parsing ${name} string:`, e);
             return [];
           }
         }
@@ -128,79 +99,60 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         if (typeof value === 'object' && value !== null) {
           // Double vérification: parfois Array.isArray peut retourner true même si typeof est 'object'
           if (Array.isArray(value)) {
-            console.log(`✅ ${name} est un tableau (détecté via Array.isArray):`, value.length, 'éléments');
             return value;
           }
           // Vérifier si c'est un objet avec des propriétés numériques (comme un tableau sérialisé)
           const keys = Object.keys(value);
           if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
             // C'est probablement un tableau sérialisé comme objet
-            const array = Object.values(value);
-            console.log(`✅ ${name} converti depuis objet avec clés numériques:`, array.length, 'éléments');
-            return array;
+            return Object.values(value);
           }
           // Si c'est un objet avec des propriétés nommées, essayer de le convertir en tableau
           if (keys.length > 0) {
             // Peut-être que c'est un objet avec une seule propriété qui contient le tableau
             const firstValue = Object.values(value)[0];
             if (Array.isArray(firstValue)) {
-              console.log(`✅ ${name} converti depuis objet contenant tableau:`, firstValue.length, 'éléments');
               return firstValue;
             }
             // Peut-être que toutes les valeurs sont des objets similaires (format {0: {...}, 1: {...}})
             const allValues = Object.values(value);
             if (allValues.length > 0 && allValues.every(v => typeof v === 'object' && v !== null)) {
-              console.log(`✅ ${name} converti depuis objet avec valeurs objets:`, allValues.length, 'éléments');
               return allValues;
             }
           }
           // Sinon, essayer de l'envelopper dans un tableau
-          console.warn(`WARNING ${name} est un objet non-tableau, tentative de conversion`);
           return [value];
         }
-        console.warn(`WARNING ${name} type inconnu:`, typeof value);
         return [];
       };
       
       const meatOptionsNormalized = normalizeOptions(sourceItem.meat_options, 'meat_options');
-      console.log('✅ Meat options finales:', meatOptionsNormalized.length, 'options');
       setMeatOptions(meatOptionsNormalized);
       
       // Sélectionner les viandes par défaut (default: true)
       const defaultMeats = meatOptionsNormalized.filter(m => m.default === true).map(m => m.id || m.nom);
-      console.log('✅ Viandes par défaut sélectionnées:', defaultMeats);
       setSelectedMeats(new Set(defaultMeats));
 
       // Options de sauce
       const sauceOptionsNormalized = normalizeOptions(sourceItem.sauce_options, 'sauce_options');
-      console.log('✅ Sauce options finales:', sauceOptionsNormalized.length, 'options');
       setSauceOptions(sauceOptionsNormalized);
       
       // Sélectionner les sauces par défaut (default: true) seulement si max_sauces !== 0
       const maxSauces = sourceItem.max_sauces || sourceItem.max_sauce_count;
-      console.log('🔍 max_sauces:', maxSauces);
       if (maxSauces !== 0) {
         const defaultSauces = sauceOptionsNormalized.filter(s => s.default === true).map(s => s.id || s.nom);
-        console.log('✅ Sauces par défaut sélectionnées:', defaultSauces);
         setSelectedSauces(new Set(defaultSauces));
       } else {
         // Si max_sauces = 0, ne pas sélectionner de sauces (elles sont déjà comprises)
-        console.log('ℹ️ max_sauces = 0, aucune sauce sélectionnée par défaut');
         setSelectedSauces(new Set());
       }
 
       // Ingrédients de base
       const baseIngredientsNormalized = normalizeOptions(sourceItem.base_ingredients, 'base_ingredients');
-      console.log('✅ Base ingredients finales:', baseIngredientsNormalized.length, 'ingrédients');
       setBaseIngredients(baseIngredientsNormalized);
 
       // D'abord, vérifier si l'item a des suppléments intégrés
-      console.log('🔍 MenuItemModal - Item reçu:', item.nom);
-      console.log('🔍 MenuItemModal - item.supplements:', item.supplements, 'Type:', typeof item.supplements, 'IsArray:', Array.isArray(item.supplements));
-      
       const supplementsNormalized = normalizeOptions(item.supplements, 'supplements');
-      console.log('🔍 Suppléments normalisés depuis item:', supplementsNormalized.length, 'suppléments');
-      console.log('🔍 Suppléments normalisés (premiers):', supplementsNormalized.slice(0, 2));
       
       if (supplementsNormalized.length > 0) {
         // Formater les suppléments pour correspondre au format attendu
@@ -210,17 +162,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           price: parseFloat(sup.prix || sup.price || 0),
           description: sup.description || ''
         }));
-        console.log('✅ Suppléments parsés depuis item:', formattedSupplements.length, 'suppléments');
-        console.log('✅ Suppléments formatés (premiers):', formattedSupplements.slice(0, 2));
         setSupplements(formattedSupplements);
         setLoading(false);
       } else {
         // TOUJOURS essayer de récupérer depuis l'API, même si on a des suppléments vides
-        console.log('ℹ️ Suppléments non trouvés dans item ou tableau vide, récupération depuis API...');
         if (restaurantId || item.id) {
           fetchSupplements();
         } else {
-          console.warn('WARNING Aucun restaurantId ni item.id pour récupérer les suppléments');
           setSupplements([]);
           setLoading(false);
         }
@@ -231,8 +179,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const fetchSupplements = async () => {
     setLoading(true);
     try {
-      console.log('🔍 Récupération suppléments - restaurantId:', restaurantId, 'item.id:', item?.id);
-      
       // Essayer d'abord l'API du restaurant (plus fiable)
       let response = null;
       let data = null;
@@ -242,12 +188,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           response = await fetch(`/api/restaurants/${restaurantId}/supplements`);
           if (response.ok) {
             data = await response.json();
-            console.log('✅ Suppléments récupérés depuis API restaurant:', data?.length || 0, 'suppléments');
-          } else {
-            console.warn('⚠️ API restaurant supplements non disponible (status:', response.status, ')');
           }
         } catch (err) {
-          console.warn('⚠️ Erreur API restaurant supplements:', err);
+          // Ignorer les erreurs silencieusement
         }
       }
       
@@ -257,12 +200,9 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           response = await fetch(`/api/menu/${item.id}/supplements`);
           if (response.ok) {
             data = await response.json();
-            console.log('✅ Suppléments récupérés depuis API menu item:', data?.length || 0, 'suppléments');
-          } else {
-            console.warn('⚠️ API menu item supplements non disponible (status:', response.status, ')');
           }
         } catch (err) {
-          console.warn('⚠️ Erreur API menu item supplements:', err);
+          // Ignorer les erreurs silencieusement
         }
       }
       
@@ -274,15 +214,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           price: parseFloat(sup.prix || sup.price || 0),
           description: sup.description || ''
         }));
-        
-        console.log('✅ Suppléments formatés:', formattedData.length, 'suppléments');
         setSupplements(formattedData);
       } else {
-        console.warn('⚠️ Aucun supplément trouvé via API');
         setSupplements([]);
       }
     } catch (error) {
-      console.error('❌ Erreur lors du chargement des suppléments:', error);
       setSupplements([]);
     } finally {
       setLoading(false);
@@ -954,10 +890,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           )}
 
           {/* Ingrédients de base */}
-          {(() => {
-            console.log('🔍 Rendu baseIngredients - baseIngredients.length:', baseIngredients.length, 'itemIngredients.length:', itemIngredients.length);
-            return itemIngredients.length > 0;
-          })() && (
+          {itemIngredients.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <FaLeaf className="w-5 h-5 text-green-600 mr-2" />
@@ -1036,14 +969,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-4">
-                    <p className="text-gray-500">Aucun supplément disponible</p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Debug: supplements.length = {supplements.length}, 
-                      item.supplements = {item.supplements ? 'présent' : 'absent'},
-                      restaurantId = {restaurantId || 'N/A'}
-                    </p>
-                  </div>
+                  <p className="text-gray-500 text-center py-4">Aucun supplément disponible</p>
                 )}
               </div>
             )}
