@@ -132,23 +132,43 @@ export default function OrderConfirmation() {
         
         // Afficher la roulette si le paiement est réussi ou si un paiement a été initié
         // Conditions: payment_status = 'paid'/'succeeded' OU stripe_payment_intent_id existe (paiement initié)
+        // OU si la commande n'est pas annulée et a un statut valide (en_attente, acceptee, etc.)
         const hasPaid = data && (
           data.payment_status === 'paid' || 
           data.payment_status === 'succeeded' ||
-          (data.stripe_payment_intent_id && data.statut !== 'annulee')
+          (data.stripe_payment_intent_id && data.statut !== 'annulee') ||
+          // Si la commande existe et n'est pas annulée, considérer qu'elle est payée (le webhook peut prendre du temps)
+          (data.statut && data.statut !== 'annulee' && data.id)
         );
+        
+        console.log('🎰 Vérification roue de la chance:', {
+          hasPaid,
+          userId,
+          payment_status: data?.payment_status,
+          stripe_payment_intent_id: data?.stripe_payment_intent_id,
+          statut: data?.statut,
+          orderId: data?.id
+        });
         
         if (hasPaid && userId) {
           // Vérifier si l'utilisateur a déjà joué pour cette commande
           if (typeof window !== 'undefined') {
             const played = JSON.parse(localStorage.getItem('luckyWheelPlayed') || '[]');
-            if (!played.includes(data.id)) {
+            const alreadyPlayed = played.includes(data.id);
+            console.log('🎰 Déjà joué pour cette commande?', alreadyPlayed, 'Commandes jouées:', played);
+            
+            if (!alreadyPlayed) {
               // Afficher la roulette après un court délai pour laisser la page se charger
+              console.log('✅ Affichage de la roue de la chance dans 1.5s...');
               setTimeout(() => {
                 setShowLuckyWheel(true);
               }, 1500);
+            } else {
+              console.log('⚠️ Roue déjà jouée pour cette commande');
             }
           }
+        } else {
+          console.log('⚠️ Conditions non remplies pour la roue:', { hasPaid, userId });
         }
         
         // Track Facebook Pixel - Purchase (une seule fois par commande)
@@ -182,7 +202,7 @@ export default function OrderConfirmation() {
       clearInterval(fetchInterval);
       clearInterval(timerInterval);
     };
-  }, [id, authToken, securityCode]);
+  }, [id, authToken, securityCode, userId]); // Ajouter userId aux dépendances
 
   // Helper pour obtenir le statut (normaliser statut/status)
   const getStatus = () => {
