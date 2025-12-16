@@ -618,11 +618,20 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Cette commande ne peut plus être modifiée' }, { status: 400 });
     }
 
+    // NOUVEAU WORKFLOW: Vérifier qu'un livreur a accepté la commande AVANT que le restaurant puisse accepter
+    if (!order.livreur_id) {
+      return NextResponse.json({ 
+        error: 'Aucun livreur disponible', 
+        details: 'Cette commande ne peut pas être acceptée car aucun livreur ne l\'a encore acceptée. Veuillez patienter.' 
+      }, { status: 400 });
+    }
+
     // Mettre à jour la commande avec les estimations de temps
+    // Le statut passe à 'en_preparation' (statut valide selon les contraintes CHECK)
     const { data: updatedOrder, error: updateError } = await supabase
       .from('commandes')
       .update({
-        statut: 'acceptee',
+        statut: 'en_preparation', // Statut valide : 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
         preparation_time: preparationTime,
         delivery_time: deliveryTime,
         estimated_total_time: estimatedTotalTime,

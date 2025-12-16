@@ -61,32 +61,39 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier que la commande est dans un statut acceptable
-    // Les statuts autorisés par la contrainte CHECK sont: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
-    // Les livreurs peuvent accepter les commandes 'en_preparation' ou 'pret_a_livrer'
-    if (!['en_preparation', 'pret_a_livrer'].includes(order.statut)) {
+    // NOUVEAU WORKFLOW: Les livreurs acceptent les commandes 'en_attente' (AVANT le restaurant)
+    // Le statut reste 'en_attente' mais livreur_id est assigné
+    // Le restaurant pourra ensuite accepter et passer à 'en_preparation'
+    if (order.statut !== 'en_attente') {
       console.log('❌ Statut commande non acceptable pour livreur:', order.statut);
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
-        details: `Statut actuel: ${order.statut}. Seules les commandes en préparation peuvent être acceptées.` 
+        details: `Statut actuel: ${order.statut}. Seules les commandes en attente peuvent être acceptées par un livreur.` 
       }, { status: 400 });
     }
 
-    // Accepter la commande
-    console.log('📤 Mise à jour commande:', {
+    // Vérifier que le paiement est validé
+    if (!['paid', 'succeeded'].includes(order.payment_status)) {
+      console.log('❌ Paiement non validé:', order.payment_status);
+      return NextResponse.json({ 
+        error: 'Commande non disponible', 
+        details: 'Le paiement n\'a pas été validé.' 
+      }, { status: 400 });
+    }
+
+    // Accepter la commande - assigner le livreur mais garder le statut 'en_attente'
+    // Le restaurant devra ensuite accepter pour passer à 'en_preparation'
+    console.log('📤 Acceptation commande par livreur (nouveau workflow):', {
       orderId,
       livreur_id: user.id,
-      statut: ['pret_a_livrer', 'en_livraison'].includes(order.statut) || order.ready_for_delivery ? 'en_livraison' : order.statut
+      statut: 'en_attente' // On garde 'en_attente' jusqu'à ce que le restaurant accepte
     });
     
-    const shouldMoveToDelivery = order.statut === 'pret_a_livrer' || order.ready_for_delivery === true || order.statut === 'en_livraison';
     const updatePayload = {
       livreur_id: user.id,
       updated_at: new Date().toISOString()
+      // On ne change PAS le statut, il reste 'en_attente' jusqu'à l'acceptation restaurant
     };
-
-    if (shouldMoveToDelivery) {
-      updatePayload.statut = 'en_livraison';
-    }
 
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
