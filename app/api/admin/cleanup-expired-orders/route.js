@@ -11,9 +11,14 @@ const supabaseAdmin = createClient(
 // À appeler périodiquement (ex: toutes les minutes via Vercel Cron ou un job externe)
 export async function POST(request) {
   try {
-    // Vérifier l'authentification (optionnel - peut être sécurisé avec une clé API)
+    // Vérifier que la requête vient de Vercel Cron (via le header X-Vercel-Cron)
+    // Si la variable d'environnement CLEANUP_API_KEY est définie, l'utiliser aussi comme option de sécurité
+    const cronHeader = request.headers.get('x-vercel-cron');
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CLEANUP_API_KEY || 'cleanup-secret-key'}`) {
+    const cleanupApiKey = process.env.CLEANUP_API_KEY;
+    
+    // Accepter si c'est un cron Vercel OU si la clé API correspond
+    if (!cronHeader && cleanupApiKey && authHeader !== `Bearer ${cleanupApiKey}`) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
