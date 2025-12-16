@@ -116,8 +116,17 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
 
         // Succès - appeler le callback
         onSuccess({ paymentIntentId, status: 'succeeded' });
+      } else if (paymentIntent && paymentIntent.status === 'requires_payment_method') {
+        // Le paiement nécessite une nouvelle méthode de paiement (carte refusée)
+        throw new Error('Votre carte a été refusée. Veuillez essayer avec une autre carte ou vérifier vos informations de paiement.');
+      } else if (paymentIntent && paymentIntent.status === 'canceled') {
+        // Le paiement a été annulé
+        throw new Error('Le paiement a été annulé. Veuillez réessayer.');
       } else {
-        throw new Error(`Paiement non complété. Statut: ${paymentIntent?.status || 'inconnu'}`);
+        // Autre statut (processing, requires_action, etc.)
+        const statusMessage = paymentIntent?.status || 'inconnu';
+        console.error('❌ Statut de paiement inattendu:', statusMessage);
+        throw new Error(`Paiement non complété. Statut: ${statusMessage}. Veuillez réessayer.`);
       }
     } catch (err) {
       const errorMessage = err.message || 'Une erreur est survenue lors du paiement';

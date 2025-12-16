@@ -868,11 +868,48 @@ export default function Checkout() {
     }
   };
 
-  const handlePaymentError = (error) => {
+  const handlePaymentError = async (error) => {
     console.error('❌ Erreur paiement:', error);
-    alert(`Erreur de paiement: ${error}`);
-    setShowPaymentForm(false);
     setSubmitting(false);
+    
+    // Si une commande a été créée, l'annuler car le paiement a échoué
+    if (orderData?.orderId) {
+      try {
+        console.log('🔄 Annulation de la commande suite à l\'échec du paiement...');
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        
+        const cancelResponse = await fetch(`/api/orders/${orderData.orderId}/cancel`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            reason: 'Paiement échoué',
+            cancelBy: 'system'
+          })
+        });
+        
+        if (cancelResponse.ok) {
+          console.log('✅ Commande annulée suite à l\'échec du paiement');
+        } else {
+          console.warn('⚠️ Impossible d\'annuler la commande automatiquement');
+        }
+      } catch (cancelError) {
+        console.error('❌ Erreur lors de l\'annulation de la commande:', cancelError);
+      }
+    }
+    
+    // Afficher un message d'erreur clair
+    const errorMessage = error || 'Le paiement a échoué';
+    alert(`❌ Paiement refusé\n\n${errorMessage}\n\nVeuillez vérifier vos informations de paiement ou essayer avec une autre carte.\n\nVotre commande n'a pas été créée.`);
+    
+    // Réinitialiser l'état pour permettre une nouvelle tentative
+    setShowPaymentForm(false);
+    setPaymentIntentId(null);
+    setClientSecret(null);
+    setOrderData(null);
   };
 
   const submitOrder = async () => {

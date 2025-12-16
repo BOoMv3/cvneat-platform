@@ -126,6 +126,15 @@ export default function OrderConfirmation() {
 
         const data = await response.json();
         if (!isMounted) return;
+        
+        // Vérifier si le paiement a échoué
+        if (data.payment_status === 'failed' || data.payment_status === 'canceled' || 
+            (data.statut === 'annulee' && data.payment_status !== 'paid' && data.payment_status !== 'succeeded')) {
+          setError('Le paiement de cette commande a échoué. Veuillez retourner au panier pour réessayer.');
+          setLoading(false);
+          return;
+        }
+        
         setOrderData(data);
         setError(null);
         setLoading(false);
