@@ -183,7 +183,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
           
           // Afficher une notification du navigateur
-          showBrowserNotification('Nouvelle commande !', {
+          showBrowserNotification('Nouvelle commande (Livreur assigné) !', {
             body: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
             icon: '/icon-192x192.png',
             tag: 'new-order',
@@ -194,7 +194,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           const newNotification = {
             id: Date.now(),
             type: 'new_order',
-            message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
+            message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€ (Livreur assigné)`,
             data: payload.new,
             timestamp: new Date().toISOString(),
             isNew: true
