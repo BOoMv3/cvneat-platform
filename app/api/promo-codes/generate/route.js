@@ -103,13 +103,17 @@ export async function POST(request) {
     if (prizeType === 'free_delivery') {
       // Livraison offerte : valable jusqu'au 23 décembre 23h59 de l'année en cours
       const currentYear = new Date().getFullYear();
-      const dec24 = new Date(currentYear, 11, 24); // 24 décembre (11 = décembre, 0-indexé)
       const now = new Date();
       
-      // Si on est déjà après le 24 décembre, utiliser l'année suivante
-      if (now > dec24) {
+      // Toujours utiliser l'année en cours pour décembre
+      // Si on est déjà après le 24 décembre de l'année en cours, utiliser l'année suivante
+      const dec24ThisYear = new Date(currentYear, 11, 24); // 24 décembre de l'année en cours
+      
+      if (now > dec24ThisYear) {
+        // On est après le 24 décembre de l'année en cours, donc utiliser l'année suivante
         validUntil.setFullYear(currentYear + 1, 11, 23); // 23 décembre de l'année suivante
       } else {
+        // On est avant le 24 décembre, donc on met le 23 décembre de l'année en cours
         validUntil.setFullYear(currentYear, 11, 23); // 23 décembre de l'année en cours
       }
       validUntil.setHours(23, 59, 59, 999);
