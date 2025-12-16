@@ -29,9 +29,118 @@ export async function POST(request) {
       );
     }
 
-    // Appeler la fonction SQL de validation
+    const codeToValidate = code.toUpperCase().trim();
+    console.log('🔍 Validation code promo:', {
+      code: codeToValidate,
+      userId: userId || 'N/A',
+      orderAmount,
+      restaurantId: restaurantId || 'N/A',
+      isFirstOrder
+    });
+
+    // Pour les codes ROULETTE, vérifier d'abord dans wheel_wins
+    if (codeToValidate.startsWith('ROULETTE')) {
+      const { data: wheelWin, error: wheelWinError } = await supabaseAdmin
+        .from('wheel_wins')
+        .select('id, user_id, promo_code, promo_code_id, valid_until, used_at, prize_type')
+        .eq('promo_code', codeToValidate)
+        .single();
+
+      if (wheelWinError || !wheelWin) {
+        console.log('⚠️ Code ROULETTE non trouvé dans wheel_wins:', codeToValidate);
+        return NextResponse.json(
+          { valid: false, message: 'Code promo invalide ou expiré' },
+          { status: 200 }
+        );
+      }
+
+      // Vérifier que le code appartient à l'utilisateur
+      if (wheelWin.user_id && userId && wheelWin.user_id !== userId) {
+        console.log('⚠️ Code ROULETTE appartient à un autre utilisateur:', {
+          wheelWinUserId: wheelWin.user_id,
+          currentUserId: userId
+        });
+        return NextResponse.json(
+          { valid: false, message: 'Ce code promo est personnel et ne peut être utilisé que par son propriétaire' },
+          { status: 200 }
+        );
+      }
+
+      // Vérifier que le code n'est pas expiré
+      if (wheelWin.valid_until && new Date(wheelWin.valid_until) < new Date()) {
+        console.log('⚠️ Code ROULETTE expiré:', codeToValidate);
+        return NextResponse.json(
+          { valid: false, message: 'Ce code promo a expiré' },
+          { status: 200 }
+        );
+      }
+
+      // Vérifier que le code n'a pas déjà été utilisé
+      if (wheelWin.used_at) {
+        console.log('⚠️ Code ROULETTE déjà utilisé:', codeToValidate);
+        return NextResponse.json(
+          { valid: false, message: 'Ce code promo a déjà été utilisé' },
+          { status: 200 }
+        );
+      }
+
+      // Si le code a un promo_code_id, récupérer les détails du code promo
+      if (wheelWin.promo_code_id) {
+        const { data: promoCode, error: promoError } = await supabaseAdmin
+          .from('promo_codes')
+          .select('*')
+          .eq('id', wheelWin.promo_code_id)
+          .single();
+
+        if (!promoError && promoCode) {
+          // Calculer la réduction
+          let discountAmount = 0;
+          if (promoCode.discount_type === 'percentage') {
+            discountAmount = (orderAmount * promoCode.discount_value / 100);
+            if (promoCode.max_discount_amount) {
+              discountAmount = Math.min(discountAmount, parseFloat(promoCode.max_discount_amount));
+            }
+          } else if (promoCode.discount_type === 'fixed') {
+            discountAmount = Math.min(parseFloat(promoCode.discount_value), orderAmount);
+          } else if (promoCode.discount_type === 'free_delivery') {
+            discountAmount = 0; // Sera géré séparément
+          }
+
+          console.log('✅ Code ROULETTE valide:', {
+            code: codeToValidate,
+            discountAmount,
+            discountType: promoCode.discount_type
+          });
+
+          return NextResponse.json({
+            valid: true,
+            discountAmount: discountAmount,
+            discountType: promoCode.discount_type,
+            message: 'Code promo valide',
+            description: promoCode.description || wheelWin.description || '',
+            promoCodeId: promoCode.id
+          });
+        }
+      }
+
+      // Si pas de promo_code_id mais que c'est une boisson offerte, retourner une validation spéciale
+      if (wheelWin.prize_type === 'free_drink') {
+        console.log('✅ Code ROULETTE - Boisson offerte (pas de code promo)');
+        return NextResponse.json({
+          valid: true,
+          discountAmount: 0,
+          discountType: 'free_drink',
+          message: 'Boisson offerte - sera ajoutée automatiquement',
+          description: wheelWin.description || 'Boisson offerte',
+          promoCodeId: null,
+          isFreeDrink: true
+        });
+      }
+    }
+
+    // Appeler la fonction SQL de validation pour les autres codes
     const { data, error } = await supabaseAdmin.rpc('validate_promo_code', {
-      p_code: code.toUpperCase().trim(),
+      p_code: codeToValidate,
       p_user_id: userId || null,
       p_order_amount: parseFloat(orderAmount),
       p_restaurant_id: restaurantId || null,
@@ -47,6 +156,7 @@ export async function POST(request) {
     }
 
     if (!data || data.length === 0) {
+      console.log('⚠️ Code promo non trouvé dans promo_codes:', codeToValidate);
       return NextResponse.json(
         { valid: false, message: 'Code promo invalide' },
         { status: 200 }
