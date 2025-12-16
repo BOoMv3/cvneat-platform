@@ -649,6 +649,7 @@ export async function POST(request) {
       frais_livraison: fraisLivraison,
       statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation
       security_code: securityCode, // Code de sécurité pour la livraison
+      delivery_requested_at: new Date().toISOString(), // Timestamp pour l'expiration automatique si aucun livreur n'accepte
       // Stocker les informations du code promo si présent
       promo_code_id: promoCodeId || null,
       promo_code: promoCode || null,
