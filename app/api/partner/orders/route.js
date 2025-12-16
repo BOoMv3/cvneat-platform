@@ -144,6 +144,7 @@ export async function GET(request) {
         `)
       .eq('restaurant_id', restaurantId)
       .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
+      .not('livreur_id', 'is', null) // NOUVEAU WORKFLOW: Seulement si un livreur a accepté
         .order('created_at', { ascending: false });
       
       // Log immédiat après la requête

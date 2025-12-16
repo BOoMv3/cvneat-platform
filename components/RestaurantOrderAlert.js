@@ -11,36 +11,38 @@ export default function RestaurantOrderAlert() {
   useEffect(() => {
     fetchPendingOrders();
     
-    // Écouter les nouvelles commandes en temps réel
+    // Écouter les mises à jour de commandes en temps réel
+    // NOUVEAU WORKFLOW: On écoute les UPDATE car le restaurant doit être notifié quand un livreur accepte
     const channel = supabase
       .channel('restaurant-orders')
       .on('postgres_changes', 
         { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'commandes',
-          filter: 'statut=eq.en_attente'
-        }, 
-        (payload) => {
-          console.log('Nouvelle commande reçue:', payload.new);
-          // IMPORTANT: Vérifier que la commande est payée avant d'afficher l'alerte
-          if (payload.new.payment_status === 'paid') {
-            setOrders(prev => [payload.new, ...prev]);
-          } else {
-            console.log('⚠️ Commande non payée ignorée:', payload.new.id);
-          }
-        }
-      )
-      .on('postgres_changes', 
-        { 
-          event: 'UPDATE', 
+          event: 'UPDATE', // NOUVEAU: On écoute UPDATE au lieu de INSERT
           schema: 'public', 
           table: 'commandes',
           filter: 'statut=eq.en_attente'
         }, 
         (payload) => {
           console.log('Commande mise à jour:', payload.new);
-          fetchPendingOrders();
+          
+          // NOUVEAU WORKFLOW: Vérifier qu'un livreur vient d'accepter (livreur_id passé de null à non-null)
+          const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
+          const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
+          
+          // Vérifier que la commande est payée
+          if (payload.new.payment_status !== 'paid' && payload.new.payment_status !== 'succeeded') {
+            console.log('⚠️ Commande non payée ignorée:', payload.new.id);
+            return;
+          }
+          
+          // Si un livreur vient d'accepter (livreur_id est maintenant assigné)
+          if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
+            console.log('✅ Nouvelle commande avec livreur accepté:', payload.new.id);
+            fetchPendingOrders(); // Rafraîchir la liste
+          } else if (payload.new.livreur_id && payload.new.statut === 'en_attente') {
+            // Commandes avec livreur déjà assigné (rafraîchir au cas où)
+            fetchPendingOrders();
+          }
         }
       )
       .subscribe();
@@ -77,8 +79,9 @@ export default function RestaurantOrderAlert() {
       setRestaurant(restaurant);
 
       // Récupérer les commandes en attente pour ce restaurant
+      // NOUVEAU WORKFLOW: Seulement les commandes avec livreur_id assigné (livreur a accepté)
       // IMPORTANT: Inclure total_amount, delivery_fee, et tous les champs nécessaires
-      // IMPORTANT: Seulement les commandes payées (payment_status = 'paid')
+      // IMPORTANT: Seulement les commandes payées (payment_status = 'paid') ET avec livreur
       const { data, error } = await supabase
         .from('commandes')
         .select(`
@@ -92,6 +95,7 @@ export default function RestaurantOrderAlert() {
           frais_livraison,
           restaurant_id,
           user_id,
+          livreur_id,
           customer_name,
           customer_phone,
           customer_email,
@@ -121,6 +125,7 @@ export default function RestaurantOrderAlert() {
         .eq('statut', 'en_attente')
         .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
         .eq('restaurant_id', restaurant.id)
+        .not('livreur_id', 'is', null) // NOUVEAU WORKFLOW: Seulement si un livreur a accepté
         .order('created_at', { ascending: false });
 
       if (error) throw error;

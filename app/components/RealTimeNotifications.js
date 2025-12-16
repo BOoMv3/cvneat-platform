@@ -153,20 +153,31 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       .channel(`restaurant_${restaurantId}_orders`)
       .on('postgres_changes', 
         { 
-          event: 'INSERT', 
+          event: 'UPDATE', // NOUVEAU WORKFLOW: On écoute UPDATE car le restaurant est notifié quand un livreur accepte
           schema: 'public', 
           table: 'commandes',
           filter: `restaurant_id=eq.${restaurantId}`
         }, 
         (payload) => {
           // IMPORTANT: Vérifier que la commande est payée avant d'afficher l'alerte
-          if (payload.new.payment_status !== 'paid') {
+          if (payload.new.payment_status !== 'paid' && payload.new.payment_status !== 'succeeded') {
             console.log('⚠️ Commande non payée ignorée dans RealTimeNotifications:', payload.new.id, 'payment_status:', payload.new.payment_status);
             return; // Ne pas traiter les commandes non payées
           }
           
-          // Déclencher l'alerte pour nouvelle commande
-          triggerNewOrderAlert(payload.new);
+          // NOUVEAU WORKFLOW: Ne notifier que si un livreur vient d'accepter (livreur_id passé de null à non-null)
+          const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
+          const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
+          
+          // Si un livreur vient d'accepter ET statut = 'en_attente'
+          if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
+            console.log('✅ Nouvelle commande avec livreur accepté, notification envoyée:', payload.new.id);
+            // Déclencher l'alerte pour nouvelle commande avec livreur
+            triggerNewOrderAlert(payload.new);
+          } else {
+            console.log('⚠️ Commande ignorée (pas de livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
+            return;
+          }
           
           // IMPORTANT: Calculer le montant total avec les frais de livraison
           const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);

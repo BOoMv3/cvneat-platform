@@ -119,27 +119,38 @@ export async function GET(request) {
             .channel(`restaurant_${userRestaurantId}_orders`)
             .on('postgres_changes', 
               { 
-                event: 'INSERT', 
+                event: 'UPDATE', // NOUVEAU WORKFLOW: On écoute UPDATE car le restaurant est notifié quand un livreur accepte
                 schema: 'public', 
                 table: 'commandes',
                 filter: `restaurant_id=eq.${userRestaurantId}`
               }, 
               (payload) => {
-                console.log('🔔 Nouvelle commande détectée via Supabase Realtime:', payload.new.id);
+                console.log('🔔 Commande mise à jour via Supabase Realtime:', payload.new.id);
+                
                 // IMPORTANT: Vérifier que la commande est payée avant d'envoyer la notification
-                if (payload.new.payment_status !== 'paid') {
+                if (payload.new.payment_status !== 'paid' && payload.new.payment_status !== 'succeeded') {
                   console.log('⚠️ Commande non payée ignorée dans SSE:', payload.new.id, 'payment_status:', payload.new.payment_status);
                   return; // Ne pas envoyer de notification pour les commandes non payées
                 }
                 
-                // IMPORTANT: Calculer le montant total avec les frais de livraison
-                const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
-                sendNotification({
-                  type: 'new_order',
-                  message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
-                  order: payload.new,
-                  timestamp: new Date().toISOString()
-                });
+                // NOUVEAU WORKFLOW: Ne notifier que si un livreur vient d'accepter (livreur_id passé de null à non-null)
+                const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
+                const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
+                
+                // Si un livreur vient d'accepter ET statut = 'en_attente'
+                if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
+                  console.log('✅ Nouvelle commande avec livreur accepté, notification envoyée:', payload.new.id);
+                  // IMPORTANT: Calculer le montant total avec les frais de livraison
+                  const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
+                  sendNotification({
+                    type: 'new_order',
+                    message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€ (Livreur assigné)`,
+                    order: payload.new,
+                    timestamp: new Date().toISOString()
+                  });
+                } else {
+                  console.log('⚠️ Commande ignorée (pas de livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
+                }
               }
             )
             .on('postgres_changes',
