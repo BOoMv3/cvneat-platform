@@ -1123,7 +1123,8 @@ export async function POST(request) {
         if (item.selected_drink) {
           const drinkId = item.selected_drink.id || item.selected_drink.menu_id;
           if (drinkId) {
-            const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
+            // Les boissons de formule sont comprises dans le prix, donc prix = 0€
+            const drinkPrice = 0;
             const drinkDetail = {
               commande_id: order.id,
               plat_id: drinkId,
@@ -1137,7 +1138,7 @@ export async function POST(request) {
               }
             };
             orderDetailsPayload.push(drinkDetail);
-            console.log(`🥤 Boisson ajoutée à la formule: ${item.selected_drink.nom || drinkId}`);
+            console.log(`🥤 Boisson ajoutée à la formule "${item.nom || 'Sans nom'}": ${item.selected_drink.nom || drinkId} (comprise dans la formule, prix: 0€)`);
           } else {
             console.warn('⚠️ Boisson sélectionnée mais sans ID:', item.selected_drink);
           }

@@ -64,8 +64,6 @@ export async function GET(request, { params }) {
       }
     }
 
-    }
-
     // Essayer aussi avec la table 'supplements' (format standard) et combiner
     const { data: supplementsData, error: supplementsError } = await supabase
       .from('supplements')
