@@ -845,26 +845,35 @@ export default function Checkout() {
   const handlePaymentSuccess = async (paymentData) => {
     try {
       console.log('✅ Paiement confirmé, mise à jour de la commande...');
+      console.log('📊 Données paiement:', paymentData);
+      
+      // Vérifier que le paiement est vraiment réussi
+      if (paymentData?.status !== 'succeeded') {
+        console.error('❌ handlePaymentSuccess appelé mais statut non succeeded:', paymentData?.status);
+        handlePaymentError(new Error('Le paiement n\'a pas été confirmé. Veuillez réessayer.'));
+        return;
+      }
+      
       setSubmitting(true);
       
-      // Mettre à jour la commande (simplifié - ne bloque pas si échec)
+      // Mettre à jour la commande
       await createOrderAfterPayment(paymentIntentId);
       
       setSubmitting(false);
+      
+      // Rediriger vers la page de confirmation UNIQUEMENT si tout est OK
+      if (orderData?.orderId) {
+        const securityCode = orderData.securityCode ? `?code=${encodeURIComponent(orderData.securityCode)}` : '';
+        window.location.replace(`/order-confirmation/${orderData.orderId}${securityCode}`);
+      } else {
+        throw new Error('Commande introuvable après paiement');
+      }
     } catch (error) {
-      console.error('❌ Erreur après paiement:', error);
+      console.error('❌ Erreur après paiement réussi:', error);
       setSubmitting(false);
       
-      // Message rassurant pour l'utilisateur
-      const errorMessage = error.message || 'Erreur technique';
-      alert(`✅ Paiement effectué avec succès !\n\n⚠️ ${errorMessage}\n\nVotre commande sera traitée automatiquement. Vous recevrez une confirmation par email.`);
-      
-      // Rediriger quand même vers la page de confirmation si on a l'orderId
-      if (orderData?.orderId) {
-        setTimeout(() => {
-          window.location.replace(`/order-confirmation/${orderData.orderId}`);
-        }, 2000);
-      }
+      // Ne PAS rediriger si erreur - traiter comme un échec de paiement
+      handlePaymentError(new Error('Erreur lors de la confirmation de votre commande. Votre paiement a été effectué mais la commande n\'a pas pu être confirmée. Veuillez contacter le support.'));
     }
   };
 
@@ -901,9 +910,11 @@ export default function Checkout() {
       }
     }
     
-    // Afficher un message d'erreur clair
-    const errorMessage = error || 'Le paiement a échoué';
-    alert(`❌ Paiement refusé\n\n${errorMessage}\n\nVeuillez vérifier vos informations de paiement ou essayer avec une autre carte.\n\nVotre commande n'a pas été créée.`);
+    // Afficher un message d'erreur clair avec l'information que la commande sera annulée
+    const errorMessage = error?.message || error || 'Le paiement a échoué';
+    const errorText = typeof error === 'string' ? error : errorMessage;
+    
+    alert(`❌ Paiement refusé\n\n${errorText}\n\nVeuillez vérifier vos informations de paiement ou essayer avec une autre carte.\n\nLa commande a été annulée automatiquement. Vous pouvez réessayer de passer votre commande.`);
     
     // Réinitialiser l'état pour permettre une nouvelle tentative
     setShowPaymentForm(false);

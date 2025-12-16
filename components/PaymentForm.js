@@ -89,8 +89,10 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
         throw new Error(errorMessage);
       }
 
-      // Vérifier que le paiement a réussi
+      // Vérifier que le paiement a réussi - IMPORTANT: onSuccess est appelé UNIQUEMENT si status === 'succeeded'
       if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('✅ Paiement réussi, statut:', paymentIntent.status);
+        
         // Confirmer côté serveur (optionnel mais recommandé)
         try {
           const confirmResponse = await fetch('/api/payment/confirm', {
@@ -114,19 +116,22 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
           // Ne pas bloquer - le paiement est déjà réussi côté Stripe
         }
 
-        // Succès - appeler le callback
+        // Succès - appeler le callback UNIQUEMENT si le statut est succeeded
         onSuccess({ paymentIntentId, status: 'succeeded' });
       } else if (paymentIntent && paymentIntent.status === 'requires_payment_method') {
         // Le paiement nécessite une nouvelle méthode de paiement (carte refusée)
+        console.error('❌ Carte refusée, statut:', paymentIntent.status);
         throw new Error('Votre carte a été refusée. Veuillez essayer avec une autre carte ou vérifier vos informations de paiement.');
       } else if (paymentIntent && paymentIntent.status === 'canceled') {
         // Le paiement a été annulé
+        console.error('❌ Paiement annulé, statut:', paymentIntent.status);
         throw new Error('Le paiement a été annulé. Veuillez réessayer.');
       } else {
-        // Autre statut (processing, requires_action, etc.)
+        // Autre statut (processing, requires_action, requires_capture, etc.) = ÉCHEC
         const statusMessage = paymentIntent?.status || 'inconnu';
-        console.error('❌ Statut de paiement inattendu:', statusMessage);
-        throw new Error(`Paiement non complété. Statut: ${statusMessage}. Veuillez réessayer.`);
+        console.error('❌ Statut de paiement non réussi:', statusMessage);
+        // Ne PAS appeler onSuccess pour ces statuts
+        throw new Error(`Le paiement n'a pas pu être complété (statut: ${statusMessage}). Veuillez réessayer avec une autre méthode de paiement.`);
       }
     } catch (err) {
       const errorMessage = err.message || 'Une erreur est survenue lors du paiement';
