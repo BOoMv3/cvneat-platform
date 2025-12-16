@@ -385,8 +385,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     const isMenuOrFormula = item.is_formula || 
                             (item.category?.toLowerCase().includes('menu') || item.nom?.toLowerCase().includes('menu'));
     // Seulement pour les menus et formules, la boisson est obligatoire
-    if (isMenuOrFormula && item.drink_options && item.drink_options.length > 0 && !selectedDrink) {
-      alert('Veuillez choisir une boisson');
+    // MAIS seulement si drink_options est un tableau non vide ET que les boissons sont vraiment disponibles
+    if (isMenuOrFormula && 
+        item.drink_options && 
+        Array.isArray(item.drink_options) && 
+        item.drink_options.length > 0 && 
+        !selectedDrink) {
+      alert('Veuillez choisir une boisson pour ce menu');
       return;
     }
 

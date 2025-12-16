@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
 
     const menuIds = menus && menus.length > 0 ? menus.map(m => m.id) : [];
 
-    // Récupérer les suppléments depuis menu_supplements
+    // Récupérer les suppléments depuis menu_supplements (EXCLURE les boissons)
     let allSupplements = [];
     if (menuIds.length > 0) {
       const { data: menuSupplements, error: menuSupplementsError } = await supabase
@@ -28,9 +28,29 @@ export async function GET(request, { params }) {
         .in('menu_item_id', menuIds)
         .eq('disponible', true)
         .order('ordre');
-
+      
+      // Exclure les boissons des suppléments (les boissons sont gérées via drink_options)
+      // Vérifier si le supplément correspond à un menu avec is_drink = true
       if (!menuSupplementsError && menuSupplements && menuSupplements.length > 0) {
-        allSupplements = menuSupplements.map(ms => ({
+        // Récupérer les IDs des menus qui sont des boissons
+        const { data: drinkMenus, error: drinkMenusError } = await supabase
+          .from('menus')
+          .select('id')
+          .eq('restaurant_id', id)
+          .eq('is_drink', true)
+          .eq('disponible', true);
+        
+        const drinkMenuIds = drinkMenus && drinkMenus.length > 0 
+          ? new Set(drinkMenus.map(d => d.id)) 
+          : new Set();
+        
+        // Filtrer les suppléments pour exclure ceux qui correspondent à des boissons
+        const filteredMenuSupplements = menuSupplements.filter(ms => {
+          // Si le menu_item_id du supplément correspond à un menu boisson, l'exclure
+          return !drinkMenuIds.has(ms.menu_item_id);
+        });
+        
+        allSupplements = filteredMenuSupplements.map(ms => ({
           id: ms.id,
           nom: ms.nom || ms.name || 'Supplément',
           name: ms.nom || ms.name || 'Supplément',
@@ -40,8 +60,10 @@ export async function GET(request, { params }) {
           disponible: ms.disponible !== false,
           menu_item_id: ms.menu_item_id
         }));
-        console.log(`✅ Suppléments récupérés depuis menu_supplements pour restaurant ${id}:`, allSupplements.length);
+        console.log(`✅ Suppléments récupérés depuis menu_supplements pour restaurant ${id}: ${allSupplements.length} (boissons exclues)`);
       }
+    }
+
     }
 
     // Essayer aussi avec la table 'supplements' (format standard) et combiner
