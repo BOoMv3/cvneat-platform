@@ -205,7 +205,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     // PRIORITÉ 1: Vérifier si fermé manuellement (ferme_manuellement = true)
     // Si le restaurant est explicitement fermé manuellement, il est toujours fermé
     // (ignore les horaires)
-    if (restaurant.ferme_manuellement === true || restaurant.is_closed === true) {
+    if (restaurant.ferme_manuellement === true) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
@@ -226,7 +226,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     }
 
     // Obtenir le jour actuel en français
-    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long' });
+    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
     const todayName = todayFormatter.format(new Date()).toLowerCase();
     const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
     
@@ -238,25 +238,63 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       }
     }
 
-    // Si le jour n'a pas d'horaires configurés ou est explicitement fermé
-    if (!heuresJour || heuresJour.ouvert === false) {
+    // Si le jour n'a pas d'horaires configurés
+    if (!heuresJour) {
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
 
-    // Obtenir l'heure actuelle
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
+    // Si explicitement fermé ce jour
+    if (heuresJour.ouvert === false) {
+      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
+    }
 
-    // Vérifier les plages horaires
+    // Obtenir l'heure actuelle en heure française (Europe/Paris)
+    const now = new Date();
+    const frTime = now.toLocaleString('fr-FR', { 
+      timeZone: 'Europe/Paris',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const [currentHours, currentMinutes] = frTime.split(':').map(Number);
+    const currentTime = currentHours * 60 + currentMinutes;
+
+    // Fonction helper pour parser les heures
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      let totalMinutes = hours * 60 + minutes;
+      // Si c'est 00:00 (minuit), on le traite comme 24:00 (1440 minutes) pour la fermeture
+      if (totalMinutes === 0 && hours === 0 && minutes === 0) {
+        totalMinutes = 24 * 60; // 1440 minutes = minuit de la journée suivante
+      }
+      return totalMinutes;
+    };
+
+    // Vérifier les plages horaires multiples
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
       for (const plage of heuresJour.plages) {
         if (plage?.ouverture && plage?.fermeture) {
-          const [startHour, startMinute] = plage.ouverture.split(':').map(Number);
-          const [endHour, endMinute] = plage.fermeture.split(':').map(Number);
-          const openTime = startHour * 60 + startMinute;
-          const closeTime = endHour * 60 + endMinute;
+          const openTime = parseTime(plage.ouverture);
+          let closeTime = parseTime(plage.fermeture);
           
-          if (currentTime >= openTime && currentTime < closeTime) {
+          if (openTime === null || closeTime === null) continue;
+
+          // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00
+          const isMidnightClose = plage.fermeture === '00:00' || plage.fermeture === '0:00';
+          if (isMidnightClose) {
+            closeTime = 24 * 60; // 1440 minutes
+          }
+
+          // Vérifier si on est dans cette plage horaire
+          let inPlage;
+          if (isMidnightClose) {
+            inPlage = currentTime >= openTime;
+          } else {
+            inPlage = currentTime >= openTime && currentTime < closeTime;
+          }
+          
+          if (inPlage) {
             return { isOpen: true, isManuallyClosed: false, reason: 'open' };
           }
         }
@@ -267,12 +305,28 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
     // Vérifier les horaires simples
     if (heuresJour.ouverture && heuresJour.fermeture) {
-      const [startHour, startMinute] = heuresJour.ouverture.split(':').map(Number);
-      const [endHour, endMinute] = heuresJour.fermeture.split(':').map(Number);
-      const openTime = startHour * 60 + startMinute;
-      const closeTime = endHour * 60 + endMinute;
+      const openTime = parseTime(heuresJour.ouverture);
+      let closeTime = parseTime(heuresJour.fermeture);
       
-      if (currentTime >= openTime && currentTime < closeTime) {
+      if (openTime === null || closeTime === null) {
+        return { isOpen: false, isManuallyClosed: false, reason: 'invalid_hours' };
+      }
+
+      // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00
+      const isMidnightClose = heuresJour.fermeture === '00:00' || heuresJour.fermeture === '0:00';
+      if (isMidnightClose) {
+        closeTime = 24 * 60; // 1440 minutes
+      }
+
+      // Vérifier si on est dans la plage horaire
+      let inPlage;
+      if (isMidnightClose) {
+        inPlage = currentTime >= openTime;
+      } else {
+        inPlage = currentTime >= openTime && currentTime < closeTime;
+      }
+      
+      if (inPlage) {
         return { isOpen: true, isManuallyClosed: false, reason: 'open' };
       }
       // Hors des heures d'ouverture
@@ -287,7 +341,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     return { isOpen: false, isManuallyClosed: false, reason: 'unknown' };
   } catch (e) {
     console.warn('[checkRestaurantOpenStatus] Erreur:', e);
-    return { isOpen: true, isManuallyClosed: false, reason: 'error' };
+    return { isOpen: false, isManuallyClosed: false, reason: 'error' };
   }
 };
 
