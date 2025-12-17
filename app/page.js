@@ -258,8 +258,12 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     }
 
     // Si explicitement fermé ce jour (seulement si ouvert === false strictement)
-    if (heuresJour.ouvert === false) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Explicitement fermé aujourd'hui (ouvert = false)`);
+    // MAIS si on a des plages horaires ou des horaires ouverture/fermeture, on les vérifie quand même
+    const hasExplicitHours = (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) || 
+                             (heuresJour.ouverture && heuresJour.fermeture);
+    
+    if (heuresJour.ouvert === false && !hasExplicitHours) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Explicitement fermé aujourd'hui (ouvert = false, pas d'horaires)`);
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
     
@@ -270,7 +274,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       hasPlages: Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0,
       plagesCount: heuresJour.plages?.length,
       ouverture: heuresJour.ouverture,
-      fermeture: heuresJour.fermeture
+      fermeture: heuresJour.fermeture,
+      hasExplicitHours: hasExplicitHours
     });
 
     // Obtenir l'heure actuelle en heure française (Europe/Paris)
