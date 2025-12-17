@@ -258,27 +258,25 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
 
-    // IMPORTANT: Ne pas bloquer si ouvert === false si on a des horaires explicites
-    // Certains restaurants ont ouvert = false mais des plages horaires configurées
-    // On vérifie TOUJOURS les plages horaires si elles existent, peu importe la valeur de "ouvert"
+    // IMPORTANT: Si on a des horaires explicites (plages ou ouverture/fermeture), 
+    // on IGNORE complètement le flag "ouvert" et on vérifie uniquement les heures
     const hasExplicitHours = (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) || 
                              (heuresJour.ouverture && heuresJour.fermeture);
     
-    // Seulement si ouvert === false ET pas d'horaires explicites, on considère comme fermé
-    if (heuresJour.ouvert === false && !hasExplicitHours) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Explicitement fermé aujourd'hui (ouvert = false, pas d'horaires explicites)`);
+    // Seulement si pas d'horaires explicites ET ouvert === false, on considère comme fermé
+    if (!hasExplicitHours && heuresJour.ouvert === false) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Fermé (ouvert = false, pas d'horaires explicites)`);
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
     
-    // Si ouvert === false mais qu'on a des horaires explicites, on continue la vérification
-    if (heuresJour.ouvert === false && hasExplicitHours) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ouvert = false mais horaires explicites présents, vérification des horaires...`);
+    // Si on a des horaires explicites, on IGNORE le flag "ouvert" et on vérifie les heures
+    if (hasExplicitHours) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires explicites présents, IGNORE flag "ouvert" (${heuresJour.ouvert}), vérification des heures...`);
     }
     
     // Log pour debug
-    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires trouvés pour ${todayName}:`, {
+    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires pour ${todayName}:`, {
       ouvert: heuresJour.ouvert,
-      ouvert_type: typeof heuresJour.ouvert,
       hasPlages: Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0,
       plagesCount: heuresJour.plages?.length,
       ouverture: heuresJour.ouverture,
