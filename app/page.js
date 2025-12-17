@@ -202,18 +202,40 @@ const formatStatusHoursLabel = (statusData, fallback) => {
 // Fonction pour vérifier si un restaurant est ouvert (calcul local, pas d'API)
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
+    // Log de debug pour voir la valeur exacte de ferme_manuellement
+    const fermeManuel = restaurant.ferme_manuellement;
+    const fermeManuelType = typeof fermeManuel;
+    const fermeManuelStrictFalse = fermeManuel === false;
+    const fermeManuelStrictTrue = fermeManuel === true;
+    
     // PRIORITÉ 1: Vérifier si fermé manuellement (ferme_manuellement = true)
     // Si le restaurant est explicitement fermé manuellement, il est toujours fermé
     // (ignore les horaires)
-    if (restaurant.ferme_manuellement === true) {
+    if (fermeManuelStrictTrue) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = true)`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
     // PRIORITÉ 2: Si ouvert manuellement (ferme_manuellement = false)
     // Si le restaurant est explicitement ouvert manuellement, il est toujours ouvert
     // (ignore les horaires)
-    if (restaurant.ferme_manuellement === false) {
+    if (fermeManuelStrictFalse) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT manuellement (ferme_manuellement = false)`, {
+        ferme_manuellement: fermeManuel,
+        type: fermeManuelType,
+        strictFalse: fermeManuelStrictFalse
+      });
       return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
+    }
+    
+    // Log si la valeur n'est ni true ni false
+    if (fermeManuel !== null && fermeManuel !== undefined) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ferme_manuellement valeur inattendue:`, {
+        valeur: fermeManuel,
+        type: fermeManuelType,
+        strictFalse: fermeManuelStrictFalse,
+        strictTrue: fermeManuelStrictTrue
+      });
     }
 
     // PRIORITÉ 3: Vérifier les horaires normalement
@@ -714,14 +736,17 @@ export default function Home() {
             // Calculer le label des horaires à partir des horaires du restaurant
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
             
-            // Log de debug pour les restaurants fermés (sauf fermeture manuelle)
-            if (!status.isOpen && status.reason !== 'manual') {
-              console.log(`[Restaurants] ${restaurant.nom} fermé - Raison: ${status.reason}`, {
-                ferme_manuellement: restaurant.ferme_manuellement,
-                hasHoraires: !!restaurant.horaires,
-                horairesType: typeof restaurant.horaires
-              });
-            }
+            // Log de debug pour TOUS les restaurants (pour voir la valeur de ferme_manuellement)
+            console.log(`[Restaurants] ${restaurant.nom} - Statut:`, {
+              isOpen: status.isOpen,
+              reason: status.reason,
+              ferme_manuellement: restaurant.ferme_manuellement,
+              ferme_manuellement_type: typeof restaurant.ferme_manuellement,
+              ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
+              ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
+              hasHoraires: !!restaurant.horaires,
+              horairesType: typeof restaurant.horaires
+            });
             
             openStatusMap[restaurant.id] = {
               isOpen: status.isOpen,
