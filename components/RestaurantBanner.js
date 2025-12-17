@@ -46,16 +46,17 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       {/* Bannière principale */}
       <div className="relative w-full h-64 sm:h-72 md:h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
       {/* Image de fond avec overlay */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 w-full h-full">
         {restaurant.banner_image ? (
           // Pour "La Bonne Pâte", utiliser un style personnalisé pour préserver les néons
           (restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')) ? (
-            <div 
-              className="w-full h-full bg-center bg-no-repeat"
+            <img 
+              src={restaurant.banner_image}
+              alt={restaurant.nom}
+              className="w-full h-full object-cover"
               style={{
-                backgroundImage: `url(${restaurant.banner_image})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
+                objectFit: 'cover',
+                objectPosition: 'center'
               }}
             />
           ) : (
