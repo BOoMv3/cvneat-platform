@@ -747,8 +747,15 @@ export default function Home() {
           try {
             // FORCER l'ouverture si ferme_manuellement est explicitement false AVANT d'appeler checkRestaurantOpenStatus
             // Cela garantit que même si la logique des horaires échoue, le restaurant reste ouvert
-            if (restaurant.ferme_manuellement === false) {
-              console.log(`[Restaurants] ${restaurant.nom} - FORCE OUVERT (ferme_manuellement = false) - IGNORE HORAIRES`);
+            // Normaliser la valeur (gérer les cas où c'est une string "false" ou un boolean false)
+            const fermeManuelValue = restaurant.ferme_manuellement;
+            const isFermeManuelFalse = fermeManuelValue === false || 
+                                       fermeManuelValue === 'false' || 
+                                       fermeManuelValue === 0 ||
+                                       (typeof fermeManuelValue === 'string' && fermeManuelValue.toLowerCase() === 'false');
+            
+            if (isFermeManuelFalse && fermeManuelValue !== true && fermeManuelValue !== 'true') {
+              console.log(`[Restaurants] ${restaurant.nom} - FORCE OUVERT (ferme_manuellement = ${fermeManuelValue}, type: ${typeof fermeManuelValue}) - IGNORE HORAIRES`);
               const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
               openStatusMap[restaurant.id] = {
                 isOpen: true,
