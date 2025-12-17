@@ -1523,4 +1523,4 @@ export default function Home() {
       </main>
     </div>
   );
-} 
+} // Force rebuild Wed Dec 17 12:18:32 CET 2025
