@@ -721,7 +721,8 @@ export default function Home() {
               console.warn('[Restaurants] Erreur getTodayHoursLabel:', e);
             }
 
-            normalizedRestaurants.push({
+            // S'assurer que ferme_manuellement est bien préservé
+            const normalizedRestaurant = {
               ...restaurant,
               image_url: primaryImage,
               banner_image: bannerImage,
@@ -729,8 +730,22 @@ export default function Home() {
               cuisine_type: restaurant.cuisine_type || restaurant.type_cuisine || restaurant.type || restaurant.category,
               category: restaurant.category || restaurant.categorie,
               category_tokens: categoryTokens,
-              today_hours_label: todayHoursLabel
-            });
+              today_hours_label: todayHoursLabel,
+              // FORCER la préservation de ferme_manuellement
+              ferme_manuellement: restaurant.ferme_manuellement
+            };
+            
+            // Log pour "Le O Saona Tea" spécifiquement
+            if (normalizedName.includes('saona') || normalizedName.includes('o saona')) {
+              console.log(`[Restaurants] ${restaurant.nom} - Données normalisées:`, {
+                ferme_manuellement: normalizedRestaurant.ferme_manuellement,
+                ferme_manuellement_type: typeof normalizedRestaurant.ferme_manuellement,
+                ferme_manuellement_strict_false: normalizedRestaurant.ferme_manuellement === false,
+                original_ferme_manuellement: restaurant.ferme_manuellement
+              });
+            }
+            
+            normalizedRestaurants.push(normalizedRestaurant);
           } catch (restaurantError) {
             console.error('[Restaurants] Erreur normalisation restaurant:', restaurantError, restaurant);
             // Continuer avec les autres restaurants même si un échoue
