@@ -832,6 +832,22 @@ export default function Home() {
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
             
             // Log de debug pour TOUS les restaurants (pour voir la valeur de ferme_manuellement)
+            // Log spécial pour "La Bonne Pâte"
+            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('bonne pâte') || restaurant.nom.toLowerCase().includes('bonne pate'))) {
+              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "La Bonne Pâte":`, {
+                nom: restaurant.nom,
+                isOpen: status.isOpen,
+                reason: status.reason,
+                ferme_manuellement: restaurant.ferme_manuellement,
+                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
+                ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
+                ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
+                hasHoraires: !!restaurant.horaires,
+                horairesType: typeof restaurant.horaires,
+                horairesPreview: restaurant.horaires ? JSON.stringify(restaurant.horaires).substring(0, 200) : 'null'
+              });
+            }
+            
             console.log(`[Restaurants] ${restaurant.nom} - Statut:`, {
               isOpen: status.isOpen,
               reason: status.reason,
