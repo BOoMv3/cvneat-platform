@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const router = useRouter();
 
   const handleLogin = async (e) => {
@@ -75,12 +76,28 @@ export default function LoginPage() {
 
           if (userError) {
             console.warn('⚠️ Erreur récupération rôle:', userError);
-            // Continuer quand même, rediriger vers la page d'accueil
-            router.push('/');
+            // Continuer quand même, vérifier la redirection puis rediriger
+            const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
+            if (redirectAfterLogin) {
+              localStorage.removeItem('redirectAfterLogin');
+              console.log('🔄 Redirection vers:', redirectAfterLogin);
+              router.push(redirectAfterLogin);
+            } else {
+              router.push('/');
+            }
             return;
           }
 
           console.log('✅ Rôle utilisateur:', userData?.role);
+
+          // Vérifier s'il y a une intention de redirection (ex: checkout)
+          const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
+          if (redirectAfterLogin) {
+            localStorage.removeItem('redirectAfterLogin');
+            console.log('🔄 Redirection vers:', redirectAfterLogin);
+            router.push(redirectAfterLogin);
+            return;
+          }
 
           if (userData?.role === 'admin') {
             router.push('/admin');
@@ -185,6 +202,11 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                {success}
+              </div>
+            )}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
                 {error}
