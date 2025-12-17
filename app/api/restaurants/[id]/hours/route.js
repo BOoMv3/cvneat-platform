@@ -201,18 +201,20 @@ export async function POST(request, { params }) {
       });
     }
 
-    // Vérifier strictement si ouvert (doit être explicitement true)
-    // Support pour nouveau format avec plages multiples
+    // IMPORTANT: Si on a des horaires explicites (plages ou ouverture/fermeture),
+    // on IGNORE complètement le flag "ouvert" et on vérifie uniquement les heures
+    // C'est la logique la plus fiable pour déterminer si un restaurant est ouvert
     const hasPlages = Array.isArray(todayHours.plages) && todayHours.plages.length > 0;
-    const isOpenByFlag = todayHours.ouvert === true;
+    const hasExplicitHours = hasPlages || (todayHours.ouverture && todayHours.fermeture);
     
-    if (!isOpenByFlag && !hasPlages) {
-      console.log('🔴 Restaurant fermé - ouvert n\'est pas true et pas de plages:', {
+    // Seulement si pas d'horaires explicites ET ouvert === false, on considère comme fermé
+    if (!hasExplicitHours && todayHours.ouvert === false) {
+      console.log('🔴 Restaurant fermé - ouvert = false et pas d\'horaires explicites:', {
         ouvert: todayHours.ouvert,
-        type: typeof todayHours.ouvert,
-        strict: todayHours.ouvert === true,
         hasPlages,
-        plages: todayHours.plages
+        hasExplicitHours,
+        ouverture: todayHours.ouverture,
+        fermeture: todayHours.fermeture
       });
       return NextResponse.json({
         isOpen: false,
@@ -223,14 +225,15 @@ export async function POST(request, { params }) {
         debug: { 
           todayKey, 
           todayHours, 
-          allHorairesKeys: Object.keys(horaires),
-          allHoraires: horaires,
-          variants: variants,
-          ouvertValue: todayHours.ouvert,
-          ouvertType: typeof todayHours.ouvert,
+          hasExplicitHours,
           hasPlages
         }
       });
+    }
+    
+    // Si on a des horaires explicites, on ignore le flag "ouvert" et on vérifie les heures
+    if (hasExplicitHours) {
+      console.log('🕐 Horaires explicites présents, IGNORE flag "ouvert" (', todayHours.ouvert, '), vérification des heures...');
     }
 
     // Vérifier l'heure actuelle (en heure locale française Europe/Paris)

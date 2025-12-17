@@ -277,8 +277,9 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
     // IMPORTANT: Si on a des horaires explicites (plages ou ouverture/fermeture), 
     // on IGNORE complètement le flag "ouvert" et on vérifie uniquement les heures
-    const hasExplicitHours = (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) || 
-                             (heuresJour.ouverture && heuresJour.fermeture);
+    // C'est la logique la plus fiable et automatique
+    const hasPlages = Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0;
+    const hasExplicitHours = hasPlages || (heuresJour.ouverture && heuresJour.fermeture);
     
     // Seulement si pas d'horaires explicites ET ouvert === false, on considère comme fermé
     if (!hasExplicitHours && heuresJour.ouvert === false) {
@@ -286,9 +287,11 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
     
-    // Si on a des horaires explicites, on IGNORE le flag "ouvert" et on vérifie les heures
+    // Si on a des horaires explicites, on IGNORE le flag "ouvert" et on vérifie uniquement les heures
+    // Cette logique garantit que les restaurants avec des horaires configurés sont ouverts automatiquement
+    // selon leurs horaires, sans nécessiter d'intervention manuelle quotidienne
     if (hasExplicitHours) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires explicites présents, IGNORE flag "ouvert" (${heuresJour.ouvert}), vérification des heures...`);
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires explicites présents, IGNORE flag "ouvert" (${heuresJour.ouvert}), vérification automatique des heures...`);
     }
     
     // Log pour debug
