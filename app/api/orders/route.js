@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -48,6 +49,11 @@ function getServiceClient() {
 // GET /api/orders - Récupérer les commandes de l'utilisateur
 export async function GET(request) {
   try {
+    // Nettoyer les commandes expirées en arrière-plan (non bloquant)
+    cleanupExpiredOrders().catch(err => {
+      console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
+    });
+    
     // Récupérer le token depuis les headers
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -1434,6 +1440,12 @@ export async function POST(request) {
     }
 
     console.log('🎯 RETOUR DE LA RÉPONSE - Commande créée avec statut:', order.statut);
+    
+    // Nettoyer les commandes expirées en arrière-plan (non bloquant)
+    // Ne pas nettoyer la commande qui vient d'être créée
+    cleanupExpiredOrders().catch(err => {
+      console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
+    });
     
     const subtotalValue = calculatedSubtotal; // Utiliser le sous-total recalculé
     const deliveryFeeValue = parseFloat(fraisLivraison) || 0;
