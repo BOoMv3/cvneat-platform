@@ -52,7 +52,12 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
             src={restaurant.banner_image}
             alt={restaurant.nom}
             fill
-            className="object-cover"
+            className={
+              // Pour "La Bonne Pâte", utiliser object-contain pour afficher les néons comme bordures
+              restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')
+                ? "object-contain bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800"
+                : "object-cover"
+            }
             priority
             sizes="100vw"
           />
