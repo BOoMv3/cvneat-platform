@@ -3,7 +3,7 @@ SELECT
   id,
   nom,
   ferme_manuellement,
-  typeof(ferme_manuellement) as ferme_manuellement_type,
+  pg_typeof(ferme_manuellement) as ferme_manuellement_type,
   horaires->>'lundi' as horaires_lundi,
   horaires->>'mardi' as horaires_mardi,
   horaires->>'mercredi' as horaires_mercredi,
