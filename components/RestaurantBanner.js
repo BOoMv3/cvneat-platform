@@ -53,10 +53,14 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
             <img 
               src={restaurant.banner_image}
               alt={restaurant.nom}
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
               style={{
                 objectFit: 'cover',
-                objectPosition: 'center'
+                objectPosition: 'center',
+                width: '100%',
+                height: '100%',
+                minWidth: '100%',
+                minHeight: '100%'
               }}
             />
           ) : (
