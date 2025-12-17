@@ -223,12 +223,15 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
-    // PRIORITÉ 2: Si ouvert manuellement (ferme_manuellement = false)
-    // Si le restaurant est explicitement ouvert manuellement, il est toujours ouvert
-    // (ignore les horaires)
-    // IMPORTANT: Vérifier strictement === false (pas null, pas undefined)
+    // PRIORITÉ 2: Si ouvert manuellement OU si ferme_manuellement n'est pas true
+    // Si le restaurant est explicitement ouvert manuellement (false) OU si la valeur est null/undefined,
+    // on vérifie les horaires. Mais si c'est explicitement false, on peut forcer l'ouverture.
+    // NOUVELLE LOGIQUE: Si ferme_manuellement est false OU null/undefined, on vérifie les horaires
+    // MAIS si c'est explicitement false ET qu'il y a des horaires, on peut aussi forcer l'ouverture
+    
+    // Si explicitement false, forcer l'ouverture (ignore les horaires)
     if (fermeManuelStrictFalse) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT manuellement (ferme_manuellement = false)`, {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT manuellement (ferme_manuellement = false) - FORCE OUVERT`, {
         ferme_manuellement_original: restaurant.ferme_manuellement,
         ferme_manuellement_normalized: fermeManuel,
         type: fermeManuelType,
@@ -742,6 +745,19 @@ export default function Home() {
         const openStatusMap = {};
         for (const restaurant of normalizedRestaurants) {
           try {
+            // FORCER l'ouverture si ferme_manuellement est explicitement false AVANT d'appeler checkRestaurantOpenStatus
+            // Cela garantit que même si la logique des horaires échoue, le restaurant reste ouvert
+            if (restaurant.ferme_manuellement === false) {
+              console.log(`[Restaurants] ${restaurant.nom} - FORCE OUVERT (ferme_manuellement = false) - IGNORE HORAIRES`);
+              const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+              openStatusMap[restaurant.id] = {
+                isOpen: true,
+                isManuallyClosed: false,
+                hoursLabel: todayHoursLabel || 'Horaires non communiquées'
+              };
+              continue; // Passer au restaurant suivant
+            }
+            
             const status = checkRestaurantOpenStatus(restaurant);
             // Calculer le label des horaires à partir des horaires du restaurant
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
