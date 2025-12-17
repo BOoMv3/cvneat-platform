@@ -116,16 +116,9 @@ export async function POST(request, { params }) {
       });
     }
 
-    // PRIORITÉ 2: Si ouvert manuellement (ferme_manuellement = false)
-    // Si le restaurant est explicitement ouvert manuellement, il est toujours ouvert
-    // (ignore les horaires)
-    if (restaurant.ferme_manuellement === false) {
-      return NextResponse.json({
-        isOpen: true,
-        message: 'Restaurant ouvert manuellement',
-        reason: 'manually_opened'
-      });
-    }
+    // PRIORITÉ 2: Si ferme_manuellement = false ou null/undefined, vérifier les horaires normalement
+    // On ne force PAS l'ouverture si ferme_manuellement = false
+    // On vérifie simplement les horaires pour déterminer si le restaurant est ouvert
 
     // Les horaires sont TOUJOURS respectés, sauf en cas de fermeture manuelle
 

@@ -210,46 +210,17 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       fermeManuel = fermeManuel.toLowerCase() === 'true' || fermeManuel === '1';
     }
     
-    // Log de debug pour voir la valeur exacte
-    const fermeManuelType = typeof fermeManuel;
-    const fermeManuelStrictFalse = fermeManuel === false;
-    const fermeManuelStrictTrue = fermeManuel === true;
-    
     // PRIORITÉ 1: Vérifier si fermé manuellement (ferme_manuellement = true)
     // Si le restaurant est explicitement fermé manuellement, il est toujours fermé
     // (ignore les horaires)
-    if (fermeManuelStrictTrue) {
+    if (fermeManuel === true) {
       console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = true)`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
-    // PRIORITÉ 2: Si ouvert manuellement OU si ferme_manuellement n'est pas true
-    // Si le restaurant est explicitement ouvert manuellement (false) OU si la valeur est null/undefined,
-    // on vérifie les horaires. Mais si c'est explicitement false, on peut forcer l'ouverture.
-    // NOUVELLE LOGIQUE: Si ferme_manuellement est false OU null/undefined, on vérifie les horaires
-    // MAIS si c'est explicitement false ET qu'il y a des horaires, on peut aussi forcer l'ouverture
-    
-    // Si explicitement false, forcer l'ouverture (ignore les horaires)
-    if (fermeManuelStrictFalse) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT manuellement (ferme_manuellement = false) - FORCE OUVERT`, {
-        ferme_manuellement_original: restaurant.ferme_manuellement,
-        ferme_manuellement_normalized: fermeManuel,
-        type: fermeManuelType,
-        strictFalse: fermeManuelStrictFalse
-      });
-      return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
-    }
-    
-    // Log si la valeur n'est ni true ni false (pour debug)
-    if (fermeManuel !== null && fermeManuel !== undefined) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ferme_manuellement valeur inattendue:`, {
-        valeur_originale: restaurant.ferme_manuellement,
-        valeur_normalized: fermeManuel,
-        type: fermeManuelType,
-        strictFalse: fermeManuelStrictFalse,
-        strictTrue: fermeManuelStrictTrue
-      });
-    }
+    // PRIORITÉ 2: Si ferme_manuellement = false ou null/undefined, vérifier les horaires normalement
+    // On ne force PAS l'ouverture si ferme_manuellement = false
+    // On vérifie simplement les horaires pour déterminer si le restaurant est ouvert
 
     // PRIORITÉ 3: Vérifier les horaires normalement
     // Les horaires sont vérifiés seulement si ferme_manuellement est null/undefined
@@ -760,26 +731,9 @@ export default function Home() {
         const openStatusMap = {};
         for (const restaurant of normalizedRestaurants) {
           try {
-            // FORCER l'ouverture si ferme_manuellement est explicitement false AVANT d'appeler checkRestaurantOpenStatus
-            // Cela garantit que même si la logique des horaires échoue, le restaurant reste ouvert
-            // Normaliser la valeur (gérer les cas où c'est une string "false" ou un boolean false)
-            const fermeManuelValue = restaurant.ferme_manuellement;
-            const isFermeManuelFalse = fermeManuelValue === false || 
-                                       fermeManuelValue === 'false' || 
-                                       fermeManuelValue === 0 ||
-                                       (typeof fermeManuelValue === 'string' && fermeManuelValue.toLowerCase() === 'false');
-            
-            if (isFermeManuelFalse && fermeManuelValue !== true && fermeManuelValue !== 'true') {
-              console.log(`[Restaurants] ${restaurant.nom} - FORCE OUVERT (ferme_manuellement = ${fermeManuelValue}, type: ${typeof fermeManuelValue}) - IGNORE HORAIRES`);
-              const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-              openStatusMap[restaurant.id] = {
-                isOpen: true,
-                isManuallyClosed: false,
-                hoursLabel: todayHoursLabel || 'Horaires non communiquées'
-              };
-              continue; // Passer au restaurant suivant
-            }
-            
+            // Vérifier le statut d'ouverture normalement (vérifie les horaires)
+            // Si ferme_manuellement = false, on vérifie quand même les horaires
+            // Seul ferme_manuellement = true force la fermeture
             const status = checkRestaurantOpenStatus(restaurant);
             // Calculer le label des horaires à partir des horaires du restaurant
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
