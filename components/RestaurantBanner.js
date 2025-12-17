@@ -44,7 +44,14 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
   return (
     <div className="relative w-full rounded-t-2xl sm:rounded-t-3xl">
       {/* Bannière principale */}
-      <div className="relative w-full h-64 sm:h-72 md:h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
+      <div 
+        className={`relative w-full bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden rounded-t-2xl sm:rounded-t-3xl ${
+          // Pour "La Bonne Pâte", réduire légèrement la hauteur
+          restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')
+            ? "h-56 sm:h-64 md:h-72"
+            : "h-64 sm:h-72 md:h-80"
+        }`}
+      >
       {/* Image de fond avec overlay */}
       <div className="absolute inset-0 w-full h-full">
         {restaurant.banner_image ? (
