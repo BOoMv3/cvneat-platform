@@ -331,11 +331,13 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
           }
 
           // Vérifier si on est dans cette plage horaire
+          // IMPORTANT: Utiliser <= pour la fermeture pour inclure l'heure exacte de fermeture
           let inPlage;
           if (isMidnightClose) {
             inPlage = currentTime >= openTime;
           } else {
-            inPlage = currentTime >= openTime && currentTime < closeTime;
+            // Utiliser <= pour inclure l'heure de fermeture (ex: si fermeture à 22:00, on est ouvert jusqu'à 22:00 inclus)
+            inPlage = currentTime >= openTime && currentTime <= closeTime;
           }
           
           console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Plage ${plage.ouverture}-${plage.fermeture}:`, {
@@ -375,11 +377,13 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       }
 
       // Vérifier si on est dans la plage horaire
+      // IMPORTANT: Utiliser <= pour la fermeture pour inclure l'heure exacte de fermeture
       let inPlage;
       if (isMidnightClose) {
         inPlage = currentTime >= openTime;
       } else {
-        inPlage = currentTime >= openTime && currentTime < closeTime;
+        // Utiliser <= pour inclure l'heure de fermeture (ex: si fermeture à 22:00, on est ouvert jusqu'à 22:00 inclus)
+        inPlage = currentTime >= openTime && currentTime <= closeTime;
       }
       
       console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires simples:`, {
