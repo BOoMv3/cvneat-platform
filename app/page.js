@@ -702,14 +702,34 @@ export default function Home() {
         // Vérifier le statut d'ouverture localement (sans appel API)
         const openStatusMap = {};
         for (const restaurant of normalizedRestaurants) {
-          const status = checkRestaurantOpenStatus(restaurant);
-          // Calculer le label des horaires à partir des horaires du restaurant
-          const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-          openStatusMap[restaurant.id] = {
-            isOpen: status.isOpen,
-            isManuallyClosed: status.isManuallyClosed,
-            hoursLabel: todayHoursLabel || 'Horaires non communiquées'
-          };
+          try {
+            const status = checkRestaurantOpenStatus(restaurant);
+            // Calculer le label des horaires à partir des horaires du restaurant
+            const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+            
+            // Log de debug pour les restaurants fermés (sauf fermeture manuelle)
+            if (!status.isOpen && status.reason !== 'manual') {
+              console.log(`[Restaurants] ${restaurant.nom} fermé - Raison: ${status.reason}`, {
+                ferme_manuellement: restaurant.ferme_manuellement,
+                hasHoraires: !!restaurant.horaires,
+                horairesType: typeof restaurant.horaires
+              });
+            }
+            
+            openStatusMap[restaurant.id] = {
+              isOpen: status.isOpen,
+              isManuallyClosed: status.isManuallyClosed,
+              hoursLabel: todayHoursLabel || 'Horaires non communiquées'
+            };
+          } catch (statusError) {
+            console.error(`[Restaurants] Erreur vérification statut pour ${restaurant.nom}:`, statusError);
+            // En cas d'erreur, considérer comme fermé
+            openStatusMap[restaurant.id] = {
+              isOpen: false,
+              isManuallyClosed: false,
+              hoursLabel: 'Horaires non communiquées'
+            };
+          }
         }
         setRestaurantsOpenStatus(openStatusMap);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
