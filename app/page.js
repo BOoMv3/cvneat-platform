@@ -258,14 +258,21 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
 
-    // Si explicitement fermé ce jour (seulement si ouvert === false strictement)
-    // MAIS si on a des plages horaires ou des horaires ouverture/fermeture, on les vérifie quand même
+    // IMPORTANT: Ne pas bloquer si ouvert === false si on a des horaires explicites
+    // Certains restaurants ont ouvert = false mais des plages horaires configurées
+    // On vérifie TOUJOURS les plages horaires si elles existent, peu importe la valeur de "ouvert"
     const hasExplicitHours = (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) || 
                              (heuresJour.ouverture && heuresJour.fermeture);
     
+    // Seulement si ouvert === false ET pas d'horaires explicites, on considère comme fermé
     if (heuresJour.ouvert === false && !hasExplicitHours) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Explicitement fermé aujourd'hui (ouvert = false, pas d'horaires)`);
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Explicitement fermé aujourd'hui (ouvert = false, pas d'horaires explicites)`);
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
+    }
+    
+    // Si ouvert === false mais qu'on a des horaires explicites, on continue la vérification
+    if (heuresJour.ouvert === false && hasExplicitHours) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ouvert = false mais horaires explicites présents, vérification des horaires...`);
     }
     
     // Log pour debug
