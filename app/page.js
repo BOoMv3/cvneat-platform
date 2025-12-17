@@ -340,7 +340,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
     return { isOpen: false, isManuallyClosed: false, reason: 'unknown' };
   } catch (e) {
-    console.warn('[checkRestaurantOpenStatus] Erreur:', e);
+    console.error('[checkRestaurantOpenStatus] Erreur pour restaurant:', restaurant?.nom || restaurant?.id, e);
+    // En cas d'erreur, considérer comme fermé pour éviter d'afficher des restaurants ouverts par erreur
     return { isOpen: false, isManuallyClosed: false, reason: 'error' };
   }
 };
