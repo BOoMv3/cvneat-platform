@@ -1,15 +1,24 @@
--- Vérifier le statut de "La Bonne Pâte"
+-- Script pour vérifier le statut de "La Bonne Pâte"
 SELECT 
   id,
   nom,
   ferme_manuellement,
-  horaires,
-  created_at
+  typeof(ferme_manuellement) as ferme_manuellement_type,
+  horaires->>'lundi' as horaires_lundi,
+  horaires->>'mardi' as horaires_mardi,
+  horaires->>'mercredi' as horaires_mercredi,
+  horaires->>'jeudi' as horaires_jeudi,
+  horaires->>'vendredi' as horaires_vendredi,
+  horaires->>'samedi' as horaires_samedi,
+  horaires->>'dimanche' as horaires_dimanche,
+  status,
+  created_at,
+  updated_at
 FROM restaurants
-WHERE LOWER(nom) LIKE '%bonne pâte%' OR LOWER(nom) LIKE '%bonne pate%'
-ORDER BY created_at DESC;
+WHERE nom ILIKE '%bonne pâte%' OR nom ILIKE '%bonne pate%'
+ORDER BY updated_at DESC;
 
--- Si ferme_manuellement est à true, le mettre à false
--- Décommentez la ligne suivante pour corriger :
--- UPDATE restaurants SET ferme_manuellement = false WHERE LOWER(nom) LIKE '%bonne pâte%' OR LOWER(nom) LIKE '%bonne pate%';
-
+-- Pour forcer l'ouverture (si nécessaire)
+-- UPDATE restaurants
+-- SET ferme_manuellement = FALSE, updated_at = NOW()
+-- WHERE nom ILIKE '%bonne pâte%' OR nom ILIKE '%bonne pate%';
