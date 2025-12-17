@@ -200,6 +200,7 @@ const formatStatusHoursLabel = (statusData, fallback) => {
 };
 
 // Fonction pour vérifier si un restaurant est ouvert (calcul local, pas d'API)
+// VERSION: 2025-12-17-12-20 - Corrections vérification horaires
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
     // Normaliser la valeur de ferme_manuellement (gérer les cas string, null, etc.)
