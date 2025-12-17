@@ -702,6 +702,8 @@ export default function Home() {
           throw new Error('Format de données invalide: la réponse n\'est pas un tableau');
         }
         
+        console.log('[Restaurants] Nombre de restaurants reçus:', data.length);
+        
         if (data.length === 0) {
           console.warn('[Restaurants] Aucun restaurant trouvé dans la réponse');
           setRestaurants([]);
@@ -712,6 +714,7 @@ export default function Home() {
         
         // Normaliser les restaurants avec gestion d'erreur pour chaque restaurant
         const normalizedRestaurants = [];
+        console.log('[Restaurants] Début normalisation de', data.length, 'restaurants');
         for (const restaurant of data) {
           try {
             // Vérifier que le restaurant a au moins un nom
@@ -725,6 +728,8 @@ export default function Home() {
               console.warn('[Restaurants] Restaurant ignoré (nom invalide):', restaurant.nom);
               continue;
             }
+            
+            console.log('[Restaurants] Normalisation OK pour:', restaurant.nom);
             
             const primaryImage =
               restaurant.profile_image ||
@@ -775,7 +780,7 @@ export default function Home() {
             };
             
             // Log pour "Le O Saona Tea" spécifiquement
-            if (normalizedName.includes('saona') || normalizedName.includes('o saona')) {
+            if (normalized.includes('saona') || normalized.includes('o saona')) {
               console.log(`[Restaurants] ${restaurant.nom} - Données normalisées:`, {
                 ferme_manuellement: normalizedRestaurant.ferme_manuellement,
                 ferme_manuellement_type: typeof normalizedRestaurant.ferme_manuellement,
@@ -791,7 +796,11 @@ export default function Home() {
           }
         }
 
-        console.log('[Restaurants] Restaurants normalisés:', normalizedRestaurants.length);
+        console.log('[Restaurants] Restaurants normalisés:', normalizedRestaurants.length, 'sur', data.length, 'reçus');
+        if (normalizedRestaurants.length === 0 && data.length > 0) {
+          console.error('[Restaurants] ⚠️ PROBLÈME: Aucun restaurant normalisé alors que', data.length, 'ont été reçus !');
+          console.error('[Restaurants] Premier restaurant reçu:', data[0]);
+        }
         setRestaurants(normalizedRestaurants);
         
         // Vérifier le statut d'ouverture pour chaque restaurant
