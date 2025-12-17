@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { cleanupExpiredOrders } from '../../../../../lib/orderCleanup';
 
 export async function POST(request, { params }) {
   try {
     const { orderId } = params;
     console.log('🔍 API accept-order appelée pour commande:', orderId);
+    
+    // Nettoyer les commandes expirées en arrière-plan (non bloquant)
+    cleanupExpiredOrders().catch(err => {
+      console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
+    });
     
     // Récupérer le token depuis les cookies ou headers
     const authHeader = request.headers.get('authorization');
