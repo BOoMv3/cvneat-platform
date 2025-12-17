@@ -48,19 +48,26 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       {/* Image de fond avec overlay */}
       <div className="absolute inset-0">
         {restaurant.banner_image ? (
-          <Image
-            src={restaurant.banner_image}
-            alt={restaurant.nom}
-            fill
-            className={
-              // Pour "La Bonne Pâte", utiliser object-contain pour afficher les néons comme bordures
-              restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')
-                ? "object-contain bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800"
-                : "object-cover"
-            }
-            priority
-            sizes="100vw"
-          />
+          // Pour "La Bonne Pâte", utiliser un style personnalisé pour préserver les néons
+          (restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')) ? (
+            <div 
+              className="w-full h-full bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url(${restaurant.banner_image})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            />
+          ) : (
+            <Image
+              src={restaurant.banner_image}
+              alt={restaurant.nom}
+              fill
+              className="object-cover"
+              priority
+              sizes="100vw"
+            />
+          )
         ) : restaurant.profile_image ? (
           <Image
             src={restaurant.profile_image}
@@ -85,14 +92,10 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       </div>
 
       {/* Overlay sombre - Plus sombre en bas pour améliorer la visibilité du texte */}
-      {/* Pour "La Bonne Pâte", overlay plus léger pour préserver les néons */}
-      <div 
-        className={`absolute inset-0 ${
-          restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')
-            ? "bg-gradient-to-b from-black/10 via-black/15 to-black/30"
-            : "bg-gradient-to-b from-black/30 via-black/40 to-black/60"
-        }`} 
-      />
+      {/* Pour "La Bonne Pâte", overlay très léger ou aucun overlay pour préserver les néons */}
+      {!(restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')) && (
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/60" />
+      )}
 
       {/* Header avec bouton favoris seulement */}
       <div className="relative z-20 flex justify-end items-start p-2 sm:p-3 md:p-4">
