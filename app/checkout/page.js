@@ -59,12 +59,25 @@ function computeCartTotalWithExtras(items = []) {
     let itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
     const itemQuantity = parseInt(item?.quantity ?? 1, 10);
     
-    // IMPORTANT: Ajouter le prix de la boisson si présente (pour les menus)
-    // Les boissons des menus ne sont pas incluses dans item.prix, elles sont ajoutées séparément
-    if (item.selected_drink && item.selected_drink.prix) {
+    // IMPORTANT: Pour les menus et formules, la boisson est INCLUSE dans le prix
+    // Ne PAS ajouter le prix de la boisson car elle est déjà comprise dans item.prix
+    // La boisson sera ajoutée avec prix_unitaire: 0 dans l'API orders
+    // On vérifie si c'est un menu ou une formule pour ne pas ajouter le prix de la boisson
+    const isMenuOrFormula = item.is_formula || 
+                            (item.category?.toLowerCase().includes('menu') || 
+                             item.nom?.toLowerCase().includes('menu') ||
+                             (item.drink_options && item.drink_options.length > 0));
+    
+    if (item.selected_drink && isMenuOrFormula) {
+      // Pour les menus/formules, la boisson est incluse, ne pas ajouter son prix
+      console.log('💰 Boisson détectée mais NON ajoutée au calcul (incluse dans le menu/formule):', item.selected_drink.nom || 'Boisson');
+    } else if (item.selected_drink && item.selected_drink.prix && !isMenuOrFormula) {
+      // Pour les autres cas (non-menu), ajouter le prix de la boisson si elle a un prix
       const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
-      itemPrice += drinkPrice;
-      console.log('💰 Boisson ajoutée au calcul:', item.selected_drink.nom || 'Boisson', drinkPrice, '€');
+      if (drinkPrice > 0) {
+        itemPrice += drinkPrice;
+        console.log('💰 Boisson ajoutée au calcul (non-menu):', item.selected_drink.nom || 'Boisson', drinkPrice, '€');
+      }
     }
     
     console.log('💰 Article:', item.nom, 'Prix unitaire (avec boisson):', itemPrice, 'Quantité:', itemQuantity);
