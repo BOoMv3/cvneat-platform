@@ -202,8 +202,15 @@ const formatStatusHoursLabel = (statusData, fallback) => {
 // Fonction pour vérifier si un restaurant est ouvert (calcul local, pas d'API)
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
-    // Log de debug pour voir la valeur exacte de ferme_manuellement
-    const fermeManuel = restaurant.ferme_manuellement;
+    // Normaliser la valeur de ferme_manuellement (gérer les cas string, null, etc.)
+    let fermeManuel = restaurant.ferme_manuellement;
+    
+    // Convertir les chaînes en booléens si nécessaire
+    if (typeof fermeManuel === 'string') {
+      fermeManuel = fermeManuel.toLowerCase() === 'true' || fermeManuel === '1';
+    }
+    
+    // Log de debug pour voir la valeur exacte
     const fermeManuelType = typeof fermeManuel;
     const fermeManuelStrictFalse = fermeManuel === false;
     const fermeManuelStrictTrue = fermeManuel === true;
@@ -219,19 +226,22 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     // PRIORITÉ 2: Si ouvert manuellement (ferme_manuellement = false)
     // Si le restaurant est explicitement ouvert manuellement, il est toujours ouvert
     // (ignore les horaires)
+    // IMPORTANT: Vérifier strictement === false (pas null, pas undefined)
     if (fermeManuelStrictFalse) {
       console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT manuellement (ferme_manuellement = false)`, {
-        ferme_manuellement: fermeManuel,
+        ferme_manuellement_original: restaurant.ferme_manuellement,
+        ferme_manuellement_normalized: fermeManuel,
         type: fermeManuelType,
         strictFalse: fermeManuelStrictFalse
       });
       return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
     }
     
-    // Log si la valeur n'est ni true ni false
+    // Log si la valeur n'est ni true ni false (pour debug)
     if (fermeManuel !== null && fermeManuel !== undefined) {
       console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ferme_manuellement valeur inattendue:`, {
-        valeur: fermeManuel,
+        valeur_originale: restaurant.ferme_manuellement,
+        valeur_normalized: fermeManuel,
         type: fermeManuelType,
         strictFalse: fermeManuelStrictFalse,
         strictTrue: fermeManuelStrictTrue
