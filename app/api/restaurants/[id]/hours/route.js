@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Créer un client admin pour bypasser RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // GET - Récupérer les horaires d'un restaurant au format lisible
 export async function GET(request, { params }) {
   try {
     const { id } = params;
 
-    const { data: restaurant, error } = await supabase
+    const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
       .select('horaires, ferme_manuellement')
       .eq('id', id)
@@ -95,7 +101,7 @@ export async function POST(request, { params }) {
     
     const checkDate = body.date ? new Date(body.date) : new Date();
 
-    const { data: restaurant, error } = await supabase
+    const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
       .select('horaires, ferme_manuellement')
       .eq('id', id)
