@@ -17,16 +17,30 @@ export default function LoginPage() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔐 handleLogin appelé', { email: email ? 'présent' : 'vide', password: password ? 'présent' : 'vide' });
+    
+    if (!email || !password) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+    
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       console.log('🔐 Tentative de connexion pour:', email);
+      console.log('🔐 Supabase client disponible:', !!supabase);
+      console.log('🔐 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Défini' : 'MANQUANT');
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
       });
+      
+      console.log('🔐 Réponse Supabase:', { hasData: !!data, hasError: !!error, error: error?.message });
 
       if (error) {
         console.error('❌ Erreur de connexion:', error);
@@ -180,8 +194,15 @@ export default function LoginPage() {
             <div>
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                disabled={loading || !email || !password}
+                onClick={(e) => {
+                  console.log('🔐 Bouton cliqué', { loading, email: !!email, password: !!password });
+                  if (!email || !password) {
+                    e.preventDefault();
+                    setError('Veuillez remplir tous les champs');
+                  }
+                }}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Connexion...' : 'Se connecter'}
               </button>
