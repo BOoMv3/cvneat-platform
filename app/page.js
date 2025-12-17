@@ -401,9 +401,19 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
     // Si ouvert est true mais pas d'horaires précis, considérer comme ouvert
     if (heuresJour.ouvert === true) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ✅ OUVERT (ouvert = true, pas d'horaires précis)`);
       return { isOpen: true, isManuallyClosed: false, reason: 'open_no_hours' };
     }
 
+    // Si on arrive ici sans avoir trouvé de plages horaires ni d'horaires simples,
+    // mais qu'on a des horaires pour ce jour, considérer comme ouvert par défaut
+    // (pour éviter de fermer des restaurants qui ont des horaires mal configurés)
+    if (heuresJour && heuresJour.ouvert !== false) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ⚠️ Statut incertain, considéré OUVERT par défaut (heuresJour présent, ouvert != false)`);
+      return { isOpen: true, isManuallyClosed: false, reason: 'open_default' };
+    }
+
+    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ❌ FERMÉ (raison: unknown)`);
     return { isOpen: false, isManuallyClosed: false, reason: 'unknown' };
   } catch (e) {
     console.error('[checkRestaurantOpenStatus] Erreur pour restaurant:', restaurant?.nom || restaurant?.id, e);
