@@ -221,6 +221,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     // PRIORITÉ 2: Si ferme_manuellement = false ou null/undefined, vérifier les horaires normalement
     // On ne force PAS l'ouverture si ferme_manuellement = false
     // On vérifie simplement les horaires pour déterminer si le restaurant est ouvert
+    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Vérification horaires (ferme_manuellement = ${fermeManuel})`);
 
     // PRIORITÉ 3: Vérifier les horaires normalement
     // Les horaires sont vérifiés seulement si ferme_manuellement est null/undefined
