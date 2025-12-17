@@ -114,7 +114,15 @@ export async function POST(request, { params }) {
     // PRIORITÉ 1: Vérifier si fermé manuellement (ferme_manuellement = true)
     // Si le restaurant est explicitement fermé manuellement, il est toujours fermé
     // (ignore les horaires)
-    if (restaurant.ferme_manuellement === true) {
+    // Normaliser ferme_manuellement pour gérer tous les cas (true, 'true', '1', 1, etc.)
+    const fermeManuel = restaurant.ferme_manuellement;
+    const isManuallyClosed = fermeManuel === true || 
+                             fermeManuel === 'true' || 
+                             fermeManuel === '1' || 
+                             fermeManuel === 1;
+    
+    if (isManuallyClosed) {
+      console.log(`🔴 Restaurant ${id} - FERMÉ manuellement (ferme_manuellement = ${fermeManuel})`);
       return NextResponse.json({
         isOpen: false,
         message: 'Restaurant fermé manuellement',
@@ -123,10 +131,9 @@ export async function POST(request, { params }) {
     }
 
     // PRIORITÉ 2: Si ferme_manuellement = false ou null/undefined, vérifier les horaires normalement
-    // On ne force PAS l'ouverture si ferme_manuellement = false
-    // On vérifie simplement les horaires pour déterminer si le restaurant est ouvert
-
-    // Les horaires sont TOUJOURS respectés, sauf en cas de fermeture manuelle
+    // IMPORTANT: Quand ferme_manuellement = false, cela signifie "vérifier les horaires automatiquement"
+    // Le restaurant s'ouvrira/fermera automatiquement selon ses horaires configurés
+    console.log(`✅ Restaurant ${id} - Vérification automatique des horaires (ferme_manuellement = ${fermeManuel})`);
 
     // Vérifier les horaires
     let horaires = restaurant.horaires || {};
