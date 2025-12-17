@@ -209,8 +209,15 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
-    // PRIORITÉ 2: Vérifier les horaires normalement
-    // Les horaires sont TOUJOURS respectés, sauf en cas de fermeture manuelle
+    // PRIORITÉ 2: Si ouvert manuellement (ferme_manuellement = false)
+    // Si le restaurant est explicitement ouvert manuellement, il est toujours ouvert
+    // (ignore les horaires)
+    if (restaurant.ferme_manuellement === false) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'manually_opened' };
+    }
+
+    // PRIORITÉ 3: Vérifier les horaires normalement
+    // Les horaires sont vérifiés seulement si ferme_manuellement est null/undefined
     let horaires = restaurant.horaires;
     if (!horaires) {
       // Pas d'horaires = restaurant fermé par défaut

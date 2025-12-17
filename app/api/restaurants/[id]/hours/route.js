@@ -105,7 +105,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Vérifier si fermé manuellement
+    // PRIORITÉ 1: Vérifier si fermé manuellement (ferme_manuellement = true)
     // Si le restaurant est explicitement fermé manuellement, il est toujours fermé
     // (ignore les horaires)
     if (restaurant.ferme_manuellement === true) {
@@ -113,6 +113,17 @@ export async function POST(request, { params }) {
         isOpen: false,
         message: 'Restaurant fermé manuellement',
         reason: 'manual'
+      });
+    }
+
+    // PRIORITÉ 2: Si ouvert manuellement (ferme_manuellement = false)
+    // Si le restaurant est explicitement ouvert manuellement, il est toujours ouvert
+    // (ignore les horaires)
+    if (restaurant.ferme_manuellement === false) {
+      return NextResponse.json({
+        isOpen: true,
+        message: 'Restaurant ouvert manuellement',
+        reason: 'manually_opened'
       });
     }
 
