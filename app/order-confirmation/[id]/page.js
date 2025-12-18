@@ -127,10 +127,15 @@ export default function OrderConfirmation() {
         const data = await response.json();
         if (!isMounted) return;
         
-        // Vérifier si le paiement a échoué
-        if (data.payment_status === 'failed' || data.payment_status === 'canceled' || 
+        // Vérifier si le paiement a échoué ou a été remboursé
+        if (data.payment_status === 'failed' || data.payment_status === 'canceled' || data.payment_status === 'refunded' ||
             (data.statut === 'annulee' && data.payment_status !== 'paid' && data.payment_status !== 'succeeded')) {
-          setError('Le paiement de cette commande a échoué. Veuillez retourner au panier pour réessayer.');
+          
+          if (data.payment_status === 'refunded') {
+            setError('Cette commande a été annulée et remboursée intégralement. Le montant sera visible sur votre compte dans 2-5 jours.');
+          } else {
+            setError('Le paiement de cette commande a échoué. Veuillez retourner au panier pour réessayer.');
+          }
           setLoading(false);
           return;
         }
@@ -421,9 +426,15 @@ export default function OrderConfirmation() {
         <div className="max-w-2xl mx-auto px-4 py-12">
           <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
             <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FaCheck className="h-12 w-12 text-red-500" />
+              {error?.includes('remboursée') ? (
+                <FaCreditCard className="h-12 w-12 text-red-500" />
+              ) : (
+                <FaCheck className="h-12 w-12 text-red-500" />
+              )}
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Commande non trouvée</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              {error?.includes('remboursée') ? 'Commande Remboursée' : 'Commande non trouvée'}
+            </h1>
             <p className="text-gray-600 mb-6">{error || 'Impossible de récupérer les détails de votre commande.'}</p>
             <button
               onClick={() => router.push('/')}

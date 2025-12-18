@@ -69,6 +69,15 @@ export async function POST(request, { params }) {
         { status: 400 }
       );
     }
+
+    // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
+    if (order.statut === 'annulee' || order.payment_status === 'refunded') {
+      return NextResponse.json({ 
+        error: 'Cette commande a été annulée ou remboursée et n\'est plus active',
+        statut: order.statut,
+        payment_status: order.payment_status
+      }, { status: 400 });
+    }
     
     // Vérifier que le livreur est bien assigné à cette commande
     if (order.livreur_id !== user.id) {

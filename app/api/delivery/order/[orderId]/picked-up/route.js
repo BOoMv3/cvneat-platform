@@ -48,12 +48,21 @@ export async function POST(request, { params }) {
     // Vérifier que la commande existe et appartient à ce livreur
     const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
-      .select('id, statut, livreur_id')
+      .select('id, statut, livreur_id, payment_status')
       .eq('id', orderId)
       .single();
 
     if (orderError || !order) {
       return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+    }
+
+    // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
+    if (order.statut === 'annulee' || order.payment_status === 'refunded') {
+      return NextResponse.json({ 
+        error: 'Cette commande a été annulée ou remboursée et n\'est plus active',
+        statut: order.statut,
+        payment_status: order.payment_status
+      }, { status: 400 });
     }
 
     if (order.livreur_id !== user.id) {

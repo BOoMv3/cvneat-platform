@@ -73,6 +73,16 @@ export async function PUT(request, { params }) {
 
     console.log('✅ Commande trouvée:', order.id, 'restaurant_id:', order.restaurant_id);
 
+    // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
+    if (order.statut === 'annulee' || order.payment_status === 'refunded') {
+      console.log('❌ Tentative de modification d\'une commande annulée ou remboursée:', { id, statut: order.statut, payment: order.payment_status });
+      return NextResponse.json({ 
+        error: 'Cette commande a été annulée ou remboursée et ne peut plus être modifiée',
+        statut: order.statut,
+        payment_status: order.payment_status
+      }, { status: 400 });
+    }
+
     // Vérifier que la commande appartient à ce restaurant
     const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from('restaurants')

@@ -61,6 +61,16 @@ export async function POST(request, { params }) {
       restaurant_id: order.restaurant_id
     });
 
+    // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
+    if (order.statut === 'annulee' || order.payment_status === 'refunded') {
+      console.log('❌ Tentative d\'acceptation d\'une commande annulée ou remboursée:', { orderId, statut: order.statut, payment: order.payment_status });
+      return NextResponse.json({ 
+        error: 'Cette commande a été annulée ou remboursée et n\'est plus disponible',
+        statut: order.statut,
+        payment_status: order.payment_status
+      }, { status: 400 });
+    }
+
     // Vérifier que la commande n'est pas déjà acceptée par un autre livreur
     if (order.livreur_id && order.livreur_id !== user.id) {
       return NextResponse.json({ error: 'Commande déjà acceptée par un autre livreur' }, { status: 409 });
