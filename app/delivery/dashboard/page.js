@@ -1390,8 +1390,8 @@ export default function DeliveryDashboard() {
                         </div>
                         
                         <div className="mt-4 lg:mt-0 lg:ml-6 flex flex-col gap-2">
-                          {(order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') ? (
-                            // Commande prête ou en préparation, livreur peut accepter
+                          {(order.statut === 'en_attente' || order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') ? (
+                            // Dans le nouveau workflow, le livreur accepte les commandes 'en_attente'
                             <button
                               onClick={() => acceptOrder(order.id)}
                               className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg text-sm min-h-[44px] touch-manipulation"
