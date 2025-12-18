@@ -50,11 +50,10 @@ export async function GET(request) {
     );
 
     // Récupérer les commandes disponibles pour livraison
-    // NOUVEAU WORKFLOW: Les livreurs voient les commandes en statut 'en_attente' (AVANT l'acceptation restaurant)
-    // - avec statut='en_attente' (commande créée, en attente de livreur)
+    // NOUVEAU WORKFLOW: Les livreurs voient les commandes qui n'ont pas encore de livreur
+    // - avec statut='en_attente' OU 'en_preparation' OU 'pret_a_livrer'
     // - avec livreur_id null (pas encore assignées)
     // - avec payment_status='paid' ou 'succeeded' (paiement validé)
-    // Les livreurs doivent accepter AVANT que le restaurant puisse préparer la commande
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
@@ -62,7 +61,7 @@ export async function GET(request) {
         restaurant:restaurants(nom, adresse, telephone, frais_livraison),
         users(id, nom, prenom, telephone, email)
       `)
-      .eq('statut', 'en_attente') // Commandes en attente (nouveau workflow: livreur d'abord)
+      .in('statut', ['en_attente', 'en_preparation', 'pret_a_livrer']) // Inclure les commandes acceptées par le resto mais sans livreur
       .is('livreur_id', null) // Pas encore assignées à un livreur
       .in('payment_status', ['paid', 'succeeded']) // Paiement validé
       .order('created_at', { ascending: true });

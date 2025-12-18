@@ -67,14 +67,15 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier que la commande est dans un statut acceptable
-    // NOUVEAU WORKFLOW: Les livreurs acceptent les commandes 'en_attente' (AVANT le restaurant)
-    // Le statut reste 'en_attente' mais livreur_id est assigné
-    // Le restaurant pourra ensuite accepter et passer à 'en_preparation'
-    if (order.statut !== 'en_attente') {
+    // NOUVEAU WORKFLOW: Les livreurs peuvent accepter les commandes 'en_attente', 'en_preparation' ou 'pret_a_livrer'
+    // - Si 'en_attente': livreur_id est assigné, statut reste 'en_attente' (le resto accepte ensuite)
+    // - Si 'en_preparation' ou 'pret_a_livrer': livreur_id est assigné, statut passe à 'en_livraison'
+    const allowedStatuses = ['en_attente', 'en_preparation', 'pret_a_livrer'];
+    if (!allowedStatuses.includes(order.statut)) {
       console.log('❌ Statut commande non acceptable pour livreur:', order.statut);
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
-        details: `Statut actuel: ${order.statut}. Seules les commandes en attente peuvent être acceptées par un livreur.` 
+        details: `Statut actuel: ${order.statut}. Seules les commandes en attente, en préparation ou prêtes peuvent être acceptées.` 
       }, { status: 400 });
     }
 
@@ -87,18 +88,25 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // Accepter la commande - assigner le livreur mais garder le statut 'en_attente'
-    // Le restaurant devra ensuite accepter pour passer à 'en_preparation'
-    console.log('📤 Acceptation commande par livreur (nouveau workflow):', {
+    // Déterminer le nouveau statut
+    // Si la commande était déjà en préparation ou prête, on peut la passer en livraison
+    let nextStatus = order.statut;
+    if (order.statut === 'en_preparation' || order.statut === 'pret_a_livrer') {
+      nextStatus = 'en_livraison';
+    }
+
+    // Accepter la commande
+    console.log('📤 Acceptation commande par livreur:', {
       orderId,
       livreur_id: user.id,
-      statut: 'en_attente' // On garde 'en_attente' jusqu'à ce que le restaurant accepte
+      oldStatut: order.statut,
+      newStatut: nextStatus
     });
     
     const updatePayload = {
       livreur_id: user.id,
+      statut: nextStatus,
       updated_at: new Date().toISOString()
-      // On ne change PAS le statut, il reste 'en_attente' jusqu'à l'acceptation restaurant
     };
 
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
