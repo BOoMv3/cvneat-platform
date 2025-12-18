@@ -204,42 +204,29 @@ const formatStatusHoursLabel = (statusData, fallback) => {
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
     // PRIORITÉ 1: Vérifier si fermé manuellement (ferme_manuellement = true)
-    // Si le restaurant est explicitement fermé manuellement, il est toujours fermé
-    // (ignore les horaires)
-    // Normaliser ferme_manuellement pour gérer tous les cas (true, 'true', '1', 1, etc.)
-    const fermeManuel = restaurant.ferme_manuellement;
+    let fermeManuel = restaurant.ferme_manuellement;
+    if (typeof fermeManuel === 'string') {
+      fermeManuel = fermeManuel.toLowerCase() === 'true' || fermeManuel === '1';
+    }
+
     const isManuallyClosed = fermeManuel === true || 
                              fermeManuel === 'true' || 
                              fermeManuel === '1' || 
                              fermeManuel === 1;
     
     if (isManuallyClosed) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = ${fermeManuel})`);
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
     
-    // PRIORITÉ 2: Si ferme_manuellement = false ou null/undefined, vérifier les horaires normalement
-    // IMPORTANT: Quand ferme_manuellement = false, cela signifie "vérifier les horaires automatiquement"
-    // Le restaurant s'ouvrira/fermera automatiquement selon ses horaires configurés
-    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Vérification automatique des horaires (ferme_manuellement = ${fermeManuel})`);
-
-    // PRIORITÉ 3: Vérifier les horaires normalement
-    // Les horaires sont vérifiés seulement si ferme_manuellement est null/undefined
+    // PRIORITÉ 2: Vérifier les horaires
     let horaires = restaurant.horaires;
-    if (!horaires) {
-      // Pas d'horaires = restaurant fermé par défaut
-      return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
-    }
+    if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
     if (typeof horaires === 'string') {
-      try {
-        horaires = JSON.parse(horaires);
-      } catch {
-        return { isOpen: false, isManuallyClosed: false, reason: 'parse_error' };
-      }
+      try { horaires = JSON.parse(horaires); } catch { return { isOpen: false, isManuallyClosed: false, reason: 'parse_error' }; }
     }
 
-    // Obtenir le jour actuel en français
     const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
     const todayName = todayFormatter.format(new Date()).toLowerCase();
     const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
@@ -252,42 +239,13 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       }
     }
 
-    // Si le jour n'a pas d'horaires configurés
-    if (!heuresJour) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Pas d'horaires pour aujourd'hui (${todayName})`);
-      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    }
+    if (!heuresJour) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
 
-    // IMPORTANT: Si on a des horaires explicites (plages ou ouverture/fermeture), 
-    // on IGNORE complètement le flag "ouvert" et on vérifie uniquement les heures
-    // C'est la logique la plus fiable et automatique
-    const hasPlages = Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0;
-    const hasExplicitHours = hasPlages || (heuresJour.ouverture && heuresJour.fermeture);
-    
-    // Seulement si pas d'horaires explicites ET ouvert === false, on considère comme fermé
-    if (!hasExplicitHours && heuresJour.ouvert === false) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Fermé (ouvert = false, pas d'horaires explicites)`);
-      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    }
-    
-    // Si on a des horaires explicites, on IGNORE le flag "ouvert" et on vérifie uniquement les heures
-    // Cette logique garantit que les restaurants avec des horaires configurés sont ouverts automatiquement
-    // selon leurs horaires, sans nécessiter d'intervention manuelle quotidienne
-    if (hasExplicitHours) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires explicites présents, IGNORE flag "ouvert" (${heuresJour.ouvert}), vérification automatique des heures...`);
-    }
-    
-    // Log pour debug
-    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires pour ${todayName}:`, {
-      ouvert: heuresJour.ouvert,
-      hasPlages: Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0,
-      plagesCount: heuresJour.plages?.length,
-      ouverture: heuresJour.ouverture,
-      fermeture: heuresJour.fermeture,
-      hasExplicitHours: hasExplicitHours
-    });
+    // S'il y a des horaires, on considère qu'il est ouvert par défaut (le flag ouvert est secondaire)
+    const hasExplicitHours = (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) || 
+                             (heuresJour.ouverture && heuresJour.fermeture);
 
-    // Obtenir l'heure actuelle en heure française (Europe/Paris)
+    // Obtenir l'heure actuelle à Paris
     const now = new Date();
     const frTime = now.toLocaleString('fr-FR', { 
       timeZone: 'Europe/Paris',
@@ -298,130 +256,42 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     const [currentHours, currentMinutes] = frTime.split(':').map(Number);
     const currentTime = currentHours * 60 + currentMinutes;
 
-    // Fonction helper pour parser les heures
     const parseTime = (timeStr) => {
       if (!timeStr) return null;
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      let totalMinutes = hours * 60 + minutes;
-      // Si c'est 00:00 (minuit), on le traite comme 24:00 (1440 minutes) pour la fermeture
-      if (totalMinutes === 0 && hours === 0 && minutes === 0) {
-        totalMinutes = 24 * 60; // 1440 minutes = minuit de la journée suivante
-      }
-      return totalMinutes;
+      const [h, m] = timeStr.split(':').map(Number);
+      let tot = h * 60 + m;
+      if (tot === 0 && h === 0 && m === 0) tot = 1440; // Minuit = 24h
+      return tot;
     };
 
-    // Vérifier les plages horaires multiples
+    // Vérifier les plages
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Vérification ${heuresJour.plages.length} plage(s) horaire(s)`, {
-        currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
-        currentTimeMinutes: currentTime
-      });
-      
       for (const plage of heuresJour.plages) {
-        if (plage?.ouverture && plage?.fermeture) {
-          const openTime = parseTime(plage.ouverture);
-          let closeTime = parseTime(plage.fermeture);
-          
-          if (openTime === null || closeTime === null) {
-            console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Plage invalide: ${plage.ouverture} - ${plage.fermeture}`);
-            continue;
-          }
-
-          // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00
-          const isMidnightClose = plage.fermeture === '00:00' || plage.fermeture === '0:00';
-          if (isMidnightClose) {
-            closeTime = 24 * 60; // 1440 minutes
-          }
-
-          // Vérifier si on est dans cette plage horaire
-          // IMPORTANT: Utiliser <= pour la fermeture pour inclure l'heure exacte de fermeture
-          let inPlage;
-          if (isMidnightClose) {
-            inPlage = currentTime >= openTime;
-          } else {
-            // Utiliser <= pour inclure l'heure de fermeture (ex: si fermeture à 22:00, on est ouvert jusqu'à 22:00 inclus)
-            inPlage = currentTime >= openTime && currentTime <= closeTime;
-          }
-          
-          console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Plage ${plage.ouverture}-${plage.fermeture}:`, {
-            openTimeMinutes: openTime,
-            closeTimeMinutes: closeTime,
-            currentTimeMinutes: currentTime,
-            inPlage: inPlage
-          });
-          
-          if (inPlage) {
-            console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ✅ OUVERT (dans la plage ${plage.ouverture}-${plage.fermeture})`);
-            return { isOpen: true, isManuallyClosed: false, reason: 'open' };
-          }
+        const start = parseTime(plage.ouverture);
+        const end = parseTime(plage.fermeture);
+        if (start !== null && end !== null && currentTime >= start && currentTime <= end) {
+          return { isOpen: true, isManuallyClosed: false, reason: 'open' };
         }
       }
-      // Hors des heures d'ouverture
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ❌ FERMÉ (hors des plages horaires)`);
-      return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
+      return { isOpen: false, isManuallyClosed: false, reason: 'outside_plages' };
     }
 
-    // Vérifier les horaires simples
+    // Vérifier horaires simples
     if (heuresJour.ouverture && heuresJour.fermeture) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Vérification horaires simples: ${heuresJour.ouverture}-${heuresJour.fermeture}`);
-      
-      const openTime = parseTime(heuresJour.ouverture);
-      let closeTime = parseTime(heuresJour.fermeture);
-      
-      if (openTime === null || closeTime === null) {
-        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires invalides: ${heuresJour.ouverture} - ${heuresJour.fermeture}`);
-        return { isOpen: false, isManuallyClosed: false, reason: 'invalid_hours' };
-      }
-
-      // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00
-      const isMidnightClose = heuresJour.fermeture === '00:00' || heuresJour.fermeture === '0:00';
-      if (isMidnightClose) {
-        closeTime = 24 * 60; // 1440 minutes
-      }
-
-      // Vérifier si on est dans la plage horaire
-      // IMPORTANT: Utiliser <= pour la fermeture pour inclure l'heure exacte de fermeture
-      let inPlage;
-      if (isMidnightClose) {
-        inPlage = currentTime >= openTime;
-      } else {
-        // Utiliser <= pour inclure l'heure de fermeture (ex: si fermeture à 22:00, on est ouvert jusqu'à 22:00 inclus)
-        inPlage = currentTime >= openTime && currentTime <= closeTime;
-      }
-      
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Horaires simples:`, {
-        openTimeMinutes: openTime,
-        closeTimeMinutes: closeTime,
-        currentTimeMinutes: currentTime,
-        currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
-        inPlage: inPlage
-      });
-      
-      if (inPlage) {
-        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ✅ OUVERT (dans les horaires ${heuresJour.ouverture}-${heuresJour.fermeture})`);
+      const start = parseTime(heuresJour.ouverture);
+      const end = parseTime(heuresJour.fermeture);
+      if (start !== null && end !== null && currentTime >= start && currentTime <= end) {
         return { isOpen: true, isManuallyClosed: false, reason: 'open' };
       }
-      // Hors des heures d'ouverture
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ❌ FERMÉ (hors des horaires ${heuresJour.ouverture}-${heuresJour.fermeture})`);
       return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
     }
 
-    // Si ouvert est true mais pas d'horaires précis, considérer comme ouvert
+    // Fallback sur le flag ouvert si pas d'heures précises
     if (heuresJour.ouvert === true) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ✅ OUVERT (ouvert = true, pas d'horaires précis)`);
-      return { isOpen: true, isManuallyClosed: false, reason: 'open_no_hours' };
+      return { isOpen: true, isManuallyClosed: false, reason: 'open_flag' };
     }
 
-    // Si on arrive ici sans avoir trouvé de plages horaires ni d'horaires simples,
-    // mais qu'on a des horaires pour ce jour, considérer comme ouvert par défaut
-    // (pour éviter de fermer des restaurants qui ont des horaires mal configurés)
-    if (heuresJour && heuresJour.ouvert !== false) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ⚠️ Statut incertain, considéré OUVERT par défaut (heuresJour présent, ouvert != false)`);
-      return { isOpen: true, isManuallyClosed: false, reason: 'open_default' };
-    }
-
-    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - ❌ FERMÉ (raison: unknown)`);
-    return { isOpen: false, isManuallyClosed: false, reason: 'unknown' };
+    return { isOpen: false, isManuallyClosed: false, reason: 'closed' };
   } catch (e) {
     console.error('[checkRestaurantOpenStatus] Erreur pour restaurant:', restaurant?.nom || restaurant?.id, e);
     // En cas d'erreur, considérer comme fermé pour éviter d'afficher des restaurants ouverts par erreur
