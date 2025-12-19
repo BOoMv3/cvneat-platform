@@ -751,7 +751,7 @@ export default function OrderConfirmation() {
               </div>
 
               {/* Informations du livreur */}
-              {orderData.delivery_driver && (
+              {orderData.delivery_driver && orderData.delivery_driver.full_name && (
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm border border-green-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">🚴 Votre livreur</h3>
                   <div className="space-y-3">
@@ -765,7 +765,7 @@ export default function OrderConfirmation() {
                       </div>
                     </div>
                     
-                    {orderData.delivery_driver.telephone && (
+                    {orderData.delivery_driver.telephone && orderData.delivery_driver.telephone !== '0000000000' && orderData.delivery_driver.telephone.trim() !== '' && (
                       <div className="flex items-center space-x-3">
                         <FaPhone className="h-5 w-5 text-green-600" />
                         <div>
@@ -777,6 +777,11 @@ export default function OrderConfirmation() {
                           </a>
                           <p className="text-sm text-gray-600">Une question sur votre livraison ? Contactez votre livreur</p>
                         </div>
+                      </div>
+                    )}
+                    {(!orderData.delivery_driver.telephone || orderData.delivery_driver.telephone === '0000000000' || orderData.delivery_driver.telephone.trim() === '') && (
+                      <div className="text-sm text-gray-500 italic">
+                        Le numéro de téléphone du livreur n'est pas disponible. Contactez le support en cas de problème.
                       </div>
                     )}
                   </div>
