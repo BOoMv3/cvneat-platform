@@ -173,6 +173,38 @@ export async function GET(request) {
       ordersError = ordersErrorData;
       orders = ordersData || [];
       
+      // Récupérer les informations des livreurs pour les commandes qui ont un livreur_id
+      if (orders.length > 0) {
+        const livreurIds = [...new Set(orders.map(o => o.livreur_id).filter(Boolean))];
+        if (livreurIds.length > 0) {
+          try {
+            const { data: livreursData, error: livreursError } = await supabaseAdmin
+              .from('users')
+              .select('id, prenom, nom, telephone')
+              .in('id', livreurIds);
+            
+            if (!livreursError && livreursData && livreursData.length > 0) {
+              // Créer un map pour accéder rapidement aux infos du livreur
+              const livreursMap = new Map(livreursData.map(l => [l.id, {
+                id: l.id,
+                prenom: l.prenom,
+                nom: l.nom,
+                telephone: l.telephone,
+                full_name: `${l.prenom || ''} ${l.nom || ''}`.trim()
+              }]));
+              
+              // Ajouter les infos du livreur à chaque commande
+              orders = orders.map(order => ({
+                ...order,
+                delivery_driver: order.livreur_id ? livreursMap.get(order.livreur_id) || null : null
+              }));
+            }
+          } catch (livreursFetchError) {
+            console.warn('⚠️ Erreur récupération infos livreurs (non bloquant):', livreursFetchError);
+          }
+        }
+      }
+      
       // Log pour debug des détails de commande
       if (orders.length > 0) {
         console.log(`✅ ${orders.length} commandes récupérées depuis BDD`);

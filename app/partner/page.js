@@ -2500,6 +2500,29 @@ export default function PartnerDashboard() {
                             </div>
                           )}
                           
+                          {/* Informations du livreur */}
+                          {order.delivery_driver && order.delivery_driver.full_name && (
+                            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900 rounded border border-green-200 dark:border-green-700">
+                              <h4 className="text-sm font-semibold text-green-900 dark:text-green-200 mb-2">🚴 Livreur assigné</h4>
+                              <div className="space-y-1">
+                                <p className="text-sm text-green-800 dark:text-green-300">
+                                  <span className="font-medium">Nom :</span> {order.delivery_driver.full_name}
+                                </p>
+                                {order.delivery_driver.telephone && order.delivery_driver.telephone !== '0000000000' && order.delivery_driver.telephone.trim() !== '' && (
+                                  <p className="text-sm text-green-800 dark:text-green-300">
+                                    <span className="font-medium">Téléphone :</span>{' '}
+                                    <a 
+                                      href={`tel:${order.delivery_driver.telephone}`}
+                                      className="text-green-700 dark:text-green-400 hover:underline"
+                                    >
+                                      {order.delivery_driver.telephone}
+                                    </a>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Timer préparation */}
                           {((order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery)) && order.preparation_time && (
                             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded border border-blue-200 dark:border-blue-700">
