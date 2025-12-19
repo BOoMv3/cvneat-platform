@@ -750,6 +750,39 @@ export default function OrderConfirmation() {
                 </div>
               </div>
 
+              {/* Informations du livreur */}
+              {orderData.delivery_driver && (
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm border border-green-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">🚴 Votre livreur</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <FaUser className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {orderData.delivery_driver.full_name || `${orderData.delivery_driver.prenom || ''} ${orderData.delivery_driver.nom || ''}`.trim()}
+                        </p>
+                        <p className="text-sm text-gray-600">Livreur assigné</p>
+                      </div>
+                    </div>
+                    
+                    {orderData.delivery_driver.telephone && (
+                      <div className="flex items-center space-x-3">
+                        <FaPhone className="h-5 w-5 text-green-600" />
+                        <div>
+                          <a 
+                            href={`tel:${orderData.delivery_driver.telephone}`}
+                            className="font-medium text-green-700 hover:text-green-800 underline"
+                          >
+                            {orderData.delivery_driver.telephone}
+                          </a>
+                          <p className="text-sm text-gray-600">Une question sur votre livraison ? Contactez votre livreur</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Code de sécurité pour la livraison */}
               {getSecurityCode() && (
                 <div className="bg-white rounded-xl shadow-sm border p-6">

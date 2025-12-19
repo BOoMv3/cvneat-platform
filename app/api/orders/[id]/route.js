@@ -34,6 +34,7 @@ export async function GET(request, { params }) {
     let order = null;
     let user = null;
     let isAdmin = false;
+    let deliveryDriver = null;
 
     if (token) {
       const supabaseUser = createClient(
@@ -120,6 +121,25 @@ export async function GET(request, { params }) {
         `)
         .eq('id', id)
         .single();
+      
+      // Récupérer les informations du livreur si un livreur a accepté la commande
+      if (orderFull?.livreur_id) {
+        const { data: driverData, error: driverError } = await supabaseAdmin
+          .from('users')
+          .select('id, prenom, nom, telephone')
+          .eq('id', orderFull.livreur_id)
+          .single();
+        
+        if (!driverError && driverData) {
+          deliveryDriver = {
+            id: driverData.id,
+            prenom: driverData.prenom,
+            nom: driverData.nom,
+            telephone: driverData.telephone,
+            full_name: `${driverData.prenom || ''} ${driverData.nom || ''}`.trim()
+          };
+        }
+      }
 
       if (orderError || !orderFull) {
         return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
@@ -193,6 +213,26 @@ export async function GET(request, { params }) {
       }
 
       order = orderFull;
+      
+      // Récupérer les informations du livreur si un livreur a accepté la commande
+      let deliveryDriver = null;
+      if (orderFull?.livreur_id) {
+        const { data: driverData, error: driverError } = await supabaseAdmin
+          .from('users')
+          .select('id, prenom, nom, telephone')
+          .eq('id', orderFull.livreur_id)
+          .single();
+        
+        if (!driverError && driverData) {
+          deliveryDriver = {
+            id: driverData.id,
+            prenom: driverData.prenom,
+            nom: driverData.nom,
+            telephone: driverData.telephone,
+            full_name: `${driverData.prenom || ''} ${driverData.nom || ''}`.trim()
+          };
+        }
+      }
       
       // Récupérer les détails séparément si la relation n'a pas fonctionné (pour accès via code sécurité)
       if (!order.details_commande || !Array.isArray(order.details_commande) || order.details_commande.length === 0) {
@@ -400,6 +440,7 @@ export async function GET(request, { params }) {
       adresse_livraison: order.adresse_livraison,
       preparation_time: order.preparation_time,
       livreur_id: order.livreur_id,
+      delivery_driver: deliveryDriver,
       customer_name: customerName,
       customer_phone: customerPhone,
       customer_email: customerEmail,

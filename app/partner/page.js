@@ -2312,7 +2312,30 @@ export default function PartnerDashboard() {
                             <div className="mt-4 p-3 bg-white dark:bg-gray-700 rounded border dark:border-gray-600">
                               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Articles commandés :</p>
                               <div className="space-y-2">
-                                {(order.order_items || order.items || order.details_commande || []).map((detail, index) => {
+                                {(() => {
+                                  const allDetails = order.order_items || order.items || order.details_commande || [];
+                                  
+                                  // FILTRER: Exclure les items qui font partie d'une formule (is_formula_drink, is_formula_item)
+                                  // Ils seront affichés dans la formule principale via formula_items_details et selected_drink
+                                  const filteredDetails = allDetails.filter(detail => {
+                                    let customizations = {};
+                                    if (detail.customizations) {
+                                      if (typeof detail.customizations === 'string') {
+                                        try {
+                                          customizations = JSON.parse(detail.customizations);
+                                        } catch (e) {
+                                          customizations = {};
+                                        }
+                                      } else {
+                                        customizations = detail.customizations;
+                                      }
+                                    }
+                                    
+                                    // Exclure les boissons de formule et les items de formule (ils sont dans formula_items_details)
+                                    return !customizations.is_formula_drink && !customizations.is_formula_item;
+                                  });
+                                  
+                                  return filteredDetails.map((detail, index) => {
                                   // Gérer les deux formats : order_items/items (name, quantity, price) ou details_commande (menus.nom, quantite, prix_unitaire)
                                   const menu = detail.menus || {};
                                   
@@ -2359,6 +2382,7 @@ export default function PartnerDashboard() {
                                       <div className="flex justify-between text-sm mb-1">
                                         <span className="text-gray-600 dark:text-gray-300 font-medium">
                                           {quantite}x {nom}
+                                          {isFormula && <span className="ml-2 text-purple-600 dark:text-purple-400">🍔 Menu</span>}
                                         </span>
                                         <span className="text-gray-900 dark:text-white font-medium">
                                           {prixTotal.toFixed(2)} €
@@ -2381,70 +2405,41 @@ export default function PartnerDashboard() {
                                       
                                       {/* Viandes sélectionnées */}
                                       {customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                          <span className="font-medium">Viandes:</span>
-                                          <ul className="list-disc list-inside ml-1">
-                                            {customizations.selectedMeats.map((meat, meatIdx) => (
-                                              <li key={meatIdx}>
-                                                {meat.nom || meat.name} {(meat.prix || meat.price) > 0 && `(+${(meat.prix || meat.price || 0).toFixed(2)}€)`}
-                                              </li>
-                                            ))}
-                                          </ul>
+                                        <div className={`mt-1 pt-1 border-t border-gray-200 dark:border-gray-600 text-xs ml-2 ${isFormula ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                          <div className={`font-semibold ${isFormula ? 'text-orange-600 dark:text-orange-400' : ''}`}>Viandes :</div>
+                                          {customizations.selectedMeats.map((meat, meatIdx) => (
+                                            <div key={meatIdx} className={isFormula ? 'text-orange-600 dark:text-orange-400' : ''}>🥩 {meat.nom || meat.name || 'Viande'} {(meat.prix || meat.price) > 0 && `(+${(meat.prix || meat.price || 0).toFixed(2)}€)`}</div>
+                                          ))}
                                         </div>
                                       )}
                                       
                                       {/* Sauces sélectionnées */}
                                       {customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                          <span className="font-medium">Sauces:</span>
-                                          <ul className="list-disc list-inside ml-1">
-                                            {customizations.selectedSauces.map((sauce, sauceIdx) => (
-                                              <li key={sauceIdx}>
-                                                {sauce.nom || sauce.name} {(sauce.prix || sauce.price) > 0 && `(+${(sauce.prix || sauce.price || 0).toFixed(2)}€)`}
-                                              </li>
-                                            ))}
-                                          </ul>
+                                        <div className={`mt-1 pt-1 border-t border-gray-200 dark:border-gray-600 text-xs ml-2 ${isFormula ? 'text-teal-600 dark:text-teal-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                          <div className={`font-semibold ${isFormula ? 'text-teal-600 dark:text-teal-400' : ''}`}>Sauces :</div>
+                                          {customizations.selectedSauces.map((sauce, sauceIdx) => (
+                                            <div key={sauceIdx} className={isFormula ? 'text-teal-600 dark:text-teal-400' : ''}>🧂 {sauce.nom || sauce.name || 'Sauce'} {(sauce.prix || sauce.price) > 0 && `(+${(sauce.prix || sauce.price || 0).toFixed(2)}€)`}</div>
+                                          ))}
                                         </div>
                                       )}
                                       
                                       {/* Ingrédients retirés */}
                                       {customizations.removedIngredients && Array.isArray(customizations.removedIngredients) && customizations.removedIngredients.length > 0 && (
-                                        <div className="text-xs text-orange-600 dark:text-orange-400 ml-2">
-                                          <span className="font-medium">Ingrédients retirés:</span>
-                                          <ul className="list-disc list-inside ml-1">
-                                            {customizations.removedIngredients.map((ing, ingIdx) => (
-                                              <li key={ingIdx}>
-                                                {ing.nom || ing.name}
-                                              </li>
-                                            ))}
-                                          </ul>
+                                        <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-600 text-xs text-orange-600 dark:text-orange-400 ml-2">
+                                          <div className="font-semibold">Ingrédients retirés :</div>
+                                          {customizations.removedIngredients.map((ing, ingIdx) => (
+                                            <div key={ingIdx} className="line-through">❌ {ing.nom || ing.name || 'Ingrédient'}</div>
+                                          ))}
                                         </div>
                                       )}
                                       
-                                      {/* Boisson de formule */}
-                                      {customizations.is_formula_drink === true && (
-                                        <div className="text-xs text-blue-600 dark:text-blue-400 ml-2">
-                                          <span className="font-medium">🥤 Boisson (formule):</span> {nom}
-                                          {customizations.formula_name && (
-                                            <span className="text-gray-500"> - {customizations.formula_name}</span>
-                                          )}
-                                        </div>
-                                      )}
-                                      
-                                      {/* Boisson de menu */}
-                                      {customizations.is_menu_drink === true && (
+                                      {/* Boisson de menu (pour les menus non-formule) */}
+                                      {!isFormula && customizations.is_menu_drink === true && (
                                         <div className="text-xs text-blue-600 dark:text-blue-400 ml-2">
                                           <span className="font-medium">🥤 Boisson (menu):</span> {nom}
                                           {customizations.menu_name && (
                                             <span className="text-gray-500"> - {customizations.menu_name}</span>
                                           )}
-                                        </div>
-                                      )}
-                                      
-                                      {/* Élément de formule */}
-                                      {customizations.is_formula_item === true && (
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                          <span className="font-medium">📦 Formule:</span> {customizations.formula_name || 'Formule'}
                                         </div>
                                       )}
                                       
@@ -2464,13 +2459,14 @@ export default function PartnerDashboard() {
                                       
                                       {/* Boisson sélectionnée dans la formule */}
                                       {isFormula && customizations.selected_drink && (
-                                        <div className="text-xs text-blue-600 dark:text-blue-400 ml-2 mt-1">
-                                          <span className="font-medium">🥤 Boisson:</span> {customizations.selected_drink.nom || customizations.selected_drink.name || 'Boisson'}
+                                        <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-600 text-xs text-blue-600 dark:text-blue-400 ml-2">
+                                          <span className="font-semibold">🥤 Boisson (formule):</span> {customizations.selected_drink.nom || customizations.selected_drink.name || 'Boisson'}
                                         </div>
                                       )}
                                     </div>
                                   );
-                                })}
+                                });
+                                })()}
                               </div>
                             </div>
                           )}
