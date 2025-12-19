@@ -885,8 +885,34 @@ export default function Checkout() {
       console.error('❌ Erreur après paiement réussi:', error);
       setSubmitting(false);
       
-      // Ne PAS rediriger si erreur - traiter comme un échec de paiement
-      handlePaymentError(new Error('Erreur lors de la confirmation de votre commande. Votre paiement a été effectué mais la commande n\'a pas pu être confirmée. Veuillez contacter contact@cvneat.fr'));
+      // IMPORTANT: Vérifier d'abord si le paiement a vraiment réussi sur Stripe
+      // Avant d'appeler handlePaymentError qui pourrait annuler la commande
+      if (paymentIntentId) {
+        try {
+          const confirmResponse = await fetch('/api/payment/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentIntentId })
+          });
+          
+          if (confirmResponse.ok) {
+            const confirmData = await confirmResponse.json();
+            
+            // Si le paiement a réussi, rediriger vers la confirmation même si erreur technique
+            if (confirmData.success && confirmData.orderId) {
+              console.warn('⚠️ Paiement réussi mais erreur technique. Redirection vers confirmation...');
+              const securityCode = orderData?.securityCode ? `?code=${encodeURIComponent(orderData.securityCode)}` : '';
+              window.location.replace(`/order-confirmation/${confirmData.orderId}${securityCode}`);
+              return;
+            }
+          }
+        } catch (confirmError) {
+          console.error('Erreur vérification statut paiement:', confirmError);
+        }
+      }
+      
+      // Si le paiement n'a pas réussi, traiter comme un échec
+      handlePaymentError(new Error('Erreur lors de la confirmation de votre commande. Si votre paiement a été effectué, contactez contact@cvneat.fr avec votre numéro de transaction.'));
     }
   };
 
