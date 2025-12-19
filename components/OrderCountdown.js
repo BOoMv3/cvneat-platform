@@ -1,12 +1,22 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 export default function OrderCountdown({ order, onTimeUp }) {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
 
+  // Mémoriser la date de début de préparation pour éviter qu'elle change quand updated_at change
+  const preparationStartDate = useMemo(() => {
+    const startSource =
+      order.preparation_started_at ||
+      order.accepted_at ||
+      order.created_at;
+    
+    return startSource ? new Date(startSource) : null;
+  }, [order.preparation_started_at, order.accepted_at, order.created_at]);
+
   useEffect(() => {
-    if (!order.preparation_time) {
+    if (!order.preparation_time || !preparationStartDate) {
       setTimeRemaining(null);
       setIsExpired(false);
       return;
@@ -16,20 +26,7 @@ export default function OrderCountdown({ order, onTimeUp }) {
 
     const calculateTimeRemaining = () => {
       const now = new Date();
-      const preparationStartSource =
-        order.preparation_started_at ||
-        order.accepted_at ||
-        order.updated_at ||
-        order.created_at;
-
-      if (!preparationStartSource) {
-        setTimeRemaining(null);
-        setIsExpired(false);
-        return;
-      }
-
-      const preparationStart = new Date(preparationStartSource);
-      const preparationEnd = new Date(preparationStart.getTime() + (order.preparation_time * 60 * 1000));
+      const preparationEnd = new Date(preparationStartDate.getTime() + (order.preparation_time * 60 * 1000));
       const remaining = preparationEnd.getTime() - now.getTime();
       
       if (remaining <= 0) {
@@ -66,7 +63,7 @@ export default function OrderCountdown({ order, onTimeUp }) {
         clearInterval(intervalId);
       }
     };
-  }, [order.preparation_time, order.preparation_started_at, order.accepted_at, order.updated_at, order.created_at, onTimeUp, isExpired]);
+  }, [order.preparation_time, preparationStartDate, onTimeUp, isExpired]);
 
   if (!timeRemaining && !isExpired) {
     return (
