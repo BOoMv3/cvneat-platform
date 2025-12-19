@@ -3,7 +3,6 @@
 
 SELECT 
   c.id,
-  c.order_number,
   c.customer_email,
   c.customer_first_name,
   c.customer_last_name,

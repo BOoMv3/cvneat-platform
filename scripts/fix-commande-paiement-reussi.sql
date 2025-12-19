@@ -6,13 +6,15 @@
 -- 1. Vérifier d'abord la commande
 SELECT 
   id,
-  order_number,
   customer_email,
+  customer_first_name,
+  customer_last_name,
   statut,
   payment_status,
   stripe_payment_intent_id,
   stripe_charge_id,
   total,
+  frais_livraison,
   created_at
 FROM commandes
 WHERE id = 'ORDER_ID_ICI'  -- ⚠️ REMPLACER PAR L'ID DE LA COMMANDE
@@ -36,7 +38,7 @@ WHERE id = 'ORDER_ID_ICI'  -- ⚠️ REMPLACER PAR L'ID DE LA COMMANDE
 -- 3. Vérifier le résultat
 SELECT 
   id,
-  order_number,
+  customer_email,
   statut,
   payment_status,
   stripe_payment_intent_id,
