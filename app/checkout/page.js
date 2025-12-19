@@ -894,7 +894,44 @@ export default function Checkout() {
     console.error('❌ Erreur paiement:', error);
     setSubmitting(false);
     
-    // Si une commande a été créée, l'annuler car le paiement a échoué
+    // IMPORTANT: Vérifier d'abord si le paiement a vraiment échoué sur Stripe
+    // Si le paiement a réussi sur Stripe, NE PAS annuler la commande
+    if (paymentIntentId) {
+      try {
+        // Vérifier le statut du paiement via l'API de confirmation
+        const confirmResponse = await fetch('/api/payment/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId })
+        });
+        
+        if (confirmResponse.ok) {
+          const confirmData = await confirmResponse.json();
+          
+          // Si le paiement a réussi, ne pas annuler la commande
+          if (confirmData.success) {
+            console.warn('⚠️ Paiement réussi sur Stripe mais erreur technique côté client. Ne pas annuler la commande.');
+            
+            // Essayer de rediriger vers la page de confirmation
+            const orderIdToUse = confirmData.orderId || orderData?.orderId;
+            if (orderIdToUse) {
+              const securityCode = orderData?.securityCode ? `?code=${encodeURIComponent(orderData.securityCode)}` : '';
+              alert('✅ Votre paiement a été validé avec succès !\n\nRedirection vers votre commande...');
+              window.location.replace(`/order-confirmation/${orderIdToUse}${securityCode}`);
+              return;
+            } else {
+              alert('✅ Votre paiement a été validé avec succès sur Stripe !\n\nUn problème technique est survenu, mais votre commande est bien enregistrée. Vous recevrez un email de confirmation. Si vous ne le recevez pas, contactez contact@cvneat.fr avec votre numéro de transaction Stripe.');
+              return;
+            }
+          }
+        }
+      } catch (confirmError) {
+        console.error('Erreur vérification statut paiement:', confirmError);
+        // Continuer avec l'annulation si on ne peut pas vérifier
+      }
+    }
+    
+    // Si le paiement a vraiment échoué, annuler la commande
     if (orderData?.orderId) {
       try {
         console.log('🔄 Annulation de la commande suite à l\'échec du paiement...');
