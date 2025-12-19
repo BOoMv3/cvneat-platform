@@ -263,33 +263,46 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return tot;
     };
 
-    // Vérifier les plages
+    // Vérifier les plages et horaires pour déterminer si le restaurant devrait être ouvert
+    let shouldBeOpenByHours = false;
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
       for (const plage of heuresJour.plages) {
         const start = parseTime(plage.ouverture);
         const end = parseTime(plage.fermeture);
         if (start !== null && end !== null && currentTime >= start && currentTime <= end) {
-          return { isOpen: true, isManuallyClosed: false, reason: 'open' };
+          shouldBeOpenByHours = true;
+          break;
         }
       }
-      return { isOpen: false, isManuallyClosed: false, reason: 'outside_plages' };
-    }
-
-    // Vérifier horaires simples
-    if (heuresJour.ouverture && heuresJour.fermeture) {
+    } else if (heuresJour.ouverture && heuresJour.fermeture) {
+      // Vérifier horaires simples
       const start = parseTime(heuresJour.ouverture);
       const end = parseTime(heuresJour.fermeture);
       if (start !== null && end !== null && currentTime >= start && currentTime <= end) {
-        return { isOpen: true, isManuallyClosed: false, reason: 'open' };
+        shouldBeOpenByHours = true;
       }
-      return { isOpen: false, isManuallyClosed: false, reason: 'outside_hours' };
+    } else if (heuresJour.ouvert === true) {
+      // Fallback sur le flag ouvert si pas d'heures précises
+      shouldBeOpenByHours = true;
     }
 
-    // Fallback sur le flag ouvert si pas d'heures précises
-    if (heuresJour.ouvert === true) {
-      return { isOpen: true, isManuallyClosed: false, reason: 'open_flag' };
+    // NOUVELLE LOGIQUE: Si ferme_manuellement = true MAIS horaires indiquent ouvert → OUVERT
+    // Si ferme_manuellement = true ET horaires indiquent fermé → FERMÉ
+    if (isManuallyClosed) {
+      if (shouldBeOpenByHours) {
+        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT (ferme_manuellement = true mais horaires indiquent ouvert)`);
+        return { isOpen: true, isManuallyClosed: false, reason: 'open_override' };
+      } else {
+        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ (ferme_manuellement = true et horaires indiquent fermé)`);
+        return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
+      }
     }
 
+    // Si ferme_manuellement = false ou null, utiliser le résultat des horaires
+    if (shouldBeOpenByHours) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'open' };
+    }
+    
     return { isOpen: false, isManuallyClosed: false, reason: 'closed' };
   } catch (e) {
     console.error('[checkRestaurantOpenStatus] Erreur pour restaurant:', restaurant?.nom || restaurant?.id, e);
