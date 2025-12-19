@@ -12,7 +12,6 @@ SELECT
   statut,
   payment_status,
   stripe_payment_intent_id,
-  stripe_charge_id,
   total,
   frais_livraison,
   created_at

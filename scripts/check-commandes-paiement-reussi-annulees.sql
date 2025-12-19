@@ -9,7 +9,6 @@ SELECT
   c.statut,
   c.payment_status,
   c.stripe_payment_intent_id,
-  c.stripe_charge_id,
   c.total,
   c.frais_livraison,
   c.created_at,
