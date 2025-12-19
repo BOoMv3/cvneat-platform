@@ -202,7 +202,7 @@ const PaymentForm = ({ amount, paymentIntentId, clientSecret, onSuccess, onError
   if (!stripePromiseInstance) {
     return (
       <div className="text-red-600 p-4 bg-red-50 rounded-lg">
-        Erreur : Configuration de paiement manquante. Veuillez contacter le support.
+        Erreur : Configuration de paiement manquante. Veuillez contacter contact@cvneat.fr
       </div>
     );
   }

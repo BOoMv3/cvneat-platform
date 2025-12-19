@@ -545,7 +545,7 @@ export default function Checkout() {
           rawTotal,
           totalAmount
         });
-        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
+        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter contact@cvneat.fr');
       }
       
       console.log('💰 Calcul montant final:', {
@@ -647,7 +647,7 @@ export default function Checkout() {
       // Double vérification de sécurité
       if (!totalAmount || totalAmount <= 0 || isNaN(totalAmount)) {
         console.error('❌ ERREUR CRITIQUE: Montant invalide après validation:', totalAmount);
-        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
+        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter contact@cvneat.fr');
       }
 
       if (totalAmount < 0.50) {
@@ -745,7 +745,7 @@ export default function Checkout() {
       } else {
         // Message d'erreur générique mais plus informatif
         const userMessage = error.message || 'Erreur lors de la préparation de la commande';
-        alert(`❌ ${userMessage}\n\nSi le problème persiste, contactez le support.`);
+        alert(`❌ ${userMessage}\n\nSi le problème persiste, contactez-nous à contact@cvneat.fr`);
       }
       
       setSubmitting(false);
@@ -785,7 +785,7 @@ export default function Checkout() {
         console.error('Erreur récupération orderId:', error);
       }
       
-      throw new Error('ID de commande introuvable. Le paiement a été effectué, contactez le support avec votre numéro de transaction.');
+      throw new Error('ID de commande introuvable. Le paiement a été effectué, contactez contact@cvneat.fr avec votre numéro de transaction.');
     }
 
     // Mettre à jour la commande existante (simplifié)
@@ -886,7 +886,7 @@ export default function Checkout() {
       setSubmitting(false);
       
       // Ne PAS rediriger si erreur - traiter comme un échec de paiement
-      handlePaymentError(new Error('Erreur lors de la confirmation de votre commande. Votre paiement a été effectué mais la commande n\'a pas pu être confirmée. Veuillez contacter le support.'));
+      handlePaymentError(new Error('Erreur lors de la confirmation de votre commande. Votre paiement a été effectué mais la commande n\'a pas pu être confirmée. Veuillez contacter contact@cvneat.fr'));
     }
   };
 

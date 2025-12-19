@@ -811,9 +811,12 @@ export default function OrderConfirmation() {
                 <p className="text-sm text-blue-700 mb-4">
                   Notre équipe est là pour vous aider avec votre commande.
                 </p>
-                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                <a 
+                  href="mailto:contact@cvneat.fr" 
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium text-center block"
+                >
                   Contacter le support
-            </button>
+                </a>
               </div>
             </div>
           </div>

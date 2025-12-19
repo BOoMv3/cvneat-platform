@@ -113,7 +113,7 @@ export async function POST(request, { params }) {
     // Vérifier qu'il y a un paiement Stripe
     if (!order.stripe_payment_intent_id) {
       return NextResponse.json({ 
-        error: 'Aucun paiement Stripe trouvé pour cette commande. Contactez le support.' 
+        error: 'Aucun paiement Stripe trouvé pour cette commande. Contactez contact@cvneat.fr' 
       }, { status: 400 });
     }
 

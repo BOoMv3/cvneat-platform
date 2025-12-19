@@ -1035,7 +1035,7 @@ export default function TrackOrder() {
                               <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
                                 ⚠️ Note: Ce remboursement ({refundAmount.toFixed(2)}€) ne comprend pas les frais de livraison ({deliveryFee.toFixed(2)}€). 
                                 Le montant total payé était de {totalPaid.toFixed(2)}€. 
-                                Veuillez contacter le support si vous souhaitez un remboursement complet.
+                                Veuillez contacter contact@cvneat.fr si vous souhaitez un remboursement complet.
                               </p>
                             );
                           }

@@ -192,7 +192,7 @@ export default function ComplaintForm({ params }) {
       const orderTotal = parseFloat(order.total || order.total_amount || 0);
       const maxRefund = orderTotal * 0.7; // Maximum 70% du total
       if (parseFloat(formData.requestedRefundAmount) > maxRefund) {
-        throw new Error(`Le montant de remboursement ne peut pas dépasser ${maxRefund.toFixed(2)}€ (70% du total de la commande). Pour un remboursement complet, contactez le support.`);
+        throw new Error(`Le montant de remboursement ne peut pas dépasser ${maxRefund.toFixed(2)}€ (70% du total de la commande). Pour un remboursement complet, contactez contact@cvneat.fr`);
       }
       
       if (orderTotal > 10 && parseFloat(formData.requestedRefundAmount) < 5) {

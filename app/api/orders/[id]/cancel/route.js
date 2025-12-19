@@ -263,7 +263,7 @@ export async function POST(request, { params }) {
         }
 
         return NextResponse.json({
-          message: 'Commande annulée, mais le remboursement automatique a échoué. Veuillez contacter le support.',
+          message: 'Commande annulée, mais le remboursement automatique a échoué. Veuillez contacter contact@cvneat.fr',
           warning: 'Le remboursement devra être traité manuellement',
           order: updatedOrder,
           refundError: stripeError.message

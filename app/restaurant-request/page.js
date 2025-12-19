@@ -234,7 +234,7 @@ export default function RestaurantRequest() {
         .single();
       
       if (existingRequest) {
-        throw new Error('Une demande existe déjà avec cet email. Veuillez contacter le support si vous souhaitez modifier votre demande.');
+        throw new Error('Une demande existe déjà avec cet email. Veuillez contacter contact@cvneat.fr si vous souhaitez modifier votre demande.');
       }
       
       // Préparer les données d'insertion
@@ -315,7 +315,7 @@ export default function RestaurantRequest() {
               
               // Si c'est une contrainte unique sur l'email
               if (fallbackErrorCode === '23505' || fallbackErrorMessage.includes('unique constraint') || fallbackErrorMessage.includes('duplicate key')) {
-                throw new Error('Une demande existe déjà avec cet email. Veuillez contacter le support.');
+                throw new Error('Une demande existe déjà avec cet email. Veuillez contacter contact@cvneat.fr');
               }
               
               throw new Error(`Erreur lors de la création de la demande: ${fallbackErrorMessage}${fallbackErrorCode ? ` (Code: ${fallbackErrorCode})` : ''}`);
@@ -353,7 +353,7 @@ export default function RestaurantRequest() {
             if (error) {
               const fallbackErrorMessage = error.message || error.toString();
               if (fallbackErrorMessage.includes('unique constraint') || fallbackErrorMessage.includes('duplicate key')) {
-                throw new Error('Une demande existe déjà avec cet email. Veuillez contacter le support.');
+                throw new Error('Une demande existe déjà avec cet email. Veuillez contacter contact@cvneat.fr');
               }
               throw new Error(`Erreur lors de la création de la demande: ${fallbackErrorMessage}`);
             }

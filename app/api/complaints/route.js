@@ -219,7 +219,7 @@ export async function POST(request) {
 
     if (recentComplaints && recentComplaints.length >= 3) {
       return NextResponse.json(
-        { error: 'Nombre de réclamations trop élevé (maximum 3 par mois). Veuillez contacter le support client pour toute autre demande.' },
+        { error: 'Nombre de réclamations trop élevé (maximum 3 par mois). Veuillez contacter contact@cvneat.fr pour toute autre demande.' },
         { status: 403 }
       );
     }
@@ -228,7 +228,7 @@ export async function POST(request) {
     const totalRecentRefunds = recentComplaints?.reduce((sum, c) => sum + (parseFloat(c.montant_remboursement || 0)), 0) || 0;
     if (totalRecentRefunds + refundAmount > 200) {
       return NextResponse.json(
-        { error: 'Limite de remboursement mensuel atteinte (200€ maximum par mois). Veuillez contacter le support client.' },
+        { error: 'Limite de remboursement mensuel atteinte (200€ maximum par mois). Veuillez contacter contact@cvneat.fr' },
         { status: 403 }
       );
     }
@@ -266,7 +266,7 @@ export async function POST(request) {
       const complaintRatio = (allComplaints.length / allOrders.length) * 100;
       if (complaintRatio > 20) {
         return NextResponse.json(
-          { error: 'Ratio de réclamations trop élevé. Plus de 20% de vos commandes ont fait l\'objet d\'une réclamation. Veuillez contacter le support client.' },
+          { error: 'Ratio de réclamations trop élevé. Plus de 20% de vos commandes ont fait l\'objet d\'une réclamation. Veuillez contacter contact@cvneat.fr' },
           { status: 403 }
         );
       }
