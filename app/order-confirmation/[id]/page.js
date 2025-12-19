@@ -633,11 +633,40 @@ export default function OrderConfirmation() {
                           </p>
                         </div>
                         {/* Détails de la formule */}
-                        {isFormula && item.customizations?.formula_items_details && Array.isArray(item.customizations.formula_items_details) && item.customizations.formula_items_details.length > 0 && (
+                        {isFormula && (
                           <div className="mt-2 ml-2 text-sm text-gray-600 space-y-1">
-                            {item.customizations.formula_items_details.map((fi, idx) => (
-                              <div key={idx}>• {fi.nom || fi.name || 'Article'} {fi.quantity > 1 ? `x${fi.quantity}` : ''}</div>
-                            ))}
+                            {/* Éléments de la formule (burger, frites, boisson) */}
+                            {item.customizations?.formula_items_details && Array.isArray(item.customizations.formula_items_details) && item.customizations.formula_items_details.length > 0 && (
+                              <>
+                                {item.customizations.formula_items_details.map((fi, idx) => (
+                                  <div key={idx}>• {fi.nom || fi.name || 'Article'} {fi.quantity > 1 ? `x${fi.quantity}` : ''}</div>
+                                ))}
+                              </>
+                            )}
+                            {/* Viandes sélectionnées */}
+                            {item.customizations?.selectedMeats && Array.isArray(item.customizations.selectedMeats) && item.customizations.selectedMeats.length > 0 && (
+                              <div className="mt-1 text-orange-600">
+                                🥩 Viandes: {item.customizations.selectedMeats.map(m => m.nom || m.name).join(', ')}
+                              </div>
+                            )}
+                            {/* Sauces sélectionnées */}
+                            {item.customizations?.selectedSauces && Array.isArray(item.customizations.selectedSauces) && item.customizations.selectedSauces.length > 0 && (
+                              <div className="mt-1 text-teal-600">
+                                🧂 Sauces: {item.customizations.selectedSauces.map(s => s.nom || s.name).join(', ')}
+                              </div>
+                            )}
+                            {/* Boisson sélectionnée */}
+                            {item.customizations?.selected_drink && (
+                              <div className="mt-1 text-blue-600">
+                                🥤 Boisson: {item.customizations.selected_drink.nom || item.customizations.selected_drink.name || 'Boisson'}
+                              </div>
+                            )}
+                            {/* Ingrédients retirés */}
+                            {item.customizations?.removedIngredients && Array.isArray(item.customizations.removedIngredients) && item.customizations.removedIngredients.length > 0 && (
+                              <div className="mt-1 text-red-600 line-through">
+                                ❌ Sans: {item.customizations.removedIngredients.map(i => i.nom || i.name).join(', ')}
+                              </div>
+                            )}
                           </div>
                         )}
                         {/* Détails du combo */}
