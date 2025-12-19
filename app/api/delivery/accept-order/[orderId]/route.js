@@ -6,7 +6,9 @@ import { cleanupExpiredOrders } from '../../../../../lib/orderCleanup';
 export async function POST(request, { params }) {
   try {
     const { orderId } = params;
-    console.log('🔍 API accept-order appelée pour commande:', orderId);
+    const body = await request.json().catch(() => ({}));
+    const { delivery_time } = body;
+    console.log('🔍 API accept-order appelée pour commande:', orderId, 'delivery_time:', delivery_time);
     
     // Nettoyer les commandes expirées en arrière-plan (non bloquant)
     cleanupExpiredOrders().catch(err => {
