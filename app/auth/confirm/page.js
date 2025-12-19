@@ -140,8 +140,8 @@ export default function ConfirmEmailPage() {
             <p>
               Si le problème persiste, contactez le support :
               {' '}
-              <Link href="mailto:support@cvneat.fr" className="text-indigo-600 font-medium">
-                support@cvneat.fr
+              <Link href="mailto:contact@cvneat.fr" className="text-indigo-600 font-medium">
+                contact@cvneat.fr
               </Link>
             </p>
           </div>

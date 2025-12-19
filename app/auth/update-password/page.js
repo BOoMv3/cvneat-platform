@@ -221,8 +221,8 @@ export default function UpdatePasswordPage() {
             <div className="text-center text-xs text-gray-500">
               Besoin d'aide ? Contactez le support à
               {' '}
-              <Link href="mailto:support@cvneat.fr" className="text-indigo-600 font-medium">
-                support@cvneat.fr
+              <Link href="mailto:contact@cvneat.fr" className="text-indigo-600 font-medium">
+                contact@cvneat.fr
               </Link>
             </div>
           </form>
