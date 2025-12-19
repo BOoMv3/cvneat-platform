@@ -133,13 +133,13 @@ export async function GET(request) {
                   return; // Ne pas envoyer de notification pour les commandes non payées
                 }
                 
-                // NOUVEAU WORKFLOW: Ne notifier que si un livreur vient d'accepter (livreur_id passé de null à non-null)
+                // CRITIQUE: Ne notifier QUE si un livreur vient d'être assigné (passage de null à non-null)
                 const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
                 const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
                 
-                // Si un livreur vient d'accepter ET statut = 'en_attente'
+                // Si un livreur vient JUSTE d'être assigné ET statut = 'en_attente'
                 if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
-                  console.log('✅ Nouvelle commande avec livreur accepté, notification envoyée:', payload.new.id);
+                  console.log('✅ Nouvelle commande avec livreur assigné, notification envoyée:', payload.new.id);
                   // IMPORTANT: Calculer le montant total avec les frais de livraison
                   const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
                   sendNotification({
@@ -149,25 +149,8 @@ export async function GET(request) {
                     timestamp: new Date().toISOString()
                   });
                 } else {
-                  console.log('⚠️ Commande ignorée (pas de livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
+                  console.log('⚠️ Commande ignorée (pas de nouveau livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
                 }
-              }
-            )
-            .on('postgres_changes',
-              {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'commandes',
-                filter: `restaurant_id=eq.${userRestaurantId}`
-              },
-              (payload) => {
-                console.log('🔄 Commande mise à jour via SSE:', payload.new.id);
-                sendNotification({
-                  type: 'order_updated',
-                  message: `Commande #${payload.new.id?.slice(0, 8) || 'N/A'} mise à jour`,
-                  order: payload.new,
-                  timestamp: new Date().toISOString()
-                });
               }
             )
             .subscribe((status) => {

@@ -44,6 +44,8 @@ export async function GET(request) {
     );
 
     // Récupérer les commandes acceptées par ce livreur
+    // NOUVEAU WORKFLOW: Le livreur doit voir ses commandes dès qu'il les accepte, 
+    // quel que soit le statut (en_attente, en_preparation, pret_a_livrer, en_livraison, livree)
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
@@ -52,7 +54,7 @@ export async function GET(request) {
         users(id, nom, prenom, telephone, email)
       `)
       .eq('livreur_id', user.id) // Commandes assignées à ce livreur
-      .in('statut', ['en_livraison', 'livree']) // Commandes en livraison ou livrées
+      .neq('statut', 'annulee') // Ne pas afficher les commandes annulées
       .order('created_at', { ascending: false });
 
     if (error) {

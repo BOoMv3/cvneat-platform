@@ -64,7 +64,7 @@ export async function GET(request) {
       .from('commandes')
       .select('id', { count: 'exact', head: true })
       .eq('restaurant_id', restaurantId)
-      .in('statut', ['en_attente', 'en_preparation']);
+      .or('statut.eq.en_preparation,and(statut.eq.en_attente,livreur_id.not.is.null)');
 
     // IMPORTANT : Le chiffre d'affaires n'inclut PAS les frais de livraison (qui vont au livreur)
     // On utilise uniquement order.total qui contient le montant des articles uniquement

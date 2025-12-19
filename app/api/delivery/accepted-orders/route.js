@@ -42,6 +42,7 @@ export async function GET(request) {
     );
 
     // Récupérer toutes les commandes acceptées par ce livreur
+    // NOUVEAU WORKFLOW: Inclure 'en_attente' car le livreur peut accepter avant le restaurant
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
@@ -50,7 +51,7 @@ export async function GET(request) {
         users(id, nom, prenom, telephone, email)
       `)
       .eq('livreur_id', user.id)
-      .in('statut', ['en_preparation', 'en_livraison', 'pret_a_livrer'])
+      .in('statut', ['en_attente', 'en_preparation', 'en_livraison', 'pret_a_livrer'])
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -60,7 +61,7 @@ export async function GET(request) {
         .from('commandes')
         .select('*')
         .eq('livreur_id', user.id)
-        .in('statut', ['en_preparation', 'en_livraison', 'pret_a_livrer'])
+        .in('statut', ['en_attente', 'en_preparation', 'en_livraison', 'pret_a_livrer'])
         .order('created_at', { ascending: true });
       
       if (simpleError) {

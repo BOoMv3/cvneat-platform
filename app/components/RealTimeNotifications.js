@@ -165,17 +165,17 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
             return; // Ne pas traiter les commandes non payées
           }
           
-          // NOUVEAU WORKFLOW: Ne notifier que si un livreur vient d'accepter (livreur_id passé de null à non-null)
+          // CRITIQUE: Ne notifier QUE si un livreur vient d'être assigné (passage de null à non-null)
           const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
           const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
           
-          // Si un livreur vient d'accepter ET statut = 'en_attente'
+          // Si un livreur vient JUSTE d'être assigné ET statut = 'en_attente'
           if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
-            console.log('✅ Nouvelle commande avec livreur accepté, notification envoyée:', payload.new.id);
+            console.log('✅ Nouvelle commande avec livreur assigné, notification envoyée:', payload.new.id);
             // Déclencher l'alerte pour nouvelle commande avec livreur
             triggerNewOrderAlert(payload.new);
           } else {
-            console.log('⚠️ Commande ignorée (pas de livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
+            console.log('⚠️ Commande ignorée (pas de nouveau livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
             return;
           }
           
@@ -251,13 +251,14 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session || !restaurantId) return;
 
-        // Récupérer la dernière commande (seulement les commandes payées)
+        // Récupérer la dernière commande (seulement les commandes payées ET acceptées par un livreur)
         const { data: orders, error } = await supabase
           .from('commandes')
-          .select('id, created_at, statut, restaurant_id, payment_status')
+          .select('id, created_at, statut, restaurant_id, payment_status, livreur_id')
           .eq('restaurant_id', restaurantId)
           .eq('statut', 'en_attente')
           .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
+          .not('livreur_id', 'is', null) // NOUVEAU WORKFLOW: Attendre qu'un livreur accepte
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -280,11 +281,13 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               .eq('id', latestOrderId)
               .single();
 
-            if (!orderError && fullOrder && fullOrder.statut === 'en_attente' && fullOrder.payment_status === 'paid') {
+            if (!orderError && fullOrder && fullOrder.statut === 'en_attente' && fullOrder.payment_status === 'paid' && fullOrder.livreur_id) {
               triggerNewOrderAlert(fullOrder);
               lastOrderCheckRef.current = latestOrderId;
             } else if (fullOrder && fullOrder.payment_status !== 'paid') {
               console.log('⚠️ Commande non payée ignorée dans polling:', latestOrderId, 'payment_status:', fullOrder.payment_status);
+            } else if (fullOrder && !fullOrder.livreur_id) {
+              console.log('⚠️ Commande sans livreur ignorée dans polling:', latestOrderId, '(le livreur doit accepter d\'abord)');
             }
               } else if (latestOrderId === pendingOrderId && latestOrder.statut !== 'en_attente') {
                 // Si la commande en attente n'est plus en attente, arrêter les alertes

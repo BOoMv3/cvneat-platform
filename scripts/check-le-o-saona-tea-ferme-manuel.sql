@@ -11,7 +11,8 @@ SELECT
     ELSE 'AUTRE'
   END as valeur_interpretation,
   horaires,
-  updated_at
+  updated
+  _at
 FROM restaurants
 WHERE nom ILIKE '%o saona%' OR nom ILIKE '%saona%'
 ORDER BY updated_at DESC;

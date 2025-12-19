@@ -25,7 +25,7 @@ export default function RestaurantOrderAlert() {
         (payload) => {
           console.log('Commande mise à jour:', payload.new);
           
-          // NOUVEAU WORKFLOW: Vérifier qu'un livreur vient d'accepter (livreur_id passé de null à non-null)
+          // CRITIQUE: Ne notifier QUE si un livreur vient d'être assigné (passage de null à non-null)
           const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
           const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
           
@@ -35,13 +35,12 @@ export default function RestaurantOrderAlert() {
             return;
           }
           
-          // Si un livreur vient d'accepter (livreur_id est maintenant assigné)
+          // Si un livreur vient JUSTE d'être assigné ET statut = 'en_attente'
           if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
-            console.log('✅ Nouvelle commande avec livreur accepté:', payload.new.id);
+            console.log('✅ Nouvelle commande avec livreur assigné:', payload.new.id);
             fetchPendingOrders(); // Rafraîchir la liste
-          } else if (payload.new.livreur_id && payload.new.statut === 'en_attente') {
-            // Commandes avec livreur déjà assigné (rafraîchir au cas où)
-            fetchPendingOrders();
+          } else {
+            console.log('⚠️ Commande ignorée (pas de nouveau livreur ou statut incorrect):', payload.new.id);
           }
         }
       )
