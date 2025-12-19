@@ -117,6 +117,10 @@ export default function DeliveryDashboard() {
   const [preparationAlerts, setPreparationAlerts] = useState([]);
   const [preventiveAlerts, setPreventiveAlerts] = useState([]);
   const [pushRegistrationAttempted, setPushRegistrationAttempted] = useState(false);
+  const [showDeliveryTimeModal, setShowDeliveryTimeModal] = useState(false);
+  const [selectedOrderForAccept, setSelectedOrderForAccept] = useState(null);
+  const [deliveryTime, setDeliveryTime] = useState(20);
+  const [acceptingOrder, setAcceptingOrder] = useState(false);
 
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -631,19 +635,41 @@ export default function DeliveryDashboard() {
     );
   };
 
-  const acceptOrder = async (orderId) => {
+  const openDeliveryTimeModal = (order) => {
+    setSelectedOrderForAccept(order);
+    // Estimer le temps de livraison basé sur la distance si disponible
+    const estimatedTime = order.distance ? calculateRealisticTime(order.distance) : 20;
+    setDeliveryTime(estimatedTime);
+    setShowDeliveryTimeModal(true);
+  };
+
+  const confirmAcceptOrder = async () => {
+    if (!selectedOrderForAccept) return;
+    
     try {
-      console.log('📦 Acceptation commande:', orderId);
-      const response = await fetchWithAuth(`/api/delivery/accept-order/${orderId}`, {
-        method: 'POST'
+      setAcceptingOrder(true);
+      console.log('📦 Acceptation commande avec temps de livraison:', selectedOrderForAccept.id, deliveryTime);
+      
+      const response = await fetchWithAuth(`/api/delivery/accept-order/${selectedOrderForAccept.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          delivery_time: deliveryTime
+        })
       });
 
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Commande acceptée avec succès:', result);
         
+        // Fermer le modal
+        setShowDeliveryTimeModal(false);
+        setSelectedOrderForAccept(null);
+        
         // Retirer la commande de la liste des commandes disponibles immédiatement
-        setAvailableOrders(prev => prev.filter(o => o.id !== orderId));
+        setAvailableOrders(prev => prev.filter(o => o.id !== selectedOrderForAccept.id));
         
         // Attendre un peu pour que la base de données soit mise à jour
         setTimeout(() => {
@@ -661,6 +687,17 @@ export default function DeliveryDashboard() {
     } catch (error) {
       console.error('❌ Erreur acceptation commande:', error);
       alert(`Erreur: ${error.message || 'Erreur de connexion'}`);
+    } finally {
+      setAcceptingOrder(false);
+    }
+  };
+
+  const acceptOrder = async (orderId) => {
+    const order = availableOrders.find(o => o.id === orderId);
+    if (order) {
+      openDeliveryTimeModal(order);
+    } else {
+      alert('Commande introuvable');
     }
   };
 
@@ -1441,6 +1478,57 @@ export default function DeliveryDashboard() {
             isOpen={chatOpen}
             onClose={() => setChatOpen(false)}
           />
+        )}
+
+        {/* Modal pour saisir le temps de livraison */}
+        {showDeliveryTimeModal && selectedOrderForAccept && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-3">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Accepter la commande</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Indiquez le temps de livraison estimé (en minutes). Pensez à vos autres courses en cours.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Temps de livraison estimé (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="5"
+                  max="60"
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(Math.max(5, Math.min(60, parseInt(e.target.value) || 20)))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Temps estimé pour livrer cette commande (en tenant compte de vos autres courses)
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowDeliveryTimeModal(false);
+                    setSelectedOrderForAccept(null);
+                    setDeliveryTime(20);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={confirmAcceptOrder}
+                  disabled={acceptingOrder}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {acceptingOrder ? 'Acceptation...' : 'Accepter'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </AuthGuard>

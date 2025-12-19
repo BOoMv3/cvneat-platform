@@ -88,13 +88,14 @@ export default function PartnerDashboard() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showDelayModal, setShowDelayModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [acceptingOrder, setAcceptingOrder] = useState(false);
   const [rejectingOrder, setRejectingOrder] = useState(false);
+  const [delayMinutes, setDelayMinutes] = useState(5);
+  const [updatingDelay, setUpdatingDelay] = useState(false);
   const [timeEstimation, setTimeEstimation] = useState({
-    preparationTime: 15,
-    deliveryTime: 20,
-    estimatedTotalTime: 35
+    preparationTime: 15
   });
 
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
@@ -748,11 +749,8 @@ export default function PartnerDashboard() {
   const openAcceptModal = (order) => {
     setSelectedOrder(order);
     const preparation = order?.preparation_time || 15;
-    const delivery = 20;
     setTimeEstimation({
-      preparationTime: preparation,
-      deliveryTime: delivery,
-      estimatedTotalTime: preparation + delivery
+      preparationTime: preparation
     });
     setShowAcceptModal(true);
   };
@@ -761,6 +759,61 @@ export default function PartnerDashboard() {
     setSelectedOrder(order);
     setRejectReason('');
     setShowRejectModal(true);
+  };
+
+  const openDelayModal = (order) => {
+    setSelectedOrder(order);
+    setDelayMinutes(5);
+    setShowDelayModal(true);
+  };
+
+  const handleAddDelay = async () => {
+    if (!selectedOrder || delayMinutes <= 0) return;
+    
+    try {
+      setUpdatingDelay(true);
+      
+      // Calculer le nouveau temps de préparation = temps actuel + retard
+      const currentPrepTime = selectedOrder.preparation_time || 15;
+      const newPrepTime = currentPrepTime + delayMinutes;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('❌ Aucune session trouvée');
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`/api/restaurants/orders/${selectedOrder.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          status: selectedOrder.statut, // Garder le même statut
+          preparation_time: newPrepTime
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        throw new Error(errorData.error || 'Erreur lors de la mise à jour du retard');
+      }
+
+      setShowDelayModal(false);
+      setDelayMinutes(5);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await fetchOrders(restaurant?.id);
+      if (restaurant?.id) {
+        await fetchDashboardData(restaurant.id);
+      }
+    } catch (error) {
+      console.error('❌ Erreur ajout retard:', error);
+      alert(`Erreur: ${error.message || 'Impossible d\'ajouter le retard'}`);
+    } finally {
+      setUpdatingDelay(false);
+    }
   };
 
   const handleAcceptOrderSubmit = async () => {
@@ -2152,6 +2205,56 @@ export default function PartnerDashboard() {
           </div>
         )}
 
+        {showDelayModal && selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-3">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Indiquer un retard</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Ajoutez des minutes supplémentaires au temps de préparation estimé.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Minutes supplémentaires à ajouter
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={delayMinutes}
+                  onChange={(e) => setDelayMinutes(Math.max(1, parseInt(e.target.value) || 5))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Temps actuel : {selectedOrder.preparation_time || 15} min → Nouveau temps : {(selectedOrder.preparation_time || 15) + delayMinutes} min
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowDelayModal(false);
+                    setDelayMinutes(5);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleAddDelay}
+                  disabled={updatingDelay}
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {updatingDelay ? 'Mise à jour...' : 'Ajouter le retard'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'orders' && (
           <div className="space-y-6">
             {/* Statistiques des commandes */}
@@ -2527,7 +2630,7 @@ export default function PartnerDashboard() {
                           {((order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery)) && order.preparation_time && (
                             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded border border-blue-200 dark:border-blue-700">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                <div>
+                                <div className="flex-1">
                                   <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
                                     ⏱️ Temps de préparation estimé : {order.preparation_time} min
                                   </p>
@@ -2537,7 +2640,15 @@ export default function PartnerDashboard() {
                                     </p>
                                   )}
                                 </div>
-                                <OrderCountdown order={order} />
+                                <div className="flex items-center gap-3">
+                                  <OrderCountdown order={order} />
+                                  <button
+                                    onClick={() => openDelayModal(order)}
+                                    className="px-3 py-1.5 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors whitespace-nowrap"
+                                  >
+                                    ⏰ Ajouter du temps
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           )}
