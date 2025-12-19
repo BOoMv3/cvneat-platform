@@ -121,6 +121,11 @@ export async function POST(request, { params }) {
       updated_at: new Date().toISOString()
     };
 
+    // Ajouter le temps de livraison si fourni et valide
+    if (delivery_time && delivery_time >= 5 && delivery_time <= 60) {
+      updatePayload.delivery_time = delivery_time;
+    }
+
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
       .update(updatePayload)
