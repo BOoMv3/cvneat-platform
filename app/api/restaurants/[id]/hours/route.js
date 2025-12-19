@@ -111,11 +111,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // NOUVELLE LOGIQUE: D'abord vérifier les horaires, puis appliquer ferme_manuellement
-    // Si ferme_manuellement = true MAIS horaires indiquent ouvert → OUVERT
-    // Si ferme_manuellement = true ET horaires indiquent fermé → FERMÉ
-    // Si ferme_manuellement = false ou null → Utiliser le résultat des horaires
-    
+    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
     // Normaliser ferme_manuellement
     let fermeManuel = restaurant.ferme_manuellement;
     if (typeof fermeManuel === 'string') {
@@ -125,8 +121,20 @@ export async function POST(request, { params }) {
                              fermeManuel === 'true' || 
                              fermeManuel === '1' || 
                              fermeManuel === 1;
+    
+    if (isManuallyClosed) {
+      console.log(`🔴 Restaurant ${id} - FERMÉ manuellement (ferme_manuellement = true, ignore les horaires)`);
+      return NextResponse.json({
+        isOpen: false,
+        message: 'Restaurant fermé manuellement',
+        reason: 'manual'
+      });
+    }
 
-    // Vérifier les horaires d'abord
+    // Si ferme_manuellement = false ou null, vérifier les horaires normalement
+    console.log(`✅ Restaurant ${id} - Vérification automatique des horaires (ferme_manuellement = ${restaurant.ferme_manuellement}, normalisé = ${fermeManuel})`);
+
+    // Vérifier les horaires
     let horaires = restaurant.horaires || {};
     
     // Si horaires est une chaîne JSON, la parser
@@ -343,38 +351,11 @@ export async function POST(request, { params }) {
       }
     }
 
-    // NOUVELLE LOGIQUE: Appliquer ferme_manuellement après vérification des horaires
-    // Si ferme_manuellement = true MAIS horaires indiquent ouvert → OUVERT
-    // Si ferme_manuellement = true ET horaires indiquent fermé → FERMÉ
-    const shouldBeOpenByHours = isOpen;
-    let finalIsOpen = isOpen;
-    let finalReason = isOpen ? 'open' : 'outside_hours';
-    
-    if (isManuallyClosed) {
-      if (shouldBeOpenByHours) {
-        // ferme_manuellement = true mais horaires indiquent ouvert → OUVERT
-        finalIsOpen = true;
-        finalReason = 'open_override';
-        console.log(`✅ Restaurant ${id} - OUVERT (ferme_manuellement = true mais horaires indiquent ouvert)`);
-      } else {
-        // ferme_manuellement = true et horaires indiquent fermé → FERMÉ
-        finalIsOpen = false;
-        finalReason = 'manual';
-        console.log(`🔴 Restaurant ${id} - FERMÉ (ferme_manuellement = true et horaires indiquent fermé)`);
-      }
-    } else {
-      // ferme_manuellement = false ou null → Utiliser le résultat des horaires
-      console.log(`✅ Restaurant ${id} - Vérification automatique (ferme_manuellement = ${restaurant.ferme_manuellement}, normalisé = ${fermeManuel})`);
-    }
-
     console.log('🕐 Vérification horaires:', {
       restaurantId: id,
       currentTime: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`,
       currentTimeMinutes,
-      shouldBeOpenByHours,
-      isManuallyClosed,
-      finalIsOpen,
-      finalReason,
+      isOpen,
       todayKey,
       hasPlages: Array.isArray(todayHours.plages),
       plagesCount: todayHours.plages?.length,
@@ -387,9 +368,9 @@ export async function POST(request, { params }) {
       : (todayHours.ouverture && todayHours.fermeture ? [{ ouverture: todayHours.ouverture, fermeture: todayHours.fermeture }] : []);
 
     return NextResponse.json({
-      isOpen: finalIsOpen,
-      message: finalIsOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
-      reason: finalReason,
+      isOpen,
+      message: isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
+      reason: isOpen ? 'open' : 'outside_hours',
       openTime: matchingPlage?.ouverture || todayHours.ouverture || null,
       closeTime: matchingPlage?.fermeture || todayHours.fermeture || null,
       plages: plagesInfo,
