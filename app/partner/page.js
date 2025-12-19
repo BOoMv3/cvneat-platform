@@ -2315,10 +2315,6 @@ export default function PartnerDashboard() {
                                 {(order.order_items || order.items || order.details_commande || []).map((detail, index) => {
                                   // Gérer les deux formats : order_items/items (name, quantity, price) ou details_commande (menus.nom, quantite, prix_unitaire)
                                   const menu = detail.menus || {};
-                                  const nom = detail.name || menu.nom || 'Article inconnu';
-                                  const quantite = detail.quantity || detail.quantite || 1;
-                                  const prixUnitaire = detail.price || detail.prix_unitaire || menu.prix || 0;
-                                  const prixTotal = prixUnitaire * quantite;
                                   
                                   // Parser les customisations
                                   let customizations = {};
@@ -2333,6 +2329,16 @@ export default function PartnerDashboard() {
                                       customizations = detail.customizations;
                                     }
                                   }
+                                  
+                                  // CRITIQUE: Si c'est une formule, utiliser le nom de la formule, pas le nom du menu burger
+                                  const isFormula = customizations.is_formula === true;
+                                  const nom = isFormula 
+                                    ? (customizations.formula_name || 'Formule')
+                                    : (detail.name || menu.nom || 'Article inconnu');
+                                  
+                                  const quantite = detail.quantity || detail.quantite || 1;
+                                  const prixUnitaire = detail.price || detail.prix_unitaire || menu.prix || 0;
+                                  const prixTotal = prixUnitaire * quantite;
                                   
                                   // Parser les suppléments
                                   let supplements = [];

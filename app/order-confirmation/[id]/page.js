@@ -610,13 +610,21 @@ export default function OrderConfirmation() {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-4">Articles commandés</h3>
                   <div className="space-y-3">
-              {orderData.items && orderData.items.map((item, index) => (
+              {orderData.items && orderData.items.map((item, index) => {
+                      // CRITIQUE: Si c'est une formule, afficher le nom de la formule, pas le nom du menu burger
+                      const isFormula = item.isFormula === true || (item.customizations && item.customizations.is_formula === true);
+                      const displayName = isFormula 
+                        ? (item.customizations?.formula_name || item.name || 'Formule')
+                        : item.name;
+                      
+                      return (
                       <div key={index} className="p-3 bg-gray-50 rounded-lg">
                         <div className="flex justify-between items-center">
                           <div className="flex-1">
                             <p className="font-medium text-gray-900">
-                              {item.name}
-                              {item.isCombo && <span className="ml-2 text-purple-600">🍔 Menu</span>}
+                              {displayName}
+                              {isFormula && <span className="ml-2 text-purple-600">🍔 Formule</span>}
+                              {item.isCombo && !isFormula && <span className="ml-2 text-purple-600">🍔 Menu</span>}
                             </p>
                             <p className="text-sm text-gray-600">x{item.quantity}</p>
                           </div>
@@ -624,8 +632,16 @@ export default function OrderConfirmation() {
                             {(item.price * item.quantity).toFixed(2)}€
                           </p>
                         </div>
+                        {/* Détails de la formule */}
+                        {isFormula && item.customizations?.formula_items_details && Array.isArray(item.customizations.formula_items_details) && item.customizations.formula_items_details.length > 0 && (
+                          <div className="mt-2 ml-2 text-sm text-gray-600 space-y-1">
+                            {item.customizations.formula_items_details.map((fi, idx) => (
+                              <div key={idx}>• {fi.nom || fi.name || 'Article'} {fi.quantity > 1 ? `x${fi.quantity}` : ''}</div>
+                            ))}
+                          </div>
+                        )}
                         {/* Détails du combo */}
-                        {item.isCombo && item.comboDetails && item.comboDetails.length > 0 && (
+                        {item.isCombo && !isFormula && item.comboDetails && item.comboDetails.length > 0 && (
                           <div className="mt-2 ml-2 text-sm text-gray-600 space-y-1">
                             {item.comboDetails.map((detail, idx) => (
                               <div key={idx}>• {detail.stepTitle}: <strong>{detail.optionName}</strong></div>
@@ -633,7 +649,8 @@ export default function OrderConfirmation() {
                           </div>
                         )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
 

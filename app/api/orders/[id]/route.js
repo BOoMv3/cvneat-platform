@@ -296,13 +296,20 @@ export async function GET(request, { params }) {
         }
       }
 
+      // CRITIQUE: Si c'est une formule, utiliser le nom de la formule, pas le nom du menu burger
+      const isFormula = customizations.is_formula === true;
+      const itemName = isFormula 
+        ? (customizations.formula_name || 'Formule')
+        : (detail.menus?.nom || 'Article');
+      
       return {
         id: detail.id,
-        name: detail.menus?.nom || 'Article',
+        name: itemName,
         quantity: detail.quantite || 0,
         price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
         supplements,
-        customizations
+        customizations,
+        isFormula: isFormula
       };
     });
 

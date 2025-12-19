@@ -707,10 +707,11 @@ export default function RestaurantOrders() {
                                   formulaItems: []
                                 };
                               }
+                              // CRITIQUE: Utiliser le nom de la formule, pas le nom du menu burger
                               formulaGroups[formulaKey].formulaItem = {
                                 item: item,
                                 index: index,
-                                name: item.menus?.nom || formulaName
+                                name: formulaName || 'Formule'
                               };
                               processedIndices.add(index);
                               return;
@@ -797,7 +798,7 @@ export default function RestaurantOrders() {
                                 type: 'menu_with_drink',
                                 menuItem: group.formulaItem,
                                 drinks: group.drinks,
-                                menuName: group.formulaItem.item.menus?.nom || group.formulaItem.name
+                                menuName: group.formulaItem.name || group.formulaItem.item.menus?.nom
                               });
                             } else if (group.formulaItem) {
                               // Formule complète (sans formula_items détaillés)
@@ -805,7 +806,7 @@ export default function RestaurantOrders() {
                                 type: 'formula_complete',
                                 formulaItem: group.formulaItem,
                                 drinks: group.drinks,
-                                formulaName: group.formulaItem.item.menus?.nom || group.formulaItem.name
+                                formulaName: group.formulaItem.name || 'Formule'
                               });
                             } else if (group.formulaItems.length > 0) {
                               // Formule avec formula_items détaillés
