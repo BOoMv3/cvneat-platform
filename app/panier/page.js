@@ -21,6 +21,7 @@ import {
   FaUserPlus,
   FaSignInAlt
 } from 'react-icons/fa';
+import PriceInfoBanner from '@/components/PriceInfoBanner';
 
 export default function Panier() {
   const router = useRouter();
@@ -282,6 +283,8 @@ export default function Panier() {
                 </div>
               </div>
             )}
+
+            <PriceInfoBanner variant="compact" />
 
             {/* Articles du panier */}
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
