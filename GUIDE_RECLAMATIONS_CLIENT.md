@@ -73,7 +73,7 @@ Le client peut signaler un problème de plusieurs façons :
 ### 📞 Contact support
 
 Si le client a des questions :
-- Email : support@cvneat.com
+- Email : contact@cvneat.fr
 - Téléphone : [numéro de support]
 - Chat en ligne sur le site
 
