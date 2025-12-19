@@ -205,12 +205,18 @@ export default function Inscription() {
     // Vérifier s'il y a une intention de redirection (ex: checkout)
     const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
     
-    // Rediriger vers la page de connexion avec un message de succès
+    // Afficher un message de succès et rediriger
     setLoading(false);
+    
+    // Afficher un message de succès
+    alert('✅ Inscription réussie ! Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.');
+    
+    // Rediriger vers la page de connexion ou checkout
     if (redirectAfterLogin) {
-      router.push(`/login?registered=true&redirect=${encodeURIComponent(redirectAfterLogin)}`);
+      localStorage.removeItem('redirectAfterLogin');
+      router.push(redirectAfterLogin);
     } else {
-      router.push('/login?registered=true');
+      router.push('/login');
     }
   };
 

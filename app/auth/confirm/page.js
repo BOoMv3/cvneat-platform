@@ -116,21 +116,21 @@ export default function ConfirmEmailPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 p-4">
       <div className="w-full max-w-md bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Validation de votre compte</h1>
+          <h1 className="text-2xl font-bold text-gray-900">✅ Inscription réussie !</h1>
           <p className="text-sm text-gray-600 mt-2">
-            Nous finalisons la confirmation de votre adresse email.
+            Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.
           </p>
         </div>
 
         {loading && (
           <div className="text-center text-gray-600">
-            <p>Validation en cours…</p>
+            <p>Finalisation de votre inscription…</p>
           </div>
         )}
 
         {!loading && success && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm text-center">
-            Votre adresse email est confirmée ! Vous allez être redirigé vers la page de connexion…
+            ✅ Votre compte est prêt ! Vous allez être redirigé vers la page de connexion…
           </div>
         )}
 

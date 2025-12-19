@@ -50,7 +50,9 @@ export default function LoginPage() {
         if (error.message.includes('Invalid login credentials')) {
           errorMessage = 'Email ou mot de passe incorrect';
         } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
+          // L'email est maintenant confirmé automatiquement, donc cette erreur ne devrait plus arriver
+          // Mais si elle arrive, on affiche un message générique
+          errorMessage = 'Email ou mot de passe incorrect';
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
         } else if (error.message.includes('User not found')) {
