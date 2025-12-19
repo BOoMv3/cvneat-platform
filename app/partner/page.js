@@ -2447,6 +2447,27 @@ export default function PartnerDashboard() {
                                           <span className="font-medium">📦 Formule:</span> {customizations.formula_name || 'Formule'}
                                         </div>
                                       )}
+                                      
+                                      {/* Détails de la formule (burger, frites, boisson) */}
+                                      {isFormula && customizations.formula_items_details && Array.isArray(customizations.formula_items_details) && customizations.formula_items_details.length > 0 && (
+                                        <div className="text-xs text-gray-600 dark:text-gray-300 ml-2 mt-1">
+                                          <span className="font-medium">Contenu de la formule:</span>
+                                          <ul className="list-disc list-inside ml-1">
+                                            {customizations.formula_items_details.map((fi, fiIdx) => (
+                                              <li key={fiIdx}>
+                                                {fi.nom || fi.name || 'Article'} {fi.quantity > 1 ? `x${fi.quantity}` : ''}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Boisson sélectionnée dans la formule */}
+                                      {isFormula && customizations.selected_drink && (
+                                        <div className="text-xs text-blue-600 dark:text-blue-400 ml-2 mt-1">
+                                          <span className="font-medium">🥤 Boisson:</span> {customizations.selected_drink.nom || customizations.selected_drink.name || 'Boisson'}
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
