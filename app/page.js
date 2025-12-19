@@ -204,20 +204,29 @@ const formatStatusHoursLabel = (statusData, fallback) => {
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
     // PRIORITÉ 1: Vérifier si fermé manuellement (ferme_manuellement = true)
+    // IMPORTANT: Seul ferme_manuellement = true (ou équivalent) force la fermeture
+    // Si ferme_manuellement = false, null, ou undefined, on vérifie les horaires
     let fermeManuel = restaurant.ferme_manuellement;
+    
+    // Normaliser la valeur si c'est une string
     if (typeof fermeManuel === 'string') {
       fermeManuel = fermeManuel.toLowerCase() === 'true' || fermeManuel === '1';
     }
-
+    
+    // Vérifier si explicitement fermé (true, 'true', '1', 1)
+    // Si c'est false, null, ou undefined, on continue avec les horaires
     const isManuallyClosed = fermeManuel === true || 
                              fermeManuel === 'true' || 
                              fermeManuel === '1' || 
                              fermeManuel === 1;
     
     if (isManuallyClosed) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement`);
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = ${restaurant.ferme_manuellement}, normalisé = ${fermeManuel})`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
+    
+    // Si ferme_manuellement = false ou null, on continue avec la vérification des horaires
+    console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - Vérification horaires (ferme_manuellement = ${restaurant.ferme_manuellement}, normalisé = ${fermeManuel})`);
     
     // PRIORITÉ 2: Vérifier les horaires
     let horaires = restaurant.horaires;
