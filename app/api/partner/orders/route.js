@@ -622,11 +622,11 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { orderId, preparationTime, deliveryTime, estimatedTotalTime } = body;
+    const { orderId, preparationTime } = body;
 
-    if (!orderId || !preparationTime || !deliveryTime || !estimatedTotalTime) {
+    if (!orderId || !preparationTime) {
       return NextResponse.json({ 
-        error: 'Tous les champs sont requis: orderId, preparationTime, deliveryTime, estimatedTotalTime' 
+        error: 'Les champs orderId et preparationTime sont requis' 
       }, { status: 400 });
     }
 
@@ -665,15 +665,15 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Mettre à jour la commande avec les estimations de temps
+    // Mettre à jour la commande avec le temps de préparation
+    // Le temps de livraison est défini par le livreur lors de l'acceptation
     // Le statut passe à 'en_preparation' (statut valide selon les contraintes CHECK)
     const { data: updatedOrder, error: updateError } = await supabase
       .from('commandes')
       .update({
         statut: 'en_preparation', // Statut valide : 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
         preparation_time: preparationTime,
-        delivery_time: deliveryTime,
-        estimated_total_time: estimatedTotalTime,
+        // delivery_time et estimated_total_time sont définis par le livreur, pas par le restaurant
         accepted_at: new Date().toISOString(),
         accepted_by: user.id
       })

@@ -114,6 +114,11 @@ export async function POST(request, { params }) {
       updated_at: new Date().toISOString()
       // Le statut reste 'en_attente', le restaurant changera le statut quand il acceptera
     };
+    
+    // Ajouter delivery_time si fourni par le livreur
+    if (delivery_time !== null && delivery_time !== undefined && delivery_time > 0) {
+      updatePayload.delivery_time = delivery_time;
+    }
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
       .update(updatePayload)

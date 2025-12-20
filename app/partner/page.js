@@ -863,8 +863,9 @@ export default function PartnerDashboard() {
         ...prev,
         [field]: parsed
       };
-      next.estimatedTotalTime = (field === 'preparationTime' ? parsed : next.preparationTime) +
-        (field === 'deliveryTime' ? parsed : next.deliveryTime);
+      // Le temps total est maintenant uniquement le temps de préparation
+      // Le temps de livraison sera défini par le livreur
+      next.estimatedTotalTime = next.preparationTime;
       return next;
     });
   };
@@ -2218,24 +2219,9 @@ export default function PartnerDashboard() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Temps de livraison estimé (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="60"
-                    value={timeEstimation.deliveryTime}
-                    onChange={(e) => handleTimeEstimationChange('deliveryTime', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
                 <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-sm text-blue-900 font-medium flex justify-between">
-                    Temps total estimé
-                    <span>{timeEstimation.estimatedTotalTime} minutes</span>
+                  <p className="text-sm text-blue-900">
+                    <span className="font-medium">Note :</span> Le temps de livraison sera défini par le livreur lors de l'acceptation de la commande.
                   </p>
                 </div>
               </div>
