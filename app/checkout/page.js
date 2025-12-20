@@ -4,13 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
-import dynamic from 'next/dynamic';
-
-// Charger PaymentForm de manière dynamique pour éviter les problèmes d'initialisation
-const PaymentForm = dynamic(() => import('@/components/PaymentForm'), {
-  ssr: false,
-  loading: () => <div className="text-center p-4">Chargement du formulaire de paiement...</div>
-});
+import PaymentForm from '@/components/PaymentForm';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import PromoCodeInput from '@/components/PromoCodeInput';
 // PROMO TERMINÉE : Plus besoin du composant FreeDeliveryBanner
@@ -25,8 +19,7 @@ import {
   FaEnvelope,
   FaShoppingCart,
   FaMotorcycle,
-  FaCheck,
-  FaTicketAlt
+  FaCheck
 } from 'react-icons/fa';
 
 // Réduire les warnings Stripe non critiques en développement
@@ -59,25 +52,12 @@ function computeCartTotalWithExtras(items = []) {
     let itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
     const itemQuantity = parseInt(item?.quantity ?? 1, 10);
     
-    // IMPORTANT: Pour les menus et formules, la boisson est INCLUSE dans le prix
-    // Ne PAS ajouter le prix de la boisson car elle est déjà comprise dans item.prix
-    // La boisson sera ajoutée avec prix_unitaire: 0 dans l'API orders
-    // On vérifie si c'est un menu ou une formule pour ne pas ajouter le prix de la boisson
-    const isMenuOrFormula = item.is_formula || 
-                            (item.category?.toLowerCase().includes('menu') || 
-                             item.nom?.toLowerCase().includes('menu') ||
-                             (item.drink_options && item.drink_options.length > 0));
-    
-    if (item.selected_drink && isMenuOrFormula) {
-      // Pour les menus/formules, la boisson est incluse, ne pas ajouter son prix
-      console.log('💰 Boisson détectée mais NON ajoutée au calcul (incluse dans le menu/formule):', item.selected_drink.nom || 'Boisson');
-    } else if (item.selected_drink && item.selected_drink.prix && !isMenuOrFormula) {
-      // Pour les autres cas (non-menu), ajouter le prix de la boisson si elle a un prix
+    // IMPORTANT: Ajouter le prix de la boisson si présente (pour les menus)
+    // Les boissons des menus ne sont pas incluses dans item.prix, elles sont ajoutées séparément
+    if (item.selected_drink && item.selected_drink.prix) {
       const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
-      if (drinkPrice > 0) {
-        itemPrice += drinkPrice;
-        console.log('💰 Boisson ajoutée au calcul (non-menu):', item.selected_drink.nom || 'Boisson', drinkPrice, '€');
-      }
+      itemPrice += drinkPrice;
+      console.log('💰 Boisson ajoutée au calcul:', item.selected_drink.nom || 'Boisson', drinkPrice, '€');
     }
     
     console.log('💰 Article:', item.nom, 'Prix unitaire (avec boisson):', itemPrice, 'Quantité:', itemQuantity);
@@ -130,7 +110,16 @@ export default function Checkout() {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/login');
+        // Sauvegarder l'intention de checkout avant de rediriger
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('redirectAfterLogin', '/checkout');
+          // S'assurer que le panier est bien sauvegardé
+          const savedCart = safeLocalStorage.getJSON('cart');
+          if (savedCart) {
+            safeLocalStorage.setJSON('cart', savedCart);
+          }
+        }
+        router.push('/login?redirect=checkout');
         return;
       }
       setUser(user);
@@ -545,7 +534,7 @@ export default function Checkout() {
           rawTotal,
           totalAmount
         });
-        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter contact@cvneat.fr');
+        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
       }
       
       console.log('💰 Calcul montant final:', {
@@ -647,7 +636,7 @@ export default function Checkout() {
       // Double vérification de sécurité
       if (!totalAmount || totalAmount <= 0 || isNaN(totalAmount)) {
         console.error('❌ ERREUR CRITIQUE: Montant invalide après validation:', totalAmount);
-        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter contact@cvneat.fr');
+        throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
       }
 
       if (totalAmount < 0.50) {
@@ -745,7 +734,7 @@ export default function Checkout() {
       } else {
         // Message d'erreur générique mais plus informatif
         const userMessage = error.message || 'Erreur lors de la préparation de la commande';
-        alert(`❌ ${userMessage}\n\nSi le problème persiste, contactez-nous à contact@cvneat.fr`);
+        alert(`❌ ${userMessage}\n\nSi le problème persiste, contactez le support.`);
       }
       
       setSubmitting(false);
@@ -785,7 +774,7 @@ export default function Checkout() {
         console.error('Erreur récupération orderId:', error);
       }
       
-      throw new Error('ID de commande introuvable. Le paiement a été effectué, contactez contact@cvneat.fr avec votre numéro de transaction.');
+      throw new Error('ID de commande introuvable. Le paiement a été effectué, contactez le support avec votre numéro de transaction.');
     }
 
     // Mettre à jour la commande existante (simplifié)
@@ -858,145 +847,34 @@ export default function Checkout() {
   const handlePaymentSuccess = async (paymentData) => {
     try {
       console.log('✅ Paiement confirmé, mise à jour de la commande...');
-      console.log('📊 Données paiement:', paymentData);
-      
-      // Vérifier que le paiement est vraiment réussi
-      if (paymentData?.status !== 'succeeded') {
-        console.error('❌ handlePaymentSuccess appelé mais statut non succeeded:', paymentData?.status);
-        handlePaymentError(new Error('Le paiement n\'a pas été confirmé. Veuillez réessayer.'));
-        return;
-      }
-      
       setSubmitting(true);
       
-      // Mettre à jour la commande
+      // Mettre à jour la commande (simplifié - ne bloque pas si échec)
       await createOrderAfterPayment(paymentIntentId);
       
       setSubmitting(false);
-      
-      // Rediriger vers la page de confirmation UNIQUEMENT si tout est OK
-      if (orderData?.orderId) {
-        const securityCode = orderData.securityCode ? `?code=${encodeURIComponent(orderData.securityCode)}` : '';
-        window.location.replace(`/order-confirmation/${orderData.orderId}${securityCode}`);
-      } else {
-        throw new Error('Commande introuvable après paiement');
-      }
     } catch (error) {
-      console.error('❌ Erreur après paiement réussi:', error);
+      console.error('❌ Erreur après paiement:', error);
       setSubmitting(false);
       
-      // IMPORTANT: Vérifier d'abord si le paiement a vraiment réussi sur Stripe
-      // Avant d'appeler handlePaymentError qui pourrait annuler la commande
-      if (paymentIntentId) {
-        try {
-          const confirmResponse = await fetch('/api/payment/confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentIntentId })
-          });
-          
-          if (confirmResponse.ok) {
-            const confirmData = await confirmResponse.json();
-            
-            // Si le paiement a réussi, rediriger vers la confirmation même si erreur technique
-            if (confirmData.success && confirmData.orderId) {
-              console.warn('⚠️ Paiement réussi mais erreur technique. Redirection vers confirmation...');
-              const securityCode = orderData?.securityCode ? `?code=${encodeURIComponent(orderData.securityCode)}` : '';
-              window.location.replace(`/order-confirmation/${confirmData.orderId}${securityCode}`);
-              return;
-            }
-          }
-        } catch (confirmError) {
-          console.error('Erreur vérification statut paiement:', confirmError);
-        }
-      }
+      // Message rassurant pour l'utilisateur
+      const errorMessage = error.message || 'Erreur technique';
+      alert(`✅ Paiement effectué avec succès !\n\n⚠️ ${errorMessage}\n\nVotre commande sera traitée automatiquement. Vous recevrez une confirmation par email.`);
       
-      // Si le paiement n'a pas réussi, traiter comme un échec
-      handlePaymentError(new Error('Erreur lors de la confirmation de votre commande. Si votre paiement a été effectué, contactez contact@cvneat.fr avec votre numéro de transaction.'));
+      // Rediriger quand même vers la page de confirmation si on a l'orderId
+      if (orderData?.orderId) {
+        setTimeout(() => {
+          window.location.replace(`/order-confirmation/${orderData.orderId}`);
+        }, 2000);
+      }
     }
   };
 
-  const handlePaymentError = async (error) => {
+  const handlePaymentError = (error) => {
     console.error('❌ Erreur paiement:', error);
-    setSubmitting(false);
-    
-    // IMPORTANT: Vérifier d'abord si le paiement a vraiment échoué sur Stripe
-    // Si le paiement a réussi sur Stripe, NE PAS annuler la commande
-    if (paymentIntentId) {
-      try {
-        // Vérifier le statut du paiement via l'API de confirmation
-        const confirmResponse = await fetch('/api/payment/confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paymentIntentId })
-        });
-        
-        if (confirmResponse.ok) {
-          const confirmData = await confirmResponse.json();
-          
-          // Si le paiement a réussi, ne pas annuler la commande
-          if (confirmData.success) {
-            console.warn('⚠️ Paiement réussi sur Stripe mais erreur technique côté client. Ne pas annuler la commande.');
-            
-            // Essayer de rediriger vers la page de confirmation
-            const orderIdToUse = confirmData.orderId || orderData?.orderId;
-            if (orderIdToUse) {
-              const securityCode = orderData?.securityCode ? `?code=${encodeURIComponent(orderData.securityCode)}` : '';
-              alert('✅ Votre paiement a été validé avec succès !\n\nRedirection vers votre commande...');
-              window.location.replace(`/order-confirmation/${orderIdToUse}${securityCode}`);
-              return;
-            } else {
-              alert('✅ Votre paiement a été validé avec succès sur Stripe !\n\nUn problème technique est survenu, mais votre commande est bien enregistrée. Vous recevrez un email de confirmation. Si vous ne le recevez pas, contactez contact@cvneat.fr avec votre numéro de transaction Stripe.');
-              return;
-            }
-          }
-        }
-      } catch (confirmError) {
-        console.error('Erreur vérification statut paiement:', confirmError);
-        // Continuer avec l'annulation si on ne peut pas vérifier
-      }
-    }
-    
-    // Si le paiement a vraiment échoué, annuler la commande
-    if (orderData?.orderId) {
-      try {
-        console.log('🔄 Annulation de la commande suite à l\'échec du paiement...');
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        
-        const cancelResponse = await fetch(`/api/orders/${orderData.orderId}/cancel`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({
-            reason: 'Paiement échoué',
-            cancelBy: 'system'
-          })
-        });
-        
-        if (cancelResponse.ok) {
-          console.log('✅ Commande annulée suite à l\'échec du paiement');
-        } else {
-          console.warn('⚠️ Impossible d\'annuler la commande automatiquement');
-        }
-      } catch (cancelError) {
-        console.error('❌ Erreur lors de l\'annulation de la commande:', cancelError);
-      }
-    }
-    
-    // Afficher un message d'erreur clair avec l'information que la commande sera annulée
-    const errorMessage = error?.message || error || 'Le paiement a échoué';
-    const errorText = typeof error === 'string' ? error : errorMessage;
-    
-    alert(`❌ Paiement refusé\n\n${errorText}\n\nVeuillez vérifier vos informations de paiement ou essayer avec une autre carte.\n\nLa commande a été annulée automatiquement. Vous pouvez réessayer de passer votre commande.`);
-    
-    // Réinitialiser l'état pour permettre une nouvelle tentative
+    alert(`Erreur de paiement: ${error}`);
     setShowPaymentForm(false);
-    setPaymentIntentId(null);
-    setClientSecret(null);
-    setOrderData(null);
+    setSubmitting(false);
   };
 
   const submitOrder = async () => {
@@ -1287,53 +1165,21 @@ export default function Checkout() {
               ))}
             </div>
 
-            {/* Code promo */}
-            <div className="mb-4 sm:mb-6">
-              {/* Message pour retrouver les codes de gain */}
-              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-3">
-                <div className="flex items-start gap-2">
-                  <FaTicketAlt className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
-                      🎰 Vous avez un code de la roue de la chance ?
-                    </p>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                      Retrouvez tous vos codes promo actifs dans <strong>Mon compte → Mes gains</strong>
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <PromoCodeInput
-                onCodeApplied={(codeData) => {
-                  setAppliedPromoCode(codeData);
-                  setForceUpdate(prev => prev + 1); // Force recalcul du total
-                }}
-                appliedCode={appliedPromoCode}
-                cartTotal={cartTotal}
-                restaurantId={restaurant?.id}
-                userId={user?.id}
-                isFirstOrder={false}
-              />
-            </div>
-
             {(() => {
               const PLATFORM_FEE = 0.49;
               
-              // Calculer les frais de livraison (gratuits si code promo free_delivery)
+              // PROMO TERMINÉE : Plus de livraison gratuite
+              // Les frais de livraison sont toujours affichés normalement
+              // const today = new Date().toISOString().split('T')[0];
+              // const PROMO_DATE = '2025-11-21';
+              // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
               let displayedDeliveryFee = fraisLivraison;
-              if (appliedPromoCode?.discountType === 'free_delivery') {
-                displayedDeliveryFee = 0;
-              }
               
-              // Calculer la réduction du code promo
-              const discountAmount = appliedPromoCode?.discountAmount || 0;
-              const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas dépasser le panier
-              const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
+              // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
+              //   displayedDeliveryFee = 0;
+              // }
               
-              // Total final avec réduction et livraison
-              const rawTotal = subtotalAfterDiscount + displayedDeliveryFee + PLATFORM_FEE;
-              const finalTotalDisplay = Math.max(0.50, Math.round(rawTotal * 100) / 100); // Minimum 0.50€
+              const finalTotalDisplay = Math.max(0, cartTotal + displayedDeliveryFee + PLATFORM_FEE);
               // const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
               
               return (
@@ -1348,15 +1194,12 @@ export default function Checkout() {
                   <span className="font-semibold">-{appliedPromoCode.discountAmount.toFixed(2)}€</span>
                 </div>
               )}
-              <div key={`frais-${forceUpdate}`} className="flex justify-between text-sm sm:text-base">
-                <span className={`flex items-center ${displayedDeliveryFee === 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}>
+              <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+                <span className="flex items-center">
                   <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Frais de livraison
-                  {displayedDeliveryFee === 0 && appliedPromoCode && (
-                    <span className="ml-2 text-xs">(Offert)</span>
-                  )}
                 </span>
-                <span className={`font-semibold ${displayedDeliveryFee === 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                <span className="font-semibold">
                   {displayedDeliveryFee.toFixed(2)}€
                 </span>
               </div>
@@ -1417,14 +1260,17 @@ export default function Checkout() {
                   <FaCreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
                   Paiement
                 </h3>
-                {clientSecret && orderData?.totalAmount && (
+                {clientSecret && (
                   <PaymentForm
-                    amount={orderData.totalAmount}
+                    amount={(() => {
+                      const PLATFORM_FEE = 0.49;
+                      return Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
+                    })()}
                     paymentIntentId={paymentIntentId}
                     clientSecret={clientSecret}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
-                    discount={appliedPromoCode?.discountAmount || 0}
+                    discount={0}
                     platformFee={(orderData?.platform_fee) ?? 0.49}
                   />
                 )}
@@ -1472,6 +1318,42 @@ export default function Checkout() {
               }}
               className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors font-medium"
             >
+              J'ai compris
+            </button>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+} 
+              J'ai compris
+            </button>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+} 
+              J'ai compris
+            </button>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+} 
+              J'ai compris
+            </button>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+} 
               J'ai compris
             </button>
           </div>

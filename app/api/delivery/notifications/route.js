@@ -30,15 +30,15 @@ export async function GET(request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Vérifier que l'utilisateur est un livreur
+    // Vérifier que l'utilisateur est un livreur (par ID pour plus de fiabilité)
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single();
 
     if (userError || !userData || userData.role !== 'delivery') {
-      console.log('❌ Rôle incorrect:', userData?.role, 'pour email:', user.email);
+      console.log('❌ Rôle incorrect:', userData?.role, 'pour ID:', user.id);
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
     }
 

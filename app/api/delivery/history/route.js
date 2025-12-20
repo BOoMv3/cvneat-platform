@@ -23,25 +23,25 @@ export async function GET(request) {
 
     console.log('✅ Utilisateur connecté:', user.email);
 
-    // Vérifier que l'utilisateur est un livreur
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('email', user.email)
-      .single();
-
-    if (userError || !userData || userData.role !== 'delivery') {
-      console.log('❌ Rôle incorrect:', userData?.role, 'pour email:', user.email);
-      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
-    }
-
-    console.log('✅ Rôle livreur confirmé');
-
     // Créer un client admin pour bypasser RLS
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    // Vérifier que l'utilisateur est un livreur (par ID pour plus de fiabilité)
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData || userData.role !== 'delivery') {
+      console.log('❌ Rôle incorrect:', userData?.role, 'pour ID:', user.id);
+      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
+    }
+
+    console.log('✅ Rôle livreur confirmé');
 
     const { searchParams } = new URL(request.url);
     const deliveryId = user.id; // Utiliser l'ID réel de l'utilisateur connecté

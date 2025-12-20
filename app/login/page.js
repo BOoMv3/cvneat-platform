@@ -245,3 +245,131 @@ export default function LoginPage() {
     </>
   );
 }
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Vous n'avez pas de compte ?{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
+                Créer un compte
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+      </div>
+    </>
+  );
+}
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Vous n'avez pas de compte ?{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
+                Créer un compte
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+      </div>
+    </>
+  );
+}
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Vous n'avez pas de compte ?{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
+                Créer un compte
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+      </div>
+    </>
+  );
+}
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Vous n'avez pas de compte ?{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
+                Créer un compte
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+      </div>
+    </>
+  );
+}

@@ -73,16 +73,6 @@ export async function PUT(request, { params }) {
 
     console.log('✅ Commande trouvée:', order.id, 'restaurant_id:', order.restaurant_id);
 
-    // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
-    if (order.statut === 'annulee' || order.payment_status === 'refunded') {
-      console.log('❌ Tentative de modification d\'une commande annulée ou remboursée:', { id, statut: order.statut, payment: order.payment_status });
-      return NextResponse.json({ 
-        error: 'Cette commande a été annulée ou remboursée et ne peut plus être modifiée',
-        statut: order.statut,
-        payment_status: order.payment_status
-      }, { status: 400 });
-    }
-
     // Vérifier que la commande appartient à ce restaurant
     const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
@@ -114,13 +104,15 @@ export async function PUT(request, { params }) {
 
     console.log('✅ Commande appartient au restaurant');
 
-    // Permettre au restaurant de marquer comme prête même si un livreur a accepté
-    // Dans le NOUVEAU WORKFLOW, le livreur accepte EN PREMIER, donc livreur_id est déjà présent
-    // quand le restaurant accepte. On ne doit donc PAS bloquer ici.
-    if (order.livreur_id && status !== 'livree' && status !== 'pret_a_livrer' && status !== 'acceptee') {
-      console.log('⚠️ Commande déjà acceptée par un livreur:', order.livreur_id);
+    // WORKFLOW: D'abord le livreur accepte, puis le restaurant accepte
+    // Permettre au restaurant d'accepter une commande même si un livreur a déjà accepté
+    // Le restaurant peut accepter ('acceptee') ou marquer comme prête ('pret_a_livrer')
+    // Seulement bloquer si ce n'est pas une action autorisée (acceptee, pret_a_livrer, livree, refusee)
+    const allowedStatusesWithDelivery = ['acceptee', 'pret_a_livrer', 'livree', 'refusee'];
+    if (order.livreur_id && !allowedStatusesWithDelivery.includes(status)) {
+      console.log('⚠️ Commande déjà acceptée par un livreur, statut non autorisé:', status);
       return NextResponse.json({ 
-        error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être modifiée',
+        error: 'Cette commande a déjà été acceptée par un livreur. Vous ne pouvez que l\'accepter, la marquer comme prête, la refuser ou la marquer comme livrée.',
         current_status: order.statut,
         delivery_id: order.livreur_id
       }, { status: 400 });

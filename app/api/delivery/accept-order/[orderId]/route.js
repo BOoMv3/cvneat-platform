@@ -27,22 +27,22 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est un livreur
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('email', user.email)
-      .single();
-
-    if (userError || !userData || userData.role !== 'delivery') {
-      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
-    }
-
     // Créer un client admin pour bypasser RLS
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    // Vérifier que l'utilisateur est un livreur (par ID pour plus de fiabilité)
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData || userData.role !== 'delivery') {
+      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
+    }
 
     // Vérifier que la commande existe et est disponible
     const { data: order, error: orderError } = await supabaseAdmin
@@ -60,7 +60,8 @@ export async function POST(request, { params }) {
       id: order.id,
       statut: order.statut,
       livreur_id: order.livreur_id,
-      restaurant_id: order.restaurant_id
+      restaurant_id: order.restaurant_id,
+      ready_for_delivery: order.ready_for_delivery
     });
 
     // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
@@ -79,15 +80,13 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier que la commande est dans un statut acceptable
-    // NOUVEAU WORKFLOW: Les livreurs peuvent accepter les commandes 'en_attente', 'en_preparation' ou 'pret_a_livrer'
-    // - Si 'en_attente': livreur_id est assigné, statut reste 'en_attente' (le resto accepte ensuite)
-    // - Si 'en_preparation' ou 'pret_a_livrer': livreur_id est assigné, statut passe à 'en_livraison'
-    const allowedStatuses = ['en_attente', 'en_preparation', 'pret_a_livrer'];
-    if (!allowedStatuses.includes(order.statut)) {
+    // WORKFLOW: D'abord le livreur accepte (statut 'en_attente'), puis le restaurant accepte
+    // Les livreurs peuvent accepter les commandes 'en_attente' (pas encore acceptées par le restaurant)
+    if (order.statut !== 'en_attente') {
       console.log('❌ Statut commande non acceptable pour livreur:', order.statut);
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
-        details: `Statut actuel: ${order.statut}. Seules les commandes en attente, en préparation ou prêtes peuvent être acceptées.` 
+        details: `Statut actuel: ${order.statut}. Seules les commandes en attente peuvent être acceptées par un livreur.` 
       }, { status: 400 });
     }
 
@@ -100,32 +99,21 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // Déterminer le nouveau statut
-    // Si la commande était déjà en préparation ou prête, on peut la passer en livraison
-    let nextStatus = order.statut;
-    if (order.statut === 'en_preparation' || order.statut === 'pret_a_livrer') {
-      nextStatus = 'en_livraison';
-    }
-
     // Accepter la commande
-    console.log('📤 Acceptation commande par livreur:', {
+    // Le livreur accepte la commande en assignant son ID
+    // Le statut reste 'en_attente' jusqu'à ce que le restaurant accepte
+    console.log('📤 Mise à jour commande:', {
       orderId,
       livreur_id: user.id,
-      oldStatut: order.statut,
-      newStatut: nextStatus
+      statut_actuel: order.statut,
+      nouveau_statut: 'en_attente' // On garde le statut en_attente, le restaurant acceptera après
     });
     
     const updatePayload = {
       livreur_id: user.id,
-      statut: nextStatus,
       updated_at: new Date().toISOString()
+      // Le statut reste 'en_attente', le restaurant changera le statut quand il acceptera
     };
-
-    // Ajouter le temps de livraison si fourni et valide
-    if (delivery_time && delivery_time >= 5 && delivery_time <= 60) {
-      updatePayload.delivery_time = delivery_time;
-    }
-
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
       .update(updatePayload)
@@ -211,9 +199,14 @@ export async function POST(request, { params }) {
         }
       : updatedOrder;
 
+<<<<<<< HEAD
     // Dans le nouveau workflow, on n'envoie pas d'email "en livraison" tout de suite
     // car le restaurant doit encore préparer la commande.
     // L'email sera envoyé plus tard quand le livreur récupère vraiment la commande.
+=======
+    // Note: L'email sera envoyé plus tard, quand le restaurant marque la commande comme prête
+    // et que le livreur commence la livraison (statut passe à 'en_livraison')
+>>>>>>> be91546 (Corriger workflow d'acceptation: livreur accepte d'abord, puis restaurant)
 
     return NextResponse.json({
       success: true,

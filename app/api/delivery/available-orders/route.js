@@ -29,30 +29,31 @@ export async function GET(request) {
 
     console.log('✅ Utilisateur connecté:', user.email);
 
-    // Vérifier que l'utilisateur est un livreur (par email)
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('email', user.email)
-      .single();
-
-    if (userError || !userData || userData.role !== 'delivery') {
-      console.log('❌ Rôle incorrect:', userData?.role, 'pour email:', user.email);
-      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
-    }
-
-    console.log('✅ Rôle livreur confirmé');
-
     // Créer un client admin pour bypasser RLS
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    // Vérifier que l'utilisateur est un livreur (par ID pour plus de fiabilité)
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData || userData.role !== 'delivery') {
+      console.log('❌ Rôle incorrect:', userData?.role, 'pour ID:', user.id);
+      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
+    }
+
+    console.log('✅ Rôle livreur confirmé');
+
     // Récupérer les commandes disponibles pour livraison
-    // NOUVEAU WORKFLOW: Les livreurs voient les commandes qui n'ont pas encore de livreur
-    // - avec statut='en_attente' OU 'en_preparation' OU 'pret_a_livrer'
-    // - avec livreur_id null (pas encore assignées)
+    // WORKFLOW: D'abord le livreur accepte, puis le restaurant accepte
+    // Les livreurs voient les commandes avec statut='en_attente' (pas encore acceptées par le restaurant)
+    // - avec statut='en_attente' (commande créée, en attente d'acceptation)
+    // - avec livreur_id null (pas encore assignées à un livreur)
     // - avec payment_status='paid' ou 'succeeded' (paiement validé)
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
@@ -61,8 +62,9 @@ export async function GET(request) {
         restaurant:restaurants(nom, adresse, telephone, frais_livraison),
         users(id, nom, prenom, telephone, email)
       `)
-      .in('statut', ['en_attente', 'en_preparation', 'pret_a_livrer']) // Inclure les commandes acceptées par le resto mais sans livreur
+      .eq('statut', 'en_attente') // Commandes en attente (pas encore acceptées par le restaurant)
       .is('livreur_id', null) // Pas encore assignées à un livreur
+      .in('payment_status', ['paid', 'succeeded']) // Paiement validé
       .in('payment_status', ['paid', 'succeeded']) // Paiement validé
       .order('created_at', { ascending: true });
 

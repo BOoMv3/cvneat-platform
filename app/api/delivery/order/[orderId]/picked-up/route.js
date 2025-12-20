@@ -28,8 +28,14 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est un livreur
-    const { data: userData, error: userError } = await supabase
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Vérifier que l'utilisateur est un livreur (par ID pour plus de fiabilité)
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -38,12 +44,6 @@ export async function POST(request, { params }) {
     if (userError || !userData || userData.role !== 'delivery') {
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
     }
-
-    // Créer un client admin pour bypasser RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
 
     // Vérifier que la commande existe et appartient à ce livreur
     const { data: order, error: orderError } = await supabaseAdmin

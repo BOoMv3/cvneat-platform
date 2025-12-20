@@ -25,15 +25,21 @@ export async function GET(request) {
 
     console.log('✅ Utilisateur connecté:', user.email);
 
-    // Vérifier que l'utilisateur est un livreur (par email)
-    const { data: userData, error: userError } = await supabase
+    // Créer un client admin pour bypasser RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Vérifier que l'utilisateur est un livreur (par ID pour plus de fiabilité)
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single();
 
     if (userError || !userData || userData.role !== 'delivery') {
-      console.log('❌ Rôle incorrect:', userData?.role, 'pour email:', user.email);
+      console.log('❌ Rôle incorrect:', userData?.role, 'pour ID:', user.id);
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
     }
 
@@ -42,12 +48,6 @@ export async function GET(request) {
     // Calculer les statistiques en temps réel à partir des commandes
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Créer un client admin pour bypasser RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
 
     // Récupérer toutes les commandes avec le statut 'livree' pour ce livreur
     // Exclure les commandes déjà payées (livreur_paid_at IS NULL)
