@@ -102,8 +102,10 @@ export default function RestaurantDetail({ params }) {
           return prev; // ne pas dépasser le maximum
         }
 
+        // Ne pas sélectionner automatiquement une variante - l'utilisateur doit choisir explicitement
+        // Seulement si une variante a explicitement is_default = true, on la prend
         const defaultVariant = option.variants?.length
-          ? option.variants.find(v => v.is_default) || option.variants[0]
+          ? option.variants.find(v => v.is_default === true) || null
           : null;
 
         updatedOptions = [

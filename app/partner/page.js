@@ -1427,6 +1427,53 @@ export default function PartnerDashboard() {
     }));
   };
 
+  // Ajouter une étape "Sauces" avec des options prédéfinies
+  const handleAddSauceStep = () => {
+    const defaultSauces = [
+      { nom: 'Blanche', prix: 0 },
+      { nom: 'Algérienne', prix: 0 },
+      { nom: 'Andalouse', prix: 0 },
+      { nom: 'Barbecue', prix: 0 },
+      { nom: 'Ketchup', prix: 0 },
+      { nom: 'Mayonnaise', prix: 0 },
+      { nom: 'Harissa', prix: 0 },
+      { nom: 'Samouraï', prix: 0 }
+    ];
+
+    setComboForm((prev) => {
+      const newSteps = [
+        ...prev.steps,
+        {
+          title: 'Sauces',
+          description: 'Choisissez vos sauces',
+          min_selections: 1,
+          max_selections: 3, // Par défaut, max 3 sauces
+          options: defaultSauces.map((sauce, index) => ({
+            type: 'custom',
+            linked_menu_id: null,
+            nom: sauce.nom,
+            description: '',
+            prix_supplementaire: sauce.prix,
+            image_url: '',
+            disponible: true,
+            variants: [],
+            base_ingredients: [],
+            ordre: index
+          }))
+        }
+      ];
+      return {
+        ...prev,
+        steps: newSteps
+      };
+    });
+    const nextIndex = comboForm.steps.length;
+    setComboStepSearch((prev) => ({
+      ...prev,
+      [nextIndex]: ''
+    }));
+  };
+
   const handleRemoveComboStep = (index) => {
     setComboForm((prev) => {
       const newSteps = prev.steps.filter((_, stepIndex) => stepIndex !== index);
@@ -3914,17 +3961,27 @@ export default function PartnerDashboard() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h4 className="text-base font-semibold text-gray-900 dark:text-white">
                     Étapes du menu ({comboForm.steps.length})
                   </h4>
-                  <button
-                    type="button"
-                    onClick={handleAddComboStep}
-                    className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-blue-900/40 dark:hover:bg-blue-900/60"
-                  >
-                    + Ajouter une étape
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddSauceStep}
+                      className="inline-flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-green-900/40 dark:hover:bg-green-900/60"
+                      title="Ajouter une étape sauces avec des options prédéfinies"
+                    >
+                      🍯 Ajouter étape sauces
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddComboStep}
+                      className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-blue-900/40 dark:hover:bg-blue-900/60"
+                    >
+                      + Ajouter une étape
+                    </button>
+                  </div>
                 </div>
 
                 {comboForm.steps.map((step, stepIndex) => {
