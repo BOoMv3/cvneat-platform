@@ -3980,27 +3980,32 @@ export default function PartnerDashboard() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h4 className="text-base font-semibold text-gray-900 dark:text-white">
-                    Étapes du menu ({comboForm.steps.length})
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleAddSauceStep}
-                      className="inline-flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-green-900/40 dark:hover:bg-green-900/60"
-                      title="Ajouter une étape sauces avec des options prédéfinies"
-                    >
-                      🍯 Ajouter étape sauces
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddComboStep}
-                      className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-blue-900/40 dark:hover:bg-blue-900/60"
-                    >
-                      + Ajouter une étape
-                    </button>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+                    <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                      Étapes du menu ({comboForm.steps.length})
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddSauceStep}
+                        className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                        title="Ajouter une étape sauces avec les sauces proposées par votre restaurant"
+                      >
+                        🍯 Ajouter étape sauces
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddComboStep}
+                        className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-blue-900/40 dark:hover:bg-blue-900/60"
+                      >
+                        + Ajouter une étape
+                      </button>
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    💡 Astuce : Utilisez "Ajouter étape sauces" pour créer rapidement une étape avec toutes les sauces de votre menu
+                  </p>
                 </div>
 
                 {comboForm.steps.map((step, stepIndex) => {
