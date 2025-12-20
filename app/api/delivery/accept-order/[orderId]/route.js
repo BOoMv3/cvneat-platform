@@ -222,6 +222,11 @@ export async function POST(request, { params }) {
     });
   } catch (error) {
     console.error('❌ Erreur API accept-order:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    console.error('❌ Stack trace:', error.stack);
+    return NextResponse.json({ 
+      error: 'Erreur serveur',
+      details: error.message || 'Erreur inconnue',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 });
   }
 }
