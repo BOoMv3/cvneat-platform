@@ -884,7 +884,12 @@ export default function RestaurantOrders() {
                                   {isCombo && comboDetails.length > 0 && (
                                     <div className="ml-4 text-xs text-gray-600 space-y-0.5">
                                       {comboDetails.map((detail, idx) => (
-                                        <div key={idx}>• {detail.stepTitle}: <strong>{detail.optionName}</strong></div>
+                                        <div key={idx}>
+                                          • {detail.stepTitle}: <strong>
+                                            {detail.optionName}
+                                            {detail.variantName && ` (${detail.variantName})`}
+                                          </strong>
+                                        </div>
                                       ))}
                                     </div>
                                   )}

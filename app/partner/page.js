@@ -1427,18 +1427,37 @@ export default function PartnerDashboard() {
     }));
   };
 
-  // Ajouter une étape "Sauces" avec des options prédéfinies
+  // Ajouter une étape "Sauces" avec les sauces proposées par le restaurant
   const handleAddSauceStep = () => {
-    const defaultSauces = [
-      { nom: 'Blanche', prix: 0 },
-      { nom: 'Algérienne', prix: 0 },
-      { nom: 'Andalouse', prix: 0 },
-      { nom: 'Barbecue', prix: 0 },
-      { nom: 'Ketchup', prix: 0 },
-      { nom: 'Mayonnaise', prix: 0 },
-      { nom: 'Harissa', prix: 0 },
-      { nom: 'Samouraï', prix: 0 }
-    ];
+    // Récupérer toutes les sauces uniques des menus du restaurant
+    const allSauces = new Map();
+    (menu || []).forEach(menuItem => {
+      if (menuItem.sauce_options && Array.isArray(menuItem.sauce_options)) {
+        menuItem.sauce_options.forEach(sauce => {
+          const sauceName = sauce.nom || sauce.name || '';
+          if (sauceName && !allSauces.has(sauceName)) {
+            allSauces.set(sauceName, {
+              nom: sauceName,
+              prix: parseFloat(sauce.prix || sauce.price || 0) || 0
+            });
+          }
+        });
+      }
+    });
+
+    // Si aucune sauce n'est trouvée dans les menus, utiliser des sauces par défaut
+    const defaultSauces = allSauces.size > 0 
+      ? Array.from(allSauces.values())
+      : [
+          { nom: 'Blanche', prix: 0 },
+          { nom: 'Algérienne', prix: 0 },
+          { nom: 'Andalouse', prix: 0 },
+          { nom: 'Barbecue', prix: 0 },
+          { nom: 'Ketchup', prix: 0 },
+          { nom: 'Mayonnaise', prix: 0 },
+          { nom: 'Harissa', prix: 0 },
+          { nom: 'Samouraï', prix: 0 }
+        ];
 
     setComboForm((prev) => {
       const newSteps = [

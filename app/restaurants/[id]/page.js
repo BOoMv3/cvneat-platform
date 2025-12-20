@@ -879,7 +879,9 @@ export default function RestaurantDetail({ params }) {
         const variant = selection.variant || option.variants?.find(v => v.id === selection.variantId);
 
         const labelParts = [step.title, option.nom];
-        if (variant?.nom) {
+        // Ne pas ajouter la variante au label si elle n'est pas explicitement sélectionnée
+        // (variant est null si aucune variante n'a été choisie)
+        if (variant?.nom && selection.variantId) {
           labelParts.push(variant.nom);
         }
         const label = labelParts.filter(Boolean).join(' · ');

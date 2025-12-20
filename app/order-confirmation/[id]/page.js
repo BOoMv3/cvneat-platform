@@ -673,7 +673,12 @@ export default function OrderConfirmation() {
                         {item.isCombo && !isFormula && item.comboDetails && item.comboDetails.length > 0 && (
                           <div className="mt-2 ml-2 text-sm text-gray-600 space-y-1">
                             {item.comboDetails.map((detail, idx) => (
-                              <div key={idx}>• {detail.stepTitle}: <strong>{detail.optionName}</strong></div>
+                              <div key={idx}>
+                                • {detail.stepTitle}: <strong>
+                                  {detail.optionName}
+                                  {detail.variantName && ` (${detail.variantName})`}
+                                </strong>
+                              </div>
                             ))}
                           </div>
                         )}
