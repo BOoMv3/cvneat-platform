@@ -88,7 +88,7 @@ export async function POST(request, { params }) {
 
     // Vérifier si la commande a besoin d'un remboursement
     const needsRefund = 
-      order.payment_status === 'paid' || order.payment_status === 'succeeded' &&
+      (order.payment_status === 'paid' || order.payment_status === 'succeeded') &&
       order.stripe_payment_intent_id && 
       refundAmount > 0;
 
