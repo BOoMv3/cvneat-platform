@@ -199,14 +199,8 @@ export async function POST(request, { params }) {
         }
       : updatedOrder;
 
-<<<<<<< HEAD
-    // Dans le nouveau workflow, on n'envoie pas d'email "en livraison" tout de suite
-    // car le restaurant doit encore préparer la commande.
-    // L'email sera envoyé plus tard quand le livreur récupère vraiment la commande.
-=======
     // Note: L'email sera envoyé plus tard, quand le restaurant marque la commande comme prête
     // et que le livreur commence la livraison (statut passe à 'en_livraison')
->>>>>>> be91546 (Corriger workflow d'acceptation: livreur accepte d'abord, puis restaurant)
 
     return NextResponse.json({
       success: true,
