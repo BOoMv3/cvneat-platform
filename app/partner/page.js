@@ -1427,9 +1427,8 @@ export default function PartnerDashboard() {
     }));
   };
 
-  // Ajouter une étape "Sauces" avec les sauces proposées par le restaurant
-  const handleAddSauceStep = () => {
-    // Récupérer toutes les sauces uniques des menus du restaurant
+  // Récupérer toutes les sauces uniques des menus du restaurant
+  const getAllRestaurantSauces = () => {
     const allSauces = new Map();
     (menu || []).forEach(menuItem => {
       if (menuItem.sauce_options && Array.isArray(menuItem.sauce_options)) {
@@ -1446,7 +1445,7 @@ export default function PartnerDashboard() {
     });
 
     // Si aucune sauce n'est trouvée dans les menus, utiliser des sauces par défaut
-    const defaultSauces = allSauces.size > 0 
+    return allSauces.size > 0 
       ? Array.from(allSauces.values())
       : [
           { nom: 'Blanche', prix: 0 },
@@ -1458,6 +1457,39 @@ export default function PartnerDashboard() {
           { nom: 'Harissa', prix: 0 },
           { nom: 'Samouraï', prix: 0 }
         ];
+  };
+
+  // Ajouter les sauces comme variantes à une option spécifique (ex: frites)
+  const handleAddSaucesAsVariants = (stepIndex, optionIndex) => {
+    const sauces = getAllRestaurantSauces();
+    
+    updateComboStep(stepIndex, (step) => {
+      const options = [...step.options];
+      const option = { ...options[optionIndex] };
+      
+      // Ajouter les sauces comme variantes (ne pas dupliquer si elles existent déjà)
+      const existingVariantNames = new Set((option.variants || []).map(v => v.nom));
+      const newVariants = sauces
+        .filter(sauce => !existingVariantNames.has(sauce.nom))
+        .map((sauce, index) => ({
+          nom: sauce.nom,
+          description: '',
+          prix_supplementaire: sauce.prix,
+          is_default: false,
+          disponible: true,
+          ordre: (option.variants?.length || 0) + index
+        }));
+      
+      option.variants = [...(option.variants || []), ...newVariants];
+      options[optionIndex] = option;
+      
+      return { ...step, options };
+    });
+  };
+
+  // Ajouter une étape "Sauces" avec les sauces proposées par le restaurant
+  const handleAddSauceStep = () => {
+    const defaultSauces = getAllRestaurantSauces();
 
     setComboForm((prev) => {
       const newSteps = [
