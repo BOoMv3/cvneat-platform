@@ -4376,6 +4376,29 @@ export default function PartnerDashboard() {
                               </div>
                             </div>
 
+                            {/* Bouton pour ajouter les sauces comme variantes (utile pour frites, etc.) */}
+                            {(option.nom?.toLowerCase().includes('frite') || option.nom?.toLowerCase().includes('accompagnement')) && (
+                              <div className="border border-orange-200 dark:border-orange-800 rounded-lg p-3 bg-orange-50 dark:bg-orange-900/20 mb-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-xs font-semibold text-orange-800 dark:text-orange-200">
+                                      🍯 Sauces pour {option.nom}
+                                    </p>
+                                    <p className="text-xs text-orange-600 dark:text-orange-300 mt-1">
+                                      Ajoutez automatiquement les sauces de votre menu comme variantes
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddSaucesAsVariants(stepIndex, optionIndex)}
+                                    className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                                  >
+                                    Ajouter sauces
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
                             <div className="rounded-lg bg-gray-50 dark:bg-gray-800/80 border border-dashed border-gray-200 dark:border-gray-700 p-3 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
