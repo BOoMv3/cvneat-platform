@@ -20,7 +20,8 @@ import {
   FaShoppingCart,
   FaMotorcycle,
   FaCheck,
-  FaTag
+  FaTag,
+  FaCloudRain
 } from 'react-icons/fa';
 
 // Réduire les warnings Stripe non critiques en développement
@@ -410,6 +411,12 @@ export default function Checkout() {
 
   // Fonction SIMPLIFIÉE pour créer la commande et préparer le paiement
   const prepareOrderAndPayment = async () => {
+    // Vérifier si les livraisons sont fermées
+    if (deliveryClosed) {
+      alert(deliveryClosedMessage);
+      return;
+    }
+
     // Validation minimale
     if (!selectedAddress) {
       alert('Veuillez sélectionner une adresse de livraison');
@@ -939,6 +946,19 @@ export default function Checkout() {
         </div>
         
         <h1 className="text-base fold:text-base xs:text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4 fold:mb-4 xs:mb-6 sm:mb-8">Finaliser votre commande</h1>
+
+        {/* Bannière de fermeture des livraisons */}
+        {deliveryClosed && (
+          <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+              <FaCloudRain className="h-6 w-6 flex-shrink-0" />
+              <div className="flex-1">
+                <h2 className="font-bold text-lg mb-1">⚠️ Livraisons fermées ce soir</h2>
+                <p className="text-sm opacity-95">{deliveryClosedMessage}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 fold:gap-2 xs:gap-4 sm:gap-6 lg:gap-8">
           {/* Informations de livraison */}
