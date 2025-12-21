@@ -1231,7 +1231,7 @@ export default function Checkout() {
                 }}
                 appliedCode={appliedPromoCode}
                 cartTotal={cartTotal}
-                restaurantId={resolvedRestaurant?.id}
+                restaurantId={restaurant?.id || restaurant?.restaurant_id || null}
                 userId={user?.id}
                 isFirstOrder={false}
               />
