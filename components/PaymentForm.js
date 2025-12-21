@@ -79,13 +79,86 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
       });
 
       if (confirmError) {
-        // Message d'erreur plus clair pour l'utilisateur
-        let errorMessage = confirmError.message;
+        // Logger l'erreur complète pour déboguer
+        console.error('❌ Erreur Stripe confirmPayment:', {
+          type: confirmError.type,
+          code: confirmError.code,
+          message: confirmError.message,
+          decline_code: confirmError.decline_code,
+          payment_intent: confirmError.payment_intent,
+          fullError: confirmError
+        });
+
+        // Message d'erreur plus clair et spécifique selon le code d'erreur Stripe
+        let errorMessage = confirmError.message || 'Une erreur est survenue lors du paiement.';
+        
         if (confirmError.type === 'card_error') {
-          errorMessage = 'Erreur de carte bancaire. Vérifiez vos informations ou essayez une autre carte.';
+          // Codes d'erreur Stripe spécifiques pour les cartes
+          switch (confirmError.code) {
+            case 'card_declined':
+              // Raison spécifique du refus
+              switch (confirmError.decline_code) {
+                case 'insufficient_funds':
+                  errorMessage = 'Fonds insuffisants. Vérifiez le solde de votre carte ou essayez une autre carte.';
+                  break;
+                case 'lost_card':
+                  errorMessage = 'Cette carte a été signalée comme perdue. Veuillez utiliser une autre carte.';
+                  break;
+                case 'stolen_card':
+                  errorMessage = 'Cette carte a été signalée comme volée. Veuillez utiliser une autre carte.';
+                  break;
+                case 'expired_card':
+                  errorMessage = 'Votre carte a expiré. Veuillez utiliser une autre carte.';
+                  break;
+                case 'incorrect_cvc':
+                  errorMessage = 'Le code de sécurité (CVC) est incorrect. Vérifiez et réessayez.';
+                  break;
+                case 'incorrect_number':
+                  errorMessage = 'Le numéro de carte est incorrect. Vérifiez et réessayez.';
+                  break;
+                case 'generic_decline':
+                  errorMessage = 'Votre carte a été refusée. Contactez votre banque ou essayez une autre carte.';
+                  break;
+                default:
+                  errorMessage = `Votre carte a été refusée${confirmError.decline_code ? ` (${confirmError.decline_code})` : ''}. Contactez votre banque ou essayez une autre carte.`;
+              }
+              break;
+            case 'expired_card':
+              errorMessage = 'Votre carte a expiré. Veuillez utiliser une autre carte.';
+              break;
+            case 'incorrect_cvc':
+              errorMessage = 'Le code de sécurité (CVC) est incorrect. Vérifiez et réessayez.';
+              break;
+            case 'incorrect_number':
+              errorMessage = 'Le numéro de carte est incorrect. Vérifiez et réessayez.';
+              break;
+            case 'insufficient_funds':
+              errorMessage = 'Fonds insuffisants. Vérifiez le solde de votre carte ou essayez une autre carte.';
+              break;
+            case 'invalid_cvc':
+              errorMessage = 'Le code de sécurité (CVC) est invalide. Vérifiez et réessayez.';
+              break;
+            case 'invalid_expiry_month':
+            case 'invalid_expiry_year':
+              errorMessage = 'La date d\'expiration est invalide. Vérifiez et réessayez.';
+              break;
+            case 'invalid_number':
+              errorMessage = 'Le numéro de carte est invalide. Vérifiez et réessayez.';
+              break;
+            default:
+              // Message par défaut avec le code d'erreur pour déboguer
+              errorMessage = confirmError.message || 'Erreur de carte bancaire. Vérifiez vos informations ou essayez une autre carte.';
+          }
         } else if (confirmError.type === 'validation_error') {
           errorMessage = 'Vérifiez que tous les champs sont correctement remplis.';
+        } else if (confirmError.type === 'rate_limit_error') {
+          errorMessage = 'Trop de tentatives. Veuillez patienter quelques instants avant de réessayer.';
+        } else if (confirmError.type === 'api_connection_error') {
+          errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.';
+        } else if (confirmError.type === 'api_error') {
+          errorMessage = 'Erreur technique. Veuillez réessayer dans quelques instants.';
         }
+        
         throw new Error(errorMessage);
       }
 
