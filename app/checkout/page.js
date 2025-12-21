@@ -19,7 +19,8 @@ import {
   FaEnvelope,
   FaShoppingCart,
   FaMotorcycle,
-  FaCheck
+  FaCheck,
+  FaTag
 } from 'react-icons/fa';
 
 // Réduire les warnings Stripe non critiques en développement
@@ -1087,6 +1088,24 @@ export default function Checkout() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[44px] touch-manipulation"
                 />
               </div>
+            </div>
+
+            {/* Code promo */}
+            <div className="border-t dark:border-gray-700 pt-4 sm:pt-6 mt-4 sm:mt-6">
+              <h3 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                <FaTag className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
+                Code promo
+              </h3>
+              <PromoCodeInput
+                onCodeApplied={(codeData) => {
+                  setAppliedPromoCode(codeData);
+                }}
+                appliedCode={appliedPromoCode}
+                cartTotal={cartTotal}
+                restaurantId={resolvedRestaurant?.id}
+                userId={user?.id}
+                isFirstOrder={false}
+              />
             </div>
           </div>
 
