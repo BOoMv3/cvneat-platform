@@ -1089,24 +1089,6 @@ export default function Checkout() {
                 />
               </div>
             </div>
-
-            {/* Code promo */}
-            <div className="border-t dark:border-gray-700 pt-4 sm:pt-6 mt-4 sm:mt-6">
-              <h3 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
-                <FaTag className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
-                Code promo
-              </h3>
-              <PromoCodeInput
-                onCodeApplied={(codeData) => {
-                  setAppliedPromoCode(codeData);
-                }}
-                appliedCode={appliedPromoCode}
-                cartTotal={cartTotal}
-                restaurantId={resolvedRestaurant?.id}
-                userId={user?.id}
-                isFirstOrder={false}
-              />
-            </div>
           </div>
 
           {/* Résumé de la commande */}
