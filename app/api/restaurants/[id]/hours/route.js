@@ -111,7 +111,6 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
     // Normaliser ferme_manuellement
     let fermeManuel = restaurant.ferme_manuellement;
     if (typeof fermeManuel === 'string') {
@@ -122,17 +121,7 @@ export async function POST(request, { params }) {
                              fermeManuel === '1' || 
                              fermeManuel === 1;
     
-    if (isManuallyClosed) {
-      console.log(`🔴 Restaurant ${id} - FERMÉ manuellement (ferme_manuellement = true, ignore les horaires)`);
-      return NextResponse.json({
-        isOpen: false,
-        message: 'Restaurant fermé manuellement',
-        reason: 'manual'
-      });
-    }
-
-    // Si ferme_manuellement = false ou null, vérifier les horaires normalement
-    console.log(`✅ Restaurant ${id} - Vérification automatique des horaires (ferme_manuellement = ${restaurant.ferme_manuellement}, normalisé = ${fermeManuel})`);
+    console.log(`🔍 Restaurant ${id} - Vérification des horaires (ferme_manuellement = ${restaurant.ferme_manuellement}, normalisé = ${fermeManuel})`);
 
     // Vérifier les horaires
     let horaires = restaurant.horaires || {};
@@ -359,8 +348,27 @@ export async function POST(request, { params }) {
       todayKey,
       hasPlages: Array.isArray(todayHours.plages),
       plagesCount: todayHours.plages?.length,
-      matchingPlage
+      matchingPlage,
+      ferme_manuellement: restaurant.ferme_manuellement,
+      isManuallyClosed
     });
+
+    // NOUVELLE LOGIQUE: Les horaires ont la priorité
+    // Si les horaires indiquent ouvert → OUVERT (même si ferme_manuellement = true)
+    // Si les horaires indiquent fermé ET ferme_manuellement = true → FERMÉ manuellement
+    // Si les horaires indiquent fermé ET ferme_manuellement = false/null → FERMÉ normal
+    
+    let finalIsOpen = isOpen;
+    let reason = isOpen ? 'open' : 'outside_hours';
+    
+    if (!isOpen && isManuallyClosed) {
+      // Les horaires indiquent fermé ET ferme_manuellement = true → fermé manuellement
+      reason = 'manual';
+      console.log(`🔴 Restaurant ${id} - FERMÉ manuellement (hors horaires et ferme_manuellement = true)`);
+    } else if (isOpen) {
+      // Les horaires indiquent ouvert → ouvert (même si ferme_manuellement = true)
+      console.log(`✅ Restaurant ${id} - OUVERT (dans les horaires)`);
+    }
 
     // Préparer les informations de plages pour l'affichage
     const plagesInfo = Array.isArray(todayHours.plages) && todayHours.plages.length > 0
@@ -368,9 +376,9 @@ export async function POST(request, { params }) {
       : (todayHours.ouverture && todayHours.fermeture ? [{ ouverture: todayHours.ouverture, fermeture: todayHours.fermeture }] : []);
 
     return NextResponse.json({
-      isOpen,
-      message: isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
-      reason: isOpen ? 'open' : 'outside_hours',
+      isOpen: finalIsOpen,
+      message: finalIsOpen ? 'Restaurant ouvert' : (reason === 'manual' ? 'Restaurant fermé manuellement' : 'Restaurant fermé'),
+      reason: reason,
       openTime: matchingPlage?.ouverture || todayHours.ouverture || null,
       closeTime: matchingPlage?.fermeture || todayHours.fermeture || null,
       plages: plagesInfo,

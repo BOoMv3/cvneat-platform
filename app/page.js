@@ -286,17 +286,21 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       shouldBeOpenByHours = true;
     }
 
-    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
-    if (isManuallyClosed) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = true, ignore les horaires)`);
+    // NOUVELLE LOGIQUE: Si ferme_manuellement = true, on vérifie quand même les horaires
+    // Si horaires indiquent ouvert → OUVERT (même si ferme_manuellement = true)
+    // Si horaires indiquent fermé → FERMÉ (et c'est manuel car ferme_manuellement = true)
+    // Si ferme_manuellement = false ou null → Utiliser simplement le résultat des horaires
+    
+    if (shouldBeOpenByHours) {
+      // Si les horaires indiquent ouvert, le restaurant est ouvert (même si ferme_manuellement = true)
+      return { isOpen: true, isManuallyClosed: false, reason: 'open' };
+    } else if (isManuallyClosed) {
+      // Si les horaires indiquent fermé ET ferme_manuellement = true → FERMÉ manuellement
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = true et hors horaires)`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
-
-    // Si ferme_manuellement = false ou null, utiliser le résultat des horaires
-    if (shouldBeOpenByHours) {
-      return { isOpen: true, isManuallyClosed: false, reason: 'open' };
-    }
     
+    // Si les horaires indiquent fermé et ferme_manuellement = false/null → FERMÉ normal
     return { isOpen: false, isManuallyClosed: false, reason: 'closed' };
   } catch (e) {
     console.error('[checkRestaurantOpenStatus] Erreur pour restaurant:', restaurant?.nom || restaurant?.id, e);
