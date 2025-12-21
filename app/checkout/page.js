@@ -108,6 +108,11 @@ export default function Checkout() {
     instructions: ''
   });
 
+  // Fermeture des livraisons pour ce soir (météo)
+  // Mettre à true pour fermer les livraisons
+  const [deliveryClosed, setDeliveryClosed] = useState(true);
+  const deliveryClosedMessage = "En raison des conditions météorologiques actuelles, aucune livraison ne sera effectuée ce soir. Merci de votre compréhension.";
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1260,7 +1265,7 @@ export default function Checkout() {
             {!showPaymentForm ? (
               <button
                 onClick={submitOrder}
-                disabled={submitting || !selectedAddress || deliveryError !== null}
+                disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed}
                 className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
               >
                 {submitting ? (
