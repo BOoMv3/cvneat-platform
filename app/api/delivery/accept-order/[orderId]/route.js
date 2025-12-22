@@ -82,8 +82,16 @@ export async function POST(request, { params }) {
     // Vérifier que la commande est dans un statut acceptable
     // WORKFLOW: D'abord le livreur accepte (statut 'en_attente'), puis le restaurant accepte
     // Les livreurs peuvent accepter les commandes 'en_attente' (pas encore acceptées par le restaurant)
-    if (order.statut !== 'en_attente') {
-      console.log('❌ Statut commande non acceptable pour livreur:', order.statut);
+    // MAIS aussi permettre l'acceptation si le livreur_id est déjà assigné à ce livreur (réacceptation)
+    const canAccept = order.statut === 'en_attente' || (order.livreur_id === user.id && order.statut === 'en_attente');
+    
+    if (!canAccept) {
+      console.log('❌ Statut commande non acceptable pour livreur:', {
+        statut: order.statut,
+        livreur_id: order.livreur_id,
+        user_id: user.id,
+        expected: 'en_attente'
+      });
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
         details: `Statut actuel: ${order.statut}. Seules les commandes en attente peuvent être acceptées par un livreur.` 
@@ -91,11 +99,14 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier que le paiement est validé
-    if (!['paid', 'succeeded'].includes(order.payment_status)) {
-      console.log('❌ Paiement non validé:', order.payment_status);
+    if (!order.payment_status || !['paid', 'succeeded'].includes(order.payment_status)) {
+      console.log('❌ Paiement non validé:', {
+        payment_status: order.payment_status,
+        order_id: order.id
+      });
       return NextResponse.json({ 
         error: 'Commande non disponible', 
-        details: 'Le paiement n\'a pas été validé.' 
+        details: `Le paiement n'a pas été validé (statut: ${order.payment_status || 'non défini'}).` 
       }, { status: 400 });
     }
 
