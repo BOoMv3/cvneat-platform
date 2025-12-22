@@ -110,7 +110,7 @@ export default function Checkout() {
 
   // Fermeture des livraisons pour ce soir (météo)
   // Mettre à true pour fermer les livraisons
-  const [deliveryClosed, setDeliveryClosed] = useState(true);
+  const [deliveryClosed, setDeliveryClosed] = useState(false);
   const deliveryClosedMessage = "En raison des conditions météorologiques actuelles, aucune livraison ne sera effectuée ce soir. Merci de votre compréhension.";
 
   useEffect(() => {
