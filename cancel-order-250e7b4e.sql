@@ -15,15 +15,15 @@ SELECT
   created_at,
   updated_at
 FROM commandes
-WHERE id LIKE '%250e7b4e%';
+WHERE id::text LIKE '%250e7b4e%';
 
--- 2. Annuler la commande (décommentez après avoir vérifié que c'est la bonne commande)
+-- 2. Annuler la commande
 UPDATE commandes
 SET 
   statut = 'annulee',
   payment_status = 'refunded',
   updated_at = NOW()
-WHERE id LIKE '%250e7b4e%'
+WHERE id::text LIKE '%250e7b4e%'
   AND statut != 'annulee';
 
 -- 3. Vérifier le résultat après mise à jour
@@ -37,5 +37,5 @@ SELECT
   refund_amount,
   updated_at
 FROM commandes
-WHERE id LIKE '%250e7b4e%';
+WHERE id::text LIKE '%250e7b4e%';
 
