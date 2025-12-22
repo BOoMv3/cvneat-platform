@@ -61,12 +61,17 @@ export async function POST(request, { params }) {
       statut: order.statut,
       livreur_id: order.livreur_id,
       restaurant_id: order.restaurant_id,
-      ready_for_delivery: order.ready_for_delivery
+      ready_for_delivery: order.ready_for_delivery,
+      payment_status: order.payment_status
     });
 
     // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
     if (order.statut === 'annulee' || order.payment_status === 'refunded') {
-      console.log('❌ Tentative d\'acceptation d\'une commande annulée ou remboursée:', { orderId, statut: order.statut, payment: order.payment_status });
+      console.log('❌ Tentative d\'acceptation d\'une commande annulée ou remboursée:', { 
+        orderId, 
+        statut: order.statut, 
+        payment: order.payment_status 
+      });
       return NextResponse.json({ 
         error: 'Cette commande a été annulée ou remboursée et n\'est plus disponible',
         statut: order.statut,
@@ -90,17 +95,29 @@ export async function POST(request, { params }) {
 
     // WORKFLOW: D'abord le livreur accepte (statut 'en_attente'), puis le restaurant accepte
     // Les livreurs peuvent accepter les commandes 'en_attente' uniquement
+    // Log détaillé pour debug
+    console.log('🔍 Vérification statut et paiement:', {
+      statut: order.statut,
+      payment_status: order.payment_status,
+      livreur_id: order.livreur_id,
+      user_id: user.id,
+      order_id: order.id,
+      statut_ok: order.statut === 'en_attente',
+      payment_ok: order.payment_status && ['paid', 'succeeded'].includes(order.payment_status)
+    });
+
     if (order.statut !== 'en_attente') {
       console.log('❌ Statut commande non acceptable pour livreur:', {
         statut: order.statut,
         livreur_id: order.livreur_id,
         user_id: user.id,
         expected: 'en_attente',
-        order_id: order.id
+        order_id: order.id,
+        payment_status: order.payment_status
       });
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
-        details: `Statut actuel: ${order.statut}. Seules les commandes en attente peuvent être acceptées par un livreur.` 
+        details: `Statut actuel: ${order.statut}. Seules les commandes en attente (en_attente) peuvent être acceptées par un livreur.` 
       }, { status: 400 });
     }
 
@@ -109,7 +126,8 @@ export async function POST(request, { params }) {
       console.log('❌ Paiement non validé:', {
         payment_status: order.payment_status,
         order_id: order.id,
-        required_statuses: ['paid', 'succeeded']
+        required_statuses: ['paid', 'succeeded'],
+        statut: order.statut
       });
       return NextResponse.json({ 
         error: 'Commande non disponible', 
