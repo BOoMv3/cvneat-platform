@@ -151,9 +151,11 @@ export async function POST(request, { params }) {
       // Le statut reste 'en_attente', le restaurant changera le statut quand il acceptera
     };
     
-    // Ajouter delivery_time si fourni par le livreur
+    // Ajouter delivery_time si fourni par le livreur (seulement si la valeur est valide)
+    // Note: Si la colonne n'existe pas encore en base, cette ligne sera ignorée silencieusement
     if (delivery_time !== null && delivery_time !== undefined && delivery_time > 0) {
       updatePayload.delivery_time = delivery_time;
+      console.log('📦 Temps de livraison ajouté:', delivery_time, 'minutes');
     }
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
