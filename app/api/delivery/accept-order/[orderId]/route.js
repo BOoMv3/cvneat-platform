@@ -76,21 +76,27 @@ export async function POST(request, { params }) {
 
     // Vérifier que la commande n'est pas déjà acceptée par un autre livreur
     if (order.livreur_id && order.livreur_id !== user.id) {
+      console.log('❌ Commande déjà acceptée par un autre livreur:', {
+        order_livreur_id: order.livreur_id,
+        current_user_id: user.id
+      });
       return NextResponse.json({ error: 'Commande déjà acceptée par un autre livreur' }, { status: 409 });
     }
 
-    // Vérifier que la commande est dans un statut acceptable
+    // Si le livreur a déjà accepté cette commande, permettre la réacceptation (pour rafraîchir)
+    if (order.livreur_id === user.id) {
+      console.log('✅ Livreur réaccepte sa propre commande, mise à jour autorisée');
+    }
+
     // WORKFLOW: D'abord le livreur accepte (statut 'en_attente'), puis le restaurant accepte
-    // Les livreurs peuvent accepter les commandes 'en_attente' (pas encore acceptées par le restaurant)
-    // MAIS aussi permettre l'acceptation si le livreur_id est déjà assigné à ce livreur (réacceptation)
-    const canAccept = order.statut === 'en_attente' || (order.livreur_id === user.id && order.statut === 'en_attente');
-    
-    if (!canAccept) {
+    // Les livreurs peuvent accepter les commandes 'en_attente' uniquement
+    if (order.statut !== 'en_attente') {
       console.log('❌ Statut commande non acceptable pour livreur:', {
         statut: order.statut,
         livreur_id: order.livreur_id,
         user_id: user.id,
-        expected: 'en_attente'
+        expected: 'en_attente',
+        order_id: order.id
       });
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
@@ -98,15 +104,17 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // Vérifier que le paiement est validé
-    if (!order.payment_status || !['paid', 'succeeded'].includes(order.payment_status)) {
+    // Vérifier que le paiement est validé (plus flexible - accepter aussi 'pending' si c'est en attente)
+    const validPaymentStatuses = ['paid', 'succeeded', 'pending'];
+    if (!order.payment_status || !validPaymentStatuses.includes(order.payment_status)) {
       console.log('❌ Paiement non validé:', {
         payment_status: order.payment_status,
-        order_id: order.id
+        order_id: order.id,
+        valid_statuses: validPaymentStatuses
       });
       return NextResponse.json({ 
         error: 'Commande non disponible', 
-        details: `Le paiement n'a pas été validé (statut: ${order.payment_status || 'non défini'}).` 
+        details: `Le paiement n'a pas été validé (statut: ${order.payment_status || 'non défini'}). Seuls les statuts ${validPaymentStatuses.join(', ')} sont acceptés.` 
       }, { status: 400 });
     }
 
