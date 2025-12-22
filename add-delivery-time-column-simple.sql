@@ -1,0 +1,3 @@
+ALTER TABLE commandes 
+ADD COLUMN IF NOT EXISTS delivery_time INTEGER;
+
