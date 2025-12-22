@@ -18,24 +18,24 @@ FROM commandes
 WHERE id LIKE '%250e7b4e%';
 
 -- 2. Annuler la commande (décommentez après avoir vérifié que c'est la bonne commande)
--- UPDATE commandes
--- SET 
---   statut = 'annulee',
---   payment_status = 'refunded',
---   updated_at = NOW()
--- WHERE id LIKE '%250e7b4e%'
---   AND statut != 'annulee';
+UPDATE commandes
+SET 
+  statut = 'annulee',
+  payment_status = 'refunded',
+  updated_at = NOW()
+WHERE id LIKE '%250e7b4e%'
+  AND statut != 'annulee';
 
 -- 3. Vérifier le résultat après mise à jour
--- SELECT 
---   id,
---   statut,
---   payment_status,
---   total,
---   frais_livraison,
---   stripe_refund_id,
---   refund_amount,
---   updated_at
--- FROM commandes
--- WHERE id LIKE '%250e7b4e%';
+SELECT 
+  id,
+  statut,
+  payment_status,
+  total,
+  frais_livraison,
+  stripe_refund_id,
+  refund_amount,
+  updated_at
+FROM commandes
+WHERE id LIKE '%250e7b4e%';
 
