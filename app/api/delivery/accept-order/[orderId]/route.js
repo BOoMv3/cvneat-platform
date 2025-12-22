@@ -104,17 +104,16 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // Vérifier que le paiement est validé (plus flexible - accepter aussi 'pending' si c'est en attente)
-    const validPaymentStatuses = ['paid', 'succeeded', 'pending'];
-    if (!order.payment_status || !validPaymentStatuses.includes(order.payment_status)) {
+    // Vérifier que le paiement est validé - UNIQUEMENT les paiements confirmés
+    if (!order.payment_status || !['paid', 'succeeded'].includes(order.payment_status)) {
       console.log('❌ Paiement non validé:', {
         payment_status: order.payment_status,
         order_id: order.id,
-        valid_statuses: validPaymentStatuses
+        required_statuses: ['paid', 'succeeded']
       });
       return NextResponse.json({ 
         error: 'Commande non disponible', 
-        details: `Le paiement n'a pas été validé (statut: ${order.payment_status || 'non défini'}). Seuls les statuts ${validPaymentStatuses.join(', ')} sont acceptés.` 
+        details: `Le paiement n'a pas été validé (statut: ${order.payment_status || 'non défini'}). Seuls les paiements confirmés (paid, succeeded) peuvent être acceptés.` 
       }, { status: 400 });
     }
 
