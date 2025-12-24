@@ -166,6 +166,22 @@ export default function AdminPayments() {
           let totalRestaurantPayout = 0;
           let hasStoredCommissions = false;
 
+          // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+          const normalizedRestaurantName = (restaurant.nom || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+          const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+
+          // Taux de commission : utiliser commission_rate du restaurant (par défaut 20% si non défini)
+          // La Bonne Pâte = 0%, sinon utiliser le commission_rate du restaurant
+          const restaurantCommissionRate = restaurant.commission_rate 
+            ? parseFloat(restaurant.commission_rate) / 100 
+            : 0.20; // 20% par défaut
+          const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
+
+          // TOUJOURS recalculer avec le taux actuel du restaurant pour garantir l'exactitude
+          // même si des valeurs sont stockées (elles peuvent être basées sur d'anciens taux)
           paidOrders.forEach(order => {
             const orderTotal = parseFloat(order.total || 0);
             if (isNaN(orderTotal)) {
@@ -174,34 +190,13 @@ export default function AdminPayments() {
             }
             totalRevenue += orderTotal;
 
-            // Si la commande a déjà les données de commission stockées, les utiliser
-            if (order.commission_amount !== null && order.commission_amount !== undefined && 
-                order.restaurant_payout !== null && order.restaurant_payout !== undefined) {
-              totalCommission += parseFloat(order.commission_amount || 0);
-              totalRestaurantPayout += parseFloat(order.restaurant_payout || 0);
-              hasStoredCommissions = true;
-            }
-          });
-
-          // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-          const normalizedRestaurantName = (restaurant.nom || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
-          const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-
-          // Si les commandes n'ont pas de commissions stockées, recalculer
-          if (!hasStoredCommissions) {
-            // Taux de commission : utiliser commission_rate du restaurant (par défaut 20% si non défini)
-            // La Bonne Pâte = 0%, sinon utiliser le commission_rate du restaurant
-            const restaurantCommissionRate = restaurant.commission_rate 
-              ? parseFloat(restaurant.commission_rate) / 100 
-              : 0.20; // 20% par défaut
-            const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
+            // Recalculer la commission avec le taux actuel du restaurant
+            const orderCommission = orderTotal * commissionRate;
+            const orderPayout = orderTotal - orderCommission;
             
-            totalCommission = totalRevenue * commissionRate;
-            totalRestaurantPayout = totalRevenue - totalCommission;
-          }
+            totalCommission += orderCommission;
+            totalRestaurantPayout += orderPayout;
+          });
 
           // Afficher le taux de commission du restaurant (pas un calcul moyen basé sur les commissions réelles)
           // Utiliser le commission_rate du restaurant (0% pour La Bonne Pâte, sinon le taux du restaurant)
