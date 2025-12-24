@@ -6,15 +6,29 @@
 SELECT id, nom FROM restaurants 
 WHERE id = 'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824';
 
--- 2. Vérifier s'il y a des commandes jusqu'au 19 décembre
+-- 2. Vérifier toutes les commandes de ce restaurant (peu importe la date ou le statut)
 SELECT 
-  COUNT(*) AS total_commandes,
-  COUNT(*) FILTER (WHERE statut = 'livree') AS commandes_livrees,
+  COUNT(*) AS total_commandes_toutes_dates,
+  COUNT(*) FILTER (WHERE statut = 'livree') AS commandes_livrees_toutes_dates,
+  COUNT(*) FILTER (WHERE DATE(created_at) <= '2024-12-19') AS commandes_jusqu_au_19_dec,
+  COUNT(*) FILTER (WHERE DATE(created_at) <= '2024-12-19' AND statut = 'livree') AS commandes_livrees_jusqu_au_19_dec,
   MIN(created_at) AS premiere_commande,
   MAX(created_at) AS derniere_commande
 FROM commandes
+WHERE restaurant_id = 'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824';
+
+-- 2b. Voir toutes les commandes de ce restaurant avec leur statut (limité à 20)
+SELECT 
+  id,
+  DATE(created_at) AS date_commande,
+  statut,
+  payment_status,
+  ROUND(total::numeric, 2) AS total,
+  created_at
+FROM commandes
 WHERE restaurant_id = 'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824'
-AND DATE(created_at) <= '2024-12-19';
+ORDER BY created_at DESC
+LIMIT 20;
 
 -- 3. Calculer le total dû au restaurant jusqu'au 19 décembre 2024 (inclus) - uniquement les livrées
 -- Le montant dû au restaurant = total - commission
