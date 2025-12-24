@@ -1,22 +1,22 @@
--- Script pour calculer ce qui était dû au restaurant all'ovale le 19 décembre 2024
+-- Script pour calculer ce qui était dû au restaurant All'ovale pizza le 19 décembre 2024
+-- Restaurant ID: f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824
 -- Exclut toutes les transactions après le 19 décembre
 
--- 0. D'abord, lister tous les restaurants pour trouver le bon nom
+-- 1. Vérifier le restaurant
 SELECT id, nom FROM restaurants 
-WHERE nom ILIKE '%ovale%' OR nom ILIKE '%pizza%'
-ORDER BY nom;
+WHERE id = 'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824';
 
--- 1. Trouver le restaurant All'ovale pizza (décommentez après avoir trouvé le bon ID)
--- SELECT id, nom FROM restaurants 
--- WHERE (nom ILIKE '%ovale%' AND nom ILIKE '%pizza%');
+-- 2. Vérifier s'il y a des commandes jusqu'au 19 décembre
+SELECT 
+  COUNT(*) AS total_commandes,
+  COUNT(*) FILTER (WHERE statut = 'livree') AS commandes_livrees,
+  MIN(created_at) AS premiere_commande,
+  MAX(created_at) AS derniere_commande
+FROM commandes
+WHERE restaurant_id = 'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824'
+AND DATE(created_at) <= '2024-12-19';
 
--- 2. Vérifier s'il y a des commandes pour ce restaurant (remplacez RESTAURANT_ID par l'ID trouvé à l'étape 0)
--- SELECT COUNT(*), MIN(created_at), MAX(created_at), COUNT(*) FILTER (WHERE statut = 'livree') as livrees
--- FROM commandes
--- WHERE restaurant_id = 'RESTAURANT_ID'
--- AND DATE(created_at) <= '2024-12-19';
-
--- 3. Calculer les commandes jusqu'au 19 décembre 2024 (inclus) - uniquement les livrées
+-- 3. Calculer le total dû au restaurant jusqu'au 19 décembre 2024 (inclus) - uniquement les livrées
 -- Le montant dû au restaurant = total - commission
 WITH commandes_19_dec AS (
   SELECT 
@@ -34,41 +34,37 @@ WITH commandes_19_dec AS (
       ELSE total - COALESCE(commission_amount, (total * COALESCE(commission_rate, 20) / 100))
     END AS montant_du_restaurant
   FROM commandes
-  WHERE restaurant_id IN (
-    SELECT id FROM restaurants WHERE (nom ILIKE '%ovale%' AND nom ILIKE '%pizza%')
-  )
+  WHERE restaurant_id = 'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824'
   AND DATE(created_at) <= '2024-12-19'
   AND statut = 'livree'  -- Seulement les commandes livrées
   ORDER BY created_at DESC
 )
 SELECT 
   COUNT(*) AS nombre_commandes,
-  SUM(total) AS total_chiffre_affaires,
-  SUM(COALESCE(commission_amount, (total * COALESCE(commission_rate, 20) / 100))) AS total_commission,
-  SUM(montant_du_restaurant) AS total_du_au_restaurant,
+  ROUND(SUM(total)::numeric, 2) AS total_chiffre_affaires,
+  ROUND(SUM(COALESCE(commission_amount, (total * COALESCE(commission_rate, 20) / 100)))::numeric, 2) AS total_commission,
+  ROUND(SUM(montant_du_restaurant)::numeric, 2) AS total_du_au_restaurant,
   MIN(created_at) AS premiere_commande,
   MAX(created_at) AS derniere_commande
 FROM commandes_19_dec;
 
--- 4. Détail des commandes jusqu'au 19 décembre (utilisez l'ID du restaurant trouvé à l'étape 0)
+-- 4. Détail des commandes jusqu'au 19 décembre
 SELECT 
   id,
   DATE(created_at) AS date_commande,
   statut,
-  total,
-  frais_livraison,
+  ROUND(total::numeric, 2) AS total,
+  ROUND(frais_livraison::numeric, 2) AS frais_livraison,
   commission_rate,
-  commission_amount,
-  restaurant_payout,
-  CASE 
+  ROUND(COALESCE(commission_amount, 0)::numeric, 2) AS commission_amount,
+  ROUND(COALESCE(restaurant_payout, 0)::numeric, 2) AS restaurant_payout,
+  ROUND((CASE 
     WHEN restaurant_payout IS NOT NULL THEN restaurant_payout
     ELSE total - COALESCE(commission_amount, (total * COALESCE(commission_rate, 20) / 100))
-  END AS montant_du_restaurant,
+  END)::numeric, 2) AS montant_du_restaurant,
   created_at
 FROM commandes
-WHERE restaurant_id IN (
-  SELECT id FROM restaurants WHERE nom ILIKE '%ovale%' OR nom ILIKE '%oval%'
-)
+WHERE restaurant_id = 'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824'
 AND DATE(created_at) <= '2024-12-19'
 AND statut = 'livree'
 ORDER BY created_at DESC;
