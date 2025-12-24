@@ -8,39 +8,30 @@ ORDER BY nom;
 
 -- 2. Recalculer commission_amount et restaurant_payout pour toutes les commandes livrées
 -- en fonction du commission_rate actuel du restaurant
-UPDATE commandes
+WITH restaurant_rates AS (
+  SELECT id, commission_rate, 
+    CASE 
+      WHEN nom ILIKE '%bonne%pate%' OR nom ILIKE '%bonne%pâte%' THEN 0
+      ELSE COALESCE(commission_rate, 20)
+    END AS effective_rate
+  FROM restaurants
+)
+UPDATE commandes c
 SET 
   commission_amount = CASE 
-    -- La Bonne Pâte = 0% de commission
-    WHEN restaurant_id IN (
-      SELECT id FROM restaurants 
-      WHERE nom ILIKE '%bonne%pate%' OR nom ILIKE '%bonne%pâte%'
-    ) THEN 0
-    -- Sinon, utiliser le commission_rate du restaurant (par défaut 20%)
-    ELSE ROUND((total * COALESCE(
-      (SELECT commission_rate FROM restaurants WHERE id = commandes.restaurant_id),
-      20
-    ) / 100)::numeric, 2)
+    WHEN rr.effective_rate = 0 THEN 0
+    ELSE ROUND((c.total * rr.effective_rate / 100)::numeric, 2)
   END,
   restaurant_payout = CASE 
-    -- La Bonne Pâte = total (pas de commission)
-    WHEN restaurant_id IN (
-      SELECT id FROM restaurants 
-      WHERE nom ILIKE '%bonne%pate%' OR nom ILIKE '%bonne%pâte%'
-    ) THEN total
-    -- Sinon, total - commission
-    ELSE ROUND((total - (total * COALESCE(
-      (SELECT commission_rate FROM restaurants WHERE id = commandes.restaurant_id),
-      20
-    ) / 100))::numeric, 2)
+    WHEN rr.effective_rate = 0 THEN c.total
+    ELSE ROUND((c.total - (c.total * rr.effective_rate / 100))::numeric, 2)
   END,
-  commission_rate = COALESCE(
-    (SELECT commission_rate FROM restaurants WHERE id = commandes.restaurant_id),
-    20
-  ),
+  commission_rate = rr.effective_rate,
   updated_at = NOW()
-WHERE statut = 'livree'
-  AND total > 0;
+FROM restaurant_rates rr
+WHERE c.restaurant_id = rr.id
+  AND c.statut = 'livree'
+  AND c.total > 0;
 
 -- 3. Vérifier les résultats pour quelques commandes
 SELECT 
