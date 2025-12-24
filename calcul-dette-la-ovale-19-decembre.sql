@@ -2,8 +2,9 @@
 -- Exclut toutes les transactions après le 19 décembre
 
 -- 1. Trouver le restaurant All'ovale pizza
+-- Recherche flexible pour trouver le restaurant
 SELECT id, nom FROM restaurants 
-WHERE nom ILIKE '%all%ovale%pizza%' OR nom ILIKE '%all''ovale%pizza%';
+WHERE (nom ILIKE '%ovale%' AND nom ILIKE '%pizza%');
 
 -- 2. Calculer les commandes jusqu'au 19 décembre 2024 (inclus) - uniquement les livrées
 -- Le montant dû au restaurant = total - commission
@@ -24,7 +25,7 @@ WITH commandes_19_dec AS (
     END AS montant_du_restaurant
   FROM commandes
   WHERE restaurant_id IN (
-    SELECT id FROM restaurants WHERE nom ILIKE '%all%ovale%pizza%' OR nom ILIKE '%all''ovale%pizza%'
+    SELECT id FROM restaurants WHERE (nom ILIKE '%ovale%' AND nom ILIKE '%pizza%')
   )
   AND DATE(created_at) <= '2024-12-19'
   AND statut = 'livree'  -- Seulement les commandes livrées
