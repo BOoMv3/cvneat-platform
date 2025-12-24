@@ -179,6 +179,9 @@ export default function AdminPayments() {
             ? parseFloat(restaurant.commission_rate) / 100 
             : 0.20; // 20% par défaut
           const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
+          
+          // Log pour debug
+          console.log(`💰 ${restaurant.nom}: commission_rate=${restaurant.commission_rate}, calculé=${commissionRate * 100}%`);
 
           // TOUJOURS recalculer avec le taux actuel du restaurant pour garantir l'exactitude
           // même si des valeurs sont stockées (elles peuvent être basées sur d'anciens taux)
@@ -207,7 +210,7 @@ export default function AdminPayments() {
                 ? restaurant.commission_rate 
                 : 20);
 
-          return {
+          const result = {
             ...restaurant,
             totalRevenue: Math.round(totalRevenue * 100) / 100,
             commission: Math.round(totalCommission * 100) / 100,
@@ -215,6 +218,11 @@ export default function AdminPayments() {
             orderCount: paidOrders.length,
             commissionRate: displayCommissionRate
           };
+          
+          // Log pour debug
+          console.log(`💰 Résultat ${restaurant.nom}: CA=${result.totalRevenue}€, Commission=${result.commission}€, Dû=${result.restaurantPayout}€, Taux=${result.commissionRate}%`);
+          
+          return result;
         })
       );
 
