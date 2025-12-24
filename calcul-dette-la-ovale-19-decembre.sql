@@ -3,7 +3,7 @@
 
 -- 1. Trouver le restaurant all'ovale
 SELECT id, nom FROM restaurants 
-WHERE nom ILIKE '%all%ovale%' OR nom ILIKE '%all''ovale%' OR nom ILIKE '%all\'ovale%';
+WHERE nom ILIKE '%all%ovale%';
 
 -- 2. Calculer les commandes jusqu'au 19 décembre 2024 (inclus) - uniquement les livrées
 -- Le montant dû au restaurant = total - commission
@@ -24,7 +24,7 @@ WITH commandes_19_dec AS (
     END AS montant_du_restaurant
   FROM commandes
   WHERE restaurant_id IN (
-    SELECT id FROM restaurants WHERE nom ILIKE '%all%ovale%' OR nom ILIKE '%all''ovale%' OR nom ILIKE '%all\'ovale%'
+    SELECT id FROM restaurants WHERE nom ILIKE '%all%ovale%'
   )
   AND DATE(created_at) <= '2024-12-19'
   AND statut = 'livree'  -- Seulement les commandes livrées
