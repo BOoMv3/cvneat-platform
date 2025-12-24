@@ -237,6 +237,7 @@ export default function RestaurantDetail({ params }) {
                     <p><span className="font-medium">Telephone :</span> {restaurant.telephone}</p>
                     <p><span className="font-medium">Type de cuisine :</span> {restaurant.type_cuisine}</p>
                     <p><span className="font-medium">Capacite :</span> {restaurant.capacite} couverts</p>
+                    <p><span className="font-medium">Commission CVN'EAT :</span> {restaurant.commission_rate ?? 20}%</p>
                   </div>
                 </div>
                 
