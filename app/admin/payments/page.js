@@ -191,8 +191,9 @@ export default function AdminPayments() {
             totalRevenue += orderTotal;
 
             // Recalculer la commission avec le taux actuel du restaurant
-            const orderCommission = orderTotal * commissionRate;
-            const orderPayout = orderTotal - orderCommission;
+            // Utiliser Math.round pour éviter les erreurs d'arrondi
+            const orderCommission = Math.round((orderTotal * commissionRate) * 100) / 100;
+            const orderPayout = Math.round((orderTotal - orderCommission) * 100) / 100;
             
             totalCommission += orderCommission;
             totalRestaurantPayout += orderPayout;
