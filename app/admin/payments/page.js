@@ -183,15 +183,15 @@ export default function AdminPayments() {
             }
           });
 
+          // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+          const normalizedRestaurantName = (restaurant.nom || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+          const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+
           // Si les commandes n'ont pas de commissions stockées, recalculer
           if (!hasStoredCommissions) {
-            // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-            const normalizedRestaurantName = (restaurant.nom || '')
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .toLowerCase();
-            const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-            
             // Taux de commission : utiliser commission_rate du restaurant (par défaut 20% si non défini)
             // La Bonne Pâte = 0%, sinon utiliser le commission_rate du restaurant
             const restaurantCommissionRate = restaurant.commission_rate 
@@ -203,10 +203,13 @@ export default function AdminPayments() {
             totalRestaurantPayout = totalRevenue - totalCommission;
           }
 
-          // Calculer le taux de commission moyen pour l'affichage
-          const avgCommissionRate = totalRevenue > 0 
-            ? (totalCommission / totalRevenue) * 100 
-            : (restaurant.commission_rate || 20);
+          // Afficher le taux de commission du restaurant (pas un calcul moyen basé sur les commissions réelles)
+          // Utiliser le commission_rate du restaurant (0% pour La Bonne Pâte, sinon le taux du restaurant)
+          const displayCommissionRate = isInternalRestaurant 
+            ? 0 
+            : (restaurant.commission_rate !== null && restaurant.commission_rate !== undefined 
+                ? restaurant.commission_rate 
+                : 20);
 
           return {
             ...restaurant,
@@ -214,7 +217,7 @@ export default function AdminPayments() {
             commission: Math.round(totalCommission * 100) / 100,
             restaurantPayout: Math.round(totalRestaurantPayout * 100) / 100,
             orderCount: paidOrders.length,
-            commissionRate: Math.round(avgCommissionRate * 100) / 100
+            commissionRate: displayCommissionRate
           };
         })
       );
