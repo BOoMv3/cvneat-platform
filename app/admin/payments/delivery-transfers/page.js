@@ -137,7 +137,8 @@ export default function DeliveryTransfersTracking() {
     try {
       setLoadingPayments(true);
       
-      // Récupérer tous les livreurs
+      // Récupérer TOUS les livreurs (pas seulement Théo)
+      // Cette fonction calcule les gains dus pour chaque livreur
       const { data: allDrivers, error: driversError } = await supabase
         .from('users')
         .select('id, nom, prenom, email')
@@ -147,9 +148,12 @@ export default function DeliveryTransfersTracking() {
       if (driversError) throw driversError;
 
       // Pour chaque livreur, calculer les gains dus
+      // Les gains dus = somme des frais_livraison des commandes avec livreur_paid_at IS NULL
+      // Quand on marque les commandes comme payées via l'API, les dashboards se mettent à jour automatiquement
       const driversWithPaymentsData = await Promise.all(
         (allDrivers || []).map(async (driver) => {
           // Récupérer les commandes livrées non payées
+          // IMPORTANT: livreur_paid_at IS NULL = commandes non encore payées
           const { data: orders, error: ordersError } = await supabase
             .from('commandes')
             .select('id, frais_livraison, created_at, statut')
@@ -286,11 +290,13 @@ export default function DeliveryTransfersTracking() {
 
       setShowModal(false);
       
-      // Recharger les données
+      // Recharger les données pour mettre à jour l'affichage
+      // Les dashboards des livreurs se mettront à jour automatiquement car ils utilisent livreur_paid_at IS NULL
       fetchTransfers();
       fetchDriverPayments();
       
-      alert(`Paiement de ${formData.amount}€ enregistré avec succès !`);
+      const message = data.message || `Paiement de ${formData.amount}€ enregistré avec succès !`;
+      alert(message);
     } catch (err) {
       console.error('Erreur création paiement:', err);
       setError(err.message || 'Erreur lors de la création du paiement');
