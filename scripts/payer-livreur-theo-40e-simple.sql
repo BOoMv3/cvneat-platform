@@ -113,6 +113,7 @@ SELECT
     dt.amount,
     dt.transfer_date,
     dt.notes,
+    dt.created_at,
     u.email,
     COUNT(c.id) FILTER (WHERE c.statut = 'livree' AND c.livreur_paid_at IS NULL) as commandes_non_payees_restantes,
     COALESCE(SUM(c.frais_livraison) FILTER (WHERE c.statut = 'livree' AND c.livreur_paid_at IS NULL), 0) as montant_non_paye_restant
@@ -121,7 +122,7 @@ JOIN users u ON u.id = dt.delivery_id
 LEFT JOIN commandes c ON c.livreur_id = u.id AND c.statut = 'livree'
 WHERE dt.delivery_email = 'theo@cvneat.fr'
   AND dt.created_at >= NOW() - INTERVAL '1 minute'
-GROUP BY dt.amount, dt.transfer_date, dt.notes, u.email
+GROUP BY dt.amount, dt.transfer_date, dt.notes, dt.created_at, u.email
 ORDER BY dt.created_at DESC
 LIMIT 1;
 
