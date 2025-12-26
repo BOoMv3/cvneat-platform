@@ -55,18 +55,34 @@ DECLARE
     derniere_commande_id UUID;
     stripe_pi_id TEXT;
     montant_total DECIMAL(10,2);
+    restaurant_nom TEXT;
 BEGIN
-    -- Trouver l'ID du restaurant
-    SELECT id INTO restaurant_id_found
+    -- Trouver l'ID du restaurant (recherche plus flexible)
+    SELECT id, nom INTO restaurant_id_found, restaurant_nom
     FROM restaurants
-    WHERE nom ILIKE '%burger%cevenol%' 
+    WHERE nom ILIKE '%cevenol%' 
+       OR nom ILIKE '%cévenol%'
+       OR nom ILIKE '%burger%cevenol%'
        OR nom ILIKE '%burger%cévenol%'
        OR nom ILIKE '%burgercevenol%'
+       OR nom ILIKE '%cevenol%burger%'
+       OR nom ILIKE '%cévenol%burger%'
     LIMIT 1;
     
     IF restaurant_id_found IS NULL THEN
-        RAISE EXCEPTION 'Restaurant Burger Cévenol non trouvé';
+        -- Afficher tous les restaurants pour aider à identifier
+        RAISE NOTICE '⚠️ Restaurant Burger Cévenol non trouvé avec les critères de recherche.';
+        RAISE NOTICE 'Restaurants contenant "burger" ou "cevenol":';
+        FOR restaurant_nom IN 
+            SELECT nom FROM restaurants 
+            WHERE nom ILIKE '%burger%' OR nom ILIKE '%cevenol%' OR nom ILIKE '%cévenol%'
+        LOOP
+            RAISE NOTICE '  - %', restaurant_nom;
+        END LOOP;
+        RAISE EXCEPTION 'Restaurant Burger Cévenol non trouvé. Vérifiez le nom exact dans la liste ci-dessus.';
     END IF;
+    
+    RAISE NOTICE '✅ Restaurant trouvé: % (ID: %)', restaurant_nom, restaurant_id_found;
     
     -- Trouver la dernière commande non annulée
     SELECT 
