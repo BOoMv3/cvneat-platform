@@ -244,12 +244,30 @@ export async function PUT(request, { params }) {
           }
         }
 
-        // Si la commande est annulée par le restaurant, rembourser automatiquement
+        // Si la commande est annulée par le restaurant, rembourser automatiquement SEULEMENT si pas déjà acceptée/livrée
         if (correctedStatus === 'annulee' && order.payment_status === 'paid' && order.stripe_payment_intent_id) {
+          // VÉRIFICATION CRITIQUE: Ne pas rembourser si la commande est déjà acceptée par un livreur ou livrée
+          if (order.livreur_id) {
+            console.log('⚠️ Remboursement BLOQUÉ: Commande déjà acceptée par un livreur (ID:', order.livreur_id, ')');
+            return NextResponse.json({
+              error: 'Impossible d\'annuler cette commande: elle a déjà été acceptée par un livreur. Contactez le support pour toute demande de remboursement.',
+              livreur_id: order.livreur_id,
+              current_statut: order.statut
+            }, { status: 400 });
+          }
+          
+          if (order.statut === 'livree' || order.statut === 'delivered') {
+            console.log('⚠️ Remboursement BLOQUÉ: Commande déjà livrée (statut:', order.statut, ')');
+            return NextResponse.json({
+              error: 'Impossible d\'annuler cette commande: elle a déjà été livrée. Contactez le support pour toute demande de remboursement.',
+              current_statut: order.statut
+            }, { status: 400 });
+          }
+          
           const orderTotal = parseFloat(order.total || 0);
           
           if (orderTotal > 0) {
-            console.log('💰 Remboursement automatique nécessaire (annulation restaurant):', id);
+            console.log('💰 Remboursement automatique nécessaire (annulation restaurant - commande non acceptée/livrée):', id);
             
             try {
               // IMPORTANT: Recalculer le sous-total depuis les détails de commande pour inclure les suppléments

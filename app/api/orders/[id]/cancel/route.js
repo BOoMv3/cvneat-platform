@@ -63,11 +63,21 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // Vérifier qu'aucun livreur n'a accepté la commande
+    // VÉRIFICATION CRITIQUE: Ne pas rembourser si la commande est déjà acceptée par un livreur ou livrée
     if (order.livreur_id) {
+      console.log('⚠️ Annulation BLOQUÉE: Commande déjà acceptée par un livreur (ID:', order.livreur_id, ')');
       return NextResponse.json({ 
-        error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être annulée',
-        delivery_id: order.livreur_id
+        error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être annulée automatiquement. Contactez le support pour toute demande de remboursement.',
+        delivery_id: order.livreur_id,
+        current_statut: order.statut
+      }, { status: 400 });
+    }
+    
+    if (order.statut === 'livree' || order.statut === 'delivered') {
+      console.log('⚠️ Annulation BLOQUÉE: Commande déjà livrée (statut:', order.statut, ')');
+      return NextResponse.json({ 
+        error: 'Cette commande a déjà été livrée et ne peut plus être annulée. Contactez le support pour toute demande de remboursement.',
+        current_statut: order.statut
       }, { status: 400 });
     }
 

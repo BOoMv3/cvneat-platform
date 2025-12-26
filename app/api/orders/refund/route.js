@@ -11,9 +11,33 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// POST /api/orders/refund - Rembourser une commande
+// POST /api/orders/refund - Rembourser une commande (ADMIN UNIQUEMENT)
 export async function POST(request) {
   try {
+    // Vérifier l'authentification et le rôle admin
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur est admin
+    const { data: userData, error: userDataError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userDataError || !userData || userData.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès refusé - Rôle admin requis' }, { status: 403 });
+    }
+
     const { orderId, reason, amount } = await request.json();
 
     if (!orderId || !reason) {
