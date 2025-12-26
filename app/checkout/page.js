@@ -111,12 +111,14 @@ export default function Checkout() {
   });
 
   // Vérifier si on est le 24 ou 25 décembre (pas de livraison pour Noël)
+  // DÉSACTIVÉ - Les commandes sont réactivées
   const isChristmasHoliday = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    const now = new Date();
-    const month = now.getMonth(); // 0-11, décembre = 11
-    const day = now.getDate();
-    return month === 11 && (day === 24 || day === 25); // 24 ou 25 décembre
+    return false; // Commandes réactivées
+    // if (typeof window === 'undefined') return false;
+    // const now = new Date();
+    // const month = now.getMonth(); // 0-11, décembre = 11
+    // const day = now.getDate();
+    // return month === 11 && (day === 24 || day === 25); // 24 ou 25 décembre
   }, []);
   
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
