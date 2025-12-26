@@ -648,6 +648,45 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* CA CVN'EAT par mois */}
+        <div className="bg-white rounded-lg shadow mb-4 fold:mb-4 xs:mb-6 sm:mb-8">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">CA CVN'EAT par mois</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">Chiffre d'affaires CVN'EAT (commissions) par mois</p>
+          </div>
+          <div className="p-4 sm:p-6">
+            {stats.monthlyRevenue && stats.monthlyRevenue.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Mois</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">CA CVN'EAT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.monthlyRevenue.map((item, index) => (
+                      <tr key={item.month} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                        <td className="py-3 px-4 text-sm text-gray-900 capitalize">{item.label}</td>
+                        <td className="py-3 px-4 text-sm font-semibold text-gray-900 text-right">{formatPrice(item.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t-2 border-gray-300">
+                    <tr>
+                      <td className="py-3 px-4 text-sm font-bold text-gray-900">Total</td>
+                      <td className="py-3 px-4 text-sm font-bold text-gray-900 text-right">
+                        {formatPrice(stats.monthlyRevenue.reduce((sum, item) => sum + item.amount, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">Aucune donnée disponible</p>
+            )}
+          </div>
+        </div>
 
         {/* Statistiques détaillées - Optimisées mobile */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
