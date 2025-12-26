@@ -42,7 +42,8 @@ export default function AdminPage() {
     allRestaurants: [],
     totalVisitors: 0,
     registeredVisitors: 0,
-    guestVisitors: 0
+    guestVisitors: 0,
+    monthlyRevenue: [] // CA CVN'EAT par mois
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -151,6 +152,9 @@ export default function AdminPage() {
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
+      // Calculer le CA mensuel
+      const monthlyRevenueMap = new Map(); // Map<"YYYY-MM", amount>
+      
       orders?.filter(o => o.statut === 'livree').forEach(order => {
         const orderAmount = parseFloat(order.total || 0); // Montant des articles uniquement
         const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
@@ -162,15 +166,21 @@ export default function AdminPage() {
           .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase();
         const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-        const commissionRate = isInternalRestaurant ? 0 : COMMISSION_RATE;
+        
+        // Utiliser le commission_rate du restaurant (comme dans payments)
+        const restaurantCommissionRate = orderRestaurant?.commission_rate 
+          ? parseFloat(orderRestaurant.commission_rate) / 100 
+          : 0.20; // 20% par défaut
+        const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
         
         const restaurantShare = orderAmount - (orderAmount * commissionRate);
+        const cvneatCommission = orderAmount * commissionRate;
 
         // CA total = articles + frais de livraison
         totalRevenue += orderAmount + deliveryFee;
         
-        // CA CVN'EAT = 20% des articles uniquement (sauf pour "La Bonne Pâte")
-        cvneatRevenue += orderAmount * commissionRate;
+        // CA CVN'EAT = commission des articles uniquement (sauf pour "La Bonne Pâte")
+        cvneatRevenue += cvneatCommission;
         
         // CA Livreur = frais de livraison
         livreurRevenue += deliveryFee;
@@ -178,7 +188,21 @@ export default function AdminPage() {
         // CA Restaurant = articles - commission
         restaurantRevenue += restaurantShare;
 
+        // Calculer le mois de la commande pour le CA mensuel
+        const orderDate = new Date(order.created_at);
+        const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
+        const currentMonthAmount = monthlyRevenueMap.get(monthKey) || 0;
+        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatCommission);
       });
+
+      // Convertir la map en tableau trié (du plus récent au plus ancien)
+      const monthlyRevenue = Array.from(monthlyRevenueMap.entries())
+        .map(([month, amount]) => ({
+          month,
+          amount: Math.round(amount * 100) / 100,
+          label: new Date(month + '-01').toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })
+        }))
+        .sort((a, b) => b.month.localeCompare(a.month)); // Trier du plus récent au plus ancien
       
       const totalRestaurants = restaurants?.length || 0;
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
@@ -233,7 +257,8 @@ export default function AdminPage() {
         allRestaurants: restaurants || [],
         totalVisitors,
         registeredVisitors,
-        guestVisitors
+        guestVisitors,
+        monthlyRevenue
       });
 
     } catch (err) {
