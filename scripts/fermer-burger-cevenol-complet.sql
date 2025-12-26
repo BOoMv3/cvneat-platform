@@ -11,9 +11,13 @@ SELECT
     ferme_manuellement,
     status
 FROM restaurants
-WHERE nom ILIKE '%burger%cevenol%' 
+WHERE nom ILIKE '%cevenol%' 
+   OR nom ILIKE '%cévenol%'
+   OR nom ILIKE '%burger%cevenol%'
    OR nom ILIKE '%burger%cévenol%'
-   OR nom ILIKE '%burgercevenol%';
+   OR nom ILIKE '%burgercevenol%'
+   OR nom ILIKE '%cevenol%burger%'
+   OR nom ILIKE '%cévenol%burger%';
 
 -- ÉTAPE 2: Voir la dernière commande (avant modifications)
 SELECT 
@@ -30,9 +34,13 @@ SELECT
 FROM commandes c
 JOIN restaurants r ON c.restaurant_id = r.id
 LEFT JOIN users u ON c.user_id = u.id
-WHERE (r.nom ILIKE '%burger%cevenol%' 
+WHERE (r.nom ILIKE '%cevenol%' 
+   OR r.nom ILIKE '%cévenol%'
+   OR r.nom ILIKE '%burger%cevenol%'
    OR r.nom ILIKE '%burger%cévenol%'
-   OR r.nom ILIKE '%burgercevenol%')
+   OR r.nom ILIKE '%burgercevenol%'
+   OR r.nom ILIKE '%cevenol%burger%'
+   OR r.nom ILIKE '%cévenol%burger%')
   AND c.statut != 'annulee'
 ORDER BY c.created_at DESC
 LIMIT 1;
@@ -42,9 +50,13 @@ UPDATE restaurants
 SET 
     ferme_manuellement = true,
     updated_at = NOW()
-WHERE nom ILIKE '%burger%cevenol%' 
+WHERE nom ILIKE '%cevenol%' 
+   OR nom ILIKE '%cévenol%'
+   OR nom ILIKE '%burger%cevenol%'
    OR nom ILIKE '%burger%cévenol%'
-   OR nom ILIKE '%burgercevenol%';
+   OR nom ILIKE '%burgercevenol%'
+   OR nom ILIKE '%cevenol%burger%'
+   OR nom ILIKE '%cévenol%burger%';
 
 -- ÉTAPE 4: Annuler la dernière commande (mettre le statut à 'annulee')
 -- NOTE IMPORTANTE: Pour le remboursement Stripe, vous devez utiliser l'API /api/admin/orders/cancel/[orderId]
@@ -57,7 +69,7 @@ DECLARE
     montant_total DECIMAL(10,2);
     restaurant_nom TEXT;
 BEGIN
-    -- Trouver l'ID du restaurant (recherche plus flexible)
+    -- Trouver l'ID du restaurant (recherche flexible)
     SELECT id, nom INTO restaurant_id_found, restaurant_nom
     FROM restaurants
     WHERE nom ILIKE '%cevenol%' 
@@ -67,6 +79,13 @@ BEGIN
        OR nom ILIKE '%burgercevenol%'
        OR nom ILIKE '%cevenol%burger%'
        OR nom ILIKE '%cévenol%burger%'
+    ORDER BY 
+      CASE 
+        WHEN nom ILIKE '%burger%cevenol%' OR nom ILIKE '%burger%cévenol%' THEN 1
+        WHEN nom ILIKE '%cevenol%burger%' OR nom ILIKE '%cévenol%burger%' THEN 2
+        WHEN nom ILIKE '%cevenol%' OR nom ILIKE '%cévenol%' THEN 3
+        ELSE 4
+      END
     LIMIT 1;
     
     IF restaurant_id_found IS NULL THEN
@@ -132,9 +151,13 @@ SELECT
 FROM restaurants r
 LEFT JOIN commandes c ON c.restaurant_id = r.id
 LEFT JOIN users u ON c.user_id = u.id
-WHERE (r.nom ILIKE '%burger%cevenol%' 
+WHERE (r.nom ILIKE '%cevenol%' 
+   OR r.nom ILIKE '%cévenol%'
+   OR r.nom ILIKE '%burger%cevenol%'
    OR r.nom ILIKE '%burger%cévenol%'
-   OR r.nom ILIKE '%burgercevenol%')
+   OR r.nom ILIKE '%burgercevenol%'
+   OR r.nom ILIKE '%cevenol%burger%'
+   OR r.nom ILIKE '%cévenol%burger%')
 ORDER BY c.created_at DESC
 LIMIT 3;
 
