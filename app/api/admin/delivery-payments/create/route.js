@@ -132,8 +132,11 @@ export async function POST(request) {
     }
 
     // Marquer les commandes comme payées (les plus anciennes d'abord jusqu'à atteindre le montant)
+    // CELA MET À JOUR AUTOMATIQUEMENT TOUS LES DASHBOARDS DES LIVREURS
+    // car l'API /api/delivery/stats utilise livreur_paid_at IS NULL pour calculer les gains
     const montantCible = parseFloat(amount);
     let totalMarque = 0;
+    let ordersToMark = [];
 
     // Récupérer les commandes non payées dans l'ordre chronologique
     const { data: orders, error: ordersError } = await supabaseAdmin
@@ -145,14 +148,18 @@ export async function POST(request) {
       .order('created_at', { ascending: true });
 
     if (ordersError) {
-      console.error('Erreur récupération commandes:', ordersError);
-      // Ne pas échouer si on ne peut pas marquer les commandes, le paiement est quand même enregistré
-    } else if (orders && orders.length > 0) {
-      // Marquer les commandes jusqu'à atteindre le montant
-      const ordersToMark = [];
+      console.error('❌ Erreur récupération commandes:', ordersError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la récupération des commandes', details: ordersError.message },
+        { status: 500 }
+      );
+    }
+
+    if (orders && orders.length > 0) {
+      // Marquer les commandes jusqu'à atteindre le montant (les plus anciennes en premier)
       for (const order of orders) {
         const fraisLivraison = parseFloat(order.frais_livraison || 0);
-        if (totalMarque + fraisLivraison <= montantCible) {
+        if (totalMarque + fraisLivraison <= montantCible + 0.01) { // Tolérance de 0.01€ pour les arrondis
           ordersToMark.push(order.id);
           totalMarque += fraisLivraison;
         } else {
@@ -161,18 +168,27 @@ export async function POST(request) {
       }
 
       if (ordersToMark.length > 0) {
+        const paidAt = new Date().toISOString();
         const { error: updateError } = await supabaseAdmin
           .from('commandes')
-          .update({ livreur_paid_at: new Date().toISOString() })
+          .update({ livreur_paid_at: paidAt })
           .in('id', ordersToMark);
 
         if (updateError) {
-          console.error('Erreur mise à jour commandes:', updateError);
-          // Ne pas échouer, le paiement est quand même enregistré
-        } else {
-          console.log(`✅ ${ordersToMark.length} commande(s) marquée(s) comme payée(s) pour un total de ${totalMarque.toFixed(2)}€`);
+          console.error('❌ Erreur mise à jour commandes:', updateError);
+          return NextResponse.json(
+            { error: 'Erreur lors du marquage des commandes comme payées', details: updateError.message },
+            { status: 500 }
+          );
         }
+
+        console.log(`✅ ${ordersToMark.length} commande(s) marquée(s) comme payée(s) pour un total de ${totalMarque.toFixed(2)}€`);
+        console.log(`✅ Le dashboard du livreur sera automatiquement mis à jour (les gains ne compteront plus ces commandes)`);
+      } else {
+        console.warn(`⚠️ Aucune commande marquée : montant cible ${montantCible}€ mais aucune commande correspondante trouvée`);
       }
+    } else {
+      console.warn(`⚠️ Aucune commande non payée trouvée pour ce livreur`);
     }
 
     return NextResponse.json({
