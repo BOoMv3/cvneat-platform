@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Créer un client admin pour bypasser RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +20,7 @@ export async function PUT(request) {
     const token = authHeader.split(' ')[1];
     
     // Vérifier le token avec Supabase
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
@@ -25,7 +31,7 @@ export async function PUT(request) {
     const { nom, prenom, email, phone } = body;
 
     // Vérifier si l'utilisateur existe dans la table users
-    const { data: existingUser, error: checkError } = await supabase
+    const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', user.id)
@@ -39,13 +45,13 @@ export async function PUT(request) {
     let result;
     if (existingUser) {
       // Mettre à jour l'utilisateur existant
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('users')
         .update({
-          nom: nom || existingUser.nom || '',
-          prenom: prenom || existingUser.prenom || '',
+          nom: nom !== undefined ? nom : existingUser.nom || '',
+          prenom: prenom !== undefined ? prenom : existingUser.prenom || '',
           email: email || existingUser.email,
-          telephone: phone || existingUser.telephone || '',
+          telephone: phone !== undefined ? phone : existingUser.telephone || '',
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -54,12 +60,12 @@ export async function PUT(request) {
 
       if (error) {
         console.error('Erreur lors de la mise à jour du profil:', error);
-        return NextResponse.json({ error: 'Erreur lors de la mise à jour du profil' }, { status: 500 });
+        return NextResponse.json({ error: 'Erreur lors de la mise à jour du profil', details: error.message }, { status: 500 });
       }
       result = data;
     } else {
       // Créer un nouvel utilisateur dans la table users
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('users')
         .insert({
           id: user.id,

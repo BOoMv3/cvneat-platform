@@ -339,12 +339,25 @@ export default function Profile() {
                       'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                      name: user.name,
+                      nom: user.nom || '',
+                      prenom: user.prenom || '',
                       email: user.email,
-                      phone: user.phone,
+                      phone: user.phone || '',
                     })
                   });
-                  if (!response.ok) throw new Error('Erreur lors de la mise à jour du profil');
+                  if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erreur lors de la mise à jour du profil');
+                  }
+                  
+                  const responseData = await response.json();
+                  // Mettre à jour les données utilisateur avec la réponse
+                  setUser({
+                    ...user,
+                    nom: responseData.user?.nom || user.nom,
+                    prenom: responseData.user?.prenom || user.prenom,
+                    phone: responseData.user?.phone || user.phone
+                  });
                   setSuccess('Profil mis à jour !');
                 } catch (err) {
                   setError(err.message);
