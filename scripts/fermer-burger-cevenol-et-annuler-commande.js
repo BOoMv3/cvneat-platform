@@ -29,11 +29,11 @@ async function fermerBurgerCevenolEtAnnulerCommande() {
   try {
     console.log('🔍 Recherche du Burger Cévenol...\n');
     
-    // 1. Trouver le restaurant
+    // 1. Trouver le restaurant "Le Cévenol Burger"
     const { data: restaurants, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
       .select('id, nom, email, telephone, ferme_manuellement')
-      .or('nom.ilike.%burger%cevenol%,nom.ilike.%burger%cévenol%,nom.ilike.%burgercevenol%');
+      .or('nom.ilike.%cévenol%burger%,nom.ilike.%cevenol%burger%,nom.ilike.%cévenol burger%,nom.ilike.%cevenol burger%,nom.ilike.%burger%cevenol%,nom.ilike.%burger%cévenol%');
 
     if (restaurantError) {
       console.error('❌ Erreur recherche restaurant:', restaurantError);
