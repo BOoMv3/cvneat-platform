@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt, FaCheck, FaTimes, FaMotorcycle } from 'react-icons/fa';
 import Link from 'next/link';
 
 export default function AdminPayments() {
@@ -326,6 +326,13 @@ export default function AdminPayments() {
             >
               <FaListAlt />
               <span>Suivi des Virements</span>
+            </Link>
+            <Link
+              href="/admin/payments/delivery-transfers"
+              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <FaMotorcycle />
+              <span>Paiements Livreurs</span>
             </Link>
             <button
               onClick={exportToCSV}
