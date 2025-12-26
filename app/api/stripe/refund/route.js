@@ -5,6 +5,12 @@ import emailService from '../../../../lib/emailService';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// Créer un client admin pour bypasser RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 // POST /api/stripe/refund - Créer un remboursement Stripe
 export async function POST(request) {
   try {
@@ -274,6 +280,171 @@ export async function GET(request) {
       return NextResponse.json(
         { error: 'Remboursement non trouvé' },
         { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/stripe/refund - Annuler un remboursement Stripe (ADMIN UNIQUEMENT, seulement si status = pending)
+export async function DELETE(request) {
+  try {
+    // Vérifier l'authentification et le rôle admin
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur est admin
+    const { data: userData, error: userDataError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userDataError || !userData || userData.role !== 'admin') {
+      return NextResponse.json({ error: 'Accès refusé - Rôle admin requis' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const refundId = searchParams.get('refund_id');
+    const orderId = searchParams.get('order_id');
+
+    if (!refundId && !orderId) {
+      return NextResponse.json(
+        { error: 'refund_id ou order_id requis' },
+        { status: 400 }
+      );
+    }
+
+    let stripeRefundId = refundId;
+
+    // Si on a seulement l'ID de commande, récupérer l'ID de remboursement Stripe
+    if (!stripeRefundId && orderId) {
+      const { data: order, error: orderError } = await supabaseAdmin
+        .from('commandes')
+        .select('stripe_refund_id, stripe_payment_intent_id, statut, payment_status')
+        .eq('id', orderId)
+        .single();
+
+      if (orderError || !order) {
+        return NextResponse.json(
+          { error: 'Commande non trouvée' },
+          { status: 404 }
+        );
+      }
+
+      stripeRefundId = order.stripe_refund_id;
+      
+      if (!stripeRefundId) {
+        return NextResponse.json(
+          { error: 'Aucun remboursement Stripe trouvé pour cette commande' },
+          { status: 404 }
+        );
+      }
+    }
+
+    if (!stripeRefundId) {
+      return NextResponse.json(
+        { error: 'ID de remboursement Stripe requis' },
+        { status: 400 }
+      );
+    }
+
+    // Récupérer les détails du remboursement depuis Stripe pour vérifier son statut
+    const refund = await stripe.refunds.retrieve(stripeRefundId);
+    
+    console.log('🔍 Statut du remboursement Stripe:', refund.status);
+
+    // Vérifier que le remboursement est encore en attente (pending)
+    if (refund.status !== 'pending') {
+      return NextResponse.json({
+        error: `Ce remboursement ne peut pas être annulé. Statut actuel: ${refund.status}. Seuls les remboursements en statut "pending" peuvent être annulés.`,
+        refund_status: refund.status,
+        refund_id: stripeRefundId
+      }, { status: 400 });
+    }
+
+    // Annuler le remboursement Stripe
+    try {
+      const canceledRefund = await stripe.refunds.cancel(stripeRefundId);
+      console.log('✅ Remboursement Stripe annulé:', canceledRefund.id);
+
+      // Mettre à jour la commande dans la base de données
+      if (orderId) {
+        const { data: order, error: orderError } = await supabaseAdmin
+          .from('commandes')
+          .select('id, statut, payment_status')
+          .eq('id', orderId)
+          .single();
+
+        if (!orderError && order) {
+          // Remettre le statut de paiement à "paid" si la commande était payée avant
+          const updateData = {
+            stripe_refund_id: null,
+            refund_amount: null,
+            refunded_at: null,
+            updated_at: new Date().toISOString()
+          };
+
+          // Si le payment_status était "refunded", le remettre à "paid"
+          if (order.payment_status === 'refunded') {
+            updateData.payment_status = 'paid';
+          }
+
+          await supabaseAdmin
+            .from('commandes')
+            .update(updateData)
+            .eq('id', orderId);
+
+          console.log('✅ Commande mise à jour après annulation du remboursement:', orderId);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Remboursement annulé avec succès',
+        refund: {
+          id: canceledRefund.id,
+          status: canceledRefund.status,
+          amount: canceledRefund.amount / 100
+        }
+      });
+
+    } catch (stripeError) {
+      console.error('❌ Erreur annulation remboursement Stripe:', stripeError);
+      
+      if (stripeError.type === 'StripeInvalidRequestError') {
+        return NextResponse.json(
+          { error: `Erreur Stripe: ${stripeError.message}` },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: 'Erreur lors de l\'annulation du remboursement Stripe' },
+        { status: 500 }
+      );
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur API annulation remboursement:', error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      return NextResponse.json(
+        { error: `Erreur Stripe: ${error.message}` },
+        { status: 400 }
       );
     }
 
