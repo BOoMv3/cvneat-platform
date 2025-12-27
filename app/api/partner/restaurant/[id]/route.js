@@ -53,23 +53,44 @@ export async function PUT(request, { params }) {
     }
 
     // Préparer les données à mettre à jour
-    const updateData = {};
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+    
+    // Toujours inclure ferme_manuellement si fourni (même si false)
     if (body.ferme_manuellement !== undefined) {
-      updateData.ferme_manuellement = body.ferme_manuellement;
+      // S'assurer que c'est un booléen strict
+      updateData.ferme_manuellement = body.ferme_manuellement === true || body.ferme_manuellement === 'true' || body.ferme_manuellement === 1;
     }
+
+    console.log('📝 Mise à jour restaurant:', {
+      restaurant_id: id,
+      updateData,
+      ferme_manuellement_value: body.ferme_manuellement,
+      ferme_manuellement_type: typeof body.ferme_manuellement
+    });
 
     // Mettre à jour le restaurant
     const { data: updatedRestaurant, error: updateError } = await supabaseAdmin
       .from('restaurants')
       .update(updateData)
       .eq('id', id)
-      .select()
+      .select('id, nom, ferme_manuellement, updated_at')
       .single();
 
     if (updateError) {
-      console.error('Erreur mise à jour restaurant:', updateError);
-      return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
+      console.error('❌ Erreur mise à jour restaurant:', updateError);
+      return NextResponse.json({ 
+        error: 'Erreur lors de la mise à jour', 
+        details: updateError.message 
+      }, { status: 500 });
     }
+
+    console.log('✅ Restaurant mis à jour:', {
+      id: updatedRestaurant.id,
+      nom: updatedRestaurant.nom,
+      ferme_manuellement: updatedRestaurant.ferme_manuellement
+    });
 
     return NextResponse.json({
       success: true,

@@ -1184,13 +1184,25 @@ export default function PartnerDashboard() {
   };
 
   const toggleRestaurantClosed = async () => {
-    if (!restaurant?.id) return;
+    if (!restaurant?.id) {
+      console.error('❌ toggleRestaurantClosed: restaurant.id manquant');
+      return;
+    }
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        console.error('❌ toggleRestaurantClosed: session manquante');
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
       
       const newStatus = !isManuallyClosed;
+      console.log('🔄 Toggle restaurant fermeture:', {
+        restaurant_id: restaurant.id,
+        current_status: isManuallyClosed,
+        new_status: newStatus
+      });
       
       const response = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
         method: 'PUT',
@@ -1203,24 +1215,33 @@ export default function PartnerDashboard() {
         })
       });
       
+      const responseData = await response.json().catch(() => ({}));
+      
       if (response.ok) {
+        console.log('✅ Restaurant mis à jour avec succès:', responseData);
         setIsManuallyClosed(newStatus);
-        setRestaurant(prev => ({ ...prev, ferme_manuellement: newStatus }));
+        setRestaurant(prev => ({ 
+          ...prev, 
+          ferme_manuellement: newStatus,
+          updated_at: new Date().toISOString()
+        }));
         alert(newStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
         
         // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
-        // On peut aussi forcer un rechargement côté client si nécessaire
         if (typeof window !== 'undefined') {
-          // Déclencher un événement pour forcer le rafraîchissement (si la page d'accueil est ouverte)
           window.dispatchEvent(new Event('restaurant-status-changed'));
         }
       } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error || 'Impossible de mettre à jour le statut'}`);
+        console.error('❌ Erreur API toggle fermeture:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: responseData
+        });
+        alert(`Erreur: ${responseData.error || responseData.details || 'Impossible de mettre à jour le statut'}`);
       }
     } catch (error) {
-      console.error('Erreur toggle fermeture:', error);
-      alert('Erreur lors de la mise à jour du statut');
+      console.error('❌ Erreur toggle fermeture:', error);
+      alert('Erreur lors de la mise à jour du statut: ' + error.message);
     }
   };
 
