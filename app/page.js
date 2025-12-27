@@ -841,10 +841,7 @@ export default function Home() {
     if (restaurant.ferme_definitivement) {
       return false;
     }
-    // Filtrer les restaurants fermés manuellement (ferme_manuellement = true)
-    if (restaurant.ferme_manuellement === true || restaurant.ferme_manuellement === 'true' || restaurant.ferme_manuellement === 1) {
-      return false;
-    }
+    // Ne plus filtrer les restaurants fermés manuellement - ils doivent tous être visibles avec un badge "Fermé"
     
     // Filtre par catégorie
     if (selectedCategory !== 'all') {

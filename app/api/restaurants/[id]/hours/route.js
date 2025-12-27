@@ -121,12 +121,8 @@ export async function POST(request, { params }) {
                              fermeManuel === '1' || 
                              fermeManuel === 1;
     
-    console.log(`🔍 Restaurant ${id} - Vérification des horaires (ferme_manuellement = ${restaurant.ferme_manuellement}, normalisé = ${fermeManuel})`);
-
-    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
-    // Vérifier AVANT de calculer les horaires pour éviter des calculs inutiles
+    // LOGIQUE SIMPLE: Si ferme_manuellement = true → TOUJOURS FERMÉ
     if (isManuallyClosed) {
-      console.log(`🔴 Restaurant ${id} - FERMÉ manuellement (ferme_manuellement = true, ignore les horaires)`);
       return NextResponse.json({
         isOpen: false,
         message: 'Restaurant fermé manuellement',
@@ -134,7 +130,7 @@ export async function POST(request, { params }) {
       });
     }
 
-    // Vérifier les horaires seulement si le restaurant n'est pas fermé manuellement
+    // Si ferme_manuellement = false ou null, vérifier les horaires
     let horaires = restaurant.horaires || {};
     
     // Si horaires est une chaîne JSON, la parser
