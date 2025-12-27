@@ -70,8 +70,9 @@ async function annulerCommande() {
       try {
         // Récupérer le Payment Intent pour connaître le montant déjà remboursé
         const paymentIntent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
-        const alreadyRefunded = paymentIntent.amount_received - (paymentIntent.amount - paymentIntent.amount_refunded);
-        const availableToRefund = (paymentIntent.amount - paymentIntent.amount_refunded) / 100;
+        const totalAmount = paymentIntent.amount || 0; // Montant total en centimes
+        const alreadyRefunded = paymentIntent.amount_refunded || 0; // Montant déjà remboursé en centimes
+        const availableToRefund = (totalAmount - alreadyRefunded) / 100; // Disponible en euros
 
         console.log(`   Montant total: ${(paymentIntent.amount / 100).toFixed(2)}€`);
         console.log(`   Déjà remboursé: ${(paymentIntent.amount_refunded / 100).toFixed(2)}€`);
