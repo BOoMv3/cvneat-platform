@@ -293,7 +293,14 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
-    // Si ferme_manuellement = false ou null, utiliser le résultat des horaires
+    // NOUVELLE LOGIQUE: Si ferme_manuellement = false explicitement (pas null) → OUVERT (force l'ouverture)
+    // Cela signifie que l'utilisateur a cliqué sur "Ouvrir" dans le dashboard
+    if (fermeManuel === false) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT manuellement (ferme_manuellement = false, force l'ouverture)`);
+      return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
+    }
+
+    // Si ferme_manuellement = null (pas défini), utiliser le résultat des horaires
     if (shouldBeOpenByHours) {
       return { isOpen: true, isManuallyClosed: false, reason: 'open' };
     }
