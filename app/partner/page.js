@@ -21,7 +21,8 @@ import {
   FaShareAlt,
   FaInstagram,
   FaFacebook,
-  FaArrowUp
+  FaArrowUp,
+  FaMotorcycle
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
