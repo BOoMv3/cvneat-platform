@@ -830,6 +830,11 @@ export default function Home() {
     if (restaurant.ferme_definitivement) {
       return false;
     }
+    // Filtrer les restaurants fermés manuellement (ferme_manuellement = true)
+    if (restaurant.ferme_manuellement === true || restaurant.ferme_manuellement === 'true' || restaurant.ferme_manuellement === 1) {
+      return false;
+    }
+    }
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
       const restaurantTokens = restaurant.category_tokens || [];
