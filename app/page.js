@@ -212,9 +212,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
                              fermeManuel === '1' || 
                              fermeManuel === 1;
     
-    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
+    // Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
     if (isManuallyClosed) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = true, ignore les horaires)`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
     
@@ -239,10 +238,6 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     }
 
     if (!heuresJour) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-
-    // S'il y a des horaires, on considère qu'il est ouvert par défaut (le flag ouvert est secondaire)
-    const hasExplicitHours = (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) || 
-                             (heuresJour.ouverture && heuresJour.fermeture);
 
     // Obtenir l'heure actuelle à Paris
     const now = new Date();
@@ -286,37 +281,12 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       shouldBeOpenByHours = true;
     }
 
-    // NOUVELLE LOGIQUE CORRIGÉE:
-    // 1. Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
-    // 2. Si ferme_manuellement = false → Vérifier les horaires:
-    //    - Si horaires indiquent ouvert → OUVERT
-    //    - Si horaires indiquent fermé → FERMÉ (respecter les horaires)
-    // 3. Si ferme_manuellement = null → Utiliser les horaires
-    
-    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ
-    if (isManuallyClosed) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = true, ignore les horaires)`);
-      return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
-    }
-
-    // Si ferme_manuellement = false (ouvert manuellement), vérifier quand même les horaires
-    // Le restaurant doit être ouvert SELON LES HORAIRES pour apparaître ouvert
-    if (fermeManuel === false) {
-      if (shouldBeOpenByHours) {
-        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT (ferme_manuellement = false ET horaires indiquent ouvert)`);
-        return { isOpen: true, isManuallyClosed: false, reason: 'manual_open_with_hours' };
-      } else {
-        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ (ferme_manuellement = false MAIS horaires indiquent fermé)`);
-        return { isOpen: false, isManuallyClosed: false, reason: 'closed_by_hours' };
-      }
-    }
-
-    // Si ferme_manuellement = null (pas défini), utiliser le résultat des horaires
+    // Si on arrive ici, ferme_manuellement = false ou null
+    // Utiliser le résultat des horaires (simple)
     if (shouldBeOpenByHours) {
       return { isOpen: true, isManuallyClosed: false, reason: 'open' };
     }
     
-    // Les horaires indiquent fermé → FERMÉ normal
     return { isOpen: false, isManuallyClosed: false, reason: 'closed' };
   } catch (e) {
     console.error('[checkRestaurantOpenStatus] Erreur pour restaurant:', restaurant?.nom || restaurant?.id, e);
