@@ -134,6 +134,7 @@ export async function GET(request) {
           livreur_id,
           adresse_livraison,
           preparation_time,
+          delivery_time,
           ready_for_delivery,
           details_commande (
             id,

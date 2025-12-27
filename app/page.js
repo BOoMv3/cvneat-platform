@@ -286,18 +286,29 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       shouldBeOpenByHours = true;
     }
 
-    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
-    // C'est utile pour les fermetures temporaires (vacances, événements, etc.)
+    // NOUVELLE LOGIQUE CORRIGÉE:
+    // 1. Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
+    // 2. Si ferme_manuellement = false → Vérifier les horaires:
+    //    - Si horaires indiquent ouvert → OUVERT
+    //    - Si horaires indiquent fermé → FERMÉ (respecter les horaires)
+    // 3. Si ferme_manuellement = null → Utiliser les horaires
+    
+    // PRIORITÉ ABSOLUE: Si ferme_manuellement = true → TOUJOURS FERMÉ
     if (isManuallyClosed) {
       console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ manuellement (ferme_manuellement = true, ignore les horaires)`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
-    // NOUVELLE LOGIQUE: Si ferme_manuellement = false explicitement (pas null) → OUVERT (force l'ouverture)
-    // Cela signifie que l'utilisateur a cliqué sur "Ouvrir" dans le dashboard
+    // Si ferme_manuellement = false (ouvert manuellement), vérifier quand même les horaires
+    // Le restaurant doit être ouvert SELON LES HORAIRES pour apparaître ouvert
     if (fermeManuel === false) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT manuellement (ferme_manuellement = false, force l'ouverture)`);
-      return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
+      if (shouldBeOpenByHours) {
+        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - OUVERT (ferme_manuellement = false ET horaires indiquent ouvert)`);
+        return { isOpen: true, isManuallyClosed: false, reason: 'manual_open_with_hours' };
+      } else {
+        console.log(`[checkRestaurantOpenStatus] ${restaurant.nom} - FERMÉ (ferme_manuellement = false MAIS horaires indiquent fermé)`);
+        return { isOpen: false, isManuallyClosed: false, reason: 'closed_by_hours' };
+      }
     }
 
     // Si ferme_manuellement = null (pas défini), utiliser le résultat des horaires

@@ -2488,6 +2488,13 @@ export default function PartnerDashboard() {
                                   Frais de livraison: {deliveryFee.toFixed(2)} € (livreur)
                                 </p>
                               )}
+                              {/* Afficher le temps de livraison défini par le livreur */}
+                              {order.delivery_time && (
+                                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-2">
+                                  <FaMotorcycle className="inline mr-1" />
+                                  Temps de livraison: {order.delivery_time} min
+                                </p>
+                              )}
                             </div>
                             <div className="text-right">
                               {totalAmount > 0 ? (

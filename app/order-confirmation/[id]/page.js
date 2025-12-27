@@ -481,7 +481,17 @@ export default function OrderConfirmation() {
                   </div>
                   <div className="text-right">
                     <p className="font-medium text-blue-900">Temps estimé</p>
-                    <p className="text-sm text-blue-700">{getEstimatedTime()} min</p>
+                    <p className="text-sm text-blue-700">
+                      {orderData.delivery_time 
+                        ? `${orderData.delivery_time} min (défini par le livreur)`
+                        : `${getEstimatedTime()} min`
+                      }
+                    </p>
+                    {orderData.delivery_time && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Temps de livraison confirmé
+                      </p>
+                    )}
                   </div>
                 </div>
 

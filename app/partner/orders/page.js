@@ -327,6 +327,12 @@ export default function PartnerOrders() {
                       {getCustomerEmail(order) && (
                         <p className="text-sm text-gray-600">Email: {getCustomerEmail(order)}</p>
                       )}
+                      {order.delivery_time && (
+                        <p className="text-sm text-blue-600 font-medium mt-1">
+                          <FaMotorcycle className="inline mr-1" />
+                          Temps de livraison: {order.delivery_time} min
+                        </p>
+                      )}
                     </div>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statut)}`}>
                       {getStatusText(order.statut)}

@@ -1495,14 +1495,38 @@ export default function DeliveryDashboard() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Temps de livraison estimé (minutes)
                 </label>
-                <input
-                  type="number"
-                  min="5"
-                  max="60"
-                  value={deliveryTime}
-                  onChange={(e) => setDeliveryTime(Math.max(5, Math.min(60, parseInt(e.target.value) || 20)))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                
+                {/* Boutons rapides pour les temps courants - Plus d'options */}
+                <div className="grid grid-cols-6 gap-2 mb-3">
+                  {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 120].map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setDeliveryTime(time)}
+                      className={`px-2 py-2 text-xs sm:text-sm font-medium rounded-lg border transition-colors ${
+                        deliveryTime === time
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Input manuel pour temps personnalisé - Plus visible */}
+                <div className="mb-2">
+                  <label className="block text-xs text-gray-600 mb-1">Ou saisissez un temps personnalisé (5-180 min)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="180"
+                    value={deliveryTime}
+                    onChange={(e) => setDeliveryTime(Math.max(5, Math.min(180, parseInt(e.target.value) || 20)))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                    placeholder="Ex: 25"
+                  />
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Temps estimé pour livrer cette commande (en tenant compte de vos autres courses)
                 </p>
