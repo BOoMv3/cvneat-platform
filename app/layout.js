@@ -1,5 +1,5 @@
 import './globals.css';
-import { Inter } from 'next/font/google';
+import { Inter, Poppins } from 'next/font/google';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
 import FacebookPixel from '@/components/FacebookPixel';
@@ -20,7 +20,18 @@ if (typeof window !== 'undefined') {
   }, 0);
 }
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const poppins = Poppins({ 
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
 
 export const metadata = {
   title: 'CVN\'EAT - Livraison de repas à domicile | Restaurants partenaires',
@@ -175,7 +186,7 @@ export default function RootLayout({ children }) {
         <meta name="distribution" content="Global" />
         <meta name="rating" content="General" />
       </head>
-      <body className={`${inter.className} transition-colors duration-300`}>
+      <body className={`${inter.variable} ${poppins.variable} font-sans transition-colors duration-300`}>
         <ThemeProvider>
           <FacebookPixel />
           {/* 🎄 Thème de Noël - Supprimer cette ligne après les fêtes */}
