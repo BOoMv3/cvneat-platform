@@ -25,7 +25,6 @@ export default function Profile() {
   const [authChecked, setAuthChecked] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
-  const [wheelWins, setWheelWins] = useState([]);
 
   useEffect(() => {
     checkAuth();
@@ -114,16 +113,6 @@ export default function Profile() {
         if (!response.ok) throw new Error('Erreur lors de la récupération des commandes');
         const data = await response.json();
         setOrders(data);
-      } else if (activeTab === 'gains') {
-        // Récupérer TOUS les gains de la roue (actifs, utilisés et expirés)
-        const { data: wins, error: winsError } = await supabase
-          .from('wheel_wins')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        
-        if (winsError) throw winsError;
-        setWheelWins(wins || []);
       } else {
         const response = await fetch('/api/users/addresses', {
           headers: {
@@ -459,18 +448,6 @@ export default function Profile() {
               <FaHeart className="inline-block mr-1 text-xs" />
               <span className="hidden xs:inline">Mes favoris</span>
               <span className="xs:hidden">Favoris</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('gains')}
-              className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
-                activeTab === 'gains'
-                  ? 'bg-black text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
-              }`}
-            >
-              <FaTicketAlt className="inline-block mr-1 text-xs" />
-              <span className="hidden xs:inline">Mes gains</span>
-              <span className="xs:hidden">Gains</span>
             </button>
             <button
               onClick={() => router.push('/profile/advertising')}
