@@ -1334,8 +1334,8 @@ export default function Home() {
                           />
                         </div>
                         
-                        {/* Overlay avec effet de brillance */}
-                        <div className={`absolute inset-0 ${isClosed ? 'bg-gradient-to-t from-black/70 via-black/40 to-transparent' : 'bg-gradient-to-t from-black/60 via-transparent to-transparent group-hover:from-black/50 group-hover:via-black/20 group-hover:to-transparent'} z-0 transition-all duration-500`}></div>
+                        {/* Overlay avec effet de brillance amélioré */}
+                        <div className={`absolute inset-0 ${isClosed ? 'bg-gradient-to-t from-black/70 via-black/50 to-black/30' : 'bg-gradient-to-t from-black/60 via-black/20 to-transparent group-hover:from-black/50 group-hover:via-black/10 group-hover:to-transparent'} z-0 transition-all duration-500`}></div>
                         {/* Effet de lumière au hover */}
                         {!isClosed && (
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 z-10"></div>
@@ -1391,11 +1391,11 @@ export default function Home() {
                         </div>
                       </div>
                       
-                      {/* Contenu de la carte - Optimisé mobile */}
-                      <div className="sm:col-span-2 p-3 sm:p-4 md:p-6 lg:p-8 flex flex-col justify-between">
+                      {/* Contenu de la carte - Optimisé mobile avec plus d'espacement */}
+                      <div className="sm:col-span-2 p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col justify-between">
                         <div>
                           <div className="flex items-start justify-between mb-2 sm:mb-3 md:mb-4 gap-2">
-                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors flex-1 min-w-0 break-words">
+                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors flex-1 min-w-0 break-words font-display">
                               {restaurant.nom}
                             </h3>
                             <div className="flex items-center bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/40 dark:to-amber-900/40 px-2 sm:px-2.5 md:px-3 py-1 rounded-full flex-shrink-0 shadow-md border border-yellow-200/50 dark:border-yellow-700/50">
@@ -1404,7 +1404,7 @@ export default function Home() {
                             </div>
                           </div>
                           
-                          <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed mb-3 sm:mb-4 md:mb-6 line-clamp-2 sm:line-clamp-3">
+                          <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed mb-4 sm:mb-5 md:mb-6 line-clamp-2 sm:line-clamp-3">
                             {restaurant.description}
                           </p>
                           
@@ -1420,7 +1420,7 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        {/* Bouton commander - Optimisé mobile */}
+                        {/* Bouton commander - Design moderne et premium */}
                         <button 
                           onClick={(e) => {
                             e.stopPropagation(); // Empêcher le clic sur le bouton de commande lui-même
@@ -1429,10 +1429,10 @@ export default function Home() {
                             }
                           }}
                           disabled={isClosed}
-                          className={`w-full py-4 sm:py-4 px-4 sm:px-6 rounded-2xl font-bold transition-all duration-300 shadow-xl text-base sm:text-base lg:text-lg min-h-[48px] sm:min-h-[52px] touch-manipulation relative overflow-hidden ${
+                          className={`w-full py-4 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation relative overflow-hidden font-display ${
                             isClosed
-                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white hover:from-orange-600 hover:via-amber-600 hover:to-orange-700 hover:shadow-2xl hover:shadow-orange-500/50 transform hover:scale-[1.02] active:scale-95'
+                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-sm'
+                              : 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2'
                           }`}
                         >
                           {isClosed ? 'Restaurant fermé pour le moment' : 'Voir le menu'}

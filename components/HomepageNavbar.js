@@ -39,8 +39,8 @@ export default function HomepageNavbar({ user, userPoints, cart, showFloatingCar
 
   return (
     <>
-      {/* Logo CVN'EAT en haut à gauche */}
-      <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20">
+      {/* Logo CVN'EAT en haut à gauche avec glassmorphism */}
+      <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20 backdrop-blur-md bg-white/70 dark:bg-gray-900/70 rounded-2xl px-3 py-2 shadow-lg border border-white/20 dark:border-gray-700/30">
         <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
           <div className="relative">
             <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
@@ -60,8 +60,8 @@ export default function HomepageNavbar({ user, userPoints, cart, showFloatingCar
         </Link>
       </div>
       
-      {/* Actions utilisateur en haut à droite - Design compact avec icônes */}
-      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1 sm:space-x-2">
+      {/* Actions utilisateur en haut à droite - Design avec glassmorphism */}
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1 sm:space-x-2 backdrop-blur-md bg-white/70 dark:bg-gray-900/70 rounded-2xl px-3 py-2 shadow-lg border border-white/20 dark:border-gray-700/30">
         {/* Bouton Suivre ma commande - Compact avec icône */}
         <Link href="/track-order" className="bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]">
           <FaTruck className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
