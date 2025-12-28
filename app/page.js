@@ -389,9 +389,28 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     let shouldBeOpenByHours = false;
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
       for (const plage of heuresJour.plages) {
+        if (!plage.ouverture || !plage.fermeture) continue;
+        
         const start = parseTime(plage.ouverture);
-        const end = parseTime(plage.fermeture);
-        if (start !== null && end !== null && currentTime >= start && currentTime <= end) {
+        let end = parseTime(plage.fermeture);
+        
+        if (start === null || end === null) continue;
+        
+        // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
+        const isMidnightClose = plage.fermeture === '00:00' || plage.fermeture === '0:00';
+        if (isMidnightClose) {
+          end = 24 * 60; // 1440 minutes
+        }
+        
+        // Vérifier si on est dans cette plage horaire
+        let inPlage;
+        if (isMidnightClose) {
+          inPlage = currentTime >= start;
+        } else {
+          inPlage = currentTime >= start && currentTime <= end;
+        }
+        
+        if (inPlage) {
           shouldBeOpenByHours = true;
           break;
         }
@@ -399,9 +418,25 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     } else if (heuresJour.ouverture && heuresJour.fermeture) {
       // Vérifier horaires simples
       const start = parseTime(heuresJour.ouverture);
-      const end = parseTime(heuresJour.fermeture);
-      if (start !== null && end !== null && currentTime >= start && currentTime <= end) {
-        shouldBeOpenByHours = true;
+      let end = parseTime(heuresJour.fermeture);
+      
+      if (start !== null && end !== null) {
+        // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
+        const isMidnightClose = heuresJour.fermeture === '00:00' || heuresJour.fermeture === '0:00';
+        if (isMidnightClose) {
+          end = 24 * 60; // 1440 minutes
+        }
+        
+        let inPlage;
+        if (isMidnightClose) {
+          inPlage = currentTime >= start;
+        } else {
+          inPlage = currentTime >= start && currentTime <= end;
+        }
+        
+        if (inPlage) {
+          shouldBeOpenByHours = true;
+        }
       }
     } else if (heuresJour.ouvert === true) {
       // Fallback sur le flag ouvert si pas d'heures précises
