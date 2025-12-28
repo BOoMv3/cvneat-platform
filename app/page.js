@@ -337,13 +337,19 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
                              fermeManuel === 'true' || 
                              fermeManuel === '1' || 
                              fermeManuel === 1;
+    const isManuallyOpened = fermeManuel === false;
     
     // Si ferme_manuellement = true → TOUJOURS FERMÉ (ignore les horaires)
     if (isManuallyClosed) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
     
-    // Vérifier les horaires seulement si le restaurant n'est pas fermé manuellement
+    // Si ferme_manuellement = false → TOUJOURS OUVERT (force l'ouverture, ignore les horaires)
+    if (isManuallyOpened) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
+    }
+    
+    // Si ferme_manuellement = null → Vérifier les horaires normalement
     let horaires = restaurant.horaires;
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
