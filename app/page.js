@@ -1497,7 +1497,25 @@ export default function Home() {
                     displayHoursLabel = 'Fermé';
                   }
                 } else {
-                  displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
+                  // Si le restaurant n'est pas ouvert maintenant mais qu'il ouvrira plus tard aujourd'hui
+                  if (!restaurantStatus.isOpen && !restaurantStatus.isManuallyClosed) {
+                    const nextOpening = getNextOpeningTime(restaurant);
+                    if (nextOpening) {
+                      if (nextOpening.day) {
+                        // Si c'est un jour futur, afficher le nom du jour
+                        displayHoursLabel = `Ouvre ${nextOpening.day} à : ${nextOpening.time}`;
+                      } else {
+                        // Si c'est aujourd'hui
+                        displayHoursLabel = `Ouvre à : ${nextOpening.time}`;
+                      }
+                    } else {
+                      // Sinon, afficher les horaires normaux
+                      displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
+                    }
+                  } else {
+                    // Si ouvert, afficher les horaires normaux
+                    displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
+                  }
                 }
                 
                 return (
