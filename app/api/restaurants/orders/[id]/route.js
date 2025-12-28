@@ -147,17 +147,21 @@ export async function PUT(request, { params }) {
     console.log('📋 Statuts autorisés par CHECK: en_attente, en_preparation, en_livraison, livree, annulee');
     
     const updateData = {
-      statut: correctedStatus,
       updated_at: new Date().toISOString()
     };
 
-    // Ajouter ready_for_delivery si on a une valeur
-    if (readyForDelivery !== null) {
-      updateData.ready_for_delivery = readyForDelivery;
-    }
+    // Ne mettre à jour le statut que si fourni et différent du statut actuel
+    if (status && status !== order.statut) {
+      updateData.statut = correctedStatus;
+      
+      // Ajouter ready_for_delivery si on change le statut
+      if (readyForDelivery !== null) {
+        updateData.ready_for_delivery = readyForDelivery;
+      }
 
-    if ((status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
-      updateData.preparation_started_at = new Date().toISOString();
+      if ((status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
+        updateData.preparation_started_at = new Date().toISOString();
+      }
     }
 
     if (reason) {
