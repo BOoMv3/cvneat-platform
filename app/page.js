@@ -1487,26 +1487,14 @@ export default function Home() {
                 // Calculer le label des horaires
                 let displayHoursLabel;
                 if (restaurantStatus.isManuallyClosed) {
-                  // Si restaurant en vacances ou non opérationnel, ne pas afficher l'heure d'ouverture
+                  // Si restaurant en vacances ou non opérationnel, afficher le message approprié
                   if (isEnVacances) {
                     displayHoursLabel = 'En congés';
                   } else if (isNonOperationnel) {
                     displayHoursLabel = 'Bientôt disponible';
                   } else {
-                    // Si fermé manuellement mais pas en vacances, chercher la prochaine heure d'ouverture
-                    const nextOpening = getNextOpeningTime(restaurant);
-                    if (nextOpening) {
-                      if (nextOpening.day) {
-                        // Si c'est un jour futur, afficher le nom du jour
-                        displayHoursLabel = `Ouvre ${nextOpening.day} à : ${nextOpening.time}`;
-                      } else {
-                        // Si c'est aujourd'hui
-                        displayHoursLabel = `Ouvre à : ${nextOpening.time}`;
-                      }
-                    } else {
-                      // Aucune ouverture trouvée dans les 7 prochains jours
-                      displayHoursLabel = 'Fermé temporairement';
-                    }
+                    // Si fermé manuellement, ne pas afficher "Ouvre à : [heure]" car nécessite ouverture manuelle
+                    displayHoursLabel = 'Fermé';
                   }
                 } else {
                   displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
