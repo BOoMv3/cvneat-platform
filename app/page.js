@@ -49,6 +49,7 @@ const RESTAURANTS_EN_VACANCES = new Set([
   'le cévenol burger',
   'cévenol burger',
   'cevenol burger',
+  'le cevenol burger',
   'l\'assiette des saisons',
   'assiette des saisons'
 ]);
@@ -215,7 +216,7 @@ const formatStatusHoursLabel = (statusData, fallback) => {
   return fallback || null;
 };
 
-// Fonction pour obtenir la prochaine heure d'ouverture d'un restaurant
+// Fonction pour obtenir la prochaine heure d'ouverture d'un restaurant avec le jour
 const getNextOpeningTime = (restaurant = {}) => {
   try {
     let horaires = restaurant.horaires;
@@ -228,7 +229,6 @@ const getNextOpeningTime = (restaurant = {}) => {
     const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
     const now = new Date();
     const todayName = todayFormatter.format(now).toLowerCase();
-    const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
     
     // Obtenir l'heure actuelle
     const frTime = now.toLocaleString('fr-FR', { 
@@ -242,6 +242,7 @@ const getNextOpeningTime = (restaurant = {}) => {
 
     // Vérifier les 7 prochains jours
     const daysOfWeek = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    const daysOfWeekLabels = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
     const currentDayIndex = now.getDay(); // 0 = dimanche, 1 = lundi, etc.
 
     for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
@@ -266,6 +267,8 @@ const getNextOpeningTime = (restaurant = {}) => {
         return h * 60 + m;
       };
 
+      let nextOpeningTime = null;
+
       if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
         // Nouveau format avec plages multiples
         for (const plage of heuresJour.plages) {
@@ -275,30 +278,42 @@ const getNextOpeningTime = (restaurant = {}) => {
 
           // Si c'est aujourd'hui et que l'heure d'ouverture est dans le futur
           if (dayOffset === 0 && currentTime < openTime) {
-            return plage.ouverture;
+            nextOpeningTime = plage.ouverture;
+            break;
           }
           // Si c'est un jour futur, retourner la première heure d'ouverture
           if (dayOffset > 0) {
-            return plage.ouverture;
+            nextOpeningTime = plage.ouverture;
+            break;
           }
         }
       } else if (heuresJour.ouverture && heuresJour.fermeture) {
         // Ancien format avec une seule plage
         const openTime = parseTime(heuresJour.ouverture);
-        if (openTime === null) continue;
-
-        // Si c'est aujourd'hui et que l'heure d'ouverture est dans le futur
-        if (dayOffset === 0 && currentTime < openTime) {
-          return heuresJour.ouverture;
-        }
-        // Si c'est un jour futur, retourner l'heure d'ouverture
-        if (dayOffset > 0) {
-          return heuresJour.ouverture;
+        if (openTime !== null) {
+          // Si c'est aujourd'hui et que l'heure d'ouverture est dans le futur
+          if (dayOffset === 0 && currentTime < openTime) {
+            nextOpeningTime = heuresJour.ouverture;
+          }
+          // Si c'est un jour futur, retourner l'heure d'ouverture
+          if (dayOffset > 0) {
+            nextOpeningTime = heuresJour.ouverture;
+          }
         }
       } else if (heuresJour.ouvert === true) {
         // Si ouvert toute la journée et c'est un jour futur
         if (dayOffset > 0) {
-          return '00:00';
+          nextOpeningTime = '00:00';
+        }
+      }
+
+      if (nextOpeningTime) {
+        // Si c'est un jour futur (pas aujourd'hui), inclure le nom du jour
+        if (dayOffset > 0) {
+          const dayLabel = daysOfWeekLabels[checkDayIndex];
+          return { time: nextOpeningTime, day: dayLabel };
+        } else {
+          return { time: nextOpeningTime, day: null };
         }
       }
     }
