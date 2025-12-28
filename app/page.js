@@ -1415,7 +1415,8 @@ export default function Home() {
                   if (nextOpeningTime) {
                     displayHoursLabel = `Ouvre à : ${nextOpeningTime}`;
                   } else {
-                    displayHoursLabel = 'Fermé aujourd\'hui';
+                    // Aucune ouverture trouvée dans les 7 prochains jours
+                    displayHoursLabel = 'Fermé temporairement';
                   }
                 } else {
                   displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
