@@ -1439,9 +1439,14 @@ export default function Home() {
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
-                const normalizedRestaurantName = normalizeName(restaurant.nom);
-                const isEnVacances = RESTAURANTS_EN_VACANCES.has(normalizedRestaurantName);
-                const isNonOperationnel = RESTAURANTS_NON_OPERATIONNELS.has(normalizedRestaurantName);
+                // Utiliser normalizedName qui est déjà calculé plus haut
+                const isEnVacances = RESTAURANTS_EN_VACANCES.has(normalizedName);
+                const isNonOperationnel = RESTAURANTS_NON_OPERATIONNELS.has(normalizedName);
+                
+                // Debug pour vérifier les noms
+                if (restaurant.nom && (restaurant.nom.toLowerCase().includes('cévenol') || restaurant.nom.toLowerCase().includes('cevenol'))) {
+                  console.log(`[DEBUG Cévenol] Nom original: "${restaurant.nom}", Normalisé: "${normalizedName}", En vacances: ${isEnVacances}`);
+                }
                 
                 // Calculer le label des horaires
                 let displayHoursLabel;
@@ -1453,9 +1458,15 @@ export default function Home() {
                     displayHoursLabel = 'Bientôt disponible';
                   } else {
                     // Si fermé manuellement mais pas en vacances, chercher la prochaine heure d'ouverture
-                    const nextOpeningTime = getNextOpeningTime(restaurant);
-                    if (nextOpeningTime) {
-                      displayHoursLabel = `Ouvre à : ${nextOpeningTime}`;
+                    const nextOpening = getNextOpeningTime(restaurant);
+                    if (nextOpening) {
+                      if (nextOpening.day) {
+                        // Si c'est un jour futur, afficher le nom du jour
+                        displayHoursLabel = `Ouvre ${nextOpening.day} à : ${nextOpening.time}`;
+                      } else {
+                        // Si c'est aujourd'hui
+                        displayHoursLabel = `Ouvre à : ${nextOpening.time}`;
+                      }
                     } else {
                       // Aucune ouverture trouvée dans les 7 prochains jours
                       displayHoursLabel = 'Fermé temporairement';
