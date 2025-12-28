@@ -122,6 +122,15 @@ export async function POST(request, { params }) {
                              fermeManuel === 1;
     const isManuallyOpened = fermeManuel === false;
     
+    // LOGIQUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
+    if (isManuallyClosed) {
+      return NextResponse.json({
+        isOpen: false,
+        message: 'Restaurant fermé manuellement - Nécessite une ouverture manuelle',
+        reason: 'manual'
+      });
+    }
+
     // Si ferme_manuellement = false ou null, vérifier les horaires normalement
     let horaires = restaurant.horaires || {};
     
@@ -352,24 +361,12 @@ export async function POST(request, { params }) {
       isManuallyClosed
     });
 
-    // LOGIQUE FINALE :
-    // Si ferme_manuellement = true ET les horaires indiquent ouvert → Ouvrir automatiquement
-    // Si ferme_manuellement = true ET les horaires indiquent fermé → Rester fermé
-    // Si ferme_manuellement = false ou null → Utiliser le résultat des horaires
+    // Si on arrive ici, ferme_manuellement = false ou null
+    // Utiliser le résultat des horaires pour déterminer si le restaurant est ouvert
     let finalIsOpen = isOpen;
     let reason = isOpen ? 'open' : 'outside_hours';
     
-    if (isManuallyClosed && isOpen) {
-      // Les horaires indiquent ouverture, donc ouvrir automatiquement malgré ferme_manuellement = true
-      finalIsOpen = true;
-      reason = 'auto_opened';
-      console.log(`✅ Restaurant ${id} - OUVERT AUTOMATIQUEMENT (horaires indiquent ouverture malgré fermeture manuelle)`);
-    } else if (isManuallyClosed && !isOpen) {
-      // Fermé manuellement ET les horaires indiquent fermé → Rester fermé
-      finalIsOpen = false;
-      reason = 'manual';
-      console.log(`🔴 Restaurant ${id} - FERMÉ (fermé manuellement et hors horaires)`);
-    } else if (isOpen) {
+    if (isOpen) {
       console.log(`✅ Restaurant ${id} - OUVERT (dans les horaires)`);
     } else {
       console.log(`🔴 Restaurant ${id} - FERMÉ (hors horaires)`);

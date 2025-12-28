@@ -339,10 +339,12 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
                              fermeManuel === 1;
     const isManuallyOpened = fermeManuel === false;
     
-    // Si ferme_manuellement = false → Vérifier les horaires normalement (comportement normal)
-    // On continue la vérification des horaires ci-dessous
+    // Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
+    if (isManuallyClosed) {
+      return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
+    }
     
-    // Si ferme_manuellement = null → Vérifier les horaires normalement
+    // Si ferme_manuellement = false ou null → Vérifier les horaires normalement
     let horaires = restaurant.horaires;
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
@@ -406,18 +408,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       shouldBeOpenByHours = true;
     }
 
-    // Si ferme_manuellement = true et les horaires indiquent ouvert → Ouvrir automatiquement
-    if (isManuallyClosed && shouldBeOpenByHours) {
-      // Les horaires indiquent ouverture, donc ouvrir automatiquement malgré ferme_manuellement = true
-      return { isOpen: true, isManuallyClosed: false, reason: 'auto_opened' };
-    }
-    
-    // Si ferme_manuellement = true et les horaires indiquent fermé → Rester fermé
-    if (isManuallyClosed && !shouldBeOpenByHours) {
-      return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
-    }
-    
-    // Si ferme_manuellement = false ou null → Utiliser le résultat des horaires (simple)
+    // Si on arrive ici, ferme_manuellement = false ou null
+    // Utiliser le résultat des horaires (si ferme_manuellement = false, on vérifie les horaires)
     if (shouldBeOpenByHours) {
       return { isOpen: true, isManuallyClosed: false, reason: 'open' };
     }
