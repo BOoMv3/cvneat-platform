@@ -120,13 +120,23 @@ export async function POST(request, { params }) {
                              fermeManuel === 'true' || 
                              fermeManuel === '1' || 
                              fermeManuel === 1;
+    const isManuallyOpened = fermeManuel === false;
     
-    // LOGIQUE SIMPLE: Si ferme_manuellement = true → TOUJOURS FERMÉ
+    // LOGIQUE: Si ferme_manuellement = true → TOUJOURS FERMÉ
     if (isManuallyClosed) {
       return NextResponse.json({
         isOpen: false,
         message: 'Restaurant fermé manuellement',
         reason: 'manual'
+      });
+    }
+    
+    // LOGIQUE: Si ferme_manuellement = false → TOUJOURS OUVERT (force l'ouverture)
+    if (isManuallyOpened) {
+      return NextResponse.json({
+        isOpen: true,
+        message: 'Restaurant ouvert manuellement',
+        reason: 'manual_open'
       });
     }
 
