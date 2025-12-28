@@ -43,6 +43,22 @@ const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
 const READY_RESTAURANTS = new Set();
 
+// Restaurants en vacances ou fermés de manière permanente (ne pas afficher "Ouvre à : [heure]")
+const RESTAURANTS_EN_VACANCES = new Set([
+  '99 street food',
+  'le cévenol burger',
+  'cévenol burger',
+  'cevenol burger',
+  'l\'assiette des saisons',
+  'assiette des saisons'
+]);
+
+// Restaurants pas encore prêts/opérationnels
+const RESTAURANTS_NON_OPERATIONNELS = new Set([
+  'molokai',
+  'le molokai'
+]);
+
 const normalizeName = (value = '') =>
   value
     .normalize('NFD')
@@ -1407,16 +1423,28 @@ export default function Home() {
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 
+                // Vérifier si le restaurant est en vacances ou non opérationnel
+                const normalizedRestaurantName = normalizeName(restaurant.nom);
+                const isEnVacances = RESTAURANTS_EN_VACANCES.has(normalizedRestaurantName);
+                const isNonOperationnel = RESTAURANTS_NON_OPERATIONNELS.has(normalizedRestaurantName);
+                
                 // Calculer le label des horaires
                 let displayHoursLabel;
                 if (restaurantStatus.isManuallyClosed) {
-                  // Si fermé manuellement, chercher la prochaine heure d'ouverture
-                  const nextOpeningTime = getNextOpeningTime(restaurant);
-                  if (nextOpeningTime) {
-                    displayHoursLabel = `Ouvre à : ${nextOpeningTime}`;
+                  // Si restaurant en vacances ou non opérationnel, ne pas afficher l'heure d'ouverture
+                  if (isEnVacances) {
+                    displayHoursLabel = 'En congés';
+                  } else if (isNonOperationnel) {
+                    displayHoursLabel = 'Bientôt disponible';
                   } else {
-                    // Aucune ouverture trouvée dans les 7 prochains jours
-                    displayHoursLabel = 'Fermé temporairement';
+                    // Si fermé manuellement mais pas en vacances, chercher la prochaine heure d'ouverture
+                    const nextOpeningTime = getNextOpeningTime(restaurant);
+                    if (nextOpeningTime) {
+                      displayHoursLabel = `Ouvre à : ${nextOpeningTime}`;
+                    } else {
+                      // Aucune ouverture trouvée dans les 7 prochains jours
+                      displayHoursLabel = 'Fermé temporairement';
+                    }
                   }
                 } else {
                   displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
