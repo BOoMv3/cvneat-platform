@@ -470,6 +470,12 @@ export async function PUT(request, { params }) {
         
         // Envoyer notification push FCM au client pour chaque changement de statut
         try {
+          // Gérer les notifications push avec ready_for_delivery
+          let pushStatus = status;
+          if (status === 'pret_a_livrer' || (status === 'en_preparation' && readyForDelivery === true)) {
+            pushStatus = 'pret_a_livrer';
+          }
+          
           const statusMessages = {
             'acceptee': { title: 'Commande acceptée ! 🎉', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été acceptée et sera préparée bientôt.` },
             'en_preparation': { title: 'En préparation 👨‍🍳', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est en cours de préparation.` },
@@ -480,7 +486,7 @@ export async function PUT(request, { params }) {
             'annulee': { title: 'Commande annulée ❌', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été annulée.` }
           };
           
-          const message = statusMessages[status];
+          const message = statusMessages[pushStatus];
           if (message) {
             const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
               method: 'POST',
