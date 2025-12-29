@@ -1282,12 +1282,29 @@ export default function PartnerDashboard() {
           responseData_restaurant: responseData.restaurant
         });
         
+        // FORCER la mise à jour de l'état avec la valeur normalisée
+        console.log('🔄 Mise à jour état local...');
+        console.log('   Avant: isManuallyClosed =', isManuallyClosed);
+        console.log('   Après: normalizedStatus =', normalizedStatus);
+        
         setIsManuallyClosed(normalizedStatus);
-        setRestaurant(prev => ({ 
-          ...prev, 
-          ferme_manuellement: normalizedStatus,
-          updated_at: responseData.restaurant?.updated_at || new Date().toISOString()
-        }));
+        setRestaurant(prev => {
+          const updated = { 
+            ...prev, 
+            ferme_manuellement: normalizedStatus,
+            updated_at: responseData.restaurant?.updated_at || new Date().toISOString()
+          };
+          console.log('   Restaurant state mis à jour:', {
+            id: updated.id,
+            nom: updated.nom,
+            ferme_manuellement: updated.ferme_manuellement,
+            ferme_manuellement_type: typeof updated.ferme_manuellement
+          });
+          return updated;
+        });
+        
+        // Attendre un tick pour que React mette à jour l'état
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         console.log('✅ État local mis à jour:', {
           isManuallyClosed: normalizedStatus,
@@ -2048,12 +2065,13 @@ export default function PartnerDashboard() {
               <button
                 onClick={toggleRestaurantClosed}
                 className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium ${
-                  isManuallyClosed
+                  isManuallyClosed === true
                     ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800'
                     : 'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
                 }`}
+                title={isManuallyClosed === true ? 'Cliquez pour ouvrir le restaurant' : 'Cliquez pour fermer le restaurant'}
               >
-                {isManuallyClosed ? (
+                {isManuallyClosed === true ? (
                   <>
                     <FaCheck className="h-4 w-4 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Ouvrir</span>
