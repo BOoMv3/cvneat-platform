@@ -131,7 +131,7 @@ export async function PUT(request, { params }) {
       if (willChangeStatus && !allowedStatusesWithDelivery.includes(status)) {
         console.log('⚠️ Commande déjà acceptée par un livreur, statut non autorisé:', status);
         return NextResponse.json({ 
-          error: 'Cette commande a déjà été acceptée par un livreur. Vous ne pouvez que l\'accepter, la marquer comme prête, la refuser ou la marquer comme livrée. Vous pouvez cependant modifier le temps de préparation.',
+          error: 'Cette commande a déjà été acceptée par un livreur. Vous ne pouvez que l\'accepter, la marquer comme prête, la remettre au livreur, la refuser ou la marquer comme livrée. Vous pouvez cependant modifier le temps de préparation.',
           current_status: order.statut,
           delivery_id: order.livreur_id
         }, { status: 400 });
