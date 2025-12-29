@@ -109,7 +109,7 @@ export async function PUT(request, { params }) {
     // Le restaurant peut accepter ('acceptee') ou marquer comme prête ('pret_a_livrer')
     // MAIS: Permettre aussi la mise à jour du preparation_time même si un livreur a accepté
     // (utile pour notifier un retard sans changer le statut)
-    const allowedStatusesWithDelivery = ['acceptee', 'pret_a_livrer', 'livree', 'refusee'];
+    const allowedStatusesWithDelivery = ['acceptee', 'pret_a_livrer', 'en_livraison', 'livree', 'refusee'];
     
     // Si un livreur a accepté, vérifier si on essaie de changer le statut vers une valeur non autorisée
     // PERMETTRE la mise à jour si :
