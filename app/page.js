@@ -333,18 +333,23 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     if (typeof fermeManuel === 'string') {
       fermeManuel = fermeManuel.toLowerCase() === 'true' || fermeManuel === '1';
     }
+    // LOGIQUE CRITIQUE: 
+    // - Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
+    // - Si ferme_manuellement = false → Vérifier les horaires (peut être ouvert)
+    // - Si ferme_manuellement = null ou undefined → Vérifier les horaires (peut être ouvert)
     const isManuallyClosed = fermeManuel === true || 
                              fermeManuel === 'true' || 
                              fermeManuel === '1' || 
                              fermeManuel === 1;
-    const isManuallyOpened = fermeManuel === false;
     
     // Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
     if (isManuallyClosed) {
+      console.log(`[checkRestaurantOpenStatus] ${restaurant?.nom || restaurant?.id} - FERMÉ MANUELLEMENT (ferme_manuellement = ${fermeManuel})`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
     
-    // Si ferme_manuellement = false ou null → Vérifier les horaires normalement
+    // Si ferme_manuellement = false ou null/undefined → Vérifier les horaires
+    console.log(`[checkRestaurantOpenStatus] ${restaurant?.nom || restaurant?.id} - Vérification horaires (ferme_manuellement = ${fermeManuel})`);
     let horaires = restaurant.horaires;
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
