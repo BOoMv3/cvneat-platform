@@ -36,26 +36,36 @@ export default function OrderStatus({ params }) {
           console.log('Statut de commande mis à jour:', payload.new);
           setOrder(payload.new);
           
-          // Afficher une notification de changement de statut
+          // Gérer les notifications avec ready_for_delivery
+          let notificationStatus = payload.new.statut;
+          if (payload.new.statut === 'en_preparation' && payload.new.ready_for_delivery === true) {
+            notificationStatus = 'pret_a_livrer';
+          }
+          
           const statusMessages = {
             'accepted': 'Votre commande a été acceptée ! 🎉',
             'preparing': 'Votre commande est en préparation 👨‍🍳',
             'ready': 'Votre commande est prête ! 📦',
+            'pret_a_livrer': 'Votre commande est prête ! 📦',
+            'en_preparation': payload.new.ready_for_delivery ? 'Votre commande est prête ! 📦' : 'Votre commande est en préparation 👨‍🍳',
+            'en_livraison': 'Votre commande est en route vers vous ! 🚚',
             'delivered': 'Votre commande a été livrée ! 🚚',
+            'livree': 'Votre commande a été livrée ! ✅',
             'rejected': payload.new.rejection_reason 
               ? `Votre commande a été refusée ❌\nRaison: ${payload.new.rejection_reason}`
               : 'Votre commande a été refusée ❌',
             'refusee': payload.new.rejection_reason 
               ? `Votre commande a été refusée ❌\nRaison: ${payload.new.rejection_reason}`
-              : 'Votre commande a été refusée ❌'
+              : 'Votre commande a été refusée ❌',
+            'annulee': 'Votre commande a été annulée ❌'
           };
           
-          if (statusMessages[payload.new.statut]) {
-            setStatusNotification(statusMessages[payload.new.statut]);
+          if (statusMessages[notificationStatus] || statusMessages[payload.new.statut]) {
+            setStatusNotification(statusMessages[notificationStatus] || statusMessages[payload.new.statut]);
             setTimeout(() => setStatusNotification(null), 5000);
             
             // Envoyer une notification push avec la raison
-            sendOrderStatusNotification(payload.new.id, payload.new.statut, {
+            sendOrderStatusNotification(payload.new.id, notificationStatus || payload.new.statut, {
               ...payload.new,
               rejection_reason: payload.new.rejection_reason,
               rejectionReason: payload.new.rejection_reason
