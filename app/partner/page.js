@@ -1241,16 +1241,28 @@ export default function PartnerDashboard() {
           ? responseData.restaurant.ferme_manuellement 
           : newStatus;
         
-        setIsManuallyClosed(finalStatus);
+        // Normaliser pour être sûr que c'est un booléen
+        const normalizedStatus = finalStatus === true || finalStatus === 'true' || finalStatus === 1 || finalStatus === '1';
+        
+        console.log('✅ État avant mise à jour:', {
+          isManuallyClosed_actuel: isManuallyClosed,
+          newStatus,
+          finalStatus,
+          normalizedStatus,
+          responseData_restaurant: responseData.restaurant
+        });
+        
+        setIsManuallyClosed(normalizedStatus);
         setRestaurant(prev => ({ 
           ...prev, 
-          ferme_manuellement: finalStatus,
+          ferme_manuellement: normalizedStatus,
           updated_at: responseData.restaurant?.updated_at || new Date().toISOString()
         }));
         
         console.log('✅ État local mis à jour:', {
-          isManuallyClosed: finalStatus,
-          ferme_manuellement: finalStatus
+          isManuallyClosed: normalizedStatus,
+          ferme_manuellement: normalizedStatus,
+          type: typeof normalizedStatus
         });
         
         alert(finalStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
