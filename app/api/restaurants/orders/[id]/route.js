@@ -187,19 +187,23 @@ export async function PUT(request, { params }) {
       updated_at: new Date().toISOString()
     };
 
-    // Ne mettre à jour le statut que si nécessaire
-    if (shouldUpdateStatus) {
-      updateData.statut = correctedStatus;
-      
-      // Ajouter ready_for_delivery si on change le statut
-      if (readyForDelivery !== null) {
-        updateData.ready_for_delivery = readyForDelivery;
-      }
+        // Ne mettre à jour le statut que si nécessaire
+        if (shouldUpdateStatus) {
+          updateData.statut = correctedStatus;
+          
+          // Ajouter ready_for_delivery si on change le statut
+          if (readyForDelivery !== null) {
+            updateData.ready_for_delivery = readyForDelivery;
+          }
 
-      if ((status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
-        updateData.preparation_started_at = new Date().toISOString();
-      }
-    }
+          if ((status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
+            updateData.preparation_started_at = new Date().toISOString();
+          }
+        } else if (readyForDelivery !== null) {
+          // Même si le statut ne change pas, mettre à jour ready_for_delivery si nécessaire
+          // (par exemple, si on marque "prête" alors que le statut est déjà "en_preparation")
+          updateData.ready_for_delivery = readyForDelivery;
+        }
 
     if (reason) {
       updateData.rejection_reason = reason;
@@ -462,7 +466,8 @@ export async function PUT(request, { params }) {
         }
         
         // 2. Commande prête (pret_a_livrer) - Utiliser le statut original pour l'email
-        if (status === 'pret_a_livrer' || readyForDelivery === true) {
+        // IMPORTANT: Envoyer l'email même si le statut DB est "en_preparation" mais que ready_for_delivery = true
+        if (status === 'pret_a_livrer' || (readyForDelivery === true && (status === 'pret_a_livrer' || order.statut === 'en_preparation'))) {
           await sendOrderStatusEmail(orderForEmail, 'pret_a_livrer', clientInfo.email);
           console.log('📧 Email "commande prête" envoyé au client:', clientInfo.email);
         }
