@@ -74,8 +74,9 @@ export async function PUT(request, { params }) {
     console.log('📝 Mise à jour restaurant:', {
       restaurant_id: id,
       updateData,
-      ferme_manuellement_value: body.ferme_manuellement,
-      ferme_manuellement_type: typeof body.ferme_manuellement
+      ferme_manuellement_body_value: body.ferme_manuellement,
+      ferme_manuellement_body_type: typeof body.ferme_manuellement,
+      ferme_manuellement_final: updateData.ferme_manuellement
     });
 
     // Mettre à jour le restaurant
