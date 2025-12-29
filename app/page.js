@@ -964,6 +964,18 @@ export default function Home() {
     };
 
     fetchRestaurants();
+    
+    // Écouter l'événement de changement de statut restaurant pour rafraîchir les données
+    const handleRestaurantStatusChange = () => {
+      console.log('[Restaurants] Événement restaurant-status-changed détecté, rafraîchissement des restaurants...');
+      fetchRestaurants();
+    };
+    
+    window.addEventListener('restaurant-status-changed', handleRestaurantStatusChange);
+    
+    return () => {
+      window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
+    };
   }, []);
 
   const handleToggleFavorite = (restaurant) => {
