@@ -2917,14 +2917,24 @@ export default function PartnerDashboard() {
                                     Marquer comme prête
                                   </button>
                                 )}
-                                {((order.statut === 'en_preparation') || (order.statut === 'en_livraison')) && order.ready_for_delivery && (
-                                  <span className="text-sm text-green-600 px-3 py-2 font-medium">
-                                    ✓ Prête pour livraison
-                                  </span>
+                                {((order.statut === 'en_preparation') || (order.statut === 'en_livraison')) && order.ready_for_delivery && order.statut !== 'en_livraison' && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-green-600 px-3 py-2 font-medium">
+                                      ✓ Prête pour livraison
+                                    </span>
+                                    {order.livreur_id && (
+                                      <button
+                                        onClick={() => updateOrderStatus(order.id, 'en_livraison')}
+                                        className="bg-purple-600 text-white px-3 py-2 rounded text-sm hover:bg-purple-700 transition-colors"
+                                      >
+                                        Remise au livreur
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
                                 {order.statut === 'en_livraison' && order.livreur_id && order.ready_for_delivery && (
-                                  <span className="text-sm text-gray-600 dark:text-gray-300 px-3 py-2">
-                                    Livreur en route
+                                  <span className="text-sm text-purple-600 dark:text-purple-400 px-3 py-2 font-medium">
+                                    ✓ En livraison
                                   </span>
                                 )}
                               </div>

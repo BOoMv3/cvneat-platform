@@ -97,10 +97,16 @@ export default function OrderStatus({ params }) {
     }
   };
 
-  const getStatusStep = (status) => {
+  const getStatusStep = (status, readyForDelivery = false) => {
+    // Si la commande est prête, modifier le label de l'étape "en_preparation"
     const steps = [
       { key: 'en_attente', label: 'En attente', icon: FaClock, color: 'text-yellow-500' },
-      { key: 'en_preparation', label: 'En préparation', icon: FaUtensils, color: 'text-blue-500' },
+      { 
+        key: 'en_preparation', 
+        label: readyForDelivery ? 'Prête' : 'En préparation', 
+        icon: readyForDelivery ? FaBox : FaUtensils, 
+        color: readyForDelivery ? 'text-green-500' : 'text-blue-500' 
+      },
       { key: 'en_livraison', label: 'En livraison', icon: FaTruck, color: 'text-purple-500' },
       { key: 'livree', label: 'Livrée', icon: FaCheckCircle, color: 'text-green-600' }
     ];
@@ -113,7 +119,12 @@ export default function OrderStatus({ params }) {
     }));
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status, readyForDelivery = false) => {
+    // Si la commande est prête (ready_for_delivery = true), utiliser la couleur verte
+    if (status === 'en_preparation' && readyForDelivery) {
+      return 'bg-green-100 text-green-800';
+    }
+    
     switch (status) {
       case 'en_attente':
         return 'bg-yellow-100 text-yellow-800';
@@ -178,7 +189,7 @@ export default function OrderStatus({ params }) {
     );
   }
 
-  const statusSteps = getStatusStep(order.statut);
+  const statusSteps = getStatusStep(order.statut, order.ready_for_delivery);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -223,9 +234,10 @@ export default function OrderStatus({ params }) {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold">Statut de votre commande</h2>
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.statut)}`}>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.statut, order.ready_for_delivery)}`}>
               {order.statut === 'en_attente' && 'En attente'}
-              {order.statut === 'en_preparation' && 'En préparation'}
+              {order.statut === 'en_preparation' && order.ready_for_delivery && 'Prête'}
+              {order.statut === 'en_preparation' && !order.ready_for_delivery && 'En préparation'}
               {order.statut === 'en_livraison' && 'En livraison'}
               {order.statut === 'livree' && 'Livrée'}
               {order.statut === 'annulee' && 'Annulée'}

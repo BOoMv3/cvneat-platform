@@ -456,10 +456,16 @@ export async function PUT(request, { params }) {
           console.log('📧 Email "commande acceptée" envoyé au client:', clientInfo.email);
         }
         
-        // 2. Commande prête (pret_a_livrer)
+        // 2. Commande prête (pret_a_livrer) - Utiliser le statut original pour l'email
         if (status === 'pret_a_livrer' || readyForDelivery === true) {
           await sendOrderStatusEmail(orderForEmail, 'pret_a_livrer', clientInfo.email);
           console.log('📧 Email "commande prête" envoyé au client:', clientInfo.email);
+        }
+        
+        // 3. Commande remise au livreur (en_livraison)
+        if (status === 'en_livraison') {
+          await sendOrderStatusEmail(orderForEmail, 'en_livraison', clientInfo.email);
+          console.log('📧 Email "commande en livraison" envoyé au client:', clientInfo.email);
         }
         
         // Envoyer notification push FCM au client pour chaque changement de statut
