@@ -835,6 +835,19 @@ export default function Home() {
               });
             }
             
+            // Log spécial pour "La Bonne Pâte" pour debug
+            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('bonne pâte') || restaurant.nom.toLowerCase().includes('bonne pate'))) {
+              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "La Bonne Pâte" - Normalisation:`, {
+                nom: restaurant.nom,
+                original_ferme_manuellement: restaurant.ferme_manuellement,
+                original_type: typeof restaurant.ferme_manuellement,
+                normalized_ferme_manuellement: normalizedRestaurant.ferme_manuellement,
+                normalized_type: typeof normalizedRestaurant.ferme_manuellement,
+                strict_true: normalizedRestaurant.ferme_manuellement === true,
+                strict_false: normalizedRestaurant.ferme_manuellement === false
+              });
+            }
+            
             normalizedRestaurants.push(normalizedRestaurant);
           } catch (restaurantError) {
             console.error('[Restaurants] Erreur normalisation restaurant:', restaurantError, restaurant);
