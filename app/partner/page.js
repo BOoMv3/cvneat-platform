@@ -1202,7 +1202,18 @@ export default function PartnerDashboard() {
       console.log('🔄 Toggle restaurant fermeture:', {
         restaurant_id: restaurant.id,
         current_status: isManuallyClosed,
-        new_status: newStatus
+        new_status: newStatus,
+        new_status_type: typeof newStatus
+      });
+      
+      const requestBody = {
+        ferme_manuellement: newStatus // Envoyer directement le booléen
+      };
+      
+      console.log('📤 Envoi requête API:', {
+        url: `/api/partner/restaurant/${restaurant.id}`,
+        method: 'PUT',
+        body: requestBody
       });
       
       const response = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
@@ -1211,22 +1222,38 @@ export default function PartnerDashboard() {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ferme_manuellement: newStatus
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const responseData = await response.json().catch(() => ({}));
       
       if (response.ok) {
         console.log('✅ Restaurant mis à jour avec succès:', responseData);
-        setIsManuallyClosed(newStatus);
+        console.log('✅ Données restaurant retournées par API:', {
+          id: responseData.restaurant?.id,
+          nom: responseData.restaurant?.nom,
+          ferme_manuellement: responseData.restaurant?.ferme_manuellement,
+          ferme_manuellement_type: typeof responseData.restaurant?.ferme_manuellement
+        });
+        
+        // Utiliser la valeur retournée par l'API pour être sûr
+        const finalStatus = responseData.restaurant?.ferme_manuellement !== undefined 
+          ? responseData.restaurant.ferme_manuellement 
+          : newStatus;
+        
+        setIsManuallyClosed(finalStatus);
         setRestaurant(prev => ({ 
           ...prev, 
-          ferme_manuellement: newStatus,
-          updated_at: new Date().toISOString()
+          ferme_manuellement: finalStatus,
+          updated_at: responseData.restaurant?.updated_at || new Date().toISOString()
         }));
-        alert(newStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
+        
+        console.log('✅ État local mis à jour:', {
+          isManuallyClosed: finalStatus,
+          ferme_manuellement: finalStatus
+        });
+        
+        alert(finalStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
         
         // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
         if (typeof window !== 'undefined') {

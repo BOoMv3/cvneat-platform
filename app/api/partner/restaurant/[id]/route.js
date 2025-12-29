@@ -60,7 +60,15 @@ export async function PUT(request, { params }) {
     // Toujours inclure ferme_manuellement si fourni (même si false)
     if (body.ferme_manuellement !== undefined) {
       // S'assurer que c'est un booléen strict
-      updateData.ferme_manuellement = body.ferme_manuellement === true || body.ferme_manuellement === 'true' || body.ferme_manuellement === 1;
+      // Gérer correctement true, false, 'true', 'false', 1, 0, etc.
+      if (body.ferme_manuellement === true || body.ferme_manuellement === 'true' || body.ferme_manuellement === 1 || body.ferme_manuellement === '1') {
+        updateData.ferme_manuellement = true;
+      } else if (body.ferme_manuellement === false || body.ferme_manuellement === 'false' || body.ferme_manuellement === 0 || body.ferme_manuellement === '0') {
+        updateData.ferme_manuellement = false;
+      } else {
+        // Valeur invalide, utiliser false par défaut
+        updateData.ferme_manuellement = false;
+      }
     }
 
     console.log('📝 Mise à jour restaurant:', {
