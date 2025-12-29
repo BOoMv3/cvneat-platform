@@ -225,8 +225,16 @@ export default function PartnerDashboard() {
       }
 
       setRestaurant(resto);
-      // Normaliser ferme_manuellement pour être sûr que c'est un booléen
-      const normalizedFermeManuel = resto?.ferme_manuellement === true || resto?.ferme_manuellement === 'true' || resto?.ferme_manuellement === 1 || resto?.ferme_manuellement === '1';
+      // Normaliser ferme_manuellement pour être sûr que c'est un booléen strict
+      let normalizedFermeManuel;
+      if (resto?.ferme_manuellement === true || resto?.ferme_manuellement === 'true' || resto?.ferme_manuellement === 1 || resto?.ferme_manuellement === '1') {
+        normalizedFermeManuel = true;
+      } else if (resto?.ferme_manuellement === false || resto?.ferme_manuellement === 'false' || resto?.ferme_manuellement === 0 || resto?.ferme_manuellement === '0') {
+        normalizedFermeManuel = false;
+      } else {
+        // Valeur invalide ou undefined, utiliser false par défaut (ouvert)
+        normalizedFermeManuel = false;
+      }
       setIsManuallyClosed(normalizedFermeManuel);
       console.log('📋 Restaurant chargé:', {
         nom: resto?.nom,
