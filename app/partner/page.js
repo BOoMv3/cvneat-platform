@@ -1250,13 +1250,22 @@ export default function PartnerDashboard() {
           ? responseData.restaurant.ferme_manuellement 
           : newStatus;
         
-        // Normaliser pour être sûr que c'est un booléen
-        const normalizedStatus = finalStatus === true || finalStatus === 'true' || finalStatus === 1 || finalStatus === '1';
+        // Normaliser pour être sûr que c'est un booléen strict
+        let normalizedStatus;
+        if (finalStatus === true || finalStatus === 'true' || finalStatus === 1 || finalStatus === '1') {
+          normalizedStatus = true;
+        } else if (finalStatus === false || finalStatus === 'false' || finalStatus === 0 || finalStatus === '0') {
+          normalizedStatus = false;
+        } else {
+          // Valeur invalide, utiliser newStatus
+          normalizedStatus = newStatus;
+        }
         
         console.log('✅ État avant mise à jour:', {
           isManuallyClosed_actuel: isManuallyClosed,
           newStatus,
           finalStatus,
+          finalStatus_type: typeof finalStatus,
           normalizedStatus,
           responseData_restaurant: responseData.restaurant
         });
@@ -1274,7 +1283,7 @@ export default function PartnerDashboard() {
           type: typeof normalizedStatus
         });
         
-        alert(finalStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
+        alert(normalizedStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
         
         // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
         if (typeof window !== 'undefined') {
