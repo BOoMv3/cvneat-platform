@@ -873,6 +873,21 @@ export default function Home() {
               });
             }
             
+            // Log spécial pour O'Toasty
+            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('otoasty') || restaurant.nom.toLowerCase().includes('o\'toasty'))) {
+              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "O'Toasty":`, {
+                nom: restaurant.nom,
+                isOpen: status.isOpen,
+                reason: status.reason,
+                isManuallyClosed: status.isManuallyClosed,
+                ferme_manuellement: restaurant.ferme_manuellement,
+                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
+                ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
+                ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
+                hasHoraires: !!restaurant.horaires
+              });
+            }
+            
             console.log(`[Restaurants] ${restaurant.nom} - Statut:`, {
               isOpen: status.isOpen,
               reason: status.reason,
@@ -1465,11 +1480,26 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {displayRestaurants.map((restaurant, index) => {
-                const restaurantStatus = restaurantsOpenStatus[restaurant.id] || { 
-                  isOpen: true, 
-                  isManuallyClosed: false,
-                  hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
-                };
+                // Si le statut n'existe pas, le calculer immédiatement pour éviter les valeurs par défaut incorrectes
+                let restaurantStatus = restaurantsOpenStatus[restaurant.id];
+                if (!restaurantStatus) {
+                  // Calculer le statut si pas encore calculé (fallback)
+                  const calculatedStatus = checkRestaurantOpenStatus(restaurant);
+                  restaurantStatus = {
+                    isOpen: calculatedStatus.isOpen,
+                    isManuallyClosed: calculatedStatus.isManuallyClosed,
+                    hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
+                  };
+                  
+                  // Log pour O'Toasty si problème
+                  if (restaurant.nom && (restaurant.nom.toLowerCase().includes('otoasty') || restaurant.nom.toLowerCase().includes('o\'toasty'))) {
+                    console.warn(`[Restaurants] ⚠️ O'Toasty: statut calculé en fallback:`, {
+                      isOpen: restaurantStatus.isOpen,
+                      isManuallyClosed: restaurantStatus.isManuallyClosed,
+                      ferme_manuellement: restaurant.ferme_manuellement
+                    });
+                  }
+                }
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
