@@ -107,15 +107,35 @@ export async function PUT(request, { params }) {
     // WORKFLOW: D'abord le livreur accepte, puis le restaurant accepte
     // Permettre au restaurant d'accepter une commande même si un livreur a déjà accepté
     // Le restaurant peut accepter ('acceptee') ou marquer comme prête ('pret_a_livrer')
-    // Seulement bloquer si ce n'est pas une action autorisée (acceptee, pret_a_livrer, livree, refusee)
+    // MAIS: Permettre aussi la mise à jour du preparation_time même si un livreur a accepté
+    // (utile pour notifier un retard sans changer le statut)
     const allowedStatusesWithDelivery = ['acceptee', 'pret_a_livrer', 'livree', 'refusee'];
-    if (order.livreur_id && !allowedStatusesWithDelivery.includes(status)) {
-      console.log('⚠️ Commande déjà acceptée par un livreur, statut non autorisé:', status);
-      return NextResponse.json({ 
-        error: 'Cette commande a déjà été acceptée par un livreur. Vous ne pouvez que l\'accepter, la marquer comme prête, la refuser ou la marquer comme livrée.',
-        current_status: order.statut,
-        delivery_id: order.livreur_id
-      }, { status: 400 });
+    
+    // Si un livreur a accepté, vérifier si on essaie de changer le statut vers une valeur non autorisée
+    // PERMETTRE la mise à jour si :
+    // 1. On ne change pas le statut (status n'est pas fourni, ou est identique au statut actuel)
+    // 2. Ou si on change le statut vers une valeur autorisée
+    if (order.livreur_id && status) {
+      // Mapper le statut pour vérifier s'il est autorisé (même mapping qu'utilisé plus tard)
+      const statusMapping = {
+        'acceptee': 'en_preparation',
+        'refusee': 'annulee',
+        'pret_a_livrer': 'en_preparation'
+      };
+      const mappedStatus = statusMapping[status] || status;
+      
+      // Vérifier si le statut change réellement
+      const willChangeStatus = mappedStatus !== order.statut;
+      
+      // Si le statut va changer ET n'est pas dans la liste autorisée, bloquer
+      if (willChangeStatus && !allowedStatusesWithDelivery.includes(status)) {
+        console.log('⚠️ Commande déjà acceptée par un livreur, statut non autorisé:', status);
+        return NextResponse.json({ 
+          error: 'Cette commande a déjà été acceptée par un livreur. Vous ne pouvez que l\'accepter, la marquer comme prête, la refuser ou la marquer comme livrée. Vous pouvez cependant modifier le temps de préparation.',
+          current_status: order.statut,
+          delivery_id: order.livreur_id
+        }, { status: 400 });
+      }
     }
 
     // Mettre à jour la commande - CORRIGER LE STATUT SELON LA CONTRAINTE CHECK
