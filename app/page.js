@@ -643,7 +643,7 @@ export default function Home() {
           console.log('[Restaurants] Début requête Supabase...');
           const { data: restaurants, error: supabaseError } = await supabaseClient
             .from('restaurants')
-            .select('*, frais_livraison');
+            .select('*, frais_livraison, ferme_manuellement');
           
           console.log('[Restaurants] Requête Supabase terminée');
           console.log('[Restaurants] Résultat Supabase:', {
