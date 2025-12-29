@@ -888,6 +888,23 @@ export default function Home() {
               });
             }
             
+            // Log spécial pour Smaash Burger
+            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('smaash') || restaurant.nom.toLowerCase().includes('smaash burger'))) {
+              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "Smaash Burger":`, {
+                nom: restaurant.nom,
+                isOpen: status.isOpen,
+                reason: status.reason,
+                isManuallyClosed: status.isManuallyClosed,
+                ferme_manuellement: restaurant.ferme_manuellement,
+                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
+                ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
+                ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
+                hasHoraires: !!restaurant.horaires,
+                horairesType: typeof restaurant.horaires,
+                horairesPreview: restaurant.horaires ? JSON.stringify(restaurant.horaires).substring(0, 300) : 'null'
+              });
+            }
+            
             console.log(`[Restaurants] ${restaurant.nom} - Statut:`, {
               isOpen: status.isOpen,
               reason: status.reason,
