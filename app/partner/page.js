@@ -1215,10 +1215,14 @@ export default function PartnerDashboard() {
         return;
       }
       
-      const newStatus = !isManuallyClosed;
+      // S'assurer que isManuallyClosed est un booléen strict avant de le toggler
+      const currentIsManuallyClosed = isManuallyClosed === true;
+      const newStatus = !currentIsManuallyClosed;
       console.log('🔄 Toggle restaurant fermeture:', {
         restaurant_id: restaurant.id,
-        current_status: isManuallyClosed,
+        isManuallyClosed_original: isManuallyClosed,
+        isManuallyClosed_type: typeof isManuallyClosed,
+        currentIsManuallyClosed,
         new_status: newStatus,
         new_status_type: typeof newStatus
       });
