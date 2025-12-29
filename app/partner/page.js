@@ -2908,27 +2908,37 @@ export default function PartnerDashboard() {
                                   </>
                                 )}
                                 {/* Permettre de marquer comme prête même si un livreur a accepté */}
-                                {((order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery)) && !order.ready_for_delivery && (
+                                {/* Afficher le bouton "Marquer comme prête" si la commande est en préparation et pas encore prête */}
+                                {(order.statut === 'en_preparation' || order.statut === 'en_attente') && !order.ready_for_delivery && (
                                   <button
                                     onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
                                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
                                     disabled={false}
+                                    title="Marquer la commande comme prête pour la livraison"
                                   >
                                     Marquer comme prête
                                   </button>
                                 )}
-                                {((order.statut === 'en_preparation') || (order.statut === 'en_livraison')) && order.ready_for_delivery && order.statut !== 'en_livraison' && (
+                                
+                                {/* Afficher "Prête" et bouton "Remise au livreur" si la commande est prête mais pas encore en livraison */}
+                                {order.ready_for_delivery && order.statut !== 'en_livraison' && order.statut !== 'livree' && (
                                   <div className="flex items-center gap-2">
-                                    <span className="text-sm text-green-600 px-3 py-2 font-medium">
+                                    <span className="text-sm text-green-600 dark:text-green-400 px-3 py-2 font-medium">
                                       ✓ Prête pour livraison
                                     </span>
                                     {order.livreur_id && (
                                       <button
                                         onClick={() => updateOrderStatus(order.id, 'en_livraison')}
                                         className="bg-purple-600 text-white px-3 py-2 rounded text-sm hover:bg-purple-700 transition-colors"
+                                        title="Cliquez quand le livreur récupère la commande"
                                       >
                                         Remise au livreur
                                       </button>
+                                    )}
+                                    {!order.livreur_id && (
+                                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        En attente d'un livreur
+                                      </span>
                                     )}
                                   </div>
                                 )}

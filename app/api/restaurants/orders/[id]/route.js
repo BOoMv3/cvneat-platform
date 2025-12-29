@@ -170,10 +170,15 @@ export async function PUT(request, { params }) {
     
     // Si le restaurant marque "prêt à livrer", on met ready_for_delivery = true
     // Sinon, si c'est "acceptee", on met ready_for_delivery = false
+    // Si c'est "en_livraison", on garde ready_for_delivery = true (la commande était déjà prête)
     if (status === 'pret_a_livrer') {
       readyForDelivery = true;
     } else if (status === 'acceptee') {
       readyForDelivery = false;
+    } else if (status === 'en_livraison') {
+      // Si on passe en livraison, la commande doit être prête
+      // Si elle n'était pas prête, on la marque comme prête aussi
+      readyForDelivery = true;
     }
     
     console.log('📋 Statuts autorisés par CHECK: en_attente, en_preparation, en_livraison, livree, annulee');
