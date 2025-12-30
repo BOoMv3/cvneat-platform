@@ -314,12 +314,12 @@ export async function PUT(request, { params }) {
             // Ne pas faire de remboursement automatique si déjà livrée
           } else if (!order.livreur_id || !updatedOrder.livreur_id) {
             // Rembourser automatiquement seulement si pas de livreur (ou si livreur_id a été retiré)
-            // Si un livreur avait accepté, on ne rembourse pas automatiquement (gérer manuellement)
+            // Si un livreur avait accepté mais qu'on l'a retiré, on rembourse quand même
             console.log('💰 Remboursement automatique autorisé (pas de livreur ou livreur retiré)');
             
             const orderTotal = parseFloat(order.total || 0);
           
-          if (orderTotal > 0) {
+            if (orderTotal > 0) {
             console.log('💰 Remboursement automatique nécessaire (annulation restaurant - commande non acceptée/livrée):', id);
             
             try {
