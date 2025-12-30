@@ -112,10 +112,11 @@ export async function PUT(request, { params }) {
     const allowedStatusesWithDelivery = ['acceptee', 'pret_a_livrer', 'en_livraison', 'livree', 'refusee'];
     
     // Si un livreur a accepté, vérifier si on essaie de changer le statut vers une valeur non autorisée
+    // PERMETTRE TOUJOURS LE REFUS même si un livreur a accepté (le livreur sera notifié)
     // PERMETTRE la mise à jour si :
     // 1. On ne change pas le statut (status n'est pas fourni, ou est identique au statut actuel)
-    // 2. Ou si on change le statut vers une valeur autorisée
-    if (order.livreur_id && status) {
+    // 2. Ou si on change le statut vers une valeur autorisée (incluant 'refusee')
+    if (order.livreur_id && status && status !== 'refusee') {
       // Mapper le statut pour vérifier s'il est autorisé (même mapping qu'utilisé plus tard)
       const statusMapping = {
         'acceptee': 'en_preparation',
@@ -142,6 +143,7 @@ export async function PUT(request, { params }) {
     let correctedStatus = status;
     let readyForDelivery = null;
     let shouldUpdateStatus = false;
+    let shouldRemoveDeliveryId = false; // Flag pour retirer livreur_id si refusée
     
     // MAPPING POUR CORRESPONDRE EXACTEMENT À LA CONTRAINTE CHECK DE LA BASE DE DONNÉES
     // La contrainte CHECK accepte: 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
@@ -156,6 +158,11 @@ export async function PUT(request, { params }) {
       correctedStatus = statusMapping[status];
       console.log('🔄 Statut mappé:', { original: status, final: correctedStatus, raison: 'Contrainte CHECK base de données' });
       shouldUpdateStatus = correctedStatus !== order.statut;
+      
+      // Si refusée, retirer le livreur_id pour libérer le livreur
+      if (status === 'refusee') {
+        shouldRemoveDeliveryId = true;
+      }
     } else if (status && status !== order.statut) {
       // Si le statut est fourni et différent, mais pas dans le mapping, vérifier s'il est valide
       const validStatuses = ['en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'];
@@ -190,6 +197,12 @@ export async function PUT(request, { params }) {
         // Ne mettre à jour le statut que si nécessaire
         if (shouldUpdateStatus) {
           updateData.statut = correctedStatus;
+          
+          // Si refusée, retirer le livreur_id pour libérer le livreur
+          if (shouldRemoveDeliveryId) {
+            updateData.livreur_id = null;
+            console.log('🔓 Retrait du livreur_id car commande refusée');
+          }
           
           // Ajouter ready_for_delivery si on change le statut
           if (readyForDelivery !== null) {
@@ -289,27 +302,22 @@ export async function PUT(request, { params }) {
           }
         }
 
-        // Si la commande est annulée par le restaurant, rembourser automatiquement SEULEMENT si pas déjà acceptée/livrée
-        if (correctedStatus === 'annulee' && order.payment_status === 'paid' && order.stripe_payment_intent_id) {
-          // VÉRIFICATION CRITIQUE: Ne pas rembourser si la commande est déjà acceptée par un livreur ou livrée
-          if (order.livreur_id) {
-            console.log('⚠️ Remboursement BLOQUÉ: Commande déjà acceptée par un livreur (ID:', order.livreur_id, ')');
-            return NextResponse.json({
-              error: 'Impossible d\'annuler cette commande: elle a déjà été acceptée par un livreur. Contactez le support pour toute demande de remboursement.',
-              livreur_id: order.livreur_id,
-              current_statut: order.statut
-            }, { status: 400 });
-          }
-          
+        // Si la commande est annulée par le restaurant, rembourser automatiquement SEULEMENT si pas déjà livrée
+        // NOTE: On peut maintenant refuser même si un livreur a accepté (le livreur_id est retiré)
+        // Mais on ne rembourse PAS automatiquement si la commande était déjà en cours de livraison
+        if (correctedStatus === 'annulee' && status === 'refusee' && order.payment_status === 'paid' && order.stripe_payment_intent_id) {
+          // Ne pas rembourser si la commande est déjà livrée
           if (order.statut === 'livree' || order.statut === 'delivered') {
             console.log('⚠️ Remboursement BLOQUÉ: Commande déjà livrée (statut:', order.statut, ')');
-            return NextResponse.json({
-              error: 'Impossible d\'annuler cette commande: elle a déjà été livrée. Contactez le support pour toute demande de remboursement.',
-              current_statut: order.statut
-            }, { status: 400 });
-          }
-          
-          const orderTotal = parseFloat(order.total || 0);
+            // On permet quand même l'annulation mais sans remboursement automatique
+            console.log('⚠️ Commande refusée après livraison - Remboursement manuel requis');
+            // Ne pas faire de remboursement automatique si déjà livrée
+          } else if (!order.livreur_id || !updatedOrder.livreur_id) {
+            // Rembourser automatiquement seulement si pas de livreur (ou si livreur_id a été retiré)
+            // Si un livreur avait accepté, on ne rembourse pas automatiquement (gérer manuellement)
+            console.log('💰 Remboursement automatique autorisé (pas de livreur ou livreur retiré)');
+            
+            const orderTotal = parseFloat(order.total || 0);
           
           if (orderTotal > 0) {
             console.log('💰 Remboursement automatique nécessaire (annulation restaurant - commande non acceptée/livrée):', id);
