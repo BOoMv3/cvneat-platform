@@ -423,9 +423,7 @@ export async function PUT(request, { params }) {
               // Ne pas faire échouer la requête, le restaurant a déjà annulé la commande
               // Le remboursement devra être traité manuellement
             }
-          } else {
-            // Un livreur avait accepté mais a été retiré - remboursement automatique effectué
-            console.log('✅ Commande refusée, livreur retiré, remboursement traité');
+            }
           }
         }
 
