@@ -175,12 +175,14 @@ export default function AdminPage() {
         
         const restaurantShare = orderAmount - (orderAmount * commissionRate);
         const cvneatCommission = orderAmount * commissionRate;
+        const PLATFORM_FEE = 0.49; // Frais de plateforme fixe par commande
+        const cvneatTotalRevenue = cvneatCommission + PLATFORM_FEE; // Commission + frais plateforme
 
         // CA total = articles + frais de livraison
         totalRevenue += orderAmount + deliveryFee;
         
-        // CA CVN'EAT = commission des articles uniquement (sauf pour "La Bonne Pâte")
-        cvneatRevenue += cvneatCommission;
+        // CA CVN'EAT = commission des articles + frais de plateforme (sauf pour "La Bonne Pâte")
+        cvneatRevenue += cvneatTotalRevenue;
         
         // CA Livreur = frais de livraison
         livreurRevenue += deliveryFee;
@@ -192,7 +194,7 @@ export default function AdminPage() {
         const orderDate = new Date(order.created_at);
         const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
         const currentMonthAmount = monthlyRevenueMap.get(monthKey) || 0;
-        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatCommission);
+        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatTotalRevenue);
       });
 
       // Convertir la map en tableau trié (du plus récent au plus ancien)
