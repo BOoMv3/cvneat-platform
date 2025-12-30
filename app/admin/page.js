@@ -140,7 +140,7 @@ export default function AdminPage() {
       const COMMISSION_RATE = 0.20; // 20% de commission sur les commandes
       
       // CA total = montant total des commandes livrées (articles + frais de livraison)
-      // CA CVN'EAT = 20% du montant des articles (sans frais de livraison)
+      // CA CVN'EAT = commission (20% du montant des articles) + frais de plateforme (0,49€ par commande)
       // CA Livreur = somme des frais de livraison
       
       let totalRevenue = 0; // CA total
