@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Désactiver le cache pour cette route afin d'avoir toujours les données à jour
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Créer un client admin pour bypasser RLS
 let supabaseAdmin = null;
 

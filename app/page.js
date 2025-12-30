@@ -973,8 +973,18 @@ export default function Home() {
     
     window.addEventListener('restaurant-status-changed', handleRestaurantStatusChange);
     
+    // AJOUT: Rafraîchissement automatique toutes les 30 secondes pour détecter les changements manuels
+    // Cela permet de détecter les changements même si l'événement window n'est pas capturé (onglets différents)
+    const refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Restaurants] Rafraîchissement automatique des restaurants (30s)...');
+        fetchRestaurants();
+      }
+    }, 30000); // 30 secondes
+    
     return () => {
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
+      clearInterval(refreshInterval);
     };
   }, []);
 
