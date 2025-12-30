@@ -100,9 +100,7 @@ export async function POST(request) {
       customer_email: customerInfo.email || null,
       commission_rate: restaurantCommissionRate * 100,
       commission_amount: commissionGross,
-      restaurant_payout: restaurantPayout,
-      // Marquer que c'est une commande admin
-      is_admin_order: true
+      restaurant_payout: restaurantPayout
     };
 
     console.log('📦 Création commande admin:', {
