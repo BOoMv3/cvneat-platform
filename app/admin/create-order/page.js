@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaTimes } from 'react-icons/fa';
+import { FaArrowLeft, FaPlus, FaMinus, FaTrash, FaSpinner, FaTimes } from 'react-icons/fa';
 
 export default function AdminCreateOrder() {
   const router = useRouter();
@@ -710,7 +710,7 @@ export default function AdminCreateOrder() {
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
                   >
-                    <FaPlus className="rotate-45" />
+                    <FaMinus />
                   </button>
                   <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
                   <button
