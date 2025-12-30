@@ -131,8 +131,32 @@ export async function POST(request) {
 
     for (const item of items) {
       const quantity = parseInt(item.quantity || 1, 10);
-      const itemPrice = parseFloat(item.prix || item.price || 0) || 0;
+      const basePrice = parseFloat(item.prix || item.price || 0) || 0;
       const isFormula = item.is_formula === true;
+
+      // Calculer le prix total avec suppléments, viandes et sauces
+      let supplementsPrice = 0;
+      if (item.supplements && Array.isArray(item.supplements)) {
+        supplementsPrice = item.supplements.reduce((sum, sup) => {
+          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
+        }, 0);
+      }
+
+      let meatsPrice = 0;
+      if (item.customizations?.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
+        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
+          return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
+        }, 0);
+      }
+
+      let saucesPrice = 0;
+      if (item.customizations?.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
+        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
+          return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
+        }, 0);
+      }
+
+      const prixUnitaireTotal = basePrice + supplementsPrice + meatsPrice + saucesPrice;
 
       // Pour les formules, on utilise l'ID de la formule
       // Pour les items normaux, on utilise l'ID du menu
@@ -176,14 +200,39 @@ export async function POST(request) {
         commande_id: order.id,
         plat_id: platId,
         quantite: quantity,
-        prix_unitaire: itemPrice
+        prix_unitaire: prixUnitaireTotal // Prix avec tous les suppléments/viandes/sauces
       };
 
+      // Ajouter les suppléments si présents
+      if (item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0) {
+        detailEntry.supplements = item.supplements.map(sup => ({
+          id: sup.id,
+          nom: sup.nom || sup.name,
+          prix: parseFloat(sup.prix || sup.price || 0) || 0
+        }));
+      }
+
+      // Préparer les customizations
+      const customizations = {};
+      
       if (isFormula) {
-        detailEntry.customizations = {
-          is_formula: true,
-          formula_name: item.nom || item.name || 'Formule'
-        };
+        customizations.is_formula = true;
+        customizations.formula_name = item.nom || item.name || 'Formule';
+      }
+
+      // Ajouter les viandes et sauces aux customizations
+      if (item.customizations) {
+        if (item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats) && item.customizations.selectedMeats.length > 0) {
+          customizations.selectedMeats = item.customizations.selectedMeats;
+        }
+        if (item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces) && item.customizations.selectedSauces.length > 0) {
+          customizations.selectedSauces = item.customizations.selectedSauces;
+        }
+      }
+
+      // Ajouter les customizations si elles existent
+      if (Object.keys(customizations).length > 0) {
+        detailEntry.customizations = customizations;
       }
 
       orderDetailsPayload.push(detailEntry);
