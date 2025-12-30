@@ -423,6 +423,9 @@ export async function PUT(request, { params }) {
               // Ne pas faire échouer la requête, le restaurant a déjà annulé la commande
               // Le remboursement devra être traité manuellement
             }
+          } else {
+            // Un livreur avait accepté mais a été retiré - remboursement automatique effectué
+            console.log('✅ Commande refusée, livreur retiré, remboursement traité');
           }
         }
 
@@ -484,6 +487,12 @@ export async function PUT(request, { params }) {
         if (status === 'en_livraison') {
           await sendOrderStatusEmail(orderForEmail, 'en_livraison', clientInfo.email);
           console.log('📧 Email "commande en livraison" envoyé au client:', clientInfo.email);
+        }
+        
+        // 4. Commande refusée (refusee)
+        if (status === 'refusee') {
+          await sendOrderStatusEmail(orderForEmail, 'refusee', clientInfo.email);
+          console.log('📧 Email "commande refusée" envoyé au client:', clientInfo.email);
         }
         
         // Envoyer notification push FCM au client pour chaque changement de statut
