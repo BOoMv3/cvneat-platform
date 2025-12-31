@@ -19,16 +19,11 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [sauceOptions, setSauceOptions] = useState([]); // Options de sauce depuis la base de données
   const [baseIngredients, setBaseIngredients] = useState([]); // Ingrédients de base depuis la base de données
   const [loading, setLoading] = useState(false);
-  const [internalIsOpen, setInternalIsOpen] = useState(isOpen); // State interne pour forcer la fermeture
-  const [manuallyClosed, setManuallyClosed] = useState(false); // Flag pour indiquer qu'on a fermé manuellement
+  const [internalIsOpen, setInternalIsOpen] = useState(isOpen);
 
   // Synchroniser le state interne avec la prop isOpen
   useEffect(() => {
-    if (isOpen) {
-      // Si la modal doit être ouverte, l'ouvrir et réinitialiser le flag
-      setInternalIsOpen(true);
-      setManuallyClosed(false); // Réinitialiser le flag pour permettre la réouverture
-    }
+    setInternalIsOpen(isOpen);
   }, [isOpen]);
 
 
@@ -465,9 +460,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       // Fermer la modal IMMÉDIATEMENT et de manière synchrone
       console.log('🔒 Fermeture de la modal (formule)...');
       
-      // Marquer comme fermé manuellement AVANT de fermer
-      setManuallyClosed(true);
-      
       // Utiliser flushSync pour forcer une mise à jour synchrone
       flushSync(() => {
         setInternalIsOpen(false);
@@ -560,9 +552,6 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     
     // Fermer la modal IMMÉDIATEMENT et de manière synchrone
     console.log('🔒 Fermeture de la modal...');
-    
-    // Marquer comme fermé manuellement AVANT de fermer
-    setManuallyClosed(true);
     
     // Utiliser flushSync pour forcer une mise à jour synchrone
     flushSync(() => {
