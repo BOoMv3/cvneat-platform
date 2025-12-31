@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
+// DÉSACTIVÉ: Remboursements automatiques désactivés
+// import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -49,10 +50,10 @@ function getServiceClient() {
 // GET /api/orders - Récupérer les commandes de l'utilisateur
 export async function GET(request) {
   try {
-    // Nettoyer les commandes expirées en arrière-plan (non bloquant)
-    cleanupExpiredOrders().catch(err => {
-      console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
-    });
+    // DÉSACTIVÉ: Nettoyage automatique des commandes expirées (remboursements automatiques désactivés)
+    // cleanupExpiredOrders().catch(err => {
+    //   console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
+    // });
     
     // Récupérer le token depuis les headers
     const authHeader = request.headers.get('authorization');

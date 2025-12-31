@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
+// DÉSACTIVÉ: Remboursements automatiques désactivés
+// import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
@@ -10,10 +11,10 @@ export async function GET(request, { params }) {
     const { id } = params;
     console.log(`📡 [API /orders/${id}] Début de la requête`);
     
-    // Nettoyer les commandes expirées en arrière-plan (non bloquant)
-    cleanupExpiredOrders().catch(err => {
-      console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
-    });
+    // DÉSACTIVÉ: Nettoyage automatique des commandes expirées (remboursements automatiques désactivés)
+    // cleanupExpiredOrders().catch(err => {
+    //   console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
+    // });
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '') || null;
     const url = new URL(request.url);
