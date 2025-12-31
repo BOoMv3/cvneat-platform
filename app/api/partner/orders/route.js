@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
+// DÉSACTIVÉ: Remboursements automatiques désactivés
+// import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
 
 // Créer un client avec le service role pour contourner RLS
 const supabaseAdmin = createClient(
@@ -59,10 +60,10 @@ export async function GET(request) {
     console.log('=== API PARTNER ORDERS GET ===');
     console.log('Headers:', request.headers.get('authorization') ? 'Token présent' : 'Token manquant');
     
-    // Nettoyer les commandes expirées en arrière-plan (non bloquant)
-    cleanupExpiredOrders().catch(err => {
-      console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
-    });
+    // DÉSACTIVÉ: Nettoyage automatique des commandes expirées (remboursements automatiques désactivés)
+    // cleanupExpiredOrders().catch(err => {
+    //   console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
+    // });
     
     const user = await getUserFromRequest(request);
     console.log('User récupéré:', user ? user.id : 'Aucun utilisateur');
