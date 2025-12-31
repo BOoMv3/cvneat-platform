@@ -22,16 +22,14 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [internalIsOpen, setInternalIsOpen] = useState(isOpen); // State interne pour forcer la fermeture
   const [manuallyClosed, setManuallyClosed] = useState(false); // Flag pour indiquer qu'on a fermé manuellement
 
-  // Synchroniser le state interne avec la prop isOpen uniquement quand isOpen devient true
-  // Ne pas synchroniser quand isOpen devient false pour éviter de rouvrir après fermeture manuelle
+  // Synchroniser le state interne avec la prop isOpen
   useEffect(() => {
-    if (isOpen && !manuallyClosed) {
-      // Si la modal est ouverte depuis l'extérieur et qu'on ne l'a pas fermée manuellement, on synchronise
+    if (isOpen) {
+      // Si la modal doit être ouverte, l'ouvrir et réinitialiser le flag
       setInternalIsOpen(true);
-      setManuallyClosed(false); // Réinitialiser le flag
+      setManuallyClosed(false); // Réinitialiser le flag pour permettre la réouverture
     }
-    // On ne synchronise pas quand isOpen devient false pour préserver la fermeture manuelle
-  }, [isOpen, manuallyClosed]);
+  }, [isOpen]);
 
 
   // Réinitialiser les états quand la modal se ferme
