@@ -61,10 +61,36 @@ export async function POST(request) {
       );
     }
 
-    // Vérifier que la commande peut être remboursée
-    if (order.statut === 'livree' || order.statut === 'annulee') {
+    // VÉRIFICATION CRITIQUE: Ne pas rembourser si la commande est déjà livrée, en livraison ou annulée
+    if (order.statut === 'livree' || order.statut === 'delivered') {
+      console.log('⚠️ Remboursement BLOQUÉ: Commande déjà livrée (statut:', order.statut, ')');
       return NextResponse.json(
-        { error: 'Cette commande ne peut pas être remboursée' },
+        { error: 'Cette commande a déjà été livrée et ne peut pas être remboursée automatiquement. Contactez le support pour toute demande de remboursement.' },
+        { status: 400 }
+      );
+    }
+    
+    if (order.statut === 'en_livraison' || order.statut === 'in_delivery') {
+      console.log('⚠️ Remboursement BLOQUÉ: Commande déjà en livraison (statut:', order.statut, ')');
+      return NextResponse.json(
+        { error: 'Cette commande est déjà en cours de livraison et ne peut pas être remboursée automatiquement. Contactez le support pour toute demande de remboursement.' },
+        { status: 400 }
+      );
+    }
+    
+    if (order.statut === 'annulee') {
+      console.log('⚠️ Remboursement BLOQUÉ: Commande déjà annulée (statut:', order.statut, ')');
+      return NextResponse.json(
+        { error: 'Cette commande a déjà été annulée' },
+        { status: 400 }
+      );
+    }
+    
+    // Vérifier aussi si un livreur a accepté la commande (même si pas encore en livraison)
+    if (order.livreur_id) {
+      console.log('⚠️ Remboursement BLOQUÉ: Commande déjà acceptée par un livreur (livreur_id:', order.livreur_id, ')');
+      return NextResponse.json(
+        { error: 'Cette commande a déjà été acceptée par un livreur et ne peut pas être remboursée automatiquement. Contactez le support pour toute demande de remboursement.' },
         { status: 400 }
       );
     }

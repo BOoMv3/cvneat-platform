@@ -216,6 +216,16 @@ export async function PUT(request, { params }) {
         });
       }
       
+      // VÉRIFICATION CRITIQUE: Ne pas rembourser si la commande n'est pas livrée
+      // Pour les réclamations, on rembourse seulement si la commande est livrée (le client a reçu la commande)
+      if (complaint.order?.statut !== 'livree' && complaint.order?.statut !== 'delivered') {
+        console.log('⚠️ Remboursement réclamation BLOQUÉ: Commande non livrée (statut:', complaint.order?.statut, ')');
+        return NextResponse.json({
+          error: 'Une réclamation ne peut être approuvée que pour une commande livrée',
+          current_status: complaint.order?.statut
+        }, { status: 400 });
+      }
+      
       try {
         // Créer le remboursement Stripe
         let stripeRefund = null;
