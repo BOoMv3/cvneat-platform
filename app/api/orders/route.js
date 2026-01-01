@@ -1442,11 +1442,11 @@ export async function POST(request) {
 
     console.log('🎯 RETOUR DE LA RÉPONSE - Commande créée avec statut:', order.statut);
     
-    // Nettoyer les commandes expirées en arrière-plan (non bloquant)
+    // DÉSACTIVÉ: Nettoyage automatique des commandes expirées (remboursements automatiques désactivés)
     // Ne pas nettoyer la commande qui vient d'être créée
-    cleanupExpiredOrders().catch(err => {
-      console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
-    });
+    // cleanupExpiredOrders().catch(err => {
+    //   console.warn('⚠️ Erreur nettoyage commandes expirées (non bloquant):', err);
+    // });
     
     const subtotalValue = calculatedSubtotal; // Utiliser le sous-total recalculé
     const deliveryFeeValue = parseFloat(fraisLivraison) || 0;
