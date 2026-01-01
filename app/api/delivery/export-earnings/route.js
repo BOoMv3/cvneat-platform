@@ -18,6 +18,7 @@ export async function GET(request) {
         id,
         montant_total,
         frais_livraison,
+        delivery_commission_cvneat,
         statut,
         created_at,
         restaurants(nom),
@@ -45,8 +46,13 @@ export async function GET(request) {
       );
     }
 
-    // Calculer les totaux
-    const totalEarnings = orders?.reduce((sum, order) => sum + (order.frais_livraison || 0), 0) || 0;
+    // Calculer les totaux (utiliser le gain réel du livreur = frais_livraison - commission)
+    const totalEarnings = orders?.reduce((sum, order) => {
+      const fraisLivraison = parseFloat(order.frais_livraison || 0);
+      const commission = parseFloat(order.delivery_commission_cvneat || 0);
+      const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
+      return sum + livreurEarning;
+    }, 0) || 0;
     const totalDeliveries = orders?.length || 0;
     const averageEarning = totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0;
 

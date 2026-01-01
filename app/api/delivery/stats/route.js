@@ -74,8 +74,14 @@ export async function GET(request) {
     console.log('🔍 Toutes les commandes:', allOrders);
 
     // Calculer les statistiques
+    // IMPORTANT: Utiliser frais_livraison - delivery_commission_cvneat pour calculer les gains réels du livreur
     const totalDeliveries = orders?.length || 0;
-    const totalEarnings = orders?.reduce((sum, order) => sum + (order.frais_livraison || 0), 0) || 0;
+    const totalEarnings = orders?.reduce((sum, order) => {
+      const fraisLivraison = parseFloat(order.frais_livraison || 0);
+      const commission = parseFloat(order.delivery_commission_cvneat || 0);
+      const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
+      return sum + livreurEarning;
+    }, 0) || 0;
     
     // Commandes d'aujourd'hui
     const todayOrders = orders?.filter(order => {

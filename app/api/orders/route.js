@@ -630,6 +630,19 @@ export async function POST(request) {
     const restaurantPayout = Math.round((total * (1 - restaurantCommissionRate)) * 100) / 100;
     const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
     
+    // Calculer la commission CVN'EAT sur les frais de livraison
+    // Si frais_livraison = 2.50€ → commission = 0€ (livreur garde 2.50€)
+    // Si frais_livraison > 2.50€ → commission = (frais_livraison - 2.50) * 10%
+    // Le livreur reçoit toujours: frais_livraison - commission (minimum 2.50€ garanti)
+    const DELIVERY_COMMISSION_RATE = 0.10; // 10% de commission sur la partie > 2.50€
+    const DELIVERY_BASE_FEE = 2.50; // Frais de base pour le livreur
+    let deliveryCommissionCvneat = 0.00;
+    if (fraisLivraison > DELIVERY_BASE_FEE) {
+      const excessAmount = fraisLivraison - DELIVERY_BASE_FEE; // Partie au-dessus de 2.50€
+      deliveryCommissionCvneat = Math.round(excessAmount * DELIVERY_COMMISSION_RATE * 100) / 100;
+    }
+    // Le livreur recevra: fraisLivraison - deliveryCommissionCvneat (toujours >= 2.50€)
+    
     console.log('Finance computation:', {
       commission_rate: restaurantCommissionRate * 100,
       commission_gross: commissionGross,
@@ -664,7 +677,9 @@ export async function POST(request) {
       // Stocker les informations de commission
       commission_rate: restaurantCommissionRate * 100, // En pourcentage (ex: 15.00)
       commission_amount: commissionGross,
-      restaurant_payout: restaurantPayout
+      restaurant_payout: restaurantPayout,
+      // Stocker la commission CVN'EAT sur la livraison
+      delivery_commission_cvneat: deliveryCommissionCvneat
     };
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData

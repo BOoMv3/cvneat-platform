@@ -184,8 +184,10 @@ export default function AdminPage() {
         // CA CVN'EAT = commission des articles + frais de plateforme (sauf pour "La Bonne Pâte")
         cvneatRevenue += cvneatTotalRevenue;
         
-        // CA Livreur = frais de livraison
-        livreurRevenue += deliveryFee;
+        // CA Livreur = frais de livraison - commission CVN'EAT (gain réel du livreur)
+        const deliveryCommission = parseFloat(order.delivery_commission_cvneat || 0);
+        const livreurEarning = deliveryFee - deliveryCommission;
+        livreurRevenue += livreurEarning;
 
         // CA Restaurant = articles - commission
         restaurantRevenue += restaurantShare;

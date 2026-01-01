@@ -141,7 +141,7 @@ export async function POST(request) {
     // Récupérer les commandes non payées dans l'ordre chronologique
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
-      .select('id, frais_livraison, created_at')
+      .select('id, frais_livraison, delivery_commission_cvneat, created_at')
       .eq('livreur_id', delivery_id)
       .eq('statut', 'livree')
       .is('livreur_paid_at', null)
@@ -152,12 +152,15 @@ export async function POST(request) {
       // Ne pas échouer si on ne peut pas marquer les commandes, le paiement est quand même enregistré
     } else if (orders && orders.length > 0) {
       // Marquer les commandes jusqu'à atteindre le montant
+      // IMPORTANT: Utiliser frais_livraison - delivery_commission_cvneat (gain réel du livreur)
       const ordersToMark = [];
       for (const order of orders) {
         const fraisLivraison = parseFloat(order.frais_livraison || 0);
-        if (totalMarque + fraisLivraison <= montantCible) {
+        const commission = parseFloat(order.delivery_commission_cvneat || 0);
+        const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
+        if (totalMarque + livreurEarning <= montantCible) {
           ordersToMark.push(order.id);
-          totalMarque += fraisLivraison;
+          totalMarque += livreurEarning;
         } else {
           break;
         }

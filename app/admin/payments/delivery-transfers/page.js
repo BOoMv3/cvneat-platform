@@ -156,7 +156,7 @@ export default function DeliveryTransfersTracking() {
           // IMPORTANT: livreur_paid_at IS NULL = commandes non encore payées
           const { data: orders, error: ordersError } = await supabase
             .from('commandes')
-            .select('id, frais_livraison, created_at, statut')
+            .select('id, frais_livraison, delivery_commission_cvneat, created_at, statut')
             .eq('livreur_id', driver.id)
             .eq('statut', 'livree')
             .is('livreur_paid_at', null);
@@ -172,9 +172,12 @@ export default function DeliveryTransfersTracking() {
             };
           }
 
-          // Calculer les gains dus (somme des frais de livraison des commandes non payées)
+          // Calculer les gains dus (somme des gains réels du livreur = frais_livraison - commission)
           const totalEarnings = (orders || []).reduce((sum, order) => {
-            return sum + (parseFloat(order.frais_livraison || 0) || 0);
+            const fraisLivraison = parseFloat(order.frais_livraison || 0);
+            const commission = parseFloat(order.delivery_commission_cvneat || 0);
+            const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
+            return sum + livreurEarning;
           }, 0);
 
           // Récupérer les virements déjà effectués pour ce livreur
