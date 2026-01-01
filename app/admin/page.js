@@ -193,10 +193,12 @@ export default function AdminPage() {
         restaurantRevenue += restaurantShare;
 
         // Calculer le mois de la commande pour le CA mensuel
+        // Inclure la commission sur livraison dans le CA mensuel
         const orderDate = new Date(order.created_at);
         const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
         const currentMonthAmount = monthlyRevenueMap.get(monthKey) || 0;
-        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatTotalRevenue);
+        const deliveryCommission = parseFloat(order.delivery_commission_cvneat || 0);
+        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatTotalRevenue + deliveryCommission);
       });
 
       // Convertir la map en tableau trié (du plus récent au plus ancien)
