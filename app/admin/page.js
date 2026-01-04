@@ -197,7 +197,7 @@ export default function AdminPage() {
         const orderDate = new Date(order.created_at);
         const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
         const currentMonthAmount = monthlyRevenueMap.get(monthKey) || 0;
-        const deliveryCommission = parseFloat(order.delivery_commission_cvneat || 0);
+        // Réutiliser deliveryCommission défini plus haut
         monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatTotalRevenue + deliveryCommission);
       });
 
