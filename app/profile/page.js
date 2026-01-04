@@ -340,14 +340,34 @@ export default function Profile() {
                   }
                   
                   const responseData = await response.json();
+                  console.log('✅ Profil mis à jour avec succès:', responseData);
                   // Mettre à jour les données utilisateur avec la réponse
-                  setUser({
-                    ...user,
-                    nom: responseData.user?.nom || user.nom,
-                    prenom: responseData.user?.prenom || user.prenom,
-                    phone: responseData.user?.phone || user.phone
-                  });
-                  setSuccess('Profil mis à jour !');
+                  if (responseData.user) {
+                    setUser({
+                      ...user,
+                      nom: responseData.user.nom || '',
+                      prenom: responseData.user.prenom || '',
+                      phone: responseData.user.phone || ''
+                    });
+                  }
+                  setSuccess('Profil mis à jour avec succès !');
+                  // Recharger les données utilisateur depuis Supabase pour être sûr
+                  const { data: { user: updatedUser } } = await supabase.auth.getUser();
+                  if (updatedUser) {
+                    const { data: userData } = await supabase
+                      .from('users')
+                      .select('*')
+                      .eq('id', updatedUser.id)
+                      .single();
+                    if (userData) {
+                      setUser({
+                        ...user,
+                        nom: userData.nom || '',
+                        prenom: userData.prenom || '',
+                        phone: userData.telephone || ''
+                      });
+                    }
+                  }
                 } catch (err) {
                   setError(err.message);
                 } finally {

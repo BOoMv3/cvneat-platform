@@ -137,6 +137,7 @@ export async function POST(request) {
     // Donc quand on marque les commandes comme payées, les gains affichés diminuent automatiquement
     const montantCible = parseFloat(amount);
     let totalMarque = 0;
+    let ordersToMark = []; // Initialiser ordersToMark pour éviter les erreurs
 
     // Récupérer les commandes non payées dans l'ordre chronologique
     const { data: orders, error: ordersError } = await supabaseAdmin
@@ -153,7 +154,6 @@ export async function POST(request) {
     } else if (orders && orders.length > 0) {
       // Marquer les commandes jusqu'à atteindre le montant
       // IMPORTANT: Utiliser frais_livraison - delivery_commission_cvneat (gain réel du livreur)
-      const ordersToMark = [];
       for (const order of orders) {
         const fraisLivraison = parseFloat(order.frais_livraison || 0);
         const commission = parseFloat(order.delivery_commission_cvneat || 0);
@@ -185,9 +185,9 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       transfer,
-      orders_marked: ordersToMark?.length || 0,
-      amount_marked: totalMarque,
-      message: `Paiement enregistré. ${ordersToMark?.length || 0} commande(s) marquée(s) comme payée(s). Le dashboard du livreur sera automatiquement mis à jour.`
+      orders_marked: ordersToMark.length || 0,
+      amount_marked: totalMarque || 0,
+      message: `Paiement enregistré. ${ordersToMark.length || 0} commande(s) marquée(s) comme payée(s). Le dashboard du livreur sera automatiquement mis à jour.`
     });
 
   } catch (error) {
