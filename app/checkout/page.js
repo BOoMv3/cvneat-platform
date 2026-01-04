@@ -1236,19 +1236,17 @@ export default function Checkout() {
             {(() => {
               const PLATFORM_FEE = 0.49;
               
-              // PROMO TERMINÉE : Plus de livraison gratuite
-              // Les frais de livraison sont toujours affichés normalement
-              // const today = new Date().toISOString().split('T')[0];
-              // const PROMO_DATE = '2025-11-21';
-              // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
+              // Calculer les frais de livraison affichés (gérer la livraison gratuite si code promo)
               let displayedDeliveryFee = fraisLivraison;
+              if (appliedPromoCode?.discountType === 'free_delivery') {
+                displayedDeliveryFee = 0;
+              }
               
-              // if (today === PROMO_DATE && cartTotal >= MIN_ORDER_FOR_FREE_DELIVERY) {
-              //   displayedDeliveryFee = 0;
-              // }
-              
-              const finalTotalDisplay = Math.max(0, cartTotal + displayedDeliveryFee + PLATFORM_FEE);
-              // const remaining = MIN_ORDER_FOR_FREE_DELIVERY - cartTotal;
+              // Calculer le total avec réduction du code promo et livraison gratuite si applicable
+              const discountAmount = appliedPromoCode?.discountAmount || 0;
+              const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas dépasser le panier
+              const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
+              const finalTotalDisplay = Math.max(0.50, Math.round((subtotalAfterDiscount + displayedDeliveryFee + PLATFORM_FEE) * 100) / 100);
               
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">

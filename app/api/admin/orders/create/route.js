@@ -76,6 +76,48 @@ export async function POST(request) {
     // Générer un code de sécurité
     const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // IMPORTANT: Valider la distance de livraison AVANT de créer la commande
+    const fullAddress = `${deliveryInfo.address}, ${deliveryInfo.postalCode} ${deliveryInfo.city}, France`;
+    const deliveryValidationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/delivery/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address: fullAddress,
+        deliveryAddress: fullAddress,
+        restaurantId: restaurantId
+      })
+    });
+
+    if (!deliveryValidationResponse.ok) {
+      console.error('❌ Erreur validation livraison:', await deliveryValidationResponse.text());
+      return NextResponse.json({ 
+        error: 'Erreur lors de la validation de la zone de livraison' 
+      }, { status: 400 });
+    }
+
+    const deliveryValidation = await deliveryValidationResponse.json();
+    
+    if (!deliveryValidation.livrable || !deliveryValidation.success) {
+      console.error('❌ Livraison impossible:', deliveryValidation.message);
+      return NextResponse.json({ 
+        error: deliveryValidation.message || 'Livraison impossible à cette adresse' 
+      }, { status: 400 });
+    }
+
+    // Note: La validation de distance est déjà effectuée par l'API /api/delivery/calculate
+    // qui rejette automatiquement les distances > 8km (≈ 10km de route réelle)
+    // Cette vérification supplémentaire n'est pas nécessaire mais conservée pour sécurité
+    const distance = parseFloat(deliveryValidation.distance || 0);
+    if (distance > 8) {
+      console.error(`❌ Distance trop grande: ${distance.toFixed(1)}km`);
+      return NextResponse.json({ 
+        error: `Livraison impossible: ${distance.toFixed(1)}km (maximum 8km autorisé)` 
+      }, { status: 400 });
+    }
+
+    // Utiliser les frais de livraison calculés par l'API au lieu de ceux fournis
+    const calculatedDeliveryFee = parseFloat(deliveryValidation.frais_livraison || deliveryFee || 0);
+
     // Construire l'adresse complète
     let adresseComplete = `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`;
     if (deliveryInfo.instructions && deliveryInfo.instructions.trim()) {
@@ -89,7 +131,7 @@ export async function POST(request) {
       adresse_livraison: adresseComplete,
       ville_livraison: deliveryInfo.city || null,
       total: totalAmount,
-      frais_livraison: parseFloat(deliveryFee || restaurant.frais_livraison || 0),
+      frais_livraison: calculatedDeliveryFee, // Utiliser les frais calculés par l'API de validation
       statut: 'en_attente',
       payment_status: 'paid', // IMPORTANT: Marqué comme payé mais sans Stripe
       security_code: securityCode,

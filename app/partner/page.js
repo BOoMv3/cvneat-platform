@@ -785,6 +785,56 @@ export default function PartnerDashboard() {
     setShowDelayModal(true);
   };
 
+  const handleRemoveIngredient = async (orderId, detailId, ingredientId, type) => {
+    if (!orderId || !detailId || !ingredientId) {
+      alert('Erreur: Informations manquantes');
+      return;
+    }
+
+    const ingredientType = type === 'meat' ? 'viande' : type === 'sauce' ? 'sauce' : 'ingrédient';
+    
+    if (!confirm(`Voulez-vous vraiment retirer cette ${ingredientType} de la commande ? Le client sera notifié.`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('❌ Aucune session trouvée');
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`/api/restaurants/orders/${orderId}/details/${detailId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          removedIngredients: [ingredientId],
+          type: type // 'meat' ou 'sauce'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        throw new Error(errorData.error || 'Erreur lors de la suppression de l\'ingrédient');
+      }
+
+      // Rafraîchir les commandes
+      if (restaurant?.id) {
+        await fetchOrders(restaurant.id);
+        await fetchDashboardData(restaurant.id);
+      }
+
+      alert(`${ingredientType.charAt(0).toUpperCase() + ingredientType.slice(1)} retirée avec succès. Le client sera notifié.`);
+    } catch (error) {
+      console.error('❌ Erreur retrait ingrédient:', error);
+      alert(`Erreur: ${error.message || 'Impossible de retirer l\'ingrédient'}`);
+    }
+  };
+
   const handleAddDelay = async () => {
     if (!selectedOrder || delayMinutes <= 0) return;
     
@@ -2570,6 +2620,17 @@ export default function PartnerDashboard() {
                                     : 'Client'
                                 }
                               </p>
+                              {getCustomerPhone(order) && (
+                                <p className="text-sm text-gray-600 dark:text-gray-300">
+                                  <span className="font-medium">Téléphone :</span>{' '}
+                                  <a 
+                                    href={`tel:${getCustomerPhone(order)}`}
+                                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                                  >
+                                    {getCustomerPhone(order)}
+                                  </a>
+                                </p>
+                              )}
                               {/* Afficher les frais de livraison séparément (pour info, mais pas dans le total) */}
                               {deliveryFee > 0 && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -2710,9 +2771,23 @@ export default function PartnerDashboard() {
                                       {customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
                                         <div className={`mt-1 pt-1 border-t border-gray-200 dark:border-gray-600 text-xs ml-2 ${isFormula ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'}`}>
                                           <div className={`font-semibold ${isFormula ? 'text-orange-600 dark:text-orange-400' : ''}`}>Viandes :</div>
-                                          {customizations.selectedMeats.map((meat, meatIdx) => (
-                                            <div key={meatIdx} className={isFormula ? 'text-orange-600 dark:text-orange-400' : ''}>🥩 {meat.nom || meat.name || 'Viande'} {(meat.prix || meat.price) > 0 && `(+${(meat.prix || meat.price || 0).toFixed(2)}€)`}</div>
-                                          ))}
+                                          {customizations.selectedMeats.map((meat, meatIdx) => {
+                                            const meatId = meat.id || meat.nom || meat.name || '';
+                                            return (
+                                              <div key={meatIdx} className={`flex items-center justify-between ${isFormula ? 'text-orange-600 dark:text-orange-400' : ''}`}>
+                                                <span>🥩 {meat.nom || meat.name || 'Viande'} {(meat.prix || meat.price) > 0 && `(+${(meat.prix || meat.price || 0).toFixed(2)}€)`}</span>
+                                                {(order.statut === 'en_attente' || (order.statut === 'en_preparation' && detail.id)) ? (
+                                                  <button
+                                                    onClick={() => handleRemoveIngredient(order.id, detail.id, meatId, 'meat')}
+                                                    className="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 transition-colors"
+                                                    title="Retirer cette viande"
+                                                  >
+                                                    Retirer
+                                                  </button>
+                                                ) : null}
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       )}
                                       
@@ -2720,9 +2795,23 @@ export default function PartnerDashboard() {
                                       {customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
                                         <div className={`mt-1 pt-1 border-t border-gray-200 dark:border-gray-600 text-xs ml-2 ${isFormula ? 'text-teal-600 dark:text-teal-400' : 'text-gray-500 dark:text-gray-400'}`}>
                                           <div className={`font-semibold ${isFormula ? 'text-teal-600 dark:text-teal-400' : ''}`}>Sauces :</div>
-                                          {customizations.selectedSauces.map((sauce, sauceIdx) => (
-                                            <div key={sauceIdx} className={isFormula ? 'text-teal-600 dark:text-teal-400' : ''}>🧂 {sauce.nom || sauce.name || 'Sauce'} {(sauce.prix || sauce.price) > 0 && `(+${(sauce.prix || sauce.price || 0).toFixed(2)}€)`}</div>
-                                          ))}
+                                          {customizations.selectedSauces.map((sauce, sauceIdx) => {
+                                            const sauceId = sauce.id || sauce.nom || sauce.name || '';
+                                            return (
+                                              <div key={sauceIdx} className={`flex items-center justify-between ${isFormula ? 'text-teal-600 dark:text-teal-400' : ''}`}>
+                                                <span>🧂 {sauce.nom || sauce.name || 'Sauce'} {(sauce.prix || sauce.price) > 0 && `(+${(sauce.prix || sauce.price || 0).toFixed(2)}€)`}</span>
+                                                {(order.statut === 'en_attente' || (order.statut === 'en_preparation' && detail.id)) ? (
+                                                  <button
+                                                    onClick={() => handleRemoveIngredient(order.id, detail.id, sauceId, 'sauce')}
+                                                    className="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 transition-colors"
+                                                    title="Retirer cette sauce"
+                                                  >
+                                                    Retirer
+                                                  </button>
+                                                ) : null}
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       )}
                                       

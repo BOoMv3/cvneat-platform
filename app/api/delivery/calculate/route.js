@@ -20,7 +20,9 @@ const DEFAULT_BASE_FEE = 2.50;      // 2.50€ de base
 const DEFAULT_PER_KM_FEE = 0.50;    // 0.50€ par kilomètre (tarif standard)
 const ALTERNATE_PER_KM_FEE = 0.89;  // 0.89€ par kilomètre (tarif premium éventuel)
 const MAX_FEE = 10.00;              // Maximum 10€
-const MAX_DISTANCE = 10;            // Maximum 10km - au-delà, livraison non autorisée
+// IMPORTANT: Limite réduite à 8km car la distance à vol d'oiseau (Haversine) est toujours inférieure à la distance réelle par la route
+// Pour garantir < 10km de route réelle, on limite à 8km à vol d'oiseau (compensation pour routes sinueuses/montagneuses)
+const MAX_DISTANCE = 8;            // Maximum 8km à vol d'oiseau (≈ 10km de route réelle) - au-delà, livraison non autorisée
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
@@ -659,7 +661,7 @@ export async function POST(request) {
         livrable: false,
         message: errorMessage,
         suggestions: suggestions,
-        hint: 'Les petites fautes d\'orthographe sont acceptées. La livraison est disponible dans un rayon de 10km.'
+        hint: 'Les petites fautes d\'orthographe sont acceptées. La livraison est disponible dans un rayon de 8km à vol d\'oiseau (environ 10km de route réelle).'
       }, { status: 200 });
     }
 
@@ -736,7 +738,7 @@ export async function POST(request) {
       };
     }
 
-    // Calculer la distance pour vérifier si elle dépasse 10km
+    // Calculer la distance pour vérifier si elle dépasse 8km (≈ 10km de route réelle)
     // SIMPLIFICATION: On ne vérifie plus le code postal, uniquement la distance
     const tempRestaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000;
     const tempRestaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
@@ -751,7 +753,7 @@ export async function POST(request) {
       console.log(`🔍 Restaurant: ${restaurantName} - Coordonnées: ${tempRestaurantLat.toFixed(3)}, ${tempRestaurantLng.toFixed(3)}`);
       console.log(`🔍 Client - Coordonnées: ${tempClientLat.toFixed(3)}, ${tempClientLng.toFixed(3)}`);
       
-      // REJETER si la distance dépasse 10km (peu importe le code postal)
+      // REJETER si la distance dépasse 8km à vol d'oiseau (≈ 10km de route réelle)
       if (tempRoundedDistance > MAX_DISTANCE) {
         console.log(`❌ REJET: Distance trop grande (${tempRoundedDistance.toFixed(1)}km > ${MAX_DISTANCE}km) pour: ${clientAddress}`);
         return NextResponse.json({

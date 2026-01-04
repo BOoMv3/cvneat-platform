@@ -208,10 +208,6 @@ export async function PUT(request, { params }) {
           if (readyForDelivery !== null) {
             updateData.ready_for_delivery = readyForDelivery;
           }
-
-          if ((status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
-            updateData.preparation_started_at = new Date().toISOString();
-          }
         } else if (readyForDelivery !== null) {
           // Même si le statut ne change pas, mettre à jour ready_for_delivery si nécessaire
           // (par exemple, si on marque "prête" alors que le statut est déjà "en_preparation")
@@ -223,8 +219,19 @@ export async function PUT(request, { params }) {
     }
 
     // Ajouter preparation_time seulement si fourni et valide
+    // IMPORTANT: Si on définit un nouveau preparation_time, TOUJOURS réinitialiser preparation_started_at
+    // pour que le décompte commence à partir de maintenant
     if (preparation_time !== null && preparation_time !== undefined && preparation_time > 0) {
       updateData.preparation_time = preparation_time;
+      // TOUJOURS réinitialiser preparation_started_at quand on définit un nouveau temps de préparation
+      // Cela garantit que le décompte démarre correctement à partir de maintenant
+      updateData.preparation_started_at = new Date().toISOString();
+      console.log('🔄 Réinitialisation de preparation_started_at pour nouveau preparation_time:', preparation_time, 'min');
+    } else if (shouldUpdateStatus && (status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
+      // Si on accepte la commande SANS définir de preparation_time explicite,
+      // définir preparation_started_at seulement si il n'existe pas déjà
+      updateData.preparation_started_at = new Date().toISOString();
+      console.log('🔄 Définition de preparation_started_at lors de l\'acceptation (pas de preparation_time fourni)');
     }
 
         console.log('📤 Données de mise à jour:', JSON.stringify(updateData, null, 2));

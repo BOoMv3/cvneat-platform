@@ -253,11 +253,20 @@ export default function DeliveryTransfersTracking() {
       setLoading(true);
       setError(null);
 
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError('Session expirée. Veuillez vous reconnecter.');
+        setLoading(false);
+        return;
+      }
+
       // Appeler l'API pour créer le paiement et marquer les commandes
       const response = await fetch('/api/admin/delivery-payments/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           delivery_id: formData.delivery_id,
