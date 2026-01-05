@@ -44,14 +44,13 @@ const READY_RESTAURANTS_LABEL = '';
 const READY_RESTAURANTS = new Set();
 
 // Restaurants en vacances ou fermés de manière permanente (ne pas afficher "Ouvre à : [heure]")
+// NOTE: Les restaurants suivants ont repris le service et ne sont plus en congés :
+// - Le Cévenol Burger
+// - L'Assiette des Saisons
+// - Le 99 Street Food
+// - Le O'Saona Tea
 const RESTAURANTS_EN_VACANCES = new Set([
-  '99 street food',
-  'le cévenol burger',
-  'cévenol burger',
-  'cevenol burger',
-  'le cevenol burger',
-  'l\'assiette des saisons',
-  'assiette des saisons'
+  // Liste vide - tous les restaurants ont repris
 ]);
 
 // Restaurants pas encore prêts/opérationnels
