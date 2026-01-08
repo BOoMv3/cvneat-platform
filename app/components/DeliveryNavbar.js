@@ -11,7 +11,8 @@ import {
   FaBell,
   FaHome,
   FaChartLine,
-  FaCog
+  FaCog,
+  FaTrophy
 } from 'react-icons/fa';
 
 export default function DeliveryNavbar() {
@@ -82,6 +83,14 @@ export default function DeliveryNavbar() {
             >
               <FaBell className="h-4 w-4" />
               <span>Avis</span>
+            </Link>
+
+            <Link 
+              href="/delivery/leaderboard" 
+              className="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
+            >
+              <FaTrophy className="h-4 w-4" />
+              <span>Classement</span>
             </Link>
 
             <Link 
@@ -161,6 +170,15 @@ export default function DeliveryNavbar() {
               >
                 <FaBell className="h-4 w-4" />
                 <span>Avis</span>
+              </Link>
+
+              <Link 
+                href="/delivery/leaderboard" 
+                className="text-gray-700 hover:text-orange-600 block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <FaTrophy className="h-4 w-4" />
+                <span>Classement</span>
               </Link>
 
               <Link 

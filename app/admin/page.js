@@ -22,7 +22,8 @@ import {
   FaUserPlus,
   FaSignInAlt,
   FaEnvelope,
-  FaGift
+  FaGift,
+  FaTruck
 } from 'react-icons/fa';
 
 export default function AdminPage() {
@@ -491,6 +492,14 @@ export default function AdminPage() {
               >
                 <FaEnvelope className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Newsletter</span>
+              </button>
+              <button
+                onClick={() => router.push('/admin/delivery-leaderboard')}
+                className="flex items-center justify-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Classement livreurs"
+              >
+                <FaTruck className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Livreurs</span>
               </button>
               <button
                 onClick={() => router.push('/admin/create-order')}

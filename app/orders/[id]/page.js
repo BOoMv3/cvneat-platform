@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaArrowLeft, FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaUtensils, FaBox, FaTruck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaArrowLeft, FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaUtensils, FaBox, FaTruck, FaExclamationTriangle, FaStar } from 'react-icons/fa';
 import NotificationPermission from '../../components/NotificationPermission';
 import { sendOrderStatusNotification, saveNotificationPreferences } from '../../utils/notifications';
 
@@ -13,6 +13,12 @@ export default function OrderStatus({ params }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statusNotification, setStatusNotification] = useState(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [hasRated, setHasRated] = useState(false);
+  const [existingRating, setExistingRating] = useState(null);
 
   useEffect(() => {
     if (params.id) {
@@ -99,11 +105,91 @@ export default function OrderStatus({ params }) {
 
       console.log('✅ Commande trouvée:', order);
       setOrder(order);
+      
+      // Si la commande est livrée, vérifier si elle a déjà été notée
+      if (order.statut === 'livree' && order.livreur_id) {
+        checkExistingRating(order.id);
+      }
     } catch (err) {
       console.error('❌ Erreur fetchOrder:', err);
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkExistingRating = async (orderId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(`/api/delivery/ratings?order_id=${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHasRated(data.has_rated);
+        if (data.rating) {
+          setExistingRating(data.rating);
+          setRating(data.rating.rating);
+          setRatingComment(data.rating.comment || '');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur vérification note:', error);
+    }
+  };
+
+  const handleSubmitRating = async () => {
+    if (rating === 0) {
+      alert('Veuillez sélectionner une note');
+      return;
+    }
+
+    if (!order || !order.livreur_id) {
+      alert('Aucun livreur assigné à cette commande');
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+
+      const response = await fetch('/api/delivery/ratings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          order_id: order.id,
+          rating,
+          comment: ratingComment.trim() || null
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'enregistrement de la note');
+      }
+
+      setHasRated(true);
+      setExistingRating(data.rating);
+      setShowRatingModal(false);
+      alert('Merci pour votre note !');
+    } catch (error) {
+      console.error('Erreur soumission note:', error);
+      alert(error.message || 'Erreur lors de l\'enregistrement de la note');
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -379,7 +465,7 @@ export default function OrderStatus({ params }) {
 
         {/* Actions */}
         <div className="mt-8 space-y-4">
-          {order.status === 'delivered' && (
+          {order.statut === 'livree' && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
@@ -387,20 +473,61 @@ export default function OrderStatus({ params }) {
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="ml-3">
+                <div className="ml-3 flex-1">
                   <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
                     Commande livrée avec succès !
                   </h3>
                   <div className="mt-2 text-sm text-green-700 dark:text-green-300">
                     <p>Votre commande a été livrée. Si vous rencontrez un problème, vous pouvez nous le signaler dans les 48h.</p>
                   </div>
+                  
+                  {/* Affichage de la note existante ou bouton pour noter */}
+                  {hasRated && existingRating ? (
+                    <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Votre note :</p>
+                      <div className="flex items-center gap-1 mb-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <FaStar
+                            key={star}
+                            className={`h-5 w-5 ${
+                              star <= existingRating.rating
+                                ? 'text-yellow-400 fill-current'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                          ({existingRating.rating}/5)
+                        </span>
+                      </div>
+                      {existingRating.comment && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+                          "{existingRating.comment}"
+                        </p>
+                      )}
+                      <button
+                        onClick={() => setShowRatingModal(true)}
+                        className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Modifier ma note
+                      </button>
+                    </div>
+                  ) : order.livreur_id ? (
+                    <button
+                      onClick={() => setShowRatingModal(true)}
+                      className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <FaStar className="h-4 w-4" />
+                      Noter le livreur
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
           )}
           
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            {order.status === 'delivered' && (
+            {order.statut === 'livree' && (
               <button
                 onClick={() => router.push(`/complaint/${params.id}`)}
                 className="bg-orange-600 text-white px-8 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center font-semibold shadow-lg"
@@ -417,6 +544,84 @@ export default function OrderStatus({ params }) {
             </button>
           </div>
         </div>
+
+        {/* Modal de notation */}
+        {showRatingModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {hasRated ? 'Modifier votre note' : 'Noter le livreur'}
+              </h2>
+              
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Comment évaluez-vous la livraison ?
+                </p>
+                
+                {/* Étoiles */}
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="focus:outline-none transition-transform hover:scale-110"
+                    >
+                      <FaStar
+                        className={`h-10 w-10 ${
+                          star <= rating
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                
+                {rating > 0 && (
+                  <p className="text-center text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {rating === 1 && 'Très mauvais'}
+                    {rating === 2 && 'Mauvais'}
+                    {rating === 3 && 'Moyen'}
+                    {rating === 4 && 'Bien'}
+                    {rating === 5 && 'Excellent'}
+                  </p>
+                )}
+                
+                {/* Commentaire */}
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Commentaire (optionnel)"
+                  rows={3}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowRatingModal(false);
+                    if (!hasRated) {
+                      setRating(0);
+                      setRatingComment('');
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSubmitRating}
+                  disabled={rating === 0 || submittingRating}
+                  className="flex-1 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingRating ? 'Enregistrement...' : hasRated ? 'Modifier' : 'Envoyer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
