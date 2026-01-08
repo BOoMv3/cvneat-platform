@@ -498,8 +498,8 @@ export default function AdminPage() {
                 className="flex items-center justify-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
                 title="Classement livreurs"
               >
-                <FaTruck className="h-4 w-4 sm:mr-2" />
-                <span className="hidden xs:inline">Livreurs</span>
+                <FaTruck className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="text-xs sm:text-sm">Livreurs</span>
               </button>
               <button
                 onClick={() => router.push('/admin/create-order')}
