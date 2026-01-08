@@ -54,7 +54,7 @@ export async function GET(request) {
       .from('delivery_ratings')
       .select(`
         *,
-        order:commandes!inner(
+        order:commandes!delivery_ratings_order_id_fkey(
           id,
           created_at,
           total,
