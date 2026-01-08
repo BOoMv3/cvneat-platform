@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import DeliveryNavbar from '../../../components/DeliveryNavbar';
+import DeliveryNavbar from '../../components/DeliveryNavbar';
 import { FaArrowLeft, FaStar, FaTruck, FaSpinner, FaTrophy, FaMedal, FaAward } from 'react-icons/fa';
 
 export default function DeliveryLeaderboard() {
