@@ -120,10 +120,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       };
       
       const meatOptionsNormalized = normalizeOptions(sourceItem.meat_options, 'meat_options');
-      setMeatOptions(meatOptionsNormalized);
+      // Filtrer les viandes disponibles (disponible !== false)
+      const availableMeatOptions = meatOptionsNormalized.filter(m => m.disponible !== false);
+      setMeatOptions(availableMeatOptions);
       
-      // Sélectionner les viandes par défaut (default: true)
-      const defaultMeats = meatOptionsNormalized.filter(m => m.default === true).map(m => m.id || m.nom);
+      // Sélectionner les viandes par défaut (default: true) parmi les disponibles
+      const defaultMeats = availableMeatOptions.filter(m => m.default === true).map(m => m.id || m.nom);
       setSelectedMeats(new Set(defaultMeats));
 
       // Options de sauce

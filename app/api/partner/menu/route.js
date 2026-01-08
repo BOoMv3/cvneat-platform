@@ -159,7 +159,8 @@ export async function POST(request) {
         id: meat.id || meat.nom || '',
         nom: meat.nom || meat.name || '',
         prix: parseFloat(meat.prix || meat.price || 0),
-        default: meat.default === true
+        default: meat.default === true,
+        disponible: meat.disponible !== false // Par défaut, disponible si non spécifié
       })).filter(meat => meat.nom);
       menuData.meat_options = cleanedMeatOptions;
     }
@@ -362,7 +363,8 @@ export async function PUT(request) {
           id: meat.id || meat.nom || '',
           nom: meat.nom || meat.name || '',
           prix: parseFloat(meat.prix || meat.price || 0),
-          default: meat.default === true
+          default: meat.default === true,
+          disponible: meat.disponible !== false // Par défaut, disponible si non spécifié
         })).filter(meat => meat.nom);
         updateData.meat_options = cleanedMeatOptions;
       } else {

@@ -2248,6 +2248,47 @@ export default function PartnerDashboard() {
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
+            {/* Section d'aide */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <FaFileAlt className="mr-2 text-blue-600 dark:text-blue-400" />
+                    Guide d'utilisation du dashboard
+                  </h2>
+                  <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">📋 Gestion des commandes</h3>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>Acceptez ou refusez les commandes depuis l'onglet "Commandes"</li>
+                        <li>Indiquez le temps de préparation lors de l'acceptation</li>
+                        <li>Marquez la commande comme "Prête" quand elle est prête à être livrée</li>
+                        <li>Cliquez sur "Remise au livreur" quand vous remettez la commande au livreur</li>
+                        <li>Vous pouvez retirer des ingrédients (viandes, sauces) si vous n'en avez plus</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">🍽️ Gestion du menu</h3>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>Ajoutez, modifiez ou supprimez des plats depuis l'onglet "Menu"</li>
+                        <li>Pour les tacos/kebabs : vous pouvez désactiver temporairement des viandes (ex: kebab) en décochant "Disponible" dans les options de viande</li>
+                        <li>Les viandes désactivées n'apparaîtront plus pour les clients</li>
+                        <li>Rendez un plat indisponible avec le bouton vert/rouge à côté de chaque plat</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">🕐 Ouverture/Fermeture</h3>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>Utilisez le bouton "Ouvert/Fermé" en haut pour ouvrir ou fermer manuellement</li>
+                        <li>Si vous fermez manuellement, vous resterez fermé jusqu'à ce que vous réouvriez manuellement</li>
+                        <li>Si vous ouvrez manuellement, vous suivrez vos horaires d'ouverture normaux</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -3759,7 +3800,7 @@ export default function PartnerDashboard() {
                       <button
                         type="button"
                         onClick={() => {
-                          const newMeat = { id: `meat-${Date.now()}`, nom: '', prix: 0, default: false };
+                          const newMeat = { id: `meat-${Date.now()}`, nom: '', prix: 0, default: false, disponible: true };
                           setMenuForm({...menuForm, meat_options: [...menuForm.meat_options, newMeat]});
                         }}
                         className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-colors text-sm"
@@ -3770,7 +3811,7 @@ export default function PartnerDashboard() {
                     {Array.isArray(menuForm.meat_options) && menuForm.meat_options.length > 0 && (
                       <div className="space-y-2 mb-3">
                         {menuForm.meat_options.map((meat, index) => (
-                          <div key={meat.id || index} className="grid grid-cols-1 md:grid-cols-4 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div key={meat.id || index} className="grid grid-cols-1 md:grid-cols-5 gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                             <input
                               type="text"
                               value={meat.nom || ''}
@@ -3797,6 +3838,22 @@ export default function PartnerDashboard() {
                                 className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
                               />
                             </div>
+                            <label className="flex items-center text-sm">
+                              <input
+                                type="checkbox"
+                                checked={meat.disponible !== false}
+                                onChange={(e) => {
+                                  const updated = [...menuForm.meat_options];
+                                  updated[index] = {...updated[index], disponible: e.target.checked};
+                                  setMenuForm({...menuForm, meat_options: updated});
+                                }}
+                                className="mr-2"
+                                title="Décocher si cette viande n'est plus disponible (ex: rupture de stock)"
+                              />
+                              <span className={meat.disponible !== false ? '' : 'text-red-600 line-through'}>
+                                Disponible
+                              </span>
+                            </label>
                             <label className="flex items-center text-sm">
                               <input
                                 type="checkbox"
