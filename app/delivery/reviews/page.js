@@ -28,13 +28,29 @@ export default function DeliveryReviews() {
 
   useEffect(() => {
     fetchReviews();
-    fetchStats();
   }, [pagination.page]);
+
+  useEffect(() => {
+    if (reviews.length > 0) {
+      fetchStats();
+    }
+  }, [reviews, pagination.total]);
 
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/delivery/reviews?page=${pagination.page}&limit=10`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`/api/delivery/reviews?page=${pagination.page}&limit=10`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
       const data = await response.json();
 
       if (response.ok) {
@@ -44,6 +60,8 @@ export default function DeliveryReviews() {
           total: data.pagination.total,
           totalPages: data.pagination.totalPages
         }));
+      } else {
+        console.error('Erreur récupération avis:', data.error);
       }
     } catch (error) {
       console.error('Erreur récupération avis:', error);
@@ -54,18 +72,17 @@ export default function DeliveryReviews() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/delivery/stats');
-      const data = await response.json();
-
-      if (response.ok) {
+      // Calculer les stats depuis les reviews déjà chargées
+      if (reviews.length > 0) {
+        const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
         setStats({
-          averageRating: data.rating || 0,
-          totalReviews: reviews.length,
+          averageRating,
+          totalReviews: pagination.total || reviews.length,
           ratingDistribution: calculateRatingDistribution(reviews)
         });
       }
     } catch (error) {
-      console.error('Erreur récupération stats:', error);
+      console.error('Erreur calcul stats:', error);
     }
   };
 
@@ -104,27 +121,15 @@ export default function DeliveryReviews() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/delivery/dashboard')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <FaArrowLeft className="h-5 w-5" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Avis clients</h1>
-                <p className="text-gray-600">{pagination.total} avis au total</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <DeliveryNavbar />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">⭐ Avis clients</h1>
+          <p className="text-gray-600 mt-2">{pagination.total} avis au total</p>
+        </div>
+
         {/* Statistiques */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -224,7 +229,9 @@ export default function DeliveryReviews() {
                         {new Date(review.date).toLocaleDateString('fr-FR')}
                       </p>
                       <p className="text-xs text-gray-400">
-                        Commande #{review.id}
+                        {review.order_date 
+                          ? new Date(review.order_date).toLocaleDateString('fr-FR')
+                          : new Date(review.date).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
                   </div>
