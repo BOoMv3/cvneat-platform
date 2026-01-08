@@ -54,13 +54,13 @@ export async function GET(request) {
       .from('delivery_ratings')
       .select(`
         *,
-        order:commandes!delivery_ratings_order_id_fkey(
+        commandes!delivery_ratings_order_id_fkey(
           id,
           created_at,
           total,
-          restaurant:restaurants(nom, id)
+          restaurants!commandes_restaurant_id_fkey(nom, id)
         ),
-        customer:users!delivery_ratings_user_id_fkey(id, prenom, nom, email)
+        users!delivery_ratings_user_id_fkey(id, prenom, nom, email)
       `, { count: 'exact' })
       .eq('livreur_id', user.id)
       .order('created_at', { ascending: false })
@@ -75,19 +75,25 @@ export async function GET(request) {
     }
 
     // Formater les données pour la réponse
-    const reviews = (ratings || []).map(rating => ({
-      id: rating.order?.id || rating.order_id,
-      rating: rating.rating,
-      comment: rating.comment,
-      date: rating.created_at,
-      customer_name: rating.customer 
-        ? `${rating.customer.prenom || ''} ${rating.customer.nom || ''}`.trim() || 'Client anonyme'
-        : 'Client anonyme',
-      restaurant_name: rating.order?.restaurant?.nom || 'Restaurant',
-      restaurant_id: rating.order?.restaurant?.id || null,
-      order_total: rating.order?.total || null,
-      order_date: rating.order?.created_at || null
-    }));
+    const reviews = (ratings || []).map(rating => {
+      const commande = rating.commandes;
+      const customer = rating.users;
+      const restaurant = commande?.restaurants;
+      
+      return {
+        id: rating.id,
+        rating: rating.rating,
+        comment: rating.comment,
+        date: rating.created_at,
+        customer_name: customer 
+          ? `${customer.prenom || ''} ${customer.nom || ''}`.trim() || 'Client anonyme'
+          : 'Client anonyme',
+        restaurant_name: restaurant?.nom || 'Restaurant',
+        restaurant_id: restaurant?.id || null,
+        order_total: commande?.total || null,
+        order_date: commande?.created_at || null
+      };
+    });
 
     const totalPages = Math.ceil((count || 0) / limit);
 

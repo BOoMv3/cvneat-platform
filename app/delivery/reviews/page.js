@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../../lib/supabase';
+import DeliveryNavbar from '../../components/DeliveryNavbar';
 import { 
   FaArrowLeft, 
   FaStar, 
