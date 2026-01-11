@@ -25,15 +25,15 @@ BEGIN
     END IF;
     
     -- Compter les détails avant suppression
-    SELECT COUNT(*) INTO details_count FROM details_commande WHERE commande_id = commande_id;
+    SELECT COUNT(*) INTO details_count FROM details_commande WHERE details_commande.commande_id = commande_id;
     RAISE NOTICE 'Détails de commande à supprimer: %', details_count;
     
     -- Supprimer les notes de livraison associées (si elles existent)
-    DELETE FROM delivery_ratings WHERE order_id = commande_id;
+    DELETE FROM delivery_ratings WHERE delivery_ratings.order_id = commande_id;
     RAISE NOTICE '✓ Notes de livraison supprimées (si présentes)';
     
     -- Supprimer les détails de commande
-    DELETE FROM details_commande WHERE commande_id = commande_id;
+    DELETE FROM details_commande WHERE details_commande.commande_id = commande_id;
     RAISE NOTICE '✓ Détails de commande supprimés (%)', details_count;
     
     -- Supprimer la commande
