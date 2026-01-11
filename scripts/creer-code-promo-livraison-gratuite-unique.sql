@@ -1,14 +1,13 @@
 -- Script pour créer un code promo à usage unique pour la livraison gratuite
 -- Code valable une seule fois pour un seul client
 
--- Générer un code aléatoire unique (vous pouvez modifier le code si vous voulez un code spécifique)
+-- Générer un code aléatoire unique
 DO $$
 DECLARE
     v_code VARCHAR(50);
     v_promo_id UUID;
 BEGIN
     -- Générer un code unique (8 caractères aléatoires)
-    -- Vous pouvez aussi définir un code spécifique comme 'LIVRAISON0' par exemple
     v_code := UPPER('LIV' || SUBSTRING(MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT) FROM 1 FOR 5));
     
     -- Vérifier que le code n'existe pas déjà
@@ -38,20 +37,27 @@ BEGIN
         1,                     -- 1 seule utilisation par client
         TRUE,
         NOW(),
-        NULL                   -- Pas de date d'expiration (vous pouvez mettre une date si nécessaire)
+        NULL                   -- Pas de date d'expiration
     ) RETURNING id INTO v_promo_id;
     
     RAISE NOTICE '';
     RAISE NOTICE '✅ Code promo créé avec succès !';
     RAISE NOTICE '   Code: %', v_code;
     RAISE NOTICE '   ID: %', v_promo_id;
-    RAISE NOTICE '   Description: Livraison gratuite - Code à usage unique';
-    RAISE NOTICE '   Type: free_delivery';
-    RAISE NOTICE '   Utilisations maximum: 1 (total)';
-    RAISE NOTICE '   Utilisations par client: 1';
-    RAISE NOTICE '';
-    RAISE NOTICE '⚠️  Ce code ne peut être utilisé qu''UNE SEULE FOIS au total';
-    RAISE NOTICE '⚠️  Un seul client pourra utiliser ce code';
     RAISE NOTICE '';
 END $$;
+
+-- Afficher le code créé (visible dans les résultats)
+SELECT 
+    code AS "CODE PROMO",
+    description AS "Description",
+    discount_type AS "Type",
+    max_uses AS "Utilisations max (total)",
+    max_uses_per_user AS "Utilisations max (par client)",
+    is_active AS "Actif",
+    created_at AS "Créé le"
+FROM promo_codes
+WHERE code LIKE 'LIV%'
+ORDER BY created_at DESC
+LIMIT 1;
 
