@@ -103,6 +103,29 @@ const nextConfig = {
       ignoreBuildErrors: true,
     },
   }),
+
+  // Headers CORS pour l'app mobile Capacitor
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { 
+            key: 'Access-Control-Allow-Origin', 
+            value: '*' // Autorise toutes les origines (capacitor://localhost, https://cvneat.fr, etc.)
+          },
+          { 
+            key: 'Access-Control-Allow-Methods', 
+            value: 'GET, POST, PUT, DELETE, OPTIONS' 
+          },
+          { 
+            key: 'Access-Control-Allow-Headers', 
+            value: 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email' 
+          },
+        ],
+      },
+    ];
+  },
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
