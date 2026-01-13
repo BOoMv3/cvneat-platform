@@ -84,14 +84,33 @@ export default function AdminOrderDetail() {
         const customerEmail = data.customer_email || user.email || '';
         
         // Formater les items depuis details_commande
-        const items = (data.details_commande || []).map(detail => ({
-          id: detail.id,
-          name: detail.menus?.nom || 'Article',
-          quantity: detail.quantite || 1,
-          price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
-          customizations: detail.customizations || null,
-          isFreeDrink: detail.customizations?.is_free_drink === true
-        }));
+        const items = (data.details_commande || []).map(detail => {
+          // Parser les customizations si c'est une string
+          let customizations = detail.customizations;
+          if (typeof customizations === 'string') {
+            try {
+              customizations = JSON.parse(customizations);
+            } catch (e) {
+              customizations = {};
+            }
+          }
+          
+          // Pour les combos, utiliser le nom du combo
+          const isCombo = customizations?.combo?.comboName;
+          const displayName = isCombo ? customizations.combo.comboName : (detail.menus?.nom || 'Article');
+          
+          return {
+            id: detail.id,
+            name: displayName,
+            quantity: detail.quantite || 1,
+            price: parseFloat(detail.prix_unitaire || detail.menus?.prix || 0) || 0,
+            customizations: customizations || null,
+            isFreeDrink: customizations?.is_free_drink === true,
+            isCombo: isCombo || false,
+            comboDetails: customizations?.combo?.details || null,
+            supplements: detail.supplements || null
+          };
+        });
         
         setOrder({
           ...data,
@@ -317,40 +336,148 @@ export default function AdminOrderDetail() {
           <h2 className="text-xl font-semibold mb-4">Articles commandés</h2>
           {order.items && order.items.length > 0 ? (
             <div className="space-y-3">
-              {order.items.map((item, index) => (
-                <div key={index} className={`flex justify-between items-center p-3 rounded-lg ${
-                  item.isFreeDrink ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200' : 'bg-gray-50'
-                }`}>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{item.name}</p>
-                      {item.isFreeDrink && (
-                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                          🎁 Boisson offerte (Roue)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600">Quantité: {item.quantity}</p>
-                  </div>
-                  <div className="text-right">
-                    {item.isFreeDrink ? (
-                      <div>
-                        <p className="font-semibold text-green-600 line-through text-gray-400 text-sm">
-                          {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
-                        </p>
-                        <p className="font-bold text-green-700">GRATUIT</p>
+              {order.items.map((item, index) => {
+                // Parser les customizations si c'est une string
+                let customizations = item.customizations;
+                if (typeof customizations === 'string') {
+                  try {
+                    customizations = JSON.parse(customizations);
+                  } catch (e) {
+                    customizations = {};
+                  }
+                }
+                
+                const isCombo = customizations?.combo?.comboName || item.isCombo;
+                const comboDetails = customizations?.combo?.details || item.comboDetails || [];
+                
+                // Parser les suppléments
+                let supplements = item.supplements;
+                if (typeof supplements === 'string') {
+                  try {
+                    supplements = JSON.parse(supplements);
+                  } catch (e) {
+                    supplements = [];
+                  }
+                }
+                if (!Array.isArray(supplements)) supplements = [];
+                
+                return (
+                  <div key={index} className={`p-3 rounded-lg mb-3 ${
+                    item.isFreeDrink ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200' : 'bg-gray-50'
+                  }`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{item.name}</p>
+                          {isCombo && (
+                            <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                              🍔 Menu composé
+                            </span>
+                          )}
+                          {item.isFreeDrink && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                              🎁 Boisson offerte (Roue)
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">Quantité: {item.quantity}</p>
                       </div>
-                    ) : (
-                      <p className="font-medium">
-                        {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
-                      </p>
+                      <div className="text-right">
+                        {item.isFreeDrink ? (
+                          <div>
+                            <p className="font-semibold text-green-600 line-through text-gray-400 text-sm">
+                              {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
+                            </p>
+                            <p className="font-bold text-green-700">GRATUIT</p>
+                          </div>
+                        ) : (
+                          <p className="font-medium">
+                            {((parseFloat(item.price || 0)) * (parseFloat(item.quantity || 0))).toFixed(2)}€
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-600">
+                          {(parseFloat(item.price || 0)).toFixed(2)}€ l'unité
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Détails du menu composé */}
+                    {isCombo && comboDetails && comboDetails.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-300">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Détails du menu :</p>
+                        <div className="space-y-1">
+                          {comboDetails.map((detail, detailIndex) => (
+                            <div key={detailIndex} className="text-xs text-gray-600 ml-2">
+                              <span className="font-medium">{detail.stepTitle}:</span> {detail.optionName}
+                              {detail.variantName && ` (${detail.variantName})`}
+                              {(detail.optionPrice > 0 || detail.variantPrice > 0) && (
+                                <span className="text-orange-600">
+                                  {' '}(+{((detail.optionPrice || 0) + (detail.variantPrice || 0)).toFixed(2)}€)
+                                </span>
+                              )}
+                              {detail.removedIngredients && detail.removedIngredients.length > 0 && (
+                                <span className="text-red-500 text-xs ml-1">
+                                  {' '}(Sans: {detail.removedIngredients.map(ing => ing.nom).join(', ')})
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                    <p className="text-sm text-gray-600">
-                      {(parseFloat(item.price || 0)).toFixed(2)}€ l'unité
-                    </p>
+                    
+                    {/* Suppléments */}
+                    {supplements && supplements.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-300">
+                        <p className="text-xs font-semibold text-gray-700 mb-1">Suppléments :</p>
+                        <div className="space-y-1">
+                          {supplements.map((sup, supIndex) => (
+                            <div key={supIndex} className="text-xs text-gray-600 ml-2">
+                              • {sup.nom || sup.name}
+                              {(sup.prix || sup.price) > 0 && (
+                                <span className="text-blue-600"> (+{(sup.prix || sup.price || 0).toFixed(2)}€)</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Viandes et sauces */}
+                    {customizations?.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-300">
+                        <p className="text-xs font-semibold text-gray-700 mb-1">Viandes :</p>
+                        <div className="space-y-1">
+                          {customizations.selectedMeats.map((meat, meatIndex) => (
+                            <div key={meatIndex} className="text-xs text-gray-600 ml-2">
+                              • {meat.nom || meat.name}
+                              {(meat.prix || meat.price) > 0 && (
+                                <span className="text-blue-600"> (+{(meat.prix || meat.price || 0).toFixed(2)}€)</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {customizations?.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-300">
+                        <p className="text-xs font-semibold text-gray-700 mb-1">Sauces :</p>
+                        <div className="space-y-1">
+                          {customizations.selectedSauces.map((sauce, sauceIndex) => (
+                            <div key={sauceIndex} className="text-xs text-gray-600 ml-2">
+                              • {sauce.nom || sauce.name}
+                              {(sauce.prix || sauce.price) > 0 && (
+                                <span className="text-blue-600"> (+{(sauce.prix || sauce.price || 0).toFixed(2)}€)</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-gray-500">Aucun article trouvé</p>

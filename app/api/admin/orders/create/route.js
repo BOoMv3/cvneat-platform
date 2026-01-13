@@ -175,6 +175,7 @@ export async function POST(request) {
       const quantity = parseInt(item.quantity || 1, 10);
       const basePrice = parseFloat(item.prix || item.price || 0) || 0;
       const isFormula = item.is_formula === true;
+      const isCombo = item.is_combo === true;
 
       // Calculer le prix total avec suppléments, viandes et sauces
       let supplementsPrice = 0;
@@ -199,12 +200,34 @@ export async function POST(request) {
       }
 
       const prixUnitaireTotal = basePrice + supplementsPrice + meatsPrice + saucesPrice;
+      
+      // Pour les combos, utiliser l'ID du combo (mais vérifier qu'il existe dans menu_combos)
+      if (isCombo && item.comboId) {
+        const { data: comboCheck } = await supabaseAdmin
+          .from('menu_combos')
+          .select('id')
+          .eq('id', item.comboId)
+          .maybeSingle();
+        
+        if (!comboCheck) {
+          console.warn(`⚠️ ID de combo non trouvé: ${item.comboId}, utilisation quand même`);
+        }
+      }
 
+      // Pour les combos, on utilise l'ID du combo (mais on ne peut pas l'utiliser comme plat_id car ce n'est pas dans la table menus)
+      // On va utiliser un ID générique ou le premier item du combo
       // Pour les formules, on utilise l'ID de la formule
       // Pour les items normaux, on utilise l'ID du menu
       let platId = item.id;
 
-      if (isFormula) {
+      // Pour les combos, on doit trouver un plat_id valide (utiliser le premier item du combo si possible)
+      // Sinon, on peut créer un menu générique ou utiliser un ID spécial
+      // Pour l'instant, on utilise l'ID du combo comme plat_id (mais cela nécessitera une gestion spéciale dans l'affichage)
+      if (isCombo) {
+        // Pour les combos, on peut utiliser l'ID du combo directement
+        // L'important est de stocker les informations dans customizations.combo
+        platId = item.comboId || item.id;
+      } else if (isFormula) {
         // Vérifier que l'ID existe dans menus ou formulas
         const { data: menuCheck } = await supabaseAdmin
           .from('menus')
@@ -257,7 +280,14 @@ export async function POST(request) {
       // Préparer les customizations
       const customizations = {};
       
-      if (isFormula) {
+      // Gérer les menus composés (combos)
+      if (item.is_combo === true && item.comboId) {
+        customizations.combo = {
+          comboId: item.comboId,
+          comboName: item.comboName || item.name || 'Menu composé',
+          details: item.comboDetails || []
+        };
+      } else if (isFormula) {
         customizations.is_formula = true;
         customizations.formula_name = item.nom || item.name || 'Formule';
       }

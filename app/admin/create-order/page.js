@@ -659,8 +659,16 @@ export default function AdminCreateOrder() {
           prix: item.price,
           price: item.price,
           quantity: item.quantity,
-          is_formula: item.is_formula
+          is_formula: item.is_formula,
+          is_combo: item.is_combo || false
         };
+        
+        // Ajouter les informations du combo si c'est un menu composé
+        if (item.is_combo) {
+          itemData.comboId = item.comboId;
+          itemData.comboName = item.comboName;
+          itemData.comboDetails = item.comboDetails || [];
+        }
         
         // Ajouter les suppléments
         if (item.supplements && item.supplements.length > 0) {
