@@ -5,16 +5,13 @@ const config: CapacitorConfig = {
   appName: "CVN'EAT",
   webDir: 'out',
   bundledWebRuntime: false,
-  // Utiliser le serveur web directement pour avoir toutes les fonctionnalités
-  server: {
-    url: 'https://cvneat.fr',
-    cleartext: false
-  },
+  // App native : utiliser les fichiers locaux (pas de serveur distant)
+  // Les appels API seront interceptés et redirigés vers https://cvneat.fr/api
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#ea580c',
+      backgroundColor: '#ffffff',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
@@ -34,7 +31,11 @@ const config: CapacitorConfig = {
     scrollEnabled: true,
     // Permettre les cookies et sessions
     allowsLinkPreview: true,
-    limitsNavigationsToAppBoundDomains: false
+    limitsNavigationsToAppBoundDomains: false,
+    // Permettre toutes les navigations
+    allowsBackForwardNavigationGestures: true,
+    // Empêcher l'ouverture du navigateur externe
+    handleUrlOpen: true
   },
   android: {
     allowMixedContent: false,

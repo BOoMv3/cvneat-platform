@@ -30,6 +30,7 @@
     "@stripe/stripe-js": "^8.3.0",
     "@supabase/auth-helpers-nextjs": "^0.8.7",
     "@supabase/supabase-js": "^2.38.4",
+    "apn": "^2.2.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.2.3",
     "firebase": "^12.6.0",

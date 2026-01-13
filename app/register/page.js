@@ -221,7 +221,19 @@ export default function Register() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-gray-50">
       <div className="w-full max-w-md bg-white rounded-lg shadow p-4 sm:p-6">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Inscription</h1>
+        <div className="flex items-center mb-4 sm:mb-6">
+          <button
+            onClick={() => router.back()}
+            className="mr-3 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Retour"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold flex-1 text-center">Inscription</h1>
+          <div className="w-9"></div> {/* Spacer pour centrer le titre */}
+        </div>
         {errors.global && <div className="mb-3 sm:mb-4 p-2 bg-red-100 text-red-700 rounded text-sm">{errors.global}</div>}
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

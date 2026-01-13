@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendAPNsNotification } from '../../../../lib/apns';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -47,50 +48,74 @@ export async function POST(request) {
       return NextResponse.json({ sent: 0, message: 'Aucun token trouvé' });
     }
 
-    // Envoyer via Firebase Cloud Messaging
-    const fcmServerKey = process.env.FIREBASE_SERVER_KEY;
-    
-    if (!fcmServerKey) {
-      console.log('Firebase Server Key non configurée - notifications non envoyées');
-      return NextResponse.json({ 
-        sent: 0, 
-        message: 'Firebase non configuré',
-        tokens: tokens.length 
-      });
-    }
+    // Séparer les tokens iOS et Android
+    const iosTokens = tokens.filter(t => t.platform === 'ios');
+    const androidTokens = tokens.filter(t => t.platform === 'android');
 
     let sentCount = 0;
     const errors = [];
 
-    for (const tokenData of tokens) {
-      try {
-        const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `key=${fcmServerKey}`
-          },
-          body: JSON.stringify({
-            to: tokenData.token,
-            notification: {
-              title,
-              body,
-              sound: 'default',
-              badge: 1
-            },
-            data: data || {},
-            priority: 'high'
-          })
-        });
-
-        if (response.ok) {
+    // Envoyer aux appareils iOS via APNs (Apple Push Notification service)
+    if (iosTokens.length > 0) {
+      for (const tokenData of iosTokens) {
+        try {
+          await sendAPNsNotification(
+            tokenData.token,
+            title,
+            body,
+            data || {}
+          );
           sentCount++;
-        } else {
-          const errorText = await response.text();
-          errors.push({ token: tokenData.token.substring(0, 10) + '...', error: errorText });
+        } catch (err) {
+          console.error('❌ Erreur envoi push iOS:', err);
+          errors.push({ 
+            token: tokenData.token.substring(0, 10) + '...', 
+            error: err.message,
+            platform: 'ios'
+          });
         }
-      } catch (err) {
-        errors.push({ token: tokenData.token.substring(0, 10) + '...', error: err.message });
+      }
+    }
+
+    // Envoyer aux appareils Android via Firebase Cloud Messaging
+    if (androidTokens.length > 0) {
+      const fcmServerKey = process.env.FIREBASE_SERVER_KEY;
+      
+      if (!fcmServerKey) {
+        console.log('Firebase Server Key non configurée - notifications Android non envoyées');
+        errors.push({ platform: 'android', error: 'Firebase non configuré' });
+      } else {
+        for (const tokenData of androidTokens) {
+          try {
+            const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `key=${fcmServerKey}`
+              },
+              body: JSON.stringify({
+                to: tokenData.token,
+                notification: {
+                  title,
+                  body,
+                  sound: 'default',
+                  badge: 1
+                },
+                data: data || {},
+                priority: 'high'
+              })
+            });
+
+            if (response.ok) {
+              sentCount++;
+            } else {
+              const errorText = await response.text();
+              errors.push({ token: tokenData.token.substring(0, 10) + '...', error: errorText });
+            }
+          } catch (err) {
+            errors.push({ token: tokenData.token.substring(0, 10) + '...', error: err.message });
+          }
+        }
       }
     }
 

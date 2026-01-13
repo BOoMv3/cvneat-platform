@@ -341,6 +341,21 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     }
   };
 
+  // Fonction dédiée pour les suppléments (qui sont toujours des ajouts, jamais des retraits)
+  const handleSupplementToggle = (supplement) => {
+    setSelectedIngredients(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(supplement.id)) {
+        // Supprimer le supplément
+        newSet.delete(supplement.id);
+      } else {
+        // Ajouter le supplément
+        newSet.add(supplement.id);
+      }
+      return newSet;
+    });
+  };
+
   const calculateTotalPrice = () => {
     let total = item.prix || 0;
     
@@ -944,7 +959,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
                           ? 'bg-orange-50 border-orange-200 text-orange-800'
                           : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                       }`}
-                      onClick={() => handleIngredientToggle(supplement)}
+                      onClick={() => handleSupplementToggle(supplement)}
                     >
                       <div className="flex items-center">
                         <span className={`w-4 h-4 rounded-full border-2 mr-3 ${

@@ -156,22 +156,33 @@ try {
     }
   });
   
-  // Trouver et exclure automatiquement TOUTES les pages avec routes dynamiques
+  // Exclure temporairement TOUTES les routes dynamiques pour le build statique
+  // Elles seront restaurées après le build et fonctionneront côté client dans l'app
   const appDir = path.join(process.cwd(), 'app');
   const allDynamicDirs = findDynamicRouteDirs(appDir);
   
-  allDynamicDirs.forEach(dynamicDir => {
-    const relativePath = path.relative(appDir, dynamicDir);
-    const dirName = path.basename(dynamicDir);
-    const parentName = path.basename(path.dirname(dynamicDir));
-    
-    // Créer un nom unique pour le backup
-    const backupName = `${parentName}-${dirName}`;
-    
-    if (backupDir(dynamicDir, backupName)) {
-      console.log(`✅ ${relativePath} (route dynamique) exclu temporairement`);
-    }
-  });
+  console.log(`📋 ${allDynamicDirs.length} route(s) dynamique(s) trouvée(s)`);
+  
+      allDynamicDirs.forEach(dynamicDir => {
+        const relativePath = path.relative(appDir, dynamicDir);
+        const dirName = path.basename(dynamicDir);
+        const parentName = path.basename(path.dirname(dynamicDir));
+        
+        // Exclure /restaurants/[id] - elle sera gérée côté client via un fichier HTML statique
+        // Le composant sera dans le bundle JavaScript et fonctionnera dans l'app
+        if (relativePath === 'restaurants/[id]') {
+          console.log(`✅ ${relativePath} (route dynamique) exclu temporairement - sera géré côté client`);
+          // Continuer pour exclure cette route comme les autres
+        }
+        
+        // Exclure les autres routes dynamiques (elles seront gérées côté client)
+        // Créer un nom unique pour le backup
+        const backupName = `${parentName}-${dirName}`;
+        
+        if (backupDir(dynamicDir, backupName)) {
+          console.log(`✅ ${relativePath} (route dynamique) exclu temporairement`);
+        }
+      });
   
   console.log('');
 
@@ -185,18 +196,52 @@ try {
   }
   console.log('✅ Build Next.js terminé\n');
   
-  // Étape 2: Restaurer tous les dossiers
+  // Étape 2: Restaurer tous les dossiers et restaurer le fichier original de /restaurants/[id]
   console.log('📁 Étape 2/5: Restauration des dossiers exclus...');
   restoreAll();
+  
+  // Restaurer le fichier original de /restaurants/[id] si un wrapper a été créé
+  const restaurantsIdDir = path.join(process.cwd(), 'app', 'restaurants', '[id]');
+  const originalFile = path.join(restaurantsIdDir, 'page-original.js');
+  const clientFile = path.join(restaurantsIdDir, 'page-client.js');
+  const pageFile = path.join(restaurantsIdDir, 'page.js');
+  
+  if (fs.existsSync(originalFile) && fs.existsSync(clientFile)) {
+    // Restaurer le fichier original
+    fs.copyFileSync(originalFile, pageFile);
+    // Supprimer les fichiers temporaires
+    fs.unlinkSync(originalFile);
+    fs.unlinkSync(clientFile);
+    console.log('   → Fichier original de /restaurants/[id] restauré');
+  }
+  
   console.log('✅ Tous les dossiers restaurés\n');
 
-  // Étape 3: Synchroniser avec Capacitor
-  console.log('🔄 Étape 3/5: Synchronisation avec Capacitor...');
+  // Étape 3: Créer les fichiers HTML pour TOUTES les routes dynamiques
+  console.log('📄 Étape 3/6: Création des fichiers HTML pour routes dynamiques...');
+  try {
+    execSync('node scripts/create-dynamic-routes-html.js', { stdio: 'inherit' });
+    console.log('✅ Fichiers HTML créés\n');
+  } catch (error) {
+    console.warn('⚠️  Erreur création fichiers HTML (non bloquant):', error.message);
+  }
+  
+  // Étape 3.5: Créer le fichier HTML avec script de chargement direct pour restaurants
+  console.log('📄 Étape 3.5/6: Création du fichier HTML avec chargement direct...');
+  try {
+    execSync('node scripts/create-restaurant-html-direct.js', { stdio: 'inherit' });
+    console.log('✅ Fichier HTML avec chargement direct créé\n');
+  } catch (error) {
+    console.warn('⚠️  Erreur création fichier HTML direct (non bloquant):', error.message);
+  }
+  
+  // Étape 4: Synchroniser avec Capacitor
+  console.log('🔄 Étape 4/6: Synchronisation avec Capacitor...');
   execSync('npx cap sync', { stdio: 'inherit' });
   console.log('✅ Synchronisation Capacitor terminée\n');
   
-  // Étape 4: Vérifications
-  console.log('✔️  Étape 4/5: Vérifications...');
+  // Étape 5: Vérifications
+  console.log('✔️  Étape 5/6: Vérifications...');
   const androidAssets = path.join(process.cwd(), 'android', 'app', 'src', 'main', 'assets');
   const iosAssets = path.join(process.cwd(), 'ios', 'App', 'App', 'public');
   
@@ -211,6 +256,7 @@ try {
   console.log('\n📱 Prochaines étapes:');
   console.log('   iOS: npm run capacitor:open:ios');
   console.log('   Android: npm run capacitor:open:android');
+  console.log('\n💡 Note: Les routes dynamiques /restaurants/[id] fonctionnent côté client');
   
 } catch (error) {
   console.error('\n❌ Erreur lors du build:', error.message);

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { supabase } from '../lib/supabase';
 import { safeLocalStorage } from '../lib/localStorage';
 import { 
@@ -484,6 +485,7 @@ export default function Home() {
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
+  const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
   
   // Vérifier si on est le 24 ou 25 décembre (pas de livraison pour Noël)
   // DÉSACTIVÉ - Les commandes sont réactivées
@@ -550,7 +552,60 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    
+    // Détecter si on est sur une route de restaurant et NE PAS charger la page d'accueil
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const restaurantMatch = path.match(/\/restaurants\/([^\/\?]+)/);
+      
+      if (restaurantMatch && restaurantMatch[1]) {
+        const restaurantId = restaurantMatch[1];
+        console.log('[Home] 🔍 Route restaurant détectée:', restaurantId);
+        console.log('[Home] ⚠️ Cette page ne devrait pas être chargée pour /restaurants/[id]');
+        console.log('[Home] 💡 Le script de routage devrait charger RestaurantDetail');
+        // Ne pas charger la page d'accueil, mais laisser le script de routage gérer
+        // Le script dans le HTML devrait charger le composant RestaurantDetail
+      }
+    }
+    
+    // Dans l'app mobile, vérifier l'authentification UNIQUEMENT si on est sur la page d'accueil
+    // Ne pas bloquer la navigation vers d'autres pages
+    const checkMobileAuth = async () => {
+      if (typeof window === 'undefined') return;
+      
+      // Ne vérifier que si on est vraiment sur la page d'accueil (pas en train de naviguer)
+      if (window.location.pathname !== '/' && window.location.pathname !== '') {
+        return; // Ne pas bloquer la navigation vers d'autres pages
+      }
+      
+      const isCapacitorApp = window.location.protocol === 'capacitor:' || 
+                            window.location.href.indexOf('capacitor://') === 0 ||
+                            window.Capacitor !== undefined;
+      
+      if (isCapacitorApp) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (!session?.user) {
+            // Pas connecté dans l'app mobile, rediriger vers login
+            // Utiliser setTimeout pour éviter de bloquer la navigation
+            setTimeout(() => {
+              router.replace('/login');
+            }, 100);
+            return;
+          }
+        } catch (error) {
+          console.error('Erreur vérification auth:', error);
+          // Ne pas rediriger en cas d'erreur pour ne pas bloquer la navigation
+        }
+      }
+    };
+    
+    // Délai pour éviter de bloquer la navigation
+    const timeoutId = setTimeout(checkMobileAuth, 200);
+    
+    return () => clearTimeout(timeoutId);
+  }, [router]);
 
   useEffect(() => {
     if (!heroSlides.length) return;
@@ -1034,7 +1089,30 @@ export default function Home() {
   };
 
   const handleRestaurantClick = (restaurant) => {
-    router.push(`/restaurants/${restaurant.id}`);
+    // Dans l'app mobile, utiliser window.location.href pour forcer la navigation
+    // Le fichier HTML statique /restaurants/[id]/index.html chargera le composant React
+    if (typeof window !== 'undefined') {
+      const targetUrl = `/restaurants/${restaurant.id}`;
+      console.log('[Navigation] Redirection vers restaurant:', targetUrl, 'ID:', restaurant.id);
+      
+      // Dans l'app mobile Capacitor, forcer la navigation avec un rechargement complet
+      const isCapacitorApp = window.location.protocol === 'capacitor:' || 
+                            window.location.href.indexOf('capacitor://') === 0 ||
+                            window.Capacitor !== undefined;
+      
+      if (isCapacitorApp) {
+        // Utiliser window.location.href pour forcer un rechargement complet
+        // Cela charge le fichier HTML statique /restaurants/[id]/index.html
+        console.log('[Navigation] App Capacitor détectée, navigation vers:', targetUrl);
+        window.location.href = targetUrl;
+      } else {
+        // Sur le web, utiliser le router Next.js
+        router.push(targetUrl);
+      }
+    } else {
+      // Fallback pour SSR
+      router.push(`/restaurants/${restaurant.id}`);
+    }
   };
 
     const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
@@ -1186,8 +1264,40 @@ export default function Home() {
     });
   }, [finalRestaurants, restaurantsOpenStatus]);
 
+  // Détecter si on est sur une route de restaurant AVANT de charger quoi que ce soit
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const restaurantMatch = path.match(/\/restaurants\/([^\/\?]+)/);
+      
+      if (restaurantMatch && restaurantMatch[1]) {
+        console.log('[Home] 🔍 Route restaurant détectée, NE PAS charger la page d\'accueil');
+        setIsRestaurantRoute(true);
+        // Ne rien faire, laisser le script de routage dans le HTML gérer
+        return;
+      }
+    }
+  }, []);
+
   if (!isClient) {
     return null;
+  }
+  
+  // Si on est sur une route restaurant, charger directement le composant RestaurantDetail
+  if (isRestaurantRoute) {
+    console.log('[Home] ✅ Chargement du composant RestaurantDetailLoader');
+    const RestaurantDetailLoader = dynamic(() => import('./components/RestaurantDetailLoader'), {
+      ssr: false,
+      loading: () => (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Chargement du restaurant...</p>
+          </div>
+        </div>
+      )
+    });
+    return <RestaurantDetailLoader />;
   }
 
   return (

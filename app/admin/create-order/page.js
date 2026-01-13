@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaArrowLeft, FaPlus, FaMinus, FaTrash, FaSpinner, FaTimes } from 'react-icons/fa';
+import { FaArrowLeft, FaPlus, FaMinus, FaTrash, FaSpinner, FaTimes, FaShoppingCart } from 'react-icons/fa';
+import Modal from '../../components/Modal';
 
 export default function AdminCreateOrder() {
   const router = useRouter();
@@ -25,6 +26,12 @@ export default function AdminCreateOrder() {
   const [selectedMeats, setSelectedMeats] = useState([]);
   const [selectedSauces, setSelectedSauces] = useState([]);
   const [quantity, setQuantity] = useState(1);
+  
+  // Combo modal state
+  const [showComboModal, setShowComboModal] = useState(false);
+  const [activeCombo, setActiveCombo] = useState(null);
+  const [comboSelections, setComboSelections] = useState({});
+  const [comboQuantity, setComboQuantity] = useState(1);
   
   const [deliveryInfo, setDeliveryInfo] = useState({
     address: '',
@@ -114,11 +121,41 @@ export default function AdminCreateOrder() {
   const fetchMenu = async (restaurantId) => {
     try {
       setLoading(true);
+      // Récupérer les menus normaux et formules
       const response = await fetch(`/api/restaurants/${restaurantId}/menu`);
       if (!response.ok) throw new Error('Erreur récupération menu');
       
       const data = await response.json();
-      setMenuItems(data || []);
+      let allItems = data || [];
+      
+      // Récupérer les menus composés
+      try {
+        const combosResponse = await fetch(`/api/partner/menu-combos?restaurantId=${restaurantId}`);
+        if (combosResponse.ok) {
+          const combosData = await combosResponse.json();
+          if (Array.isArray(combosData) && combosData.length > 0) {
+            // Transformer les combos en format compatible avec les menus
+            const formattedCombos = combosData
+              .filter(combo => combo?.actif !== false)
+              .map(combo => ({
+                id: combo.id,
+                nom: combo.nom || combo.name,
+                description: combo.description || '',
+                prix: parseFloat(combo.prix_base || combo.price || 0),
+                price: parseFloat(combo.prix_base || combo.price || 0),
+                category: 'Menus composés',
+                is_combo: true,
+                combo_data: combo // Conserver les données complètes du combo
+              }));
+            allItems = [...allItems, ...formattedCombos];
+          }
+        }
+      } catch (comboErr) {
+        console.warn('Erreur récupération menus composés:', comboErr);
+        // Ne pas bloquer si les combos ne peuvent pas être récupérés
+      }
+      
+      setMenuItems(allItems);
     } catch (err) {
       console.error('Erreur récupération menu:', err);
       setError('Erreur lors de la récupération du menu');
@@ -128,12 +165,309 @@ export default function AdminCreateOrder() {
   };
 
   const openModal = (item) => {
+    // Si c'est un menu composé, ouvrir la modal combo
+    if (item.is_combo && item.combo_data) {
+      openComboModal(item.combo_data);
+      return;
+    }
+    
     setSelectedItem(item);
     setSelectedSupplements([]);
     setSelectedMeats([]);
     setSelectedSauces([]);
     setQuantity(1);
     setShowModal(true);
+  };
+  
+  // Fonctions pour gérer les menus composés
+  const getStepKey = (step, index) => step?.id || `step-${index}`;
+
+  const initializeComboSelections = (combo) => {
+    if (!combo?.steps || !Array.isArray(combo.steps)) return {};
+    const initial = {};
+    combo.steps.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      initial[key] = { options: [] };
+    });
+    return initial;
+  };
+
+  const openComboModal = (combo) => {
+    if (!combo) return;
+    setActiveCombo(combo);
+    setComboSelections(initializeComboSelections(combo));
+    setComboQuantity(1);
+    setShowComboModal(true);
+  };
+
+  const closeComboModal = () => {
+    setShowComboModal(false);
+    setActiveCombo(null);
+    setComboSelections({});
+    setComboQuantity(1);
+  };
+
+  const getStepSelections = (step, stepIndex) => {
+    const key = getStepKey(step, stepIndex);
+    return comboSelections[key]?.options || [];
+  };
+
+  const isOptionSelected = (step, option, stepIndex) => {
+    if (!option) return false;
+    return getStepSelections(step, stepIndex).some(sel => sel.optionId === option.id);
+  };
+
+  const handleToggleComboOption = (step, option, stepIndex) => {
+    if (!activeCombo || !step || !option || option.disponible === false) return;
+
+    setComboSelections((prev) => {
+      const key = getStepKey(step, stepIndex);
+      const current = prev[key]?.options || [];
+      const existingIndex = current.findIndex(sel => sel.optionId === option.id);
+      let updatedOptions = [...current];
+
+      if (existingIndex !== -1) {
+        updatedOptions.splice(existingIndex, 1);
+      } else {
+        const max = step?.max_selections ?? 1;
+        if (max === 0) {
+          return prev;
+        }
+        if (max === 1) {
+          updatedOptions = [];
+        } else if (max && current.length >= max) {
+          return prev;
+        }
+
+        const defaultVariant = option.variants?.length
+          ? option.variants.find(v => v.is_default === true) || null
+          : null;
+
+        updatedOptions = [
+          ...updatedOptions,
+          {
+            optionId: option.id,
+            stepId: step.id,
+            option,
+            variantId: defaultVariant?.id || null,
+            variant: defaultVariant || null,
+            removedIngredients: []
+          }
+        ];
+      }
+
+      return {
+        ...prev,
+        [key]: {
+          options: updatedOptions
+        }
+      };
+    });
+  };
+
+  const handleVariantChange = (step, option, variant, stepIndex) => {
+    setComboSelections((prev) => {
+      const key = getStepKey(step, stepIndex);
+      const current = prev[key]?.options || [];
+      if (!current.length) return prev;
+
+      const updated = current.map(sel =>
+        sel.optionId === option.id
+          ? {
+              ...sel,
+              variantId: variant?.id || null,
+              variant: variant || null
+            }
+          : sel
+      );
+
+      return {
+        ...prev,
+        [key]: {
+          options: updated
+        }
+      };
+    });
+  };
+
+  const getSelectedVariant = (step, option, stepIndex) => {
+    const selected = getStepSelections(step, stepIndex).find(sel => sel.optionId === option.id);
+    return selected?.variant || null;
+  };
+
+  const getRemovedIngredientsForSelection = (step, option, stepIndex) => {
+    const selected = getStepSelections(step, stepIndex).find(sel => sel.optionId === option.id);
+    return selected?.removedIngredients || [];
+  };
+
+  const isIngredientRemovedForSelection = (step, option, ingredientId, stepIndex) => {
+    return getRemovedIngredientsForSelection(step, option, stepIndex).includes(ingredientId);
+  };
+
+  const handleToggleComboIngredient = (step, option, ingredient, stepIndex) => {
+    if (!ingredient || ingredient.removable === false) {
+      return;
+    }
+
+    setComboSelections((prev) => {
+      const key = getStepKey(step, stepIndex);
+      const current = prev[key]?.options || [];
+      const updated = current.map((selection) => {
+        if (selection.optionId !== option.id) return selection;
+        const removed = selection.removedIngredients || [];
+        const ingredientId = ingredient.id || `${option.id}-ingredient-${ingredient.nom}`;
+        const updatedRemoved = removed.includes(ingredientId)
+          ? removed.filter((id) => id !== ingredientId)
+          : [...removed, ingredientId];
+        return {
+          ...selection,
+          removedIngredients: updatedRemoved
+        };
+      });
+
+      return {
+        ...prev,
+        [key]: {
+          options: updated
+        }
+      };
+    });
+  };
+
+  const comboValidation = useMemo(() => {
+    if (!activeCombo) return { isValid: false, errors: [] };
+
+    const errors = [];
+    activeCombo.steps?.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      const selections = comboSelections[key]?.options || [];
+      const count = selections.length;
+      const rawMin = step?.min_selections;
+      const rawMax = step?.max_selections;
+      const min = Math.max(parseInt(rawMin, 10) || 0, 0);
+      const max = rawMax === null || rawMax === undefined ? null : Math.max(parseInt(rawMax, 10) || 0, 0);
+
+      if (min === 0 && (max === 0 || max === null)) {
+        return;
+      }
+
+      if (count < min) {
+        errors.push(
+          `Sélectionnez au moins ${min} option${min > 1 ? 's' : ''} pour ${step.title || `l'étape ${index + 1}`}`
+        );
+      }
+
+      if (max !== null && count > max) {
+        errors.push(
+          `Vous ne pouvez sélectionner que ${max} option${max > 1 ? 's' : ''} pour ${step.title || `l'étape ${index + 1}`}`
+        );
+      }
+
+      selections.forEach((selection) => {
+        if (selection.option?.variants?.length && selection.variantId === null) {
+          errors.push(`Choisissez une variante pour ${selection.option?.nom || "l'option sélectionnée"}`);
+        }
+      });
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }, [activeCombo, comboSelections]);
+
+  const comboTotalPrice = useMemo(() => {
+    if (!activeCombo) return 0;
+    let total = parseFloat(activeCombo.prix_base || 0) || 0;
+
+    activeCombo.steps?.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      const selections = comboSelections[key]?.options || [];
+      selections.forEach((selection) => {
+        const optionPrice = parseFloat(selection.option?.prix_supplementaire || 0) || 0;
+        const variantPrice = parseFloat(selection.variant?.prix_supplementaire || 0) || 0;
+        total += optionPrice + variantPrice;
+      });
+    });
+
+    return Math.max(total, 0);
+  }, [activeCombo, comboSelections]);
+
+  const handleAddComboToCart = () => {
+    if (!activeCombo) return;
+    const validation = comboValidation;
+    if (!validation.isValid) {
+      alert(validation.errors.join('\n'));
+      return;
+    }
+
+    const supplements = [];
+    const comboDetails = [];
+
+    activeCombo.steps?.forEach((step, index) => {
+      const key = getStepKey(step, index);
+      const selections = comboSelections[key]?.options || [];
+
+      selections.forEach((selection) => {
+        const option = selection.option || step.options?.find(opt => opt.id === selection.optionId);
+        if (!option) return;
+        const variant = selection.variant || option.variants?.find(v => v.id === selection.variantId);
+
+        const labelParts = [step.title, option.nom];
+        if (variant?.nom && selection.variantId) {
+          labelParts.push(variant.nom);
+        }
+        const label = labelParts.filter(Boolean).join(' · ');
+
+        const optionPrice = parseFloat(option?.prix_supplementaire || 0) || 0;
+        const variantPrice = parseFloat(variant?.prix_supplementaire || 0) || 0;
+        const supplementPrice = optionPrice + variantPrice;
+
+        supplements.push({
+          id: `${key}-${option.id}${variant ? `-${variant.id}` : ''}`,
+          nom: label,
+          prix: supplementPrice
+        });
+
+        const removedIngredientIds = Array.isArray(selection.removedIngredients) ? selection.removedIngredients : [];
+        const removedIngredients = removedIngredientIds
+          .map((ingredientId) => {
+            const ingredient = option.base_ingredients?.find((ing) => {
+              const possibleId = ing.id || `${option.id}-ingredient-${ing.nom}`;
+              return possibleId === ingredientId;
+            });
+            return ingredient
+              ? { id: ingredientId, nom: ingredient.nom }
+              : { id: ingredientId, nom: 'Ingrédient retiré' };
+          })
+          .filter(Boolean);
+
+        comboDetails.push({
+          stepTitle: step.title,
+          optionName: option.nom,
+          variantName: variant?.nom || null,
+          optionPrice,
+          variantPrice,
+          removedIngredients
+        });
+      });
+    });
+
+    const cartItem = {
+      id: `combo-${activeCombo.id}`,
+      name: activeCombo.nom,
+      price: parseFloat(activeCombo.prix_base || 0) || 0,
+      quantity: comboQuantity,
+      is_combo: true,
+      comboId: activeCombo.id,
+      comboName: activeCombo.nom,
+      comboDetails,
+      supplements: supplements,
+      customizations: {}
+    };
+
+    setCart([...cart, cartItem]);
+    closeComboModal();
   };
 
   const closeModal = () => {
@@ -255,7 +589,7 @@ export default function AdminCreateOrder() {
       const basePrice = item.price || 0;
       let itemTotal = basePrice * item.quantity;
       
-      // Ajouter les suppléments
+      // Ajouter les suppléments (pour les menus normaux et les combos)
       if (item.supplements && Array.isArray(item.supplements)) {
         item.supplements.forEach(sup => {
           itemTotal += (parseFloat(sup.prix || sup.price || 0) * item.quantity);
@@ -843,6 +1177,273 @@ export default function AdminCreateOrder() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Modal pour les menus composés */}
+      {showComboModal && activeCombo && (
+        <Modal onClose={closeComboModal}>
+          <div className="flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                {activeCombo.nom}
+              </h2>
+              {activeCombo.description && (
+                <p className="mt-1 text-sm text-gray-600">
+                  {activeCombo.description}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
+              <div>
+                <p className="text-sm text-gray-600">Prix de base</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {(parseFloat(activeCombo.prix_base || 0) || 0).toFixed(2)}€
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">Quantité</span>
+                <div className="flex items-center rounded-full border border-gray-300 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setComboQuantity(prev => Math.max(1, (prev || 1) - 1))}
+                    className="w-10 h-10 flex items-center justify-center bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  >
+                    <FaMinus />
+                  </button>
+                  <div className="w-12 text-center text-sm font-semibold text-gray-900">
+                    {comboQuantity}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setComboQuantity(prev => (prev || 1) + 1)}
+                    className="w-10 h-10 flex items-center justify-center bg-orange-500 text-white hover:bg-orange-600"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Total estimé</p>
+                <p className="text-lg font-semibold text-orange-600">
+                  {(comboTotalPrice * Math.max(1, comboQuantity || 1)).toFixed(2)}€
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6 pr-1">
+              {Array.isArray(activeCombo.steps) && activeCombo.steps.length > 0 ? (
+                activeCombo.steps.map((step, stepIndex) => {
+                  const min = Math.max(step?.min_selections ?? 0, 0);
+                  const max = step?.max_selections ?? null;
+                  const selections = getStepSelections(step, stepIndex);
+                  const selectedCount = selections.length;
+                  return (
+                    <div
+                      key={step.id || `combo-step-${stepIndex}`}
+                      className="border border-gray-200 rounded-2xl p-4 bg-white"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            Étape {stepIndex + 1} · {step.title || `Choix ${stepIndex + 1}`}
+                          </h3>
+                          {step.description && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {step.description}
+                            </p>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {min === 0 && (max === 0 || max === null)
+                            ? 'Étape facultative (aucun choix requis)'
+                            : min === max
+                              ? min === 1
+                                ? 'Choix obligatoire'
+                                : `Choisir exactement ${min} options`
+                              : [
+                                  min > 0 ? `Min ${min}` : 'Optionnel',
+                                  max ? `· Max ${max}` : null
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        {Array.isArray(step.options) && step.options.length > 0 ? (
+                          step.options
+                            .filter(option => option && option.disponible !== false)
+                            .map((option) => {
+                              const selected = isOptionSelected(step, option, stepIndex);
+                              const variant = getSelectedVariant(step, option, stepIndex);
+                              const optionSupplement = parseFloat(option?.prix_supplementaire || 0) || 0;
+                              return (
+                                <div
+                                  key={option.id}
+                                  className={`border rounded-xl transition-colors ${
+                                    selected
+                                      ? 'border-orange-500 bg-orange-50'
+                                      : 'border-gray-200'
+                                  }`}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleComboOption(step, option, stepIndex)}
+                                    className="w-full text-left px-4 py-3 focus:outline-none"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <p className="font-medium text-gray-900">
+                                          {option.nom || 'Option'}
+                                        </p>
+                                        {option.description && (
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            {option.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-sm font-semibold text-gray-900">
+                                          {optionSupplement > 0 ? `+${optionSupplement.toFixed(2)}€` : 'Inclus'}
+                                        </p>
+                                        <span
+                                          className={`inline-flex items-center justify-center px-2 py-0.5 mt-2 rounded-full text-xs font-medium ${
+                                            selected
+                                              ? 'bg-orange-500 text-white'
+                                              : 'bg-gray-200 text-gray-700'
+                                          }`}
+                                        >
+                                          {selected ? 'Sélectionné' : 'Choisir'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </button>
+
+                                  {selected && option.variants && option.variants.length > 0 && (
+                                    <div className="px-4 pb-4 pt-0 space-y-2">
+                                      <p className="text-xs uppercase font-semibold text-gray-500">
+                                        Variantes disponibles
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {option.variants
+                                          .filter(variantOption => variantOption.disponible !== false)
+                                          .map((variantOption) => {
+                                            const isActiveVariant = variant?.id === variantOption.id;
+                                            const variantPrice = parseFloat(variantOption.prix_supplementaire || 0) || 0;
+                                            return (
+                                              <button
+                                                type="button"
+                                                key={variantOption.id}
+                                                onClick={() => handleVariantChange(step, option, variantOption, stepIndex)}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                                  isActiveVariant
+                                                    ? 'border-orange-500 bg-orange-500 text-white'
+                                                    : 'border-gray-300 text-gray-700 hover:border-orange-400'
+                                                }`}
+                                              >
+                                                {variantOption.nom}
+                                                {variantPrice > 0 && ` (+${variantPrice.toFixed(2)}€)`}
+                                              </button>
+                                            );
+                                          })}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {selected && Array.isArray(option.base_ingredients) && option.base_ingredients.length > 0 && (
+                                    <div className="px-4 pb-4 pt-0 space-y-2">
+                                      <p className="text-xs uppercase font-semibold text-gray-500">
+                                        Ingrédients à retirer
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {option.base_ingredients.map((ingredient) => {
+                                          const ingredientId = ingredient.id || `${option.id}-ingredient-${ingredient.nom}`;
+                                          const removed = isIngredientRemovedForSelection(step, option, ingredientId, stepIndex);
+                                          const disabled = ingredient.removable === false;
+                                          return (
+                                            <button
+                                              type="button"
+                                              key={ingredientId}
+                                              onClick={() => handleToggleComboIngredient(step, option, { ...ingredient, id: ingredientId }, stepIndex)}
+                                              disabled={disabled}
+                                              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                                removed
+                                                  ? 'border-red-400 bg-red-50 text-red-600'
+                                                  : 'border-gray-300 text-gray-700 hover:border-red-400 hover:text-red-600'
+                                              } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+                                            >
+                                              {disabled ? `${ingredient.nom} (fixe)` : removed ? `Sans ${ingredient.nom}` : ingredient.nom}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                        ) : (
+                          <p className="text-sm text-gray-500">
+                            Aucune option disponible pour cette étape.
+                          </p>
+                        )}
+
+                        {min > 0 && selectedCount < min && (
+                          <p className="text-xs text-red-500">
+                            Il manque {min - selectedCount} sélection{min - selectedCount > 1 ? 's' : ''} pour cette étape.
+                          </p>
+                        )}
+                        {max && selectedCount > max && (
+                          <p className="text-xs text-red-500">
+                            Vous avez dépassé le nombre maximum d'options pour cette étape.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Ce menu composé ne contient pas encore d'étapes configurées.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 pt-4">
+              <div>
+                <p className="text-sm text-gray-600">Total</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(comboTotalPrice * Math.max(1, comboQuantity || 1)).toFixed(2)}€
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={closeComboModal}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddComboToCart}
+                  disabled={!comboValidation.isValid}
+                  className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-white transition-all transform active:scale-95 ${
+                    comboValidation.isValid
+                      ? 'bg-orange-500 hover:bg-orange-600 shadow-lg hover:shadow-xl'
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <FaShoppingCart />
+                    Ajouter au panier
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

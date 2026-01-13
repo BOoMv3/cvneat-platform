@@ -140,6 +140,79 @@ export default function RootLayout({ children }) {
                     return originalFetch(input, init);
                   };
                   console.log('[API Interceptor] Fetch intercepté !');
+                  
+                  // Gestionnaire de liens pour empêcher l'ouverture du navigateur
+                  document.addEventListener('DOMContentLoaded', function() {
+                    console.log('[Link Handler] Initialisation gestionnaire de liens');
+                    
+                    // Intercepter les clics sur les liens
+                    document.addEventListener('click', function(event) {
+                      var target = event.target;
+                      var link = target.closest('a');
+                      
+                      if (!link) return;
+                      
+                      var href = link.getAttribute('href');
+                      if (!href || href === '#' || href.startsWith('javascript:')) return;
+                      
+                      // Si c'est un lien externe vers cvneat.fr, naviguer dans l'app
+                      if (href.startsWith('http://') || href.startsWith('https://')) {
+                        if (href.includes('cvneat.fr')) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          try {
+                            var url = new URL(href);
+                            var path = url.pathname + url.search + url.hash;
+                            console.log('[Link Handler] Navigation interne:', path);
+                            window.location.href = path;
+                          } catch (e) {
+                            console.error('[Link Handler] Erreur:', e);
+                          }
+                          return;
+                        }
+                        // Bloquer les autres liens externes
+                        console.log('[Link Handler] Lien externe bloqué:', href);
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return;
+                      }
+                      
+                      // Empêcher target="_blank"
+                      if (link.target === '_blank') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        console.log('[Link Handler] Lien _blank converti:', href);
+                        window.location.href = href;
+                      }
+                      
+                      // Gérer les liens internes (commençant par /)
+                      if (href.startsWith('/')) {
+                        // Dans l'app native, forcer la navigation avec window.location.href
+                        if (typeof window !== 'undefined' && (window.location.protocol === 'capacitor:' || window.Capacitor)) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          console.log('[Link Handler] Navigation interne (app native):', href);
+                          window.location.href = href;
+                        } else {
+                          // Sur le web, laisser Next.js gérer
+                          console.log('[Link Handler] Lien interne (web):', href);
+                        }
+                      }
+                    }, true);
+                    
+                    // Intercepter window.open
+                    var originalOpen = window.open;
+                    window.open = function(url, target, features) {
+                      console.log('[Link Handler] window.open intercepté:', url);
+                      if (url && (url.includes('cvneat.fr') || url.startsWith('/'))) {
+                        var path = url.startsWith('http') ? new URL(url).pathname : url;
+                        window.location.href = path;
+                        return null;
+                      }
+                      console.log('[Link Handler] window.open bloqué:', url);
+                      return null;
+                    };
+                  });
                 } catch (e) {
                   console.error('[API Interceptor] Erreur chargement:', e);
                 }
