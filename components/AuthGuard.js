@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
-import { safeLocalStorage } from '../lib/localStorage';
 
 export default function AuthGuard({ children, requiredRole }) {
   const router = useRouter();
@@ -18,26 +17,40 @@ export default function AuthGuard({ children, requiredRole }) {
         return;
       }
 
-      // Recuperer le role de l'utilisateur
-      const { data: userData, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
+      // Récupérer le rôle via API (bypass RLS côté serveur)
+      let role = null;
+      try {
+        const res = await fetch('/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (res.ok) {
+          const me = await res.json();
+          role = (me?.role || '').toString().trim().toLowerCase();
+        }
+      } catch (e) {
+        // ignore
+      }
 
-      if (error || !userData) {
-        // Erreur ou pas de profil
+      // Fallback metadata
+      if (!role) {
+        role = (session.user?.user_metadata?.role || '').toString().trim().toLowerCase() || null;
+      }
+
+      if (!role) {
         router.push('/login');
         return;
       }
 
       // Les admins ont accès à tout
-      if (userData.role === 'admin') {
+      if (role === 'admin') {
         setStatus('authenticated');
         return;
       }
 
-      const userRoles = userData.role ? userData.role.split(',') : [userData.role];
+      const userRoles = role ? role.split(',') : [role];
       if (requiredRole && !userRoles.includes(requiredRole)) {
         // Mauvais role (sauf admin qui a déjà été vérifié)
         router.push('/'); // Rediriger vers la page d'accueil

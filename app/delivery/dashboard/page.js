@@ -345,7 +345,8 @@ export default function DeliveryDashboard() {
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
-        return fetch(url, { ...options, credentials: 'include' });
+        // iOS/Capacitor: éviter cookies/credentials (on utilise Authorization)
+        return fetch(url, { ...options, credentials: 'omit' });
       }
       
       const token = session?.access_token;
@@ -363,10 +364,11 @@ export default function DeliveryDashboard() {
       return fetch(url, { 
         ...options, 
         headers,
-        credentials: 'include'
+        // IMPORTANT: credentials=include + ACAO="*" => WKWebView peut échouer ("Load failed")
+        credentials: 'omit'
       });
     } catch (error) {
-      return fetch(url, { ...options, credentials: 'include' });
+      return fetch(url, { ...options, credentials: 'omit' });
     }
   };
 
@@ -920,8 +922,9 @@ export default function DeliveryDashboard() {
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Livraisons Totales</p>
+                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Livraisons à encaisser</p>
                   <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.total_deliveries || 0}</p>
+                  <p className="text-blue-100 text-[10px] sm:text-xs mt-1">Total: {stats?.total_deliveries_all || 0}</p>
                 </div>
                 <div className="bg-blue-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
                   <FaChartLine className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
@@ -932,8 +935,9 @@ export default function DeliveryDashboard() {
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-xs sm:text-sm font-medium">Gains Totaux</p>
+                  <p className="text-green-100 text-xs sm:text-sm font-medium">Gains à encaisser</p>
                   <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.total_earnings?.toFixed(2) || 0}€</p>
+                  <p className="text-green-100 text-[10px] sm:text-xs mt-1">Total: {stats?.total_earnings_all?.toFixed?.(2) ? stats.total_earnings_all.toFixed(2) : (stats?.total_earnings_all || 0).toFixed?.(2) || '0.00'}€</p>
                 </div>
                 <div className="bg-green-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
                   <FaDownload className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />

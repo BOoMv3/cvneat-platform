@@ -70,27 +70,107 @@ export default function LoginPage() {
         
         // Rediriger selon le rôle
         try {
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', data.user.id)
-            .single();
+          // IMPORTANT:
+          // Ne pas dépendre d'un SELECT direct sur public.users (RLS / profil manquant).
+          // On passe par l'API serveur qui garantit l'existence du profil et renvoie le rôle.
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData?.session?.access_token;
 
-          if (userError) {
-            console.warn('⚠️ Erreur récupération rôle:', userError);
-            // Continuer quand même, vérifier la redirection puis rediriger
-            const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
-            if (redirectAfterLogin) {
-              localStorage.removeItem('redirectAfterLogin');
-              console.log('🔄 Redirection vers:', redirectAfterLogin);
-              router.push(redirectAfterLogin);
-            } else {
-              router.push('/');
-            }
+          if (!accessToken) {
+            router.push('/');
             return;
           }
 
-          console.log('✅ Rôle utilisateur:', userData?.role);
+          const meResponse = await fetch('/api/users/me', {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          });
+
+          const meData = await meResponse.json().catch(() => ({}));
+          let role = meResponse.ok ? meData?.role : null;
+
+          // Fallback: certains déploiements de l'API /users/me ne renvoient pas encore "role"
+          // ou la table users n'existe pas côté serveur. Dans ce cas, essayer de récupérer le rôle autrement.
+          if (!role) {
+            try {
+              // 1) Via la table users (RLS: l'utilisateur doit pouvoir lire son propre profil)
+              const { data: roleRow, error: roleError } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', data.user.id)
+                .maybeSingle();
+
+              if (!roleError && roleRow?.role) {
+                role = roleRow.role;
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          // 2) Via metadata Supabase Auth (dernier recours)
+          if (!role) {
+            role = data.user?.user_metadata?.role || data.user?.app_metadata?.role || null;
+          }
+
+          // 3) Fallback mobile: déduire le rôle via tables publiques accessibles (ex: restaurants)
+          // - Les partenaires ont souvent un enregistrement dans restaurants (accessible dans l'app)
+          if (!role) {
+            try {
+              const { data: restaurantRow, error: restaurantErr } = await supabase
+                .from('restaurants')
+                .select('id')
+                .eq('user_id', data.user.id)
+                .maybeSingle();
+              if (!restaurantErr && restaurantRow) {
+                role = 'restaurant';
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          // Fallback supplémentaire: certains comptes partenaires sont liés au restaurant via l'email (pas/plus via user_id)
+          if (!role && data.user?.email) {
+            try {
+              const { data: restaurantByEmail, error: restaurantEmailErr } = await supabase
+                .from('restaurants')
+                .select('id')
+                .eq('email', data.user.email)
+                .maybeSingle();
+              if (!restaurantEmailErr && restaurantByEmail) {
+                role = 'restaurant';
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          // - Les livreurs peuvent avoir une ligne delivery_stats (selon RLS, peut échouer, c'est ok)
+          if (!role) {
+            try {
+              const { data: statsRow, error: statsErr } = await supabase
+                .from('delivery_stats')
+                .select('delivery_id')
+                .eq('delivery_id', data.user.id)
+                .maybeSingle();
+              if (!statsErr && statsRow) {
+                role = 'delivery';
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          // Normaliser le rôle (évite les variations: "Partner", "partner ", etc.)
+          if (typeof role === 'string') {
+            role = role.trim().toLowerCase();
+          }
+          // Alias possibles
+          if (role === 'restaurateur' || role === 'restauranteur') role = 'restaurant';
+
+          console.log('✅ Rôle utilisateur détecté:', role);
 
           // Vérifier s'il y a une intention de redirection (ex: checkout)
           const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
@@ -101,11 +181,11 @@ export default function LoginPage() {
             return;
           }
 
-          if (userData?.role === 'admin') {
+          if (role === 'admin') {
             router.push('/admin');
-          } else if (userData?.role === 'delivery') {
+          } else if (role === 'delivery') {
             router.push('/delivery');
-          } else if (userData?.role === 'restaurant') {
+          } else if (role === 'restaurant' || role === 'partner') {
             router.push('/partner');
           } else {
             // Pour les clients, rediriger vers la page d'accueil

@@ -6,6 +6,8 @@ import FacebookPixel from '@/components/FacebookPixel';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import ChristmasTheme from '@/components/ChristmasTheme';
+import PushNotificationBootstrap from './components/PushNotificationBootstrap';
+import AppAutoRedirect from './components/AppAutoRedirect';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
 // IMPORTANT: Charger APRÈS Supabase pour éviter les conflits
@@ -117,7 +119,9 @@ export default function RootLayout({ children }) {
                   if (typeof window === 'undefined' || !window.location) return;
                   var isCapacitor = window.location.protocol === 'capacitor:' || window.location.href.indexOf('capacitor://') === 0;
                   if (!isCapacitor) return;
-                  var API_BASE_URL = 'https://cvneat.fr';
+                  // IMPORTANT: cvneat.fr redirige (307) vers www.cvneat.fr.
+                  // Dans WKWebView (Capacitor), éviter les redirects améliore fortement la fiabilité des appels fetch.
+                  var API_BASE_URL = 'https://www.cvneat.fr';
                   var originalFetch = window.fetch;
                   console.log('[API Interceptor] Intercepteur inline chargé !');
                   window.fetch = function(input, init) {
@@ -129,6 +133,11 @@ export default function RootLayout({ children }) {
                       headers['Content-Type'] = headers['Content-Type'] || 'application/json';
                       headers['Accept'] = headers['Accept'] || 'application/json';
                       opts.headers = headers;
+                      // IMPORTANT (Capacitor/WKWebView):
+                      // On n'utilise PAS les cookies pour l'API (on utilise Authorization).
+                      // Avec credentials=include et Access-Control-Allow-Origin="*", WKWebView peut échouer ("Load failed").
+                      opts.mode = 'cors';
+                      opts.credentials = 'omit';
                       return originalFetch(fullUrl, opts).then(function(r) {
                         console.log('[API Interceptor] Réponse:', r.status, fullUrl);
                         return r;
@@ -179,25 +188,20 @@ export default function RootLayout({ children }) {
                       
                       // Empêcher target="_blank"
                       if (link.target === '_blank') {
+                        // Pour les liens internes, laisser Next.js gérer (évite un rechargement complet qui renvoie parfois à l’accueil)
+                        if (href.startsWith('/')) {
+                          link.target = '';
+                          return;
+                        }
+
                         event.preventDefault();
                         event.stopPropagation();
-                        console.log('[Link Handler] Lien _blank converti:', href);
+                        console.log('[Link Handler] Lien _blank bloqué/converti:', href);
                         window.location.href = href;
                       }
-                      
-                      // Gérer les liens internes (commençant par /)
-                      if (href.startsWith('/')) {
-                        // Dans l'app native, forcer la navigation avec window.location.href
-                        if (typeof window !== 'undefined' && (window.location.protocol === 'capacitor:' || window.Capacitor)) {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          console.log('[Link Handler] Navigation interne (app native):', href);
-                          window.location.href = href;
-                        } else {
-                          // Sur le web, laisser Next.js gérer
-                          console.log('[Link Handler] Lien interne (web):', href);
-                        }
-                      }
+
+                      // IMPORTANT: Ne PAS forcer la navigation des liens internes ("/...") avec window.location.href.
+                      // Sinon on casse le routing Next.js et, en mode assets locaux Capacitor, certaines routes retombent sur / (accueil).
                     }, true);
                     
                     // Intercepter window.open
@@ -264,6 +268,10 @@ export default function RootLayout({ children }) {
           <FacebookPixel />
           {/* 🎄 Thème de Noël - Supprimer cette ligne après les fêtes */}
           <ChristmasTheme />
+          {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
+          <PushNotificationBootstrap />
+          {/* Auto-redirect app mobile si déjà connecté (livreur/restaurant) */}
+          <AppAutoRedirect />
           <div className="min-h-screen flex flex-col">
             <main className="flex-grow">
               {children}

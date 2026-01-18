@@ -223,9 +223,10 @@ export default function DeliveryProfile() {
               <div className="bg-orange-50 rounded-lg p-4">
                 <div className="flex items-center space-x-2 text-orange-600 mb-2">
                   <FaCheckCircle />
-                  <span className="text-sm font-medium">Livraisons</span>
+                  <span className="text-sm font-medium">Livraisons (total)</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{stats.total_deliveries || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total_deliveries_all ?? stats.total_deliveries ?? 0}</p>
+                <p className="text-xs text-orange-700 mt-1">À encaisser: {stats.total_deliveries ?? 0}</p>
               </div>
               
               <div className="bg-green-50 rounded-lg p-4">
@@ -241,10 +242,17 @@ export default function DeliveryProfile() {
               <div className="bg-blue-50 rounded-lg p-4">
                 <div className="flex items-center space-x-2 text-blue-600 mb-2">
                   <FaMotorcycle />
-                  <span className="text-sm font-medium">Gains totaux</span>
+                  <span className="text-sm font-medium">Gains (total)</span>
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.total_earnings ? stats.total_earnings.toFixed(2) : '0.00'}€
+                  {stats.total_earnings_all
+                    ? stats.total_earnings_all.toFixed(2)
+                    : stats.total_earnings
+                      ? stats.total_earnings.toFixed(2)
+                      : '0.00'}€
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  À encaisser: {stats.total_earnings ? stats.total_earnings.toFixed(2) : '0.00'}€
                 </p>
               </div>
             </div>

@@ -11,7 +11,9 @@
     (window.location.protocol === 'capacitor:' || window.location.href.startsWith('capacitor://'));
   
   // URL de base pour les API
-  const API_BASE_URL = 'https://cvneat.fr';
+  // IMPORTANT: cvneat.fr redirige (307) vers www.cvneat.fr.
+  // Éviter les redirects en WKWebView (Capacitor) améliore la fiabilité.
+  const API_BASE_URL = 'https://www.cvneat.fr';
   
   // Sauvegarder le fetch original
   const originalFetch = window.fetch;

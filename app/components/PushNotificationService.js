@@ -264,6 +264,15 @@ export default function PushNotificationService() {
     return null;
   }
 
+  // UX: dans l'app mobile, une fois activé on masque le bloc pour ne pas casser le design.
+  // L'init push est gérée globalement par PushNotificationBootstrap (layout).
+  const isCapacitor =
+    typeof window !== 'undefined' &&
+    (window.Capacitor?.isNativePlatform?.() || window.location?.protocol === 'capacitor:');
+  if (isCapacitor && isSubscribed && permission === 'granted') {
+    return null;
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Notifications Push</h3>

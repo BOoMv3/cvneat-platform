@@ -46,6 +46,8 @@ export async function GET(request) {
     // Récupérer les commandes acceptées par ce livreur
     // NOUVEAU WORKFLOW: Le livreur doit voir ses commandes dès qu'il les accepte, 
     // quel que soit le statut (en_attente, en_preparation, pret_a_livrer, en_livraison, livree)
+    const deliveryOr = `livreur_id.eq.${user.id},delivery_id.eq.${user.id}`;
+
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
       .select(`
@@ -53,7 +55,7 @@ export async function GET(request) {
         restaurant:restaurants(nom, adresse, telephone, frais_livraison),
         users(id, nom, prenom, telephone, email)
       `)
-      .eq('livreur_id', user.id) // Commandes assignées à ce livreur
+      .or(deliveryOr) // Commandes assignées à ce livreur (ancienne + nouvelle colonne)
       .neq('statut', 'annulee') // Ne pas afficher les commandes annulées
       .order('created_at', { ascending: false });
 

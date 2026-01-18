@@ -12,83 +12,112 @@ export async function GET(request) {
     }
 
     const token = authHeader.split(' ')[1];
-    
-    // Créer un client Supabase avec le token utilisateur
+
+    // IMPORTANT:
+    // Sur mobile (Capacitor) et pour les comptes créés via admin/scripts, il arrive que:
+    // - l'utilisateur existe dans auth.users
+    // - mais qu'il n'existe pas (encore) dans la table public.users
+    // Cela casse la récupération du rôle, les dashboards, et redirige vers /login.
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseServiceKey) {
+      return NextResponse.json({ error: 'Configuration serveur incomplète' }, { status: 500 });
+    }
+
+    // Client admin (bypass RLS) + vérification du token utilisateur
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
-    
-    // Vérifier le token avec Supabase
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    console.log('Utilisateur Supabase Auth:', user);
-
-    // Récupérer les informations utilisateur depuis la table users (par id pour garantir la correspondance)
-    const { data: userData, error: userError } = await supabase
+    // Récupérer le profil depuis la table users via le client admin
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    console.log('Données utilisateur depuis la table users:', userData, 'Erreur:', userError);
+    let finalUser = userData;
 
-    if (userError) {
-      console.error('Erreur lors de la récupération des données utilisateur:', userError);
-      
-      // Si l'utilisateur n'existe pas dans la table users, créer un enregistrement de base
-      if (userError.code === 'PGRST116') {
-        console.log('Utilisateur non trouvé dans la table users, création d\'un enregistrement de base...');
-        
-        // Ne pas créer automatiquement d'utilisateur pour éviter les doublons
-        // Si l'utilisateur n'existe pas, c'est qu'il doit compléter son inscription
-        console.warn('Utilisateur Auth trouvé mais pas dans la table users. L\'utilisateur doit compléter son inscription.');
-        return NextResponse.json({
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.prenom && user.user_metadata?.nom 
-            ? `${user.user_metadata.prenom} ${user.user_metadata.nom}`.trim()
-            : user.email,
-          nom: user.user_metadata?.nom || '',
-          prenom: user.user_metadata?.prenom || '',
-          phone: user.user_metadata?.telephone || '',
-          created_at: user.created_at,
-          needsCompletion: true // Indiquer que le profil doit être complété
-        });
+    // Si absent: créer un profil minimal (évite "Utilisateur non trouvé" partout)
+    if (!finalUser) {
+      const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery']);
+
+      let inferredRole = allowedRoles.has(user.user_metadata?.role) ? user.user_metadata.role : null;
+
+      // Heuristique: si un restaurant existe pour ce user_id, c'est un partenaire restaurant
+      if (!inferredRole) {
+        const { data: restaurantMatch } = await supabaseAdmin
+          .from('restaurants')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (restaurantMatch) inferredRole = 'restaurant';
       }
-      
-      // Pour d'autres erreurs, retourner les données de base
-      return NextResponse.json({
+
+      // Heuristique: si des stats livreur existent, c'est un livreur
+      if (!inferredRole) {
+        const { data: deliveryStatsMatch } = await supabaseAdmin
+          .from('delivery_stats')
+          .select('delivery_id')
+          .eq('delivery_id', user.id)
+          .maybeSingle();
+        if (deliveryStatsMatch) inferredRole = 'delivery';
+      }
+
+      if (!inferredRole) inferredRole = 'user';
+
+      const minimalProfile = {
         id: user.id,
-        email: user.email,
-        name: user.user_metadata?.name || user.email,
-        phone: user.user_metadata?.phone || '',
-        created_at: user.created_at
-      });
+        email: (user.email || '').toLowerCase(),
+        nom: user.user_metadata?.nom || user.user_metadata?.last_name || 'Utilisateur',
+        prenom: user.user_metadata?.prenom || user.user_metadata?.first_name || '',
+        telephone: user.user_metadata?.telephone || user.user_metadata?.phone || '0000000000',
+        adresse: 'Adresse non renseignée',
+        code_postal: '00000',
+        ville: 'Ville non renseignée',
+        role: inferredRole,
+      };
+
+      const { data: insertedUser, error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert(minimalProfile)
+        .select('*')
+        .single();
+
+      if (insertError) {
+        // Si l'insertion échoue (schéma différent / contraintes), on renvoie quand même un profil minimal exploitable
+        finalUser = minimalProfile;
+      } else {
+        finalUser = insertedUser;
+      }
+    } else if (!finalUser.role) {
+      // Si le profil existe mais sans role, le fixer au minimum
+      await supabaseAdmin.from('users').update({ role: 'user' }).eq('id', user.id).catch(() => {});
+      finalUser = { ...finalUser, role: 'user' };
     }
 
     // Retourner les données formatées correctement
     // Construire le nom complet avec prénom et nom, ou utiliser l'email si les deux sont vides
-    const fullName = `${userData.prenom || ''} ${userData.nom || ''}`.trim();
-    const displayName = fullName || userData.email || user.email;
+    const fullName = `${finalUser.prenom || ''} ${finalUser.nom || ''}`.trim();
+    const displayName = fullName || finalUser.email || user.email;
     
     return NextResponse.json({
-      id: userData.id,
-      email: userData.email || user.email,
+      id: finalUser.id,
+      email: finalUser.email || user.email,
       name: displayName,
-      nom: userData.nom || '',
-      prenom: userData.prenom || '',
-      phone: userData.telephone || '',
-      created_at: userData.created_at || user.created_at
+      nom: finalUser.nom || '',
+      prenom: finalUser.prenom || '',
+      phone: finalUser.telephone || '',
+      role: finalUser.role || 'user',
+      created_at: finalUser.created_at || user.created_at
     });
 
   } catch (error) {

@@ -87,30 +87,41 @@ export async function POST(request) {
       );
     }
 
-    // Vérifier aussi dans Supabase Auth (pour les utilisateurs non confirmés)
-    // Note: On utilise signUp qui retournera une erreur si l'email existe déjà
-    // La vérification dans la table users ci-dessus est suffisante pour la plupart des cas
+    // Vérifier si l'utilisateur existe déjà dans Supabase Auth
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { message: 'Configuration serveur incomplète' },
+        { status: 500 }
+      );
+    }
 
-    // Créer l'utilisateur dans Supabase Auth avec redirection email
-    // Note: Pour que les emails soient envoyés, il faut configurer un SMTP personnalisé
-    // dans Supabase Dashboard > Authentication > Emails > SMTP Settings
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
-    const redirectBase = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
-    const { data: authUser, error: signUpError } = await supabase.auth.signUp({
+    // Vérifier si l'utilisateur existe déjà dans auth.users
+    const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    if (!listError && listData) {
+      const existingAuthUser = listData.users.find((u) => u.email?.toLowerCase() === sanitizedData.email.toLowerCase());
+      if (existingAuthUser) {
+        return NextResponse.json(
+          { message: 'Cet email est déjà utilisé' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Créer l'utilisateur dans Supabase Auth avec confirmation automatique de l'email
+    const { data: authUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: sanitizedData.email,
-      password,
-      options: {
-        emailRedirectTo: `${redirectBase}/auth/confirm`,
-        data: {
-          nom: sanitizedData.nom,
-          prenom: sanitizedData.prenom,
-          telephone: sanitizedData.telephone
-        }
+      password: password,
+      email_confirm: true, // Confirmer automatiquement l'email
+      user_metadata: {
+        nom: sanitizedData.nom,
+        prenom: sanitizedData.prenom,
+        telephone: sanitizedData.telephone
       }
     });
-    if (signUpError) {
+    
+    if (createError) {
       return NextResponse.json(
-        { message: signUpError.message },
+        { message: createError.message },
         { status: 400 }
       );
     }
@@ -124,7 +135,7 @@ export async function POST(request) {
     }
 
     // Ajouter les infos complémentaires dans la table users
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from('users')
       .insert({
         id: authUser.user.id,
@@ -138,54 +149,16 @@ export async function POST(request) {
         role: 'customer',
       });
     if (insertError) {
+      // Si l'insertion échoue, supprimer l'utilisateur Auth pour éviter les doublons
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id).catch(() => {});
       return NextResponse.json(
         { message: insertError.message },
         { status: 500 }
       );
     }
 
-    try {
-      if (!supabaseAdmin) {
-        console.warn('Supabase admin non configuré, impossible de générer un lien de confirmation personnalisé');
-      } else {
-        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'signup',
-          email: sanitizedData.email,
-          options: {
-            redirectTo: `${redirectBase}/auth/confirm`,
-          },
-        });
-
-        if (linkError) {
-          throw linkError;
-        }
-
-        const confirmationUrl =
-          linkData?.properties?.action_link ||
-          linkData?.action_link ||
-          linkData?.redirect_to ||
-          null;
-
-        if (confirmationUrl) {
-          await fetch(`${redirectBase}/api/notifications/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'accountConfirmation',
-              data: { confirmationUrl },
-              recipientEmail: sanitizedData.email,
-            }),
-          });
-        } else {
-          console.warn('Lien de confirmation introuvable dans la réponse Supabase');
-        }
-      }
-    } catch (linkError) {
-      console.warn('Impossible d\'envoyer l\'email de confirmation personnalisé:', linkError);
-    }
-
     return NextResponse.json(
-      { message: 'Inscription réussie, veuillez vérifier votre email pour valider votre compte.' },
+      { message: 'Inscription réussie ! Votre compte a été créé et votre email est confirmé.' },
       { status: 201 }
     );
   } catch (error) {

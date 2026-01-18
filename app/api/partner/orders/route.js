@@ -127,6 +127,7 @@ export async function GET(request) {
           id,
           created_at,
           updated_at,
+          accepted_at,
           statut,
           total,
           frais_livraison,
@@ -135,6 +136,7 @@ export async function GET(request) {
           livreur_id,
           adresse_livraison,
           preparation_time,
+          preparation_started_at,
           delivery_time,
           ready_for_delivery,
           details_commande (
@@ -675,6 +677,7 @@ export async function POST(request) {
       .update({
         statut: 'en_preparation', // Statut valide : 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
         preparation_time: preparationTime,
+        preparation_started_at: new Date().toISOString(),
         // delivery_time et estimated_total_time sont définis par le livreur, pas par le restaurant
         accepted_at: new Date().toISOString(),
         accepted_by: user.id

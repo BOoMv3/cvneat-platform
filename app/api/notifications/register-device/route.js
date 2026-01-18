@@ -23,14 +23,31 @@ export async function POST(request) {
     }
 
     // Récupérer l'utilisateur connecté
+    // IMPORTANT: dans l'app Capacitor on utilise surtout Authorization: Bearer <access_token>
+    // (les cookies ne sont pas fiables à cause du CORS/cross-origin).
+    const authHeader = request.headers.get('authorization');
+    const bearer =
+      authHeader && authHeader.toLowerCase().startsWith('bearer ')
+        ? authHeader.slice(7).trim()
+        : null;
+
     const cookieStore = cookies();
-    const authToken = cookieStore.get('sb-access-token')?.value;
-    
+    const cookieToken = cookieStore.get('sb-access-token')?.value;
+
+    const authToken = bearer || cookieToken || null;
+
     let userId = null;
-    
-    if (authToken) {
-      const { data: { user } } = await supabase.auth.getUser(authToken);
-      userId = user?.id;
+
+    if (!authToken) {
+      // Ne pas enregistrer de tokens "orphelins" (sinon /send-push par rôle ne trouvera rien)
+      return NextResponse.json({ error: 'Non autorisé (token requis)' }, { status: 401 });
+    }
+
+    const { data: { user } } = await supabase.auth.getUser(authToken);
+    userId = user?.id;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Non autorisé (user introuvable)' }, { status: 401 });
     }
 
     // Vérifier si le token existe déjà

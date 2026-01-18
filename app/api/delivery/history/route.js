@@ -55,10 +55,12 @@ export async function GET(request) {
 
     // Construire la requête avec supabaseAdmin pour bypasser RLS
     // Simplifier la requête pour éviter les problèmes de jointure
+    const deliveryOr = `livreur_id.eq.${deliveryId},delivery_id.eq.${deliveryId}`;
+
     let query = supabaseAdmin
       .from('commandes')
       .select('*', { count: 'exact' })
-      .eq('livreur_id', deliveryId)
+      .or(deliveryOr)
       .order('created_at', { ascending: false });
 
     // Appliquer les filtres
