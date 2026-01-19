@@ -63,9 +63,37 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
+    // Limite d'annulation: éviter les abus / pertes restaurant
+    // - en_attente: annulation autorisée uniquement dans les X minutes après création
+    // - en_preparation: annulation autorisée uniquement dans les X minutes après début de préparation
+    const CANCEL_GRACE_MINUTES = Math.max(
+      0,
+      parseInt(process.env.ORDER_CANCEL_GRACE_MINUTES || '3', 10) || 3
+    );
+    const now = Date.now();
+    const createdAtMs = order.created_at ? new Date(order.created_at).getTime() : 0;
+    const prepStartedAtMs = order.preparation_started_at ? new Date(order.preparation_started_at).getTime() : 0;
+
+    const graceMs = CANCEL_GRACE_MINUTES * 60 * 1000;
+    const elapsedMs =
+      order.statut === 'en_preparation'
+        ? (prepStartedAtMs || createdAtMs ? now - (prepStartedAtMs || createdAtMs) : Number.POSITIVE_INFINITY)
+        : (createdAtMs ? now - createdAtMs : Number.POSITIVE_INFINITY);
+
+    if (CANCEL_GRACE_MINUTES > 0 && elapsedMs > graceMs) {
+      return NextResponse.json(
+        {
+          error: `Annulation impossible: délai dépassé (${CANCEL_GRACE_MINUTES} min).`,
+          current_statut: order.statut,
+        },
+        { status: 400 }
+      );
+    }
+
     // IMPORTANT: Autoriser l'annulation tant que la commande n'est pas en livraison / livrée.
     // Même si un livreur a accepté très vite, le client doit pouvoir annuler (on libère le livreur et on rembourse).
     const previousLivreurId = order.livreur_id || null;
+    const previousRestaurantId = order.restaurant_id || null;
     
     // Bloquer si la commande est en cours de livraison / livrée, ou déjà prise (pickup)
     if (order.picked_up_at || order.statut === 'en_livraison' || order.statut === 'livree' || order.statut === 'delivered') {
@@ -211,8 +239,6 @@ export async function POST(request, { params }) {
             stripe_refund_id: refund.id,
             refund_amount: orderTotal,
             refunded_at: new Date().toISOString(),
-            // Libérer le livreur si déjà assigné
-            livreur_id: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -266,6 +292,30 @@ export async function POST(request, { params }) {
           }
         }
 
+        // Notifier le restaurant (tablette) de façon explicite
+        if (previousRestaurantId) {
+          try {
+            const { data: rest } = await supabaseAdmin
+              .from('restaurants')
+              .select('user_id, nom')
+              .eq('id', previousRestaurantId)
+              .maybeSingle();
+            if (rest?.user_id) {
+              await supabaseAdmin.from('notifications').insert({
+                user_id: rest.user_id,
+                type: 'order_cancelled',
+                title: 'Commande annulée',
+                message: `La commande #${id.slice(0, 8)} a été annulée par le client.`,
+                data: { order_id: id, cancelled_by: 'client', restaurant_id: previousRestaurantId },
+                read: false,
+                created_at: new Date().toISOString(),
+              });
+            }
+          } catch {
+            // non bloquant
+          }
+        }
+
       } catch (stripeError) {
         console.error('❌ Erreur remboursement Stripe:', stripeError);
         
@@ -275,7 +325,6 @@ export async function POST(request, { params }) {
           .from('commandes')
           .update({
             statut: 'annulee',
-            livreur_id: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -301,7 +350,6 @@ export async function POST(request, { params }) {
       .from('commandes')
       .update({
         statut: 'annulee',
-        livreur_id: null,
         payment_status: order.payment_status === 'pending' ? 'cancelled' : order.payment_status,
         updated_at: new Date().toISOString()
       })

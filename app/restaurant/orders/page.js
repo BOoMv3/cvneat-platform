@@ -12,6 +12,7 @@ export default function RestaurantOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [newOrderNotification, setNewOrderNotification] = useState(null);
+  const [cancelOrderNotification, setCancelOrderNotification] = useState(null);
   const [preparationTime, setPreparationTime] = useState(30);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const audioEnabledRef = useRef(audioEnabled);
@@ -234,9 +235,23 @@ export default function RestaurantOrders() {
           console.log('Nouveau statut:', payload.new.statut);
           // TOUJOURS rafraîchir la liste lors des mises à jour
           fetchOrders();
-          // Jouer un son discret pour les mises à jour importantes (si audio activé)
-          if (audioEnabled && (payload.new.statut === 'en_preparation' || payload.new.statut === 'pret_a_livrer')) {
-            playNotificationSound().catch(err => console.warn('Erreur son mise à jour:', err));
+          // ALERTE FORTE si la commande est annulée (client/admin)
+          if (payload.new.statut === 'annulee' && payload.old?.statut !== 'annulee') {
+            setCancelOrderNotification(payload.new);
+            // Forcer l'alerte sonore (même si audio désactivé côté UI, c'est critique)
+            playNotificationSound().catch(err => console.warn('Erreur son annulation:', err));
+            if (Notification.permission === 'granted') {
+              new Notification('Commande annulée', {
+                body: `Commande #${payload.new.id?.slice(0, 8)} annulée par le client`,
+                icon: '/favicon.ico'
+              });
+            }
+            setTimeout(() => setCancelOrderNotification(null), 8000);
+          } else {
+            // Son pour mises à jour importantes
+            if (audioEnabled && (payload.new.statut === 'en_preparation' || payload.new.statut === 'pret_a_livrer')) {
+              playNotificationSound().catch(err => console.warn('Erreur son mise à jour:', err));
+            }
           }
         }
       )
@@ -397,6 +412,8 @@ export default function RestaurantOrders() {
         return 'Prête';
       case 'livree':
         return 'Livrée';
+      case 'annulee':
+        return 'Annulée';
       default:
         return status;
     }
@@ -416,6 +433,8 @@ export default function RestaurantOrders() {
         return 'bg-purple-100 text-purple-800';
       case 'livree':
         return 'bg-gray-100 text-gray-800';
+      case 'annulee':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -446,6 +465,27 @@ export default function RestaurantOrders() {
             </div>
             <button 
               onClick={() => setNewOrderNotification(null)}
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Notification d'annulation de commande */}
+      {cancelOrderNotification && (
+        <div className="fixed top-4 left-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+          <div className="flex items-center">
+            <span className="mr-2">🚫</span>
+            <div>
+              <p className="font-semibold">Commande annulée</p>
+              <p className="text-sm">
+                Commande #{cancelOrderNotification.id?.slice(0, 8)} annulée par le client
+              </p>
+            </div>
+            <button
+              onClick={() => setCancelOrderNotification(null)}
               className="ml-4 text-white hover:text-gray-200"
             >
               ✕
