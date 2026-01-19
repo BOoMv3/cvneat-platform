@@ -12,6 +12,10 @@ export default function RestaurantDetail({ params }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [sireneLoading, setSireneLoading] = useState(false);
+  const [sireneError, setSireneError] = useState(null);
+  const [sireneQuery, setSireneQuery] = useState({ name: '', postalCode: '', city: '' });
+  const [sireneResults, setSireneResults] = useState([]);
 
   useEffect(() => {
     if (params.id) {
@@ -34,6 +38,75 @@ export default function RestaurantDetail({ params }) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runSireneSearch = async () => {
+    try {
+      setSireneError(null);
+      setSireneResults([]);
+      setSireneLoading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      const name = (sireneQuery.name || restaurant?.nom || '').trim();
+      if (name) params.set('name', name);
+      if ((sireneQuery.postalCode || '').trim()) params.set('postalCode', sireneQuery.postalCode.trim());
+      if ((sireneQuery.city || '').trim()) params.set('city', sireneQuery.city.trim());
+      params.set('limit', '10');
+
+      const res = await fetch(`/api/admin/sirene/search?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Erreur INSEE SIRENE');
+      setSireneResults(json.results || []);
+    } catch (e) {
+      setSireneError(e.message || 'Erreur INSEE SIRENE');
+    } finally {
+      setSireneLoading(false);
+    }
+  };
+
+  const applySireneResult = async (r) => {
+    try {
+      setUpdating(true);
+      setError(null);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      const payload = {
+        legal_name: r.legal_name || null,
+        siret: r.siret || null,
+        vat_number: r.vat_number || null,
+      };
+
+      const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Erreur sauvegarde restaurant');
+
+      setRestaurant((prev) => ({ ...prev, ...payload }));
+      setSireneResults([]);
+      setSireneError(null);
+    } catch (e) {
+      setError(e.message || 'Erreur sauvegarde');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -247,6 +320,76 @@ export default function RestaurantDetail({ params }) {
                     <p>{restaurant.adresse}</p>
                     <p>{restaurant.code_postal} {restaurant.ville}</p>
                     <p><span className="font-medium">Horaires :</span> {formatHoraires(restaurant.horaires)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 border-t pt-6">
+                <h3 className="font-medium text-gray-900 mb-2">Informations légales (facturation)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-medium">Raison sociale :</span> {restaurant.legal_name || '—'}</p>
+                    <p><span className="font-medium">SIRET :</span> {restaurant.siret || '—'}</p>
+                    <p><span className="font-medium">TVA :</span> {restaurant.vat_number || '—'}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-900 mb-2">Rechercher via INSEE SIRENE</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      <input
+                        className="px-3 py-2 border rounded-lg text-sm"
+                        placeholder="Nom (par défaut: nom du restaurant)"
+                        value={sireneQuery.name}
+                        onChange={(e) => setSireneQuery((p) => ({ ...p, name: e.target.value }))}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          className="px-3 py-2 border rounded-lg text-sm"
+                          placeholder="Code postal"
+                          value={sireneQuery.postalCode}
+                          onChange={(e) => setSireneQuery((p) => ({ ...p, postalCode: e.target.value }))}
+                        />
+                        <input
+                          className="px-3 py-2 border rounded-lg text-sm"
+                          placeholder="Ville"
+                          value={sireneQuery.city}
+                          onChange={(e) => setSireneQuery((p) => ({ ...p, city: e.target.value }))}
+                        />
+                      </div>
+                      <button
+                        onClick={runSireneSearch}
+                        disabled={sireneLoading}
+                        className="px-3 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-900 disabled:opacity-60"
+                      >
+                        {sireneLoading ? 'Recherche…' : 'Rechercher'}
+                      </button>
+                      {sireneError && (
+                        <p className="text-sm text-red-600">{sireneError}</p>
+                      )}
+                      {sireneResults.length > 0 && (
+                        <div className="mt-2 space-y-2 max-h-56 overflow-auto">
+                          {sireneResults.map((r) => (
+                            <button
+                              key={r.siret}
+                              onClick={() => applySireneResult(r)}
+                              className="w-full text-left border rounded-lg p-3 hover:bg-white bg-gray-100"
+                            >
+                              <div className="text-sm font-semibold text-gray-900">
+                                {r.legal_name || '—'}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                SIRET {r.siret || '—'} · {r.postal_code || ''} {r.city || ''} {r.address || ''}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                TVA {r.vat_number || '—'}
+                              </div>
+                            </button>
+                          ))}
+                          <p className="text-xs text-gray-500">
+                            Clique un résultat pour remplir automatiquement les infos légales.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

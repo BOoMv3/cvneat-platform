@@ -102,7 +102,10 @@ export async function PUT(request, { params }) {
       description,
       horaires,
       is_active,
-      commission_rate
+      commission_rate,
+      legal_name,
+      siret,
+      vat_number
     } = await request.json();
 
     const updateData = {};
@@ -114,6 +117,9 @@ export async function PUT(request, { params }) {
     if (horaires !== undefined) updateData.horaires = horaires;
     if (is_active !== undefined) updateData.is_active = is_active;
     if (commission_rate !== undefined) updateData.commission_rate = commission_rate;
+    if (legal_name !== undefined) updateData.legal_name = legal_name;
+    if (siret !== undefined) updateData.siret = siret;
+    if (vat_number !== undefined) updateData.vat_number = vat_number;
 
     const { data: updatedRestaurant, error } = await supabase
       .from('restaurants')
