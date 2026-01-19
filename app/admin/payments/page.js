@@ -287,6 +287,52 @@ export default function AdminPayments() {
     document.body.removeChild(link);
   };
 
+  const openAccountingDocument = async (restaurant, kind) => {
+    try {
+      const dateRange = getDateRange();
+      if (!dateRange) {
+        alert('Choisis une période (semaine/mois/personnalisée) pour générer un relevé / une facture.');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        alert('Session expirée, reconnecte-toi.');
+        router.push('/login');
+        return;
+      }
+
+      const params = new URLSearchParams({
+        restaurantId: restaurant.id,
+        start: dateRange.startDate.toISOString(),
+        end: dateRange.endDate.toISOString(),
+        kind,
+      });
+
+      const res = await fetch(`/api/admin/invoices/restaurant?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Erreur génération (${res.status})`);
+      }
+
+      const html = await res.text();
+      const w = window.open('', '_blank');
+      if (!w) {
+        alert('Pop-up bloquée: autorise les popups pour ouvrir le document.');
+        return;
+      }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    } catch (e) {
+      console.error(e);
+      alert(e.message || 'Erreur génération document');
+    }
+  };
+
   if (authLoading || (loading && !restaurants.length)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -499,26 +545,42 @@ export default function AdminPayments() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {restaurant.restaurantPayout > 0 && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedRestaurant(restaurant);
-                            setPaymentFormData({
-                              amount: restaurant.restaurantPayout.toFixed(2),
-                              transfer_date: new Date().toISOString().split('T')[0],
-                              reference_number: '',
-                              period_start: '',
-                              period_end: '',
-                              notes: `Paiement ${restaurant.nom} - ${dateFilter === 'all' ? 'Toutes périodes' : dateFilter === 'month' ? 'Ce mois' : dateFilter === 'week' ? '7 derniers jours' : 'Période personnalisée'}`
-                            });
-                            setShowPaymentModal(true);
-                          }}
-                          className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                          onClick={() => openAccountingDocument(restaurant, 'statement')}
+                          className="px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-black transition-colors"
+                          title="Relevé de ventes / commissions (imprimable)"
                         >
-                          <FaCheck />
-                          <span>Valider paiement</span>
+                          Relevé
                         </button>
-                      )}
+                        <button
+                          onClick={() => openAccountingDocument(restaurant, 'commission')}
+                          className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                          title="Facture de commission (brouillon) (imprimable)"
+                        >
+                          Facture
+                        </button>
+                        {restaurant.restaurantPayout > 0 && (
+                          <button
+                            onClick={() => {
+                              setSelectedRestaurant(restaurant);
+                              setPaymentFormData({
+                                amount: restaurant.restaurantPayout.toFixed(2),
+                                transfer_date: new Date().toISOString().split('T')[0],
+                                reference_number: '',
+                                period_start: '',
+                                period_end: '',
+                                notes: `Paiement ${restaurant.nom} - ${dateFilter === 'all' ? 'Toutes périodes' : dateFilter === 'month' ? 'Ce mois' : dateFilter === 'week' ? '7 derniers jours' : 'Période personnalisée'}`
+                              });
+                              setShowPaymentModal(true);
+                            }}
+                            className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            <FaCheck />
+                            <span>Payer</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
