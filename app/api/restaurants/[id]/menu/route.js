@@ -1,6 +1,9 @@
 ﻿import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 
+// IMPORTANT: menus/prix doivent être toujours à jour (éviter tout caching)
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   try {
     const { id } = params;
@@ -306,7 +309,10 @@ export async function GET(request, { params }) {
     // Combiner les menus et les formules
     const allItems = [...transformedMenu, ...validFormulas];
 
-    return NextResponse.json(allItems);
+    const res = NextResponse.json(allItems);
+    // Empêcher caches (Vercel/CDN/navigateurs)
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    return res;
   } catch (error) {
     console.error('Erreur API menu:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
