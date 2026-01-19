@@ -118,6 +118,16 @@ export async function POST(request) {
     // Utiliser les frais de livraison calculés par l'API au lieu de ceux fournis
     const calculatedDeliveryFee = parseFloat(deliveryValidation.frais_livraison || deliveryFee || 0);
 
+    // Commission livraison CVN'EAT (Option B):
+    // Si frais_livraison <= 2.50€ → commission = 0€
+    // Si frais_livraison > 2.50€ → commission = frais_livraison * 10%
+    const DELIVERY_COMMISSION_RATE = 0.10;
+    const DELIVERY_BASE_FEE = 2.50;
+    const deliveryCommissionCvneat =
+      calculatedDeliveryFee > DELIVERY_BASE_FEE
+        ? Math.round(calculatedDeliveryFee * DELIVERY_COMMISSION_RATE * 100) / 100
+        : 0;
+
     // Construire l'adresse complète
     let adresseComplete = `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`;
     if (deliveryInfo.instructions && deliveryInfo.instructions.trim()) {
@@ -142,7 +152,8 @@ export async function POST(request) {
       customer_email: customerInfo.email || null,
       commission_rate: restaurantCommissionRate * 100,
       commission_amount: commissionGross,
-      restaurant_payout: restaurantPayout
+      restaurant_payout: restaurantPayout,
+      delivery_commission_cvneat: deliveryCommissionCvneat
     };
 
     console.log('📦 Création commande admin:', {
