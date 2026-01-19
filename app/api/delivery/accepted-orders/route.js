@@ -43,7 +43,8 @@ export async function GET(request) {
 
     // Récupérer toutes les commandes acceptées par ce livreur
     // NOUVEAU WORKFLOW: Inclure 'en_attente' car le livreur peut accepter avant le restaurant
-    const deliveryOr = `livreur_id.eq.${user.id},delivery_id.eq.${user.id}`;
+    // NOTE: La base utilise la colonne livreur_id (delivery_id n'existe pas en production).
+    const deliveryOr = `livreur_id.eq.${user.id}`;
 
     const { data: orders, error } = await supabaseAdmin
       .from('commandes')
@@ -62,6 +63,7 @@ export async function GET(request) {
       const { data: simpleOrders, error: simpleError } = await supabaseAdmin
         .from('commandes')
         .select('*')
+        .or(deliveryOr)
         .or(deliveryOr)
         .in('statut', ['en_attente', 'en_preparation', 'en_livraison', 'pret_a_livrer'])
         .order('created_at', { ascending: true });

@@ -55,7 +55,8 @@ export async function GET(request) {
 
     // Construire la requête avec supabaseAdmin pour bypasser RLS
     // Simplifier la requête pour éviter les problèmes de jointure
-    const deliveryOr = `livreur_id.eq.${deliveryId},delivery_id.eq.${deliveryId}`;
+    // NOTE: La base utilise la colonne livreur_id (delivery_id n'existe pas en production).
+    const deliveryOr = `livreur_id.eq.${deliveryId}`;
 
     let query = supabaseAdmin
       .from('commandes')
