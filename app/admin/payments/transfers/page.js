@@ -12,7 +12,8 @@ import {
   FaCalendarAlt,
   FaStore,
   FaEuroSign,
-  FaSearch
+  FaSearch,
+  FaDownload
 } from 'react-icons/fa';
 
 export default function TransfersTracking() {
@@ -296,40 +297,42 @@ export default function TransfersTracking() {
 
     try {
       setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('restaurant_transfers')
-        .insert([{
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      const res = await fetch('/api/admin/restaurant-transfers/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
           restaurant_id: selectedRestaurantForValidation.id,
           restaurant_name: selectedRestaurantForValidation.nom,
-          amount: amount,
+          amount,
           transfer_date: new Date().toISOString().split('T')[0],
           reference_number: null,
           period_start: null,
           period_end: null,
           notes: `Virement validé rapidement - ${selectedRestaurantForValidation.orderCount} commande(s)`,
-          created_by: user.id,
-          status: 'completed'
-        }])
-        .select()
-        .single();
+        }),
+      });
 
-      if (error) throw error;
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Erreur création virement');
 
-      // Marquer toutes les commandes non payées du restaurant comme payées
-      const { error: markPaidError } = await supabase
-        .from('commandes')
-        .update({
-          restaurant_paid_at: new Date().toISOString()
-        })
-        .eq('restaurant_id', selectedRestaurantForValidation.id)
-        .eq('statut', 'livree')
-        .is('restaurant_paid_at', null);
-
-      if (markPaidError) {
-        console.error('Erreur marquage commandes comme payées:', markPaidError);
-        // Ne pas faire échouer la validation si le marquage échoue
-        alert('⚠️ Virement enregistré mais erreur lors du marquage des commandes. Veuillez vérifier manuellement.');
+      // Ouvrir la facture/relevé en nouvelle fenêtre (PDF via impression)
+      if (payload.invoice_html) {
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.open();
+          w.document.write(payload.invoice_html);
+          w.document.close();
+        }
       }
 
       alert('✅ Virement validé et enregistré avec succès!');
@@ -357,10 +360,20 @@ export default function TransfersTracking() {
 
     try {
       setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('restaurant_transfers')
-        .insert([{
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      const res = await fetch('/api/admin/restaurant-transfers/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
           restaurant_id: formData.restaurant_id,
           restaurant_name: formData.restaurant_name,
           amount: parseFloat(formData.amount),
@@ -369,28 +382,20 @@ export default function TransfersTracking() {
           period_start: formData.period_start || null,
           period_end: formData.period_end || null,
           notes: formData.notes || null,
-          created_by: user.id,
-          status: 'completed'
-        }])
-        .select()
-        .single();
+        }),
+      });
 
-      if (error) throw error;
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Erreur création virement');
 
-      // Marquer toutes les commandes non payées du restaurant comme payées
-      const { error: markPaidError } = await supabase
-        .from('commandes')
-        .update({
-          restaurant_paid_at: new Date().toISOString()
-        })
-        .eq('restaurant_id', formData.restaurant_id)
-        .eq('statut', 'livree')
-        .is('restaurant_paid_at', null);
-
-      if (markPaidError) {
-        console.error('Erreur marquage commandes comme payées:', markPaidError);
-        // Ne pas faire échouer la validation si le marquage échoue
-        alert('⚠️ Virement enregistré mais erreur lors du marquage des commandes. Veuillez vérifier manuellement.');
+      // Ouvrir la facture/relevé en nouvelle fenêtre (PDF via impression)
+      if (payload.invoice_html) {
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.open();
+          w.document.write(payload.invoice_html);
+          w.document.close();
+        }
       }
 
       // Réinitialiser le formulaire
@@ -643,6 +648,9 @@ export default function TransfersTracking() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Notes
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Docs
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -680,6 +688,38 @@ export default function TransfersTracking() {
                       <div className="text-sm text-gray-500 max-w-xs truncate">
                         {transfer.notes || '-'}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (!session?.access_token) {
+                              router.push('/login');
+                              return;
+                            }
+                            const res = await fetch(`/api/admin/restaurant-transfers/${transfer.id}/invoice`, {
+                              headers: { Authorization: `Bearer ${session.access_token}` },
+                            });
+                            // invoice route peut rediriger → on récupère le HTML final
+                            const html = await res.text();
+                            const w = window.open('', '_blank');
+                            if (w) {
+                              w.document.open();
+                              w.document.write(html);
+                              w.document.close();
+                            }
+                          } catch (e) {
+                            console.error(e);
+                            alert(e.message || 'Erreur ouverture document');
+                          }
+                        }}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-black transition-colors"
+                        title="Ouvrir la facture/relevé associé(e) à ce virement"
+                      >
+                        <FaDownload />
+                        <span>{transfer.invoice_number || 'Facture'}</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
