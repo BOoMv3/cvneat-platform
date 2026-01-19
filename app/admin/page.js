@@ -33,6 +33,7 @@ export default function AdminPage() {
     validatedOrders: 0,
     totalRevenue: 0, // CA total (articles + livraison)
     cvneatRevenue: 0, // CA CVN'EAT (20%)
+    cvneatDeliveryRevenue: 0, // Commission CVN'EAT sur la livraison
     livreurRevenue: 0, // CA Livreur (frais de livraison)
     restaurantRevenue: 0, // Part restaurant (articles - commission)
     totalRestaurants: 0,
@@ -146,6 +147,7 @@ export default function AdminPage() {
       
       let totalRevenue = 0; // CA total
       let cvneatRevenue = 0; // CA CVN'EAT (20%)
+      let cvneatDeliveryRevenue = 0; // Commission CVN'EAT sur livraison
       let livreurRevenue = 0; // CA Livreur
       let restaurantRevenue = 0; // CA Restaurant (total - commission)
       
@@ -182,11 +184,14 @@ export default function AdminPage() {
         // CA total = articles + frais de livraison
         totalRevenue += orderAmount + deliveryFee;
         
-        // CA CVN'EAT = commission des articles + frais de plateforme (sauf pour "La Bonne Pâte")
-        cvneatRevenue += cvneatTotalRevenue;
-        
-        // CA Livreur = frais de livraison - commission CVN'EAT (gain réel du livreur)
+        // Commission CVN'EAT sur la livraison (10% de la partie > 2.50€)
         const deliveryCommission = parseFloat(order.delivery_commission_cvneat || 0);
+        cvneatDeliveryRevenue += deliveryCommission;
+
+        // CA CVN'EAT = commission des articles + frais de plateforme + commission livraison
+        cvneatRevenue += cvneatTotalRevenue + deliveryCommission;
+        
+        // Gains Livreur (net) = frais de livraison - commission CVN'EAT
         const livreurEarning = deliveryFee - deliveryCommission;
         livreurRevenue += livreurEarning;
 
@@ -254,6 +259,7 @@ export default function AdminPage() {
         validatedOrders,
         totalRevenue,
         cvneatRevenue,
+        cvneatDeliveryRevenue,
         livreurRevenue,
         restaurantRevenue,
         totalRestaurants,
@@ -637,7 +643,10 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-gray-500">20% des commandes livrées (articles uniquement)</p>
+            <p className="text-xs text-gray-500">
+              Commission articles + frais plateforme + commission livraison
+              {stats.cvneatDeliveryRevenue ? ` (livraison: ${formatPrice(stats.cvneatDeliveryRevenue)})` : ''}
+            </p>
           </div>
 
 
@@ -653,7 +662,7 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-gray-500">Total des frais de livraison</p>
+            <p className="text-xs text-gray-500">Gains livreur (net) = frais livraison - commission CVN'EAT</p>
           </div>
           <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
