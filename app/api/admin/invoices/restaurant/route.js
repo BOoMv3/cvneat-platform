@@ -235,8 +235,8 @@ export async function GET(request) {
     lines: [
       `CVN'EAT (SAS)`,
       `1 bis Rue Armand Sabatier, 34190 Ganges, France`,
+      `SIRET 989 966 700 00019`,
       `RCS Montpellier 989 966 700`,
-      // SIRET non trouvé dans le code — à ajouter si besoin
       `Email: contact@cvneat.fr`,
     ],
   };

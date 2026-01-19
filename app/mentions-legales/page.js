@@ -11,6 +11,7 @@ export default function MentionsLegales() {
             <p><strong>Forme juridique :</strong> Société par actions simplifiée</p>
             <p><strong>Capital social :</strong> 50 euros</p>
             <p><strong>Siège social :</strong> 1 bis Rue Armand Sabatier, 34190 Ganges</p>
+            <p><strong>SIRET :</strong> 989 966 700 00019</p>
             <p><strong>RCS :</strong> 989 966 700 R.C.S. Montpellier</p>
             <p><strong>Date d'immatriculation :</strong> 04 août 2025</p>
             <p><strong>Directeur de publication :</strong> Muller Tony, Président</p>
