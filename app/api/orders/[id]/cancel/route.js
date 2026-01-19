@@ -63,20 +63,15 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // VÉRIFICATION CRITIQUE: Ne pas rembourser si la commande est déjà acceptée par un livreur ou livrée
-    if (order.livreur_id) {
-      console.log('⚠️ Annulation BLOQUÉE: Commande déjà acceptée par un livreur (ID:', order.livreur_id, ')');
-      return NextResponse.json({ 
-        error: 'Cette commande a déjà été acceptée par un livreur et ne peut plus être annulée automatiquement. Contactez le support pour toute demande de remboursement.',
-        delivery_id: order.livreur_id,
-        current_statut: order.statut
-      }, { status: 400 });
-    }
+    // IMPORTANT: Autoriser l'annulation tant que la commande n'est pas en livraison / livrée.
+    // Même si un livreur a accepté très vite, le client doit pouvoir annuler (on libère le livreur et on rembourse).
+    const previousLivreurId = order.livreur_id || null;
     
-    if (order.statut === 'livree' || order.statut === 'delivered') {
+    // Bloquer si la commande est en cours de livraison / livrée, ou déjà prise (pickup)
+    if (order.picked_up_at || order.statut === 'en_livraison' || order.statut === 'livree' || order.statut === 'delivered') {
       console.log('⚠️ Annulation BLOQUÉE: Commande déjà livrée (statut:', order.statut, ')');
       return NextResponse.json({ 
-        error: 'Cette commande a déjà été livrée et ne peut plus être annulée. Contactez le support pour toute demande de remboursement.',
+        error: 'Cette commande est déjà en cours de livraison ou livrée et ne peut plus être annulée.',
         current_statut: order.statut
       }, { status: 400 });
     }
@@ -216,6 +211,8 @@ export async function POST(request, { params }) {
             stripe_refund_id: refund.id,
             refund_amount: orderTotal,
             refunded_at: new Date().toISOString(),
+            // Libérer le livreur si déjà assigné
+            livreur_id: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -252,6 +249,23 @@ export async function POST(request, { params }) {
           console.warn('⚠️ Erreur création notification:', notificationError);
         }
 
+        // Notifier le livreur si la commande avait été acceptée
+        if (previousLivreurId) {
+          try {
+            await supabaseAdmin.from('notifications').insert({
+              user_id: previousLivreurId,
+              type: 'order_cancelled',
+              title: 'Commande annulée',
+              message: `La commande #${id.slice(0, 8)} a été annulée par le client.`,
+              data: { order_id: id, cancelled_by: 'client' },
+              read: false,
+              created_at: new Date().toISOString(),
+            });
+          } catch (e) {
+            // Non bloquant: la table notifications peut ne pas contenir les livreurs
+          }
+        }
+
       } catch (stripeError) {
         console.error('❌ Erreur remboursement Stripe:', stripeError);
         
@@ -261,6 +275,7 @@ export async function POST(request, { params }) {
           .from('commandes')
           .update({
             statut: 'annulee',
+            livreur_id: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -286,6 +301,8 @@ export async function POST(request, { params }) {
       .from('commandes')
       .update({
         statut: 'annulee',
+        livreur_id: null,
+        payment_status: order.payment_status === 'pending' ? 'cancelled' : order.payment_status,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
