@@ -30,6 +30,79 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
   const [error, setError] = useState(null);
   const [isElementReady, setIsElementReady] = useState(false);
 
+  // Gérer le retour après une authentification 3DS / redirection Stripe (return_url)
+  // Sans ça, le client peut voir "ça charge puis rien" alors que Stripe a bien débité.
+  useEffect(() => {
+    if (!stripe) return;
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const returnedClientSecret = params.get('payment_intent_client_secret');
+    const redirectStatus = params.get('redirect_status');
+    const returnedPaymentIntentId = params.get('payment_intent');
+
+    // Ne traiter que si on revient bien d'un redirect Stripe
+    if (!returnedClientSecret && !returnedPaymentIntentId) return;
+
+    const run = async () => {
+      try {
+        const secretToUse = returnedClientSecret || clientSecret;
+        if (!secretToUse) return;
+
+        const { paymentIntent } = await stripe.retrievePaymentIntent(secretToUse);
+        if (!paymentIntent) return;
+
+        console.log('🔄 Retour Stripe détecté:', {
+          redirectStatus,
+          paymentIntentId: paymentIntent.id,
+          status: paymentIntent.status,
+        });
+
+        if (paymentIntent.status === 'succeeded') {
+          // Confirmer côté serveur (non bloquant)
+          try {
+            await fetch('/api/payment/confirm', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+            });
+          } catch {
+            // ignore
+          }
+
+          // Nettoyer l'URL pour éviter de re-déclencher au refresh
+          try {
+            const cleanUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, '', cleanUrl);
+          } catch {
+            // ignore
+          }
+
+          onSuccess({ paymentIntentId: paymentIntent.id, status: 'succeeded' });
+          return;
+        }
+
+        if (paymentIntent.status === 'processing') {
+          // Paiement en cours (certains moyens de paiement / banques)
+          setError(null);
+          return;
+        }
+
+        if (paymentIntent.status === 'requires_payment_method') {
+          const msg = 'Paiement non validé. Veuillez essayer une autre carte/méthode de paiement.';
+          setError(msg);
+          onError(msg);
+          return;
+        }
+      } catch (e) {
+        console.warn('⚠️ Erreur récupération PaymentIntent après redirect:', e?.message || e);
+      }
+    };
+
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripe]);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -191,6 +264,12 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
 
         // Succès - appeler le callback UNIQUEMENT si le statut est succeeded
         onSuccess({ paymentIntentId, status: 'succeeded' });
+      } else if (paymentIntent && paymentIntent.status === 'processing') {
+        // Ne pas traiter comme une erreur (sinon le client voit "ça charge puis stop")
+        console.warn('⏳ Paiement en cours de traitement:', paymentIntent.status);
+        setError(null);
+        // Laisser le retour Stripe / webhook gérer la finalisation
+        // Option UX: on peut afficher un message ici
       } else if (paymentIntent && paymentIntent.status === 'requires_payment_method') {
         // Le paiement nécessite une nouvelle méthode de paiement (carte refusée)
         console.error('❌ Carte refusée, statut:', paymentIntent.status);
