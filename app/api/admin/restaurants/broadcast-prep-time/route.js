@@ -9,7 +9,10 @@ function toMinutes(hhmm) {
   const hh = parseInt(h, 10);
   const mm = parseInt(m, 10);
   if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
-  return hh * 60 + mm;
+  let tot = hh * 60 + mm;
+  // Alignement avec la logique du front: 00:00 peut représenter 24:00 (fin de service)
+  if (tot === 0 && hh === 0 && mm === 0) tot = 1440;
+  return tot;
 }
 
 function isOpenNowFromHoraires(horairesRaw, now = new Date()) {
@@ -38,6 +41,8 @@ function isOpenNowFromHoraires(horairesRaw, now = new Date()) {
       const start = toMinutes(plage?.ouverture);
       const end = toMinutes(plage?.fermeture);
       if (start === null || end === null) return false;
+      const isMidnightClose = plage?.fermeture === '00:00' || plage?.fermeture === '0:00';
+      if (isMidnightClose) return current >= start;
       return current >= start && current <= end;
     });
   }
@@ -46,6 +51,8 @@ function isOpenNowFromHoraires(horairesRaw, now = new Date()) {
   const start = toMinutes(day.ouverture);
   const end = toMinutes(day.fermeture);
   if (start === null || end === null) return false;
+  const isMidnightClose = day?.fermeture === '00:00' || day?.fermeture === '0:00';
+  if (isMidnightClose) return current >= start;
   return current >= start && current <= end;
 }
 
@@ -93,6 +100,7 @@ export async function POST(request) {
 
     let inserted = 0;
     let broadcasted = 0;
+    let insertError = null;
 
     for (const r of openRestaurants) {
       // Insérer une notif (non lue) côté restaurant
@@ -106,6 +114,7 @@ export async function POST(request) {
             lu: false,
           });
         if (!insErr) inserted += 1;
+        if (insErr && !insertError) insertError = { code: insErr.code, message: insErr.message };
       } catch {
         // ignore
       }
@@ -129,6 +138,7 @@ export async function POST(request) {
       targeted: openRestaurants.length,
       inserted,
       broadcasted,
+      insertError,
     });
   } catch (e) {
     console.error('❌ Erreur broadcast-prep-time:', e);

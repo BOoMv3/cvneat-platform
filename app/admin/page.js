@@ -573,6 +573,12 @@ export default function AdminPage() {
               ) : (
                 <div className="text-orange-800 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
                   ✅ Demande envoyée — Restaurants ouverts ciblés: <strong>{broadcastPrepResult.targeted ?? 0}</strong> • Notifs créées: <strong>{broadcastPrepResult.inserted ?? 0}</strong> • Popups envoyées en direct: <strong>{broadcastPrepResult.broadcasted ?? 0}</strong>
+                  {broadcastPrepResult.insertError?.code ? (
+                    <div className="mt-1 text-[11px] sm:text-xs text-orange-700">
+                      ⚠️ Insert notifications impossible: {broadcastPrepResult.insertError.code} — {broadcastPrepResult.insertError.message}
+                      <span className="ml-1">(il faut appliquer la migration `20260121000003_create_notifications_table.sql`)</span>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
