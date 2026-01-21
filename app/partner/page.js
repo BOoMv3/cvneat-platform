@@ -326,6 +326,43 @@ export default function PartnerDashboard() {
     };
   }, [restaurant?.id]);
 
+  // Realtime (Supabase): plus fiable que SSE en serverless pour déclencher une popup "en direct"
+  useEffect(() => {
+    if (!restaurant?.id) return;
+
+    let channel = null;
+    try {
+      channel = supabase
+        .channel(`partner_prep_prompt_${restaurant.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `restaurant_id=eq.${restaurant.id}`,
+          },
+          (payload) => {
+            const row = payload?.new || {};
+            if (row?.type === 'prep_time_prompt') {
+              setShowPrepTimeModal(true);
+            }
+          }
+        )
+        .subscribe();
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      try {
+        if (channel) supabase.removeChannel(channel);
+      } catch {
+        // ignore
+      }
+    };
+  }, [restaurant?.id]);
+
     // Rafraîchir automatiquement les commandes toutes les 60 secondes (réduit pour éviter rate limiting)
     // Note: Le rafraîchissement réel se fait via Supabase Realtime dans RealTimeNotifications
     useEffect(() => {
