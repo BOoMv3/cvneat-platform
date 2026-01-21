@@ -51,6 +51,8 @@ export default function AdminPage() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [broadcastPrepLoading, setBroadcastPrepLoading] = useState(false);
+  const [broadcastPrepResult, setBroadcastPrepResult] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -281,6 +283,37 @@ export default function AdminPage() {
     }
   };
 
+  const broadcastPrepTimeToOpenRestaurants = async () => {
+    try {
+      setBroadcastPrepLoading(true);
+      setBroadcastPrepResult(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setBroadcastPrepResult({ error: 'Session expirée. Reconnecte-toi.' });
+        return;
+      }
+
+      const res = await fetch('/api/admin/restaurants/broadcast-prep-time', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setBroadcastPrepResult({ error: data?.error || 'Erreur lors du broadcast' });
+        return;
+      }
+
+      setBroadcastPrepResult(data);
+    } catch (e) {
+      setBroadcastPrepResult({ error: e?.message || 'Erreur lors du broadcast' });
+    } finally {
+      setBroadcastPrepLoading(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -468,6 +501,19 @@ export default function AdminPage() {
           <div className="overflow-x-auto scrollbar-hide -mx-2 px-2">
             <div className="flex gap-2 sm:gap-3 min-w-max pb-2">
               <button
+                onClick={broadcastPrepTimeToOpenRestaurants}
+                className="flex items-center justify-center px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0 disabled:opacity-50"
+                title="Demander en direct le temps de préparation aux restaurants ouverts"
+                disabled={broadcastPrepLoading}
+              >
+                {broadcastPrepLoading ? (
+                  <FaSpinner className="animate-spin h-4 w-4 sm:mr-2" />
+                ) : (
+                  <FaClock className="h-4 w-4 sm:mr-2" />
+                )}
+                <span className="hidden sm:inline">Demander temps</span>
+              </button>
+              <button
                 onClick={() => router.push('/admin/reset')}
                 className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
                 title="Réinitialiser"
@@ -517,6 +563,20 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
+
+          {broadcastPrepResult && (
+            <div className="mt-2 text-xs sm:text-sm">
+              {broadcastPrepResult.error ? (
+                <div className="text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  ❌ {broadcastPrepResult.error}
+                </div>
+              ) : (
+                <div className="text-orange-800 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                  ✅ Demande envoyée — Restaurants ouverts ciblés: <strong>{broadcastPrepResult.targeted ?? 0}</strong> • Notifs créées: <strong>{broadcastPrepResult.inserted ?? 0}</strong> • Popups envoyées en direct: <strong>{broadcastPrepResult.broadcasted ?? 0}</strong>
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="text-xs sm:text-sm text-gray-600 mt-2">
             Connecté en tant qu'admin
