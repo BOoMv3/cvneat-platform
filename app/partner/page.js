@@ -363,6 +363,43 @@ export default function PartnerDashboard() {
     };
   }, [restaurant?.id]);
 
+  // Fallback ultra-robuste: poll les notifications non lues et ouvre la popup si on reçoit prep_time_prompt
+  // (utile si Realtime est désactivé/coupé côté Supabase)
+  useEffect(() => {
+    if (!restaurant?.id) return;
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const res = await fetch(`/api/partner/notifications?restaurantId=${restaurant.id}`);
+        if (!res.ok) return;
+        const notifs = await res.json().catch(() => []);
+        if (!Array.isArray(notifs) || notifs.length === 0) return;
+
+        const hasPrepPrompt = notifs.some((n) => n?.type === 'prep_time_prompt');
+        if (hasPrepPrompt && !cancelled) {
+          setShowPrepTimeModal(true);
+          // Marquer comme lues pour éviter de re-pop à l'infini
+          fetch('/api/partner/notifications/mark-all-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ restaurantId: restaurant.id }),
+          }).catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    // Check immédiat + toutes les 30s
+    check();
+    const interval = setInterval(check, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [restaurant?.id]);
+
     // Rafraîchir automatiquement les commandes toutes les 60 secondes (réduit pour éviter rate limiting)
     // Note: Le rafraîchissement réel se fait via Supabase Realtime dans RealTimeNotifications
     useEffect(() => {
