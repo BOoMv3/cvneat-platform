@@ -28,19 +28,28 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
     return { error: 'Accès refusé - Rôle restaurant requis', status: 403 };
   }
 
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) {
+    return { error: 'Configuration serveur manquante (Supabase)', status: 500 };
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
   const { data: restaurant, error: restaurantError } = await supabaseAdmin
     .from('restaurants')
-    .select('id, user_id, nom, prep_time_minutes, prep_time_updated_at')
+    // IMPORTANT: ne pas sélectionner des colonnes qui peuvent ne pas exister (migration non appliquée)
+    .select('id, user_id, nom, ferme_manuellement, updated_at')
     .eq('id', restaurantId)
     .single();
 
   if (restaurantError || !restaurant) {
-    return { error: 'Restaurant non trouvé', status: 404 };
+    // PGRST116 = no rows found
+    if (restaurantError?.code === 'PGRST116') {
+      return { error: 'Restaurant non trouvé', status: 404 };
+    }
+    console.error('❌ Erreur récupération restaurant (admin):', restaurantError);
+    return { error: 'Erreur serveur lors de la récupération du restaurant', status: 500 };
   }
 
   if (restaurant.user_id !== user.id) {
@@ -115,11 +124,12 @@ export async function PUT(request, { params }) {
     });
 
     // Mettre à jour le restaurant
+    // IMPORTANT: ne pas demander de colonnes non existantes dans le select (sinon l'UPDATE échoue)
     const { data: updatedRestaurant, error: updateError } = await supabaseAdmin
       .from('restaurants')
       .update(updateData)
       .eq('id', id)
-      .select('id, nom, ferme_manuellement, prep_time_minutes, prep_time_updated_at, updated_at')
+      .select('id, nom, ferme_manuellement, updated_at')
       .single();
 
     if (updateError) {
@@ -128,6 +138,24 @@ export async function PUT(request, { params }) {
         error: 'Erreur lors de la mise à jour', 
         details: updateError.message 
       }, { status: 500 });
+    }
+
+    // Si on a tenté de mettre à jour le temps de préparation, essayer de le renvoyer (si les colonnes existent)
+    if (body.prep_time_minutes !== undefined) {
+      try {
+        const { data: extra, error: extraErr } = await supabaseAdmin
+          .from('restaurants')
+          .select('prep_time_minutes, prep_time_updated_at')
+          .eq('id', id)
+          .single();
+        if (!extraErr && extra) {
+          updatedRestaurant.prep_time_minutes = extra.prep_time_minutes;
+          updatedRestaurant.prep_time_updated_at = extra.prep_time_updated_at;
+        }
+      } catch (e) {
+        // Si la migration n'est pas appliquée, on ne bloque pas l'ouverture/fermeture manuelle
+        console.warn('⚠️ Colonnes prep_time_* indisponibles (migration non appliquée ?):', e?.message || e);
+      }
     }
 
     console.log('✅ Restaurant mis à jour:', {
