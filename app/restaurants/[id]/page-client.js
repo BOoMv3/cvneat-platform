@@ -1069,34 +1069,6 @@ export default function RestaurantDetail({ params }) {
 
             <PriceInfoBanner variant="compact" />
 
-            {/* Message de vacances pour La Bonne Pâte */}
-            {(() => {
-              const normalizedRestaurantName = (restaurant?.nom || '')
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .toLowerCase();
-              const isBonnePate = normalizedRestaurantName.includes('la bonne pate') || normalizedRestaurantName.includes('bonne pâte');
-              
-              if (isBonnePate && (isManuallyClosed || !isRestaurantOpen)) {
-                return (
-                  <div className="mt-6 p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl shadow-lg">
-                    <div className="flex items-start gap-4">
-                      <div className="text-4xl flex-shrink-0">🏖️</div>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
-                          En vacances !
-                        </h3>
-                        <p className="text-gray-700 dark:text-gray-300 text-base mb-2">
-                          Passer de joyeuses fêtes ! On se retrouve le samedi 27.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-
             <div className="space-y-8 sm:space-y-12 pt-12 sm:pt-14 md:pt-16">
               {(comboLoading || comboError || comboMenus.length > 0) && (
                 <section className="space-y-4">
