@@ -100,6 +100,10 @@ export default function PartnerDashboard() {
   });
 
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
+  const [prepTimeMinutes, setPrepTimeMinutes] = useState(25);
+  const [prepTimeUpdatedAt, setPrepTimeUpdatedAt] = useState(null);
+  const [showPrepTimeModal, setShowPrepTimeModal] = useState(false);
+  const [savingPrepTime, setSavingPrepTime] = useState(false);
   const router = useRouter();
 
   const [supplementForm, setSupplementForm] = useState({
@@ -225,6 +229,9 @@ export default function PartnerDashboard() {
       }
 
       setRestaurant(resto);
+      // Temps de préparation (si migration appliquée)
+      setPrepTimeMinutes(Number.isFinite(parseInt(resto.prep_time_minutes, 10)) ? parseInt(resto.prep_time_minutes, 10) : 25);
+      setPrepTimeUpdatedAt(resto.prep_time_updated_at || null);
       // Normaliser ferme_manuellement pour être sûr que c'est un booléen strict
       let normalizedFermeManuel;
       if (resto?.ferme_manuellement === true || resto?.ferme_manuellement === 'true' || resto?.ferme_manuellement === 1 || resto?.ferme_manuellement === '1') {
@@ -250,6 +257,20 @@ export default function PartnerDashboard() {
         await fetchOrders(resto.id);
         await fetchFormulas();
         await fetchCombos(resto.id);
+      }
+
+      // Prompt quotidien directement sur le dashboard (timezone France)
+      try {
+        const tz = 'Europe/Paris';
+        const today = new Date().toLocaleDateString('fr-FR', { timeZone: tz });
+        const last = resto.prep_time_updated_at
+          ? new Date(resto.prep_time_updated_at).toLocaleDateString('fr-FR', { timeZone: tz })
+          : null;
+        if (!resto.prep_time_minutes || !last || last !== today) {
+          setShowPrepTimeModal(true);
+        }
+      } catch {
+        // ignore
       }
       
       setLoading(false);
@@ -1382,6 +1403,49 @@ export default function PartnerDashboard() {
     }
   };
 
+  const savePrepTime = async ({ closeAfter = false } = {}) => {
+    if (!restaurant?.id) return;
+    setSavingPrepTime(true);
+    try {
+      const minutes = parseInt(prepTimeMinutes, 10);
+      if (!minutes || Number.isNaN(minutes) || minutes < 5 || minutes > 120) {
+        alert('Le temps de préparation doit être entre 5 et 120 minutes.');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+
+      const res = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prep_time_minutes: minutes })
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.error('❌ Erreur update prep_time:', payload);
+        alert(`Erreur: ${payload.error || payload.details || 'Impossible de mettre à jour le temps de préparation'}`);
+        return;
+      }
+
+      const updated = payload?.restaurant || {};
+      if (updated?.prep_time_minutes) setPrepTimeMinutes(updated.prep_time_minutes);
+      if (updated?.prep_time_updated_at) setPrepTimeUpdatedAt(updated.prep_time_updated_at);
+      if (!updated?.prep_time_updated_at) setPrepTimeUpdatedAt(new Date().toISOString());
+
+      if (closeAfter) setShowPrepTimeModal(false);
+    } finally {
+      setSavingPrepTime(false);
+    }
+  };
+
   const createDefaultComboForm = () => ({
     nom: '',
     description: '',
@@ -2064,6 +2128,50 @@ export default function PartnerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Popup quotidien: temps de préparation */}
+      {showPrepTimeModal && restaurant?.id && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Temps de préparation du jour</h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+              Indiquez un temps moyen de préparation. <strong>Vous pouvez le modifier ici à tout moment pendant le service</strong> si vous avez beaucoup de commandes.
+            </p>
+
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+              Temps de préparation (minutes)
+            </label>
+            <select
+              value={prepTimeMinutes}
+              onChange={(e) => setPrepTimeMinutes(parseInt(e.target.value, 10))}
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 mb-4"
+            >
+              {Array.from({ length: 24 }, (_, i) => (i + 1) * 5).map((m) => (
+                <option key={m} value={m}>{m} min</option>
+              ))}
+            </select>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPrepTimeModal(false)}
+                className="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold"
+                disabled={savingPrepTime}
+              >
+                Plus tard
+              </button>
+              <button
+                type="button"
+                onClick={() => savePrepTime({ closeAfter: true })}
+                className="flex-1 px-4 py-3 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 disabled:opacity-50"
+                disabled={savingPrepTime}
+              >
+                {savingPrepTime ? 'Enregistrement…' : 'Valider'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-6 lg:px-8">
@@ -2134,6 +2242,17 @@ export default function PartnerDashboard() {
                     <span className="sm:hidden">Fermer</span>
                   </>
                 )}
+              </button>
+
+              {/* Temps de préparation (modifiable pendant le service) */}
+              <button
+                onClick={() => setShowPrepTimeModal(true)}
+                className="bg-orange-500 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-orange-600 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
+                title="Modifier le temps de préparation (affiché aux clients)"
+              >
+                <FaClock className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">{prepTimeMinutes || 25} min</span>
+                <span className="sm:hidden">{prepTimeMinutes || 25}m</span>
               </button>
               <button
                 onClick={() => router.push('/partner/settings')}
