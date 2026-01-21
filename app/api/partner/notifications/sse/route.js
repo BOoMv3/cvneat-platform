@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import sseBroadcaster from '../../../../../lib/sse-broadcast';
 
 async function getUserFromRequest(request) {
@@ -11,8 +12,16 @@ async function getUserFromRequest(request) {
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) return null;
 
-    // Vérifier le rôle dans la table users
-    const { data: userData, error: userError } = await supabase
+    // IMPORTANT: les requêtes DB ci-dessous doivent bypass RLS (supabase server-side anon n'a pas le contexte du token)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceKey) return null;
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Vérifier le rôle dans la table users (service role)
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -20,7 +29,7 @@ async function getUserFromRequest(request) {
 
     if (userError || !userData) return null;
 
-    return { ...user, role: userData.role };
+    return { ...user, role: userData.role, supabaseAdmin };
   } catch (error) {
     console.error('Erreur authentification:', error);
     return null;
@@ -52,8 +61,17 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
     
-    // Vérifier le rôle
-    const { data: userData, error: userError } = await supabase
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json({ error: 'Configuration serveur manquante' }, { status: 500 });
+    }
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Vérifier le rôle (service role)
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -67,7 +85,7 @@ export async function GET(request) {
     }
 
     // Récupérer l'ID du restaurant associé à l'utilisateur partenaire
-    const { data: restaurantData, error: restaurantError } = await supabase
+    const { data: restaurantData, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
       .select('id')
       .eq('user_id', user.id)
