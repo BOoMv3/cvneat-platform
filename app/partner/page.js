@@ -279,6 +279,53 @@ export default function PartnerDashboard() {
     fetchData();
   }, [router]);
 
+  // SSE: permettre un déclenchement "en direct" d'une popup (ex: demander le temps de préparation)
+  useEffect(() => {
+    let eventSource = null;
+    let cancelled = false;
+
+    const connect = async () => {
+      try {
+        if (!restaurant?.id) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) return;
+
+        const url = `/api/partner/notifications/sse?restaurantId=${restaurant.id}&token=${encodeURIComponent(token)}`;
+        eventSource = new EventSource(url);
+
+        eventSource.onmessage = (event) => {
+          if (cancelled) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data?.type === 'prep_time_prompt') {
+              setShowPrepTimeModal(true);
+            }
+          } catch {
+            // ignore
+          }
+        };
+
+        eventSource.onerror = () => {
+          // Ne pas spam; on laisse le navigateur gérer la reconnexion SSE si possible
+        };
+      } catch {
+        // ignore
+      }
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      try {
+        if (eventSource) eventSource.close();
+      } catch {
+        // ignore
+      }
+    };
+  }, [restaurant?.id]);
+
     // Rafraîchir automatiquement les commandes toutes les 60 secondes (réduit pour éviter rate limiting)
     // Note: Le rafraîchissement réel se fait via Supabase Realtime dans RealTimeNotifications
     useEffect(() => {
