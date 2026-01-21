@@ -89,7 +89,7 @@ async function handlePaymentSucceeded(paymentIntent) {
     // Récupérer les informations complètes de la commande
     const { data: order, error: orderError } = await supabase
       .from('commandes')
-      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison')
+      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .single();
 
@@ -98,11 +98,24 @@ async function handlePaymentSucceeded(paymentIntent) {
       return;
     }
 
-    // Mettre à jour le statut de la commande
+    // Mettre à jour le statut de la commande + synchroniser le montant réellement payé (Stripe)
+    const paidAmount = typeof paymentIntent.amount === 'number' ? paymentIntent.amount / 100 : null;
+    const knownPlatformFee = 0.49;
+    const subtotalArticles = parseFloat(order.total || 0) || 0;
+    const discount = parseFloat(order.discount_amount || 0) || 0;
+    const subtotalAfterDiscount = Math.max(0, Math.round((subtotalArticles - discount) * 100) / 100);
+    let computedDeliveryFee = null;
+    if (paidAmount !== null) {
+      const feesTotal = Math.max(0, Math.round((paidAmount - subtotalAfterDiscount) * 100) / 100);
+      computedDeliveryFee = Math.max(0, Math.round((feesTotal - knownPlatformFee) * 100) / 100);
+    }
+
     const { error: updateError } = await supabase
       .from('commandes')
       .update({
         payment_status: 'paid',
+        ...(paidAmount !== null ? { total_paid: paidAmount } : {}),
+        ...(computedDeliveryFee !== null ? { frais_livraison: computedDeliveryFee } : {}),
         updated_at: new Date().toISOString()
       })
       .eq('id', order.id);

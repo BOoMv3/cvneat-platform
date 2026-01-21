@@ -29,6 +29,7 @@ export async function POST(request) {
           .from('commandes')
           .select(`
             id, restaurant_id, total, frais_livraison, security_code,
+            discount_amount,
             customer_email, customer_first_name, customer_last_name,
             adresse_livraison,
             restaurants (nom),
@@ -37,11 +38,31 @@ export async function POST(request) {
           .eq('id', orderIdToUpdate)
           .single();
 
+        // Synchroniser le montant réellement payé (Stripe) dans la commande
+        // total = sous-total articles ; discount_amount = réduction sur articles ; frais plateforme = 0.49€ (checkout)
+        let paidAmount = null;
+        let computedDeliveryFee = null;
+        const knownPlatformFee = 0.49;
+        try {
+          paidAmount = typeof paymentIntent.amount === 'number' ? paymentIntent.amount / 100 : null;
+          const subtotalArticles = parseFloat(orderData?.total || 0) || 0;
+          const discount = parseFloat(orderData?.discount_amount || 0) || 0;
+          const subtotalAfterDiscount = Math.max(0, Math.round((subtotalArticles - discount) * 100) / 100);
+          if (paidAmount !== null) {
+            const feesTotal = Math.max(0, Math.round((paidAmount - subtotalAfterDiscount) * 100) / 100);
+            computedDeliveryFee = Math.max(0, Math.round((feesTotal - knownPlatformFee) * 100) / 100);
+          }
+        } catch {
+          // ignore
+        }
+
         const { error } = await supabase
           .from('commandes')
           .update({ 
             payment_status: 'paid',
             stripe_payment_intent_id: paymentIntentId,
+            ...(paidAmount !== null ? { total_paid: paidAmount } : {}),
+            ...(computedDeliveryFee !== null ? { frais_livraison: computedDeliveryFee } : {}),
             updated_at: new Date().toISOString()
           })
           .eq('id', orderIdToUpdate);

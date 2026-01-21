@@ -1,7 +1,25 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+let cachedServiceClient = null;
+function getServiceClient() {
+  if (cachedServiceClient) return cachedServiceClient;
+
+  const supabaseUrl =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) return null;
+
+  cachedServiceClient = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return cachedServiceClient;
+}
 
 export async function POST(request) {
   try {
@@ -15,6 +33,84 @@ export async function POST(request) {
         { error: 'Montant invalide. Le montant doit être supérieur à 0.' },
         { status: 400 }
       );
+    }
+
+    // Sécurité/fiabilité: empêcher de facturer une livraison < 2.50€ (sauf promo "free_delivery")
+    // On ne fait PAS confiance au montant client; on vérifie la cohérence à partir de la commande.
+    // Si incohérence, on bloque plutôt que de facturer un mauvais montant.
+    const orderId = metadata?.order_id;
+    if (orderId) {
+      const sb = getServiceClient();
+      if (!sb) {
+        console.warn('⚠️ Service role Supabase manquant: impossible de valider le montant côté serveur');
+      } else {
+        try {
+          const { data: order, error: orderErr } = await sb
+            .from('commandes')
+            .select('id, discount_amount, promo_code_id')
+            .eq('id', orderId)
+            .single();
+
+          if (!orderErr && order) {
+            const { data: details, error: detErr } = await sb
+              .from('details_commande')
+              .select('quantite, prix_unitaire')
+              .eq('commande_id', orderId);
+
+            if (!detErr && Array.isArray(details)) {
+              const subtotal = details.reduce((sum, d) => {
+                const q = parseFloat(d.quantite || 0) || 0;
+                const pu = parseFloat(d.prix_unitaire || 0) || 0;
+                return sum + q * pu;
+              }, 0);
+
+              const discount = Math.min(
+                Math.max(0, parseFloat(order.discount_amount || 0) || 0),
+                subtotal
+              );
+              const subtotalAfterDiscount = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
+
+              // Déterminer si la livraison est offerte via le code promo (si présent)
+              let isFreeDelivery = false;
+              if (order.promo_code_id) {
+                const { data: promo } = await sb
+                  .from('promo_codes')
+                  .select('discount_type')
+                  .eq('id', order.promo_code_id)
+                  .maybeSingle();
+                isFreeDelivery = promo?.discount_type === 'free_delivery';
+              }
+
+              const PLATFORM_FEE = 0.49;
+              const derivedDeliveryFee = Math.round((amountNumber - subtotalAfterDiscount - PLATFORM_FEE) * 100) / 100;
+
+              if (!isFreeDelivery && derivedDeliveryFee < 2.5 - 0.01) {
+                console.error('❌ Montant incohérent: frais de livraison < 2.50€ détectés', {
+                  orderId,
+                  amountNumber,
+                  subtotal,
+                  subtotalAfterDiscount,
+                  discount,
+                  platformFee: PLATFORM_FEE,
+                  derivedDeliveryFee,
+                  promo_code_id: order.promo_code_id,
+                });
+                return NextResponse.json(
+                  {
+                    error:
+                      'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
+                    code: 'DELIVERY_FEE_TOO_LOW',
+                  },
+                  { status: 400 }
+                );
+              }
+            }
+          }
+        } catch (e) {
+          // Ne pas bloquer si la vérification échoue, mais logguer: Stripe reste possible.
+          console.warn('⚠️ Vérification montant (commande) échouée:', e?.message || e);
+        }
+      }
     }
 
     // Stripe exige un minimum de 0.50€ (50 centimes)
