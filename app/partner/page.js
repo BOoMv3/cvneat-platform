@@ -104,6 +104,8 @@ export default function PartnerDashboard() {
   const [prepTimeUpdatedAt, setPrepTimeUpdatedAt] = useState(null);
   const [showPrepTimeModal, setShowPrepTimeModal] = useState(false);
   const [savingPrepTime, setSavingPrepTime] = useState(false);
+  const [prepPromptAudioEnabled, setPrepPromptAudioEnabled] = useState(true);
+  const audioUnlockedRef = useRef(false);
   const router = useRouter();
 
   const [supplementForm, setSupplementForm] = useState({
@@ -326,6 +328,66 @@ export default function PartnerDashboard() {
     };
   }, [restaurant?.id]);
 
+  const playPrepPromptSound = async () => {
+    if (!prepPromptAudioEnabled) return;
+    try {
+      // AudioContext (beep) — évite de dépendre d'un fichier audio
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        await ctx.resume().catch(() => {});
+      }
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.36);
+      setTimeout(() => {
+        try { ctx.close(); } catch {}
+      }, 500);
+    } catch {
+      // iOS peut bloquer si pas d'interaction utilisateur
+    }
+  };
+
+  const triggerPrepTimePrompt = () => {
+    setShowPrepTimeModal(true);
+    // Son uniquement si l'onglet est visible
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      playPrepPromptSound();
+    }
+  };
+
+  // Tenter d'“unlock” l'audio après la première interaction utilisateur
+  useEffect(() => {
+    const unlock = async () => {
+      if (audioUnlockedRef.current) return;
+      audioUnlockedRef.current = true;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        await ctx.resume().catch(() => {});
+        await ctx.close().catch(() => {});
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('touchstart', unlock, { passive: true });
+    window.addEventListener('mousedown', unlock, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('mousedown', unlock);
+    };
+  }, []);
+
   // Realtime (Supabase): plus fiable que SSE en serverless pour déclencher une popup "en direct"
   useEffect(() => {
     if (!restaurant?.id) return;
@@ -345,7 +407,7 @@ export default function PartnerDashboard() {
           (payload) => {
             const row = payload?.new || {};
             if (row?.type === 'prep_time_prompt') {
-              setShowPrepTimeModal(true);
+              triggerPrepTimePrompt();
             }
           }
         )
@@ -378,7 +440,7 @@ export default function PartnerDashboard() {
 
         const hasPrepPrompt = notifs.some((n) => n?.type === 'prep_time_prompt');
         if (hasPrepPrompt && !cancelled) {
-          setShowPrepTimeModal(true);
+          triggerPrepTimePrompt();
           // Marquer comme lues pour éviter de re-pop à l'infini
           fetch('/api/partner/notifications/mark-all-read', {
             method: 'POST',
@@ -391,11 +453,21 @@ export default function PartnerDashboard() {
       }
     };
 
-    // Check immédiat + toutes les 30s
+    // Check immédiat + toutes les 10s + au focus / retour au premier plan
     check();
-    const interval = setInterval(check, 30000);
+    const interval = setInterval(check, 10000);
+
+    const onFocus = () => check();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
       clearInterval(interval);
     };
   }, [restaurant?.id]);
