@@ -27,6 +27,7 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
     rating,
     review_count,
     delivery_time,
+    prep_time_minutes,
     delivery_fee,
     minimum_order,
     is_sponsored
@@ -124,7 +125,7 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
             </div>
             <div className="flex items-center gap-1">
               <FaClock className="text-gray-500" />
-              <span>{delivery_time || '25'} min</span>
+              <span>{prep_time_minutes || delivery_time || '25'} min</span>
             </div>
           </div>
 

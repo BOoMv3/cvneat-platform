@@ -199,7 +199,9 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <FaClock className="text-gray-600 dark:text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-gray-800 dark:text-gray-200 text-sm sm:text-base font-medium">{restaurant.deliveryTime || restaurant.delivery_time || '25'} min</span>
+              <span className="text-gray-800 dark:text-gray-200 text-sm sm:text-base font-medium">
+                {restaurant.prep_time_minutes || restaurant.deliveryTime || restaurant.delivery_time || '25'} min
+              </span>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <FaMotorcycle className="text-gray-600 dark:text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />

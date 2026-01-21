@@ -17,6 +17,10 @@ export default function PartnerSettings() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [prepTimeMinutes, setPrepTimeMinutes] = useState(25);
+  const [prepTimeUpdatedAt, setPrepTimeUpdatedAt] = useState(null);
+  const [showPrepTimeModal, setShowPrepTimeModal] = useState(false);
+  const [savingPrepTime, setSavingPrepTime] = useState(false);
   
   const [formData, setFormData] = useState({
     nom: '',
@@ -74,6 +78,8 @@ export default function PartnerSettings() {
       }
 
       setRestaurant(resto);
+      setPrepTimeMinutes(Number.isFinite(parseInt(resto.prep_time_minutes, 10)) ? parseInt(resto.prep_time_minutes, 10) : 25);
+      setPrepTimeUpdatedAt(resto.prep_time_updated_at || null);
       setFormData({
         nom: resto.nom || '',
         description: resto.description || '',
@@ -84,6 +90,20 @@ export default function PartnerSettings() {
         ville: resto.ville || '',
         email: resto.email || ''
       });
+
+      // Prompt quotidien: si pas de valeur ou pas mise à jour aujourd'hui (timezone France)
+      try {
+        const tz = 'Europe/Paris';
+        const today = new Date().toLocaleDateString('fr-FR', { timeZone: tz });
+        const last = resto.prep_time_updated_at
+          ? new Date(resto.prep_time_updated_at).toLocaleDateString('fr-FR', { timeZone: tz })
+          : null;
+        if (!resto.prep_time_minutes || !last || last !== today) {
+          setShowPrepTimeModal(true);
+        }
+      } catch {
+        // ignore
+      }
       setLoading(false);
     };
 
@@ -174,6 +194,45 @@ export default function PartnerSettings() {
     }
   };
 
+  const savePrepTime = async ({ closeAfter = false } = {}) => {
+    setSavingPrepTime(true);
+    setError('');
+    setSuccess('');
+    try {
+      const minutes = parseInt(prepTimeMinutes, 10);
+      if (!minutes || Number.isNaN(minutes) || minutes < 5 || minutes > 120) {
+        throw new Error('Le temps de préparation doit être entre 5 et 120 minutes.');
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Session expirée, reconnectez-vous.');
+
+      const res = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ prep_time_minutes: minutes }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload?.success === false) {
+        throw new Error(payload?.error || 'Erreur lors de la mise à jour du temps de préparation.');
+      }
+
+      setPrepTimeUpdatedAt(payload?.restaurant?.prep_time_updated_at || new Date().toISOString());
+      setSuccess('Temps de préparation mis à jour ✅');
+      setTimeout(() => setSuccess(''), 3000);
+      if (closeAfter) setShowPrepTimeModal(false);
+    } catch (err) {
+      setError(err.message || 'Erreur lors de la mise à jour du temps de préparation.');
+    } finally {
+      setSavingPrepTime(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -212,6 +271,50 @@ export default function PartnerSettings() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Modal prompt temps de préparation (quotidien) */}
+      {showPrepTimeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Temps de préparation du jour</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              Indiquez un temps moyen de préparation (modifiable pendant le service). Cela sert à afficher une estimation fiable aux clients.
+            </p>
+
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Temps de préparation (minutes)
+            </label>
+            <select
+              value={prepTimeMinutes}
+              onChange={(e) => setPrepTimeMinutes(parseInt(e.target.value, 10))}
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 mb-4"
+            >
+              {Array.from({ length: 24 }, (_, i) => (i + 1) * 5).map((m) => (
+                <option key={m} value={m}>{m} min</option>
+              ))}
+            </select>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPrepTimeModal(false)}
+                className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold"
+                disabled={savingPrepTime}
+              >
+                Plus tard
+              </button>
+              <button
+                type="button"
+                onClick={() => savePrepTime({ closeAfter: true })}
+                className="flex-1 px-4 py-3 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 disabled:opacity-50"
+                disabled={savingPrepTime}
+              >
+                {savingPrepTime ? 'Enregistrement…' : 'Valider'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -375,6 +478,39 @@ export default function PartnerSettings() {
           </div>
           
           <form onSubmit={handleSubmit} className="p-6">
+            {/* Temps de préparation */}
+            <div className="mb-8 p-4 bg-orange-50 border border-orange-100 rounded-xl">
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Temps de préparation</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Ce temps est affiché aux clients comme estimation. Mets-le à jour pendant le service si besoin.
+                {prepTimeUpdatedAt ? (
+                  <span className="ml-2 text-gray-500">
+                    (Dernière mise à jour: {new Date(prepTimeUpdatedAt).toLocaleString('fr-FR')})
+                  </span>
+                ) : null}
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                <select
+                  value={prepTimeMinutes}
+                  onChange={(e) => setPrepTimeMinutes(parseInt(e.target.value, 10))}
+                  className="flex-1 border border-gray-300 rounded-xl px-4 py-3"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (i + 1) * 5).map((m) => (
+                    <option key={m} value={m}>{m} min</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => savePrepTime({ closeAfter: false })}
+                  className="px-5 py-3 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 disabled:opacity-50"
+                  disabled={savingPrepTime}
+                >
+                  {savingPrepTime ? 'Enregistrement…' : 'Mettre à jour'}
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

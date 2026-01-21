@@ -1178,7 +1178,9 @@ export default function Home() {
       case 'rating':
         return (b.rating || 0) - (a.rating || 0);
       case 'delivery_time':
-        return (a.deliveryTime || 0) - (b.deliveryTime || 0);
+        // Trier par temps de préparation déclaré (ce qui est affiché aux clients)
+        // Les restaurants sans valeur passent à la fin
+        return ((a.prep_time_minutes ?? 9999) - (b.prep_time_minutes ?? 9999));
       case 'distance':
         return (a.distance || 0) - (b.distance || 0);
       default:
@@ -1781,9 +1783,9 @@ export default function Home() {
                                 {displayHoursLabel}
                               </span>
                             </div>
-                            {!restaurantStatus.isManuallyClosed && (
+                            {!restaurantStatus.isManuallyClosed && Number.isFinite(parseInt(restaurant.prep_time_minutes, 10)) && (
                               <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-0.5">
-                                Livraison ~{restaurant.deliveryTime || '25-35'} min
+                                Préparation ~{parseInt(restaurant.prep_time_minutes, 10)} min
                               </span>
                             )}
                           </div>
