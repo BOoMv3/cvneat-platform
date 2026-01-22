@@ -335,6 +335,69 @@ export async function POST(request) {
       }
     }
 
+    // 🔔 IMPORTANT: Envoyer les notifications (push) comme pour une commande "réelle"
+    // Le dashboard admin crée des commandes déjà marquées "paid" (sans Stripe),
+    // donc on doit notifier le restaurant + les livreurs ici.
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
+      const notificationTotal = (
+        (parseFloat(order.total || 0) || 0) +
+        (parseFloat(order.frais_livraison || 0) || 0)
+      ).toFixed(2);
+
+      // 1) Push au restaurant
+      if (restaurant?.user_id) {
+        const pushRestaurant = await fetch(`${baseUrl}/api/notifications/send-push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: restaurant.user_id,
+            title: 'Nouvelle commande ! 🎉',
+            body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+            data: {
+              type: 'new_order',
+              orderId: order.id,
+              url: '/partner/orders',
+              source: 'admin',
+            },
+          }),
+        });
+        if (pushRestaurant.ok) {
+          const result = await pushRestaurant.json().catch(() => ({}));
+          console.log('✅ Push restaurant (admin):', result.sent, '/', result.total);
+        } else {
+          console.warn('⚠️ Push restaurant (admin) HTTP:', pushRestaurant.status);
+        }
+      } else {
+        console.warn('⚠️ Restaurant sans user_id: push restaurant ignoré (admin)');
+      }
+
+      // 2) Push aux livreurs (commande disponible)
+      const pushDelivery = await fetch(`${baseUrl}/api/notifications/send-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: 'delivery',
+          title: 'Nouvelle commande disponible 🚚',
+          body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+          data: {
+            type: 'new_order_available',
+            orderId: order.id,
+            url: '/delivery/dashboard',
+            source: 'admin',
+          },
+        }),
+      });
+      if (pushDelivery.ok) {
+        const result = await pushDelivery.json().catch(() => ({}));
+        console.log('✅ Push livreurs (admin):', result.sent, '/', result.total);
+      } else {
+        console.warn('⚠️ Push livreurs (admin) HTTP:', pushDelivery.status);
+      }
+    } catch (pushErr) {
+      console.warn('⚠️ Erreur envoi push (admin create order):', pushErr?.message || pushErr);
+    }
+
     return NextResponse.json({
       success: true,
       order: order,
