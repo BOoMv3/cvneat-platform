@@ -22,8 +22,7 @@ import {
   FaCheck,
   FaTag,
   FaCloudRain,
-  FaGift,
-  FaSnowflake
+  FaGift
 } from 'react-icons/fa';
 
 // Réduire les warnings Stripe non critiques en développement
@@ -50,11 +49,44 @@ function computeCartTotalWithExtras(items = []) {
   if (!Array.isArray(items)) return 0;
 
   return items.reduce((sum, item) => {
-    // IMPORTANT: Utiliser le prix DÉJÀ CALCULÉ (item.prix) qui contient tout
-    // Le prix a déjà été calculé à l'ajout au panier avec calculateFinalPrice()
-    // Ne PAS rajouter les suppléments/viandes/sauces car ils sont déjà inclus dans item.prix
     let itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
     const itemQuantity = parseInt(item?.quantity ?? 1, 10);
+
+    // Compat: anciens paniers où item.prix n'incluait pas les extras
+    if (!item?.price_includes_extras) {
+      let supplementsPrice = 0;
+      if (Array.isArray(item?.supplements)) {
+        supplementsPrice = item.supplements.reduce(
+          (acc, sup) => acc + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0),
+          0
+        );
+      }
+
+      let meatsPrice = 0;
+      if (Array.isArray(item?.customizations?.selectedMeats)) {
+        meatsPrice = item.customizations.selectedMeats.reduce(
+          (acc, m) => acc + (parseFloat(m?.prix ?? m?.price ?? 0) || 0),
+          0
+        );
+      }
+
+      let saucesPrice = 0;
+      if (Array.isArray(item?.customizations?.selectedSauces)) {
+        saucesPrice = item.customizations.selectedSauces.reduce(
+          (acc, s) => acc + (parseFloat(s?.prix ?? s?.price ?? 0) || 0),
+          0
+        );
+      }
+
+      let sizePrice = 0;
+      if (item?.size && typeof item.size === 'object' && item.size.prix !== undefined) {
+        sizePrice = parseFloat(item.size.prix) || 0;
+      } else if (item?.prix_taille !== undefined) {
+        sizePrice = parseFloat(item.prix_taille) || 0;
+      }
+
+      itemPrice += supplementsPrice + meatsPrice + saucesPrice + sizePrice;
+    }
     
     // IMPORTANT: Ajouter le prix de la boisson si présente (pour les menus)
     // Les boissons des menus ne sont pas incluses dans item.prix, elles sont ajoutées séparément
@@ -110,24 +142,10 @@ export default function Checkout() {
     instructions: ''
   });
 
-  // Vérifier si on est le 24 ou 25 décembre (pas de livraison pour Noël)
-  // DÉSACTIVÉ - Les commandes sont réactivées
-  const isChristmasHoliday = useMemo(() => {
-    return false; // Commandes réactivées
-    // if (typeof window === 'undefined') return false;
-    // const now = new Date();
-    // const month = now.getMonth(); // 0-11, décembre = 11
-    // const day = now.getDate();
-    // return month === 11 && (day === 24 || day === 25); // 24 ou 25 décembre
-  }, []);
-  
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
   // Mettre à true pour fermer les livraisons manuellement
   const [deliveryClosed, setDeliveryClosed] = useState(false);
   const deliveryClosedMessage = "En raison des conditions météorologiques actuelles, aucune livraison ne sera effectuée ce soir. Merci de votre compréhension.";
-  
-  // Message de Noël
-  const christmasMessage = "🎄 Joyeux Noël ! 🎅\n\nEn raison des fêtes de Noël, aucune livraison ne pourra être effectuée ce soir et demain. Nous reprendrons nos livraisons dès le 26 décembre.\n\nPassez de joyeuses fêtes ! ✨";
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -432,11 +450,7 @@ export default function Checkout() {
 
   // Fonction SIMPLIFIÉE pour créer la commande et préparer le paiement
   const prepareOrderAndPayment = async () => {
-    // Vérifier si les livraisons sont fermées (Noël ou manuel)
-    if (isChristmasHoliday) {
-      alert(christmasMessage);
-      return;
-    }
+    // Vérifier si les livraisons sont fermées (manuel)
     if (deliveryClosed) {
       alert(deliveryClosedMessage);
       return;
@@ -972,30 +986,8 @@ export default function Checkout() {
         
         <h1 className="text-base fold:text-base xs:text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4 fold:mb-4 xs:mb-6 sm:mb-8">Finaliser votre commande</h1>
 
-        {/* Bannière de fermeture des livraisons - Noël */}
-        {isChristmasHoliday && (
-          <div className="mb-4 sm:mb-6 p-4 sm:p-6 bg-gradient-to-r from-red-600 via-green-600 to-red-600 text-white rounded-lg shadow-lg relative overflow-hidden">
-            <div className="absolute inset-0 opacity-20" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }}></div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <span className="text-3xl animate-bounce">🎄</span>
-                <h2 className="font-bold text-xl sm:text-2xl drop-shadow-lg">Joyeux Noël !</h2>
-                <span className="text-3xl animate-bounce" style={{ animationDelay: '0.2s' }}>🎅</span>
-              </div>
-              <p className="text-center text-sm sm:text-base font-semibold drop-shadow-md mb-2">
-                En raison des fêtes de Noël, aucune livraison ne pourra être effectuée ce soir et demain.
-              </p>
-              <p className="text-center text-xs sm:text-sm opacity-95">
-                Nous reprendrons nos livraisons dès le 26 décembre. Passez de joyeuses fêtes ! ✨
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Bannière de fermeture des livraisons - Météo (manuel) */}
-        {deliveryClosed && !isChristmasHoliday && (
+        {deliveryClosed && (
           <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg shadow-lg">
             <div className="flex items-center gap-3">
               <FaCloudRain className="h-6 w-6 flex-shrink-0" />
@@ -1302,29 +1294,8 @@ export default function Checkout() {
               />
             </div>
 
-            {/* Message de fermeture des livraisons - Noël */}
-            {isChristmasHoliday && (
-              <div className="mt-4 sm:mt-6 p-4 bg-gradient-to-r from-red-50 to-green-50 dark:from-red-900/20 dark:to-green-900/20 border-2 border-red-300 dark:border-green-700 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl flex-shrink-0">🎄</div>
-                  <div>
-                    <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1 flex items-center gap-2">
-                      <span>Joyeux Noël !</span>
-                      <span className="text-lg">🎅</span>
-                    </h3>
-                    <p className="text-sm text-red-700 dark:text-red-300 mb-1">
-                      En raison des fêtes de Noël, aucune livraison ne pourra être effectuée ce soir et demain.
-                    </p>
-                    <p className="text-xs text-red-600 dark:text-red-400">
-                      Nous reprendrons nos livraisons dès le 26 décembre. ✨
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Message de fermeture des livraisons - Météo (manuel) */}
-            {deliveryClosed && !isChristmasHoliday && (
+            {deliveryClosed && (
               <div className="mt-4 sm:mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                 <div className="flex items-start gap-3">
                   <FaCloudRain className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
@@ -1343,7 +1314,7 @@ export default function Checkout() {
             {!showPaymentForm ? (
               <button
                 onClick={submitOrder}
-                disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed || isChristmasHoliday}
+                disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed}
                 className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
               >
                 {submitting ? (

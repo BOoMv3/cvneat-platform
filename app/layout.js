@@ -5,7 +5,6 @@ import CookieBanner from './components/CookieBanner';
 import FacebookPixel from '@/components/FacebookPixel';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
-import ChristmasTheme from '@/components/ChristmasTheme';
 import PushNotificationBootstrap from './components/PushNotificationBootstrap';
 import AppAutoRedirect from './components/AppAutoRedirect';
 
@@ -266,8 +265,6 @@ export default function RootLayout({ children }) {
       <body className={`${inter.variable} ${poppins.variable} font-sans transition-colors duration-300`}>
         <ThemeProvider>
           <FacebookPixel />
-          {/* 🎄 Thème de Noël - Supprimer cette ligne après les fêtes */}
-          <ChristmasTheme />
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
           <PushNotificationBootstrap />
           {/* Auto-redirect app mobile si déjà connecté (livreur/restaurant) */}

@@ -641,6 +641,37 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
             : cartItem
         );
       } else {
+        // IMPORTANT: Calculer un prix unitaire FINAL (base + suppléments + customisations + taille)
+        // afin que le checkout puisse utiliser item.prix sans "oublier" les suppléments.
+        const basePrice = parseFloat(
+          item?.base_price ??
+            item?.basePrice ??
+            item?.prix ??
+            item?.price ??
+            0
+        ) || 0;
+
+        const supplementsPrice = Array.isArray(itemSupplements)
+          ? itemSupplements.reduce((sum, sup) => sum + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0), 0)
+          : 0;
+
+        const meatsPrice = Array.isArray(itemSelectedMeats)
+          ? itemSelectedMeats.reduce((sum, m) => sum + (parseFloat(m?.prix ?? m?.price ?? 0) || 0), 0)
+          : 0;
+
+        const saucesPrice = Array.isArray(itemSelectedSauces)
+          ? itemSelectedSauces.reduce((sum, s) => sum + (parseFloat(s?.prix ?? s?.price ?? 0) || 0), 0)
+          : 0;
+
+        let sizePrice = 0;
+        if (itemSize && typeof itemSize === 'object' && itemSize.prix !== undefined) {
+          sizePrice = parseFloat(itemSize.prix) || 0;
+        } else if (item?.prix_taille !== undefined) {
+          sizePrice = parseFloat(item.prix_taille) || 0;
+        }
+
+        const finalUnitPrice = Math.max(0, basePrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice);
+
         // Ajouter un nouvel article avec suppléments, taille et customisations
         // IMPORTANT: Chaque item garde ses propres suppléments et customisations indépendamment
         const newItem = {
@@ -648,7 +679,10 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
           quantity: finalQuantity,
           supplements: itemSupplements, // Conserver les suppléments originaux (pas normalisés)
           size: itemSize,
-          customizations: itemCustomizations // Conserver les customisations (viandes, sauces, ingrédients retirés)
+          customizations: itemCustomizations, // Conserver les customisations (viandes, sauces, ingrédients retirés)
+          base_price: basePrice, // pour debug/affichage si besoin
+          prix: finalUnitPrice,
+          price_includes_extras: true
         };
         return [...prevCart, newItem];
       }
@@ -791,39 +825,34 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     return cart.reduce((total, item) => {
       const itemPrice = parseFloat(item.prix || item.price || 0);
       const itemQuantity = parseInt(item.quantity || 1, 10);
-      
-      // Calculer le prix des suppléments si présents
+
+      // Compat: anciens paniers où item.prix n'incluait pas encore les extras
+      if (item.price_includes_extras) {
+        return total + (itemPrice * itemQuantity);
+      }
+
       let supplementsPrice = 0;
-      if (item.supplements && Array.isArray(item.supplements)) {
-        supplementsPrice = item.supplements.reduce((sum, sup) => {
-          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
-        }, 0);
+      if (Array.isArray(item.supplements)) {
+        supplementsPrice = item.supplements.reduce((sum, sup) => sum + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0), 0);
       }
-      
-      // Calculer le prix des viandes sélectionnées
+
       let meatsPrice = 0;
-      if (item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
-        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
-          return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
-        }, 0);
+      if (Array.isArray(item?.customizations?.selectedMeats)) {
+        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => sum + (parseFloat(meat?.prix ?? meat?.price ?? 0) || 0), 0);
       }
-      
-      // Calculer le prix des sauces sélectionnées
+
       let saucesPrice = 0;
-      if (item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
-        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
-          return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
-        }, 0);
+      if (Array.isArray(item?.customizations?.selectedSauces)) {
+        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => sum + (parseFloat(sauce?.prix ?? sauce?.price ?? 0) || 0), 0);
       }
-      
-      // Calculer le prix de la taille si présente
+
       let sizePrice = 0;
-      if (item.size && item.size.prix) {
+      if (item?.size && typeof item.size === 'object' && item.size.prix !== undefined) {
         sizePrice = parseFloat(item.size.prix) || 0;
-      } else if (item.prix_taille) {
+      } else if (item?.prix_taille !== undefined) {
         sizePrice = parseFloat(item.prix_taille) || 0;
       }
-      
+
       const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
       return total + totalItemPrice;
     }, 0);

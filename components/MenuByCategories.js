@@ -48,11 +48,6 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
   const getCategoryOrder = (category) => {
     const catLower = category.toLowerCase();
     
-    // Spécial Noël (-1) - Toujours en premier
-    if (catLower.includes('noël') || catLower.includes('noel') || catLower.includes('spécial')) {
-      return -1;
-    }
-    
     // Formules (0) - Afficher en premier
     if (catLower === 'formule' || catLower === 'formules' || catLower === 'menus') {
       return 0;

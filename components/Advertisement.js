@@ -42,7 +42,8 @@ export default function Advertisement({ position, className = '' }) {
       if (cachedAd) {
         setAd(cachedAd);
         setLoading(false);
-        return;
+        // Ne pas return: on revalide en arrière-plan pour afficher immédiatement une nouvelle pub
+        // (ex: admin vient de changer l'image/le statut).
       }
 
       // Récupérer les publicités actives
@@ -65,6 +66,11 @@ export default function Advertisement({ position, className = '' }) {
 
       // Filtrer les publicités selon leur statut
       const validAds = data?.filter(ad => {
+        // ✅ Pubs internes/gratuites: si price=0, on autorise l'affichage dès lors que is_active=true
+        // (utile pour les annonces CVN'EAT/Admin sans paiement Stripe).
+        if ((parseFloat(ad.price || 0) || 0) === 0 && ad.is_active === true) {
+          return true;
+        }
         // Afficher si status est 'approved' ou 'active'
         if (ad.status === 'approved' || ad.status === 'active') {
           return true;
@@ -96,7 +102,15 @@ export default function Advertisement({ position, className = '' }) {
           
           // Mettre en cache la publicité
           setCachedAd(position, adData);
-          setAd(adData);
+
+          // Si on a déjà affiché une pub via cache, ne re-render que si elle a changé
+          setAd((prev) => {
+            if (!prev) return adData;
+            const prevKey = `${prev.id || ''}::${prev.updated_at || prev.created_at || ''}`;
+            const nextKey = `${adData.id || ''}::${adData.updated_at || adData.created_at || ''}`;
+            if (prevKey === nextKey) return prev;
+            return adData;
+          });
         } else {
           console.log('Publicité hors période:', { startDate, endDate, today });
         }
