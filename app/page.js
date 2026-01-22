@@ -1366,7 +1366,9 @@ export default function Home() {
         </div>
         
           {/* Actions utilisateur en haut à droite - Design compact avec icônes - Optimisé mobile */}
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 z-20 flex items-center flex-wrap gap-1 sm:gap-1.5 md:gap-2 max-w-[calc(100vw-5rem)] sm:max-w-none">
+        {/* Sur mobile, la navigation passe par la barre d'onglets en bas.
+            On garde les raccourcis (Partenaire/Livreur/Pub/Ma commande) uniquement sur sm+ */}
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 z-20 hidden sm:flex items-center flex-wrap gap-1 sm:gap-1.5 md:gap-2 max-w-[calc(100vw-5rem)] sm:max-w-none">
           {/* Bouton Devenir Partenaire */}
           <Link href="/restaurant-request" className="bg-blue-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
             <FaStore className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
@@ -1460,6 +1462,17 @@ export default function Home() {
                   className="flex-1 border-none outline-none text-gray-900 placeholder-gray-500 text-sm sm:text-base min-h-[44px] touch-manipulation"
                 />
               </div>
+            </div>
+
+            {/* CTA clair sur mobile (au lieu des icônes en haut à droite) */}
+            <div className="mt-3 sm:hidden">
+              <Link
+                href="/track-order"
+                className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+              >
+                <FaTruck className="h-4 w-4" />
+                <span>Suivre ma commande</span>
+              </Link>
             </div>
 
           </div>
