@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '../lib/supabase';
 import { safeLocalStorage } from '../lib/localStorage';
@@ -468,6 +468,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -486,6 +487,29 @@ export default function Home() {
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
   const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
+
+  const searchInputRef = useRef(null);
+  const lastFocusKeyRef = useRef('');
+
+  // Focus automatique sur la barre de recherche si on arrive via l'onglet "Rechercher"
+  useEffect(() => {
+    const focus = searchParams?.get('focus');
+    const key = `${focus || ''}::${searchParams?.get('t') || ''}`;
+    if (focus !== 'search') return;
+    if (lastFocusKeyRef.current === key) return;
+    lastFocusKeyRef.current = key;
+
+    setTimeout(() => {
+      try {
+        if (searchInputRef.current) {
+          searchInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          searchInputRef.current.focus();
+        }
+      } catch {
+        // ignore
+      }
+    }, 50);
+  }, [searchParams]);
   
   const nextOpeningDate = useMemo(() => getNextOpeningDate(), []);
   const nextOpeningLabel = useMemo(() => {
@@ -1367,20 +1391,20 @@ export default function Home() {
           {user ? (
             <>
               {/* Points de fidélité - Compact avec icône */}
-              <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px]">
+              <div className="hidden sm:flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px]">
                 <FaGift className="text-yellow-400 h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                 <span className="text-white text-[10px] sm:text-xs md:text-sm font-semibold">{userPoints}</span>
               </div>
               
               {/* Profil - Icône seule */}
-              <Link href="/profile" className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] flex items-center justify-center touch-manipulation">
+              <Link href="/profile" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation">
                 <FaUser className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4 text-white" />
               </Link>
               
               {/* Déconnexion - Icône seule */}
               <button
                 onClick={handleLogout}
-                className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-red-500/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] flex items-center justify-center touch-manipulation"
+                className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-red-500/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation"
                 title="Déconnexion"
               >
                 <FaSignOutAlt className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4" />
@@ -1389,12 +1413,12 @@ export default function Home() {
           ) : (
             <>
               {/* Connexion - Icône seule */}
-              <Link href="/login" className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] flex items-center justify-center touch-manipulation" title="Connexion">
+              <Link href="/login" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation" title="Connexion">
                 <FaSignInAlt className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4" />
               </Link>
               
               {/* Inscription - Icône seule */}
-              <Link href="/register" className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] flex items-center justify-center touch-manipulation" title="Inscription">
+              <Link href="/register" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation" title="Inscription">
                 <FaUserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4" />
               </Link>
             </>
@@ -1404,7 +1428,7 @@ export default function Home() {
           {cart.length > 0 && (
             <button
               onClick={() => setShowFloatingCart(!showFloatingCart)}
-              className="relative bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] flex items-center justify-center touch-manipulation"
+              className="hidden sm:flex relative bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation"
             >
               <FaShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4 text-white" />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] sm:text-xs rounded-full h-4 w-4 sm:h-4.5 sm:w-4.5 md:h-5 md:w-5 flex items-center justify-center font-bold shadow-sm">
@@ -1428,6 +1452,7 @@ export default function Home() {
               <div className="flex items-center space-x-2 sm:space-x-3">
                 <FaSearch className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   placeholder="Nom du restaurant, cuisine, plat..."
                   value={searchTerm}

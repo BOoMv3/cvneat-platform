@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import PushNotificationBootstrap from './components/PushNotificationBootstrap';
 import AppAutoRedirect from './components/AppAutoRedirect';
+import MobileTabBar from '@/components/MobileTabBar';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
 // IMPORTANT: Charger APRÈS Supabase pour éviter les conflits
@@ -273,6 +274,7 @@ export default function RootLayout({ children }) {
             <main className="flex-grow">
               {children}
             </main>
+            <MobileTabBar />
             <Footer />
             <CookieBanner />
           </div>
