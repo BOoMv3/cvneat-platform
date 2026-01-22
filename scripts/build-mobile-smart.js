@@ -240,6 +240,16 @@ try {
   execSync('npx cap sync', { stdio: 'inherit' });
   console.log('✅ Synchronisation Capacitor terminée\n');
   
+  // Étape 4.5: Patch iOS AppDelegate pour APNs (token push)
+  // (Le dossier ios/ est ignoré par git: on applique le patch à chaque build)
+  console.log('🛠️  Étape 4.5/6: Patch iOS APNs AppDelegate...');
+  try {
+    execSync('node scripts/patch-ios-apns-appdelegate.js', { stdio: 'inherit' });
+    console.log('✅ Patch APNs appliqué\n');
+  } catch (error) {
+    console.warn('⚠️  Patch APNs non appliqué (non bloquant):', error.message);
+  }
+
   // Étape 5: Vérifications
   console.log('✔️  Étape 5/6: Vérifications...');
   const androidAssets = path.join(process.cwd(), 'android', 'app', 'src', 'main', 'assets');
