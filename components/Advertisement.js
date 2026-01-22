@@ -208,11 +208,13 @@ export default function Advertisement({ position, className = '' }) {
   };
 
   const renderAdContent = () => {
-    // Utiliser object-contain pour voir l'image entière (sauf banner_top qui reste discret)
-    // object-contain affiche l'image entière sans recadrage
-    const imageClass = position === 'banner_top' 
-      ? 'w-full h-full object-cover' 
-      : 'w-full h-full object-contain';
+    // Rendu des images:
+    // - banner_top: discret
+    // - autres positions: remplir l'espace pub (object-cover)
+    const imageClass =
+      position === 'banner_top'
+        ? 'w-full h-full object-contain'
+        : 'w-full h-full object-cover';
 
     // Style différent pour banner_top (plus discret et mieux intégré)
     if (position === 'banner_top') {
@@ -269,7 +271,7 @@ export default function Advertisement({ position, className = '' }) {
             className={imageClass}
             style={{
               objectPosition: 'center',
-              backgroundColor: '#f3f4f6' // Fond gris clair pour les espaces vides
+              backgroundColor: '#f3f4f6' // Fond gris clair si l'image ne remplit pas (rare)
             }}
             onError={(e) => {
               e.target.style.display = 'none';
