@@ -16,6 +16,14 @@ export default function TrackOrder() {
   const [isTracking, setIsTracking] = useState(false);
   const [lastStatus, setLastStatus] = useState(null);
 
+  const canUseBrowserNotifications = () => {
+    return (
+      typeof window !== 'undefined' &&
+      typeof Notification !== 'undefined' &&
+      typeof Notification.requestPermission === 'function'
+    );
+  };
+
   const fetchOrder = async () => {
     if (!orderId.trim()) {
       setError('Veuillez entrer un numéro de commande');
@@ -344,30 +352,37 @@ export default function TrackOrder() {
             generateNotifications(data);
             
             // Afficher une notification du navigateur
-            if (Notification.permission === 'granted') {
-              const statusMessages = {
-                'acceptee': 'Votre commande a été acceptée !',
-                'accepted': 'Votre commande a été acceptée !',
-                'en_preparation': 'Votre commande est en cours de préparation',
-                'preparing': 'Votre commande est en cours de préparation',
-                'pret_a_livrer': 'Votre commande est prête !',
-                'ready': 'Votre commande est prête !',
-                'livree': 'Votre commande a été livrée !',
-                'delivered': 'Votre commande a été livrée !',
-                'refusee': data.rejection_reason || data.rejectionReason 
-                  ? `Votre commande a été refusée ❌\nRaison: ${data.rejection_reason || data.rejectionReason}`
-                  : 'Votre commande a été refusée ❌',
-                'rejected': data.rejection_reason || data.rejectionReason 
-                  ? `Votre commande a été refusée ❌\nRaison: ${data.rejection_reason || data.rejectionReason}`
-                  : 'Votre commande a été refusée ❌'
-              };
-              
-              const notificationBody = statusMessages[currentStatus] || 'Statut de votre commande mis à jour';
-              
-              new Notification('CVN\'EAT - Mise à jour commande', {
-                body: notificationBody,
-                icon: '/icon-192x192.png'
-              });
+            if (canUseBrowserNotifications() && Notification.permission === 'granted') {
+              try {
+                const statusMessages = {
+                  acceptee: 'Votre commande a été acceptée !',
+                  accepted: 'Votre commande a été acceptée !',
+                  en_preparation: 'Votre commande est en cours de préparation',
+                  preparing: 'Votre commande est en cours de préparation',
+                  pret_a_livrer: 'Votre commande est prête !',
+                  ready: 'Votre commande est prête !',
+                  livree: 'Votre commande a été livrée !',
+                  delivered: 'Votre commande a été livrée !',
+                  refusee:
+                    data.rejection_reason || data.rejectionReason
+                      ? `Votre commande a été refusée ❌\nRaison: ${data.rejection_reason || data.rejectionReason}`
+                      : 'Votre commande a été refusée ❌',
+                  rejected:
+                    data.rejection_reason || data.rejectionReason
+                      ? `Votre commande a été refusée ❌\nRaison: ${data.rejection_reason || data.rejectionReason}`
+                      : 'Votre commande a été refusée ❌'
+                };
+
+                const notificationBody =
+                  statusMessages[currentStatus] || 'Statut de votre commande mis à jour';
+
+                new Notification("CVN'EAT - Mise à jour commande", {
+                  body: notificationBody,
+                  icon: '/icon-192x192.png'
+                });
+              } catch (e) {
+                console.warn('Notification navigateur impossible (non bloquant):', e);
+              }
             }
             
             // Arrêter le suivi si la commande est terminée
@@ -458,8 +473,14 @@ export default function TrackOrder() {
 
   // Demander la permission pour les notifications
   useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (!canUseBrowserNotifications()) return;
+    try {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    } catch (e) {
+      // Sur certains navigateurs/iOS, Notification peut être partiellement implémenté → ne pas crash.
+      console.warn('Notifications non disponibles (non bloquant):', e);
     }
   }, []);
 
