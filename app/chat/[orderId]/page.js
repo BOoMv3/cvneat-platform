@@ -42,7 +42,8 @@ export default function ChatPage({ params }) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        // IMPORTANT (Capacitor/WKWebView): éviter les cookies cross-origin ("Load failed")
+        credentials: 'omit'
       });
       
       if (response.ok) {
@@ -74,7 +75,8 @@ export default function ChatPage({ params }) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include',
+        // IMPORTANT (Capacitor/WKWebView): éviter les cookies cross-origin ("Load failed")
+        credentials: 'omit',
         body: JSON.stringify({
           message: newMessage.trim(),
           user_id: user.id

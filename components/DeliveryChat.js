@@ -46,7 +46,8 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        // IMPORTANT (Capacitor/WKWebView): éviter les cookies cross-origin ("Load failed")
+        credentials: 'omit'
       });
       
       if (response.ok) {
@@ -86,7 +87,8 @@ export default function DeliveryChat({ orderId, isOpen, onClose }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        credentials: 'include',
+        // IMPORTANT (Capacitor/WKWebView): éviter les cookies cross-origin ("Load failed")
+        credentials: 'omit',
         body: JSON.stringify({
           message: newMessage,
           user_id: session.user.id
