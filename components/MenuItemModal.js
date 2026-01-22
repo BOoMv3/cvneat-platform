@@ -20,6 +20,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
   const [baseIngredients, setBaseIngredients] = useState([]); // Ingrédients de base depuis la base de données
   const [loading, setLoading] = useState(false);
   const [internalIsOpen, setInternalIsOpen] = useState(isOpen);
+  const [showAddedToast, setShowAddedToast] = useState(false);
 
   // Synchroniser le state interne avec la prop isOpen
   useEffect(() => {
@@ -50,8 +51,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       setSelectedDrink(null);
       setSelectedFormulaOptions({});
       setSupplements([]);
+      setShowAddedToast(false);
     }
   }, [internalIsOpen]);
+
+  // Auto-hide toast
+  useEffect(() => {
+    if (!showAddedToast) return;
+    const t = setTimeout(() => setShowAddedToast(false), 1200);
+    return () => clearTimeout(t);
+  }, [showAddedToast]);
 
   // Récupérer les suppléments, options de viande, sauces et ingrédients de base depuis l'item du menu
   useEffect(() => {
@@ -486,12 +495,16 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       };
       console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec boisson:', formulaItem.selected_drink?.nom || 'aucune', 'options:', selectedFormulaOptions, 'customizations:', formulaItem.customizations);
 
-      // Ajouter au panier puis fermer (évite les cas où l'utilisateur pense que rien ne s'est passé)
-      try {
-        onAddToCart(formulaItem, supplementsList, null, quantity);
-      } finally {
-        closeModalNow();
-      }
+      // UX robuste: fermer d'abord, puis ajouter juste après
+      setShowAddedToast(true);
+      closeModalNow();
+      setTimeout(() => {
+        try {
+          onAddToCart(formulaItem, supplementsList, null, quantity);
+        } catch (e) {
+          console.warn('Erreur ajout panier (non bloquant):', e);
+        }
+      }, 0);
       return;
     }
 
@@ -567,11 +580,15 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     };
     
     console.log('✅ Article ajouté:', customizedItem.nom, 'avec boisson:', customizedItem.selected_drink?.nom || 'aucune');
-    try {
-      onAddToCart(customizedItem, supplementsList, null, quantity);
-    } finally {
-      closeModalNow();
-    }
+    setShowAddedToast(true);
+    closeModalNow();
+    setTimeout(() => {
+      try {
+        onAddToCart(customizedItem, supplementsList, null, quantity);
+      } catch (e) {
+        console.warn('Erreur ajout panier (non bloquant):', e);
+      }
+    }, 0);
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body
@@ -981,7 +998,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       >
         <div className="px-4 py-3">
           <button
-            onClick={handleAddToCart}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddToCart();
+            }}
             className="w-full bg-white text-orange-600 hover:bg-orange-50 font-extrabold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transform transition-transform active:scale-95"
             style={{
               fontSize: '18px'
@@ -992,6 +1014,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
           </button>
         </div>
       </div>
+
+      {/* Toast \"Ajouté\" (au cas où le device garde la modal ouverte) */}
+      {showAddedToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-black/90 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-xl">
+          Ajouté au panier ✓
+        </div>
+      )}
     </>
   );
 
