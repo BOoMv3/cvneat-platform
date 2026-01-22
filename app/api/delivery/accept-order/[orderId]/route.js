@@ -4,6 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../../../lib/orderCleanup';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+};
+
+export async function OPTIONS() {
+  // Nécessaire pour WKWebView/Capacitor: les requêtes POST avec Authorization déclenchent un preflight
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(request, { params }) {
   try {
     const { orderId } = params;
@@ -25,7 +36,7 @@ export async function POST(request, { params }) {
     const { data: { user } } = await supabase.auth.getUser(token);
     
     if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: corsHeaders });
     }
 
     // Créer un client admin pour bypasser RLS
@@ -42,7 +53,7 @@ export async function POST(request, { params }) {
       .single();
 
     if (userError || !userData || userData.role !== 'delivery') {
-      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
+      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403, headers: corsHeaders });
     }
 
     // Vérifier que la commande existe et est disponible
@@ -54,7 +65,7 @@ export async function POST(request, { params }) {
 
     if (orderError || !order) {
       console.log('❌ Commande introuvable:', orderId, orderError);
-      return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 });
+      return NextResponse.json({ error: 'Commande introuvable' }, { status: 404, headers: corsHeaders });
     }
 
     console.log('✅ Commande trouvée:', {
@@ -77,7 +88,7 @@ export async function POST(request, { params }) {
         error: 'Cette commande a été annulée ou remboursée et n\'est plus disponible',
         statut: order.statut,
         payment_status: order.payment_status
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
 
     // Vérifier que la commande n'est pas déjà acceptée par un autre livreur
@@ -86,7 +97,7 @@ export async function POST(request, { params }) {
         order_livreur_id: order.livreur_id,
         current_user_id: user.id
       });
-      return NextResponse.json({ error: 'Commande déjà acceptée par un autre livreur' }, { status: 409 });
+      return NextResponse.json({ error: 'Commande déjà acceptée par un autre livreur' }, { status: 409, headers: corsHeaders });
     }
 
     // Si le livreur a déjà accepté cette commande, permettre la réacceptation (pour rafraîchir)
@@ -119,7 +130,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ 
         error: 'Commande non disponible pour livraison', 
         details: `Statut actuel: ${order.statut}. Seules les commandes en attente (en_attente) peuvent être acceptées par un livreur.` 
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
 
     // Vérifier que le paiement est validé - UNIQUEMENT les paiements confirmés
@@ -133,7 +144,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ 
         error: 'Commande non disponible', 
         details: `Le paiement n'a pas été validé (statut: ${order.payment_status || 'non défini'}). Seuls les paiements confirmés (paid, succeeded) peuvent être acceptés.` 
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
 
     // Accepter la commande
@@ -168,7 +179,7 @@ export async function POST(request, { params }) {
     if (updateError) {
       console.error('❌ Erreur acceptation commande:', updateError);
       console.error('❌ Détails erreur:', JSON.stringify(updateError, null, 2));
-      return NextResponse.json({ error: 'Erreur acceptation commande' }, { status: 500 });
+      return NextResponse.json({ error: 'Erreur acceptation commande' }, { status: 500, headers: corsHeaders });
     }
 
     console.log('✅ Commande acceptée par livreur:', user.email);
@@ -250,7 +261,7 @@ export async function POST(request, { params }) {
       success: true,
       message: 'Commande acceptée avec succès',
       order: formattedOrder
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('❌ Erreur API accept-order:', error);
     console.error('❌ Stack trace:', error.stack);
@@ -258,6 +269,6 @@ export async function POST(request, { params }) {
       error: 'Erreur serveur',
       details: error.message || 'Erreur inconnue',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
