@@ -1466,13 +1466,31 @@ export default function Home() {
 
             {/* CTA clair sur mobile (au lieu des icônes en haut à droite) */}
             <div className="mt-3 sm:hidden">
-              <Link
-                href="/track-order"
-                className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
-              >
-                <FaTruck className="h-4 w-4" />
-                <span>Suivre ma commande</span>
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/track-order"
+                  className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                >
+                  <FaTruck className="h-4 w-4" />
+                  <span>Suivre ma commande</span>
+                </Link>
+
+                <Link
+                  href="/restaurant-request"
+                  className="inline-flex items-center justify-center gap-2 bg-blue-600/90 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                >
+                  <FaStore className="h-4 w-4" />
+                  <span>Devenir partenaire</span>
+                </Link>
+
+                <Link
+                  href="/become-delivery"
+                  className="inline-flex items-center justify-center gap-2 bg-green-600/90 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-green-700 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                >
+                  <FaMotorcycle className="h-4 w-4" />
+                  <span>Devenir livreur</span>
+                </Link>
+              </div>
             </div>
 
           </div>
