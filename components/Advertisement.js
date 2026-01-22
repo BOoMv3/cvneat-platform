@@ -209,12 +209,9 @@ export default function Advertisement({ position, className = '' }) {
 
   const renderAdContent = () => {
     // Rendu des images:
-    // - banner_top: discret
-    // - autres positions: remplir l'espace pub (object-cover)
-    const imageClass =
-      position === 'banner_top'
-        ? 'w-full h-full object-contain'
-        : 'w-full h-full object-cover';
+    // - banner_top: on garde l'image entière (contain) car format souvent "texte" → éviter le rognage
+    // - banner_middle/footer/etc: on affiche un fond cover flouté + une image contain au-dessus
+    //   => ça remplit visuellement l'encart sans couper le texte de la pub.
 
     // Style différent pour banner_top (plus discret et mieux intégré)
     if (position === 'banner_top') {
@@ -265,22 +262,31 @@ export default function Advertisement({ position, className = '' }) {
       >
         <div className="relative h-full w-full">
           <div className="absolute top-2 left-2 z-10 bg-yellow-400/95 text-yellow-900 text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider shadow">Publicité</div>
+          {/* Fond cover flouté (remplit tout l'encart) */}
+          <img
+            src={ad.image_url_with_cache_bust || ad.image_url}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-80"
+          />
+
+          {/* Image principale (toujours entière, pas rognée) */}
           <img
             src={ad.image_url_with_cache_bust || ad.image_url}
             alt={ad.title}
-            className={imageClass}
-            style={{
-              objectPosition: 'center',
-              backgroundColor: '#f3f4f6' // Fond gris clair si l'image ne remplit pas (rare)
-            }}
+            className="relative z-0 w-full h-full object-contain"
+            style={{ objectPosition: 'center' }}
             onError={(e) => {
               e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
+              // fallback
+              const fallback = e.target.parentElement?.querySelector('[data-ad-fallback]');
+              if (fallback) fallback.style.display = 'flex';
             }}
           />
           <div 
             className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white"
             style={{ display: 'none' }}
+            data-ad-fallback
           >
             <div className="text-center">
               <div className="text-2xl mb-2">📢</div>
