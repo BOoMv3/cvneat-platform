@@ -270,11 +270,11 @@ export default function Advertisement({ position, className = '' }) {
             className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-80"
           />
 
-          {/* Image principale (toujours entière, pas rognée) */}
+          {/* Image principale étirée (remplit tout l'encart sans bandes) */}
           <img
             src={ad.image_url_with_cache_bust || ad.image_url}
             alt={ad.title}
-            className="relative z-0 w-full h-full object-contain"
+            className="relative z-0 w-full h-full object-fill"
             style={{ objectPosition: 'center' }}
             onError={(e) => {
               e.target.style.display = 'none';
