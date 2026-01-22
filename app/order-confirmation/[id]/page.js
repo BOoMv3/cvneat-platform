@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
+import { safeLocalStorage } from '@/lib/localStorage';
 import { 
   FaCheck, 
   FaClock, 
@@ -75,6 +76,17 @@ export default function OrderConfirmation() {
           console.warn('Impossible de stocker le code commande en session:', e);
         }
       }
+
+      // Conserver la dernière commande (persistant)
+      try {
+        safeLocalStorage.setJSON('lastOrder', {
+          orderId: id,
+          securityCode: codeFromUrl,
+          savedAt: new Date().toISOString()
+        });
+      } catch {
+        // ignore
+      }
       return;
     }
 
@@ -141,6 +153,18 @@ export default function OrderConfirmation() {
         setOrderData(data);
         setError(null);
         setLoading(false);
+
+        // Sauvegarder aussi ici (au cas où le code n'était pas dans l'URL)
+        try {
+          const code = getSecurityCode();
+          safeLocalStorage.setJSON('lastOrder', {
+            orderId: data.id || id,
+            securityCode: code || null,
+            savedAt: new Date().toISOString()
+          });
+        } catch {
+          // ignore
+        }
         
         // Track Facebook Pixel - Purchase (une seule fois par commande)
         if (data && !data._pixelTracked) {

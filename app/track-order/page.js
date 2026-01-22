@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
+import { safeLocalStorage } from '@/lib/localStorage';
 
 export default function TrackOrder() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function TrackOrder() {
   const [notifications, setNotifications] = useState([]);
   const [isTracking, setIsTracking] = useState(false);
   const [lastStatus, setLastStatus] = useState(null);
+  const [lastOrder, setLastOrder] = useState(null);
 
   const canUseBrowserNotifications = () => {
     return (
@@ -23,6 +25,15 @@ export default function TrackOrder() {
       typeof Notification.requestPermission === 'function'
     );
   };
+
+  useEffect(() => {
+    try {
+      const stored = safeLocalStorage.getJSON('lastOrder');
+      if (stored?.orderId) setLastOrder(stored);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const fetchOrder = async () => {
     if (!orderId.trim()) {
@@ -507,6 +518,50 @@ export default function TrackOrder() {
           </div>
           
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 text-gray-900 dark:text-white">Suivi de commande</h1>
+
+          {/* Raccourci: dernière commande */}
+          {!order && !loading && lastOrder?.orderId && (
+            <div className="mb-6 sm:mb-8 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-900/20">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Dernière commande</p>
+                  <p className="text-xs text-blue-800/90 dark:text-blue-300 mt-1">
+                    #{String(lastOrder.orderId).slice(0, 8)}
+                    {lastOrder.securityCode ? ` • code: ${lastOrder.securityCode}` : ''}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = lastOrder.securityCode
+                        ? `/order-confirmation/${lastOrder.orderId}?code=${encodeURIComponent(lastOrder.securityCode)}`
+                        : `/order-confirmation/${lastOrder.orderId}`;
+                      router.push(url);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold min-h-[44px] touch-manipulation"
+                  >
+                    Reprendre
+                  </button>
+                  {lastOrder.securityCode && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(String(lastOrder.securityCode));
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                      className="px-4 py-2 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 rounded-lg text-sm font-semibold min-h-[44px] touch-manipulation"
+                    >
+                      Copier le code
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Formulaire de recherche */}
           <div className="mb-6 sm:mb-8">
@@ -515,7 +570,7 @@ export default function TrackOrder() {
                 type="text"
                 value={orderId}
                 onChange={(e) => setOrderId(e.target.value)}
-                placeholder="Entrez votre numéro de commande (ex: 52)"
+                placeholder="Entrez l'ID de commande (ex: eb486542-...)"
                 className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 min-h-[44px] touch-manipulation text-sm sm:text-base"
               />
               <button

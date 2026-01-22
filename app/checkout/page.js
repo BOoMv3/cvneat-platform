@@ -880,6 +880,17 @@ export default function Checkout() {
     // Nettoyer le panier
     safeLocalStorage.removeItem('cart');
 
+    // Sauvegarder la dernière commande localement (pour permettre au client de la retrouver facilement)
+    try {
+      safeLocalStorage.setJSON('lastOrder', {
+        orderId,
+        securityCode: securityCode || null,
+        savedAt: new Date().toISOString()
+      });
+    } catch {
+      // ignore
+    }
+
     // Rediriger vers la page de confirmation
     const redirectUrl = securityCode
       ? `/order-confirmation/${orderId}?code=${encodeURIComponent(securityCode)}`
