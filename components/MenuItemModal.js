@@ -26,6 +26,18 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     setInternalIsOpen(isOpen);
   }, [isOpen]);
 
+  const closeModalNow = () => {
+    console.log('🔒 Fermeture de la modal...');
+    flushSync(() => {
+      setInternalIsOpen(false);
+    });
+    if (typeof onClose === 'function') {
+      onClose();
+    } else {
+      console.warn('WARNING onClose n\'est pas une fonction:', typeof onClose);
+    }
+  };
+
 
   // Réinitialiser les états quand la modal se ferme
   useEffect(() => {
@@ -473,26 +485,13 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
         }
       };
       console.log('✅ Formule ajoutée:', formulaItem.nom, 'avec boisson:', formulaItem.selected_drink?.nom || 'aucune', 'options:', selectedFormulaOptions, 'customizations:', formulaItem.customizations);
-      
-      // Fermer la modal IMMÉDIATEMENT et de manière synchrone
-      console.log('🔒 Fermeture de la modal (formule)...');
-      
-      // Utiliser flushSync pour forcer une mise à jour synchrone
-      flushSync(() => {
-        setInternalIsOpen(false);
-      });
-      
-      // Appeler onClose pour mettre à jour le state parent
-      if (typeof onClose === 'function') {
-        onClose();
-      } else {
-        console.warn('WARNING onClose n\'est pas une fonction:', typeof onClose);
-      }
-      
-      // Ajouter au panier après un petit délai pour s'assurer que la modal est fermée
-      setTimeout(() => {
+
+      // Ajouter au panier puis fermer (évite les cas où l'utilisateur pense que rien ne s'est passé)
+      try {
         onAddToCart(formulaItem, supplementsList, null, quantity);
-      }, 0);
+      } finally {
+        closeModalNow();
+      }
       return;
     }
 
@@ -567,26 +566,12 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       _fromModal: true // Marquer que cet item vient de la modal
     };
     
-    // Fermer la modal IMMÉDIATEMENT et de manière synchrone
-    console.log('🔒 Fermeture de la modal...');
-    
-    // Utiliser flushSync pour forcer une mise à jour synchrone
-    flushSync(() => {
-      setInternalIsOpen(false);
-    });
-    
-    // Appeler onClose pour mettre à jour le state parent
-    if (typeof onClose === 'function') {
-      onClose();
-    } else {
-      console.warn('WARNING onClose n\'est pas une fonction:', typeof onClose);
-    }
-    
-    // Ajouter au panier après un petit délai pour s'assurer que la modal est fermée
     console.log('✅ Article ajouté:', customizedItem.nom, 'avec boisson:', customizedItem.selected_drink?.nom || 'aucune');
-    setTimeout(() => {
+    try {
       onAddToCart(customizedItem, supplementsList, null, quantity);
-    }, 0);
+    } finally {
+      closeModalNow();
+    }
   };
 
   // Utiliser un portail pour rendre la modal directement dans le body
