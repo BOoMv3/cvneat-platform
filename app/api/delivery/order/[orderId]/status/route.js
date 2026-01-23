@@ -119,6 +119,37 @@ export async function PUT(request, { params }) {
       }
     }
 
+    // Notification push client sur changement de statut (en route, etc.)
+    try {
+      if (order?.user_id) {
+        const statusMessages = {
+          en_livraison: {
+            title: 'Livreur en route 🚚',
+            body: `Votre commande #${orderId.slice(0, 8)} est en route vers vous !`,
+          },
+          livree: {
+            title: 'Commande livrée ✅',
+            body: `Votre commande #${orderId.slice(0, 8)} a été livrée. Bon appétit !`,
+          },
+        };
+        const msg = statusMessages[status];
+        if (msg) {
+          await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: order.user_id,
+              title: msg.title,
+              body: msg.body,
+              data: { type: 'order_status_update', orderId, status, url: `/orders/${orderId}` },
+            }),
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Push client (livreur status) non envoyé:', e?.message || e);
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Statut mis à jour avec succès',

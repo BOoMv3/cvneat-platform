@@ -68,35 +68,20 @@ export async function POST(request) {
       );
     }
 
-    // Essayer d'envoyer une notification push (si le service worker est disponible)
+    // Envoyer une notification push native (iOS/Android) au client (si token enregistré)
     try {
-      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        await registration.showNotification(notification.title, {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: customerId,
+          title: notification.title,
           body: notification.message,
-          icon: '/icon-192x192.png',
-          badge: '/icon-192x192.png',
-          tag: `delivery-${orderId}`,
-          data: notification.data,
-          actions: [
-            {
-              action: 'feedback',
-              title: 'Donner mon avis',
-              icon: '/icon-192x192.png'
-            },
-            {
-              action: 'view',
-              title: 'Voir la commande',
-              icon: '/icon-192x192.png'
-            }
-          ],
-          requireInteraction: false, // Moins intrusif
-          silent: false
-        });
-      }
+          data: { type: 'order_status_update', orderId, status: 'livree', url: `/orders/${orderId}` }
+        })
+      });
     } catch (pushError) {
-      console.warn('Notification push non disponible:', pushError);
-      // Ne pas faire échouer la requête si les notifications push ne fonctionnent pas
+      console.warn('⚠️ Push natif non envoyé (non bloquant):', pushError?.message || pushError);
     }
 
     // Envoyer aussi un email de confirmation

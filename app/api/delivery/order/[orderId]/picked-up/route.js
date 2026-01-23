@@ -48,7 +48,7 @@ export async function POST(request, { params }) {
     // Vérifier que la commande existe et appartient à ce livreur
     const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
-      .select('id, statut, livreur_id, payment_status')
+      .select('id, statut, livreur_id, payment_status, user_id')
       .eq('id', orderId)
       .single();
 
@@ -77,12 +77,19 @@ export async function POST(request, { params }) {
     }
 
     // Mettre à jour la commande avec picked_up_at
+    // + si la commande était "pret_a_livrer", on la passe en "en_livraison"
+    // (étape "commande remise au livreur / livreur en route")
+    const updatePayload = {
+      picked_up_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    if (order.statut === 'pret_a_livrer') {
+      updatePayload.statut = 'en_livraison';
+    }
+
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
-      .update({
-        picked_up_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', orderId)
       .select()
       .single();
@@ -92,17 +99,28 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
     }
 
-    // Envoyer une notification au client (optionnel)
+    // Envoyer une notification push au client
     try {
-      // Récupérer les informations du client
-      const { data: customerData } = await supabaseAdmin
-        .from('commandes')
-        .select('user_id, users:user_id(email)')
-        .eq('id', orderId)
-        .single();
+      if (updatedOrder?.user_id) {
+        const pushTitle = 'Livreur en route 🚚';
+        const pushBody = `Votre commande #${orderId.slice(0, 8)} a été récupérée et arrive bientôt.`;
 
-      // TODO: Envoyer une notification push/email au client
-      // Vous pouvez utiliser votre système de notifications existant ici
+        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: updatedOrder.user_id,
+            title: pushTitle,
+            body: pushBody,
+            data: {
+              type: 'order_status_update',
+              orderId,
+              status: updatedOrder.statut || order.statut,
+              url: `/orders/${orderId}`,
+            },
+          }),
+        });
+      }
     } catch (notificationError) {
       console.warn('⚠️ Erreur notification client:', notificationError);
       // Ne pas faire échouer la requête si la notification échoue
