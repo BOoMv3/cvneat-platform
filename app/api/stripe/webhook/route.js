@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
-import { supabase } from '../../../../lib/supabase';
+import { supabase as supabasePublic, supabaseAdmin } from '../../../../lib/supabase';
 import sseBroadcaster from '../../../../lib/sse-broadcast';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -10,6 +10,9 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 // POST /api/stripe/webhook - Webhook Stripe pour les remboursements
 export async function POST(request) {
   try {
+    // Utiliser l'origin du webhook pour appeler nos routes internes de manière fiable
+    const origin = new URL(request.url).origin;
+
     const body = await request.text();
     const signature = headers().get('stripe-signature');
 
@@ -38,11 +41,11 @@ export async function POST(request) {
     // Traiter les différents types d'événements
     switch (event.type) {
       case 'payment_intent.succeeded':
-        await handlePaymentSucceeded(event.data.object);
+        await handlePaymentSucceeded(event.data.object, { origin });
         break;
 
       case 'payment_intent.payment_failed':
-        await handlePaymentFailed(event.data.object);
+        await handlePaymentFailed(event.data.object, { origin });
         break;
 
       case 'payment_intent.created':
@@ -51,19 +54,19 @@ export async function POST(request) {
         break;
 
       case 'charge.dispute.created':
-        await handleDisputeCreated(event.data.object);
+        await handleDisputeCreated(event.data.object, { origin });
         break;
 
       case 'payment_intent.canceled':
-        await handlePaymentCanceled(event.data.object);
+        await handlePaymentCanceled(event.data.object, { origin });
         break;
 
       case 'refund.created':
-        await handleRefundCreated(event.data.object);
+        await handleRefundCreated(event.data.object, { origin });
         break;
 
       case 'refund.updated':
-        await handleRefundUpdated(event.data.object);
+        await handleRefundUpdated(event.data.object, { origin });
         break;
 
       default:
@@ -82,12 +85,18 @@ export async function POST(request) {
 }
 
 // Gestion du paiement réussi
-async function handlePaymentSucceeded(paymentIntent) {
+async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
   console.log('✅ Paiement réussi:', paymentIntent.id);
   
   try {
+    // IMPORTANT: ce webhook doit tourner avec service role (RLS), sinon on rate des champs (ex: restaurants.user_id)
+    const db = supabaseAdmin || supabasePublic;
+    if (!supabaseAdmin) {
+      console.warn('⚠️ supabaseAdmin indisponible (SUPABASE_SERVICE_ROLE_KEY manquant). Le webhook peut échouer avec RLS.');
+    }
+
     // Récupérer les informations complètes de la commande
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await db
       .from('commandes')
       .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount')
       .eq('stripe_payment_intent_id', paymentIntent.id)
@@ -110,7 +119,7 @@ async function handlePaymentSucceeded(paymentIntent) {
       computedDeliveryFee = Math.max(0, Math.round((feesTotal - knownPlatformFee) * 100) / 100);
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from('commandes')
       .update({
         payment_status: 'paid',
@@ -142,14 +151,15 @@ async function handlePaymentSucceeded(paymentIntent) {
           // 2. Notification push FCM pour le restaurant
           try {
             // Récupérer le user_id du restaurant depuis la table restaurants
-            const { data: restaurantData, error: restaurantError } = await supabase
+            const { data: restaurantData, error: restaurantError } = await db
               .from('restaurants')
               .select('user_id')
               .eq('id', order.restaurant_id)
               .single();
             
             if (!restaurantError && restaurantData && restaurantData.user_id) {
-              const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+              const pushBase = origin || process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
+              const pushResponse = await fetch(`${pushBase}/api/notifications/send-push`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -179,7 +189,8 @@ async function handlePaymentSucceeded(paymentIntent) {
           
           // 3. Notification push FCM pour les livreurs (commande disponible)
           try {
-            const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
+            const pushBase = origin || process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
+            const pushResponse = await fetch(`${pushBase}/api/notifications/send-push`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -216,11 +227,12 @@ async function handlePaymentSucceeded(paymentIntent) {
 }
 
 // Gestion du paiement échoué
-async function handlePaymentFailed(paymentIntent) {
+async function handlePaymentFailed(paymentIntent, { origin } = {}) {
   console.log('❌ Paiement échoué:', paymentIntent.id);
   
   try {
-    const { data: order, error: orderError } = await supabase
+    const db = supabaseAdmin || supabasePublic;
+    const { data: order, error: orderError } = await db
       .from('commandes')
       .select('id, order_number, customer_id')
       .eq('stripe_payment_intent_id', paymentIntent.id)
