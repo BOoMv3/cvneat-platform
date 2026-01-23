@@ -22,6 +22,21 @@ export async function POST(request) {
       );
     }
 
+    const normalizeRole = (r) => (r || '').toString().trim().toLowerCase();
+    const requestedRole = normalizeRole(role);
+    const roleCandidates = (() => {
+      // Compat: accepter plusieurs valeurs historiques en DB
+      // (on a déjà vu "delivery" vs "livreur", et "partner" vs "restaurant")
+      if (!requestedRole) return [];
+      if (requestedRole === 'delivery' || requestedRole === 'livreur') {
+        return ['delivery', 'livreur'];
+      }
+      if (requestedRole === 'restaurant' || requestedRole === 'partner') {
+        return ['restaurant', 'partner'];
+      }
+      return [requestedRole];
+    })();
+
     // Récupérer les tokens de l'utilisateur ou du rôle
     let query = supabase.from('device_tokens').select('token, platform');
 
@@ -32,7 +47,7 @@ export async function POST(request) {
       const { data: users } = await supabase
         .from('users')
         .select('id')
-        .eq('role', role);
+        .in('role', roleCandidates);
 
       if (users && users.length > 0) {
         const userIds = users.map(u => u.id);
