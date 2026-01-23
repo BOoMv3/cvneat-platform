@@ -10,7 +10,7 @@ import Link from 'next/link';
 //
 // Objectif: éviter la route dynamique /restaurants/[id] dans l'app iOS/Capacitor
 // (qui peut provoquer des refresh en boucle en export statique).
-const RestaurantDetailClient = dynamic(() => import('../restaurants/[id]/page-client'), {
+const RestaurantDetailClient = dynamic(() => import('../components/RestaurantDetailContent'), {
   ssr: false,
   loading: () => (
     <div className="min-h-screen flex items-center justify-center">
@@ -44,8 +44,7 @@ export default function RestaurantViewPage() {
     );
   }
 
-  // Reuse le composant existant, qui accepte params.id
-  return <RestaurantDetailClient params={{ id: restaurantId }} />;
+  return <RestaurantDetailClient restaurantId={restaurantId} />;
 }
 
 

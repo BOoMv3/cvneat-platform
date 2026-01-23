@@ -1,5 +1,4 @@
 import './globals.css';
-import { Inter, Poppins } from 'next/font/google';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
 import FacebookPixel from '@/components/FacebookPixel';
@@ -23,27 +22,8 @@ if (typeof window !== 'undefined') {
 }
 
 // IMPORTANT:
-// En build mobile (BUILD_MOBILE=true), Next.js "next/font/google" peut rester bloqué
-// sur "Creating an optimized production build..." (téléchargement Google Fonts).
-// On utilise donc des polices système dans l'export iOS/Android.
-const USE_GOOGLE_FONTS = process.env.BUILD_MOBILE !== 'true';
-
-const inter = USE_GOOGLE_FONTS
-  ? Inter({
-      subsets: ['latin'],
-      variable: '--font-inter',
-      display: 'swap',
-    })
-  : { variable: '' };
-
-const poppins = USE_GOOGLE_FONTS
-  ? Poppins({
-      subsets: ['latin'],
-      weight: ['400', '500', '600', '700', '800'],
-      variable: '--font-poppins',
-      display: 'swap',
-    })
-  : { variable: '' };
+// On n'utilise pas next/font/google ici, car ça déclenche des téléchargements au build
+// et peut bloquer (surtout en BUILD_MOBILE/export statique). On reste sur polices système.
 
 export const metadata = {
   title: 'CVN\'EAT - Livraison de repas à domicile | Restaurants partenaires',
@@ -273,7 +253,7 @@ export default function RootLayout({ children }) {
         <meta name="distribution" content="Global" />
         <meta name="rating" content="General" />
       </head>
-      <body className={`${inter.variable} ${poppins.variable} font-sans transition-colors duration-300`}>
+      <body className="font-sans transition-colors duration-300">
         <ThemeProvider>
           <FacebookPixel />
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
