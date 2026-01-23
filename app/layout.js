@@ -22,18 +22,28 @@ if (typeof window !== 'undefined') {
   }, 0);
 }
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
+// IMPORTANT:
+// En build mobile (BUILD_MOBILE=true), Next.js "next/font/google" peut rester bloqué
+// sur "Creating an optimized production build..." (téléchargement Google Fonts).
+// On utilise donc des polices système dans l'export iOS/Android.
+const USE_GOOGLE_FONTS = process.env.BUILD_MOBILE !== 'true';
 
-const poppins = Poppins({ 
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-poppins',
-  display: 'swap',
-});
+const inter = USE_GOOGLE_FONTS
+  ? Inter({
+      subsets: ['latin'],
+      variable: '--font-inter',
+      display: 'swap',
+    })
+  : { variable: '' };
+
+const poppins = USE_GOOGLE_FONTS
+  ? Poppins({
+      subsets: ['latin'],
+      weight: ['400', '500', '600', '700', '800'],
+      variable: '--font-poppins',
+      display: 'swap',
+    })
+  : { variable: '' };
 
 export const metadata = {
   title: 'CVN\'EAT - Livraison de repas à domicile | Restaurants partenaires',
