@@ -167,7 +167,8 @@ export async function POST(request) {
             },
             body: JSON.stringify({
               to: t,
-              notification: { title, body: message, sound: 'default', badge: 1 },
+              // Ne pas forcer de badge par défaut (sinon badge fantôme).
+              notification: { title, body: message, sound: 'default' },
               data: payload || {},
               priority: 'high',
             }),

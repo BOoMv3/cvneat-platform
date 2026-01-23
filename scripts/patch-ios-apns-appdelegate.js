@@ -28,16 +28,20 @@ if (!fs.existsSync(appDelegatePath)) {
 
 let content = fs.readFileSync(appDelegatePath, 'utf8');
 
-// Already patched?
-if (
+const hasApnsCallbacks =
   content.includes('capacitorDidRegisterForRemoteNotifications') ||
-  content.includes('didRegisterForRemoteNotificationsWithDeviceToken')
-) {
+  content.includes('didRegisterForRemoteNotificationsWithDeviceToken');
+
+const hasBadgeReset =
+  content.includes('applicationIconBadgeNumber = 0') ||
+  content.includes('applicationDidBecomeActive');
+
+if (hasApnsCallbacks && hasBadgeReset) {
   console.log('ℹ️ [patch-ios-apns] AppDelegate.swift semble déjà patché (OK).');
   process.exit(0);
 }
 
-const injection = `
+const apnsInjection = `
 
     // MARK: - APNs (Push Notifications)
     //
@@ -63,6 +67,18 @@ const injection = `
         )
     }
 `;
+
+const badgeInjection = `
+
+    // MARK: - Badge reset
+    //
+    // Évite un badge iOS "fantôme" (ex: 1) qui reste affiché même sans notifications.
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        application.applicationIconBadgeNumber = 0
+    }
+`;
+
+const injection = `${hasApnsCallbacks ? '' : apnsInjection}${hasBadgeReset ? '' : badgeInjection}`;
 
 // Inject after didFinishLaunchingWithOptions block (best effort).
 const anchor = 'return true';

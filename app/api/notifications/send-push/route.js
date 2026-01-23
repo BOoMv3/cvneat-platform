@@ -99,7 +99,7 @@ export async function POST(request) {
                   title,
                   body,
                   sound: 'default',
-                  badge: 1
+                  // Ne pas forcer de badge par défaut (sinon badge fantôme).
                 },
                 data: data || {},
                 priority: 'high'
