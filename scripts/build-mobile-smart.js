@@ -264,12 +264,31 @@ try {
   console.log('✔️  Étape 5/6: Vérifications...');
   const androidAssets = path.join(process.cwd(), 'android', 'app', 'src', 'main', 'assets');
   const iosAssets = path.join(process.cwd(), 'ios', 'App', 'App', 'public');
+  const iosNextStaticCssDir = path.join(iosAssets, '_next', 'static', 'css');
   
   if (fs.existsSync(androidAssets)) {
     console.log('✅ Android: fichiers copiés');
   }
   if (fs.existsSync(iosAssets)) {
     console.log('✅ iOS: fichiers copiés');
+  }
+
+  // Sanity check: s'assurer que le CSS Next/Tailwind est bien copié dans iOS.
+  // Sinon, l'app s'affiche "sans styles" (HTML brut), souvent visible sur iPad.
+  try {
+    if (!fs.existsSync(iosNextStaticCssDir)) {
+      throw new Error(`Dossier CSS manquant: ${iosNextStaticCssDir}`);
+    }
+    const cssFiles = fs.readdirSync(iosNextStaticCssDir).filter((f) => f.endsWith('.css'));
+    if (!cssFiles.length) {
+      throw new Error(`Aucun fichier CSS trouvé dans: ${iosNextStaticCssDir}`);
+    }
+    console.log(`✅ iOS: CSS Next OK (${cssFiles.length} fichier(s))`);
+  } catch (e) {
+    console.error('❌ iOS: CSS Next manquant -> l\'app sera non stylée (écran brut).');
+    console.error('   Cause probable: cap sync non effectué / assets non copiés.');
+    console.error('   Détail:', e?.message || e);
+    process.exit(1);
   }
   
   console.log('\n🎉 Build terminé avec succès!');
