@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 set -euo pipefail
 
 # Prépare des captures App Store "iPhone 6,5 pouces" (1242x2688).
