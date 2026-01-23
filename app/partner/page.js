@@ -2462,7 +2462,8 @@ export default function PartnerDashboard() {
                 <button
                   onClick={() => {
                     // Ouvrir la page restaurant dans un nouvel onglet pour voir comme un client
-                    window.open(`/restaurants/${restaurant.id}`, '_blank');
+                    // Utiliser la route statique pour éviter les refresh en boucle dans l'app mobile (export statique)
+                    window.open(`/restaurant-view?id=${encodeURIComponent(restaurant.id)}`, '_blank');
                   }}
                   className="bg-indigo-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-indigo-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
                   title="Voir ma fiche établissement comme un client"

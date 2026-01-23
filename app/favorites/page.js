@@ -71,7 +71,7 @@ export default function FavoritesPage() {
   };
 
   const handleRestaurantClick = (restaurant) => {
-    router.push(`/restaurants/${restaurant.id}`);
+    router.push(`/restaurant-view?id=${encodeURIComponent(restaurant.id)}`);
   };
 
   const handleFavoriteToggle = (restaurantId) => {

@@ -491,7 +491,7 @@ export default function Checkout() {
         if (!hoursData.isOpen || hoursData.is_manually_closed) {
           alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
           setSubmitting(false);
-          router.push(`/restaurants/${activeRestaurant.id}`);
+          router.push(`/restaurant-view?id=${encodeURIComponent(activeRestaurant.id)}`);
           return;
         }
       }

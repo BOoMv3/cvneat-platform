@@ -977,7 +977,7 @@ export default function RestaurantDetail({ params }) {
 
   const handleCheckout = () => {
     if (!user) {
-      router.push('/login?redirect=' + encodeURIComponent(`/restaurants/${restaurantId}`));
+      router.push('/login?redirect=' + encodeURIComponent(`/restaurant-view?id=${restaurantId}`));
       return;
     }
     

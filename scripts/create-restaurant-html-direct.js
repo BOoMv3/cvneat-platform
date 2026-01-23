@@ -85,9 +85,10 @@ const directLoadScript = `
         } else if (attempts >= maxAttempts) {
           console.warn('[Restaurant Direct Load] ⚠️ Next.js router non trouvé après', attempts, 'tentatives');
           clearInterval(checkNextJS);
-          // Fallback : recharger la page
-          console.log('[Restaurant Direct Load] 🔄 Rechargement de la page...');
-          window.location.reload();
+          // IMPORTANT: ne pas recharger en boucle (iOS/iPad)
+          // Fallback stable: rediriger vers la page statique /restaurant-view?id=...
+          console.log('[Restaurant Direct Load] ➜ Fallback statique /restaurant-view?id=...');
+          window.location.href = '/restaurant-view?id=' + encodeURIComponent(restaurantId);
         } else if (attempts % 20 === 0) {
           console.log('[Restaurant Direct Load] ⏳ Attente Next.js...', attempts, '/', maxAttempts);
         }

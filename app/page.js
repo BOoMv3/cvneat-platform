@@ -1102,10 +1102,11 @@ export default function Home() {
   };
 
   const handleRestaurantClick = (restaurant) => {
-    // Dans l'app mobile, utiliser window.location.href pour forcer la navigation
-    // Le fichier HTML statique /restaurants/[id]/index.html chargera le composant React
+    // IMPORTANT: dans l'app mobile (export statique), éviter /restaurants/[id]
+    // car le fallback HTML peut créer un refresh en boucle.
+    // On utilise une route statique /restaurant-view?id=...
     if (typeof window !== 'undefined') {
-      const targetUrl = `/restaurants/${restaurant.id}`;
+      const targetUrl = `/restaurant-view?id=${encodeURIComponent(restaurant.id)}`;
       console.log('[Navigation] Redirection vers restaurant:', targetUrl, 'ID:', restaurant.id);
       
       // Dans l'app mobile Capacitor, forcer la navigation avec un rechargement complet
@@ -1113,18 +1114,12 @@ export default function Home() {
                             window.location.href.indexOf('capacitor://') === 0 ||
                             window.Capacitor !== undefined;
       
-      if (isCapacitorApp) {
-        // Utiliser window.location.href pour forcer un rechargement complet
-        // Cela charge le fichier HTML statique /restaurants/[id]/index.html
-        console.log('[Navigation] App Capacitor détectée, navigation vers:', targetUrl);
-        window.location.href = targetUrl;
-      } else {
-        // Sur le web, utiliser le router Next.js
-        router.push(targetUrl);
-      }
+      // Sur web/app: route statique, donc router.push suffit.
+      // (Sur Capacitor, c'est aussi plus stable que window.location.href)
+      router.push(targetUrl);
     } else {
       // Fallback pour SSR
-      router.push(`/restaurants/${restaurant.id}`);
+      router.push(`/restaurant-view?id=${encodeURIComponent(restaurant.id)}`);
     }
   };
 

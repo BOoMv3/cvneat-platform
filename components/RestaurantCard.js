@@ -36,7 +36,7 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
   const isRestaurantReady = READY_RESTAURANTS.has(normalizeName(nom));
 
   return (
-    <Link href={`/restaurants/${id}`} className="block">
+    <Link href={`/restaurant-view?id=${encodeURIComponent(id)}`} className="block">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
         {/* Image de fond avec logo intégré */}
         <div className="relative h-48 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden">
