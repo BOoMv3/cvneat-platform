@@ -250,6 +250,16 @@ try {
     console.warn('⚠️  Patch APNs non appliqué (non bloquant):', error.message);
   }
 
+  // Étape 4.6: Patch iOS Info.plist (export compliance chiffrement)
+  // Pour éviter qu'Apple demande des documents de chiffrement : ITSAppUsesNonExemptEncryption = false
+  console.log('🛠️  Étape 4.6/6: Patch iOS Info.plist (chiffrement)...');
+  try {
+    execSync('node scripts/patch-ios-infoplist-encryption.js', { stdio: 'inherit' });
+    console.log('✅ Patch Info.plist appliqué\n');
+  } catch (error) {
+    console.warn('⚠️  Patch Info.plist non appliqué (non bloquant):', error.message);
+  }
+
   // Étape 5: Vérifications
   console.log('✔️  Étape 5/6: Vérifications...');
   const androidAssets = path.join(process.cwd(), 'android', 'app', 'src', 'main', 'assets');
