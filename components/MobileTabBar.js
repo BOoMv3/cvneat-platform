@@ -40,16 +40,19 @@ export default function MobileTabBar() {
     refresh();
 
     const onStorage = () => refresh();
+    const onCartUpdated = () => refresh();
     const onFocus = () => refresh();
     const onVisibility = () => {
       if (document.visibilityState === 'visible') refresh();
     };
 
     window.addEventListener('storage', onStorage);
+    window.addEventListener('cvneat-cart-updated', onCartUpdated);
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener('cvneat-cart-updated', onCartUpdated);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
     };

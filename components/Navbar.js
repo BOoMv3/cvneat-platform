@@ -39,9 +39,13 @@ export default function Navbar() {
     };
 
     const loadCart = () => {
-      const savedCart = safeLocalStorage.getJSON('cart');
-      if (savedCart) {
-        setCartItemCount(savedCart.items.reduce((total, item) => total + item.quantity, 0));
+      try {
+        const savedCart = safeLocalStorage.getJSON('cart');
+        const items = Array.isArray(savedCart?.items) ? savedCart.items : [];
+        const count = items.reduce((total, item) => total + (parseInt(item?.quantity ?? 1, 10) || 0), 0);
+        setCartItemCount(count);
+      } catch {
+        setCartItemCount(0);
       }
     };
 
@@ -52,8 +56,21 @@ export default function Navbar() {
     checkUser();
     loadCart();
 
+    const onCartUpdated = () => loadCart();
+    const onFocus = () => loadCart();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') loadCart();
+    };
+
+    window.addEventListener('cvneat-cart-updated', onCartUpdated);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       listener?.subscription.unsubscribe();
+      window.removeEventListener('cvneat-cart-updated', onCartUpdated);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
