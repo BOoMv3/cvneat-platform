@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import sseBroadcaster from '../../../../lib/sse-broadcast';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+function getBearerToken(request) {
+  const auth = request.headers.get('authorization') || '';
+  if (!auth.toLowerCase().startsWith('bearer ')) return null;
+  return auth.slice(7).trim();
+}
 
 export async function GET(request, { params }) {
   try {
@@ -533,6 +540,44 @@ export async function PUT(request, { params }) {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
+    // Auth obligatoire (sinon n'importe qui pourrait modifier une commande)
+    const token = getBearerToken(request);
+    if (!token) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+    const { data: authed, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    const user = authed?.user;
+    if (authErr || !user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    // Lire la commande avant update (contrôle + transition)
+    const { data: before, error: beforeErr } = await supabaseAdmin
+      .from('commandes')
+      .select('id, user_id, restaurant_id, total, frais_livraison, payment_status')
+      .eq('id', id)
+      .single();
+    if (beforeErr || !before) {
+      return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 });
+    }
+
+    // Admin ?
+    let isAdmin = false;
+    try {
+      const { data: u } = await supabaseAdmin
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      isAdmin = (u?.role || '').toString().trim().toLowerCase() === 'admin';
+    } catch {
+      // ignore
+    }
+
+    if (!isAdmin && before.user_id && before.user_id !== user.id) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
     // Préparer les données de mise à jour
     const updateData = {
       updated_at: new Date().toISOString()
@@ -566,6 +611,60 @@ export async function PUT(request, { params }) {
     }
 
     console.log(`✅ [API PUT /orders/${id}] Commande mise à jour avec succès`);
+
+    // Notifier immédiatement quand on passe à paid (sinon le resto/livreur dépend du webhook Stripe)
+    try {
+      const afterStatus = (data?.payment_status || '').toString().trim().toLowerCase();
+      const beforeStatus = (before?.payment_status || '').toString().trim().toLowerCase();
+      const transitionedToPaid = afterStatus === 'paid' && beforeStatus !== 'paid';
+
+      if (transitionedToPaid && data?.restaurant_id) {
+        const origin = new URL(request.url).origin;
+        const notificationTotal = (
+          parseFloat(data.total || 0) + parseFloat(data.frais_livraison || 0)
+        ).toFixed(2);
+
+        sseBroadcaster.broadcast(data.restaurant_id, {
+          type: 'new_order',
+          message: `Nouvelle commande #${data.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
+          order: data,
+          timestamp: new Date().toISOString(),
+        });
+
+        const { data: restaurantData } = await supabaseAdmin
+          .from('restaurants')
+          .select('user_id')
+          .eq('id', data.restaurant_id)
+          .maybeSingle();
+
+        if (restaurantData?.user_id) {
+          await fetch(`${origin}/api/notifications/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: restaurantData.user_id,
+              title: 'Nouvelle commande ! 🎉',
+              body: `Commande #${data.id?.slice(0, 8)} - ${notificationTotal}€`,
+              data: { type: 'new_order', orderId: data.id, url: '/partner/orders' },
+            }),
+          }).catch(() => {});
+        }
+
+        await fetch(`${origin}/api/notifications/send-push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            role: 'delivery',
+            title: 'Nouvelle commande disponible 🚚',
+            body: `Commande #${data.id?.slice(0, 8)} - ${notificationTotal}€`,
+            data: { type: 'new_order_available', orderId: data.id, url: '/delivery/dashboard' },
+          }),
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('⚠️ [API PUT /orders/[id]] Erreur non bloquante notifications:', e?.message || e);
+    }
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('❌ [API PUT /orders/[id]] Erreur serveur:', error);

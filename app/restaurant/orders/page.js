@@ -233,6 +233,22 @@ export default function RestaurantOrders() {
           console.log('Commande mise à jour:', payload.new);
           console.log('Ancien statut:', payload.old.statut);
           console.log('Nouveau statut:', payload.new.statut);
+
+          // IMPORTANT: Si une commande était "pending" puis passe en "paid", on doit alerter le resto.
+          // Sinon, ils peuvent ne la voir/notifier qu'avec beaucoup de retard.
+          try {
+            const newPaid = (payload?.new?.payment_status || '').toString().trim().toLowerCase() === 'paid';
+            const oldPaid = (payload?.old?.payment_status || '').toString().trim().toLowerCase() === 'paid';
+            if (newPaid && !oldPaid) {
+              console.log('✅ Commande confirmée payée (UPDATE), alerte partenaire:', payload.new?.id);
+              setNewOrderNotification(payload.new);
+              playNotificationSound().catch(() => {});
+              setTimeout(() => setNewOrderNotification(null), 5000);
+            }
+          } catch {
+            // ignore
+          }
+
           // TOUJOURS rafraîchir la liste lors des mises à jour
           fetchOrders();
           // ALERTE FORTE si la commande est annulée (client/admin)
