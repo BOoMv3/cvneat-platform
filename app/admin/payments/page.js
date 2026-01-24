@@ -159,12 +159,9 @@ export default function AdminPayments() {
           console.log(`📊 ${restaurant.nom}: ${paidOrders.length} commandes payées sur ${orders?.length || 0} commandes livrées`);
 
           // Calculer les revenus et commissions
-          // Si les commandes ont déjà commission_amount et restaurant_payout stockés, les utiliser
-          // Sinon, recalculer avec le taux du restaurant
           let totalRevenue = 0;
           let totalCommission = 0;
           let totalRestaurantPayout = 0;
-          let hasStoredCommissions = false;
 
           // Vérifier si c'est "La Bonne Pâte" (pas de commission)
           const normalizedRestaurantName = (restaurant.nom || '')
@@ -173,18 +170,21 @@ export default function AdminPayments() {
             .toLowerCase();
           const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
 
-          // Taux de commission : utiliser commission_rate du restaurant (par défaut 20% si non défini)
-          // La Bonne Pâte = 0%, sinon utiliser le commission_rate du restaurant
-          const restaurantCommissionRate = restaurant.commission_rate 
-            ? parseFloat(restaurant.commission_rate) / 100 
-            : 0.20; // 20% par défaut
-          const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
-          
-          // Log pour debug
-          console.log(`💰 ${restaurant.nom}: commission_rate=${restaurant.commission_rate}, calculé=${commissionRate * 100}%`);
+          const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+          const parseRatePercent = (v) => {
+            const n = parseFloat(v);
+            return Number.isFinite(n) ? n : null;
+          };
+          const defaultRestaurantRatePercent = restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
+            ? parseRatePercent(restaurant.commission_rate)
+            : null;
 
-          // TOUJOURS recalculer avec le taux actuel du restaurant pour garantir l'exactitude
-          // même si des valeurs sont stockées (elles peuvent être basées sur d'anciens taux)
+          // Log pour debug
+          console.log(`💰 ${restaurant.nom}: commission_rate(resto)=${restaurant.commission_rate ?? 'n/a'} (internal=${isInternalRestaurant})`);
+
+          // IMPORTANT:
+          // Le "dû au restaurant" doit suivre les valeurs stockées par commande (commission_rate/commission_amount/restaurant_payout)
+          // sinon une modification du taux du restaurant dans le temps fausse l'historique.
           paidOrders.forEach(order => {
             const orderTotal = parseFloat(order.total || 0);
             if (isNaN(orderTotal)) {
@@ -193,11 +193,20 @@ export default function AdminPayments() {
             }
             totalRevenue += orderTotal;
 
-            // Recalculer la commission avec le taux actuel du restaurant
-            // Utiliser Math.round pour éviter les erreurs d'arrondi
-            const orderCommission = Math.round((orderTotal * commissionRate) * 100) / 100;
-            const orderPayout = Math.round((orderTotal - orderCommission) * 100) / 100;
-            
+            // Taux au moment de la commande (stocké), fallback resto, fallback défaut 20%
+            const orderRatePercent = parseRatePercent(order.commission_rate);
+            const effectiveRatePercent = isInternalRestaurant
+              ? 0
+              : (orderRatePercent ?? defaultRestaurantRatePercent ?? 20);
+
+            const orderCommission = order.commission_amount !== null && order.commission_amount !== undefined
+              ? round2(order.commission_amount)
+              : round2((orderTotal * effectiveRatePercent) / 100);
+
+            const orderPayout = order.restaurant_payout !== null && order.restaurant_payout !== undefined
+              ? round2(order.restaurant_payout)
+              : round2(orderTotal - orderCommission);
+
             totalCommission += orderCommission;
             totalRestaurantPayout += orderPayout;
           });
@@ -212,9 +221,9 @@ export default function AdminPayments() {
 
           const result = {
             ...restaurant,
-            totalRevenue: Math.round(totalRevenue * 100) / 100,
-            commission: Math.round(totalCommission * 100) / 100,
-            restaurantPayout: Math.round(totalRestaurantPayout * 100) / 100,
+            totalRevenue: round2(totalRevenue),
+            commission: round2(totalCommission),
+            restaurantPayout: round2(totalRestaurantPayout),
             orderCount: paidOrders.length,
             commissionRate: displayCommissionRate
           };

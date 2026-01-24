@@ -143,7 +143,7 @@ export default function TransfersTracking() {
       // Récupérer tous les restaurants
       const { data: allRestaurants, error: restaurantsError } = await supabase
         .from('restaurants')
-        .select('id, nom, user_id, status')
+        .select('id, nom, user_id, status, commission_rate')
         .order('nom', { ascending: true });
 
       if (restaurantsError) throw restaurantsError;
@@ -155,7 +155,7 @@ export default function TransfersTracking() {
           // (même si elles ont été marquées comme payées au restaurant)
           const { data: orders, error: ordersError } = await supabase
             .from('commandes')
-            .select('id, total, created_at, statut, payment_status, restaurant_paid_at')
+            .select('id, total, created_at, statut, payment_status, restaurant_paid_at, commission_rate, commission_amount, restaurant_payout')
             .eq('restaurant_id', restaurant.id)
             .eq('statut', 'livree');
 
@@ -202,18 +202,49 @@ export default function TransfersTracking() {
             // Continuer avec totalTransfers = 0
           }
 
-          // Vérifier si c'est "La Bonne Pâte" (pas de commission)
+          const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+          const parseRatePercent = (v) => {
+            const n = parseFloat(v);
+            return Number.isFinite(n) ? n : null;
+          };
+
+          // Compat: certaines anciennes règles mettaient La Bonne Pâte à 0% via un check sur le nom
           const normalizedRestaurantName = (restaurant.nom || '')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase();
           const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-          
-          // Taux de commission (par défaut 20%)
-          const commissionRate = isInternalRestaurant ? 0 : 0.20;
-          
-          const commission = totalRevenue * commissionRate;
-          const restaurantPayout = totalRevenue - commission;
+
+          const defaultRestaurantRatePercent =
+            restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
+              ? parseRatePercent(restaurant.commission_rate)
+              : null;
+
+          // Calculer commission/payout à partir des valeurs stockées par commande (historique exact)
+          let commission = 0;
+          let restaurantPayout = 0;
+
+          paidOrders.forEach((o) => {
+            const orderTotal = parseFloat(o.total || 0) || 0;
+            const orderRatePercent = parseRatePercent(o.commission_rate);
+            const effectiveRatePercent = isInternalRestaurant
+              ? 0
+              : (orderRatePercent ?? defaultRestaurantRatePercent ?? 20);
+
+            const orderCommission =
+              o.commission_amount !== null && o.commission_amount !== undefined
+                ? round2(o.commission_amount)
+                : round2((orderTotal * effectiveRatePercent) / 100);
+            const orderPayout =
+              o.restaurant_payout !== null && o.restaurant_payout !== undefined
+                ? round2(o.restaurant_payout)
+                : round2(orderTotal - orderCommission);
+
+            commission += orderCommission;
+            restaurantPayout += orderPayout;
+          });
+          commission = round2(commission);
+          restaurantPayout = round2(restaurantPayout);
           
           // Calculer ce qui reste à payer (revenus dus - virements déjà effectués)
           const remainingToPay = Math.max(0, restaurantPayout - totalTransfers);
@@ -226,7 +257,8 @@ export default function TransfersTracking() {
             totalTransfers: Math.round(totalTransfers * 100) / 100,
             remainingToPay: Math.round(remainingToPay * 100) / 100,
             orderCount: paidOrders.length,
-            commissionRate: commissionRate * 100
+            // Pour affichage: taux actuel du resto (ou 0% internal), pas un taux "moyen"
+            commissionRate: isInternalRestaurant ? 0 : (defaultRestaurantRatePercent ?? 20)
           };
         })
       );
