@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getFixedCommissionRatePercentFromName, getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../lib/commission';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -46,11 +47,24 @@ async function requireAdminUser(request) {
 }
 
 function buildTransferHtml({ issuer, restaurant, transfer, orders, totals, invoiceNumber }) {
+  const fixedRatePercent = getFixedCommissionRatePercentFromName(restaurant.nom);
+  const restRate = restaurant.commission_rate ?? 20;
   const rowsHtml = (orders || [])
     .map((o) => {
-      const rate = o.commission_rate ?? restaurant.commission_rate ?? 20;
-      const commission = o.commission_amount ?? round2((Number(o.total || 0) * Number(rate || 0)) / 100);
-      const payout = o.restaurant_payout ?? round2(Number(o.total || 0) - commission);
+      const ratePercent = getEffectiveCommissionRatePercent({
+        restaurantName: restaurant.nom,
+        orderRatePercent: o.commission_rate,
+        restaurantRatePercent: restRate,
+      });
+      const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+      const commission =
+        fixedRatePercent !== null
+          ? computed.commission
+          : (o.commission_amount ?? computed.commission);
+      const payout =
+        fixedRatePercent !== null
+          ? computed.payout
+          : (o.restaurant_payout ?? computed.payout);
       return `
         <tr>
           <td>${formatDateFR(o.created_at)}</td>
@@ -251,13 +265,29 @@ export async function POST(request) {
       console.error('Erreur récupération commandes pour facture:', ordersErr);
     }
 
-    const orders = (ordersAll || []).filter((o) => !o.payment_status || o.payment_status === 'paid');
+    const orders = (ordersAll || []).filter((o) => {
+      const s = (o.payment_status || '').toString().trim().toLowerCase();
+      return !['failed', 'cancelled', 'refunded'].includes(s);
+    });
 
+    const fixedRatePercent = getFixedCommissionRatePercentFromName(restaurant.nom);
+    const restRate = restaurant.commission_rate ?? 20;
     const totals = orders.reduce(
       (acc, o) => {
-        const rate = o.commission_rate ?? restaurant.commission_rate ?? 20;
-        const commission = o.commission_amount ?? round2((Number(o.total || 0) * Number(rate || 0)) / 100);
-        const payout = o.restaurant_payout ?? round2(Number(o.total || 0) - commission);
+        const ratePercent = getEffectiveCommissionRatePercent({
+          restaurantName: restaurant.nom,
+          orderRatePercent: o.commission_rate,
+          restaurantRatePercent: restRate,
+        });
+        const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+        const commission =
+          fixedRatePercent !== null
+            ? computed.commission
+            : (o.commission_amount ?? computed.commission);
+        const payout =
+          fixedRatePercent !== null
+            ? computed.payout
+            : (o.restaurant_payout ?? computed.payout);
         acc.totalRevenue += Number(o.total || 0);
         acc.totalCommission += commission;
         acc.totalPayoutDue += payout;

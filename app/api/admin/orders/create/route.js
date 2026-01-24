@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../../lib/commission';
 import { supabase } from '../../../../../lib/supabase';
 
 const supabaseAdmin = createClient(
@@ -66,12 +67,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Calculer les commissions
-    const restaurantCommissionRate = restaurant?.commission_rate 
-      ? parseFloat(restaurant.commission_rate) / 100 
-      : 0.20; // 20% par défaut
-    const commissionGross = Math.round((totalAmount * restaurantCommissionRate) * 100) / 100;
-    const restaurantPayout = Math.round((totalAmount * (1 - restaurantCommissionRate)) * 100) / 100;
+    // Calculer les commissions (règles fixes: Bonne Pâte 0%, All'ovale 15%, sinon commission_rate ou 20%)
+    const effectiveRatePercent = getEffectiveCommissionRatePercent({
+      restaurantName: restaurant?.nom,
+      restaurantRatePercent: restaurant?.commission_rate,
+    });
+    const computedCommission = computeCommissionAndPayout(totalAmount, effectiveRatePercent);
+    const commissionGross = computedCommission.commission;
+    const restaurantPayout = computedCommission.payout;
 
     // Générer un code de sécurité
     const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -150,7 +153,7 @@ export async function POST(request) {
       customer_last_name: customerInfo.lastName,
       customer_phone: customerInfo.phone,
       customer_email: customerInfo.email || null,
-      commission_rate: restaurantCommissionRate * 100,
+      commission_rate: effectiveRatePercent,
       commission_amount: commissionGross,
       restaurant_payout: restaurantPayout,
       delivery_commission_cvneat: deliveryCommissionCvneat

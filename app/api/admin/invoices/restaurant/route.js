@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getFixedCommissionRatePercentFromName, getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../lib/commission';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -202,13 +203,37 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Erreur récupération commandes' }, { status: 500 });
   }
 
-  const paidOrders = (orders || []).filter((o) => !o.payment_status || o.payment_status === 'paid');
+  const paidOrders = (orders || []).filter((o) => {
+    const s = (o.payment_status || '').toString().trim().toLowerCase();
+    return !['failed', 'cancelled', 'refunded'].includes(s);
+  });
+
+  // Règle fixe éventuelle (Bonne Pâte / All'ovale)
+  const fixedRatePercent = getFixedCommissionRatePercentFromName(restaurant.nom);
   const restRate = restaurant.commission_rate ?? 20;
+  const displayRatePercent =
+    fixedRatePercent !== null
+      ? fixedRatePercent
+      : (Number(restRate) || 20);
 
   const lines = paidOrders.map((o) => {
-    const rate = o.commission_rate ?? restRate;
-    const commission = o.commission_amount ?? round2((Number(o.total || 0) * Number(rate || 0)) / 100);
-    const payout = o.restaurant_payout ?? round2(Number(o.total || 0) - commission);
+    const ratePercent = getEffectiveCommissionRatePercent({
+      restaurantName: restaurant.nom,
+      orderRatePercent: o.commission_rate,
+      restaurantRatePercent: restRate,
+    });
+
+    // Si on est sur une règle fixe, on recalcule toujours (ça corrige l'historique si des valeurs stockées sont incohérentes).
+    // Sinon, on préfère les valeurs stockées par commande pour respecter l'historique.
+    const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+    const commission =
+      fixedRatePercent !== null
+        ? computed.commission
+        : (o.commission_amount ?? computed.commission);
+    const payout =
+      fixedRatePercent !== null
+        ? computed.payout
+        : (o.restaurant_payout ?? computed.payout);
     return {
       date: formatDateFR(o.created_at),
       ref: (o.id || '').slice(0, 8),
@@ -220,14 +245,29 @@ export async function GET(request) {
 
   const total = paidOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
   const commissionTotal = paidOrders.reduce((acc, o) => {
-    const rate = o.commission_rate ?? restRate;
-    const commission = o.commission_amount ?? round2((Number(o.total || 0) * Number(rate || 0)) / 100);
+    const ratePercent = getEffectiveCommissionRatePercent({
+      restaurantName: restaurant.nom,
+      orderRatePercent: o.commission_rate,
+      restaurantRatePercent: restRate,
+    });
+    const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+    const commission =
+      fixedRatePercent !== null
+        ? computed.commission
+        : (o.commission_amount ?? computed.commission);
     return acc + commission;
   }, 0);
   const payoutTotal = paidOrders.reduce((acc, o) => {
-    const rate = o.commission_rate ?? restRate;
-    const commission = o.commission_amount ?? round2((Number(o.total || 0) * Number(rate || 0)) / 100);
-    const payout = o.restaurant_payout ?? round2(Number(o.total || 0) - commission);
+    const ratePercent = getEffectiveCommissionRatePercent({
+      restaurantName: restaurant.nom,
+      orderRatePercent: o.commission_rate,
+      restaurantRatePercent: restRate,
+    });
+    const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+    const payout =
+      fixedRatePercent !== null
+        ? computed.payout
+        : (o.restaurant_payout ?? computed.payout);
     return acc + payout;
   }, 0);
 
@@ -245,7 +285,7 @@ export async function GET(request) {
       `${restaurant.nom}`,
       `${restaurant.adresse || ''} ${restaurant.code_postal || ''} ${restaurant.ville || ''}`.trim(),
       restaurant.email ? `Email: ${restaurant.email}` : null,
-      `Commission: ${Number(restRate).toFixed(2)}%`,
+      `Commission: ${Number(displayRatePercent).toFixed(2)}%`,
     ].filter(Boolean),
   };
 

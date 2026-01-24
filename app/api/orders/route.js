@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../lib/commission';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
@@ -622,12 +623,17 @@ export async function POST(request) {
     }
 
     // Calculs financiers: commission/payout (AVANT la création de orderData)
-    // Utiliser le commission_rate du restaurant (par défaut 20% si non défini)
-    const restaurantCommissionRate = restaurant?.commission_rate 
-      ? parseFloat(restaurant.commission_rate) / 100 
-      : 0.20; // 20% par défaut
-    const commissionGross = Math.round((total * restaurantCommissionRate) * 100) / 100;
-    const restaurantPayout = Math.round((total * (1 - restaurantCommissionRate)) * 100) / 100;
+    // Règles fixes (important pour éviter toute incohérence):
+    // - La Bonne Pâte = 0%
+    // - All'ovale pizza = 15%
+    // - Sinon restaurant.commission_rate si présent, sinon 20%
+    const effectiveRatePercent = getEffectiveCommissionRatePercent({
+      restaurantName: restaurant?.nom,
+      restaurantRatePercent: restaurant?.commission_rate,
+    });
+    const computedCommission = computeCommissionAndPayout(total, effectiveRatePercent);
+    const commissionGross = computedCommission.commission;
+    const restaurantPayout = computedCommission.payout;
     const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
     
     // Commission livraison CVN'EAT (Option B):
@@ -642,7 +648,7 @@ export async function POST(request) {
     // Le livreur recevra: fraisLivraison - deliveryCommissionCvneat
     
     console.log('Finance computation:', {
-      commission_rate: restaurantCommissionRate * 100,
+      commission_rate: effectiveRatePercent,
       commission_gross: commissionGross,
       commission_net: commissionNet,
       restaurant_payout: restaurantPayout,
@@ -673,7 +679,7 @@ export async function POST(request) {
       promo_code: promoCode || null,
       discount_amount: discountAmount || 0,
       // Stocker les informations de commission
-      commission_rate: restaurantCommissionRate * 100, // En pourcentage (ex: 15.00)
+      commission_rate: effectiveRatePercent, // En pourcentage (ex: 15.00)
       commission_amount: commissionGross,
       restaurant_payout: restaurantPayout,
       // Stocker la commission CVN'EAT sur la livraison
