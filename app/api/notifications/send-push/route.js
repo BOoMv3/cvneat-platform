@@ -37,6 +37,15 @@ export async function POST(request) {
       return [requestedRole];
     })();
 
+    // PostgREST: les filtres `.eq()` / `.in()` sont sensibles à la casse et aux espaces.
+    // On utilise donc `.or(role.ilike.X%)` pour matcher "Delivery", "delivery ", etc.
+    const buildRoleOrFilter = (candidates) => {
+      if (!Array.isArray(candidates) || candidates.length === 0) return null;
+      // Roles attendus: simples (letters), donc pas besoin d'escape complexe.
+      // On tolère des espaces en fin via wildcard "%".
+      return candidates.map((r) => `role.ilike.${r}%`).join(',');
+    };
+
     // Récupérer les tokens de l'utilisateur ou du rôle
     let query = supabase.from('device_tokens').select('token, platform');
 
@@ -44,10 +53,11 @@ export async function POST(request) {
       query = query.eq('user_id', userId);
     } else if (role) {
       // Récupérer les tokens des utilisateurs avec ce rôle
-      const { data: users } = await supabase
-        .from('users')
-        .select('id')
-        .in('role', roleCandidates);
+      const roleOr = buildRoleOrFilter(roleCandidates);
+      const usersQuery = supabase.from('users').select('id');
+      const { data: users } = roleOr
+        ? await usersQuery.or(roleOr)
+        : await usersQuery.eq('role', role);
 
       if (users && users.length > 0) {
         const userIds = users.map(u => u.id);
