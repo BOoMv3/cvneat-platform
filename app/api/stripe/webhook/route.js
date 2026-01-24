@@ -96,14 +96,55 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
     }
 
     // Récupérer les informations complètes de la commande
-    const { data: order, error: orderError } = await db
+    // IMPORTANT: on tente d'abord via stripe_payment_intent_id, puis fallback via metadata.order_id
+    // car le checkout peut créer la commande AVANT d'avoir le PaymentIntentId.
+    let order = null;
+    let orderError = null;
+
+    const byPi = await db
       .from('commandes')
-      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount')
+      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id')
       .eq('stripe_payment_intent_id', paymentIntent.id)
-      .single();
+      .maybeSingle();
+    order = byPi.data || null;
+    orderError = byPi.error || null;
+
+    if (!order) {
+      const metaOrderId = paymentIntent?.metadata?.order_id || paymentIntent?.metadata?.orderId || null;
+      if (metaOrderId) {
+        console.log('🔎 Webhook: fallback lookup commande via metadata.order_id:', metaOrderId);
+        const byMeta = await db
+          .from('commandes')
+          .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id')
+          .eq('id', metaOrderId)
+          .maybeSingle();
+        order = byMeta.data || null;
+        orderError = byMeta.error || null;
+
+        // Rattacher le paymentIntentId à la commande si manquant (important pour refunds / debug)
+        if (order?.id && !order.stripe_payment_intent_id) {
+          try {
+            const { error: linkErr } = await db
+              .from('commandes')
+              .update({ stripe_payment_intent_id: paymentIntent.id, updated_at: new Date().toISOString() })
+              .eq('id', order.id);
+            if (linkErr) {
+              console.warn('⚠️ Webhook: impossible de lier stripe_payment_intent_id à la commande:', linkErr.message);
+            } else {
+              console.log('🔗 Webhook: stripe_payment_intent_id relié à la commande:', order.id);
+            }
+          } catch (e) {
+            console.warn('⚠️ Webhook: exception liaison stripe_payment_intent_id:', e?.message || e);
+          }
+        }
+      }
+    }
 
     if (orderError || !order) {
-      console.warn('⚠️ Commande non trouvée pour le payment intent:', paymentIntent.id);
+      console.warn('⚠️ Commande non trouvée pour payment intent:', paymentIntent.id, {
+        metadata_order_id: paymentIntent?.metadata?.order_id || null,
+        err: orderError?.message || null,
+      });
       return;
     }
 
