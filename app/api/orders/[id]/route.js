@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import sseBroadcaster from '../../../../lib/sse-broadcast';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
 
@@ -612,7 +611,9 @@ export async function PUT(request, { params }) {
 
     console.log(`✅ [API PUT /orders/${id}] Commande mise à jour avec succès`);
 
-    // Notifier immédiatement quand on passe à paid (sinon le resto/livreur dépend du webhook Stripe)
+    // Notifier immédiatement quand on passe à paid:
+    // NOUVEAU WORKFLOW: d'abord notifier les livreurs.
+    // Le restaurant sera notifié uniquement quand un livreur accepte la commande.
     try {
       const afterStatus = (data?.payment_status || '').toString().trim().toLowerCase();
       const beforeStatus = (before?.payment_status || '').toString().trim().toLowerCase();
@@ -623,32 +624,6 @@ export async function PUT(request, { params }) {
         const notificationTotal = (
           parseFloat(data.total || 0) + parseFloat(data.frais_livraison || 0)
         ).toFixed(2);
-
-        sseBroadcaster.broadcast(data.restaurant_id, {
-          type: 'new_order',
-          message: `Nouvelle commande #${data.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
-          order: data,
-          timestamp: new Date().toISOString(),
-        });
-
-        const { data: restaurantData } = await supabaseAdmin
-          .from('restaurants')
-          .select('user_id')
-          .eq('id', data.restaurant_id)
-          .maybeSingle();
-
-        if (restaurantData?.user_id) {
-          await fetch(`${origin}/api/notifications/send-push`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: restaurantData.user_id,
-              title: 'Nouvelle commande ! 🎉',
-              body: `Commande #${data.id?.slice(0, 8)} - ${notificationTotal}€`,
-              data: { type: 'new_order', orderId: data.id, url: '/partner/orders' },
-            }),
-          }).catch(() => {});
-        }
 
         await fetch(`${origin}/api/notifications/send-push`, {
           method: 'POST',

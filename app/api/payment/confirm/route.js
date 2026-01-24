@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '../../../../lib/supabase';
-import sseBroadcaster from '../../../../lib/sse-broadcast';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -102,7 +101,9 @@ export async function POST(request) {
       return NextResponse.json({ success: true, orderId: order.id, alreadyPaid: true });
     }
 
-    // Notifications (comme webhook): SSE + push resto + push livreurs
+    // Notifications:
+    // NOUVEAU WORKFLOW: d'abord notifier les livreurs.
+    // Le restaurant sera notifié uniquement quand un livreur accepte la commande.
     try {
       const origin = new URL(request.url).origin;
       const notificationTotal = (
@@ -110,33 +111,6 @@ export async function POST(request) {
       ).toFixed(2);
 
       if (updated.restaurant_id) {
-        sseBroadcaster.broadcast(updated.restaurant_id, {
-          type: 'new_order',
-          message: `Nouvelle commande #${updated.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
-          order: updated,
-          timestamp: new Date().toISOString(),
-        });
-
-        // user_id du restaurant
-        const { data: restaurantData } = await supabaseAdmin
-          .from('restaurants')
-          .select('user_id')
-          .eq('id', updated.restaurant_id)
-          .maybeSingle();
-
-        if (restaurantData?.user_id) {
-          await fetch(`${origin}/api/notifications/send-push`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: restaurantData.user_id,
-              title: 'Nouvelle commande ! 🎉',
-              body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
-              data: { type: 'new_order', orderId: updated.id, url: '/partner/orders' },
-            }),
-          }).catch(() => {});
-        }
-
         await fetch(`${origin}/api/notifications/send-push`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

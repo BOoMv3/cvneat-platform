@@ -195,10 +195,11 @@ export default function RestaurantOrders() {
         },
         (payload) => {
           console.log('Nouvelle commande reçue:', payload.new);
-          // IMPORTANT: Vérifier que la commande est payée avant d'afficher l'alerte
-          if (payload.new.payment_status !== 'paid') {
-            console.log('⚠️ Commande non payée ignorée:', payload.new.id, 'payment_status:', payload.new.payment_status);
-            return; // Ne pas traiter les commandes non payées
+          // NOUVEAU WORKFLOW: on n'alerte le restaurant qu'après acceptation par un livreur.
+          // (livreur_id non-null). Les commandes peuvent être créées avant acceptation.
+          if (!payload.new.livreur_id) {
+            console.log('ℹ️ Nouvelle commande sans livreur (ignorée pour le resto):', payload.new.id);
+            return;
           }
           
           setNewOrderNotification(payload.new);
@@ -234,13 +235,12 @@ export default function RestaurantOrders() {
           console.log('Ancien statut:', payload.old.statut);
           console.log('Nouveau statut:', payload.new.statut);
 
-          // IMPORTANT: Si une commande était "pending" puis passe en "paid", on doit alerter le resto.
-          // Sinon, ils peuvent ne la voir/notifier qu'avec beaucoup de retard.
+          // NOUVEAU WORKFLOW: alerte dès qu'un livreur accepte (livreur_id devient non-null)
           try {
-            const newPaid = (payload?.new?.payment_status || '').toString().trim().toLowerCase() === 'paid';
-            const oldPaid = (payload?.old?.payment_status || '').toString().trim().toLowerCase() === 'paid';
-            if (newPaid && !oldPaid) {
-              console.log('✅ Commande confirmée payée (UPDATE), alerte partenaire:', payload.new?.id);
+            const newLivreur = payload?.new?.livreur_id || null;
+            const oldLivreur = payload?.old?.livreur_id || null;
+            if (newLivreur && !oldLivreur) {
+              console.log('✅ Livreur assigné (UPDATE), alerte partenaire:', payload.new?.id, newLivreur);
               setNewOrderNotification(payload.new);
               playNotificationSound().catch(() => {});
               setTimeout(() => setNewOrderNotification(null), 5000);

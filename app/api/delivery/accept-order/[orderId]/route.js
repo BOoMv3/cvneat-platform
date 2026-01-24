@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import sseBroadcaster from '../../../../../lib/sse-broadcast';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../../../lib/orderCleanup';
 
@@ -45,14 +46,16 @@ export async function POST(request, { params }) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Vérifier que l'utilisateur est un livreur (par ID pour plus de fiabilité)
+    const normalizeRole = (r) => (r || '').toString().trim().toLowerCase();
+    // Vérifier que l'utilisateur est un livreur (tolérer 'delivery' / 'livreur')
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'delivery') {
+    const role = normalizeRole(userData?.role);
+    if (userError || !userData || (role !== 'delivery' && role !== 'livreur')) {
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403, headers: corsHeaders });
     }
 
@@ -256,6 +259,46 @@ export async function POST(request, { params }) {
 
     // Note: L'email sera envoyé plus tard, quand le restaurant marque la commande comme prête
     // et que le livreur commence la livraison (statut passe à 'en_livraison')
+
+    // NOUVEAU WORKFLOW: notifier le restaurant UNIQUEMENT quand un livreur accepte.
+    try {
+      const origin = new URL(request.url).origin;
+      const notificationTotal = (
+        parseFloat(updatedOrder.total || 0) + parseFloat(updatedOrder.frais_livraison || 0)
+      ).toFixed(2);
+
+      // SSE (web resto)
+      if (updatedOrder.restaurant_id) {
+        sseBroadcaster.broadcast(updatedOrder.restaurant_id, {
+          type: 'new_order',
+          message: `Nouvelle commande (livreur assigné) #${updatedOrder.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
+          order: updatedOrder,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Push resto
+        const { data: rest } = await supabaseAdmin
+          .from('restaurants')
+          .select('user_id')
+          .eq('id', updatedOrder.restaurant_id)
+          .maybeSingle();
+
+        if (rest?.user_id) {
+          await fetch(`${origin}/api/notifications/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: rest.user_id,
+              title: 'Nouvelle commande (livreur OK) ✅',
+              body: `Commande #${updatedOrder.id?.slice(0, 8)} - ${notificationTotal}€`,
+              data: { type: 'new_order', orderId: updatedOrder.id, url: '/partner/orders' },
+            }),
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ accept-order: erreur notif restaurant (non bloquant):', e?.message || e);
+    }
 
     return NextResponse.json({
       success: true,
