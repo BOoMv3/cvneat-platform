@@ -93,6 +93,24 @@ export async function POST(request) {
           sentCount++;
         } catch (err) {
           console.error('❌ Erreur envoi push iOS:', err);
+          // Nettoyage automatique des tokens invalides (souvent après réinstall / rebuild Xcode)
+          // APNs retourne typiquement 410 Unregistered ou BadDeviceToken.
+          const apnsStatus = err?.apnsStatus;
+          const apnsReason = (err?.apnsReason || err?.message || '').toString();
+          const shouldDelete =
+            apnsStatus === 410 ||
+            apnsReason.includes('Unregistered') ||
+            apnsReason.includes('BadDeviceToken') ||
+            apnsReason.includes('DeviceTokenNotForTopic');
+
+          if (shouldDelete) {
+            try {
+              await supabase.from('device_tokens').delete().eq('token', tokenData.token);
+              console.log('🧹 Token iOS supprimé (APNs invalid):', tokenData.token.substring(0, 10) + '...');
+            } catch (delErr) {
+              console.warn('⚠️ Échec suppression token iOS invalid:', delErr?.message || delErr);
+            }
+          }
           errors.push({ 
             token: tokenData.token.substring(0, 10) + '...', 
             error: err.message,
