@@ -13,7 +13,7 @@ const supabase = createClient(
  */
 export async function POST(request) {
   try {
-    const { userId, title, body, data, role } = await request.json();
+    const { userId, title, body, data, role, sound } = await request.json();
 
     if (!title || !body) {
       return NextResponse.json(
@@ -21,6 +21,9 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    const soundName =
+      typeof sound === 'string' && sound.trim().length > 0 ? sound.trim() : null;
 
     const normalizeRole = (r) => (r || '').toString().trim().toLowerCase();
     const requestedRole = normalizeRole(role);
@@ -88,7 +91,7 @@ export async function POST(request) {
             tokenData.token,
             title,
             body,
-            data || {}
+            { ...(data || {}), ...(soundName ? { sound: soundName } : {}) }
           );
           sentCount++;
         } catch (err) {
@@ -141,10 +144,10 @@ export async function POST(request) {
                 notification: {
                   title,
                   body,
-                  sound: 'default',
+                  sound: soundName || 'default',
                   // Ne pas forcer de badge par défaut (sinon badge fantôme).
                 },
-                data: data || {},
+                data: { ...(data || {}), ...(soundName ? { sound: soundName } : {}) },
                 priority: 'high'
               })
             });
