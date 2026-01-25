@@ -69,12 +69,27 @@ export async function POST(request) {
       computedDeliveryFee = Math.max(0, Math.round((feesTotal - knownPlatformFee) * 100) / 100);
     }
 
+    // Recalculer la commission livraison CVN'EAT (pour garder cohérence gains livreur / stats / admin)
+    // Règle: si frais_livraison <= 2.50€ → commission = 0€ ; sinon commission = 10% des frais de livraison.
+    let deliveryCommissionCvneat = null;
+    if (computedDeliveryFee !== null) {
+      const DELIVERY_BASE_FEE = 2.5;
+      const DELIVERY_COMMISSION_RATE = 0.1;
+      deliveryCommissionCvneat =
+        computedDeliveryFee > DELIVERY_BASE_FEE
+          ? Math.round(computedDeliveryFee * DELIVERY_COMMISSION_RATE * 100) / 100
+          : 0;
+    }
+
     // Mettre à jour la commande: paid + lier le PaymentIntentId (si besoin)
     const updatePayload = {
       payment_status: 'paid',
       updated_at: new Date().toISOString(),
       ...(paidAmount !== null ? { total_paid: paidAmount } : {}),
       ...(computedDeliveryFee !== null ? { frais_livraison: computedDeliveryFee } : {}),
+      ...(deliveryCommissionCvneat !== null
+        ? { delivery_commission_cvneat: deliveryCommissionCvneat }
+        : {}),
       ...(order.stripe_payment_intent_id ? {} : { stripe_payment_intent_id: paymentIntent.id }),
     };
 
