@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+};
+
+export async function OPTIONS() {
+  // Nécessaire pour WKWebView/Capacitor: les requêtes POST avec Authorization déclenchent un preflight
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(request, { params }) {
   try {
     const { orderId } = params;
@@ -14,7 +25,7 @@ export async function POST(request, { params }) {
     // Vérifier que le code de sécurité est fourni
     if (!securityCode) {
       console.error('❌ Code de sécurité manquant');
-      return NextResponse.json({ error: 'Code de sécurité requis' }, { status: 400 });
+      return NextResponse.json({ error: 'Code de sécurité requis' }, { status: 400, headers: corsHeaders });
     }
     
     // Récupérer le token depuis l'header Authorization ou les cookies
@@ -24,12 +35,15 @@ export async function POST(request, { params }) {
                   request.cookies.get('supabase-auth-token')?.value;
     
     // Token vérifié (non loggé pour des raisons de sécurité)
+    if (!token) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: corsHeaders });
+    }
     
     const { data: { user } } = await supabase.auth.getUser(token);
     
     if (!user) {
       console.log('❌ Pas d\'utilisateur connecté');
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: corsHeaders });
     }
     
     console.log('✅ Utilisateur connecté:', user.email);
@@ -47,9 +61,11 @@ export async function POST(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'delivery') {
+    const normalizeRole = (r) => (r || '').toString().trim().toLowerCase();
+    const role = normalizeRole(userData?.role);
+    if (userError || !userData || (role !== 'delivery' && role !== 'livreur')) {
       console.log('❌ Rôle incorrect:', userData?.role, 'pour ID:', user.id);
-      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
+      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403, headers: corsHeaders });
     }
     
     console.log('✅ Rôle livreur confirmé');
@@ -66,7 +82,7 @@ export async function POST(request, { params }) {
       console.log('❌ Commande non trouvée ou déjà livrée:', checkError);
       return NextResponse.json(
         { error: 'Commande non trouvée ou déjà livrée' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -76,14 +92,14 @@ export async function POST(request, { params }) {
         error: 'Cette commande a été annulée ou remboursée et n\'est plus active',
         statut: order.statut,
         payment_status: order.payment_status
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
     
     // Vérifier que le livreur est bien assigné à cette commande
     if (order.livreur_id !== user.id) {
       return NextResponse.json(
         { error: 'Vous n\'êtes pas assigné à cette commande' },
-        { status: 403 }
+        { status: 403, headers: corsHeaders }
       );
     }
     
@@ -92,7 +108,7 @@ export async function POST(request, { params }) {
     // Vérifier le code de sécurité (si présent)
     if (order.security_code && order.security_code !== securityCode) {
       console.error('❌ Code de sécurité incorrect:', securityCode, 'attendu:', order.security_code);
-      return NextResponse.json({ error: 'Code de sécurité incorrect' }, { status: 400 });
+      return NextResponse.json({ error: 'Code de sécurité incorrect' }, { status: 400, headers: corsHeaders });
     }
 
     console.log('✅ Code de sécurité validé');
@@ -110,7 +126,7 @@ export async function POST(request, { params }) {
       console.error('❌ Erreur mise à jour commande:', updateError);
       return NextResponse.json(
         { error: 'Erreur lors de la finalisation de la livraison' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
     
@@ -143,12 +159,12 @@ export async function POST(request, { params }) {
       success: true,
       message: 'Livraison finalisée avec succès',
       orderId: orderId
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('Erreur API finaliser livraison:', error);
     return NextResponse.json(
       { error: 'Erreur serveur' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
