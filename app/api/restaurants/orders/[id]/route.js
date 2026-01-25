@@ -263,22 +263,32 @@ export async function PUT(request, { params }) {
           }, { status: 500 });
         }
 
-        // Notifier les livreurs via push notification FCM (app mobile)
-        if (status === 'en_preparation' || status === 'pret_a_livrer') {
+        // Notifier le livreur ASSIGNÉ (évite doublons et montants incohérents)
+        // - L'alerte "Nouvelle commande disponible" est envoyée au paiement (drivers-first).
+        // - Ici, on notifie uniquement l'évolution (préparation / prêt à récupérer).
+        if ((status === 'en_preparation' || status === 'pret_a_livrer') && updatedOrder?.livreur_id) {
           try {
-            // Envoyer notification push à tous les livreurs disponibles
+            const totalWithDelivery = (
+              parseFloat(updatedOrder.total || 0) + parseFloat(updatedOrder.frais_livraison || 0)
+            ).toFixed(2);
+
+            const isReady = status === 'pret_a_livrer';
+            const title = isReady ? 'Commande prête à récupérer 📦' : 'Commande en préparation 👨‍🍳';
+            const bodyText = isReady
+              ? `Commande #${updatedOrder.id?.slice(0, 8)} prête - Total ${totalWithDelivery}€`
+              : `Commande #${updatedOrder.id?.slice(0, 8)} en préparation - Total ${totalWithDelivery}€`;
+
             const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                role: 'delivery', // Envoyer à tous les livreurs
-                title: 'Nouvelle commande disponible 🚚',
-                body: `Commande #${order.id?.slice(0, 8)} - ${parseFloat(order.total || 0).toFixed(2)}€`,
+                userId: updatedOrder.livreur_id,
+                title,
+                body: bodyText,
                 data: {
-                  type: 'new_order',
-                  orderId: order.id,
+                  type: 'delivery_status_update',
+                  orderId: updatedOrder.id,
+                  status,
                   url: '/delivery/dashboard',
                 }
               })
@@ -286,26 +296,10 @@ export async function PUT(request, { params }) {
             
             if (pushResponse.ok) {
               const result = await pushResponse.json();
-              console.log('✅ Notification push envoyée aux livreurs:', result.sent, '/', result.total);
+              console.log('✅ Notification push envoyée au livreur assigné:', result.sent, '/', result.total);
             }
           } catch (error) {
-            console.error('❌ Erreur envoi notification push livreur:', error);
-          }
-          
-          // Aussi utiliser l'ancien système web-push si configuré
-          if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-            try {
-              await notifyDeliverySubscribers(supabaseAdmin, {
-                title: 'Nouvelle commande disponible',
-                body: `Commande #${order.id} - ${parseFloat(order.total || 0).toFixed(2)}€`,
-                data: {
-                  url: '/delivery/dashboard',
-                  orderId: order.id,
-                },
-              });
-            } catch (error) {
-              console.error('❌ Erreur envoi notification web-push livreur:', error);
-            }
+            console.error('❌ Erreur envoi notification push livreur assigné:', error);
           }
         }
 
@@ -571,3 +565,4 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
+
