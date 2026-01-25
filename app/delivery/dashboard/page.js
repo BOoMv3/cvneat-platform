@@ -441,6 +441,85 @@ export default function DeliveryDashboard() {
     }
   };
 
+  // iOS/Capacitor: au retour du background, WKWebView peut reprendre dans un état cassé.
+  // On force un "refresh data" dès que l'app redevient active (sans devoir killer l'app).
+  useEffect(() => {
+    const isCapacitorApp =
+      typeof window !== 'undefined' &&
+      (window.location?.protocol === 'capacitor:' ||
+        window.location?.href?.startsWith('capacitor://') ||
+        !!window.Capacitor);
+
+    if (!isCapacitorApp) return;
+
+    let cancelled = false;
+    let removeAppListener = null;
+    const refreshingRef = { current: false };
+
+    const refreshAll = async (reason) => {
+      if (cancelled) return;
+      if (refreshingRef.current) return;
+      refreshingRef.current = true;
+      try {
+        console.log('🔄 [DeliveryDashboard] Resume refresh:', reason);
+
+        const { data: { user: u }, error } = await supabase.auth.getUser();
+        if (error || !u) {
+          router.replace('/login?redirect=/delivery/dashboard');
+          return;
+        }
+        setUser(u);
+        setDeliveryId(u.id);
+
+        // Relancer les fetchs principaux
+        await Promise.allSettled([
+          fetchAvailableOrders(),
+          fetchStats(),
+          fetchCurrentOrder(),
+          fetchPreparationAlerts(),
+          fetchPreventiveAlerts(),
+        ]);
+      } catch (e) {
+        console.warn('⚠️ [DeliveryDashboard] Resume refresh error:', e?.message || e);
+      } finally {
+        refreshingRef.current = false;
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshAll('visibilitychange');
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // Capacitor AppStateChange (plus fiable que visibilitychange)
+    (async () => {
+      try {
+        const { App } = await import('@capacitor/app');
+        const listener = await App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) refreshAll('appStateChange');
+        });
+        removeAppListener = () => listener.remove();
+      } catch (e) {
+        // ignore (web)
+      }
+    })();
+
+    // Refresh immédiat au montage (dans l'app) pour éviter écran figé après reload WebView
+    refreshAll('mount');
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      try {
+        removeAppListener && removeAppListener();
+      } catch {
+        // ignore
+      }
+    };
+  }, [router]);
+
   // Fonction pour activer/désactiver l'audio
   const toggleAudio = async () => {
     if (audioEnabled) {
