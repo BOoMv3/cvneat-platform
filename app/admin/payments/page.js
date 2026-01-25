@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
+import { getFixedCommissionRatePercentFromName } from '../../../lib/commission';
 import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt, FaCheck, FaTimes, FaMotorcycle } from 'react-icons/fa';
 import Link from 'next/link';
 
@@ -151,9 +152,11 @@ export default function AdminPayments() {
 
           // Filtrer les commandes payées (si payment_status existe, sinon toutes les livrées sont considérées payées)
           const paidOrders = (orders || []).filter(order => {
-            // Si payment_status existe, vérifier qu'il est 'paid'
-            // Sinon, considérer toutes les commandes livrées comme payées
-            return !order.payment_status || order.payment_status === 'paid';
+            // IMPORTANT: sur l'historique, on a parfois payment_status='pending' alors que la commande est bien livrée.
+            // Pour éviter de sous-estimer ce que l'on doit, on inclut toutes les commandes livrées SAUF
+            // celles explicitement échouées / annulées / remboursées.
+            const s = (order.payment_status || '').toString().trim().toLowerCase();
+            return !['failed', 'cancelled', 'refunded'].includes(s);
           });
 
           console.log(`📊 ${restaurant.nom}: ${paidOrders.length} commandes payées sur ${orders?.length || 0} commandes livrées`);
@@ -163,12 +166,13 @@ export default function AdminPayments() {
           let totalCommission = 0;
           let totalRestaurantPayout = 0;
 
-          // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-          const normalizedRestaurantName = (restaurant.nom || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
-          const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+          // Règles de commission (France):
+          // - La Bonne Pâte = 0%
+          // - All'ovale pizza = 15%
+          // - Tous les autres = 20% (si commission_rate non renseigné en DB)
+          const fixedRate = getFixedCommissionRatePercentFromName(restaurant.nom);
+          const isBonnePate = fixedRate === 0;
+          const isAllovale = fixedRate === 15;
 
           const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
           const parseRatePercent = (v) => {
@@ -180,7 +184,7 @@ export default function AdminPayments() {
             : null;
 
           // Log pour debug
-          console.log(`💰 ${restaurant.nom}: commission_rate(resto)=${restaurant.commission_rate ?? 'n/a'} (internal=${isInternalRestaurant})`);
+          console.log(`💰 ${restaurant.nom}: commission_rate(resto)=${restaurant.commission_rate ?? 'n/a'} (bonnePate=${isBonnePate}, allovale=${isAllovale})`);
 
           // IMPORTANT:
           // Le "dû au restaurant" doit suivre les valeurs stockées par commande (commission_rate/commission_amount/restaurant_payout)
@@ -193,11 +197,19 @@ export default function AdminPayments() {
             }
             totalRevenue += orderTotal;
 
+            // La Bonne Pâte: 0% quoi qu'il arrive (même si des valeurs stockées sont incohérentes)
+            if (isBonnePate) {
+              totalCommission += 0;
+              totalRestaurantPayout += orderTotal;
+              return;
+            }
+
             // Taux au moment de la commande (stocké), fallback resto, fallback défaut 20%
             const orderRatePercent = parseRatePercent(order.commission_rate);
-            const effectiveRatePercent = isInternalRestaurant
-              ? 0
-              : (orderRatePercent ?? defaultRestaurantRatePercent ?? 20);
+            const effectiveRatePercent =
+              orderRatePercent ??
+              defaultRestaurantRatePercent ??
+              (isAllovale ? 15 : 20);
 
             const orderCommission = order.commission_amount !== null && order.commission_amount !== undefined
               ? round2(order.commission_amount)
@@ -213,11 +225,12 @@ export default function AdminPayments() {
 
           // Afficher le taux de commission du restaurant (pas un calcul moyen basé sur les commissions réelles)
           // Utiliser le commission_rate du restaurant (0% pour La Bonne Pâte, sinon le taux du restaurant)
-          const displayCommissionRate = isInternalRestaurant 
-            ? 0 
-            : (restaurant.commission_rate !== null && restaurant.commission_rate !== undefined 
-                ? restaurant.commission_rate 
-                : 20);
+          const displayCommissionRate =
+            fixedRate !== null
+              ? fixedRate
+              : (restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
+                  ? restaurant.commission_rate
+                  : 20);
 
           const result = {
             ...restaurant,

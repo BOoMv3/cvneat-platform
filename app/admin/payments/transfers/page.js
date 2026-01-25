@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
+import { getFixedCommissionRatePercentFromName } from '../../../../lib/commission';
 import { 
   FaArrowLeft, 
   FaPlus, 
@@ -174,7 +175,7 @@ export default function TransfersTracking() {
 
           // Filtrer les commandes payées par le client
           const paidOrders = (orders || []).filter(order => 
-            !order.payment_status || order.payment_status === 'paid'
+            !['failed', 'cancelled', 'refunded'].includes((order.payment_status || '').toString().trim().toLowerCase())
           );
 
           // Calculer les revenus
@@ -208,12 +209,13 @@ export default function TransfersTracking() {
             return Number.isFinite(n) ? n : null;
           };
 
-          // Compat: certaines anciennes règles mettaient La Bonne Pâte à 0% via un check sur le nom
-          const normalizedRestaurantName = (restaurant.nom || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
-          const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
+          // Règles de commission (France) - via helper central:
+          // - Bonne Pâte = 0% (tolère "La Bonne Pâte" / "Bonne Pâte")
+          // - All'ovale = 15%
+          // - Tous les autres = commission_rate DB si présent, sinon 20%
+          const fixedRate = getFixedCommissionRatePercentFromName(restaurant.nom);
+          const isBonnePate = fixedRate === 0;
+          const isAllovale = fixedRate === 15;
 
           const defaultRestaurantRatePercent =
             restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
@@ -226,10 +228,19 @@ export default function TransfersTracking() {
 
           paidOrders.forEach((o) => {
             const orderTotal = parseFloat(o.total || 0) || 0;
+
+            // La Bonne Pâte: 0% quoi qu'il arrive (même si des valeurs stockées sont incohérentes)
+            if (isBonnePate) {
+              commission += 0;
+              restaurantPayout += orderTotal;
+              return;
+            }
+
             const orderRatePercent = parseRatePercent(o.commission_rate);
-            const effectiveRatePercent = isInternalRestaurant
-              ? 0
-              : (orderRatePercent ?? defaultRestaurantRatePercent ?? 20);
+            const effectiveRatePercent =
+              orderRatePercent ??
+              defaultRestaurantRatePercent ??
+              (isAllovale ? 15 : 20);
 
             const orderCommission =
               o.commission_amount !== null && o.commission_amount !== undefined
@@ -258,7 +269,7 @@ export default function TransfersTracking() {
             remainingToPay: Math.round(remainingToPay * 100) / 100,
             orderCount: paidOrders.length,
             // Pour affichage: taux actuel du resto (ou 0% internal), pas un taux "moyen"
-            commissionRate: isInternalRestaurant ? 0 : (defaultRestaurantRatePercent ?? 20)
+            commissionRate: fixedRate !== null ? fixedRate : (defaultRestaurantRatePercent ?? 20)
           };
         })
       );
