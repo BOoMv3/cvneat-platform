@@ -54,10 +54,7 @@ export async function POST(request) {
       );
     }
 
-    // Idempotent: si déjà paid, ne renvoyer que l'orderId
-    if (order.payment_status === 'paid') {
-      return NextResponse.json({ success: true, orderId: order.id, alreadyPaid: true });
-    }
+    const wasPaidBefore = (order.payment_status || '').toString().trim().toLowerCase() === 'paid';
 
     // Synchroniser montants depuis Stripe (comme dans le webhook)
     const paidAmount = typeof paymentIntent.amount === 'number' ? paymentIntent.amount / 100 : null;
@@ -85,8 +82,7 @@ export async function POST(request) {
       .from('commandes')
       .update(updatePayload)
       .eq('id', order.id)
-      .neq('payment_status', 'paid')
-      .select('id, restaurant_id, total, frais_livraison, discount_amount')
+      .select('id, restaurant_id, total, frais_livraison, discount_amount, payment_status')
       .maybeSingle();
 
     if (updateError) {
@@ -96,34 +92,38 @@ export async function POST(request) {
       );
     }
 
-    // Si aucune ligne n'a été modifiée (race condition), on s'arrête sans notifier
+    // Si aucune ligne n'a été modifiée/renvoyée (race condition), on s'arrête sans notifier
     if (!updated) {
-      return NextResponse.json({ success: true, orderId: order.id, alreadyPaid: true });
+      return NextResponse.json({ success: true, orderId: order.id, alreadyPaid: wasPaidBefore });
     }
 
     // Notifications:
-    // NOUVEAU WORKFLOW: d'abord notifier les livreurs.
-    // Le restaurant sera notifié uniquement quand un livreur accepte la commande.
-    try {
-      const origin = new URL(request.url).origin;
-      const notificationTotal = (
-        parseFloat(updated.total || 0) + parseFloat(updated.frais_livraison || 0)
-      ).toFixed(2);
+    // NOUVEAU WORKFLOW: notifier les livreurs uniquement au moment où la commande passe réellement à "paid".
+    // Si elle était déjà "paid" (ex: /api/orders/[id]), ne pas renvoyer de push (évite doublons).
+    const isPaidNow = (updated.payment_status || '').toString().trim().toLowerCase() === 'paid';
+    const transitionedToPaid = isPaidNow && !wasPaidBefore;
+    if (transitionedToPaid) {
+      try {
+        const origin = new URL(request.url).origin;
+        const notificationTotal = (
+          parseFloat(updated.total || 0) + parseFloat(updated.frais_livraison || 0)
+        ).toFixed(2);
 
-      if (updated.restaurant_id) {
-        await fetch(`${origin}/api/notifications/send-push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            role: 'delivery',
-            title: 'Nouvelle commande disponible 🚚',
-            body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
-            data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
-          }),
-        }).catch(() => {});
+        if (updated.restaurant_id) {
+          await fetch(`${origin}/api/notifications/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              role: 'delivery',
+              title: 'Nouvelle commande disponible 🚚',
+              body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
+              data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
+            }),
+          }).catch(() => {});
+        }
+      } catch {
+        // non bloquant
       }
-    } catch {
-      // non bloquant
     }
 
     return NextResponse.json({ success: true, orderId: order.id });
