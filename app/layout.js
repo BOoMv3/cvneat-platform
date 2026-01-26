@@ -1,7 +1,6 @@
 import './globals.css';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
-import FacebookPixel from '@/components/FacebookPixel';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import PushNotificationBootstrap from './components/PushNotificationBootstrap';
@@ -255,7 +254,6 @@ export default function RootLayout({ children }) {
       </head>
       <body className="font-sans transition-colors duration-300">
         <ThemeProvider>
-          <FacebookPixel />
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
           <PushNotificationBootstrap />
           {/* Auto-redirect app mobile si déjà connecté (livreur/restaurant) */}
