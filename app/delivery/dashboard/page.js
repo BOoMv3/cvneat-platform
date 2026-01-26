@@ -496,11 +496,15 @@ export default function DeliveryDashboard() {
     // Capacitor AppStateChange (plus fiable que visibilitychange)
     (async () => {
       try {
-        const { App } = await import('@capacitor/app');
-        const listener = await App.addListener('appStateChange', ({ isActive }) => {
-          if (isActive) refreshAll('appStateChange');
-        });
-        removeAppListener = () => listener.remove();
+        // Ne pas importer @capacitor/app côté web (sinon Next/Vercel échoue au build).
+        // En app native, Capacitor expose les plugins via window.Capacitor.Plugins.
+        const AppPlugin = window.Capacitor?.Plugins?.App;
+        if (AppPlugin?.addListener) {
+          const listener = await AppPlugin.addListener('appStateChange', ({ isActive }) => {
+            if (isActive) refreshAll('appStateChange');
+          });
+          removeAppListener = () => listener.remove();
+        }
       } catch (e) {
         // ignore (web)
       }

@@ -23,6 +23,7 @@
     "build:ios": "node scripts/build-mobile-smart.js"
   },
   "dependencies": {
+    "@capacitor/core": "^7.4.4",
     "@capacitor/push-notifications": "^7.0.3",
     "@json2csv/transforms": "^6.1.0",
     "@json2csv/whatwg": "^6.1.0",
@@ -50,7 +51,6 @@
   "devDependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
-    "@capacitor/core": "^7.4.4",
     "@capacitor/ios": "^7.4.4",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.6",
