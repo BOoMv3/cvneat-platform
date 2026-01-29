@@ -3,12 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+};
+
+export async function OPTIONS() {
+  // Nécessaire pour WKWebView/Capacitor: les requêtes avec Authorization déclenchent un preflight
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(request, { params }) {
   try {
     const { orderId } = params;
 
     if (!orderId) {
-      return NextResponse.json({ error: 'ID de commande manquant' }, { status: 400 });
+      return NextResponse.json({ error: 'ID de commande manquant' }, { status: 400, headers: corsHeaders });
     }
 
     // Vérifier l'authentification
@@ -16,6 +27,10 @@ export async function POST(request, { params }) {
     const token = authHeader?.replace('Bearer ', '') || 
                   request.cookies.get('sb-access-token')?.value ||
                   request.cookies.get('supabase-auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: corsHeaders });
+    }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -25,7 +40,7 @@ export async function POST(request, { params }) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: corsHeaders });
     }
 
     // Créer un client admin pour bypasser RLS
@@ -41,8 +56,13 @@ export async function POST(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'delivery') {
-      return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
+    const normalizeRole = (r) => (r || '').toString().trim().toLowerCase();
+    const role = normalizeRole(userData?.role);
+    if (userError || !userData || (role !== 'delivery' && role !== 'livreur')) {
+      return NextResponse.json(
+        { error: 'Accès refusé - Rôle livreur requis' },
+        { status: 403, headers: corsHeaders }
+      );
     }
 
     // Vérifier que la commande existe et appartient à ce livreur
@@ -53,7 +73,7 @@ export async function POST(request, { params }) {
       .single();
 
     if (orderError || !order) {
-      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404, headers: corsHeaders });
     }
 
     // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
@@ -62,18 +82,18 @@ export async function POST(request, { params }) {
         error: 'Cette commande a été annulée ou remboursée et n\'est plus active',
         statut: order.statut,
         payment_status: order.payment_status
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
 
     if (order.livreur_id !== user.id) {
-      return NextResponse.json({ error: 'Cette commande ne vous appartient pas' }, { status: 403 });
+      return NextResponse.json({ error: 'Cette commande ne vous appartient pas' }, { status: 403, headers: corsHeaders });
     }
 
     // Vérifier que la commande est en livraison ou prête
     if (order.statut !== 'en_livraison' && order.statut !== 'pret_a_livrer') {
       return NextResponse.json({ 
         error: `La commande doit être en livraison ou prête à livrer. Statut actuel: ${order.statut}` 
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
 
     // Mettre à jour la commande avec picked_up_at
@@ -96,7 +116,7 @@ export async function POST(request, { params }) {
 
     if (updateError) {
       console.error('Erreur mise à jour picked_up_at:', updateError);
-      return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
+      return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500, headers: corsHeaders });
     }
 
     // Envoyer une notification push au client
@@ -130,11 +150,11 @@ export async function POST(request, { params }) {
       success: true,
       message: 'Commande marquée comme récupérée',
       order: updatedOrder
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Erreur API picked-up:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500, headers: corsHeaders });
   }
 }
 
