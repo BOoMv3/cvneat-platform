@@ -7,6 +7,25 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+function json(body, init) {
+  const res = NextResponse.json(body, init);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    res.headers.set(k, v);
+  }
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 // GET - Récupérer les horaires d'un restaurant au format lisible
 export async function GET(request, { params }) {
   try {
@@ -19,7 +38,7 @@ export async function GET(request, { params }) {
       .single();
 
     if (error || !restaurant) {
-      return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
+      return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
     // Convertir les horaires JSON en format lisible
@@ -72,13 +91,13 @@ export async function GET(request, { params }) {
     
     console.log('Horaires formatées pour restaurant', id, ':', formattedHours);
 
-    return NextResponse.json({
+    return json({
       hours: formattedHours,
       is_manually_closed: restaurant.ferme_manuellement || false
     });
   } catch (error) {
     console.error('Erreur récupération horaires:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -108,7 +127,7 @@ export async function POST(request, { params }) {
       .single();
 
     if (error || !restaurant) {
-      return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
+      return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
     // Normaliser ferme_manuellement
@@ -128,7 +147,7 @@ export async function POST(request, { params }) {
     // LOGIQUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
     if (isManuallyClosed) {
       console.log(`[API hours POST] Restaurant ${id} - FERMÉ MANUELLEMENT (ferme_manuellement = ${fermeManuel})`);
-      return NextResponse.json({
+      return json({
         isOpen: false,
         message: 'Restaurant fermé manuellement - Nécessite une ouverture manuelle',
         reason: 'manual'
@@ -195,7 +214,7 @@ export async function POST(request, { params }) {
     // Si pas de configuration ou fermé ce jour
     if (!todayHours) {
       console.log('🔴 Restaurant fermé - Pas de configuration pour aujourd\'hui:', todayKey);
-      return NextResponse.json({
+      return json({
         isOpen: false,
         message: 'Restaurant fermé aujourd\'hui (pas de configuration)',
         reason: 'closed_today',
@@ -226,7 +245,7 @@ export async function POST(request, { params }) {
         ouverture: todayHours.ouverture,
         fermeture: todayHours.fermeture
       });
-      return NextResponse.json({
+      return json({
         isOpen: false,
         message: 'Restaurant fermé aujourd\'hui',
         reason: 'closed_today',
@@ -334,7 +353,7 @@ export async function POST(request, { params }) {
       let closeTimeMinutes = parseTime(todayHours.fermeture);
 
       if (openTimeMinutes === null || closeTimeMinutes === null) {
-        return NextResponse.json({
+        return json({
           isOpen: false,
           message: 'Horaires invalides',
           reason: 'invalid_hours'
@@ -384,7 +403,7 @@ export async function POST(request, { params }) {
       ? todayHours.plages.map(p => ({ ouverture: p.ouverture, fermeture: p.fermeture }))
       : (todayHours.ouverture && todayHours.fermeture ? [{ ouverture: todayHours.ouverture, fermeture: todayHours.fermeture }] : []);
 
-    return NextResponse.json({
+    return json({
       isOpen: finalIsOpen,
       message: finalIsOpen ? 'Restaurant ouvert' : (reason === 'manual' ? 'Restaurant fermé manuellement' : 'Restaurant fermé'),
       reason: reason,
@@ -404,7 +423,7 @@ export async function POST(request, { params }) {
     });
   } catch (error) {
     console.error('Erreur vérification horaires:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 

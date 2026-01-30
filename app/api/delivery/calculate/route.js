@@ -3,6 +3,25 @@ import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+function json(body, init) {
+  const res = NextResponse.json(body, init);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    res.headers.set(k, v);
+  }
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 // Client Supabase admin pour le cache (bypass RLS)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co',
@@ -573,7 +592,7 @@ export async function POST(request) {
       console.log('📦 Body reçu:', body);
     } catch (parseError) {
       console.error('❌ Erreur parsing JSON:', parseError);
-      return NextResponse.json({ 
+      return json({ 
         success: false, 
         error: 'Données invalides',
         message: 'Format de données incorrect'
@@ -595,7 +614,7 @@ export async function POST(request) {
     
     if (!clientAddress) {
       console.log('❌ Adresse manquante');
-      return NextResponse.json({ 
+      return json({ 
         success: false, 
         error: 'Adresse requise',
         message: 'Adresse de livraison requise'
@@ -656,7 +675,7 @@ export async function POST(request) {
       suggestions.push('Format: "Numéro + Rue, Code postal + Ville"');
       suggestions.push('Exemple: "28 Lotissement Aubanel, 34190 Laroque"');
       
-      return NextResponse.json({
+      return json({
         success: false,
         livrable: false,
         message: errorMessage,
@@ -673,7 +692,7 @@ export async function POST(request) {
       const normalizedExcluded = excludedCity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (normalizedClientCity.includes(normalizedExcluded) || normalizedClientAddress.includes(normalizedExcluded)) {
         console.log('❌ Ville exclue détectée:', excludedCity);
-        return NextResponse.json({
+        return json({
           success: false,
           livrable: false,
           message: `❌ Livraison non disponible à ${excludedCity.charAt(0).toUpperCase() + excludedCity.slice(1)}. Cette zone n'est pas desservie.`
@@ -756,7 +775,7 @@ export async function POST(request) {
       // REJETER si la distance dépasse 8km à vol d'oiseau (≈ 10km de route réelle)
       if (tempRoundedDistance > MAX_DISTANCE) {
         console.log(`❌ REJET: Distance trop grande (${tempRoundedDistance.toFixed(1)}km > ${MAX_DISTANCE}km) pour: ${clientAddress}`);
-        return NextResponse.json({
+        return json({
           success: false,
           livrable: false,
           distance: tempRoundedDistance,
@@ -769,7 +788,7 @@ export async function POST(request) {
     // 4. Vérifier que les coordonnées sont valides
     if (!restaurantCoords || !restaurantCoords.lat || !restaurantCoords.lng) {
       console.error('❌ ERREUR: Coordonnées restaurant invalides:', restaurantCoords);
-      return NextResponse.json({
+      return json({
         success: false,
         error: 'Coordonnées restaurant invalides',
         message: 'Erreur lors de la récupération des coordonnées du restaurant'
@@ -778,7 +797,7 @@ export async function POST(request) {
     
     if (!clientCoords || !clientCoords.lat || !clientCoords.lng) {
       console.error('❌ ERREUR: Coordonnées client invalides:', clientCoords);
-      return NextResponse.json({
+      return json({
         success: false,
         error: 'Coordonnées client invalides',
         message: 'Erreur lors du géocodage de l\'adresse de livraison'
@@ -797,7 +816,7 @@ export async function POST(request) {
       console.error('❌ ERREUR: Coordonnées non numériques', {
         restaurantLat, restaurantLng, clientLat, clientLng
       });
-      return NextResponse.json({
+      return json({
         success: false,
         error: 'Coordonnées invalides',
         message: 'Erreur lors du calcul de la distance'
@@ -855,7 +874,7 @@ export async function POST(request) {
       });
       const finalDeliveryFee = Math.max(deliveryFee, DEFAULT_BASE_FEE);
       
-      return NextResponse.json({
+      return json({
         success: true,
         livrable: true,
         distance: roundedDistance,
@@ -885,7 +904,7 @@ export async function POST(request) {
     // 6. Vérifier la distance maximum
     if (roundedDistance > MAX_DISTANCE) {
       console.log(`❌ REJET: Trop loin: ${roundedDistance.toFixed(2)}km > ${MAX_DISTANCE}km`);
-      return NextResponse.json({
+      return json({
         success: false,
         livrable: false,
         distance: roundedDistance,
@@ -955,7 +974,7 @@ export async function POST(request) {
     // VALIDATION CRITIQUE: Vérifier que la distance est valide
     if (isNaN(finalDistance) || finalDistance < 0) {
       console.error('❌ ERREUR: Distance invalide pour le calcul des frais:', finalDistance);
-      return NextResponse.json({
+      return json({
         success: false,
         error: 'Distance invalide',
         message: 'Erreur lors du calcul de la distance de livraison'
@@ -986,7 +1005,7 @@ export async function POST(request) {
     if (finalDeliveryFee < DEFAULT_BASE_FEE) {
       console.error(`🚨 ALERTE SÉCURITÉ: finalDeliveryFee toujours < 2.50€ après toutes les validations! Valeur: ${finalDeliveryFee}€`);
       // Forcer le minimum absolu
-      return NextResponse.json({
+      return json({
         success: false,
         error: 'Erreur de calcul des frais',
         message: 'Erreur lors du calcul des frais de livraison. Veuillez réessayer.'
@@ -998,7 +1017,7 @@ export async function POST(request) {
     // Calculer orderAmountNumeric pour la réponse
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
-    return NextResponse.json({
+    return json({
       success: true,
       livrable: true,
       distance: finalDistance,
@@ -1026,7 +1045,7 @@ export async function POST(request) {
       errorMessage = error.message;
     }
     
-    return NextResponse.json({
+    return json({
       success: false,
       error: errorMessage,
       message: errorMessage,

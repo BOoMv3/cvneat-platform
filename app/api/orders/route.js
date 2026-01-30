@@ -9,6 +9,25 @@ const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+function json(body, init) {
+  const res = NextResponse.json(body, init);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    res.headers.set(k, v);
+  }
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 const isComboItem = (item) => {
   if (!item) return false;
   if (item.type === 'combo') return true;
@@ -60,7 +79,7 @@ export async function GET(request) {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.warn('⚠️ API /orders: Token manquant dans les headers');
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+      return json({ error: 'Token manquant' }, { status: 401 });
     }
 
     const token = authHeader.split(' ')[1];
@@ -71,7 +90,7 @@ export async function GET(request) {
     
     if (authError || !user) {
       console.error('❌ API /orders: Erreur authentification:', authError?.message || 'User null');
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return json({ error: 'Token invalide' }, { status: 401 });
     }
     
     console.log('✅ API /orders: Utilisateur authentifié:', user.id?.slice(0, 8));
@@ -81,7 +100,7 @@ export async function GET(request) {
 
     if (!serviceClient) {
       console.error('❌ SUPABASE_SERVICE_ROLE_KEY non configurée pour le serveur');
-      return NextResponse.json(
+      return json(
         { error: 'Configuration Supabase serveur manquante' },
         { status: 500 }
       );
@@ -129,7 +148,7 @@ export async function GET(request) {
     if (ordersError) {
       console.error('❌ API /orders: Erreur récupération commandes:', ordersError);
       console.error('   Détails:', JSON.stringify(ordersError, null, 2));
-      return NextResponse.json({ error: 'Erreur lors de la récupération des commandes', details: ordersError.message }, { status: 500 });
+      return json({ error: 'Erreur lors de la récupération des commandes', details: ordersError.message }, { status: 500 });
     }
     
     console.log(`✅ API /orders: ${orders?.length || 0} commandes récupérées pour utilisateur ${user.id?.slice(0, 8)}`);
@@ -387,14 +406,14 @@ export async function GET(request) {
       };
     }));
 
-    return NextResponse.json(formattedOrders);
+    return json(formattedOrders);
 
   } catch (error) {
     console.error('❌ Erreur dans /api/orders:', error);
     console.error('   Message:', error.message);
     console.error('   Stack:', error.stack);
     console.error('   Type:', error.name);
-    return NextResponse.json({ 
+    return json({ 
       error: 'Erreur serveur lors de la récupération des commandes',
       details: process.env.NODE_ENV === 'development' ? error.message : 'Erreur interne'
     }, { status: 500 });
@@ -411,7 +430,7 @@ export async function POST(request) {
 
     if (!serviceClient) {
       console.error('❌ Impossible de créer la commande: clé service Supabase manquante');
-      return NextResponse.json(
+      return json(
         { error: 'Configuration Supabase manquante côté serveur' },
         { status: 500 }
       );
@@ -435,7 +454,7 @@ export async function POST(request) {
     // Validation des donnees
     if (!restaurantId) {
       console.error('❌ Validation échouée: restaurantId manquant');
-      return NextResponse.json(
+      return json(
         { error: 'Restaurant non spécifié' },
         { status: 400 }
       );
@@ -443,7 +462,7 @@ export async function POST(request) {
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       console.error('❌ Validation échouée: items manquants ou vides');
-      return NextResponse.json(
+      return json(
         { error: 'Donnees de commande invalides' },
         { status: 400 }
       );
@@ -451,14 +470,14 @@ export async function POST(request) {
 
     // Validation et sanitisation des données
     if (!isValidId(restaurantId)) {
-      return NextResponse.json(
+      return json(
         { error: 'ID restaurant invalide' },
         { status: 400 }
       );
     }
 
     if (!isValidAmount(totalAmount) || !isValidAmount(deliveryFee)) {
-      return NextResponse.json(
+      return json(
         { error: 'Montant invalide' },
         { status: 400 }
       );
@@ -470,7 +489,7 @@ export async function POST(request) {
     
     if (!postalCode || postalCode.trim() === '') {
       console.error('❌ Validation échouée: code postal manquant dans deliveryInfo');
-      return NextResponse.json(
+      return json(
         { error: 'Le code postal est obligatoire pour la livraison' },
         { status: 400 }
       );
@@ -495,7 +514,7 @@ export async function POST(request) {
 
     if (restaurantError) {
       console.error('Erreur restaurant:', restaurantError);
-      return NextResponse.json(
+      return json(
         { error: 'Restaurant invalide' },
         { status: 400 }
       );
@@ -503,7 +522,7 @@ export async function POST(request) {
 
     if (!restaurant) {
       console.log('Restaurant non trouve');
-      return NextResponse.json(
+      return json(
         { error: 'Restaurant invalide' },
         { status: 400 }
       );
@@ -528,7 +547,7 @@ export async function POST(request) {
             console.log('✅ Formule sans formula_items, utilisation de l\'ID de la formule:', item.id);
           } else {
             console.error('❌ Formule sans ID ni formula_items:', item);
-            return NextResponse.json(
+            return json(
               { error: 'Formule invalide: ID ou éléments manquants' },
               { status: 400 }
             );
@@ -540,7 +559,7 @@ export async function POST(request) {
       // Validation pour les articles normaux
       if (!item.id) {
         console.error('❌ Article sans ID:', item);
-        return NextResponse.json(
+        return json(
           { error: 'Article invalide: ID manquant' },
           { status: 400 }
         );
@@ -556,7 +575,7 @@ export async function POST(request) {
 
       if (menuError) {
         console.error('Erreur menu item:', menuError);
-        return NextResponse.json(
+        return json(
           { error: 'Un ou plusieurs articles ne sont pas disponibles' },
           { status: 400 }
         );
@@ -564,7 +583,7 @@ export async function POST(request) {
 
       if (!menuItem) {
         console.log('Article non trouve:', item.id);
-        return NextResponse.json(
+        return json(
           { error: 'Un ou plusieurs articles ne sont pas disponibles' },
           { status: 400 }
         );
@@ -740,7 +759,7 @@ export async function POST(request) {
           orderData.payment_status = 'pending';
           console.log('   ✅ Conversion: pending_payment -> pending');
         } else {
-          return NextResponse.json(
+          return json(
             { error: `Statut de paiement invalide: ${sanitizedStatus}. Valeurs autorisées: ${validStatuses.join(', ')}` },
             { status: 400 }
           );
@@ -761,7 +780,7 @@ export async function POST(request) {
       // Si pas d'utilisateur connecté, vérifier si user_id est requis
       // Pour l'instant, on exige un utilisateur connecté pour éviter les erreurs
       console.error('❌ ERREUR: Pas d\'utilisateur connecté');
-      return NextResponse.json(
+      return json(
         { error: 'Vous devez être connecté pour passer une commande' },
         { status: 401 }
       );
@@ -770,7 +789,7 @@ export async function POST(request) {
     // Validation finale avant insertion
     if (!orderData.restaurant_id) {
       console.error('❌ ERREUR: restaurant_id manquant');
-      return NextResponse.json(
+      return json(
         { error: 'Restaurant non spécifié' },
         { status: 400 }
       );
@@ -778,7 +797,7 @@ export async function POST(request) {
     
     if (!orderData.adresse_livraison || orderData.adresse_livraison.trim().length === 0) {
       console.error('❌ ERREUR: adresse_livraison manquante');
-      return NextResponse.json(
+      return json(
         { error: 'Adresse de livraison requise' },
         { status: 400 }
       );
@@ -786,7 +805,7 @@ export async function POST(request) {
     
     if (!orderData.total || orderData.total <= 0 || isNaN(orderData.total)) {
       console.error('❌ ERREUR: total invalide:', orderData.total);
-      return NextResponse.json(
+      return json(
         { error: 'Montant de commande invalide' },
         { status: 400 }
       );
@@ -838,7 +857,7 @@ export async function POST(request) {
         errorMessage = `Erreur: ${orderError.message}`;
       }
       
-      return NextResponse.json(
+      return json(
         { 
           error: errorMessage,
           details: process.env.NODE_ENV === 'development' ? orderError.message : undefined
@@ -1292,7 +1311,7 @@ export async function POST(request) {
       console.error('❌ ERREUR CRITIQUE: Aucun détail de commande à insérer !');
       console.error('   Items reçus:', items?.length || 0);
       console.error('   Order ID:', order.id);
-      return NextResponse.json(
+      return json(
         { error: 'Erreur: aucun détail de commande à insérer' },
         { status: 500 }
       );
@@ -1305,7 +1324,7 @@ export async function POST(request) {
     if (nullPlatIds.length > 0) {
       console.error('❌ ERREUR CRITIQUE: Détails avec plat_id null détectés:', nullPlatIds.length);
       console.error('   Détails problématiques:', JSON.stringify(nullPlatIds, null, 2));
-      return NextResponse.json(
+      return json(
         { 
           error: 'Erreur: certains détails ont un plat_id invalide (null)',
           details: 'Vérifiez les formules et combos'
@@ -1327,7 +1346,7 @@ export async function POST(request) {
       
       // CRITIQUE: Ne pas continuer si les détails n'ont pas été créés
       // Car la commande sera inutilisable sans détails
-      return NextResponse.json(
+      return json(
         { 
           error: 'Erreur lors de la création des détails de commande',
           details: detailsError.message,
@@ -1340,7 +1359,7 @@ export async function POST(request) {
     if (!insertedDetails || insertedDetails.length !== orderDetailsPayload.length) {
       console.error('❌ ERREUR: Pas tous les détails ont été créés');
       console.error(`   Attendu: ${orderDetailsPayload.length}, Créé: ${insertedDetails?.length || 0}`);
-      return NextResponse.json(
+      return json(
         { 
           error: 'Erreur: certains détails de commande n\'ont pas été créés',
           expected: orderDetailsPayload.length,
@@ -1471,7 +1490,7 @@ export async function POST(request) {
     const deliveryFeeValue = parseFloat(fraisLivraison) || 0;
     const totalWithDelivery = subtotalValue + deliveryFeeValue;
 
-    return NextResponse.json({
+    return json({
       message: 'Commande créée avec succès',
       orderId: order.id,
       securityCode: order.security_code,
@@ -1503,7 +1522,7 @@ export async function POST(request) {
       errorMessage = `Erreur ${error.code}: ${error.message || 'Erreur inconnue'}`;
     }
     
-    return NextResponse.json(
+    return json(
       { 
         error: errorMessage,
         details: process.env.NODE_ENV === 'development' ? error.message : undefined

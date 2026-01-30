@@ -4,6 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 let cachedServiceClient = null;
 function getServiceClient() {
   if (cachedServiceClient) return cachedServiceClient;
@@ -31,7 +42,7 @@ export async function POST(request) {
       console.error('❌ Montant invalide:', amount);
       return NextResponse.json(
         { error: 'Montant invalide. Le montant doit être supérieur à 0.' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -101,7 +112,7 @@ export async function POST(request) {
                       'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
                     code: 'DELIVERY_FEE_TOO_LOW',
                   },
-                  { status: 400 }
+                  { status: 400, headers: corsHeaders }
                 );
               }
             }
@@ -119,7 +130,7 @@ export async function POST(request) {
       console.error('❌ Montant trop faible:', amountNumber, '€');
       return NextResponse.json(
         { error: 'Le montant minimum est de 0.50€' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -142,7 +153,7 @@ export async function POST(request) {
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('❌ Erreur lors de la création du paiement:', error);
     console.error('❌ Détails erreur Stripe:', {
@@ -164,7 +175,7 @@ export async function POST(request) {
     
     return NextResponse.json(
       { error: errorMessage },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 } 

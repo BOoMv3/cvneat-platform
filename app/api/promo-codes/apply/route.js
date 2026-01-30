@@ -6,6 +6,17 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 /**
  * POST /api/promo-codes/apply
  * Enregistre l'utilisation d'un code promo après une commande
@@ -18,7 +29,7 @@ export async function POST(request) {
     if (!promoCodeId || !orderId || discountAmount === undefined) {
       return NextResponse.json(
         { error: 'Paramètres requis: promoCodeId, orderId, discountAmount' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -39,7 +50,7 @@ export async function POST(request) {
       console.error('Erreur enregistrement utilisation code promo:', usageError);
       return NextResponse.json(
         { error: 'Erreur lors de l\'enregistrement de l\'utilisation' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -136,13 +147,13 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       usageId: usage.id
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Erreur API application code promo:', error);
     return NextResponse.json(
       { error: 'Erreur serveur' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

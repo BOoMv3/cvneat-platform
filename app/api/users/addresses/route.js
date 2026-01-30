@@ -5,6 +5,25 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+function json(body, init) {
+  const res = NextResponse.json(body, init);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    res.headers.set(k, v);
+  }
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 let cachedServiceClient = null;
 
 const tablesToMigrate = [
@@ -249,12 +268,12 @@ export async function GET(request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+      return json({ error: 'Token manquant' }, { status: 401 });
     }
     const token = authHeader.split(' ')[1];
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return json({ error: 'Token invalide' }, { status: 401 });
     }
     const { data: addresses, error } = await supabase
       .from('user_addresses')
@@ -267,10 +286,10 @@ export async function GET(request) {
       ...address,
       postalCode: address.postal_code ?? address.postalCode ?? null
     }));
-    return NextResponse.json(normalized);
+    return json(normalized);
   } catch (error) {
     console.error('Erreur dans /api/users/addresses GET:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -279,17 +298,17 @@ export async function POST(request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+      return json({ error: 'Token manquant' }, { status: 401 });
     }
     const token = authHeader.split(' ')[1];
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return json({ error: 'Token invalide' }, { status: 401 });
     }
     const serviceClient = getServiceClient();
     if (!serviceClient) {
       console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquante pour ajouter une adresse');
-      return NextResponse.json(
+      return json(
         { error: 'Configuration serveur manquante pour Supabase' },
         { status: 500 }
       );
@@ -308,7 +327,7 @@ export async function POST(request) {
     const normalizedPostalCode = postal_code ?? postalCode ?? null;
 
     if (!address || !city || !normalizedPostalCode) {
-      return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
+      return json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
 
     const effectiveUserId = await ensureUserProfile(serviceClient, user, {
@@ -346,7 +365,7 @@ export async function POST(request) {
       .select()
       .single();
     if (error) throw error;
-    return NextResponse.json({
+    return json({
       message: 'Adresse ajoutée',
       address: {
         ...newAddress,
@@ -355,7 +374,7 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('Erreur dans /api/users/addresses POST:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -364,17 +383,17 @@ export async function PUT(request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+      return json({ error: 'Token manquant' }, { status: 401 });
     }
     const token = authHeader.split(' ')[1];
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return json({ error: 'Token invalide' }, { status: 401 });
     }
     const serviceClient = getServiceClient();
     if (!serviceClient) {
       console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquante pour mettre à jour une adresse');
-      return NextResponse.json(
+      return json(
         { error: 'Configuration serveur manquante pour Supabase' },
         { status: 500 }
       );
@@ -393,7 +412,7 @@ export async function PUT(request) {
     const normalizedPostalCode = postal_code ?? postalCode ?? null;
 
     if (!id || !address || !city || !normalizedPostalCode) {
-      return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
+      return json({ error: 'Champs obligatoires manquants' }, { status: 400 });
     }
 
   const effectiveUserId = await ensureUserProfile(serviceClient, user, {
@@ -426,7 +445,7 @@ export async function PUT(request) {
       .select()
       .single();
     if (error) throw error;
-    return NextResponse.json({
+    return json({
       message: 'Adresse mise à jour',
       address: {
         ...updated,
@@ -435,7 +454,7 @@ export async function PUT(request) {
     });
   } catch (error) {
     console.error('Erreur dans /api/users/addresses PUT:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -444,17 +463,17 @@ export async function DELETE(request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+      return json({ error: 'Token manquant' }, { status: 401 });
     }
     const token = authHeader.split(' ')[1];
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return json({ error: 'Token invalide' }, { status: 401 });
     }
     const serviceClient = getServiceClient();
     if (!serviceClient) {
       console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquante pour supprimer une adresse');
-      return NextResponse.json(
+      return json(
         { error: 'Configuration serveur manquante pour Supabase' },
         { status: 500 }
       );
@@ -462,7 +481,7 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) {
-      return NextResponse.json({ error: 'ID de l\'adresse requis' }, { status: 400 });
+      return json({ error: 'ID de l\'adresse requis' }, { status: 400 });
     }
     const { error } = await serviceClient
       .from('user_addresses')
@@ -470,9 +489,9 @@ export async function DELETE(request) {
       .eq('id', id)
       .eq('user_id', user.id);
     if (error) throw error;
-    return NextResponse.json({ message: 'Adresse supprimée' });
+    return json({ message: 'Adresse supprimée' });
   } catch (error) {
     console.error('Erreur dans /api/users/addresses DELETE:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 } 

@@ -4,31 +4,42 @@ import { supabaseAdmin } from '../../../../lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(request) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
         { error: 'Configuration serveur manquante (SUPABASE_SERVICE_ROLE_KEY)' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
     const body = await request.json().catch(() => ({}));
     const paymentIntentId = body?.paymentIntentId;
     if (!paymentIntentId) {
-      return NextResponse.json({ error: 'paymentIntentId requis' }, { status: 400 });
+      return NextResponse.json({ error: 'paymentIntentId requis' }, { status: 400, headers: corsHeaders });
     }
 
     // Récupérer le PaymentIntent côté Stripe (source de vérité)
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     if (!paymentIntent) {
-      return NextResponse.json({ error: 'PaymentIntent introuvable' }, { status: 404 });
+      return NextResponse.json({ error: 'PaymentIntent introuvable' }, { status: 404, headers: corsHeaders });
     }
 
     if (paymentIntent.status !== 'succeeded') {
       return NextResponse.json(
         { error: `Paiement non confirmé (status=${paymentIntent.status})` },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -36,7 +47,7 @@ export async function POST(request) {
     if (!orderId) {
       return NextResponse.json(
         { error: "metadata.order_id manquant sur le PaymentIntent (impossible de relier la commande)" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -50,7 +61,7 @@ export async function POST(request) {
     if (orderError || !order) {
       return NextResponse.json(
         { error: 'Commande introuvable', details: orderError?.message },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
@@ -103,13 +114,16 @@ export async function POST(request) {
     if (updateError) {
       return NextResponse.json(
         { error: 'Erreur mise à jour commande', details: updateError.message },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
     // Si aucune ligne n'a été modifiée/renvoyée (race condition), on s'arrête sans notifier
     if (!updated) {
-      return NextResponse.json({ success: true, orderId: order.id, alreadyPaid: wasPaidBefore });
+      return NextResponse.json(
+        { success: true, orderId: order.id, alreadyPaid: wasPaidBefore },
+        { headers: corsHeaders }
+      );
     }
 
     // Notifications:
@@ -141,9 +155,12 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ success: true, orderId: order.id });
+    return NextResponse.json({ success: true, orderId: order.id }, { headers: corsHeaders });
   } catch (e) {
-    return NextResponse.json({ error: 'Erreur serveur', details: e?.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: e?.message },
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
 

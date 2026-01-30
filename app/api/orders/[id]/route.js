@@ -6,6 +6,25 @@ import Stripe from 'stripe';
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email, X-Order-Code',
+  'Access-Control-Max-Age': '86400',
+};
+
+function json(body, init) {
+  const res = NextResponse.json(body, init);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    res.headers.set(k, v);
+  }
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 function getBearerToken(request) {
   const auth = request.headers.get('authorization') || '';
   if (!auth.toLowerCase().startsWith('bearer ')) return null;
@@ -33,7 +52,7 @@ export async function GET(request, { params }) {
 
     if (!supabaseUrl || !anonKey || !serviceKey) {
       console.error('Configuration Supabase incomplète');
-      return NextResponse.json({ error: 'Configuration serveur manquante' }, { status: 500 });
+      return json({ error: 'Configuration serveur manquante' }, { status: 500 });
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
@@ -59,7 +78,7 @@ export async function GET(request, { params }) {
       const { data: { user: sessionUser }, error: userError } = await supabaseUser.auth.getUser(token);
 
       if (userError || !sessionUser) {
-        return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+        return json({ error: 'Token invalide' }, { status: 401 });
       }
 
       user = sessionUser;
@@ -82,7 +101,7 @@ export async function GET(request, { params }) {
       // orderAccessError peut contenir des erreurs RLS bénignes
       if (!orderAccess) {
         console.log(`❌ Commande ${id} non trouvée dans la base de données`);
-        return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+        return json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
       // Si erreur critique (autre que RLS), logger et continuer quand même
@@ -95,11 +114,11 @@ export async function GET(request, { params }) {
 
       if (!isAdmin) {
         if (orderAccess.user_id && orderAccess.user_id !== user.id && !securityMatches) {
-          return NextResponse.json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
+          return json({ error: 'Vous n\'êtes pas autorisé à voir cette commande' }, { status: 403 });
         }
 
         if (!orderAccess.user_id && !securityMatches) {
-          return NextResponse.json({ error: 'Authentification requise pour cette commande' }, { status: 403 });
+          return json({ error: 'Authentification requise pour cette commande' }, { status: 403 });
         }
       }
 
@@ -149,7 +168,7 @@ export async function GET(request, { params }) {
       }
 
       if (orderError || !orderFull) {
-        return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+        return json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
       order = orderFull;
@@ -216,7 +235,7 @@ export async function GET(request, { params }) {
         .single();
 
       if (orderError || !orderFull) {
-        return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+        return json({ error: 'Commande non trouvée' }, { status: 404 });
       }
 
       order = orderFull;
@@ -275,11 +294,11 @@ export async function GET(request, { params }) {
         }
       }
     } else {
-      return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
+      return json({ error: 'Authentification requise' }, { status: 401 });
     }
 
     if (!order) {
-      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+      return json({ error: 'Commande non trouvée' }, { status: 404 });
     }
 
     const restaurant = order.restaurants;
@@ -512,10 +531,10 @@ export async function GET(request, { params }) {
     };
 
     console.log(`✅ [API /orders/${id}] Commande récupérée avec succès - Statut: ${formattedOrder.statut}, Client: ${customerName}`);
-    return NextResponse.json(formattedOrder);
+    return json(formattedOrder);
   } catch (error) {
     console.error('Erreur générale dans GET /api/orders/[id]:', error);
-    return NextResponse.json({
+    return json({
       error: 'Erreur serveur',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });
@@ -534,7 +553,7 @@ export async function PUT(request, { params }) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: 'Configuration serveur manquante' }, { status: 500 });
+      return json({ error: 'Configuration serveur manquante' }, { status: 500 });
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
@@ -542,12 +561,12 @@ export async function PUT(request, { params }) {
     // Auth obligatoire (sinon n'importe qui pourrait modifier une commande)
     const token = getBearerToken(request);
     if (!token) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      return json({ error: 'Non autorisé' }, { status: 401 });
     }
     const { data: authed, error: authErr } = await supabaseAdmin.auth.getUser(token);
     const user = authed?.user;
     if (authErr || !user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      return json({ error: 'Non autorisé' }, { status: 401 });
     }
 
     // Lire la commande avant update (contrôle + transition)
@@ -557,7 +576,7 @@ export async function PUT(request, { params }) {
       .eq('id', id)
       .single();
     if (beforeErr || !before) {
-      return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 });
+      return json({ error: 'Commande introuvable' }, { status: 404 });
     }
 
     // Admin ?
@@ -574,7 +593,7 @@ export async function PUT(request, { params }) {
     }
 
     if (!isAdmin && before.user_id && before.user_id !== user.id) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+      return json({ error: 'Non autorisé' }, { status: 403 });
     }
 
     // Préparer les données de mise à jour
@@ -606,7 +625,7 @@ export async function PUT(request, { params }) {
 
     if (error) {
       console.error(`❌ [API PUT /orders/${id}] Erreur mise à jour:`, error);
-      return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
+      return json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
     }
 
     console.log(`✅ [API PUT /orders/${id}] Commande mise à jour avec succès`);
@@ -640,9 +659,9 @@ export async function PUT(request, { params }) {
       console.warn('⚠️ [API PUT /orders/[id]] Erreur non bloquante notifications:', e?.message || e);
     }
 
-    return NextResponse.json(data);
+    return json(data);
   } catch (error) {
     console.error('❌ [API PUT /orders/[id]] Erreur serveur:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
