@@ -59,7 +59,9 @@ const nextConfig = {
   },
   
   // Optimisations pour le build
-  swcMinify: true,
+  // ⚠️ Sur certaines configs, SWC minify peut bloquer indéfiniment sur "Creating an optimized production build..."
+  // On désactive donc SWC minify pour fiabiliser les builds (web + mobile).
+  swcMinify: false,
   
   // Export statique UNIQUEMENT pour l'app mobile (pas pour le déploiement web)
   // Les appels API pointeront vers https://cvneat.fr/api
