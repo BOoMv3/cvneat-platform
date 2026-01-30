@@ -62,6 +62,9 @@ export async function POST(request) {
     const { user, error } = await getAuthedUser(request);
     if (!user) return NextResponse.json({ error }, { status: 401 });
 
+    const body = await request.json().catch(() => ({}));
+    const action = (body?.action || 'test').toString().trim().toLowerCase();
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data: tokens, error: tokensError } = await supabaseAdmin
       .from('device_tokens')
@@ -92,9 +95,19 @@ export async function POST(request) {
     let sent = 0;
     const errors = [];
 
-    const title = 'Test CVN’EAT';
-    const message = 'Notification de test (si tu vois ça, les pushes sont OK)';
-    const payload = { type: 'self_test' };
+    // Actions supportées:
+    // - test: envoie une notif visible de test
+    // - clear_badge: envoie un push APNs avec badge=0 pour effacer le badge iOS (bulle "1" fantôme)
+    const isClearBadge = action === 'clear_badge' || action === 'clearbadge' || action === 'badge';
+
+    const title = isClearBadge ? 'CVN’EAT' : 'Test CVN’EAT';
+    const message = isClearBadge
+      ? 'Synchronisation…'
+      : 'Notification de test (si tu vois ça, les pushes sont OK)';
+
+    const payload = isClearBadge
+      ? { type: 'badge_clear', badge: 0 }
+      : { type: 'self_test' };
 
     // iOS via APNs
     for (const t of iosTokens) {
@@ -133,6 +146,10 @@ export async function POST(request) {
       if (!fcmServerKey) {
         errors.push({ platform: 'android', error: 'Firebase non configuré' });
       } else {
+        // Sur Android, "badge" n'est pas géré de façon uniforme. Pour clear_badge, on ne spamme pas.
+        if (isClearBadge) {
+          // no-op (réussite iOS suffisante)
+        } else {
         for (const t of androidTokens) {
           try {
             const response = await fetch('https://fcm.googleapis.com/fcm/send', {
@@ -157,10 +174,12 @@ export async function POST(request) {
             errors.push({ platform: 'android', token_preview: (t || '').slice(0, 12) + '…', error: err?.message });
           }
         }
+        }
       }
     }
 
     return NextResponse.json({
+      action: isClearBadge ? 'clear_badge' : 'test',
       sent,
       total: tokens.length,
       ios: iosTokens.length,

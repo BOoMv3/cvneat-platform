@@ -191,8 +191,6 @@ export default function MobileMenuModal({
                       </div>
                     );
                   })}
-                </div>
-              )}
             </div>
           </div>
         )}

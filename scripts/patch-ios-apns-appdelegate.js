@@ -34,7 +34,8 @@ const hasApnsCallbacks =
 
 const hasBadgeReset =
   content.includes('applicationIconBadgeNumber = 0') ||
-  content.includes('applicationDidBecomeActive');
+  content.includes('applicationDidBecomeActive') ||
+  content.includes('CVNEAT_BADGE_RESET_V2');
 
 if (hasApnsCallbacks && hasBadgeReset) {
   console.log('ℹ️ [patch-ios-apns] AppDelegate.swift semble déjà patché (OK).');
@@ -73,12 +74,26 @@ const badgeInjection = `
     // MARK: - Badge reset
     //
     // Évite un badge iOS "fantôme" (ex: 1) qui reste affiché même sans notifications.
+    // CVNEAT_BADGE_RESET_V2
     func applicationDidBecomeActive(_ application: UIApplication) {
+        // 1) Clear badge count
         application.applicationIconBadgeNumber = 0
+        // iOS 16+: official API to set badge count
+        if #available(iOS 16.0, *) {
+            UNUserNotificationCenter.current().setBadgeCount(0)
+        }
+        // 2) Clear delivered/pending notifications (can keep a badge stuck)
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
 `;
 
 const injection = `${hasApnsCallbacks ? '' : apnsInjection}${hasBadgeReset ? '' : badgeInjection}`;
+
+// Ensure import UserNotifications exists if we inject badge reset (UNUserNotificationCenter).
+if (!hasBadgeReset && injection.includes('UNUserNotificationCenter') && !content.includes('import UserNotifications')) {
+  content = content.replace('import UIKit', 'import UIKit\nimport UserNotifications');
+}
 
 // Inject after didFinishLaunchingWithOptions block (best effort).
 const anchor = 'return true';

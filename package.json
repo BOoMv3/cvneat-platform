@@ -18,9 +18,9 @@
     "capacitor:open:ios": "npx cap open ios",
     "capacitor:open:android": "npx cap open android",
     "build:mobile": "node scripts/build-mobile-smart.js",
-    "build:android": "node scripts/build-mobile-smart.js",
+    "build:android": "BUILD_PLATFORM=android node scripts/build-mobile-smart.js",
     "setup:ios": "./scripts/setup-ios.sh",
-    "build:ios": "node scripts/build-mobile-smart.js"
+    "build:ios": "BUILD_PLATFORM=ios node scripts/build-mobile-smart.js"
   },
   "dependencies": {
     "@capacitor/core": "^7.4.4",
@@ -56,6 +56,8 @@
     "@tailwindcss/forms": "^0.5.6",
     "@types/node": "^24.10.1",
     "autoprefixer": "^10.4.16",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.0.4",
     "next-sitemap": "^4.2.3",
     "node-fetch": "^2.7.0",
     "postcss": "^8.4.32",

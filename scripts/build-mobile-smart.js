@@ -15,6 +15,17 @@ const path = require('path');
 
 console.log('🚀 Démarrage du build intelligent de l\'app mobile...\n');
 
+// Plateforme ciblée (optionnel)
+// - BUILD_PLATFORM=android => n'exécute pas iOS/pods (utile quand on veut juste Android)
+// - BUILD_PLATFORM=ios     => n'exécute pas Android
+// - (vide)                => sync complet (android + ios)
+const buildPlatform = (process.env.BUILD_PLATFORM || '').toString().trim().toLowerCase();
+const isAndroidOnly = buildPlatform === 'android';
+const isIosOnly = buildPlatform === 'ios';
+
+if (isAndroidOnly) console.log('🤖 Mode BUILD_PLATFORM=android (sync Android uniquement)\n');
+if (isIosOnly) console.log('🍎 Mode BUILD_PLATFORM=ios (sync iOS uniquement)\n');
+
 // Fonction pour trouver récursivement tous les dossiers avec des routes dynamiques [id] ou [param]
 function findDynamicRouteDirs(dir, baseDir = dir) {
   const results = [];
@@ -237,27 +248,41 @@ try {
   
   // Étape 4: Synchroniser avec Capacitor
   console.log('🔄 Étape 4/6: Synchronisation avec Capacitor...');
-  execSync('npx cap sync', { stdio: 'inherit' });
+  if (isAndroidOnly) {
+    execSync('npx cap sync android', { stdio: 'inherit' });
+  } else if (isIosOnly) {
+    execSync('npx cap sync ios', { stdio: 'inherit' });
+  } else {
+    execSync('npx cap sync', { stdio: 'inherit' });
+  }
   console.log('✅ Synchronisation Capacitor terminée\n');
   
   // Étape 4.5: Patch iOS AppDelegate pour APNs (token push)
   // (Le dossier ios/ est ignoré par git: on applique le patch à chaque build)
   console.log('🛠️  Étape 4.5/6: Patch iOS APNs AppDelegate...');
-  try {
-    execSync('node scripts/patch-ios-apns-appdelegate.js', { stdio: 'inherit' });
-    console.log('✅ Patch APNs appliqué\n');
-  } catch (error) {
-    console.warn('⚠️  Patch APNs non appliqué (non bloquant):', error.message);
+  if (!isAndroidOnly) {
+    try {
+      execSync('node scripts/patch-ios-apns-appdelegate.js', { stdio: 'inherit' });
+      console.log('✅ Patch APNs appliqué\n');
+    } catch (error) {
+      console.warn('⚠️  Patch APNs non appliqué (non bloquant):', error.message);
+    }
+  } else {
+    console.log('ℹ️  BUILD_PLATFORM=android: patch iOS ignoré\n');
   }
 
   // Étape 4.6: Patch iOS Info.plist (export compliance chiffrement)
   // Pour éviter qu'Apple demande des documents de chiffrement : ITSAppUsesNonExemptEncryption = false
   console.log('🛠️  Étape 4.6/6: Patch iOS Info.plist (chiffrement)...');
-  try {
-    execSync('node scripts/patch-ios-infoplist-encryption.js', { stdio: 'inherit' });
-    console.log('✅ Patch Info.plist appliqué\n');
-  } catch (error) {
-    console.warn('⚠️  Patch Info.plist non appliqué (non bloquant):', error.message);
+  if (!isAndroidOnly) {
+    try {
+      execSync('node scripts/patch-ios-infoplist-encryption.js', { stdio: 'inherit' });
+      console.log('✅ Patch Info.plist appliqué\n');
+    } catch (error) {
+      console.warn('⚠️  Patch Info.plist non appliqué (non bloquant):', error.message);
+    }
+  } else {
+    console.log('ℹ️  BUILD_PLATFORM=android: patch Info.plist ignoré\n');
   }
 
   // Étape 5: Vérifications
@@ -269,32 +294,42 @@ try {
   if (fs.existsSync(androidAssets)) {
     console.log('✅ Android: fichiers copiés');
   }
-  if (fs.existsSync(iosAssets)) {
-    console.log('✅ iOS: fichiers copiés');
-  }
+  if (!isAndroidOnly) {
+    if (fs.existsSync(iosAssets)) {
+      console.log('✅ iOS: fichiers copiés');
+    }
 
-  // Sanity check: s'assurer que le CSS Next/Tailwind est bien copié dans iOS.
-  // Sinon, l'app s'affiche "sans styles" (HTML brut), souvent visible sur iPad.
-  try {
-    if (!fs.existsSync(iosNextStaticCssDir)) {
-      throw new Error(`Dossier CSS manquant: ${iosNextStaticCssDir}`);
+    // Sanity check: s'assurer que le CSS Next/Tailwind est bien copié dans iOS.
+    // Sinon, l'app s'affiche "sans styles" (HTML brut), souvent visible sur iPad.
+    try {
+      if (!fs.existsSync(iosNextStaticCssDir)) {
+        throw new Error(`Dossier CSS manquant: ${iosNextStaticCssDir}`);
+      }
+      const cssFiles = fs.readdirSync(iosNextStaticCssDir).filter((f) => f.endsWith('.css'));
+      if (!cssFiles.length) {
+        throw new Error(`Aucun fichier CSS trouvé dans: ${iosNextStaticCssDir}`);
+      }
+      console.log(`✅ iOS: CSS Next OK (${cssFiles.length} fichier(s))`);
+    } catch (e) {
+      console.error('❌ iOS: CSS Next manquant -> l\'app sera non stylée (écran brut).');
+      console.error('   Cause probable: cap sync non effectué / assets non copiés.');
+      console.error('   Détail:', e?.message || e);
+      process.exit(1);
     }
-    const cssFiles = fs.readdirSync(iosNextStaticCssDir).filter((f) => f.endsWith('.css'));
-    if (!cssFiles.length) {
-      throw new Error(`Aucun fichier CSS trouvé dans: ${iosNextStaticCssDir}`);
-    }
-    console.log(`✅ iOS: CSS Next OK (${cssFiles.length} fichier(s))`);
-  } catch (e) {
-    console.error('❌ iOS: CSS Next manquant -> l\'app sera non stylée (écran brut).');
-    console.error('   Cause probable: cap sync non effectué / assets non copiés.');
-    console.error('   Détail:', e?.message || e);
-    process.exit(1);
+  } else {
+    console.log('ℹ️  BUILD_PLATFORM=android: checks iOS ignorés');
   }
   
   console.log('\n🎉 Build terminé avec succès!');
   console.log('\n📱 Prochaines étapes:');
-  console.log('   iOS: npm run capacitor:open:ios');
-  console.log('   Android: npm run capacitor:open:android');
+  if (isAndroidOnly) {
+    console.log('   Android: npm run capacitor:open:android');
+  } else if (isIosOnly) {
+    console.log('   iOS: npm run capacitor:open:ios');
+  } else {
+    console.log('   iOS: npm run capacitor:open:ios');
+    console.log('   Android: npm run capacitor:open:android');
+  }
   console.log('\n💡 Note: Les routes dynamiques /restaurants/[id] fonctionnent côté client');
   
 } catch (error) {

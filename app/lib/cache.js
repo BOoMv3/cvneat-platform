@@ -237,44 +237,4 @@ export const invalidateCache = (type, id = null) => {
   });
 };
 
-// Middleware pour Next.js API routes
-export const withCache = (handler, options = {}) => {
-  return async (req, res) => {
-    const {
-      ttl = 5 * 60 * 1000,
-      keyGenerator = (req) => createCacheKey(req.url, req.method)
-    } = options;
-
-    const key = keyGenerator(req);
-    
-    // Vérifier le cache
-    const cached = cacheGet(key);
-    if (cached) {
-      res.headers.set('X-Cache', 'HIT');
-      return new Response(JSON.stringify(cached), {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Cache': 'HIT'
-        }
-      });
-    }
-
-    // Exécuter le handler
-    const response = await handler(req, res);
-    
-    // Mettre en cache si succès
-    if (response.status === 200) {
-      try {
-        const data = await response.json();
-        cacheSet(key, data, ttl);
-        res.headers.set('X-Cache', 'MISS');
-      } catch (error) {
-        console.error('Erreur lors de la mise en cache:', error);
-      }
-    }
-
-    return response;
-  };
-};
-
 export default cache;

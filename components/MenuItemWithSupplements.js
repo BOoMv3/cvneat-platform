@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FaPlus, FaMinus, FaCheck, FaUtensils } from 'react-icons/fa';
+import { FaPlus, FaCheck, FaUtensils, FaTimes } from 'react-icons/fa';
 
 export default function MenuItemWithSupplements({ item, onAddToCart, isAdding = false }) {
   const [selectedSupplements, setSelectedSupplements] = useState([]);

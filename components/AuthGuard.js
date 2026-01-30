@@ -3,7 +3,16 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 
-export default function AuthGuard({ children, requiredRole }) {
+const normalizeRole = (role) => (role || '').toString().trim().toLowerCase();
+
+const normalizeRoleAliases = (role) => {
+  const r = normalizeRole(role);
+  // alias: legacy FR naming
+  if (r === 'livreur') return 'delivery';
+  return r;
+};
+
+export default function AuthGuard({ children, requiredRole, allowedRoles }) {
   const router = useRouter();
   const [status, setStatus] = useState('loading');
 
@@ -28,7 +37,7 @@ export default function AuthGuard({ children, requiredRole }) {
         });
         if (res.ok) {
           const me = await res.json();
-          role = (me?.role || '').toString().trim().toLowerCase();
+          role = normalizeRoleAliases(me?.role);
         }
       } catch (e) {
         // ignore
@@ -36,7 +45,7 @@ export default function AuthGuard({ children, requiredRole }) {
 
       // Fallback metadata
       if (!role) {
-        role = (session.user?.user_metadata?.role || '').toString().trim().toLowerCase() || null;
+        role = normalizeRoleAliases(session.user?.user_metadata?.role) || null;
       }
 
       if (!role) {
@@ -50,8 +59,16 @@ export default function AuthGuard({ children, requiredRole }) {
         return;
       }
 
-      const userRoles = role ? role.split(',') : [role];
-      if (requiredRole && !userRoles.includes(requiredRole)) {
+      const userRoles = (role ? role.split(',') : [role]).map(normalizeRoleAliases).filter(Boolean);
+
+      // Compat: certains écrans passent allowedRoles (array), d'autres requiredRole (string)
+      const required = Array.isArray(allowedRoles) && allowedRoles.length > 0
+        ? allowedRoles.map(normalizeRoleAliases)
+        : requiredRole
+          ? [normalizeRoleAliases(requiredRole)]
+          : [];
+
+      if (required.length > 0 && !required.some((r) => userRoles.includes(r))) {
         // Mauvais role (sauf admin qui a déjà été vérifié)
         router.push('/'); // Rediriger vers la page d'accueil
         return;
@@ -62,7 +79,7 @@ export default function AuthGuard({ children, requiredRole }) {
     };
 
     checkAuth();
-  }, [requiredRole, router]);
+  }, [requiredRole, allowedRoles, router]);
 
   if (status === 'loading') {
     return (
