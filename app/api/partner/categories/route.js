@@ -3,6 +3,47 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 
+const getBearerToken = (request) => {
+  const authHeader = request.headers.get('authorization') || '';
+  if (authHeader.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+  return null;
+};
+
+async function getAuthedUser(request) {
+  const bearer = getBearerToken(request);
+  if (bearer && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin.auth.getUser(bearer);
+    if (!error && data?.user) {
+      return { user: data.user, via: 'bearer' };
+    }
+  }
+
+  const supabase = createRouteHandlerClient({ cookies });
+  const { data, error } = await supabase.auth.getUser();
+  if (!error && data?.user) {
+    return { user: data.user, via: 'cookie' };
+  }
+  return { user: null, via: null };
+}
+
+async function assertRestaurantOwner(db, restaurantId, userId) {
+  const { data: restaurant, error: restaurantError } = await db
+    .from('restaurants')
+    .select('user_id')
+    .eq('id', restaurantId)
+    .single();
+
+  if (restaurantError || !restaurant) {
+    return { ok: false, status: 404, error: 'Restaurant non trouvé' };
+  }
+  if (restaurant.user_id !== userId) {
+    return { ok: false, status: 403, error: 'Accès non autorisé' };
+  }
+  return { ok: true, restaurant };
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,26 +53,16 @@ export async function GET(request) {
       return NextResponse.json({ error: 'restaurantId requis' }, { status: 400 });
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const db = supabaseAdmin || createRouteHandlerClient({ cookies });
+    const { user } = await getAuthedUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est bien le propriétaire du restaurant
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
-      .select('user_id')
-      .eq('id', restaurantId)
-      .single();
-
-    if (restaurantError || restaurant.user_id !== user.id) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    const ownership = await assertRestaurantOwner(db, restaurantId, user.id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
     }
-
-    const db = supabaseAdmin || supabase;
 
     // Récupérer les catégories (sections)
     let { data: categories, error } = await db
@@ -107,27 +138,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'restaurantId et name requis' }, { status: 400 });
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const db = supabaseAdmin || createRouteHandlerClient({ cookies });
+    const { user } = await getAuthedUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est bien le propriétaire du restaurant
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
-      .select('user_id')
-      .eq('id', restaurantId)
-      .single();
-
-    if (restaurantError || restaurant.user_id !== user.id) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    const ownership = await assertRestaurantOwner(db, restaurantId, user.id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
     }
 
     // Créer la nouvelle catégorie
-    const { data: category, error } = await supabase
+    const { data: category, error } = await db
       .from('menu_categories')
       .insert([{
         restaurant_id: restaurantId,
@@ -155,12 +178,9 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'id et name requis' }, { status: 400 });
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
-    const db = supabaseAdmin || supabase;
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const db = supabaseAdmin || createRouteHandlerClient({ cookies });
+    const { user } = await getAuthedUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
@@ -232,12 +252,9 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'id requis' }, { status: 400 });
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
-    const db = supabaseAdmin || supabase;
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const db = supabaseAdmin || createRouteHandlerClient({ cookies });
+    const { user } = await getAuthedUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 

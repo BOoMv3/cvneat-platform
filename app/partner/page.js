@@ -572,14 +572,18 @@ export default function PartnerDashboard() {
     if (!restaurantId) return;
     setSectionsLoading(true);
     try {
-      const response = await fetch(`/api/partner/categories?restaurantId=${restaurantId}`);
-      const data = await response.json().catch(() => []);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || null;
+      const response = await fetch(`/api/partner/categories?restaurantId=${restaurantId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const payload = await response.json().catch(() => []);
       if (!response.ok) {
-        console.warn('⚠️ Erreur récupération sections:', data?.error || response.statusText);
+        console.warn('⚠️ Erreur récupération sections:', payload?.error || response.statusText);
         setMenuSections([]);
         return;
       }
-      setMenuSections(Array.isArray(data) ? data : []);
+      setMenuSections(Array.isArray(payload) ? payload : []);
     } catch (e) {
       console.warn('⚠️ Erreur fetchMenuSections:', e?.message || e);
       setMenuSections([]);
@@ -597,9 +601,11 @@ export default function PartnerDashboard() {
     }
     setSectionsLoading(true);
     try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token || null;
       const response = await fetch('/api/partner/categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           restaurantId: restaurant.id,
           name,
@@ -630,9 +636,11 @@ export default function PartnerDashboard() {
     }
     setSectionsLoading(true);
     try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token || null;
       const response = await fetch('/api/partner/categories', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           id: editingSection.id,
           name,
@@ -660,7 +668,12 @@ export default function PartnerDashboard() {
     if (!confirm(`Supprimer la section "${section.name}" ?\n\nLes plats seront déplacés vers "Autres".`)) return;
     setSectionsLoading(true);
     try {
-      const response = await fetch(`/api/partner/categories?id=${section.id}`, { method: 'DELETE' });
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token || null;
+      const response = await fetch(`/api/partner/categories?id=${section.id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(data?.error || 'Erreur suppression section');
@@ -691,9 +704,11 @@ export default function PartnerDashboard() {
     setMenuSections(payload);
 
     try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token || null;
       const response = await fetch('/api/partner/categories/reorder', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           restaurantId: restaurant.id,
           categories: payload.map((s) => ({ id: s.id }))
