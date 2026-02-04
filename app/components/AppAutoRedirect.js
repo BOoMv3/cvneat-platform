@@ -29,6 +29,8 @@ export default function AppAutoRedirect() {
   const pathname = usePathname();
   const runningRef = useRef(false);
   const lastForcedAtRef = useRef(0);
+  const pollRef = useRef(null);
+  const pollUntilRef = useRef(0);
 
   useEffect(() => {
     if (!isCapacitorApp()) return;
@@ -64,15 +66,54 @@ export default function AppAutoRedirect() {
       }, 400);
     };
 
+    const stopPolling = () => {
+      try {
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      } catch {
+        // ignore
+      }
+      pollUntilRef.current = 0;
+    };
+
+    const schedulePolling = (reason) => {
+      // On ne poll que si on n'est pas déjà sur la cible (cas typique: resume -> '/')
+      // et uniquement dans l'app mobile.
+      if (pathname === '/delivery/dashboard') return;
+
+      const now = Date.now();
+      if (!pollUntilRef.current || pollUntilRef.current < now) {
+        pollUntilRef.current = now + 15000; // 15s max
+      }
+
+      if (pollRef.current) return;
+
+      pollRef.current = setInterval(() => {
+        if (Date.now() > pollUntilRef.current) {
+          stopPolling();
+          return;
+        }
+        run(`poll_${reason}`).catch(() => {});
+      }, 900);
+    };
+
     async function run(reason = 'mount') {
       if (runningRef.current) return;
       runningRef.current = true;
       const { data } = await supabase.auth.getSession();
       const session = data?.session;
       if (!session?.access_token || !session?.user) {
+        // IMPORTANT: sur iOS, la session peut se restaurer après plusieurs secondes au resume.
+        // Donc on repoll tant qu'on est dans l'app et hors dashboard.
         runningRef.current = false;
+        schedulePolling(reason);
         return;
       }
+
+      // Session OK => on peut stopper le polling
+      stopPolling();
 
       // 1) Essayer via API (bypass RLS côté serveur)
       let role = '';
@@ -116,7 +157,8 @@ export default function AppAutoRedirect() {
       // En app mobile, un utilisateur livreur ne doit pas rester sur l'accueil
       // (et éviter qu'il doive fermer/réouvrir l'app). On le force vers /delivery.
       if (isDelivery) {
-        if (!pathname.startsWith('/delivery')) {
+        // Exigence: le livreur ne doit accéder à rien d'autre que son dashboard.
+        if (pathname !== '/delivery/dashboard') {
           forceTo('/delivery/dashboard', reason, { role });
         }
         runningRef.current = false;
@@ -163,13 +205,18 @@ export default function AppAutoRedirect() {
     // Retry shortly after mount (WKWebView parfois hydrate la session après)
     const t1 = setTimeout(() => run('retry_1s'), 1000);
     const t3 = setTimeout(() => run('retry_3s'), 3000);
+    const t8 = setTimeout(() => run('retry_8s'), 8000);
+    const t15 = setTimeout(() => run('retry_15s'), 15000);
 
     return () => {
       cancelled = true;
       runningRef.current = false;
+      stopPolling();
       document.removeEventListener('visibilitychange', onVisibility);
       clearTimeout(t1);
       clearTimeout(t3);
+      clearTimeout(t8);
+      clearTimeout(t15);
       try {
         removeAppListener && removeAppListener();
       } catch {
