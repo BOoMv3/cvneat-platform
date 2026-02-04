@@ -643,6 +643,8 @@ export default function PartnerDashboard() {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           id: editingSection.id,
+          restaurantId: restaurant?.id || null,
+          oldName: (editingSection.oldName || '').trim(),
           name,
           description: (editingSection.description || '').trim(),
           sort_order: editingSection.sort_order ?? 0
@@ -3824,7 +3826,7 @@ export default function PartnerDashboard() {
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => setEditingSection(section)}
+                                    onClick={() => setEditingSection({ ...section, oldName: section?.name || '' })}
                                     className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                                   >
                                     Renommer

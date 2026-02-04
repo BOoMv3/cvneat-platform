@@ -262,10 +262,13 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
-    const { id, name, description, sort_order } = await request.json();
+    const { id, name, description, sort_order, restaurantId, oldName } = await request.json();
 
-    if (!id || !name) {
-      return NextResponse.json({ error: 'id et name requis' }, { status: 400 });
+    if (!name || (!id && !(restaurantId && oldName))) {
+      return NextResponse.json(
+        { error: 'name requis, et soit id soit (restaurantId + oldName)' },
+        { status: 400 }
+      );
     }
 
     const db = supabaseAdmin || createRouteHandlerClient({ cookies });
@@ -274,28 +277,102 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // Récupérer la catégorie + vérifier propriétaire du restaurant
-    const { data: categoryRow, error: categoryError } = await db
-      .from('menu_categories')
-      .select('id, name, restaurant_id')
-      .eq('id', id)
-      .single();
-
-    if (categoryError || !categoryRow) {
-      return NextResponse.json({ error: 'Catégorie introuvable' }, { status: 404 });
+    // Cas normal: la section existe dans menu_categories (id UUID)
+    let categoryRow = null;
+    if (id) {
+      const r = await db
+        .from('menu_categories')
+        .select('id, name, restaurant_id')
+        .eq('id', id)
+        .maybeSingle();
+      categoryRow = r.data || null;
     }
 
-    const { data: restaurant, error: restaurantError } = await db
-      .from('restaurants')
-      .select('user_id')
-      .eq('id', categoryRow.restaurant_id)
-      .single();
+    // Fallback important: si la liste des sections est "dérivée" (id type derived-1),
+    // alors il n'y a pas de ligne dans menu_categories -> on renomme directement les plats (menus.category).
+    if (!categoryRow) {
+      const rid = restaurantId || null;
+      const fromName = (oldName || '').toString().trim();
+      if (!rid || !fromName) {
+        return NextResponse.json({ error: 'Catégorie introuvable' }, { status: 404 });
+      }
 
-    if (restaurantError || !restaurant || restaurant.user_id !== user.id) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+      const ownership = await assertRestaurantOwner(db, rid, user.id);
+      if (!ownership.ok) {
+        return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+      }
+
+      // Renommer la catégorie sur les plats existants
+      try {
+        await db
+          .from('menus')
+          .update({ category: name })
+          .eq('restaurant_id', rid)
+          .eq('category', fromName);
+      } catch (e) {
+        console.warn('⚠️ Fallback rename: impossible de synchroniser menus.category:', e?.message || e);
+      }
+
+      // Best-effort: si menu_categories existe, mettre à jour/insérer pour garder l'ordre côté client
+      try {
+        const existing = await db
+          .from('menu_categories')
+          .select('id')
+          .eq('restaurant_id', rid)
+          .eq('name', fromName)
+          .maybeSingle();
+        if (existing?.data?.id) {
+          // Update
+          const fullUpdate = {
+            name,
+            description: description || '',
+            sort_order: sort_order || 0,
+            updated_at: new Date().toISOString()
+          };
+          let u = await db.from('menu_categories').update(fullUpdate).eq('id', existing.data.id).select().maybeSingle();
+          if (u?.error && (isMissingColumnError(u.error, 'description') || isMissingColumnError(u.error, 'sort_order') || isMissingColumnError(u.error, 'updated_at'))) {
+            u = await db.from('menu_categories').update({ name }).eq('id', existing.data.id).select().maybeSingle();
+          }
+          return NextResponse.json(u.data || { id: existing.data.id, name });
+        }
+
+        // Insert
+        let ins = await db
+          .from('menu_categories')
+          .insert([{
+            restaurant_id: rid,
+            name,
+            description: description || '',
+            sort_order: sort_order || 0,
+            is_active: true
+          }])
+          .select()
+          .maybeSingle();
+        if (ins?.error && (isMissingColumnError(ins.error, 'description') || isMissingColumnError(ins.error, 'sort_order') || isMissingColumnError(ins.error, 'is_active'))) {
+          ins = await db
+            .from('menu_categories')
+            .insert([{ restaurant_id: rid, name }])
+            .select()
+            .maybeSingle();
+        }
+        return NextResponse.json(ins.data || { id: null, name });
+      } catch (e) {
+        // Si table absente, on renvoie quand même succès sur la partie "menus"
+        if (isMissingTableError(e, 'menu_categories')) {
+          return NextResponse.json({ id: null, name, derived: true });
+        }
+        console.warn('⚠️ Fallback rename: update/insert menu_categories échoué:', e?.message || e);
+        return NextResponse.json({ id: null, name, derived: true });
+      }
     }
 
-    const oldName = categoryRow.name;
+    // Vérifier propriétaire
+    const ownership = await assertRestaurantOwner(db, categoryRow.restaurant_id, user.id);
+    if (!ownership.ok) {
+      return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+    }
+
+    const previousName = categoryRow.name;
 
     // Mettre à jour la catégorie (tolérance schéma)
     let updatedCategory = null;
@@ -330,13 +407,13 @@ export async function PUT(request) {
     if (error) throw error;
 
     // Si la section a été renommée: synchroniser les plats existants qui utilisent l'ancien libellé
-    if (oldName && name && oldName !== name) {
+    if (previousName && name && previousName !== name) {
       try {
         await db
           .from('menus')
           .update({ category: name })
           .eq('restaurant_id', categoryRow.restaurant_id)
-          .eq('category', oldName);
+          .eq('category', previousName);
       } catch (e) {
         // Ne pas bloquer le renommage si la synchro échoue (RLS/migration), mais loguer.
         console.warn('⚠️ Impossible de synchroniser les plats après renommage catégorie:', e?.message || e);
