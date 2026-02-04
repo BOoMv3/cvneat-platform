@@ -44,6 +44,11 @@ async function assertRestaurantOwner(db, restaurantId, userId) {
   return { ok: true, restaurant };
 }
 
+const isMissingColumnError = (err, column) => {
+  const msg = (err?.message || '').toString().toLowerCase();
+  return msg.includes('column') && msg.includes(column.toLowerCase()) && msg.includes('does not exist');
+};
+
 export async function PUT(request) {
   try {
     const { restaurantId, categories } = await request.json();
@@ -73,11 +78,20 @@ export async function PUT(request) {
       .from('menu_categories')
       .upsert(updates, { onConflict: 'id' });
 
-    if (error) throw error;
+    // Si la colonne sort_order n'existe pas, on ne peut pas réordonner => ne pas 500
+    if (error) {
+      if (isMissingColumnError(error, 'sort_order')) {
+        return NextResponse.json({ success: true, warning: 'sort_order_non_disponible' });
+      }
+      throw error;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Erreur lors de la réorganisation des catégories:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 } 

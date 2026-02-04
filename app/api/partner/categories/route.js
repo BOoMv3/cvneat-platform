@@ -44,6 +44,16 @@ async function assertRestaurantOwner(db, restaurantId, userId) {
   return { ok: true, restaurant };
 }
 
+const isMissingColumnError = (err, column) => {
+  const msg = (err?.message || '').toString().toLowerCase();
+  return msg.includes('column') && msg.includes(column.toLowerCase()) && msg.includes('does not exist');
+};
+
+const isMissingTableError = (err, table) => {
+  const msg = (err?.message || '').toString().toLowerCase();
+  return msg.includes('relation') && msg.includes(table.toLowerCase()) && msg.includes('does not exist');
+};
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -65,12 +75,65 @@ export async function GET(request) {
     }
 
     // Récupérer les catégories (sections)
-    let { data: categories, error } = await db
-      .from('menu_categories')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('is_active', true)
-      .order('sort_order');
+    let categories = null;
+    let error = null;
+    try {
+      const r = await db
+        .from('menu_categories')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('is_active', true)
+        .order('sort_order');
+      categories = r.data;
+      error = r.error;
+    } catch (e) {
+      error = e;
+    }
+
+    // Tolérance schéma: si certaines colonnes n'existent pas, retenter en minimal
+    if (error) {
+      if (isMissingTableError(error, 'menu_categories')) {
+        // Pas de table -> fallback: dériver les sections depuis menus.category
+        const { data: menuRows, error: menuErr } = await db
+          .from('menus')
+          .select('category')
+          .eq('restaurant_id', restaurantId);
+        if (menuErr) throw menuErr;
+
+        const uniq = [];
+        const seen = new Set();
+        for (const row of menuRows || []) {
+          const name = (row?.category || '').trim();
+          if (!name) continue;
+          const k = name.toLowerCase();
+          if (seen.has(k)) continue;
+          seen.add(k);
+          uniq.push(name);
+        }
+        return NextResponse.json(
+          uniq.map((name, idx) => ({ id: `derived-${idx + 1}`, name, description: '', sort_order: idx + 1 }))
+        );
+      }
+
+      // Colonne is_active absente -> retenter sans filtre
+      if (isMissingColumnError(error, 'is_active')) {
+        const r2 = await db
+          .from('menu_categories')
+          .select('*')
+          .eq('restaurant_id', restaurantId);
+        categories = r2.data;
+        error = r2.error;
+      }
+      // Colonne sort_order absente -> retenter sans order
+      if (error && isMissingColumnError(error, 'sort_order')) {
+        const r3 = await db
+          .from('menu_categories')
+          .select('*')
+          .eq('restaurant_id', restaurantId);
+        categories = r3.data;
+        error = r3.error;
+      }
+    }
 
     if (error) throw error;
 
@@ -95,15 +158,20 @@ export async function GET(request) {
 
         if (uniq.length > 0) {
           try {
-            await db.from('menu_categories').insert(
-              uniq.map((name, idx) => ({
-                restaurant_id: restaurantId,
-                name,
-                description: '',
-                sort_order: idx + 1,
-                is_active: true
-              }))
-            );
+            const seedRowsFull = uniq.map((name, idx) => ({
+              restaurant_id: restaurantId,
+              name,
+              description: '',
+              sort_order: idx + 1,
+              is_active: true
+            }));
+
+            let seedRes = await db.from('menu_categories').insert(seedRowsFull);
+            // Si colonnes non existantes, retenter minimal
+            if (seedRes?.error && (isMissingColumnError(seedRes.error, 'description') || isMissingColumnError(seedRes.error, 'sort_order') || isMissingColumnError(seedRes.error, 'is_active'))) {
+              const seedRowsMin = uniq.map((name) => ({ restaurant_id: restaurantId, name }));
+              seedRes = await db.from('menu_categories').insert(seedRowsMin);
+            }
           } catch (e) {
             // Si l'insert échoue (RLS/migration), on ne bloque pas.
             console.warn('⚠️ Auto-création sections depuis menu impossible:', e?.message || e);
@@ -149,24 +217,46 @@ export async function POST(request) {
       return NextResponse.json({ error: ownership.error }, { status: ownership.status });
     }
 
-    // Créer la nouvelle catégorie
-    const { data: category, error } = await db
-      .from('menu_categories')
-      .insert([{
-        restaurant_id: restaurantId,
-        name,
-        description: description || '',
-        sort_order: sort_order || 0
-      }])
-      .select()
-      .single();
+    // Créer la nouvelle catégorie (tolérance schéma)
+    let category = null;
+    let error = null;
+    try {
+      const r = await db
+        .from('menu_categories')
+        .insert([{
+          restaurant_id: restaurantId,
+          name,
+          description: description || '',
+          sort_order: sort_order || 0,
+          is_active: true
+        }])
+        .select()
+        .single();
+      category = r.data;
+      error = r.error;
+    } catch (e) {
+      error = e;
+    }
+
+    if (error && (isMissingColumnError(error, 'description') || isMissingColumnError(error, 'sort_order') || isMissingColumnError(error, 'is_active'))) {
+      const r2 = await db
+        .from('menu_categories')
+        .insert([{ restaurant_id: restaurantId, name }])
+        .select()
+        .single();
+      category = r2.data;
+      error = r2.error;
+    }
 
     if (error) throw error;
 
     return NextResponse.json(category);
   } catch (error) {
     console.error('Erreur lors de la création de la catégorie:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }
 
@@ -207,18 +297,35 @@ export async function PUT(request) {
 
     const oldName = categoryRow.name;
 
-    // Mettre à jour la catégorie
-    const { data: updatedCategory, error } = await db
+    // Mettre à jour la catégorie (tolérance schéma)
+    let updatedCategory = null;
+    let error = null;
+    const fullUpdate = {
+      name,
+      description: description || '',
+      sort_order: sort_order || 0,
+      updated_at: new Date().toISOString()
+    };
+
+    const r = await db
       .from('menu_categories')
-      .update({
-        name,
-        description: description || '',
-        sort_order: sort_order || 0,
-        updated_at: new Date().toISOString()
-      })
+      .update(fullUpdate)
       .eq('id', id)
       .select()
       .single();
+    updatedCategory = r.data;
+    error = r.error;
+
+    if (error && (isMissingColumnError(error, 'description') || isMissingColumnError(error, 'sort_order') || isMissingColumnError(error, 'updated_at'))) {
+      const r2 = await db
+        .from('menu_categories')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single();
+      updatedCategory = r2.data;
+      error = r2.error;
+    }
 
     if (error) throw error;
 
@@ -239,7 +346,10 @@ export async function PUT(request) {
     return NextResponse.json(updatedCategory);
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la catégorie:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }
 
@@ -279,13 +389,24 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Désactiver la catégorie (soft delete)
-    const { error } = await db
-      .from('menu_categories')
-      .update({ is_active: false })
-      .eq('id', id);
+    // Désactiver la catégorie (soft delete) - fallback delete si colonne absente
+    let delErr = null;
+    try {
+      const r = await db
+        .from('menu_categories')
+        .update({ is_active: false })
+        .eq('id', id);
+      delErr = r.error;
+    } catch (e) {
+      delErr = e;
+    }
 
-    if (error) throw error;
+    if (delErr && isMissingColumnError(delErr, 'is_active')) {
+      const r2 = await db.from('menu_categories').delete().eq('id', id);
+      delErr = r2.error;
+    }
+
+    if (delErr) throw delErr;
 
     // Best-effort: éviter "perdre" les plats -> les basculer en "Autres"
     if (categoryRow.name) {
@@ -303,6 +424,9 @@ export async function DELETE(request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Erreur lors de la suppression de la catégorie:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 } 
