@@ -3,7 +3,23 @@ import { useMemo } from 'react';
 import MenuItem from './MenuItem';
 import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf } from 'react-icons/fa';
 
-export default function MenuByCategories({ menu, selectedCategory, onCategorySelect, onAddToCart, restaurantId }) {
+const normalizeCategoryKey = (value = '') =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+export default function MenuByCategories({
+  menu,
+  selectedCategory,
+  onCategorySelect,
+  onAddToCart,
+  restaurantId,
+  // Array de catégories dans l'ordre voulu (défini par le partenaire).
+  // Accepte: ['Entrées', 'Plats', ...] ou [{ name: 'Entrées' }, ...]
+  categoryOrder = null
+}) {
   // Grouper les menus par catégorie
   const menuByCategory = menu.reduce((acc, item) => {
     const category = item.category || item.categorie || 'Autres';
@@ -149,17 +165,58 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
   };
   
   // Trier les catégories selon l'ordre personnalisé
-  const categories = Object.keys(menuByCategory).sort((a, b) => {
-    const orderA = getCategoryOrder(a);
-    const orderB = getCategoryOrder(b);
-    
-    // Si même ordre, tri alphabétique
-    if (orderA === orderB) {
-      return a.localeCompare(b);
+  const partnerCategoryMeta = useMemo(() => {
+    if (!Array.isArray(categoryOrder)) {
+      return { index: null, label: null };
     }
-    
-    return orderA - orderB;
-  });
+
+    const label = {};
+    const index = {};
+
+    categoryOrder.forEach((entry, idx) => {
+      const name = typeof entry === 'string' ? entry : entry?.name;
+      const k = normalizeCategoryKey(name);
+      if (!k) return;
+      if (label[k] === undefined) label[k] = name;
+      if (index[k] === undefined) index[k] = idx;
+    });
+
+    return { index, label };
+  }, [categoryOrder]);
+
+  const getDisplayLabel = (category) => {
+    const k = normalizeCategoryKey(category);
+    return partnerCategoryMeta?.label?.[k] || category;
+  };
+
+  const categories = useMemo(() => {
+    const keys = Object.keys(menuByCategory);
+
+    return keys.sort((a, b) => {
+      // 1) Priorité à l'ordre défini par le partenaire (si fourni)
+      if (partnerCategoryMeta?.index) {
+        const ia = partnerCategoryMeta.index[normalizeCategoryKey(a)];
+        const ib = partnerCategoryMeta.index[normalizeCategoryKey(b)];
+        const aIn = typeof ia === 'number';
+        const bIn = typeof ib === 'number';
+
+        if (aIn && bIn) return ia - ib;
+        if (aIn && !bIn) return -1;
+        if (!aIn && bIn) return 1;
+      }
+
+      // 2) Fallback: heuristique “repas” existante
+      const orderA = getCategoryOrder(a);
+      const orderB = getCategoryOrder(b);
+
+      // Si même ordre, tri alphabétique
+      if (orderA === orderB) {
+        return a.localeCompare(b);
+      }
+
+      return orderA - orderB;
+    });
+  }, [menuByCategory, partnerCategoryMeta]);
 
   // Icônes pour les catégories
   const categoryIcons = {
@@ -277,7 +334,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="whitespace-nowrap">{category}</span>
+                <span className="whitespace-nowrap">{getDisplayLabel(category)}</span>
                 <span className="text-xs opacity-75 whitespace-nowrap">({count})</span>
               </button>
             );
@@ -325,7 +382,7 @@ export default function MenuByCategories({ menu, selectedCategory, onCategorySel
                     <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{category}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{getDisplayLabel(category)}</h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
                     </p>

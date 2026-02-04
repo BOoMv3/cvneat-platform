@@ -52,6 +52,7 @@ export default function PartnerDashboard() {
   const [orders, setOrders] = useState([]);
   const [showOrdersTab, setShowOrdersTab] = useState(false);
   const [menu, setMenu] = useState([]);
+  const [menuSections, setMenuSections] = useState([]); // Sections affichées côté client (Entrées, Plats, ...)
   const [formulas, setFormulas] = useState([]);
   const [loading, setLoading] = useState(true);
   // Initialiser activeTab depuis l'URL hash si présent
@@ -86,6 +87,10 @@ export default function PartnerDashboard() {
   });
   const [menuForm, setMenuForm] = useState(createDefaultMenuForm());
   const [editingMenu, setEditingMenu] = useState(null);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
+  const [newSectionDescription, setNewSectionDescription] = useState('');
+  const [editingSection, setEditingSection] = useState(null); // { id, name, description, sort_order }
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -255,6 +260,7 @@ export default function PartnerDashboard() {
       
       if (resto?.id) {
         await fetchDashboardData(resto.id);
+        await fetchMenuSections(resto.id);
         await fetchMenu(resto.id);
         await fetchOrders(resto.id);
         await fetchFormulas();
@@ -559,6 +565,148 @@ export default function PartnerDashboard() {
       }
     } catch (error) {
       console.error('Erreur recuperation menu:', error);
+    }
+  };
+
+  const fetchMenuSections = async (restaurantId) => {
+    if (!restaurantId) return;
+    setSectionsLoading(true);
+    try {
+      const response = await fetch(`/api/partner/categories?restaurantId=${restaurantId}`);
+      const data = await response.json().catch(() => []);
+      if (!response.ok) {
+        console.warn('⚠️ Erreur récupération sections:', data?.error || response.statusText);
+        setMenuSections([]);
+        return;
+      }
+      setMenuSections(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.warn('⚠️ Erreur fetchMenuSections:', e?.message || e);
+      setMenuSections([]);
+    } finally {
+      setSectionsLoading(false);
+    }
+  };
+
+  const createMenuSection = async () => {
+    if (!restaurant?.id) return;
+    const name = (newSectionName || '').trim();
+    if (!name) {
+      alert('Nom de section requis');
+      return;
+    }
+    setSectionsLoading(true);
+    try {
+      const response = await fetch('/api/partner/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurantId: restaurant.id,
+          name,
+          description: (newSectionDescription || '').trim(),
+          sort_order: (menuSections?.length || 0) + 1
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erreur création section');
+      }
+      setNewSectionName('');
+      setNewSectionDescription('');
+      await fetchMenuSections(restaurant.id);
+    } catch (e) {
+      alert(e?.message || 'Erreur création section');
+    } finally {
+      setSectionsLoading(false);
+    }
+  };
+
+  const saveEditedMenuSection = async () => {
+    if (!editingSection?.id) return;
+    const name = (editingSection.name || '').trim();
+    if (!name) {
+      alert('Nom de section requis');
+      return;
+    }
+    setSectionsLoading(true);
+    try {
+      const response = await fetch('/api/partner/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingSection.id,
+          name,
+          description: (editingSection.description || '').trim(),
+          sort_order: editingSection.sort_order ?? 0
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erreur mise à jour section');
+      }
+      setEditingSection(null);
+      await fetchMenuSections(restaurant.id);
+      // le renommage peut impacter les plats -> rafraîchir aussi le menu
+      await fetchMenu(restaurant.id);
+    } catch (e) {
+      alert(e?.message || 'Erreur mise à jour section');
+    } finally {
+      setSectionsLoading(false);
+    }
+  };
+
+  const deleteMenuSection = async (section) => {
+    if (!section?.id) return;
+    if (!confirm(`Supprimer la section "${section.name}" ?\n\nLes plats seront déplacés vers "Autres".`)) return;
+    setSectionsLoading(true);
+    try {
+      const response = await fetch(`/api/partner/categories?id=${section.id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erreur suppression section');
+      }
+      await fetchMenuSections(restaurant.id);
+      await fetchMenu(restaurant.id);
+    } catch (e) {
+      alert(e?.message || 'Erreur suppression section');
+    } finally {
+      setSectionsLoading(false);
+    }
+  };
+
+  const moveMenuSection = async (sectionId, direction) => {
+    if (!restaurant?.id) return;
+    const idx = (menuSections || []).findIndex((s) => s.id === sectionId);
+    if (idx === -1) return;
+    const nextIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (nextIdx < 0 || nextIdx >= menuSections.length) return;
+
+    const reordered = [...menuSections];
+    const tmp = reordered[idx];
+    reordered[idx] = reordered[nextIdx];
+    reordered[nextIdx] = tmp;
+
+    // Mettre à jour sort_order localement (1..n)
+    const payload = reordered.map((s, i) => ({ ...s, sort_order: i + 1 }));
+    setMenuSections(payload);
+
+    try {
+      const response = await fetch('/api/partner/categories/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurantId: restaurant.id,
+          categories: payload.map((s) => ({ id: s.id }))
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erreur réorganisation sections');
+      }
+    } catch (e) {
+      alert(e?.message || 'Erreur réorganisation sections');
+      // rollback visuel
+      await fetchMenuSections(restaurant.id);
     }
   };
 
@@ -3534,6 +3682,160 @@ export default function PartnerDashboard() {
               </button>
             </div>
 
+            {/* Sections affichées au client (Entrées / Plats / Desserts / ...) */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <div className="p-6 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Sections visibles côté client</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Ces sections correspondent aux titres affichés sur la fiche établissement (ex: Entrées, Plats, Desserts…).
+                      Tu peux les ajouter/renommer/réordonner.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => restaurant?.id && fetchMenuSections(restaurant.id)}
+                    disabled={!restaurant?.id || sectionsLoading}
+                    className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    {sectionsLoading ? '...' : 'Rafraîchir'}
+                  </button>
+                </div>
+
+                {/* Ajout */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    value={newSectionName}
+                    onChange={(e) => setNewSectionName(e.target.value)}
+                    placeholder="Nom de section (ex: Entrées)"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                  <input
+                    value={newSectionDescription}
+                    onChange={(e) => setNewSectionDescription(e.target.value)}
+                    placeholder="Description (optionnel)"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={createMenuSection}
+                    disabled={sectionsLoading || !restaurant?.id}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Ajouter la section
+                  </button>
+                </div>
+
+                {/* Liste */}
+                {Array.isArray(menuSections) && menuSections.length > 0 ? (
+                  <div className="space-y-2">
+                    {menuSections
+                      .slice()
+                      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                      .map((section, idx) => {
+                        const isEditing = editingSection?.id === section.id;
+                        return (
+                          <div
+                            key={section.id}
+                            className="flex flex-col md:flex-row md:items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
+                          >
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => moveMenuSection(section.id, 'up')}
+                                disabled={sectionsLoading || idx === 0}
+                                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-40"
+                                title="Monter"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveMenuSection(section.id, 'down')}
+                                disabled={sectionsLoading || idx === menuSections.length - 1}
+                                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-40"
+                                title="Descendre"
+                              >
+                                ↓
+                              </button>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              {isEditing ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  <input
+                                    value={editingSection.name || ''}
+                                    onChange={(e) => setEditingSection({ ...editingSection, name: e.target.value })}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  />
+                                  <input
+                                    value={editingSection.description || ''}
+                                    onChange={(e) => setEditingSection({ ...editingSection, description: e.target.value })}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    placeholder="Description"
+                                  />
+                                </div>
+                              ) : (
+                                <div>
+                                  <p className="font-medium text-gray-900 dark:text-white truncate">{section.name}</p>
+                                  {section.description ? (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{section.description}</p>
+                                  ) : null}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={saveEditedMenuSection}
+                                    disabled={sectionsLoading}
+                                    className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50"
+                                  >
+                                    Enregistrer
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingSection(null)}
+                                    className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                                  >
+                                    Annuler
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingSection(section)}
+                                    className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                                  >
+                                    Renommer
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteMenuSection(section)}
+                                    className="px-3 py-2 rounded-lg border border-red-200 text-red-700 text-sm hover:bg-red-50"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Aucune section personnalisée pour le moment. Tu peux en créer ci-dessus (ou utiliser les sections par défaut).
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
               <div className="p-6">
                 {!Array.isArray(menu) || menu.length === 0 ? (
@@ -3984,12 +4286,23 @@ export default function PartnerDashboard() {
                     onChange={(e) => setMenuForm({...menuForm, category: e.target.value})}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Selectionner une categorie</option>
-                    {CATEGORY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
+                    <option value="">Sélectionner une section</option>
+                    {menuForm.category &&
+                      !(Array.isArray(menuSections) && menuSections.some((s) => s?.name === menuForm.category)) &&
+                      !CATEGORY_OPTIONS.some((o) => o.value === menuForm.category) && (
+                        <option value={menuForm.category}>{menuForm.category}</option>
+                      )}
+                    {Array.isArray(menuSections) && menuSections.length > 0
+                      ? menuSections.map((section) => (
+                          <option key={section.id} value={section.name}>
+                            {section.name}
+                          </option>
+                        ))
+                      : CATEGORY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                   </select>
                 </div>
                 <div className="flex items-center">

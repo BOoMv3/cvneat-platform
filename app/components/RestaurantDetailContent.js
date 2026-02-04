@@ -18,6 +18,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const router = useRouter();
   const [restaurant, setRestaurant] = useState(null);
   const [menu, setMenu] = useState([]);
+  const [menuCategoryOrder, setMenuCategoryOrder] = useState(null);
   const [cart, setCart] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -419,9 +420,10 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const fetchRestaurantDetails = async () => {
     try {
       setLoading(true);
-      const [restaurantResponse, menuResponse, hoursResponse, openStatusResponse] = await Promise.all([
+      const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse, openStatusResponse] = await Promise.all([
         fetch(`/api/restaurants/${restaurantId}`),
         fetch(`/api/restaurants/${restaurantId}/menu`),
+        fetch(`/api/restaurants/${restaurantId}/categories`),
         fetch(`/api/restaurants/${restaurantId}/hours`),
         fetch(`/api/restaurants/${restaurantId}/hours`, {
           method: 'POST',
@@ -433,6 +435,14 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       
       const restaurantData = await restaurantResponse.json();
       const menuData = await menuResponse.json();
+      let categoriesData = [];
+      if (categoriesResponse.ok) {
+        try {
+          categoriesData = await categoriesResponse.json();
+        } catch (e) {
+          console.warn('Erreur parsing catégories:', e);
+        }
+      }
       let hoursData = { hours: [] };
       if (hoursResponse.ok) {
         try {
@@ -459,6 +469,9 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       
       setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
+      setMenuCategoryOrder(
+        Array.isArray(categoriesData) && categoriesData.length > 0 ? categoriesData : null
+      );
       setRestaurantHours(hoursData.hours || []);
       
       // Track Facebook Pixel - ViewRestaurant
@@ -1212,6 +1225,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
                   onCategorySelect={setSelectedCategory}
                   onAddToCart={addToCart}
                   restaurantId={restaurantId}
+                  categoryOrder={menuCategoryOrder}
                 />
               )}
             </div>
