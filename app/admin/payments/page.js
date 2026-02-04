@@ -124,7 +124,8 @@ export default function AdminPayments() {
           // IMPORTANT: Ne filtrer que par statut 'livree', payment_status peut ne pas exister ou être différent
           let query = supabase
             .from('commandes')
-            .select('id, total, created_at, statut, payment_status, commission_amount, restaurant_payout, commission_rate')
+            // select('*') pour tolérer des colonnes optionnelles (ex: stripe_fee_amount)
+            .select('*')
             .eq('restaurant_id', restaurant.id)
             .eq('statut', 'livree');
           
@@ -163,6 +164,10 @@ export default function AdminPayments() {
 
           // Calculer les revenus et commissions
           let totalRevenue = 0;
+          let totalGrossPaid = 0;
+          let totalStripeFees = 0;
+          let totalNetAfterStripe = 0;
+          let stripeFeesMissingCount = 0;
           let totalCommission = 0;
           let totalRestaurantPayout = 0;
 
@@ -196,6 +201,24 @@ export default function AdminPayments() {
               return;
             }
             totalRevenue += orderTotal;
+
+            const grossPaid =
+              order.total_paid !== null && order.total_paid !== undefined
+                ? parseFloat(order.total_paid || 0) || 0
+                : (parseFloat(order.total || 0) || 0) + (parseFloat(order.frais_livraison || 0) || 0);
+            totalGrossPaid += grossPaid;
+
+            const hasStripeFee = order.stripe_fee_amount !== null && order.stripe_fee_amount !== undefined;
+            if (hasStripeFee) {
+              const stripeFee = parseFloat(order.stripe_fee_amount || 0) || 0;
+              totalStripeFees += stripeFee;
+              totalNetAfterStripe += grossPaid - stripeFee;
+            } else {
+              stripeFeesMissingCount += 1;
+              // On ne peut pas calculer le net réel sans la fee → on garde le brut dans ce total,
+              // mais on marquera le net comme "incomplet" dans l'affichage.
+              totalNetAfterStripe += grossPaid;
+            }
 
             // La Bonne Pâte: 0% quoi qu'il arrive (même si des valeurs stockées sont incohérentes)
             if (isBonnePate) {
@@ -235,6 +258,10 @@ export default function AdminPayments() {
           const result = {
             ...restaurant,
             totalRevenue: round2(totalRevenue),
+            totalGrossPaid: round2(totalGrossPaid),
+            stripeFees: stripeFeesMissingCount > 0 ? null : round2(totalStripeFees),
+            netAfterStripe: stripeFeesMissingCount > 0 ? null : round2(totalNetAfterStripe),
+            stripeFeesMissingCount,
             commission: round2(totalCommission),
             restaurantPayout: round2(totalRestaurantPayout),
             orderCount: paidOrders.length,
@@ -263,14 +290,22 @@ export default function AdminPayments() {
   const calculateTotals = () => {
     const totals = restaurants.reduce((acc, restaurant) => {
       acc.totalRevenue += restaurant.totalRevenue || 0;
+      acc.totalGrossPaid += restaurant.totalGrossPaid || 0;
+      acc.totalStripeFees += restaurant.stripeFees !== null && restaurant.stripeFees !== undefined ? restaurant.stripeFees : 0;
+      acc.totalNetAfterStripe += restaurant.netAfterStripe !== null && restaurant.netAfterStripe !== undefined ? restaurant.netAfterStripe : 0;
+      acc.totalStripeFeesMissing += restaurant.stripeFeesMissingCount || 0;
       acc.totalCommission += restaurant.commission || 0;
       acc.totalPayout += restaurant.restaurantPayout || 0;
       acc.totalOrders += restaurant.orderCount || 0;
       return acc;
-    }, { totalRevenue: 0, totalCommission: 0, totalPayout: 0, totalOrders: 0 });
+    }, { totalRevenue: 0, totalGrossPaid: 0, totalStripeFees: 0, totalNetAfterStripe: 0, totalStripeFeesMissing: 0, totalCommission: 0, totalPayout: 0, totalOrders: 0 });
 
     return {
       totalRevenue: Math.round(totals.totalRevenue * 100) / 100,
+      totalGrossPaid: Math.round(totals.totalGrossPaid * 100) / 100,
+      totalStripeFees: totals.totalStripeFeesMissing > 0 ? null : Math.round(totals.totalStripeFees * 100) / 100,
+      totalNetAfterStripe: totals.totalStripeFeesMissing > 0 ? null : Math.round(totals.totalNetAfterStripe * 100) / 100,
+      totalStripeFeesMissing: totals.totalStripeFeesMissing,
       totalCommission: Math.round(totals.totalCommission * 100) / 100,
       totalPayout: Math.round(totals.totalPayout * 100) / 100,
       totalOrders: totals.totalOrders
@@ -288,13 +323,13 @@ export default function AdminPayments() {
           ? '7 derniers jours' 
           : `${customStartDate} au ${customEndDate}`;
 
-    let csv = 'Restaurant;CA Total (€);Commission CVN\'EAT (€);Montant dû (€);Nb Commandes;Taux Commission (%)\n';
+    let csv = 'Restaurant;CA Articles (€);Brut encaissé (€);Frais Stripe (€);Net après Stripe (€);Commission CVN\'EAT (€);Montant dû (€);Nb Commandes;Taux Commission (%)\n';
     
     restaurants.forEach(restaurant => {
-      csv += `${restaurant.nom || 'Inconnu'};${restaurant.totalRevenue.toFixed(2)};${restaurant.commission.toFixed(2)};${restaurant.restaurantPayout.toFixed(2)};${restaurant.orderCount};${restaurant.commissionRate.toFixed(1)}\n`;
+      csv += `${restaurant.nom || 'Inconnu'};${(restaurant.totalRevenue || 0).toFixed(2)};${(restaurant.totalGrossPaid || 0).toFixed(2)};${(restaurant.stripeFees || 0).toFixed(2)};${(restaurant.netAfterStripe || 0).toFixed(2)};${(restaurant.commission || 0).toFixed(2)};${(restaurant.restaurantPayout || 0).toFixed(2)};${restaurant.orderCount};${restaurant.commissionRate.toFixed(1)}\n`;
     });
 
-    csv += `\nTOTAL;${totals.totalRevenue.toFixed(2)};${totals.totalCommission.toFixed(2)};${totals.totalPayout.toFixed(2)};${totals.totalOrders};\n`;
+    csv += `\nTOTAL;${totals.totalRevenue.toFixed(2)};${totals.totalGrossPaid.toFixed(2)};${(totals.totalStripeFees ?? 0).toFixed(2)};${(totals.totalNetAfterStripe ?? 0).toFixed(2)};${totals.totalCommission.toFixed(2)};${totals.totalPayout.toFixed(2)};${totals.totalOrders};\n`;
     csv += `\nPériode: ${periodText}\n`;
     csv += `Date export: ${new Date().toLocaleString('fr-FR')}\n`;
 
@@ -459,14 +494,45 @@ export default function AdminPayments() {
         </div>
 
         {/* Totaux */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">CA Total</p>
+                <p className="text-sm text-gray-600">CA articles (hors livraison)</p>
                 <p className="text-2xl font-bold text-gray-900">{totals.totalRevenue.toFixed(2)}€</p>
               </div>
               <FaEuroSign className="h-8 w-8 text-blue-600" />
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Brut encaissé (Stripe)</p>
+                <p className="text-2xl font-bold text-gray-900">{totals.totalGrossPaid.toFixed(2)}€</p>
+              </div>
+              <FaEuroSign className="h-8 w-8 text-gray-700" />
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Frais Stripe</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {totals.totalStripeFees === null ? '—' : `-${totals.totalStripeFees.toFixed(2)}€`}
+                </p>
+              </div>
+              <FaEuroSign className="h-8 w-8 text-red-600" />
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Net après Stripe</p>
+                <p className="text-2xl font-bold text-emerald-700">
+                  {totals.totalNetAfterStripe === null ? '—' : `${totals.totalNetAfterStripe.toFixed(2)}€`}
+                </p>
+              </div>
+              <FaEuroSign className="h-8 w-8 text-emerald-700" />
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -487,16 +553,19 @@ export default function AdminPayments() {
               <FaStore className="h-8 w-8 text-purple-600" />
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Commandes livrées</p>
-                <p className="text-2xl font-bold text-gray-900">{totals.totalOrders}</p>
-              </div>
-              <FaStore className="h-8 w-8 text-gray-600" />
+        </div>
+
+        {totals.totalStripeFeesMissing > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
+            <div className="font-semibold mb-1">Frais Stripe en cours de synchronisation</div>
+            <div>
+              Certaines commandes n’ont pas encore de frais Stripe enregistrés, donc le <strong>net après Stripe</strong> est affiché en <strong>—</strong>.
+              Après le prochain paiement (webhook), les frais se rempliront automatiquement.
+              <br />
+              Pour l’historique complet, il faut appliquer la migration Supabase <code>20260204000000_add_stripe_fees_to_commandes.sql</code>.
             </div>
           </div>
-        </div>
+        )}
 
         {/* Table des restaurants */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -508,7 +577,16 @@ export default function AdminPayments() {
                     Restaurant
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    CA Total
+                    CA articles
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Brut encaissé
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Frais Stripe
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Net Stripe
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Commission CVN'EAT
@@ -544,6 +622,25 @@ export default function AdminPayments() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {restaurant.totalRevenue.toFixed(2)}€
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {(restaurant.totalGrossPaid || 0).toFixed(2)}€
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-red-600">
+                        {restaurant.stripeFees === null || restaurant.stripeFees === undefined
+                          ? '—'
+                          : `-${restaurant.stripeFees.toFixed(2)}€`}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-emerald-700">
+                        {restaurant.netAfterStripe === null || restaurant.netAfterStripe === undefined
+                          ? '—'
+                          : `${restaurant.netAfterStripe.toFixed(2)}€`}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

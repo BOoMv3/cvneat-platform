@@ -7,6 +7,66 @@ import { supabase as supabasePublic, supabaseAdmin } from '../../../../lib/supab
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+const isMissingColumnError = (err, column) => {
+  const msg = (err?.message || '').toString().toLowerCase();
+  return msg.includes('column') && msg.includes(column.toLowerCase()) && msg.includes('does not exist');
+};
+
+async function tryUpdateStripeFeeFields(db, orderId, update) {
+  try {
+    const { error } = await db.from('commandes').update(update).eq('id', orderId);
+    if (error) {
+      // Si la migration n'est pas appliquée, ne pas casser le webhook
+      if (
+        isMissingColumnError(error, 'stripe_fee_amount') ||
+        isMissingColumnError(error, 'stripe_net_amount') ||
+        isMissingColumnError(error, 'stripe_available_on') ||
+        isMissingColumnError(error, 'stripe_balance_transaction_id') ||
+        isMissingColumnError(error, 'stripe_charge_id')
+      ) {
+        console.warn('⚠️ Colonnes Stripe fee/net absentes sur commandes (migration non appliquée ?).');
+        return;
+      }
+      console.warn('⚠️ Update Stripe fee/net échoué:', error?.message || error);
+    }
+  } catch (e) {
+    console.warn('⚠️ Exception update Stripe fee/net:', e?.message || e);
+  }
+}
+
+async function getStripeFinancialsFromPaymentIntent(paymentIntentId) {
+  // Récupérer PI + latest_charge + balance_transaction pour avoir fee/net exacts
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ['latest_charge.balance_transaction'],
+  });
+
+  const latestCharge = pi?.latest_charge || null;
+  if (!latestCharge) return null;
+
+  // latest_charge peut être un id string ou un objet
+  const charge =
+    typeof latestCharge === 'string' ? await stripe.charges.retrieve(latestCharge, { expand: ['balance_transaction'] }) : latestCharge;
+
+  const btRaw = charge?.balance_transaction || null;
+  const bt =
+    !btRaw
+      ? null
+      : typeof btRaw === 'string'
+        ? await stripe.balanceTransactions.retrieve(btRaw)
+        : btRaw;
+
+  if (!bt) return null;
+
+  return {
+    stripe_fee_amount: typeof bt.fee === 'number' ? bt.fee / 100 : null,
+    stripe_net_amount: typeof bt.net === 'number' ? bt.net / 100 : null,
+    stripe_currency: bt.currency || null,
+    stripe_available_on: typeof bt.available_on === 'number' ? new Date(bt.available_on * 1000).toISOString() : null,
+    stripe_balance_transaction_id: bt.id || null,
+    stripe_charge_id: charge?.id || null,
+  };
+}
+
 // POST /api/stripe/webhook - Webhook Stripe pour les remboursements
 export async function POST(request) {
   try {
@@ -174,6 +234,20 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
       console.error('❌ Erreur mise à jour commande:', updateError);
     } else {
       console.log('✅ Statut de commande mis à jour:', order.order_number);
+
+      // Stocker les vrais frais Stripe (fee/net/available_on) pour le suivi comptable.
+      // Non bloquant si la migration n'est pas appliquée.
+      try {
+        const fin = await getStripeFinancialsFromPaymentIntent(paymentIntent.id);
+        if (fin) {
+          await tryUpdateStripeFeeFields(db, order.id, {
+            ...fin,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        console.warn('⚠️ Impossible de récupérer les frais Stripe (non bloquant):', e?.message || e);
+      }
       
       // IMPORTANT: Envoyer la notification SSE uniquement après confirmation du paiement via webhook
       if (order.restaurant_id) {

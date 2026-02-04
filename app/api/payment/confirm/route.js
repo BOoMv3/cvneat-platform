@@ -4,6 +4,59 @@ import { supabaseAdmin } from '../../../../lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const isMissingColumnError = (err, column) => {
+  const msg = (err?.message || '').toString().toLowerCase();
+  return msg.includes('column') && msg.includes(column.toLowerCase()) && msg.includes('does not exist');
+};
+
+async function tryUpdateStripeFeeFields(orderId, update) {
+  try {
+    const { error } = await supabaseAdmin.from('commandes').update(update).eq('id', orderId);
+    if (error) {
+      if (
+        isMissingColumnError(error, 'stripe_fee_amount') ||
+        isMissingColumnError(error, 'stripe_net_amount') ||
+        isMissingColumnError(error, 'stripe_available_on') ||
+        isMissingColumnError(error, 'stripe_balance_transaction_id') ||
+        isMissingColumnError(error, 'stripe_charge_id')
+      ) {
+        return; // migration non appliquée
+      }
+      console.warn('⚠️ Update Stripe fee/net échoué:', error?.message || error);
+    }
+  } catch (e) {
+    console.warn('⚠️ Exception update Stripe fee/net:', e?.message || e);
+  }
+}
+
+async function getStripeFinancialsFromPaymentIntent(paymentIntentId) {
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ['latest_charge.balance_transaction'],
+  });
+  const latestCharge = pi?.latest_charge || null;
+  if (!latestCharge) return null;
+  const charge =
+    typeof latestCharge === 'string'
+      ? await stripe.charges.retrieve(latestCharge, { expand: ['balance_transaction'] })
+      : latestCharge;
+  const btRaw = charge?.balance_transaction || null;
+  const bt =
+    !btRaw
+      ? null
+      : typeof btRaw === 'string'
+        ? await stripe.balanceTransactions.retrieve(btRaw)
+        : btRaw;
+  if (!bt) return null;
+  return {
+    stripe_fee_amount: typeof bt.fee === 'number' ? bt.fee / 100 : null,
+    stripe_net_amount: typeof bt.net === 'number' ? bt.net / 100 : null,
+    stripe_currency: bt.currency || null,
+    stripe_available_on: typeof bt.available_on === 'number' ? new Date(bt.available_on * 1000).toISOString() : null,
+    stripe_balance_transaction_id: bt.id || null,
+    stripe_charge_id: charge?.id || null,
+  };
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -124,6 +177,19 @@ export async function POST(request) {
         { success: true, orderId: order.id, alreadyPaid: wasPaidBefore },
         { headers: corsHeaders }
       );
+    }
+
+    // Stocker les vrais frais Stripe (non bloquant si la migration n'est pas appliquée)
+    try {
+      const fin = await getStripeFinancialsFromPaymentIntent(paymentIntent.id);
+      if (fin) {
+        await tryUpdateStripeFeeFields(order.id, {
+          ...fin,
+          updated_at: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      // non bloquant
     }
 
     // Notifications:
