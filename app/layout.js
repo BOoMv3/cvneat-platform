@@ -112,11 +112,11 @@ export default function RootLayout({ children }) {
                   // Dans WKWebView (Capacitor), éviter les redirects améliore fortement la fiabilité des appels fetch.
                   var API_BASE_URL = 'https://www.cvneat.fr';
                   var originalFetch = window.fetch;
-                  console.log('[API Interceptor] Intercepteur inline chargé !');
+                  var DEBUG = false;
                   window.fetch = function(input, init) {
                     if (typeof input === 'string' && input.indexOf('/api/') === 0 && input.indexOf('http') !== 0) {
                       var fullUrl = API_BASE_URL + input;
-                      console.log('[API Interceptor] Interception:', input, '→', fullUrl);
+                      if (DEBUG) console.log('[API Interceptor] Interception:', input, '→', fullUrl);
                       var opts = init || {};
                       var headers = opts.headers || {};
                       headers['Content-Type'] = headers['Content-Type'] || 'application/json';
@@ -128,7 +128,7 @@ export default function RootLayout({ children }) {
                       opts.mode = 'cors';
                       opts.credentials = 'omit';
                       return originalFetch(fullUrl, opts).then(function(r) {
-                        console.log('[API Interceptor] Réponse:', r.status, fullUrl);
+                        if (DEBUG) console.log('[API Interceptor] Réponse:', r.status, fullUrl);
                         return r;
                       }).catch(function(e) {
                         console.error('[API Interceptor] Erreur:', e.message);
@@ -137,11 +137,11 @@ export default function RootLayout({ children }) {
                     }
                     return originalFetch(input, init);
                   };
-                  console.log('[API Interceptor] Fetch intercepté !');
+                  if (DEBUG) console.log('[API Interceptor] Fetch intercepté !');
                   
                   // Gestionnaire de liens pour empêcher l'ouverture du navigateur
                   document.addEventListener('DOMContentLoaded', function() {
-                    console.log('[Link Handler] Initialisation gestionnaire de liens');
+                    if (DEBUG) console.log('[Link Handler] Initialisation gestionnaire de liens');
                     
                     // Intercepter les clics sur les liens
                     document.addEventListener('click', function(event) {
@@ -161,15 +161,21 @@ export default function RootLayout({ children }) {
                           try {
                             var url = new URL(href);
                             var path = url.pathname + url.search + url.hash;
-                            console.log('[Link Handler] Navigation interne:', path);
-                            window.location.href = path;
+                            if (DEBUG) console.log('[Link Handler] Navigation interne:', path);
+                            // Éviter un reload complet (plus lent) : utiliser l'history API
+                            try {
+                              window.history.pushState({}, '', path);
+                              window.dispatchEvent(new PopStateEvent('popstate'));
+                            } catch (e2) {
+                              window.location.href = path;
+                            }
                           } catch (e) {
-                            console.error('[Link Handler] Erreur:', e);
+                            if (DEBUG) console.error('[Link Handler] Erreur:', e);
                           }
                           return;
                         }
                         // Bloquer les autres liens externes
-                        console.log('[Link Handler] Lien externe bloqué:', href);
+                        if (DEBUG) console.log('[Link Handler] Lien externe bloqué:', href);
                         event.preventDefault();
                         event.stopPropagation();
                         return;
@@ -185,8 +191,13 @@ export default function RootLayout({ children }) {
 
                         event.preventDefault();
                         event.stopPropagation();
-                        console.log('[Link Handler] Lien _blank bloqué/converti:', href);
-                        window.location.href = href;
+                        if (DEBUG) console.log('[Link Handler] Lien _blank bloqué/converti:', href);
+                        try {
+                          window.history.pushState({}, '', href);
+                          window.dispatchEvent(new PopStateEvent('popstate'));
+                        } catch (e3) {
+                          window.location.href = href;
+                        }
                       }
 
                       // IMPORTANT: Ne PAS forcer la navigation des liens internes ("/...") avec window.location.href.
@@ -196,13 +207,18 @@ export default function RootLayout({ children }) {
                     // Intercepter window.open
                     var originalOpen = window.open;
                     window.open = function(url, target, features) {
-                      console.log('[Link Handler] window.open intercepté:', url);
+                      if (DEBUG) console.log('[Link Handler] window.open intercepté:', url);
                       if (url && (url.includes('cvneat.fr') || url.startsWith('/'))) {
                         var path = url.startsWith('http') ? new URL(url).pathname : url;
-                        window.location.href = path;
+                        try {
+                          window.history.pushState({}, '', path);
+                          window.dispatchEvent(new PopStateEvent('popstate'));
+                        } catch (e4) {
+                          window.location.href = path;
+                        }
                         return null;
                       }
-                      console.log('[Link Handler] window.open bloqué:', url);
+                      if (DEBUG) console.log('[Link Handler] window.open bloqué:', url);
                       return null;
                     };
                   });

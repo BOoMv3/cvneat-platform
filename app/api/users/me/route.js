@@ -3,12 +3,31 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+function json(body, init) {
+  const res = NextResponse.json(body, init);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    res.headers.set(k, v);
+  }
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function GET(request) {
   try {
     // Récupérer le token depuis les headers
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+      return json({ error: 'Token manquant' }, { status: 401 });
     }
 
     const token = authHeader.split(' ')[1];
@@ -23,7 +42,7 @@ export async function GET(request) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseServiceKey) {
-      return NextResponse.json({ error: 'Configuration serveur incomplète' }, { status: 500 });
+      return json({ error: 'Configuration serveur incomplète' }, { status: 500 });
     }
 
     // Client admin (bypass RLS) + vérification du token utilisateur
@@ -34,7 +53,7 @@ export async function GET(request) {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+      return json({ error: 'Token invalide' }, { status: 401 });
     }
 
     // Récupérer le profil depuis la table users via le client admin
@@ -109,7 +128,7 @@ export async function GET(request) {
     const fullName = `${finalUser.prenom || ''} ${finalUser.nom || ''}`.trim();
     const displayName = fullName || finalUser.email || user.email;
     
-    return NextResponse.json({
+    return json({
       id: finalUser.id,
       email: finalUser.email || user.email,
       name: displayName,
@@ -122,6 +141,6 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Erreur dans /api/users/me:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return json({ error: 'Erreur serveur' }, { status: 500 });
   }
 } 

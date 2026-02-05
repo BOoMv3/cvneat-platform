@@ -2,8 +2,29 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
+import { safeLocalStorage } from '../lib/localStorage';
 
 const normalizeRole = (role) => (role || '').toString().trim().toLowerCase();
+const ROLE_CACHE_KEY = 'cvneat-role-cache';
+
+const getCachedRole = () => {
+  try {
+    const cached = safeLocalStorage.getJSON(ROLE_CACHE_KEY);
+    return normalizeRoleAliases(cached?.role) || null;
+  } catch {
+    return null;
+  }
+};
+
+const setCachedRole = (role) => {
+  const r = normalizeRoleAliases(role);
+  if (!r) return;
+  try {
+    safeLocalStorage.setJSON(ROLE_CACHE_KEY, { role: r, at: Date.now() });
+  } catch {
+    // ignore
+  }
+};
 
 const normalizeRoleAliases = (role) => {
   const r = normalizeRole(role);
@@ -48,10 +69,31 @@ export default function AuthGuard({ children, requiredRole, allowedRoles }) {
         role = normalizeRoleAliases(session.user?.user_metadata?.role) || null;
       }
 
+      // Fallback cache (utile sur iOS resume si réseau lent)
+      if (!role) {
+        role = getCachedRole();
+      }
+
+      // Fallback DB users (lecture de son propre profil via RLS)
+      if (!role) {
+        try {
+          const r = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          if (r?.data?.role) role = normalizeRoleAliases(r.data.role);
+        } catch {
+          // ignore
+        }
+      }
+
       if (!role) {
         router.push('/login');
         return;
       }
+
+      setCachedRole(role);
 
       // Les admins ont accès à tout
       if (role === 'admin') {

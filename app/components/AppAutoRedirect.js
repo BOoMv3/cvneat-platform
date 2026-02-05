@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { safeLocalStorage } from '@/lib/localStorage';
 
 const isCapacitorApp = () =>
   typeof window !== 'undefined' &&
@@ -11,6 +12,27 @@ const isCapacitorApp = () =>
     !!window.Capacitor);
 
 const normalizeRole = (role) => (role || '').toString().trim().toLowerCase();
+const ROLE_CACHE_KEY = 'cvneat-role-cache';
+
+const getCachedRole = () => {
+  try {
+    const cached = safeLocalStorage.getJSON(ROLE_CACHE_KEY);
+    const r = normalizeRole(cached?.role);
+    return r || '';
+  } catch {
+    return '';
+  }
+};
+
+const setCachedRole = (role) => {
+  const r = normalizeRole(role);
+  if (!r) return;
+  try {
+    safeLocalStorage.setJSON(ROLE_CACHE_KEY, { role: r, at: Date.now() });
+  } catch {
+    // ignore
+  }
+};
 
 /**
  * Dans l'app mobile (Capacitor), forcer la navigation vers le bon dashboard.
@@ -99,6 +121,16 @@ export default function AppAutoRedirect() {
       }, 900);
     };
 
+    const enforceFromCache = (reason) => {
+      const cachedRole = getCachedRole();
+      const isDelivery = cachedRole === 'delivery' || cachedRole === 'livreur';
+      if (isDelivery && pathname !== '/delivery/dashboard') {
+        forceTo('/delivery/dashboard', `cache_${reason}`, { role: cachedRole });
+        return true;
+      }
+      return false;
+    };
+
     async function run(reason = 'mount') {
       if (runningRef.current) return;
       runningRef.current = true;
@@ -108,6 +140,8 @@ export default function AppAutoRedirect() {
         // IMPORTANT: sur iOS, la session peut se restaurer après plusieurs secondes au resume.
         // Donc on repoll tant qu'on est dans l'app et hors dashboard.
         runningRef.current = false;
+        // Si on a déjà un rôle cache, on peut forcer sans attendre la session
+        enforceFromCache(reason);
         schedulePolling(reason);
         return;
       }
@@ -134,7 +168,28 @@ export default function AppAutoRedirect() {
         role = normalizeRole(session.user?.user_metadata?.role);
       }
 
-      // 3) Fallback restaurant par présence d'une fiche
+      // 3) Fallback cache local (utile en resume iOS si réseau instable)
+      if (!role) {
+        role = getCachedRole();
+      }
+
+      // 4) Fallback DB users (souvent autorisé via RLS: lecture de son propre profil)
+      if (!role) {
+        try {
+          const byUsers = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          if (byUsers?.data?.role) {
+            role = normalizeRole(byUsers.data.role);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 5) Fallback restaurant par présence d'une fiche (si policies le permettent)
       if (!role) {
         try {
           const byUser = await supabase
@@ -152,6 +207,8 @@ export default function AppAutoRedirect() {
 
       const isDelivery = role === 'delivery' || role === 'livreur';
       const isRestaurant = role === 'restaurant' || role === 'partner';
+
+      if (role) setCachedRole(role);
 
       // IMPORTANT:
       // En app mobile, un utilisateur livreur ne doit pas rester sur l'accueil
@@ -200,6 +257,8 @@ export default function AppAutoRedirect() {
     });
 
     // Run initial
+    // Avant tout: si on a déjà le rôle en cache, verrouiller immédiatement
+    enforceFromCache('pre_run');
     run('mount');
 
     // Retry shortly after mount (WKWebView parfois hydrate la session après)
@@ -207,6 +266,11 @@ export default function AppAutoRedirect() {
     const t3 = setTimeout(() => run('retry_3s'), 3000);
     const t8 = setTimeout(() => run('retry_8s'), 8000);
     const t15 = setTimeout(() => run('retry_15s'), 15000);
+
+    // Watchdog: si des évènements iOS ne se déclenchent pas, on force via cache (léger, sans réseau)
+    const cacheTick = setInterval(() => {
+      if (document.visibilityState === 'visible') enforceFromCache('tick');
+    }, 1200);
 
     return () => {
       cancelled = true;
@@ -217,6 +281,7 @@ export default function AppAutoRedirect() {
       clearTimeout(t3);
       clearTimeout(t8);
       clearTimeout(t15);
+      clearInterval(cacheTick);
       try {
         removeAppListener && removeAppListener();
       } catch {
