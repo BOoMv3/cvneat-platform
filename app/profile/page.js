@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug, FaTicketAlt, FaCopy, FaEnvelope } from 'react-icons/fa';
-import LoyaltyProgram from '../components/LoyaltyProgram';
-import PushNotificationService from '../components/PushNotificationService';
+import dynamic from 'next/dynamic';
 import PageHeader from '@/components/PageHeader';
 import DarkModeToggle from '@/components/DarkModeToggle';
-import TestComponent from '../components/TestComponent';
 import NotificationToggle from '@/components/NotificationToggle';
+
+// Éviter de charger des composants lourds tant qu'ils ne sont pas visibles
+const LoyaltyProgram = dynamic(() => import('../components/LoyaltyProgram'), { ssr: false });
+const PushNotificationService = dynamic(() => import('../components/PushNotificationService'), { ssr: false });
+const TestComponent = dynamic(() => import('../components/TestComponent'), { ssr: false });
 
 export default function Profile() {
   const router = useRouter();
@@ -64,22 +67,89 @@ export default function Profile() {
         return;
       }
       setAuthChecked(true);
-      await fetchUserData(session.access_token);
+      await fetchUserData(session);
     } catch (err) {
       console.error('Erreur lors de la vérification de l\'authentification:', err);
       router.push('/login?redirect=/profile');
     }
   };
 
-  const fetchUserData = async (token) => {
+  const fetchWithTimeout = async (url, options = {}, timeoutMs = 10000) => {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const userResponse = await fetch('/api/users/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  const fetchUserData = async (session) => {
+    try {
+      const token = session?.access_token;
+      if (!token) throw new Error('Session invalide');
+
+      // 1) Source de vérité: /api/users/me (mais avec timeout pour éviter le spinner infini sur iOS)
+      let userData = null;
+      try {
+        const userResponse = await fetchWithTimeout(
+          '/api/users/me',
+          { headers: { Authorization: `Bearer ${token}` } },
+          9000
+        );
+        if (userResponse.ok) {
+          userData = await userResponse.json();
+        } else {
+          const err = await userResponse.json().catch(() => ({}));
+          throw new Error(err?.error || 'Erreur lors de la récupération de l\'utilisateur');
         }
-      });
-      if (!userResponse.ok) throw new Error('Erreur lors de la récupération de l\'utilisateur');
-      const userData = await userResponse.json();
+      } catch (e) {
+        // 2) Fallback: lecture directe table users (souvent autorisée via RLS pour son propre profil)
+        try {
+          const r = await supabase
+            .from('users')
+            .select('id, email, nom, prenom, telephone, role')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          if (r?.data?.id) {
+            userData = {
+              id: r.data.id,
+              email: r.data.email || session.user.email,
+              nom: r.data.nom || '',
+              prenom: r.data.prenom || '',
+              phone: r.data.telephone || '',
+              role: r.data.role || '',
+            };
+          }
+        } catch {
+          // ignore
+        }
+        // 3) Dernier fallback: metadata Supabase Auth
+        if (!userData) {
+          userData = {
+            id: session.user.id,
+            email: session.user.email,
+            nom: session.user.user_metadata?.nom || '',
+            prenom: session.user.user_metadata?.prenom || '',
+            phone: session.user.user_metadata?.telephone || '',
+            role: session.user.user_metadata?.role || '',
+          };
+        }
+      }
+
+      const role = (userData?.role || '').toString().trim().toLowerCase();
+
+      // IMPORTANT: le livreur ne doit pas accéder à /profile (compte client)
+      if (role === 'delivery' || role === 'livreur') {
+        router.replace('/delivery/dashboard');
+        return;
+      }
+      if (role === 'restaurant' || role === 'partner') {
+        router.replace('/partner');
+        return;
+      }
+
       // S'assurer que les champs nom, prenom, phone sont bien initialisés
       setUser({
         ...userData,
@@ -97,6 +167,7 @@ export default function Profile() {
     if (!user) return;
     
     try {
+      setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setError('Session expirée, veuillez vous reconnecter');
