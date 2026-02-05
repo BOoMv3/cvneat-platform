@@ -205,6 +205,52 @@ try {
   if (!fs.existsSync(path.join(process.cwd(), 'out'))) {
     throw new Error('❌ Le dossier "out" n\'existe pas après le build');
   }
+
+  // Nettoyage post-export: supprimer les artefacts dev (HMR) qui peuvent se retrouver dans out/
+  // et ralentir l'app (WKWebView). On évite de toucher à .next/ pour ne pas perturber next export.
+  console.log('🧹 Nettoyage post-export: suppression des fichiers hot-update...');
+  try {
+    const outStatic = path.join(process.cwd(), 'out', '_next', 'static');
+    const webpackDir = path.join(outStatic, 'webpack');
+    const devDir = path.join(outStatic, 'development');
+
+    const removeHotUpdateFiles = (dir) => {
+      if (!fs.existsSync(dir)) return;
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const ent of entries) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) {
+          removeHotUpdateFiles(full);
+          // nettoyer le dossier si vide
+          try {
+            const rest = fs.readdirSync(full);
+            if (rest.length === 0) fs.rmdirSync(full);
+          } catch {}
+          continue;
+        }
+        if (ent.name.includes('.hot-update.')) {
+          try {
+            fs.rmSync(full, { force: true });
+          } catch {}
+        }
+      }
+    };
+
+    // Supprimer dev manifests
+    if (fs.existsSync(devDir)) fs.rmSync(devDir, { recursive: true, force: true });
+    // Supprimer les hot-updates (et nettoyer les dossiers vides)
+    removeHotUpdateFiles(webpackDir);
+    // Si le dossier webpack est vide, le supprimer
+    try {
+      if (fs.existsSync(webpackDir) && fs.readdirSync(webpackDir).length === 0) {
+        fs.rmdirSync(webpackDir);
+      }
+    } catch {}
+
+    console.log('✅ Nettoyage hot-update OK\n');
+  } catch (e) {
+    console.warn('⚠️ Nettoyage hot-update incomplet (non bloquant):', e?.message || e);
+  }
   console.log('✅ Build Next.js terminé\n');
   
   // Étape 2: Restaurer tous les dossiers et restaurer le fichier original de /restaurants/[id]
