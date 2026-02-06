@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import Head from 'next/head';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Link from 'next/link';
+import { safeLocalStorage } from '@/lib/localStorage';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -172,6 +173,13 @@ export default function LoginPage() {
 
           console.log('✅ Rôle utilisateur détecté:', role);
 
+          // Cache rôle (important pour l'app native: cold-start/resume)
+          try {
+            if (role) safeLocalStorage.setJSON('cvneat-role-cache', { role, at: Date.now() });
+          } catch {
+            // ignore
+          }
+
           // Vérifier s'il y a une intention de redirection (ex: checkout)
           const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
           if (redirectAfterLogin) {
@@ -184,7 +192,7 @@ export default function LoginPage() {
           if (role === 'admin') {
             router.push('/admin');
           } else if (role === 'delivery') {
-            router.push('/delivery');
+            router.push('/delivery/dashboard');
           } else if (role === 'restaurant' || role === 'partner') {
             router.push('/partner');
           } else {

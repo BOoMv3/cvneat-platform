@@ -108,6 +108,23 @@ export default function RootLayout({ children }) {
                   if (typeof window === 'undefined' || !window.location) return;
                   var isCapacitor = window.location.protocol === 'capacitor:' || window.location.href.indexOf('capacitor://') === 0;
                   if (!isCapacitor) return;
+
+                  // Verrouillage ultra-tôt (avant hydration React):
+                  // si un rôle livreur est en cache, on force /delivery/dashboard.
+                  try {
+                    var cached = localStorage.getItem('cvneat-role-cache');
+                    var cachedRole = '';
+                    if (cached) {
+                      try { cachedRole = (JSON.parse(cached).role || '').toString().trim().toLowerCase(); } catch (e0) {}
+                    }
+                    var pathNow = window.location && window.location.pathname ? window.location.pathname : '';
+                    if ((cachedRole === 'delivery' || cachedRole === 'livreur') && pathNow && pathNow !== '/delivery/dashboard') {
+                      window.location.replace('/delivery/dashboard');
+                      return;
+                    }
+                  } catch (e0) {
+                    // ignore
+                  }
                   // IMPORTANT: cvneat.fr redirige (307) vers www.cvneat.fr.
                   // Dans WKWebView (Capacitor), éviter les redirects améliore fortement la fiabilité des appels fetch.
                   var API_BASE_URL = 'https://www.cvneat.fr';

@@ -252,7 +252,14 @@ export default function AppAutoRedirect() {
     })();
 
     // Re-run when auth state changes (session restored late / refresh token)
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        try {
+          safeLocalStorage.removeItem(ROLE_CACHE_KEY);
+        } catch {
+          // ignore
+        }
+      }
       run('authStateChange');
     });
 
