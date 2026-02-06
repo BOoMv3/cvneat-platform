@@ -290,10 +290,18 @@ export default function AppAutoRedirect() {
     const t8 = setTimeout(() => run('retry_8s'), 8000);
     const t15 = setTimeout(() => run('retry_15s'), 15000);
 
-    // Watchdog: si des évènements iOS ne se déclenchent pas, on force via cache (léger, sans réseau)
+    // Watchdog: sur iOS, certains évènements peuvent ne pas se déclencher au resume.
+    // On fait donc:
+    // - une vérification ultra-légère via cache
+    // - et périodiquement un run() (réessaie la détection du rôle + redirection)
     const cacheTick = setInterval(() => {
-      if (document.visibilityState === 'visible') enforceFromCache('tick');
-    }, 1200);
+      if (document.visibilityState !== 'visible') return;
+      enforceFromCache('tick');
+      // Si on est encore sur l'accueil (ou hors dashboard), retenter la détection.
+      if (window.location?.pathname !== '/delivery/dashboard') {
+        run('tick').catch(() => {});
+      }
+    }, 1500);
 
     return () => {
       cancelled = true;
