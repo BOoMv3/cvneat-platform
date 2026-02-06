@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import PushNotificationBootstrap from './components/PushNotificationBootstrap';
 import AppAutoRedirect from './components/AppAutoRedirect';
+import AppSplashOverlay from './components/AppSplashOverlay';
 import MobileTabBar from '@/components/MobileTabBar';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
@@ -106,17 +107,38 @@ export default function RootLayout({ children }) {
               (function() {
                 try {
                   if (typeof window === 'undefined' || !window.location) return;
+                  
+                  function readCachedRole() {
+                    try {
+                      var cached = localStorage.getItem('cvneat-role-cache');
+                      if (!cached) return '';
+                      var r = '';
+                      try { r = (JSON.parse(cached).role || '').toString().trim().toLowerCase(); } catch (e0) { r = ''; }
+                      return r || '';
+                    } catch (e) {
+                      return '';
+                    }
+                  }
+
+                  function roleNow() {
+                    try {
+                      var r0 = (window.__cvneat_role || '').toString().trim().toLowerCase();
+                      if (r0) return r0;
+                    } catch (e1) {}
+                    return readCachedRole();
+                  }
+
+                  function isDeliveryNow() {
+                    var r = roleNow();
+                    return r === 'delivery' || r === 'livreur';
+                  }
+
                   // Verrouillage ultra-tôt (avant hydration React):
                   // si un rôle livreur est en cache, on force /delivery/dashboard.
                   // IMPORTANT: on le fait même si la détection Capacitor rate (selon iOS/localhost).
                   try {
-                    var cached = localStorage.getItem('cvneat-role-cache');
-                    var cachedRole = '';
-                    if (cached) {
-                      try { cachedRole = (JSON.parse(cached).role || '').toString().trim().toLowerCase(); } catch (e0) {}
-                    }
                     var pathNow = window.location && window.location.pathname ? window.location.pathname : '';
-                    if ((cachedRole === 'delivery' || cachedRole === 'livreur') && pathNow && pathNow !== '/delivery/dashboard') {
+                    if (isDeliveryNow() && pathNow && pathNow !== '/delivery/dashboard') {
                       window.location.replace('/delivery/dashboard');
                       return;
                     }
@@ -130,10 +152,6 @@ export default function RootLayout({ children }) {
                     window.location.href.indexOf('capacitor://') === 0 ||
                     !!window.Capacitor;
                   if (!isCapacitor) return;
-                  var isDeliveryCached = false;
-                  try {
-                    isDeliveryCached = cachedRole === 'delivery' || cachedRole === 'livreur';
-                  } catch (eD) {}
                   // IMPORTANT: cvneat.fr redirige (307) vers www.cvneat.fr.
                   // Dans WKWebView (Capacitor), éviter les redirects améliore fortement la fiabilité des appels fetch.
                   var API_BASE_URL = 'https://www.cvneat.fr';
@@ -164,6 +182,56 @@ export default function RootLayout({ children }) {
                     return originalFetch(input, init);
                   };
                   if (DEBUG) console.log('[API Interceptor] Fetch intercepté !');
+
+                  // Lockdown HARD: le livreur doit rester H24 sur /delivery/dashboard.
+                  // - protège contre pushState/replaceState
+                  // - protège contre back/forward (popstate)
+                  // - et force périodiquement si une navigation est passée
+                  try {
+                    var origPushState = window.history.pushState;
+                    var origReplaceState = window.history.replaceState;
+                    window.history.pushState = function(state, title, url) {
+                      try {
+                        if (isDeliveryNow() && url && typeof url === 'string' && url.indexOf('/delivery/dashboard') !== 0) {
+                          window.location.replace('/delivery/dashboard');
+                          return;
+                        }
+                      } catch (eH) {}
+                      return origPushState.apply(window.history, arguments);
+                    };
+                    window.history.replaceState = function(state, title, url) {
+                      try {
+                        if (isDeliveryNow() && url && typeof url === 'string' && url.indexOf('/delivery/dashboard') !== 0) {
+                          window.location.replace('/delivery/dashboard');
+                          return;
+                        }
+                      } catch (eH2) {}
+                      return origReplaceState.apply(window.history, arguments);
+                    };
+                    window.addEventListener('popstate', function() {
+                      try {
+                        if (isDeliveryNow() && window.location.pathname !== '/delivery/dashboard') {
+                          window.location.replace('/delivery/dashboard');
+                        }
+                      } catch (eP) {}
+                    });
+                    document.addEventListener('visibilitychange', function() {
+                      try {
+                        if (document.visibilityState === 'visible' && isDeliveryNow() && window.location.pathname !== '/delivery/dashboard') {
+                          window.location.replace('/delivery/dashboard');
+                        }
+                      } catch (eV) {}
+                    });
+                    setInterval(function() {
+                      try {
+                        if (isDeliveryNow() && window.location.pathname !== '/delivery/dashboard') {
+                          window.location.replace('/delivery/dashboard');
+                        }
+                      } catch (eI) {}
+                    }, 700);
+                  } catch (eWrap) {
+                    // ignore
+                  }
                   
                   // Gestionnaire de liens pour empêcher l'ouverture du navigateur
                   document.addEventListener('DOMContentLoaded', function() {
@@ -174,7 +242,7 @@ export default function RootLayout({ children }) {
                     // On intercepte tous les clics sur liens (footer/tabbar inclus).
                     document.addEventListener('click', function(event) {
                       try {
-                        if (!isDeliveryCached) return;
+                        if (!isDeliveryNow()) return;
                         var t = event.target;
                         var a = t && t.closest ? t.closest('a') : null;
                         if (!a) return;
@@ -276,7 +344,7 @@ export default function RootLayout({ children }) {
                       if (DEBUG) console.log('[Link Handler] window.open intercepté:', url);
                       // Lockdown livreur: empêcher toute navigation hors dashboard
                       try {
-                        if (isDeliveryCached) {
+                        if (isDeliveryNow()) {
                           try { window.location.replace('/delivery/dashboard'); } catch (eL) {}
                           return null;
                         }
@@ -345,6 +413,8 @@ export default function RootLayout({ children }) {
         <ThemeProvider>
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
           <PushNotificationBootstrap />
+          {/* Splash overlay (logo + animation) pendant le chargement */}
+          <AppSplashOverlay />
           {/* Auto-redirect app mobile si déjà connecté (livreur/restaurant) */}
           <AppAutoRedirect />
           <div className="min-h-screen flex flex-col">

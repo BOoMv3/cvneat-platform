@@ -236,7 +236,15 @@ export default function AppAutoRedirect() {
       const isDelivery = role === 'delivery' || role === 'livreur';
       const isRestaurant = role === 'restaurant' || role === 'partner';
 
-      if (role) setCachedRole(role);
+      if (role) {
+        setCachedRole(role);
+        try {
+          window.__cvneat_role = role;
+          window.dispatchEvent(new CustomEvent('cvneat-role', { detail: { role } }));
+        } catch {
+          // ignore
+        }
+      }
 
       // IMPORTANT:
       // En app mobile, un utilisateur livreur ne doit pas rester sur l'accueil
@@ -245,6 +253,12 @@ export default function AppAutoRedirect() {
         // Exigence: le livreur ne doit accéder à rien d'autre que son dashboard.
         if (pathname !== '/delivery/dashboard') {
           forceTo('/delivery/dashboard', reason, { role });
+        }
+        try {
+          window.__cvneat_boot_done = true;
+          window.dispatchEvent(new Event('cvneat-boot-done'));
+        } catch {
+          // ignore
         }
         runningRef.current = false;
         return;
@@ -255,6 +269,12 @@ export default function AppAutoRedirect() {
         forceTo('/partner', reason, { role });
       }
 
+      try {
+        window.__cvneat_boot_done = true;
+        window.dispatchEvent(new Event('cvneat-boot-done'));
+      } catch {
+        // ignore
+      }
       runningRef.current = false;
       }
 
