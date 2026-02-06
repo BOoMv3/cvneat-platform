@@ -124,20 +124,61 @@ function backupDir(fullPath, name) {
   return false;
 }
 
+function backupFile(fullPath, name) {
+  try {
+    if (!fs.existsSync(fullPath)) return false;
+    const st = fs.lstatSync(fullPath);
+    if (!st.isFile()) return false;
+
+    const backupBaseDir = path.join(process.cwd(), '_mobile_build_backups');
+    if (!fs.existsSync(backupBaseDir)) {
+      fs.mkdirSync(backupBaseDir, { recursive: true });
+    }
+
+    const relativePath = path.relative(process.cwd(), fullPath);
+    const backupPath = path.join(backupBaseDir, relativePath || name);
+
+    const backupParent = path.dirname(backupPath);
+    if (!fs.existsSync(backupParent)) {
+      fs.mkdirSync(backupParent, { recursive: true });
+    }
+
+    if (fs.existsSync(backupPath)) {
+      fs.rmSync(backupPath, { recursive: true, force: true });
+    }
+
+    fs.copyFileSync(fullPath, backupPath);
+    fs.rmSync(fullPath, { force: true });
+
+    backups.push({ original: fullPath, backup: backupPath, name, type: 'file' });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function restoreAll() {
   backups.forEach(({ original, backup, name }) => {
     if (fs.existsSync(backup)) {
-      if (fs.existsSync(original)) {
-        fs.rmSync(original, { recursive: true, force: true });
-      }
-      // Créer le dossier parent si nécessaire
       const parent = path.dirname(original);
-      if (!fs.existsSync(parent)) {
-        fs.mkdirSync(parent, { recursive: true });
+      try {
+        if (!fs.existsSync(parent)) fs.mkdirSync(parent, { recursive: true });
+      } catch {}
+
+      try {
+        const st = fs.lstatSync(backup);
+        if (st.isFile()) {
+          if (fs.existsSync(original)) fs.rmSync(original, { force: true });
+          fs.copyFileSync(backup, original);
+          fs.rmSync(backup, { force: true });
+          return;
+        }
+      } catch {
+        // fallback dir restore below
       }
-      // Copier depuis le backup
+
+      if (fs.existsSync(original)) fs.rmSync(original, { recursive: true, force: true });
       fs.cpSync(backup, original, { recursive: true, force: true });
-      // Nettoyer le backup
       fs.rmSync(backup, { recursive: true, force: true });
     }
   });
@@ -158,6 +199,13 @@ function restoreAll() {
 try {
   // Étape 0: Exclure les routes API et toutes les pages avec routes dynamiques
   console.log('📁 Étape 0/5: Exclusion des routes API et pages dynamiques...');
+
+  // En app mobile, on n'a pas besoin de sitemap/robots (SEO web). Les metadata routes Next peuvent
+  // parfois rendre l'export instable, donc on les exclut temporairement.
+  const sitemapFile = path.join(process.cwd(), 'app', 'sitemap.js');
+  const robotsFile = path.join(process.cwd(), 'app', 'robots.js');
+  if (backupFile(sitemapFile, 'sitemap.js')) console.log('✅ sitemap.js exclu temporairement (mobile)');
+  if (backupFile(robotsFile, 'robots.js')) console.log('✅ robots.js exclu temporairement (mobile)');
   
   // Exclure les routes API (nécessitent un serveur)
   knownDirsToExclude.forEach(({ name, path: dirPath }) => {
@@ -200,7 +248,9 @@ try {
   // Étape 1: Builder Next.js
   console.log('📦 Étape 1/5: Build Next.js en statique...');
   process.env.BUILD_MOBILE = 'true';
-  execSync('npm run build', { stdio: 'inherit', env: { ...process.env, BUILD_MOBILE: 'true' } });
+  // IMPORTANT: On appelle Next directement pour éviter le hook npm "postbuild" (next-sitemap),
+  // inutile en app mobile et source de fichiers modifiés.
+  execSync('node ./node_modules/next/dist/bin/next build', { stdio: 'inherit', env: { ...process.env, BUILD_MOBILE: 'true' } });
   
   if (!fs.existsSync(path.join(process.cwd(), 'out'))) {
     throw new Error('❌ Le dossier "out" n\'existe pas après le build');
