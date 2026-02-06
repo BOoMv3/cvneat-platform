@@ -15,6 +15,47 @@ const path = require('path');
 
 console.log('🚀 Démarrage du build intelligent de l\'app mobile...\n');
 
+const BACKUP_BASE_DIR = path.join(process.cwd(), '_mobile_build_backups');
+let didRestore = false;
+
+function safeRestoreAll() {
+  if (didRestore) return;
+  didRestore = true;
+  try {
+    restoreAll();
+  } catch (e) {
+    // ignore
+  }
+}
+
+// IMPORTANT: si le build est interrompu (Ctrl+C / kill), il faut restaurer les fichiers,
+// sinon le repo reste "cassé" (plein de suppressions temporaires).
+process.on('SIGINT', () => {
+  console.error('\n⚠️  Build interrompu (SIGINT) -> restauration...');
+  safeRestoreAll();
+  process.exit(130);
+});
+process.on('SIGTERM', () => {
+  console.error('\n⚠️  Build interrompu (SIGTERM) -> restauration...');
+  safeRestoreAll();
+  process.exit(143);
+});
+process.on('uncaughtException', (err) => {
+  console.error('\n❌ Exception non gérée -> restauration...');
+  console.error(err);
+  safeRestoreAll();
+  process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('\n❌ Promise rejetée non gérée -> restauration...');
+  console.error(err);
+  safeRestoreAll();
+  process.exit(1);
+});
+process.on('exit', () => {
+  safeRestoreAll();
+});
+
 // Plateforme ciblée (optionnel)
 // - BUILD_PLATFORM=android => n'exécute pas iOS/pods (utile quand on veut juste Android)
 // - BUILD_PLATFORM=ios     => n'exécute pas Android
@@ -96,13 +137,12 @@ const backups = [];
 function backupDir(fullPath, name) {
   if (fs.existsSync(fullPath)) {
     // Placer les backups hors du dossier app/ pour éviter que Next.js les trouve
-    const backupBaseDir = path.join(process.cwd(), '_mobile_build_backups');
-    if (!fs.existsSync(backupBaseDir)) {
-      fs.mkdirSync(backupBaseDir, { recursive: true });
+    if (!fs.existsSync(BACKUP_BASE_DIR)) {
+      fs.mkdirSync(BACKUP_BASE_DIR, { recursive: true });
     }
     
     const relativePath = path.relative(path.join(process.cwd(), 'app'), fullPath);
-    const backupPath = path.join(backupBaseDir, relativePath || name);
+    const backupPath = path.join(BACKUP_BASE_DIR, relativePath || name);
     
     // Créer le dossier parent si nécessaire
     const backupParent = path.dirname(backupPath);
@@ -130,13 +170,12 @@ function backupFile(fullPath, name) {
     const st = fs.lstatSync(fullPath);
     if (!st.isFile()) return false;
 
-    const backupBaseDir = path.join(process.cwd(), '_mobile_build_backups');
-    if (!fs.existsSync(backupBaseDir)) {
-      fs.mkdirSync(backupBaseDir, { recursive: true });
+    if (!fs.existsSync(BACKUP_BASE_DIR)) {
+      fs.mkdirSync(BACKUP_BASE_DIR, { recursive: true });
     }
 
     const relativePath = path.relative(process.cwd(), fullPath);
-    const backupPath = path.join(backupBaseDir, relativePath || name);
+    const backupPath = path.join(BACKUP_BASE_DIR, relativePath || name);
 
     const backupParent = path.dirname(backupPath);
     if (!fs.existsSync(backupParent)) {
@@ -183,12 +222,11 @@ function restoreAll() {
     }
   });
   // Nettoyer le dossier de backups s'il est vide
-  const backupBaseDir = path.join(process.cwd(), '_mobile_build_backups');
   try {
-    if (fs.existsSync(backupBaseDir)) {
-      const files = fs.readdirSync(backupBaseDir);
+    if (fs.existsSync(BACKUP_BASE_DIR)) {
+      const files = fs.readdirSync(BACKUP_BASE_DIR);
       if (files.length === 0) {
-        fs.rmdirSync(backupBaseDir);
+        fs.rmdirSync(BACKUP_BASE_DIR);
       }
     }
   } catch (e) {
@@ -431,7 +469,7 @@ try {
 } catch (error) {
   console.error('\n❌ Erreur lors du build:', error.message);
   console.log('📁 Restauration des dossiers après erreur...');
-  restoreAll();
+  safeRestoreAll();
   process.exit(1);
 }
 

@@ -5,11 +5,19 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
 
-const isCapacitorApp = () =>
-  typeof window !== 'undefined' &&
-  (window.location?.protocol === 'capacitor:' ||
-    window.location?.href?.startsWith('capacitor://') ||
-    !!window.Capacitor);
+const isCapacitorApp = () => {
+  if (typeof window === 'undefined') return false;
+  const href = window.location?.href || '';
+  const protocol = window.location?.protocol || '';
+  // NOTE: sur iOS, window.Capacitor peut arriver après le chargement initial,
+  // donc on ne doit pas dépendre uniquement de ça.
+  return (
+    protocol === 'capacitor:' ||
+    href.startsWith('capacitor://') ||
+    href.startsWith('file://') ||
+    !!window.Capacitor
+  );
+};
 
 const normalizeRole = (role) => (role || '').toString().trim().toLowerCase();
 const ROLE_CACHE_KEY = 'cvneat-role-cache';
@@ -55,12 +63,16 @@ export default function AppAutoRedirect() {
   const pollUntilRef = useRef(0);
 
   useEffect(() => {
-    if (!isCapacitorApp()) return;
     if (!pathname) return;
 
     let cancelled = false;
+    let cleanup = null;
 
-    const forceTo = (target, reason, extra = {}) => {
+    const boot = () => {
+      if (cleanup) return;
+      if (!isCapacitorApp()) return;
+
+      const forceTo = (target, reason, extra = {}) => {
       const now = Date.now();
       // Anti-boucle: ne pas forcer trop souvent
       if (now - lastForcedAtRef.current < 800) return;
@@ -86,9 +98,9 @@ export default function AppAutoRedirect() {
           // ignore
         }
       }, 400);
-    };
+      };
 
-    const stopPolling = () => {
+      const stopPolling = () => {
       try {
         if (pollRef.current) {
           clearInterval(pollRef.current);
@@ -98,9 +110,9 @@ export default function AppAutoRedirect() {
         // ignore
       }
       pollUntilRef.current = 0;
-    };
+      };
 
-    const schedulePolling = (reason) => {
+      const schedulePolling = (reason) => {
       // On ne poll que si on n'est pas déjà sur la cible (cas typique: resume -> '/')
       // et uniquement dans l'app mobile.
       if (pathname === '/delivery/dashboard') return;
@@ -119,9 +131,9 @@ export default function AppAutoRedirect() {
         }
         run(`poll_${reason}`).catch(() => {});
       }, 900);
-    };
+      };
 
-    const enforceFromCache = (reason) => {
+      const enforceFromCache = (reason) => {
       const cachedRole = getCachedRole();
       const isDelivery = cachedRole === 'delivery' || cachedRole === 'livreur';
       if (isDelivery && pathname !== '/delivery/dashboard') {
@@ -129,9 +141,9 @@ export default function AppAutoRedirect() {
         return true;
       }
       return false;
-    };
+      };
 
-    async function run(reason = 'mount') {
+      async function run(reason = 'mount') {
       if (runningRef.current) return;
       runningRef.current = true;
       const { data } = await supabase.auth.getSession();
@@ -244,11 +256,11 @@ export default function AppAutoRedirect() {
       }
 
       runningRef.current = false;
-    }
+      }
 
-    const onVisibility = () => {
+      const onVisibility = () => {
       if (document.visibilityState === 'visible') run('visibilitychange');
-    };
+      };
     document.addEventListener('visibilitychange', onVisibility);
 
     // Capacitor AppStateChange (plus fiable que visibilitychange)
@@ -303,7 +315,7 @@ export default function AppAutoRedirect() {
       }
     }, 1500);
 
-    return () => {
+      cleanup = () => {
       cancelled = true;
       runningRef.current = false;
       stopPolling();
@@ -323,6 +335,35 @@ export default function AppAutoRedirect() {
       } catch {
         // ignore
       }
+      };
+    };
+
+    // Démarrage:
+    // - si Capacitor est déjà présent: boot immédiat
+    // - sinon: on attend quelques secondes (iOS peut injecter window.Capacitor après)
+    if (isCapacitorApp()) {
+      boot();
+    }
+    const waitStart = Date.now();
+    const waiter = setInterval(() => {
+      if (cleanup) {
+        clearInterval(waiter);
+        return;
+      }
+      if (Date.now() - waitStart > 6000) {
+        clearInterval(waiter);
+        return;
+      }
+      if (isCapacitorApp()) {
+        boot();
+        clearInterval(waiter);
+      }
+    }, 250);
+
+    return () => {
+      clearInterval(waiter);
+      if (cleanup) cleanup();
+      else cancelled = true;
     };
   }, [pathname, router]);
 
