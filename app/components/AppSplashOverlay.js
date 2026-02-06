@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function isCapacitorLike() {
   try {
@@ -20,8 +20,31 @@ function isCapacitorLike() {
 }
 
 export default function AppSplashOverlay() {
-  const enabled = useMemo(() => isCapacitorLike(), []);
-  const [phase, setPhase] = useState(enabled ? 'visible' : 'hidden'); // visible | exiting | hidden
+  const [enabled, setEnabled] = useState(false);
+  const [phase, setPhase] = useState('hidden'); // visible | exiting | hidden
+
+  useEffect(() => {
+    // iOS: window.Capacitor peut arriver après coup, donc on attend un peu.
+    if (isCapacitorLike()) {
+      setEnabled(true);
+      setPhase('visible');
+      return;
+    }
+
+    const start = Date.now();
+    const t = setInterval(() => {
+      if (isCapacitorLike()) {
+        setEnabled(true);
+        setPhase('visible');
+        clearInterval(t);
+        return;
+      }
+      if (Date.now() - start > 6000) {
+        clearInterval(t);
+      }
+    }, 250);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
