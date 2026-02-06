@@ -106,11 +106,9 @@ export default function RootLayout({ children }) {
               (function() {
                 try {
                   if (typeof window === 'undefined' || !window.location) return;
-                  var isCapacitor = window.location.protocol === 'capacitor:' || window.location.href.indexOf('capacitor://') === 0;
-                  if (!isCapacitor) return;
-
                   // Verrouillage ultra-tôt (avant hydration React):
                   // si un rôle livreur est en cache, on force /delivery/dashboard.
+                  // IMPORTANT: on le fait même si la détection Capacitor rate (selon iOS/localhost).
                   try {
                     var cached = localStorage.getItem('cvneat-role-cache');
                     var cachedRole = '';
@@ -125,6 +123,13 @@ export default function RootLayout({ children }) {
                   } catch (e0) {
                     // ignore
                   }
+
+                  // Le reste (intercepteur fetch + link handler) est uniquement pour Capacitor.
+                  var isCapacitor =
+                    window.location.protocol === 'capacitor:' ||
+                    window.location.href.indexOf('capacitor://') === 0 ||
+                    !!window.Capacitor;
+                  if (!isCapacitor) return;
                   // IMPORTANT: cvneat.fr redirige (307) vers www.cvneat.fr.
                   // Dans WKWebView (Capacitor), éviter les redirects améliore fortement la fiabilité des appels fetch.
                   var API_BASE_URL = 'https://www.cvneat.fr';

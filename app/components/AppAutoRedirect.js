@@ -189,6 +189,22 @@ export default function AppAutoRedirect() {
         }
       }
 
+      // 4.5) Fallback livreur: présence dans delivery_stats (selon policies, souvent accessible)
+      if (!role) {
+        try {
+          const { data: statsRow, error: statsErr } = await supabase
+            .from('delivery_stats')
+            .select('delivery_id')
+            .eq('delivery_id', session.user.id)
+            .maybeSingle();
+          if (!statsErr && statsRow) {
+            role = 'delivery';
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       // 5) Fallback restaurant par présence d'une fiche (si policies le permettent)
       if (!role) {
         try {
