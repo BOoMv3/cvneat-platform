@@ -10,6 +10,32 @@ import {
   ensureRestaurantOwnership
 } from '../utils';
 
+const isMissingTableError = (err, table) => {
+  const msg = (err?.message || '').toString().toLowerCase();
+  return msg.includes('relation') && msg.includes(table.toLowerCase()) && msg.includes('does not exist');
+};
+
+const prepareBaseIngredientsPayload = (baseIngredients, optionId) => {
+  const list = Array.isArray(baseIngredients) ? baseIngredients : [];
+  return list
+    .map((ingredient) => ({
+      option_id: optionId,
+      nom: ingredient?.nom || ingredient?.name || '',
+      prix_supplementaire:
+        ingredient?.prix_supplementaire !== null && ingredient?.prix_supplementaire !== undefined
+          ? ingredient.prix_supplementaire
+          : ingredient?.prix !== null && ingredient?.prix !== undefined
+            ? ingredient.prix
+            : 0,
+      removable: ingredient?.removable !== false,
+      ordre:
+        ingredient?.ordre !== null && ingredient?.ordre !== undefined
+          ? ingredient.ordre
+          : 0
+    }))
+    .filter((x) => x.nom);
+};
+
 export async function GET(_request, { params }) {
   try {
     const comboId = params?.id;
@@ -145,21 +171,22 @@ export async function PUT(request, { params }) {
           }
 
           if (Array.isArray(base_ingredients) && base_ingredients.length > 0) {
-            const preparedBaseIngredients = base_ingredients.map((ingredient) => ({
-              ...ingredient,
-              option_id: newOption.id
-            }));
+            const preparedBaseIngredients = prepareBaseIngredientsPayload(base_ingredients, newOption.id);
 
             const { error: baseIngredientsError } = await supabaseAdmin
               .from('menu_combo_option_base_ingredients')
               .insert(preparedBaseIngredients);
 
             if (baseIngredientsError) {
-              throw new ComboApiError(
-                `Erreur lors de l'insertion des ingrédients de base`,
-                500,
-                baseIngredientsError
-              );
+              if (isMissingTableError(baseIngredientsError, 'menu_combo_option_base_ingredients')) {
+                console.warn('⚠️ menu_combo_option_base_ingredients manquante: ingrédients de base ignorés (migration à appliquer).');
+              } else {
+                throw new ComboApiError(
+                  `Erreur lors de l'insertion des ingrédients de base`,
+                  500,
+                  baseIngredientsError
+                );
+              }
             }
           }
 
