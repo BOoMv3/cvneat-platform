@@ -130,6 +130,10 @@ export default function RootLayout({ children }) {
                     window.location.href.indexOf('capacitor://') === 0 ||
                     !!window.Capacitor;
                   if (!isCapacitor) return;
+                  var isDeliveryCached = false;
+                  try {
+                    isDeliveryCached = cachedRole === 'delivery' || cachedRole === 'livreur';
+                  } catch (eD) {}
                   // IMPORTANT: cvneat.fr redirige (307) vers www.cvneat.fr.
                   // Dans WKWebView (Capacitor), éviter les redirects améliore fortement la fiabilité des appels fetch.
                   var API_BASE_URL = 'https://www.cvneat.fr';
@@ -164,6 +168,46 @@ export default function RootLayout({ children }) {
                   // Gestionnaire de liens pour empêcher l'ouverture du navigateur
                   document.addEventListener('DOMContentLoaded', function() {
                     if (DEBUG) console.log('[Link Handler] Initialisation gestionnaire de liens');
+
+                    // IMPORTANT: lockdown livreur (app iOS/Android)
+                    // Le livreur ne doit accéder à rien d'autre que /delivery/dashboard.
+                    // On intercepte tous les clics sur liens (footer/tabbar inclus).
+                    document.addEventListener('click', function(event) {
+                      try {
+                        if (!isDeliveryCached) return;
+                        var t = event.target;
+                        var a = t && t.closest ? t.closest('a') : null;
+                        if (!a) return;
+                        var href0 = a.getAttribute('href') || '';
+                        if (!href0 || href0 === '#' || href0.startsWith('javascript:')) return;
+
+                        // Convertir en path interne si besoin
+                        var path0 = '';
+                        if (href0.startsWith('http://') || href0.startsWith('https://')) {
+                          if (href0.indexOf('cvneat.fr') >= 0) {
+                            try {
+                              var u0 = new URL(href0);
+                              path0 = (u0.pathname || '/') + (u0.search || '') + (u0.hash || '');
+                            } catch (e0) {
+                              path0 = '';
+                            }
+                          } else {
+                            path0 = ''; // lien externe quelconque => bloqué aussi
+                          }
+                        } else if (href0.startsWith('/')) {
+                          path0 = href0;
+                        }
+
+                        if (path0 && path0 !== '/delivery/dashboard' && !path0.startsWith('/delivery/dashboard?')) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          try { window.location.replace('/delivery/dashboard'); } catch (e1) {}
+                          return;
+                        }
+                      } catch (e) {
+                        // ignore
+                      }
+                    }, true);
                     
                     // Intercepter les clics sur les liens
                     document.addEventListener('click', function(event) {
@@ -230,6 +274,13 @@ export default function RootLayout({ children }) {
                     var originalOpen = window.open;
                     window.open = function(url, target, features) {
                       if (DEBUG) console.log('[Link Handler] window.open intercepté:', url);
+                      // Lockdown livreur: empêcher toute navigation hors dashboard
+                      try {
+                        if (isDeliveryCached) {
+                          try { window.location.replace('/delivery/dashboard'); } catch (eL) {}
+                          return null;
+                        }
+                      } catch (eL2) {}
                       if (url && (url.includes('cvneat.fr') || url.startsWith('/'))) {
                         var path = url.startsWith('http') ? new URL(url).pathname : url;
                         try {
