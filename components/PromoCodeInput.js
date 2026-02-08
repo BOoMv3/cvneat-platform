@@ -42,32 +42,53 @@ export default function PromoCodeInput({
     setValidating(true);
     setValidationResult(null);
 
-    try {
-      const response = await fetch('/api/promo-codes/validate', {
+    const requestBody = {
+      code: code.trim(),
+      userId: userId,
+      orderAmount: orderAmount,
+      restaurantId: restaurantId,
+      isFirstOrder: isFirstOrder,
+    };
+
+    const doValidate = async (url) => {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          code: code.trim(),
-          userId: userId,
-          orderAmount: orderAmount,
-          restaurantId: restaurantId,
-          isFirstOrder: isFirstOrder
-        }),
+        cache: 'no-store',
+        body: JSON.stringify(requestBody),
       });
 
       const data = await readResponseBody(response);
 
       if (!response.ok) {
-        setValidationResult({
-          valid: false,
-          message:
-            data?.error ||
+        const hint =
+          data?._nonJson && typeof data?.text === 'string' && data.text.toLowerCase().includes('redirecting')
+            ? ' (redirection détectée — utilise https://www.cvneat.fr)'
+            : '';
+        throw new Error(
+          (data?.error ||
             (data?._nonJson ? 'Erreur serveur (réponse non-JSON)' : null) ||
-            `Erreur lors de la validation du code promo (HTTP ${response.status})`,
-        });
-        return;
+            `Erreur lors de la validation du code promo (HTTP ${response.status})`) + hint
+        );
+      }
+
+      return data;
+    };
+
+    try {
+      let data;
+      try {
+        data = await doValidate('/api/promo-codes/validate');
+      } catch (e1) {
+        // Fallback: certains navigateurs (ou un accès via cvneat.fr) peuvent échouer sur une redirection.
+        try {
+          data = await doValidate('https://www.cvneat.fr/api/promo-codes/validate');
+        } catch {
+          throw e1;
+        }
       }
 
       if (data.valid) {
