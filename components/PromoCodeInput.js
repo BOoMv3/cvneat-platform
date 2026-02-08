@@ -21,6 +21,15 @@ export default function PromoCodeInput({
       return;
     }
 
+    const orderAmount = Number(cartTotal);
+    if (!Number.isFinite(orderAmount) || orderAmount <= 0) {
+      setValidationResult({
+        valid: false,
+        message: 'Ajoutez des articles au panier avant d’appliquer un code promo.',
+      });
+      return;
+    }
+
     setValidating(true);
     setValidationResult(null);
 
@@ -33,13 +42,21 @@ export default function PromoCodeInput({
         body: JSON.stringify({
           code: code.trim(),
           userId: userId,
-          orderAmount: cartTotal,
+          orderAmount: orderAmount,
           restaurantId: restaurantId,
           isFirstOrder: isFirstOrder
         }),
       });
 
       const data = await response.json();
+
+      if (!response.ok) {
+        setValidationResult({
+          valid: false,
+          message: data?.error || 'Erreur lors de la validation du code promo',
+        });
+        return;
+      }
 
       if (data.valid) {
         setValidationResult({
