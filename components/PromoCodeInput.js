@@ -53,10 +53,11 @@ export default function PromoCodeInput({
     const doValidate = async (url) => {
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        // IMPORTANT:
+        // Keep request "simple" (avoid CORS preflight) so it works even if the user is on cvneat.fr
+        // and the request is redirected to www.cvneat.fr.
+        // Sending JSON as plain text still works with request.json() server-side.
+        headers: { Accept: 'application/json' },
         cache: 'no-store',
         body: JSON.stringify(requestBody),
       });
