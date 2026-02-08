@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabase';
-import { apiRequestJson } from '@/lib/api-client-mobile';
 
 function formatDiscount(p) {
   if (!p) return '';
@@ -11,6 +10,27 @@ function formatDiscount(p) {
   if (p.discount_type === 'fixed') return `-${Number(p.discount_value).toFixed(2)}€`;
   if (p.discount_type === 'free_delivery') return 'Livraison offerte';
   return `${p.discount_type} ${p.discount_value}`;
+}
+
+async function fetchJson(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = {
+    Accept: 'application/json',
+    ...(options.headers || {}),
+  };
+
+  let body = undefined;
+  if (options.body !== undefined) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
+  }
+
+  const res = await fetch(path, { method, headers, body });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(json?.error || `Erreur HTTP ${res.status}`);
+  }
+  return json;
 }
 
 function fmtDate(v) {
@@ -55,7 +75,7 @@ export default function AdminPromoCodesPage() {
     setError('');
     try {
       const token = await getToken();
-      const res = await apiRequestJson(
+      const res = await fetchJson(
         `/api/admin/promo-codes/list?limit=80${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ''}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -75,7 +95,7 @@ export default function AdminPromoCodesPage() {
       setSelectedError('');
       try {
         const token = await getToken();
-        const s = await apiRequestJson(`/api/admin/promo-codes/summary?code=${encodeURIComponent(c)}`, {
+        const s = await fetchJson(`/api/admin/promo-codes/summary?code=${encodeURIComponent(c)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSelectedSummary(s || null);
@@ -117,10 +137,10 @@ export default function AdminPromoCodesPage() {
     setCreateError('');
     try {
       const token = await getToken();
-      const promo = await apiRequestJson('/api/admin/promo-codes/create', {
+      const promo = await fetchJson('/api/admin/promo-codes/create', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-        data: {
+        body: {
           ...form,
           code: String(form.code || '').trim().toUpperCase(),
           discount_value: Number(form.discount_value),
