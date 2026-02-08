@@ -19,6 +19,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
+  const [userRole, setUserRole] = useState('');
   const [cartItemCount, setCartItemCount] = useState(0);
   const router = useRouter();
 
@@ -26,6 +27,7 @@ export default function Navbar() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
+      setUserRole('');
       if (session?.user) {
         const { data: userData } = await supabase
           .from('users')
@@ -34,6 +36,7 @@ export default function Navbar() {
           .single();
         if(userData) {
           setUserPoints(userData.points_fidelite || 0);
+          setUserRole((userData.role || '').toString().trim().toLowerCase());
         }
       }
     };
@@ -51,6 +54,7 @@ export default function Navbar() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
+      if (!session?.user) setUserRole('');
     });
 
     checkUser();
@@ -78,6 +82,7 @@ export default function Navbar() {
     await supabase.auth.signOut();
     setUser(null);
     setUserPoints(0);
+    setUserRole('');
     router.push('/');
   };
 
@@ -145,6 +150,15 @@ export default function Navbar() {
             {/* Boutons de connexion/inscription */}
             {user ? (
               <div className="flex items-center space-x-1.5 lg:space-x-2">
+                {userRole === 'admin' && (
+                  <Link
+                    href="/admin/promo-codes"
+                    className="flex items-center space-x-1 bg-blue-600 text-white px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs lg:text-sm font-bold"
+                    title="Admin - Codes promo"
+                  >
+                    <span>Admin</span>
+                  </Link>
+                )}
                 <Link href="/profile" className="flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-xs lg:text-sm">
                   <FaUser className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
                   <span className="hidden lg:inline">Profil</span>
@@ -243,6 +257,16 @@ export default function Navbar() {
               >
                 Publicité
               </Link>
+
+              {user && userRole === 'admin' && (
+                <Link
+                  href="/admin/promo-codes"
+                  className="text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition-colors py-2 px-2 text-sm sm:text-base font-bold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Admin - Codes promo
+                </Link>
+              )}
               
               {/* Panier mobile */}
               {cartItemCount > 0 && (

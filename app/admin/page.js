@@ -47,6 +47,7 @@ export default function AdminPage() {
     guestVisitors: 0,
     monthlyRevenue: [] // CA CVN'EAT par mois
   });
+  const [psgom10Usage, setPsgom10Usage] = useState({ loading: true, count: 0, error: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -86,12 +87,33 @@ export default function AdminPage() {
 
       setUser(currentUser);
       fetchDashboardStats();
+      fetchPsgom10Usage();
       
     } catch (err) {
       console.error('Erreur d\'authentification:', err);
       router.push('/login');
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const fetchPsgom10Usage = async () => {
+    try {
+      setPsgom10Usage({ loading: true, count: 0, error: null });
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Session expirée');
+
+      const res = await fetch('/api/admin/promo-codes/summary?code=PSGOM10', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `Erreur HTTP ${res.status}`);
+
+      const count = Number(json?.usageCount ?? json?.promo?.current_uses ?? 0) || 0;
+      setPsgom10Usage({ loading: false, count, error: null });
+    } catch (e) {
+      setPsgom10Usage({ loading: false, count: 0, error: e?.message || 'Erreur chargement PSGOM10' });
     }
   };
 
@@ -514,6 +536,14 @@ export default function AdminPage() {
                 <span className="hidden sm:inline">Demander temps</span>
               </button>
               <button
+                onClick={() => router.push('/admin/promo-codes')}
+                className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Codes promo"
+              >
+                <FaGift className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Codes promo</span>
+              </button>
+              <button
                 onClick={() => router.push('/admin/reset')}
                 className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
                 title="Réinitialiser"
@@ -590,7 +620,7 @@ export default function AdminPage() {
         </div>
 
         {/* Statistiques principales - Optimisées mobile et foldable */}
-        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 fold:gap-2 xs:gap-2 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
+        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 fold:gap-2 xs:gap-2 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
           <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
@@ -636,6 +666,33 @@ export default function AdminPage() {
                 <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">CA Total</p>
                 <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
                 <p className="text-[9px] fold:text-[9px] xs:text-xs text-gray-500 mt-0.5 fold:mt-0.5 xs:mt-1 hidden fold:hidden xs:block">(Articles + Livraison)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                <FaGift className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">PSGOM10 (utilisations)</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">
+                  {psgom10Usage.loading ? '…' : psgom10Usage.count}
+                </p>
+                {psgom10Usage.error ? (
+                  <p className="text-[10px] text-red-600 mt-0.5 truncate" title={psgom10Usage.error}>
+                    {psgom10Usage.error}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={fetchPsgom10Usage}
+                    className="text-[10px] text-blue-700 hover:text-blue-900 underline mt-0.5"
+                  >
+                    Rafraîchir
+                  </button>
+                )}
               </div>
             </div>
           </div>

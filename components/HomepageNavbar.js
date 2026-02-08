@@ -21,6 +21,7 @@ import {
 export default function HomepageNavbar({ user, userPoints, cart, showFloatingCart, setShowFloatingCart }) {
   const router = useRouter();
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
     const loadCart = () => {
@@ -53,6 +54,29 @@ export default function HomepageNavbar({ user, userPoints, cart, showFloatingCar
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!user) {
+          if (!cancelled) setUserRole('');
+          return;
+        }
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (!cancelled) setUserRole((userData?.role || '').toString().trim().toLowerCase());
+      } catch {
+        if (!cancelled) setUserRole('');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -92,6 +116,15 @@ export default function HomepageNavbar({ user, userPoints, cart, showFloatingCar
         
         {user ? (
           <>
+            {userRole === 'admin' && (
+              <Link
+                href="/admin/promo-codes"
+                className="bg-blue-600/80 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-blue-600 transition-all duration-200 flex items-center text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px]"
+                title="Admin - Codes promo"
+              >
+                Admin
+              </Link>
+            )}
             {/* Points de fidélité - Compact avec icône */}
             <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[40px]">
               <FaGift className="text-yellow-400 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
