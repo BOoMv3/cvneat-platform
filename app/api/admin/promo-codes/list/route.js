@@ -56,6 +56,10 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const q = (searchParams.get('q') || '').toString().trim().toUpperCase();
     const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '50', 10) || 50));
+    // Default: only active codes (so admin doesn't see a huge historic list)
+    const includeInactive =
+      (searchParams.get('includeInactive') || '').toString().trim() === '1' ||
+      (searchParams.get('includeInactive') || '').toString().trim().toLowerCase() === 'true';
 
     let query = supabaseAdmin
       .from('promo_codes')
@@ -64,6 +68,10 @@ export async function GET(request) {
       )
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    if (!includeInactive) {
+      query = query.eq('is_active', true);
+    }
 
     if (q) {
       // Recherche simple: code ou description
