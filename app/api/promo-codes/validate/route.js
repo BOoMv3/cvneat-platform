@@ -6,6 +6,17 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
+  'Access-Control-Max-Age': '86400',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 /**
  * POST /api/promo-codes/validate
  * Valide un code promo et retourne la réduction applicable
@@ -18,14 +29,14 @@ export async function POST(request) {
     if (!code) {
       return NextResponse.json(
         { error: 'Code promo requis' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (!orderAmount || orderAmount <= 0) {
       return NextResponse.json(
         { error: 'Montant de commande requis' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -50,7 +61,7 @@ export async function POST(request) {
         console.log('⚠️ Code ROULETTE non trouvé dans wheel_wins:', codeToValidate);
         return NextResponse.json(
           { valid: false, message: 'Code promo invalide ou expiré' },
-          { status: 200 }
+          { status: 200, headers: corsHeaders }
         );
       }
 
@@ -62,7 +73,7 @@ export async function POST(request) {
         });
         return NextResponse.json(
           { valid: false, message: 'Ce code promo est personnel et ne peut être utilisé que par son propriétaire' },
-          { status: 200 }
+          { status: 200, headers: corsHeaders }
         );
       }
 
@@ -71,7 +82,7 @@ export async function POST(request) {
         console.log('⚠️ Code ROULETTE expiré:', codeToValidate);
         return NextResponse.json(
           { valid: false, message: 'Ce code promo a expiré' },
-          { status: 200 }
+          { status: 200, headers: corsHeaders }
         );
       }
 
@@ -80,7 +91,7 @@ export async function POST(request) {
         console.log('⚠️ Code ROULETTE déjà utilisé:', codeToValidate);
         return NextResponse.json(
           { valid: false, message: 'Ce code promo a déjà été utilisé' },
-          { status: 200 }
+          { status: 200, headers: corsHeaders }
         );
       }
 
@@ -119,7 +130,7 @@ export async function POST(request) {
             message: 'Code promo valide',
             description: promoCode.description || wheelWin.description || '',
             promoCodeId: promoCode.id
-          });
+          }, { headers: corsHeaders });
         }
       }
 
@@ -134,7 +145,7 @@ export async function POST(request) {
           description: wheelWin.description || 'Boisson offerte',
           promoCodeId: null,
           isFreeDrink: true
-        });
+        }, { headers: corsHeaders });
       }
     }
 
@@ -151,7 +162,7 @@ export async function POST(request) {
       console.error('Erreur validation code promo:', error);
       return NextResponse.json(
         { error: 'Erreur lors de la validation du code promo' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -159,7 +170,7 @@ export async function POST(request) {
       console.log('⚠️ Code promo non trouvé dans promo_codes:', codeToValidate);
       return NextResponse.json(
         { valid: false, message: 'Code promo invalide' },
-        { status: 200 }
+        { status: 200, headers: corsHeaders }
       );
     }
 
@@ -170,7 +181,7 @@ export async function POST(request) {
         valid: false,
         message: result.message,
         discountAmount: 0
-      });
+      }, { headers: corsHeaders });
     }
 
     // Récupérer les détails du code promo pour le type de réduction
@@ -187,13 +198,13 @@ export async function POST(request) {
       message: result.message,
       description: promoCode?.description || '',
       promoCodeId: result.promo_code_id
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Erreur API validation code promo:', error);
     return NextResponse.json(
       { error: 'Erreur serveur' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
