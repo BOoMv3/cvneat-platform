@@ -41,9 +41,35 @@ export async function POST(request) {
     }
 
     const codeToValidate = code.toUpperCase().trim();
+
+    // Some environments can send a userId that exists in auth but not in our public `users` table.
+    // The SQL RPC `validate_promo_code` can throw in that case.
+    // To ensure promo validation never hard-fails, we fallback to anonymous validation (userId = null).
+    let safeUserId = userId || null;
+    if (safeUserId) {
+      const looksLikeUuid = typeof safeUserId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(safeUserId);
+      if (!looksLikeUuid) {
+        console.warn('⚠️ userId invalide (pas un UUID), fallback null:', safeUserId);
+        safeUserId = null;
+      } else {
+        const { data: userRow, error: userRowError } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('id', safeUserId)
+          .maybeSingle();
+        if (userRowError) {
+          console.warn('⚠️ Erreur lecture users, fallback null:', userRowError);
+          safeUserId = null;
+        } else if (!userRow?.id) {
+          console.warn('⚠️ Profil users manquant, fallback null:', safeUserId);
+          safeUserId = null;
+        }
+      }
+    }
+
     console.log('🔍 Validation code promo:', {
       code: codeToValidate,
-      userId: userId || 'N/A',
+      userId: safeUserId || 'N/A',
       orderAmount,
       restaurantId: restaurantId || 'N/A',
       isFirstOrder
@@ -152,7 +178,7 @@ export async function POST(request) {
     // Appeler la fonction SQL de validation pour les autres codes
     const { data, error } = await supabaseAdmin.rpc('validate_promo_code', {
       p_code: codeToValidate,
-      p_user_id: userId || null,
+      p_user_id: safeUserId || null,
       p_order_amount: parseFloat(orderAmount),
       p_restaurant_id: restaurantId || null,
       p_is_first_order: isFirstOrder
