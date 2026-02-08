@@ -3,6 +3,15 @@
 import { useState } from 'react';
 import { FaTag, FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 
+async function readResponseBody(res) {
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (ct.includes('application/json')) {
+    return await res.json().catch(() => ({}));
+  }
+  const text = await res.text().catch(() => '');
+  return { _nonJson: true, text };
+}
+
 export default function PromoCodeInput({ 
   onCodeApplied, 
   appliedCode, 
@@ -48,12 +57,15 @@ export default function PromoCodeInput({
         }),
       });
 
-      const data = await response.json();
+      const data = await readResponseBody(response);
 
       if (!response.ok) {
         setValidationResult({
           valid: false,
-          message: data?.error || 'Erreur lors de la validation du code promo',
+          message:
+            data?.error ||
+            (data?._nonJson ? 'Erreur serveur (réponse non-JSON)' : null) ||
+            `Erreur lors de la validation du code promo (HTTP ${response.status})`,
         });
         return;
       }
@@ -81,14 +93,14 @@ export default function PromoCodeInput({
       } else {
         setValidationResult({
           valid: false,
-          message: data.message || 'Code promo invalide'
+          message: data?.message || 'Code promo invalide'
         });
       }
     } catch (error) {
       console.error('Erreur validation code promo:', error);
       setValidationResult({
         valid: false,
-        message: 'Erreur lors de la validation du code promo'
+        message: error?.message || 'Erreur lors de la validation du code promo'
       });
     } finally {
       setValidating(false);
