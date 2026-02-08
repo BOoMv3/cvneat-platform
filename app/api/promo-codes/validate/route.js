@@ -11,6 +11,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
   'Access-Control-Max-Age': '86400',
+  'X-Promo-Validate-Version': '2026-02-08.1',
 };
 
 export async function OPTIONS() {
@@ -176,13 +177,23 @@ export async function POST(request) {
     }
 
     // Appeler la fonction SQL de validation pour les autres codes
-    const { data, error } = await supabaseAdmin.rpc('validate_promo_code', {
-      p_code: codeToValidate,
-      p_user_id: safeUserId || null,
-      p_order_amount: parseFloat(orderAmount),
-      p_restaurant_id: restaurantId || null,
-      p_is_first_order: isFirstOrder
-    });
+    const callValidateRpc = async (rpcUserId) => {
+      return await supabaseAdmin.rpc('validate_promo_code', {
+        p_code: codeToValidate,
+        p_user_id: rpcUserId || null,
+        p_order_amount: parseFloat(orderAmount),
+        p_restaurant_id: restaurantId || null,
+        p_is_first_order: isFirstOrder,
+      });
+    };
+
+    // Some DB setups can throw inside validate_promo_code when p_user_id is provided.
+    // To keep the checkout reliable, we retry once with p_user_id = null.
+    let { data, error } = await callValidateRpc(safeUserId || null);
+    if (error && safeUserId) {
+      console.warn('⚠️ validate_promo_code RPC error with userId, retrying anonymous:', error);
+      ({ data, error } = await callValidateRpc(null));
+    }
 
     if (error) {
       console.error('Erreur validation code promo:', error);
