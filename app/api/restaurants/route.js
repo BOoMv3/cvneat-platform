@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Désactiver le cache pour cette route afin d'avoir toujours les données à jour
+// Important endpoint for the homepage: keep it fast.
+// We allow short CDN caching to reduce server CPU load.
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 // Créer un client admin pour bypasser RLS
 let supabaseAdmin = null;
@@ -27,10 +27,6 @@ try {
 
 export async function GET() {
   try {
-    console.log('🔍 API /api/restaurants appelée');
-    console.log('🔍 NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Défini' : 'MANQUANT');
-    console.log('🔍 SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Défini' : 'MANQUANT');
-    
     if (!supabaseAdmin) {
       console.error('❌ Client Supabase Admin non initialisé');
       return NextResponse.json(
@@ -46,41 +42,21 @@ export async function GET() {
 
     if (error) {
       console.error('❌ Erreur Supabase lors de la récupération des restaurants:', error);
-      console.error('❌ Détails erreur:', JSON.stringify(error, null, 2));
       return NextResponse.json({ message: "Erreur lors de la récupération des restaurants", error: error.message }, { status: 500 });
     }
 
-    console.log(`📊 ${data?.length || 0} restaurant(s) trouvé(s) dans la base de données`);
-
     if (!data || data.length === 0) {
-      console.warn('⚠️ Aucun restaurant trouvé dans la base de données');
-      return NextResponse.json([]);
+      const res = NextResponse.json([]);
+      // Short cache to avoid repeated cold starts.
+      res.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
+      return res;
     }
 
-    // Calculer les notes depuis les vrais avis pour chaque restaurant
-    const restaurantsWithRatings = await Promise.all((data || []).map(async (restaurant) => {
-      const { data: reviews } = await supabaseAdmin
-        .from('reviews')
-        .select('rating')
-        .eq('restaurant_id', restaurant.id);
-
-    let calculatedRating = 0;
-    let reviewsCount = 0;
-    if (reviews && reviews.length > 0) {
-      const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
-      calculatedRating = Math.round((totalRating / reviews.length) * 10) / 10;
-      reviewsCount = reviews.length;
-    }
-
-      return {
-        ...restaurant,
-        rating: calculatedRating || restaurant.rating || 0,
-        reviews_count: reviewsCount || restaurant.reviews_count || 0
-      };
-    }));
-
-    console.log(`✅ ${restaurantsWithRatings.length} restaurant(s) récupéré(s)`);
-    return NextResponse.json(restaurantsWithRatings);
+    // Performance: do not query `reviews` per restaurant (N+1 queries).
+    // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
+    const res = NextResponse.json(data);
+    res.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
+    return res;
   } catch (error) {
     console.error('❌ Erreur serveur lors de la récupération des restaurants:', error);
     return NextResponse.json(
