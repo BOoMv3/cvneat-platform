@@ -19,6 +19,7 @@ export default function PartnerNotifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, unread, read
+  const [authToken, setAuthToken] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function PartnerNotifications() {
       }
 
       setUser(session.user);
+      setAuthToken(session.access_token);
 
       // Récupérer le restaurant
       const { data: resto, error: restoError } = await supabase
@@ -57,16 +59,18 @@ export default function PartnerNotifications() {
       }
 
       setRestaurant(resto);
-      await fetchNotifications(resto.id);
+      await fetchNotifications(resto.id, session.access_token);
       setLoading(false);
     };
 
     fetchData();
   }, [router]);
 
-  const fetchNotifications = async (restaurantId) => {
+  const fetchNotifications = async (restaurantId, token = authToken) => {
     try {
-      const response = await fetch(`/api/partner/notifications?restaurantId=${restaurantId}`);
+      const response = await fetch(`/api/partner/notifications?limit=80`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await response.json();
       if (response.ok) {
         setNotifications(data);
@@ -80,8 +84,11 @@ export default function PartnerNotifications() {
     try {
       const response = await fetch('/api/partner/notifications', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: notificationId, lu: true })
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({ notificationId })
       });
 
       if (response.ok) {
@@ -99,7 +106,8 @@ export default function PartnerNotifications() {
   const deleteNotification = async (notificationId) => {
     try {
       const response = await fetch(`/api/partner/notifications?id=${notificationId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });
 
       if (response.ok) {
@@ -114,7 +122,10 @@ export default function PartnerNotifications() {
     try {
       const response = await fetch('/api/partner/notifications/mark-all-read', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({ restaurantId: restaurant.id })
       });
 

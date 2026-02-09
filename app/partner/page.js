@@ -111,6 +111,8 @@ export default function PartnerDashboard() {
   const [savingPrepTime, setSavingPrepTime] = useState(false);
   const [prepPromptAudioEnabled, setPrepPromptAudioEnabled] = useState(true);
   const audioUnlockedRef = useRef(false);
+  const authTokenRef = useRef(null);
+  const [notifsRealtimeOk, setNotifsRealtimeOk] = useState(false);
   const router = useRouter();
 
   const [supplementForm, setSupplementForm] = useState({
@@ -173,6 +175,7 @@ export default function PartnerDashboard() {
         router.push('/login');
         return;
       }
+      authTokenRef.current = session.access_token || null;
 
       // Verifier le role
       console.log('🔍 DEBUG PARTNER - Session user ID:', session.user.id);
@@ -291,6 +294,8 @@ export default function PartnerDashboard() {
   useEffect(() => {
     let eventSource = null;
     let cancelled = false;
+    let retryTimer = null;
+    let retryDelay = 30000; // 30s backoff start
 
     const connect = async () => {
       try {
@@ -315,7 +320,15 @@ export default function PartnerDashboard() {
         };
 
         eventSource.onerror = () => {
-          // Ne pas spam; on laisse le navigateur gérer la reconnexion SSE si possible
+          // IMPORTANT: éviter les reconnexions en boucle (CPU Vercel).
+          try { eventSource?.close(); } catch {}
+          eventSource = null;
+          if (cancelled) return;
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(() => {
+            retryDelay = Math.min(retryDelay * 2, 5 * 60 * 1000); // max 5min
+            connect();
+          }, retryDelay);
         };
       } catch {
         // ignore
@@ -326,6 +339,7 @@ export default function PartnerDashboard() {
 
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
       try {
         if (eventSource) eventSource.close();
       } catch {
@@ -417,7 +431,10 @@ export default function PartnerDashboard() {
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') setNotifsRealtimeOk(true);
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setNotifsRealtimeOk(false);
+        });
     } catch {
       // ignore
     }
@@ -435,11 +452,15 @@ export default function PartnerDashboard() {
   // (utile si Realtime est désactivé/coupé côté Supabase)
   useEffect(() => {
     if (!restaurant?.id) return;
+    if (notifsRealtimeOk) return;
     let cancelled = false;
 
     const check = async () => {
       try {
-        const res = await fetch(`/api/partner/notifications?restaurantId=${restaurant.id}`);
+        const token = authTokenRef.current;
+        const res = await fetch(`/api/partner/notifications?unreadOnly=1&type=prep_time_prompt&limit=5`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!res.ok) return;
         const notifs = await res.json().catch(() => []);
         if (!Array.isArray(notifs) || notifs.length === 0) return;
@@ -450,7 +471,10 @@ export default function PartnerDashboard() {
           // Marquer comme lues pour éviter de re-pop à l'infini
           fetch('/api/partner/notifications/mark-all-read', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
             body: JSON.stringify({ restaurantId: restaurant.id }),
           }).catch(() => {});
         }
@@ -459,9 +483,9 @@ export default function PartnerDashboard() {
       }
     };
 
-    // Check immédiat + toutes les 10s + au focus / retour au premier plan
+    // Check immédiat + toutes les 60s + au focus / retour au premier plan
     check();
-    const interval = setInterval(check, 10000);
+    const interval = setInterval(check, 60000);
 
     const onFocus = () => check();
     const onVisibility = () => {
