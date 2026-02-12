@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <uses-permission android:name="android.permission.INTERNET" />
+
+  <!-- Classic bluetooth permissions (pre-Android 12) -->
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+
+  <!-- Android 12+ bluetooth permissions -->
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+
+  <application
+    android:allowBackup="true"
+    android:label="CVNEAT Print Agent"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
+
+    <activity android:name=".PrinterSetupActivity" />
+    <activity android:name=".StatusActivity" />
+    <activity
+      android:name=".LoginActivity"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+
+  </application>
+</manifest>
+
