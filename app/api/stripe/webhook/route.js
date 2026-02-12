@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { supabase as supabasePublic, supabaseAdmin } from '../../../../lib/supabase';
+import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
 // SSE resto désactivé dans ce workflow: on notifie le resto uniquement après acceptation livreur.
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -208,6 +209,14 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
       return;
     }
 
+    // If already paid, do not re-enqueue print jobs (avoids duplicates on webhook retries)
+    const current = await db
+      .from('commandes')
+      .select('payment_status')
+      .eq('id', order.id)
+      .maybeSingle();
+    const wasPaidBefore = (current?.data?.payment_status || '').toString().trim().toLowerCase() === 'paid';
+
     // Mettre à jour le statut de la commande + synchroniser le montant réellement payé (Stripe)
     const paidAmount = typeof paymentIntent.amount === 'number' ? paymentIntent.amount / 100 : null;
     const knownPlatformFee = 0.49;
@@ -234,6 +243,63 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
       console.error('❌ Erreur mise à jour commande:', updateError);
     } else {
       console.log('✅ Statut de commande mis à jour:', order.order_number);
+
+      // Enqueue receipt print job for the restaurant (only on first transition to paid)
+      if (!wasPaidBefore && order.restaurant_id) {
+        try {
+          const { data: fullOrder } = await db
+            .from('commandes')
+            .select(
+              'id, order_number, restaurant_id, created_at, total, frais_livraison, discount_amount, total_paid, customer_first_name, customer_last_name, customer_phone, customer_email, adresse_livraison, ville_livraison'
+            )
+            .eq('id', order.id)
+            .maybeSingle();
+
+          const { data: restaurant } = await db
+            .from('restaurants')
+            .select('id, nom')
+            .eq('id', order.restaurant_id)
+            .maybeSingle();
+
+          const { data: details } = await db
+            .from('details_commande')
+            .select('id, commande_id, quantite, prix_unitaire, menus ( nom, prix )')
+            .eq('commande_id', order.id);
+
+          const items = (details || []).map((d) => ({
+            id: d.id,
+            quantity: d.quantite,
+            price: d.prix_unitaire,
+            name: d.menus?.nom || 'Article',
+          }));
+
+          const text = formatReceiptText({
+            restaurant,
+            order: fullOrder || order,
+            items,
+          });
+
+          await db
+            .from('notifications')
+            .insert({
+              restaurant_id: order.restaurant_id,
+              type: 'print_receipt',
+              message: `Commande #${order.id?.slice(0, 8)} à imprimer`,
+              data: {
+                template: 'receipt_v1',
+                format: 'dantsu_escpos_markup',
+                order_id: order.id,
+                order_number: fullOrder?.order_number || null,
+                text,
+              },
+              lu: false,
+            })
+            .select()
+            .maybeSingle();
+        } catch (e) {
+          console.warn('⚠️ Enqueue print_receipt échoué (non bloquant):', e?.message || e);
+        }
+      }
 
       // Stocker les vrais frais Stripe (fee/net/available_on) pour le suivi comptable.
       // Non bloquant si la migration n'est pas appliquée.

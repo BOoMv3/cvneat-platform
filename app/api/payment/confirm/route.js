@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '../../../../lib/supabase';
+import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -205,6 +206,61 @@ export async function POST(request) {
         ).toFixed(2);
 
         if (updated.restaurant_id) {
+          // Enqueue a receipt print job for the restaurant (non-bloquant)
+          try {
+            const { data: fullOrder } = await supabaseAdmin
+              .from('commandes')
+              .select(
+                'id, order_number, restaurant_id, created_at, total, frais_livraison, discount_amount, total_paid, customer_first_name, customer_last_name, customer_phone, customer_email, adresse_livraison, ville_livraison'
+              )
+              .eq('id', updated.id)
+              .maybeSingle();
+
+            const { data: restaurant } = await supabaseAdmin
+              .from('restaurants')
+              .select('id, nom')
+              .eq('id', updated.restaurant_id)
+              .maybeSingle();
+
+            const { data: details } = await supabaseAdmin
+              .from('details_commande')
+              .select('id, commande_id, quantite, prix_unitaire, menus ( nom, prix )')
+              .eq('commande_id', updated.id);
+
+            const items = (details || []).map((d) => ({
+              id: d.id,
+              quantity: d.quantite,
+              price: d.prix_unitaire,
+              name: d.menus?.nom || 'Article',
+            }));
+
+            const text = formatReceiptText({
+              restaurant,
+              order: fullOrder || updated,
+              items,
+            });
+
+            await supabaseAdmin
+              .from('notifications')
+              .insert({
+                restaurant_id: updated.restaurant_id,
+                type: 'print_receipt',
+                message: `Commande #${updated.id?.slice(0, 8)} à imprimer`,
+                data: {
+                  template: 'receipt_v1',
+                  format: 'dantsu_escpos_markup',
+                  order_id: updated.id,
+                  order_number: fullOrder?.order_number || null,
+                  text,
+                },
+                lu: false,
+              })
+              .select()
+              .maybeSingle();
+          } catch {
+            // non bloquant
+          }
+
           await fetch(`${origin}/api/notifications/send-push`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
