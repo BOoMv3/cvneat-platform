@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { isOrdersClosed } from '@/lib/ordersClosed';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -34,6 +35,13 @@ function getServiceClient() {
 
 export async function POST(request) {
   try {
+    if (isOrdersClosed()) {
+      return NextResponse.json(
+        { error: 'Pas de commande ce midi.' },
+        { status: 503 }
+      );
+    }
+
     const { amount, currency = 'eur', metadata = {} } = await request.json();
 
     // Validation du montant

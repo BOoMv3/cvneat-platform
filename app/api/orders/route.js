@@ -3,6 +3,7 @@ import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../lib/sup
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../lib/commission';
+import { isOrdersClosed } from '@/lib/ordersClosed';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
@@ -423,6 +424,13 @@ export async function GET(request) {
 // POST /api/orders - Créer une nouvelle commande
 export async function POST(request) {
   try {
+    if (isOrdersClosed()) {
+      return json(
+        { error: 'Pas de commande ce midi.' },
+        { status: 503 }
+      );
+    }
+
     console.log('=== DÉBUT CRÉATION COMMANDE ===');
     
     const body = await request.json();

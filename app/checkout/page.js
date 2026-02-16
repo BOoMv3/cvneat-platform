@@ -147,6 +147,9 @@ export default function Checkout() {
   const [deliveryClosed, setDeliveryClosed] = useState(false);
   const deliveryClosedMessage = "En raison des conditions météorologiques actuelles, aucune livraison ne sera effectuée ce soir. Merci de votre compréhension.";
 
+  // Fermeture globale des commandes (ex: pas de livreur) - contrôlé par API
+  const [ordersOpen, setOrdersOpen] = useState(true);
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -209,6 +212,19 @@ export default function Checkout() {
       setFraisLivraison(savedCart.frais_livraison || 2.50);
     }
     setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const checkOrdersOpen = async () => {
+      try {
+        const res = await fetch('/api/platform/orders-open');
+        const data = await res.json();
+        setOrdersOpen(data.open !== false);
+      } catch {
+        setOrdersOpen(true); // En cas d'erreur, on laisse passer
+      }
+    };
+    checkOrdersOpen();
   }, []);
 
   useEffect(() => {
@@ -450,6 +466,11 @@ export default function Checkout() {
 
   // Fonction SIMPLIFIÉE pour créer la commande et préparer le paiement
   const prepareOrderAndPayment = async () => {
+    // Vérifier si les commandes sont fermées globalement
+    if (!ordersOpen) {
+      alert('Pas de commande ce midi.');
+      return;
+    }
     // Vérifier si les livraisons sont fermées (manuel)
     if (deliveryClosed) {
       alert(deliveryClosedMessage);
@@ -997,6 +1018,19 @@ export default function Checkout() {
         
         <h1 className="text-base fold:text-base xs:text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4 fold:mb-4 xs:mb-6 sm:mb-8">Finaliser votre commande</h1>
 
+        {/* Bannière de fermeture globale des commandes */}
+        {!ordersOpen && (
+          <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+              <FaMotorcycle className="h-6 w-6 flex-shrink-0" />
+              <div className="flex-1">
+                <h2 className="font-bold text-lg mb-1">⚠️ Pas de commande ce midi</h2>
+                <p className="text-sm opacity-95">Les commandes sont fermées. Merci de réessayer plus tard.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Bannière de fermeture des livraisons - Météo (manuel) */}
         {deliveryClosed && (
           <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg shadow-lg">
@@ -1305,6 +1339,23 @@ export default function Checkout() {
               />
             </div>
 
+            {/* Message de fermeture globale des commandes */}
+            {!ordersOpen && (
+              <div className="mt-4 sm:mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <FaMotorcycle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">
+                      Pas de commande ce midi
+                    </h3>
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      Les commandes sont fermées. Merci de réessayer plus tard.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Message de fermeture des livraisons - Météo (manuel) */}
             {deliveryClosed && (
               <div className="mt-4 sm:mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -1325,7 +1376,7 @@ export default function Checkout() {
             {!showPaymentForm ? (
               <button
                 onClick={submitOrder}
-                disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed}
+                disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed || !ordersOpen}
                 className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
               >
                 {submitting ? (
