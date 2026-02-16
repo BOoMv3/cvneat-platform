@@ -6,7 +6,7 @@ export async function GET() {
   return NextResponse.json({
     open: !closed,
     message: closed
-      ? 'Pas de commande ce midi.'
+      ? 'Maintenance en cours. Les commandes sont temporairement indisponibles.'
       : null,
   });
 }

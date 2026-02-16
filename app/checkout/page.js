@@ -468,7 +468,7 @@ export default function Checkout() {
   const prepareOrderAndPayment = async () => {
     // Vérifier si les commandes sont fermées globalement
     if (!ordersOpen) {
-      alert('Pas de commande ce midi.');
+      alert('Maintenance en cours. Les commandes sont temporairement indisponibles. Merci de réessayer plus tard.');
       return;
     }
     // Vérifier si les livraisons sont fermées (manuel)
@@ -1024,8 +1024,8 @@ export default function Checkout() {
             <div className="flex items-center gap-3">
               <FaMotorcycle className="h-6 w-6 flex-shrink-0" />
               <div className="flex-1">
-                <h2 className="font-bold text-lg mb-1">⚠️ Pas de commande ce midi</h2>
-                <p className="text-sm opacity-95">Les commandes sont fermées. Merci de réessayer plus tard.</p>
+                <h2 className="font-bold text-lg mb-1">⚠️ Maintenance en cours</h2>
+                <p className="text-sm opacity-95">Les commandes sont temporairement indisponibles. Merci de réessayer plus tard.</p>
               </div>
             </div>
           </div>
@@ -1346,10 +1346,10 @@ export default function Checkout() {
                   <FaMotorcycle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">
-                      Pas de commande ce midi
+                      Maintenance en cours
                     </h3>
                     <p className="text-sm text-red-700 dark:text-red-300">
-                      Les commandes sont fermées. Merci de réessayer plus tard.
+                      Les commandes sont temporairement indisponibles. Merci de réessayer plus tard.
                     </p>
                   </div>
                 </div>

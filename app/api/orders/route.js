@@ -426,7 +426,7 @@ export async function POST(request) {
   try {
     if (isOrdersClosed()) {
       return json(
-        { error: 'Pas de commande ce midi.' },
+        { error: 'Maintenance en cours. Les commandes sont temporairement indisponibles.' },
         { status: 503 }
       );
     }
