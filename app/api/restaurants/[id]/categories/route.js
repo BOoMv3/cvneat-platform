@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../../../../lib/supabase';
 
 // IMPORTANT: éviter tout caching (les partenaires peuvent réordonner)
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,8 @@ export async function GET(_request, { params }) {
       return NextResponse.json({ error: 'Restaurant ID requis' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const db = supabaseAdmin || supabase;
+    const { data, error } = await db
       .from('menu_categories')
       .select('id, name, description, sort_order')
       .eq('restaurant_id', restaurantId)
@@ -21,7 +22,7 @@ export async function GET(_request, { params }) {
     if (error) {
       // Fallback: si la table n'est pas lisible publiquement (RLS), dériver depuis les plats.
       console.warn('⚠️ menu_categories non lisible, fallback depuis menus:', error);
-      const { data: menuRows, error: menuErr } = await supabase
+      const { data: menuRows, error: menuErr } = await db
         .from('menus')
         .select('category')
         .eq('restaurant_id', restaurantId)

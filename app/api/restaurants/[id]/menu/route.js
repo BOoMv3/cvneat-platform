@@ -1,5 +1,5 @@
-﻿import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { NextResponse } from 'next/server';
+import { supabase, supabaseAdmin } from '../../../../../lib/supabase';
 
 // IMPORTANT: menus/prix doivent être toujours à jour (éviter tout caching)
 export const dynamic = 'force-dynamic';
@@ -8,8 +8,9 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     
-    // Récupérer les menus
-    const { data: menus, error } = await supabase
+    // Utiliser supabaseAdmin pour bypasser RLS et garantir le filtre disponible
+    const db = supabaseAdmin || supabase;
+    const { data: menus, error } = await db
       .from('menus')
       .select('*')
       .eq('restaurant_id', id)
@@ -22,7 +23,7 @@ export async function GET(request, { params }) {
     }
 
     // Récupérer les formules disponibles
-    const { data: formulas, error: formulasError } = await supabase
+    const { data: formulas, error: formulasError } = await db
       .from('formulas')
       .select(`
         *,
@@ -36,7 +37,8 @@ export async function GET(request, { params }) {
             description,
             prix,
             image_url,
-            category
+            category,
+            disponible
           )
         )
       `)
@@ -79,7 +81,7 @@ export async function GET(request, { params }) {
       // Cela permet de combiner les deux sources
       if (item.id) {
         try {
-          const { data: menuSupplements, error: menuSupplementsError } = await supabase
+          const { data: menuSupplements, error: menuSupplementsError } = await (supabaseAdmin || supabase)
             .from('menu_supplements')
             .select('*')
             .eq('menu_item_id', item.id)
@@ -175,7 +177,7 @@ export async function GET(request, { params }) {
       if (item.drink_options && Array.isArray(item.drink_options) && item.drink_options.length > 0) {
         console.log(`🔍 Menu ${item.nom}: Récupération de ${item.drink_options.length} boissons`, item.drink_options);
         
-        const { data: drinksData, error: drinksError } = await supabase
+        const { data: drinksData, error: drinksError } = await (supabaseAdmin || supabase)
           .from('menus')
           .select('id, nom, description, prix, is_drink, drink_price_small, drink_price_medium, drink_price_large, disponible')
           .in('id', item.drink_options);
@@ -249,7 +251,9 @@ export async function GET(request, { params }) {
         return null;
       }
       
+      // Exclure les items dont le menu lié est indisponible
       const items = formula.formula_items
+        .filter((item) => item.menu?.disponible !== false)
         .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
         .map(item => ({
           id: item.id,
@@ -258,10 +262,14 @@ export async function GET(request, { params }) {
           menu: item.menu
         }));
 
+      if (items.length === 0) {
+        return null;
+      }
+
       // Récupérer les boissons disponibles pour cette formule
       let availableDrinks = [];
       if (formula.drink_options && Array.isArray(formula.drink_options) && formula.drink_options.length > 0) {
-        const { data: drinksData, error: drinksError } = await supabase
+        const { data: drinksData, error: drinksError } = await (supabaseAdmin || supabase)
           .from('menus')
           .select('id, nom, description, prix, is_drink, drink_price_small, drink_price_medium, drink_price_large')
           .in('id', formula.drink_options)
@@ -306,8 +314,10 @@ export async function GET(request, { params }) {
     // Filtrer les formules invalides (null) avant de les combiner
     const validFormulas = transformedFormulas.filter(f => f !== null);
     
-    // Combiner les menus et les formules
-    const allItems = [...transformedMenu, ...validFormulas];
+    // Combiner les menus et les formules, en excluant tout item indisponible (sécurité)
+    const allItems = [...transformedMenu, ...validFormulas].filter(
+      (item) => item.disponible !== false
+    );
 
     const res = NextResponse.json(allItems);
     // Empêcher caches (Vercel/CDN/navigateurs)

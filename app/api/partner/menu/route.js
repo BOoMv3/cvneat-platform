@@ -557,7 +557,8 @@ export async function PATCH(request) {
       );
     }
 
-    const { data, error } = await supabase
+    const db = supabaseAdmin || supabase;
+    const { data, error } = await db
       .from('menus')
       .update({ disponible: disponible !== false })
       .eq('id', id)

@@ -326,14 +326,37 @@ const enrichCombos = async (combos) => {
     return acc;
   }, new Map());
 
+  const linkedMenuIds = [
+    ...new Set(
+      (optionsData || [])
+        .filter((o) => o.linked_menu_id)
+        .map((o) => o.linked_menu_id)
+    )
+  ];
+  let menuDisponibleMap = new Map();
+  if (linkedMenuIds.length > 0 && supabaseAdmin) {
+    const { data: menusData } = await supabaseAdmin
+      .from('menus')
+      .select('id, disponible')
+      .in('id', linkedMenuIds);
+    (menusData || []).forEach((m) => {
+      menuDisponibleMap.set(m.id, m.disponible === true);
+    });
+  }
+
   const optionsByStep = optionsData.reduce((acc, option) => {
     const stepId = option.step_id;
     const list = acc.get(stepId) || [];
+    const linkedMenuDisponible = option.linked_menu_id
+      ? (menuDisponibleMap.get(option.linked_menu_id) ?? true)
+      : true;
+    const optionDisponible = option.disponible !== false && linkedMenuDisponible;
     list.push({
       ...option,
       prix_supplementaire: option.prix_supplementaire !== null ? parseFloat(option.prix_supplementaire) : 0,
       variants: variantsByOption.get(option.id) || [],
-      base_ingredients: baseIngredientsByOption.get(option.id) || []
+      base_ingredients: baseIngredientsByOption.get(option.id) || [],
+      disponible: optionDisponible
     });
     acc.set(stepId, list);
     return acc;
