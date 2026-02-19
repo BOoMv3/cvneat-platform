@@ -584,6 +584,14 @@ export default function AdminPage() {
                 <span className="text-xs sm:text-sm">Livreurs</span>
               </button>
               <button
+                onClick={() => router.push('/admin/delivery-applications')}
+                className="flex items-center justify-center px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Candidatures livreurs"
+              >
+                <FaUserPlus className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="text-xs sm:text-sm">Candidatures livreurs</span>
+              </button>
+              <button
                 onClick={() => router.push('/admin/create-order')}
                 className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
                 title="Créer une commande"

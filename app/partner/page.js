@@ -3709,22 +3709,31 @@ export default function PartnerDashboard() {
 
         {activeTab === 'menu' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap justify-between items-center gap-3">
               <h2 className="text-lg font-semibold">Gestion du menu</h2>
-              <button
-                onClick={() => {
-                  setEditingMenu(null);
-                  setMenuForm(createDefaultMenuForm());
-                  setShowMenuModal(true);
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Ajouter un plat
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('partner-menu-sections')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                >
+                  📂 Réordonner / renommer les sections
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingMenu(null);
+                    setMenuForm(createDefaultMenuForm());
+                    setShowMenuModal(true);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Ajouter un plat
+                </button>
+              </div>
             </div>
 
             {/* Sections affichées au client (Entrées / Plats / Desserts / ...) */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+            <div id="partner-menu-sections" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm scroll-mt-4">
               <div className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
