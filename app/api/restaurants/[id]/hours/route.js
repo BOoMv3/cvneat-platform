@@ -92,7 +92,8 @@ export async function GET(request, { params }) {
     console.log('Horaires formatées pour restaurant', id, ':', formattedHours);
 
     const fm = restaurant.ferme_manuellement;
-    const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1';
+    const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+      (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
     const res = json({
       hours: formattedHours,
       is_manually_closed: isManuallyClosed
@@ -134,23 +135,15 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Normaliser ferme_manuellement
-    let fermeManuel = restaurant.ferme_manuellement;
-    if (typeof fermeManuel === 'string') {
-      fermeManuel = fermeManuel.toLowerCase() === 'true' || fermeManuel === '1';
-    }
-    // LOGIQUE CRITIQUE: 
-    // - Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
-    // - Si ferme_manuellement = false → Vérifier les horaires (peut être ouvert)
-    // - Si ferme_manuellement = null ou undefined → Vérifier les horaires (peut être ouvert)
-    const isManuallyClosed = fermeManuel === true || 
-                             fermeManuel === 'true' || 
-                             fermeManuel === '1' || 
-                             fermeManuel === 1;
+    // Normaliser ferme_manuellement - UNIQUEMENT true si valeur explicitement truthy
+    const fm = restaurant.ferme_manuellement;
+    const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+      (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
+    // Tout le reste (false, 'false', null, undefined, '', etc.) = PAS fermé manuellement
     
     // LOGIQUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
     if (isManuallyClosed) {
-      console.log(`[API hours POST] Restaurant ${id} - FERMÉ MANUELLEMENT (ferme_manuellement = ${fermeManuel})`);
+      console.log(`[API hours POST] Restaurant ${id} - FERMÉ MANUELLEMENT (ferme_manuellement = ${fm})`);
       const res = json({
         isOpen: false,
         message: 'Restaurant fermé manuellement - Nécessite une ouverture manuelle',
@@ -162,7 +155,7 @@ export async function POST(request, { params }) {
     }
     
     // Si ferme_manuellement = false ou null/undefined → Vérifier les horaires
-    console.log(`[API hours POST] Restaurant ${id} - Vérification horaires (ferme_manuellement = ${fermeManuel})`);
+    console.log(`[API hours POST] Restaurant ${id} - Vérification horaires (ferme_manuellement = ${fm})`);
 
     // Si ferme_manuellement = false ou null, vérifier les horaires normalement
     let horaires = restaurant.horaires || {};

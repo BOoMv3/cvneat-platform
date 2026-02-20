@@ -482,13 +482,10 @@ export default function RestaurantDetail({ params }) {
       }
       
       // Forcer le booléen strict - Par défaut FERMÉ si pas explicitement ouvert
+      // IMPORTANT: Utiliser UNIQUEMENT la réponse POST hours comme source de vérité pour isManuallyClosed
+      // (éviter incohérence liste=ouvert / détail=fermé manuellement)
       const isOpen = openStatusData.isOpen === true;
-      const fm = restaurantData.ferme_manuellement;
-      const fmTruthy = fm === true || fm === 'true' || fm === 1 || fm === '1';
-      const isManuallyClosed = openStatusData.reason === 'manual' || 
-                               openStatusData.isManuallyClosed === true ||
-                               hoursData.is_manually_closed === true || 
-                               fmTruthy;
+      const isManuallyClosed = openStatusData.reason === 'manual' || openStatusData.isManuallyClosed === true;
       setIsRestaurantOpen(isOpen);
       setIsManuallyClosed(isManuallyClosed);
       
@@ -504,11 +501,7 @@ export default function RestaurantDetail({ params }) {
           id: restaurantData.id,
           isOpen,
           isManuallyClosed,
-          openStatusData,
-          hoursData_is_manually_closed: hoursData.is_manually_closed,
-          restaurantData_ferme_manuellement: restaurantData.ferme_manuellement,
-          ferme_manuellement_type: typeof restaurantData.ferme_manuellement,
-          fmTruthy
+          openStatusData
         });
       }
 
