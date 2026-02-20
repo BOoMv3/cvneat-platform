@@ -497,6 +497,20 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       console.log('📊 Statut ouvert reçu:', openStatusData);
       console.log('🔓 isRestaurantOpen sera:', isOpen);
       console.log('🔒 isManuallyClosed sera:', hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
+      // Debug Deliss King (liste vs détail)
+      if (restaurantData?.nom && (restaurantData.nom.toLowerCase().includes('deliss') || restaurantData.nom.toLowerCase().includes("deliss'"))) {
+        console.log(`[Restaurants] 🔍 DEBUG Deliss King (DÉTAIL):`, {
+          nom: restaurantData.nom,
+          id: restaurantData.id,
+          isOpen,
+          isManuallyClosed,
+          openStatusData,
+          hoursData_is_manually_closed: hoursData.is_manually_closed,
+          restaurantData_ferme_manuellement: restaurantData.ferme_manuellement,
+          ferme_manuellement_type: typeof restaurantData.ferme_manuellement,
+          fmTruthy
+        });
+      }
 
       await loadComboMenus(restaurantData.id || restaurantId);
     } catch (err) {

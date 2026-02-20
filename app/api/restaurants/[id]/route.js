@@ -51,7 +51,9 @@ export async function GET(request, { params }) {
       mise_en_avant_fin: data.mise_en_avant_fin || null
     };
 
-    return NextResponse.json(restaurantWithDefaults);
+    const res = NextResponse.json(restaurantWithDefaults);
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    return res;
   } catch (error) {
     console.error('❌ Erreur serveur lors de la récupération du restaurant:', error);
     return NextResponse.json(

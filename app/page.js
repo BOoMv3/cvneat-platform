@@ -974,6 +974,22 @@ export default function Home() {
               });
             }
             
+            // Log spécial pour Deliss King (liste vs détail)
+            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('deliss') || restaurant.nom.toLowerCase().includes('deliss\''))) {
+              console.log(`[Restaurants] 🔍 DEBUG Deliss King (LISTE):`, {
+                nom: restaurant.nom,
+                id: restaurant.id,
+                isOpen: status.isOpen,
+                isManuallyClosed: status.isManuallyClosed,
+                reason: status.reason,
+                ferme_manuellement: restaurant.ferme_manuellement,
+                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
+                ferme_manuellement_JSON: JSON.stringify(restaurant.ferme_manuellement),
+                hasHoraires: !!restaurant.horaires,
+                horairesKeys: restaurant.horaires && typeof restaurant.horaires === 'object' ? Object.keys(restaurant.horaires) : 'N/A'
+              });
+            }
+            
             // Log spécial pour Smaash Burger
             if (restaurant.nom && (restaurant.nom.toLowerCase().includes('smaash') || restaurant.nom.toLowerCase().includes('smaash burger'))) {
               console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "Smaash Burger":`, {
