@@ -7,14 +7,15 @@ export default function PreventiveAlert({ order, onAccept, onDismiss }) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    if (!order.preparation_time || !order.updated_at) {
+    const prepStart = order.preparation_started_at || order.accepted_at || order.created_at;
+    if (!order.preparation_time || !prepStart) {
       setTimeRemaining(null);
       return;
     }
 
     const calculateTimeRemaining = () => {
       const now = new Date();
-      const preparationStart = new Date(order.updated_at);
+      const preparationStart = new Date(prepStart);
       const preparationEnd = new Date(preparationStart.getTime() + (order.preparation_time * 60 * 1000));
       const remaining = preparationEnd.getTime() - now.getTime();
       
@@ -36,7 +37,7 @@ export default function PreventiveAlert({ order, onAccept, onDismiss }) {
     const interval = setInterval(calculateTimeRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [order.preparation_time, order.updated_at]);
+  }, [order.preparation_time, order.preparation_started_at, order.accepted_at, order.created_at]);
 
   const handleAccept = () => {
     if (onAccept) {

@@ -81,7 +81,7 @@ export async function GET(request) {
         continue;
       }
 
-      const preparationStart = new Date(order.updated_at);
+      const preparationStart = new Date(order.preparation_started_at || order.accepted_at || order.created_at);
       const preparationEnd = new Date(preparationStart.getTime() + (order.preparation_time * 60 * 1000));
       const timeRemaining = preparationEnd.getTime() - now.getTime();
       const minutesRemaining = Math.ceil(timeRemaining / (60 * 1000));
@@ -96,6 +96,9 @@ export async function GET(request) {
           restaurant_name: order.restaurant?.nom,
           restaurant_address: order.restaurant?.adresse,
           preparation_time: order.preparation_time,
+          preparation_started_at: order.preparation_started_at,
+          accepted_at: order.accepted_at,
+          created_at: order.created_at,
           time_remaining_minutes: Math.ceil(timeRemaining / (60 * 1000)),
           total_price: order.total,
           items: order.details_commande

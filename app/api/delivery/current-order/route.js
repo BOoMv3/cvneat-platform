@@ -49,7 +49,7 @@ export async function GET(request) {
     // Inclure explicitement security_code pour que le livreur puisse le voir
     const { data: order, error } = await supabaseAdmin
       .from('commandes')
-      .select('id, created_at, updated_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, security_code, preparation_time')
+      .select('id, created_at, updated_at, accepted_at, preparation_started_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, security_code, preparation_time')
       .eq('livreur_id', user.id) // Commandes assignées à ce livreur
       .in('statut', ['en_livraison', 'en_preparation']) // Commandes en livraison ou en préparation (livreur peut voir avant livraison)
       .order('created_at', { ascending: false })
