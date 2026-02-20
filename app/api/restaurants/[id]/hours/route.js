@@ -91,10 +91,14 @@ export async function GET(request, { params }) {
     
     console.log('Horaires formatées pour restaurant', id, ':', formattedHours);
 
-    return json({
+    const fm = restaurant.ferme_manuellement;
+    const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1';
+    const res = json({
       hours: formattedHours,
-      is_manually_closed: restaurant.ferme_manuellement || false
+      is_manually_closed: isManuallyClosed
     });
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    return res;
   } catch (error) {
     console.error('Erreur récupération horaires:', error);
     return json({ error: 'Erreur serveur' }, { status: 500 });
@@ -147,11 +151,14 @@ export async function POST(request, { params }) {
     // LOGIQUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
     if (isManuallyClosed) {
       console.log(`[API hours POST] Restaurant ${id} - FERMÉ MANUELLEMENT (ferme_manuellement = ${fermeManuel})`);
-      return json({
+      const res = json({
         isOpen: false,
         message: 'Restaurant fermé manuellement - Nécessite une ouverture manuelle',
-        reason: 'manual'
+        reason: 'manual',
+        isManuallyClosed: true
       });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
     }
     
     // Si ferme_manuellement = false ou null/undefined → Vérifier les horaires
@@ -403,10 +410,11 @@ export async function POST(request, { params }) {
       ? todayHours.plages.map(p => ({ ouverture: p.ouverture, fermeture: p.fermeture }))
       : (todayHours.ouverture && todayHours.fermeture ? [{ ouverture: todayHours.ouverture, fermeture: todayHours.fermeture }] : []);
 
-    return json({
+    const res = json({
       isOpen: finalIsOpen,
       message: finalIsOpen ? 'Restaurant ouvert' : (reason === 'manual' ? 'Restaurant fermé manuellement' : 'Restaurant fermé'),
       reason: reason,
+      isManuallyClosed: false,
       openTime: matchingPlage?.ouverture || todayHours.ouverture || null,
       closeTime: matchingPlage?.fermeture || todayHours.fermeture || null,
       plages: plagesInfo,
@@ -421,6 +429,8 @@ export async function POST(request, { params }) {
         plagesCount: todayHours.plages?.length
       }
     });
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    return res;
   } catch (error) {
     console.error('Erreur vérification horaires:', error);
     return json({ error: 'Erreur serveur' }, { status: 500 });

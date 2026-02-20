@@ -263,6 +263,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
           if (response.ok) {
             const data = await response.json();
             setIsRestaurantOpen(data.isOpen === true);
+            // Mettre à jour isManuallyClosed pour éviter incohérence (affichage fermé/ouvert qui clignote)
+            setIsManuallyClosed(data.reason === 'manual' || data.isManuallyClosed === true);
             console.log('Statut rafraîchi:', data);
           }
         } catch (err) {
@@ -481,9 +483,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       
       // Forcer le booléen strict - Par défaut FERMÉ si pas explicitement ouvert
       const isOpen = openStatusData.isOpen === true;
+      const fm = restaurantData.ferme_manuellement;
+      const fmTruthy = fm === true || fm === 'true' || fm === 1 || fm === '1';
       const isManuallyClosed = openStatusData.reason === 'manual' || 
+                               openStatusData.isManuallyClosed === true ||
                                hoursData.is_manually_closed === true || 
-                               restaurantData.ferme_manuellement === true;
+                               fmTruthy;
       setIsRestaurantOpen(isOpen);
       setIsManuallyClosed(isManuallyClosed);
       
