@@ -47,15 +47,16 @@ export async function GET() {
 
     if (!data || data.length === 0) {
       const res = NextResponse.json([]);
-      // Short cache to avoid repeated cold starts.
-      res.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
+      // Pas de cache pour garder ferme_manuellement à jour (éviter liste "ouvert" vs détail "fermé manuellement")
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
       return res;
     }
 
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
     const res = NextResponse.json(data);
-    res.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
+    // Pas de cache pour ferme_manuellement frais (cohérence liste/détail)
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
     return res;
   } catch (error) {
     console.error('❌ Erreur serveur lors de la récupération des restaurants:', error);

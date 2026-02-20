@@ -769,6 +769,7 @@ export default function Home() {
           console.log('[Restaurants] Mode Web - Utilisation de l\'API Next.js');
           
           const response = await fetch('/api/restaurants', {
+            cache: 'no-store',
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json'
