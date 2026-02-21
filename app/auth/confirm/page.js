@@ -9,13 +9,12 @@ const parseHashParams = () => {
   if (typeof window === 'undefined') {
     return null;
   }
-
+  // Supabase peut utiliser hash (#...) ou query (?...) selon le flux
   const hash = window.location.hash;
-  if (!hash || hash.length < 2) {
-    return null;
-  }
-
-  return new URLSearchParams(hash.substring(1));
+  const search = window.location.search;
+  const hashParams = hash && hash.length > 1 ? new URLSearchParams(hash.substring(1)) : null;
+  const searchParams = search && search.length > 1 ? new URLSearchParams(search.substring(1)) : null;
+  return hashParams ?? searchParams;
 };
 
 const ALLOWED_TYPES = new Set(['signup', 'email_change', 'magiclink']);
@@ -42,7 +41,7 @@ export default function ConfirmEmailPage() {
           }
 
           if (!ALLOWED_TYPES.has(type ?? '')) {
-            setError("Lien invalide ou expiré. Veuillez recommencer la procédure depuis CVN'EAT.");
+            setError("Ce lien n'est plus valide. Si vous venez de créer votre compte, essayez de vous connecter — l'inscription a peut-être déjà réussi.");
             setLoading(false);
             return;
           }
@@ -80,7 +79,8 @@ export default function ConfirmEmailPage() {
         }
 
         if (!session) {
-          setError("Lien invalide ou expiré. Veuillez recommencer la procédure depuis CVN'EAT.");
+          // Pas de session : lien expiré OU compte déjà confirmé (auto-confirm). Message bienveillant.
+          setError("Ce lien a peut-être déjà été utilisé ou a expiré. Si vous venez de créer votre compte, essayez de vous connecter — votre inscription a peut-être déjà réussi.");
           setLoading(false);
           return;
         }
@@ -135,14 +135,13 @@ export default function ConfirmEmailPage() {
         )}
 
         {!loading && !success && error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm space-y-3">
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm space-y-3">
             <p>{error}</p>
-            <p>
-              Si le problème persiste, contactez le support :
-              {' '}
-              <Link href="mailto:contact@cvneat.fr" className="text-indigo-600 font-medium">
-                contact@cvneat.fr
-              </Link>
+            <p className="font-medium">
+              → <Link href="/login" className="text-indigo-600 underline">Aller à la connexion</Link>
+            </p>
+            <p className="text-xs text-amber-700">
+              Si le problème persiste : <Link href="mailto:contact@cvneat.fr" className="text-indigo-600">contact@cvneat.fr</Link>
             </p>
           </div>
         )}

@@ -66,63 +66,70 @@ export async function POST(request) {
         try {
           const { data: order, error: orderErr } = await sb
             .from('commandes')
-            .select('id, discount_amount, promo_code_id')
+            .select('id, discount_amount, promo_code_id, frais_livraison, total')
             .eq('id', orderId)
             .single();
 
           if (!orderErr && order) {
-            const { data: details, error: detErr } = await sb
-              .from('details_commande')
-              .select('quantite, prix_unitaire')
-              .eq('commande_id', orderId);
+            const PLATFORM_FEE = 0.49;
+            const AMOUNT_TOLERANCE = 0.05; // Tolérance arrondi sur le total
 
-            if (!detErr && Array.isArray(details)) {
-              const subtotal = details.reduce((sum, d) => {
-                const q = parseFloat(d.quantite || 0) || 0;
-                const pu = parseFloat(d.prix_unitaire || 0) || 0;
-                return sum + q * pu;
-              }, 0);
+            // Déterminer si la livraison est offerte via le code promo (si présent)
+            let isFreeDelivery = false;
+            if (order.promo_code_id) {
+              const { data: promo } = await sb
+                .from('promo_codes')
+                .select('discount_type')
+                .eq('id', order.promo_code_id)
+                .maybeSingle();
+              isFreeDelivery = promo?.discount_type === 'free_delivery';
+            }
 
-              const discount = Math.min(
-                Math.max(0, parseFloat(order.discount_amount || 0) || 0),
-                subtotal
+            // Utiliser les valeurs STOCKÉES dans la commande (source de vérité) - pas de recalcul depuis details_commande
+            // qui peut diverger (formules, combos, arrondis)
+            const subtotal = parseFloat(order.total || 0) || 0;
+            const discount = Math.min(Math.max(0, parseFloat(order.discount_amount || 0) || 0), subtotal);
+            const subtotalAfterDiscount = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
+            const storedDeliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+
+            const expectedAmount = Math.round((subtotalAfterDiscount + (isFreeDelivery ? 0 : storedDeliveryFee) + PLATFORM_FEE) * 100) / 100;
+            const amountDiff = Math.abs(amountNumber - expectedAmount);
+
+            // 1. Vérifier frais_livraison >= 2.50€ (sauf livraison offerte)
+            if (!isFreeDelivery && storedDeliveryFee < 2.50) {
+              console.error('❌ Frais de livraison < 2.50€ dans la commande:', {
+                orderId,
+                storedDeliveryFee,
+                order_total: order.total,
+                order_frais_livraison: order.frais_livraison,
+              });
+              return NextResponse.json(
+                {
+                  error: 'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
+                  code: 'DELIVERY_FEE_TOO_LOW',
+                },
+                { status: 400, headers: corsHeaders }
               );
-              const subtotalAfterDiscount = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
+            }
 
-              // Déterminer si la livraison est offerte via le code promo (si présent)
-              let isFreeDelivery = false;
-              if (order.promo_code_id) {
-                const { data: promo } = await sb
-                  .from('promo_codes')
-                  .select('discount_type')
-                  .eq('id', order.promo_code_id)
-                  .maybeSingle();
-                isFreeDelivery = promo?.discount_type === 'free_delivery';
-              }
-
-              const PLATFORM_FEE = 0.49;
-              const derivedDeliveryFee = Math.round((amountNumber - subtotalAfterDiscount - PLATFORM_FEE) * 100) / 100;
-
-              if (!isFreeDelivery && derivedDeliveryFee < 2.5 - 0.01) {
-                console.error('❌ Montant incohérent: frais de livraison < 2.50€ détectés', {
-                  orderId,
-                  amountNumber,
-                  subtotal,
-                  subtotalAfterDiscount,
-                  discount,
-                  platformFee: PLATFORM_FEE,
-                  derivedDeliveryFee,
-                  promo_code_id: order.promo_code_id,
-                });
-                return NextResponse.json(
-                  {
-                    error:
-                      'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
-                    code: 'DELIVERY_FEE_TOO_LOW',
-                  },
-                  { status: 400, headers: corsHeaders }
-                );
-              }
+            // 2. Vérifier que le montant envoyé correspond au montant attendu (tolérance arrondi)
+            if (amountDiff > AMOUNT_TOLERANCE) {
+              console.error('❌ Montant incohérent avec la commande:', {
+                orderId,
+                amountNumber,
+                expectedAmount,
+                amountDiff,
+                subtotalAfterDiscount,
+                storedDeliveryFee,
+                isFreeDelivery,
+              });
+              return NextResponse.json(
+                {
+                  error: 'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
+                  code: 'AMOUNT_MISMATCH',
+                },
+                { status: 400, headers: corsHeaders }
+              );
             }
           }
         } catch (e) {
