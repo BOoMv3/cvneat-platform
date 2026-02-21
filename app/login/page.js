@@ -21,8 +21,6 @@ export default function LoginPage() {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🔐 handleLogin appelé', { email: email ? 'présent' : 'vide', password: password ? 'présent' : 'vide' });
-    
     if (!email || !password) {
       setError('Veuillez remplir tous les champs');
       return;
@@ -33,27 +31,22 @@ export default function LoginPage() {
     setSuccess('');
 
     try {
-      console.log('🔐 Tentative de connexion pour:', email);
-      console.log('🔐 Supabase client disponible:', !!supabase);
-      console.log('🔐 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Défini' : 'MANQUANT');
-      
+      // Normaliser l'email en minuscules (Supabase stocke en lowercase)
+      const normalizedEmail = String(email).trim().toLowerCase();
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: normalizedEmail,
         password: password,
       });
-      
-      console.log('🔐 Réponse Supabase:', { hasData: !!data, hasError: !!error, error: error?.message });
-
       if (error) {
-        console.error('❌ Erreur de connexion:', error);
         // Traduire les messages d'erreur en français
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Email ou mot de passe incorrect';
+          errorMessage = 'Email ou mot de passe incorrect. Utilisez le même email qu’à l’inscription (en minuscules) et vérifiez votre mot de passe.';
         } else if (error.message.includes('Email not confirmed')) {
-          // L'email est maintenant confirmé automatiquement, donc cette erreur ne devrait plus arriver
-          // Mais si elle arrive, on affiche un message générique
-          errorMessage = 'Email ou mot de passe incorrect';
+          errorMessage = 'Votre compte n’est pas encore confirmé. Utilisez le lien reçu par email ou réinitialisez votre mot de passe ci-dessous.';
+        } else if (error.message.includes('User is banned') || error.message?.includes('banned')) {
+          errorMessage = 'Ce compte est suspendu. Contactez le support CVN\'EAT.';
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
         } else if (error.message.includes('User not found')) {
@@ -67,8 +60,6 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        console.log('✅ Connexion réussie, utilisateur:', data.user.id);
-        
         // Rediriger selon le rôle
         try {
           // IMPORTANT:
@@ -171,7 +162,6 @@ export default function LoginPage() {
           // Alias possibles
           if (role === 'restaurateur' || role === 'restauranteur') role = 'restaurant';
 
-          console.log('✅ Rôle utilisateur détecté:', role);
 
           // Cache rôle (important pour l'app native: cold-start/resume)
           try {
@@ -184,7 +174,6 @@ export default function LoginPage() {
           const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
           if (redirectAfterLogin) {
             localStorage.removeItem('redirectAfterLogin');
-            console.log('🔄 Redirection vers:', redirectAfterLogin);
             router.push(redirectAfterLogin);
             return;
           }
@@ -290,6 +279,11 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              <p className="mt-2 text-right">
+                <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400">
+                  Mot de passe oublié ?
+                </Link>
+              </p>
             </div>
 
             {success && (
@@ -307,11 +301,6 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || !email || !password}
-                onClick={(e) => {
-                  console.log('🔐 Bouton cliqué', { loading, email: !!email, password: !!password });
-                  // Ne pas empêcher la soumission du formulaire, juste logger
-                  // La validation se fait dans handleLogin
-                }}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Connexion...' : 'Se connecter'}
