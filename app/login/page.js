@@ -34,10 +34,37 @@ export default function LoginPage() {
       // Normaliser l'email en minuscules (Supabase stocke en lowercase)
       const normalizedEmail = String(email).trim().toLowerCase();
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      let loginResult = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password: password,
       });
+      let { data, error } = loginResult;
+
+      const isCredsOrUnconfirmed =
+        error &&
+        (error.message?.includes('Invalid login credentials') || error.message?.includes('Email not confirmed'));
+
+      if (isCredsOrUnconfirmed) {
+        try {
+          const confirmRes = await fetch('/api/auth/ensure-email-confirmed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: normalizedEmail }),
+          });
+          const confirmData = await confirmRes.json().catch(() => ({}));
+          if (confirmData?.success && confirmData?.updated) {
+            loginResult = await supabase.auth.signInWithPassword({
+              email: normalizedEmail,
+              password: password,
+            });
+            data = loginResult.data;
+            error = loginResult.error;
+          }
+        } catch (_) {
+          /* ignorer */
+        }
+      }
+
       if (error) {
         // Traduire les messages d'erreur en français
         let errorMessage = error.message;
