@@ -110,6 +110,26 @@ export async function GET(request) {
           seen.add(k);
           uniq.push(name);
         }
+
+        // Appliquer l'ordre sauvegardé par le partenaire (category_order)
+        let orderArr = [];
+        try {
+          const { data: resto } = await db.from('restaurants').select('category_order').eq('id', restaurantId).single();
+          orderArr = Array.isArray(resto?.category_order) ? resto.category_order : [];
+        } catch (_) {
+          /* colonne category_order peut ne pas exister */
+        }
+        if (orderArr.length > 0) {
+          const orderSet = new Set(orderArr.map((n) => String(n || '').toLowerCase().trim()).filter(Boolean));
+          const ordered = orderArr.filter((n) => {
+            const k = String(n || '').toLowerCase().trim();
+            return uniq.some((u) => u.toLowerCase().trim() === k);
+          });
+          const rest = uniq.filter((n) => !orderSet.has(n.toLowerCase().trim()));
+          uniq.length = 0;
+          uniq.push(...ordered, ...rest);
+        }
+
         return NextResponse.json(
           uniq.map((name, idx) => ({ id: `derived-${idx + 1}`, name, description: '', sort_order: idx + 1 }))
         );

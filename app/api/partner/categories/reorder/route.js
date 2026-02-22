@@ -68,22 +68,47 @@ export async function PUT(request) {
       return NextResponse.json({ error: ownership.error }, { status: ownership.status });
     }
 
-    // Mettre à jour l'ordre de toutes les catégories
-    const updates = categories.map((category, index) => ({
-      id: category.id,
-      sort_order: index + 1
-    }));
+    const realCategories = categories.filter((c) => c?.id && !String(c.id).startsWith('derived-'));
+    const derivedCategories = categories.filter((c) => c?.id && String(c.id).startsWith('derived-'));
 
-    const { error } = await db
-      .from('menu_categories')
-      .upsert(updates, { onConflict: 'id' });
+    // Cas 1: Sections réelles dans menu_categories
+    if (realCategories.length > 0) {
+      const updates = realCategories.map((category, index) => ({
+        id: category.id,
+        sort_order: index + 1
+      }));
 
-    // Si la colonne sort_order n'existe pas, on ne peut pas réordonner => ne pas 500
-    if (error) {
-      if (isMissingColumnError(error, 'sort_order')) {
-        return NextResponse.json({ success: true, warning: 'sort_order_non_disponible' });
+      const { error } = await db
+        .from('menu_categories')
+        .upsert(updates, { onConflict: 'id' });
+
+      if (error) {
+        if (isMissingColumnError(error, 'sort_order')) {
+          return NextResponse.json({ success: true, warning: 'sort_order_non_disponible' });
+        }
+        throw error;
       }
-      throw error;
+    }
+
+    // Cas 2: Sections dérivées (catégories des plats) -> sauvegarder l'ordre sur le restaurant
+    if (derivedCategories.length > 0) {
+      const namesInOrder = derivedCategories
+        .map((c) => (c?.name || '').trim())
+        .filter(Boolean);
+      if (namesInOrder.length > 0) {
+        try {
+          const { error: updErr } = await db
+            .from('restaurants')
+            .update({ category_order: namesInOrder })
+            .eq('id', restaurantId);
+
+          if (updErr && !isMissingColumnError(updErr, 'category_order')) {
+            console.warn('⚠️ Mise à jour category_order:', updErr);
+          }
+        } catch (e) {
+          if (!isMissingColumnError(e, 'category_order')) throw e;
+        }
+      }
     }
 
     return NextResponse.json({ success: true });

@@ -105,7 +105,8 @@ export async function PUT(request, { params }) {
       commission_rate,
       legal_name,
       siret,
-      vat_number
+      vat_number,
+      strategie_boost_reduction_pct
     } = await request.json();
 
     const updateData = {};
@@ -120,6 +121,7 @@ export async function PUT(request, { params }) {
     if (legal_name !== undefined) updateData.legal_name = legal_name;
     if (siret !== undefined) updateData.siret = siret;
     if (vat_number !== undefined) updateData.vat_number = vat_number;
+    if (strategie_boost_reduction_pct !== undefined) updateData.strategie_boost_reduction_pct = strategie_boost_reduction_pct === '' || strategie_boost_reduction_pct === null ? null : Number(strategie_boost_reduction_pct);
 
     const { data: updatedRestaurant, error } = await supabase
       .from('restaurants')

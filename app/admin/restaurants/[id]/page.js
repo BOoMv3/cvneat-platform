@@ -16,6 +16,8 @@ export default function RestaurantDetail({ params }) {
   const [sireneError, setSireneError] = useState(null);
   const [sireneQuery, setSireneQuery] = useState({ name: '', postalCode: '', city: '' });
   const [sireneResults, setSireneResults] = useState([]);
+  const [reductionPct, setReductionPct] = useState('');
+  const [savingReduction, setSavingReduction] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -34,6 +36,7 @@ export default function RestaurantDetail({ params }) {
 
       if (error) throw error;
       setRestaurant(data);
+      setReductionPct(data?.strategie_boost_reduction_pct != null ? String(data.strategie_boost_reduction_pct) : '');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,6 +73,38 @@ export default function RestaurantDetail({ params }) {
       setSireneError(e.message || 'Erreur INSEE SIRENE');
     } finally {
       setSireneLoading(false);
+    }
+  };
+
+  const saveReductionPct = async () => {
+    if (!restaurant) return;
+    setSavingReduction(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+      const val = reductionPct === '' ? null : parseInt(reductionPct, 10);
+      if (val !== null && (isNaN(val) || val > 0 || val < -50)) {
+        alert('Valeur invalide (-50 à 0)');
+        return;
+      }
+      const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ strategie_boost_reduction_pct: val }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Erreur sauvegarde');
+      setRestaurant((prev) => ({ ...prev, strategie_boost_reduction_pct: val }));
+    } catch (e) {
+      alert(e.message || 'Erreur');
+    } finally {
+      setSavingReduction(false);
     }
   };
 
@@ -311,6 +346,29 @@ export default function RestaurantDetail({ params }) {
                     <p><span className="font-medium">Type de cuisine :</span> {restaurant.type_cuisine}</p>
                     <p><span className="font-medium">Capacite :</span> {restaurant.capacite} couverts</p>
                     <p><span className="font-medium">Commission CVN'EAT :</span> {restaurant.commission_rate ?? 20}%</p>
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="font-medium text-amber-800">Stratégie Boost — Réduction prévue (admin)</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="number"
+                          value={reductionPct}
+                          onChange={(e) => setReductionPct(e.target.value)}
+                          placeholder="vide = non config"
+                          min="-50"
+                          max="0"
+                          className="w-20 px-2 py-1 border rounded text-sm"
+                        />
+                        <span className="text-sm">%</span>
+                        <button
+                          onClick={saveReductionPct}
+                          disabled={savingReduction}
+                          className="px-2 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 disabled:opacity-60"
+                        >
+                          {savingReduction ? '...' : 'Sauver'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">-20 (+25%), -17 (+20%), -13 (+15%), -9 (+10%), 0 (déjà OK). Vide = partenaire doit appeler.</p>
+                    </div>
                   </div>
                 </div>
                 

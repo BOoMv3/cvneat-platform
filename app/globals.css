@@ -733,6 +733,20 @@ html.capacitor-app {
   50% { transform: scale(1.05); opacity: 0.8; }
 }
 
+/* Clignotement rouge pour attirer l'attention sur le message stratégie partenaire */
+@keyframes strategyMessageBlink {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(239, 68, 68, 0.2), 0 0 30px 4px rgba(239, 68, 68, 0.5);
+  }
+}
+
+.strategy-message-blink {
+  animation: strategyMessageBlink 0.9s ease-in-out infinite;
+}
+
 /* Cards restaurants style app */
 .restaurant-card-app {
   border-radius: 1rem;

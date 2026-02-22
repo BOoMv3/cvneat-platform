@@ -22,7 +22,9 @@ import {
   FaInstagram,
   FaFacebook,
   FaArrowUp,
-  FaMotorcycle
+  FaMotorcycle,
+  FaEnvelope,
+  FaComments
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
@@ -55,16 +57,8 @@ export default function PartnerDashboard() {
   const [menuSections, setMenuSections] = useState([]); // Sections affichées côté client (Entrées, Plats, ...)
   const [formulas, setFormulas] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Initialiser activeTab depuis l'URL hash si présent
-  const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash.replace('#', '');
-      if (['orders', 'menu', 'dashboard', 'formulas', 'combos'].includes(hash)) {
-        return hash;
-      }
-    }
-    return 'dashboard';
-  });
+  // Toujours ouvrir sur le dashboard à l'allumage / rafraîchissement (priorité au message stratégie)
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [showMenuModal, setShowMenuModal] = useState(false);
   const createDefaultMenuForm = () => ({
     nom: '',
@@ -113,6 +107,13 @@ export default function PartnerDashboard() {
   const audioUnlockedRef = useRef(false);
   const authTokenRef = useRef(null);
   const [notifsRealtimeOk, setNotifsRealtimeOk] = useState(false);
+  const [strategyStatus, setStrategyStatus] = useState({ loading: true, accepted: false, acceptedAt: null, reductionPct: null });
+  const [strategyAccepting, setStrategyAccepting] = useState(false);
+  const [bulkAdjusting, setBulkAdjusting] = useState(false);
+  const [partnerMessages, setPartnerMessages] = useState([]);
+  const [partnerMessagesUnread, setPartnerMessagesUnread] = useState(0);
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const router = useRouter();
 
   const [supplementForm, setSupplementForm] = useState({
@@ -140,7 +141,7 @@ export default function PartnerDashboard() {
   const isFetchingRef = useRef(false);
   const isFetchingCombosRef = useRef(false);
 
-  // Synchroniser activeTab avec l'URL hash
+  // Synchroniser activeTab avec l'URL hash (uniquement lors des clics de navigation, pas au chargement)
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
@@ -148,12 +149,6 @@ export default function PartnerDashboard() {
         setActiveTab(hash);
       }
     };
-    
-    // Vérifier le hash initial au chargement
-    if (typeof window !== 'undefined') {
-      handleHashChange();
-    }
-    
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -268,6 +263,24 @@ export default function PartnerDashboard() {
         await fetchOrders(resto.id);
         await fetchFormulas();
         await fetchCombos(resto.id);
+        fetchPartnerMessages();
+      }
+
+      // Statut stratégie "Boost ventes"
+      try {
+        const token = session?.access_token;
+        const res = await fetch('/api/partner/strategy-accept', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json().catch(() => ({}));
+        setStrategyStatus({
+          loading: false,
+          accepted: !!data?.accepted,
+          acceptedAt: data?.acceptedAt || null,
+          reductionPct: data?.reductionPct ?? null,
+        });
+      } catch {
+        setStrategyStatus({ loading: false, accepted: false, acceptedAt: null, reductionPct: null });
       }
 
       // Prompt quotidien directement sur le dashboard (timezone France)
@@ -737,7 +750,7 @@ export default function PartnerDashboard() {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           restaurantId: restaurant.id,
-          categories: payload.map((s) => ({ id: s.id }))
+          categories: payload.map((s) => ({ id: s.id, name: s.name }))
         })
       });
       const data = await response.json().catch(() => ({}));
@@ -748,6 +761,110 @@ export default function PartnerDashboard() {
       alert(e?.message || 'Erreur réorganisation sections');
       // rollback visuel
       await fetchMenuSections(restaurant.id);
+    }
+  };
+
+  const acceptStrategyBoost = async () => {
+    setStrategyAccepting(true);
+    try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token;
+      const res = await fetch('/api/partner/strategy-accept', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erreur');
+      setStrategyStatus((prev) => ({
+        ...prev,
+        loading: false,
+        accepted: true,
+        acceptedAt: data?.acceptedAt || new Date().toISOString(),
+        reductionPct: data?.reductionPct ?? prev.reductionPct,
+      }));
+      alert('Merci ! L\'admin configurera votre réduction. Si elle est déjà prête, vous pouvez l\'appliquer ci-dessous.');
+    } catch (e) {
+      alert(e?.message || 'Erreur lors de l\'envoi');
+    } finally {
+      setStrategyAccepting(false);
+    }
+  };
+
+  const fetchPartnerMessages = async () => {
+    setMessagesLoading(true);
+    try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token;
+      const res = await fetch('/api/partner/messages', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json().catch(() => ({}));
+      setPartnerMessages(data.messages || []);
+      setPartnerMessagesUnread(data.unreadCount ?? 0);
+    } catch {
+      setPartnerMessages([]);
+      setPartnerMessagesUnread(0);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const markMessageAsRead = async (messageId) => {
+    try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token;
+      await fetch(`/api/partner/messages/${messageId}/read`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setPartnerMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, read: true } : m))
+      );
+      setPartnerMessagesUnread((n) => Math.max(0, n - 1));
+    } catch {
+      // ignore
+    }
+  };
+
+  const hideMessage = async (messageId, wasUnread) => {
+    try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token;
+      await fetch(`/api/partner/messages/${messageId}/hide`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setPartnerMessages((prev) => prev.filter((m) => m.id !== messageId));
+      if (wasUnread) setPartnerMessagesUnread((n) => Math.max(0, n - 1));
+    } catch {
+      // ignore
+    }
+  };
+
+  const runBulkPriceAdjust = async () => {
+    if (!restaurant?.id) return;
+    setBulkAdjusting(true);
+    try {
+      const { data: auth } = await supabase.auth.getSession();
+      const token = auth?.session?.access_token;
+      const res = await fetch('/api/partner/menu/bulk-adjust', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ restaurantId: restaurant.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erreur');
+      await fetchMenu(restaurant.id);
+      const pct = strategyStatus.reductionPct ?? 0;
+      if (pct === 0) {
+        alert('✅ Aucune modification effectuée. Vos prix sont déjà au bon niveau.');
+      } else {
+        alert(`✅ ${data.updated || 0} plat(s) mis à jour. Vos prix ont été réduits de ${Math.abs(pct)}%.`);
+      }
+    } catch (e) {
+      alert(e?.message || 'Erreur lors de l\'ajustement');
+    } finally {
+      setBulkAdjusting(false);
     }
   };
 
@@ -2554,6 +2671,75 @@ export default function PartnerDashboard() {
         </div>
       )}
 
+      {/* Modal Messagerie CVN'EAT */}
+      {showMessagesModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" onClick={() => setShowMessagesModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <FaEnvelope className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Messagerie CVN&apos;EAT</h2>
+                {partnerMessagesUnread > 0 && (
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-medium rounded-full">
+                    {partnerMessagesUnread}
+                  </span>
+                )}
+              </div>
+              <button onClick={() => setShowMessagesModal(false)} className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <FaTimes className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {messagesLoading ? (
+                <p className="text-sm text-gray-500">Chargement...</p>
+              ) : partnerMessages.length === 0 ? (
+                <p className="text-sm text-gray-500">Aucun message</p>
+              ) : (
+                <div className="space-y-3">
+                  {partnerMessages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`rounded-lg p-3 border relative group ${
+                        m.read
+                          ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
+                          : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
+                      }`}
+                    >
+                      <div
+                        onClick={() => !m.read && markMessageAsRead(m.id)}
+                        className="pr-8"
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="font-medium text-gray-900 dark:text-white">{m.subject || '(sans sujet)'}</span>
+                          <span className="text-xs text-gray-500 whitespace-nowrap">
+                            {new Date(m.created_at).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-wrap">{m.body}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); hideMessage(m.id, !m.read); }}
+                        className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        title="Supprimer"
+                      >
+                        <FaTrash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-6 lg:px-8">
@@ -2574,6 +2760,22 @@ export default function PartnerDashboard() {
                   <p className="text-xs fold:text-xs xs:text-sm sm:text-base text-gray-600 dark:text-gray-300 truncate">{restaurant?.nom}</p>
                 </div>
               </div>
+              {/* Icône messagerie CVN'EAT avec badge non lus */}
+              <button
+                onClick={() => {
+                  setShowMessagesModal(true);
+                  fetchPartnerMessages();
+                }}
+                className="relative p-2.5 sm:p-3 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors flex-shrink-0"
+                title="Messagerie CVN'EAT"
+              >
+                <FaEnvelope className="h-6 w-6 sm:h-7 sm:w-7" />
+                {partnerMessagesUnread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full">
+                    {partnerMessagesUnread > 99 ? '99+' : partnerMessagesUnread}
+                  </span>
+                )}
+              </button>
             </div>
             
             {/* Boutons d'action - Responsive mobile et foldable */}
@@ -2750,6 +2952,92 @@ export default function PartnerDashboard() {
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
+            {/* Message stratégie "Boost ventes" - Prix boutique / Commission réduite */}
+            {!strategyStatus.loading && !strategyStatus.accepted && restaurant && (
+              <div className="strategy-message-blink bg-gradient-to-r from-red-50 to-rose-100 dark:from-red-950/50 dark:to-red-900/40 rounded-xl border-2 border-red-500 dark:border-red-500 p-6 shadow-md">
+                <h2 className="text-xl font-bold text-red-900 dark:text-red-100 mb-4 flex items-center gap-2">
+                  <FaChartLine className="text-red-600 dark:text-red-400" />
+                  Nouvelle stratégie : booster les ventes pour tout le monde
+                </h2>
+                <div className="space-y-4 text-sm text-gray-800 dark:text-gray-200">
+                  <p>
+                    Après plus de <strong>3 mois d&apos;activité</strong>, nous avons une base de clients solide et CVN&apos;EAT fonctionne bien.
+                    Nous améliorons la plateforme en continu et cherchons la <strong>satisfaction de tous</strong> — partenaires, clients et livreurs.
+                  </p>
+                  <p>
+                    <strong>Le constat :</strong> certains clients ont le ressenti que les prix sont élevés — une hausse d&apos;environ 25% sur les articles pour compenser la commission, auxquels s&apos;ajoutent les frais de livraison (qui reviennent entièrement au livreur). Pour eux, la note peut vite monter. Nous voulons inverser cette tendance avec une stratégie gagnant-gagnant.
+                  </p>
+                  <p>
+                    <strong>Notre proposition :</strong>
+                  </p>
+                  <ul className="list-disc list-inside ml-2 space-y-1">
+                    <li>CVN&apos;EAT baisse sa commission à <strong>15%</strong> (au lieu de 20%)</li>
+                    <li>En échange : <strong>prix comme en boutique</strong> ou augmentation max de <strong>5 à 7%</strong></li>
+                    <li>Objectif : <strong>faire exploser le volume</strong> — plus de commandes pour vous, pour les livreurs et pour CVN&apos;EAT</li>
+                    <li>La perte par commande sera <strong>vraiment minime</strong>, mais le gain en volume compensera largement</li>
+                    <li>Les clients commanderont plus facilement avec des prix attractifs</li>
+                  </ul>
+                  <div className="bg-white dark:bg-red-950/30 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                    <p className="font-semibold text-red-900 dark:text-red-100 mb-2">Exemple concret :</p>
+                    <p className="mb-1">Un tacos à 10€ en boutique affiché à 12,50€ sur CVN&apos;EAT aujourd&apos;hui (25% en plus) + frais de livraison. Pour le client, ça peut faire cher.</p>
+                    <p className="mb-1">Avec la nouvelle stratégie : 10€ ou 10,50€ max sur l&apos;article. Commission 15% = 1,50€ pour CVN&apos;EAT. Les frais de livraison restent perçus par le livreur.</p>
+                    <p className="text-green-700 dark:text-green-300 font-medium">→ Vous gardez 8,50€ au lieu de 10€ par commande, mais avec 2x ou 3x plus de commandes, c&apos;est bien mieux.</p>
+                  </div>
+                  <p className="text-red-900 dark:text-red-100 font-medium">
+                    En acceptant, vous vous engagez à remettre vos prix normaux (boutique ou +5–7% max). Un outil ci-dessous vous permettra d&apos;ajuster tous vos prix en une seule fois.
+                  </p>
+                  <p>
+                    Vous êtes intéressé(e) ? Cliquez pour accepter. Vous pouvez aussi nous joindre au <a href="tel:0786014171" className="underline font-medium">07 86 01 41 71</a>.
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={acceptStrategyBoost}
+                    disabled={strategyAccepting}
+                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow disabled:opacity-50"
+                  >
+                    {strategyAccepting ? 'Envoi...' : "J'accepte ce compromis"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {!strategyStatus.loading && strategyStatus.accepted && restaurant && (
+              <div className="space-y-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-300 dark:border-green-700 p-4">
+                  <p className="text-green-800 dark:text-green-200 font-medium flex items-center gap-2">
+                    <FaCheck className="text-green-600 shrink-0" />
+                    Merci ! Vous avez accepté la stratégie &quot;Prix boutique&quot;. L&apos;admin a configuré votre réduction. Si elle est prête, cliquez pour appliquer.
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-amber-300 dark:border-amber-600 p-6 shadow">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Ajuster tous les prix en une fois</h3>
+                  {strategyStatus.reductionPct === null || strategyStatus.reductionPct === undefined ? (
+                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                      Réduction non configurée. Deux options : envoyez-nous vos prix boutique au <a href="tel:0786014171" className="underline font-semibold">07 86 01 41 71</a> et nous les rentrerons, ou modifiez vos prix vous-même dans l&apos;onglet Menu.
+                    </p>
+                  ) : strategyStatus.reductionPct === 0 ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Vos prix sont déjà au bon niveau (0%). Aucune action nécessaire.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        Réduction prévue : <strong>-{Math.abs(strategyStatus.reductionPct)}%</strong>. Tous les plats, suppléments et tailles seront mis à jour.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={runBulkPriceAdjust}
+                        disabled={bulkAdjusting}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg disabled:opacity-50"
+                      >
+                        {bulkAdjusting ? 'Application...' : 'Appliquer à tout le menu'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
             {/* Section d'aide */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
               <div className="flex items-start justify-between">
@@ -3715,9 +4003,9 @@ export default function PartnerDashboard() {
                 <button
                   type="button"
                   onClick={() => document.getElementById('partner-menu-sections')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                  className="px-4 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 border-2 border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition-colors text-sm font-medium"
                 >
-                  📂 Réordonner / renommer les sections
+                  📍 Réordonner les sections (Boissons en dernier)
                 </button>
                 <button
                   onClick={() => {
@@ -3732,15 +4020,16 @@ export default function PartnerDashboard() {
               </div>
             </div>
 
-            {/* Sections affichées au client (Entrées / Plats / Desserts / ...) */}
-            <div id="partner-menu-sections" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm scroll-mt-4">
+            {/* Ordre des catégories visible côté client */}
+            <div id="partner-menu-sections" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm scroll-mt-4 border-2 border-amber-200 dark:border-amber-800">
               <div className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Sections visibles côté client</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Ces sections correspondent aux titres affichés sur la fiche établissement (ex: Entrées, Plats, Desserts…).
-                      Tu peux les ajouter/renommer/réordonner.
+                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      📍 Ordre d'affichage des catégories côté client
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      L'ordre ci-dessous est <strong>exactement</strong> celui vu par les clients. Utilisez ↑ et ↓ pour placer les Boissons en dernier.
                     </p>
                   </div>
                   <button
@@ -3790,13 +4079,16 @@ export default function PartnerDashboard() {
                             key={section.id}
                             className="flex flex-col md:flex-row md:items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400 w-6" title="Position côté client">
+                                #{idx + 1}
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => moveMenuSection(section.id, 'up')}
                                 disabled={sectionsLoading || idx === 0}
-                                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-40"
-                                title="Monter"
+                                className="px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-amber-200 dark:hover:bg-amber-800/60"
+                                title="Monter (avant)"
                               >
                                 ↑
                               </button>
@@ -3804,8 +4096,8 @@ export default function PartnerDashboard() {
                                 type="button"
                                 onClick={() => moveMenuSection(section.id, 'down')}
                                 disabled={sectionsLoading || idx === menuSections.length - 1}
-                                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-40"
-                                title="Descendre"
+                                className="px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-amber-200 dark:hover:bg-amber-800/60"
+                                title="Descendre (après)"
                               >
                                 ↓
                               </button>

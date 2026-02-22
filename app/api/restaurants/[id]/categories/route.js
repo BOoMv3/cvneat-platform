@@ -44,6 +44,38 @@ export async function GET(_request, { params }) {
         uniq.push(name);
       }
 
+      // Ordre défini par le partenaire (category_order sur restaurant)
+      let orderArr = [];
+      try {
+        const { data: resto } = await db.from('restaurants').select('category_order').eq('id', restaurantId).single();
+        orderArr = Array.isArray(resto?.category_order) ? resto.category_order : [];
+      } catch (_) {
+        /* colonne category_order peut ne pas exister */
+      }
+      if (orderArr.length > 0) {
+        const orderSet = new Set(orderArr.map((n) => String(n || '').toLowerCase().trim()).filter(Boolean));
+        const ordered = orderArr.filter((n) => {
+          const k = String(n || '').toLowerCase().trim();
+          return uniq.some((u) => u.toLowerCase().trim() === k);
+        });
+        const rest = uniq.filter((n) => !orderSet.has(n.toLowerCase().trim()));
+        uniq.length = 0;
+        uniq.push(...ordered, ...rest);
+      } else {
+        // Trier par ordre logique d'un repas (boissons en dernier) si pas d'ordre personnalisé
+        const getDefaultOrder = (name) => {
+          const n = (name || '').toLowerCase();
+          if (n.includes('formule') || n.includes('menu')) return 0;
+          if (n.includes('entree') || n.includes('entrée')) return 1;
+          if (n.includes('sandwich') || n.includes('burger') || n.includes('panini') || n.includes('taco') || n.includes('kebab') || n.includes('pizza') || n.includes('plat') || n.includes('salade') || n.includes('poke')) return 2;
+          if (n.includes('dessert')) return 3;
+          if (n.includes('boisson') || n.includes('drink') || n === 'boissons') return 4;
+          if (n.includes('sauce') || n.includes('supplément') || n.includes('supplement')) return 5;
+          return 6;
+        };
+        uniq.sort((a, b) => getDefaultOrder(a) - getDefaultOrder(b));
+      }
+
       const fallback = uniq.map((name, idx) => ({
         id: `derived-${idx + 1}`,
         name,

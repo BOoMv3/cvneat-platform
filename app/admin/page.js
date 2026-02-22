@@ -23,7 +23,8 @@ import {
   FaSignInAlt,
   FaEnvelope,
   FaGift,
-  FaTruck
+  FaTruck,
+  FaComments
 } from 'react-icons/fa';
 
 export default function AdminPage() {
@@ -576,6 +577,14 @@ export default function AdminPage() {
                 <span className="hidden sm:inline">Newsletter</span>
               </button>
               <button
+                onClick={() => router.push('/admin/messages')}
+                className="flex items-center justify-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Messagerie partenaires"
+              >
+                <FaComments className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Messagerie</span>
+              </button>
+              <button
                 onClick={() => router.push('/admin/delivery-leaderboard')}
                 className="flex items-center justify-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
                 title="Classement livreurs"
@@ -1008,6 +1017,67 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+        {/* Stratégie Boost - Partenaires intéressés */}
+        {(() => {
+          const boostPartners = (stats.allRestaurants || []).filter(
+            (r) => r?.strategie_boost_acceptee === true || r?.strategie_boost_acceptee === 'true'
+          );
+          if (boostPartners.length === 0) return null;
+          return (
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg shadow border border-amber-200 dark:border-amber-700">
+              <div className="p-4 sm:p-6 border-b border-amber-200 dark:border-amber-700">
+                <h2 className="text-lg sm:text-xl font-semibold text-amber-900 dark:text-amber-100">
+                  Stratégie Boost ventes – Partenaires intéressés ({boostPartners.length})
+                </h2>
+                <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-200 mt-1">
+                  Ces partenaires ont signalé leur intérêt. Contactez-les ou notez le 07 86 01 41 71 pour les rappels.
+                </p>
+              </div>
+              <div className="p-4 sm:p-6 overflow-x-auto">
+                <table className="min-w-full divide-y divide-amber-200 dark:divide-amber-700">
+                  <thead>
+                    <tr>
+                      <th className="text-left text-xs font-medium text-amber-800 uppercase">Restaurant</th>
+                      <th className="text-left text-xs font-medium text-amber-800 uppercase">Téléphone</th>
+                      <th className="text-left text-xs font-medium text-amber-800 uppercase">Réduction</th>
+                      <th className="text-left text-xs font-medium text-amber-800 uppercase">Date</th>
+                      <th className="text-left text-xs font-medium text-amber-800 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-100 dark:divide-amber-800">
+                    {boostPartners.map((r) => (
+                      <tr key={r.id}>
+                        <td className="py-2 text-sm font-medium text-gray-900 dark:text-white">{r.nom || '—'}</td>
+                        <td className="py-2 text-sm text-gray-700 dark:text-gray-300">{r.telephone || '—'}</td>
+                        <td className="py-2 text-sm text-gray-600 dark:text-gray-400">
+                          {r.strategie_boost_reduction_pct != null ? `${r.strategie_boost_reduction_pct}%` : '—'}
+                        </td>
+                        <td className="py-2 text-sm text-gray-600 dark:text-gray-400">
+                          {r.strategie_boost_accepted_at
+                            ? new Date(r.strategie_boost_accepted_at).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              })
+                            : '—'}
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => router.push(`/admin/restaurants/${r.id}`)}
+                            className="text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 text-sm font-medium"
+                          >
+                            Voir / Config
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Restaurants récents */}
         <div className="bg-white rounded-lg shadow">
