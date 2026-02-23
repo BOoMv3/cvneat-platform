@@ -29,6 +29,8 @@ function roundPrice(v) {
   return Math.round(parseFloat(v) * 100) / 100;
 }
 
+const COEFF = 1.05; // +5%
+
 export async function POST(request) {
   try {
     const user = await getAuthedUser(request);
@@ -48,27 +50,18 @@ export async function POST(request) {
     if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
     if (!items || items.length === 0) return NextResponse.json({ updated: 0, message: 'Aucun plat à modifier' });
 
-    const { data: resto } = await supabaseAdmin
-      .from('restaurants')
-      .select('strategie_boost_reduction_pct')
-      .eq('id', restaurantId)
-      .single();
-    const pctNum = resto?.strategie_boost_reduction_pct ?? 0;
-    const coefficient = 1 + pctNum / 100;
     let updated = 0;
-
     for (const item of items) {
       const oldPrix = parseFloat(item.prix) || 0;
-      if (oldPrix <= 0) continue;
-      const newPrix = roundPrice(oldPrix * coefficient);
-      if (newPrix <= 0) continue;
+      const newPrix = oldPrix > 0 ? roundPrice(oldPrix * COEFF) : 0;
+      const updates = {};
 
-      const updates = { prix: newPrix };
+      if (newPrix > 0) updates.prix = newPrix;
 
       if (item.prix_taille != null && item.prix_taille !== '') {
         const oldTaille = parseFloat(item.prix_taille) || 0;
         if (oldTaille > 0) {
-          updates.prix_taille = roundPrice(oldTaille * coefficient);
+          updates.prix_taille = roundPrice(oldTaille * COEFF);
         }
       }
 
@@ -76,20 +69,25 @@ export async function POST(request) {
         updates.supplements = item.supplements.map((s) => {
           const oldSup = parseFloat(s?.prix_supplementaire ?? s?.prix ?? 0) || 0;
           if (oldSup <= 0) return s;
-          return { ...s, prix_supplementaire: roundPrice(oldSup * coefficient), prix: roundPrice(oldSup * coefficient) };
+          return {
+            ...s,
+            prix_supplementaire: roundPrice(oldSup * COEFF),
+            prix: roundPrice(oldSup * COEFF),
+          };
         });
       }
 
-      const { error: upErr } = await supabaseAdmin
-        .from('menus')
-        .update(updates)
-        .eq('id', item.id);
-      if (!upErr) updated++;
+      if (Object.keys(updates).length > 0) {
+        const { error: upErr } = await supabaseAdmin
+          .from('menus')
+          .update(updates)
+          .eq('id', item.id);
+        if (!upErr) updated++;
+      }
     }
-
     return NextResponse.json({ updated, total: items.length });
   } catch (e) {
-    console.error('bulk-adjust:', e);
+    console.error('apply-plus-5:', e);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

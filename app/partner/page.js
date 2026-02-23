@@ -112,6 +112,9 @@ export default function PartnerDashboard() {
   const [bulkAdjusting, setBulkAdjusting] = useState(false);
   const [priceNotifySending, setPriceNotifySending] = useState(false);
   const [priceNotifySent, setPriceNotifySent] = useState(false);
+  const [prixBoutiqueInputs, setPrixBoutiqueInputs] = useState({});
+  const [prixBoutiqueSaving, setPrixBoutiqueSaving] = useState(false);
+  const [applyPlus5Loading, setApplyPlus5Loading] = useState(false);
   const [partnerMessages, setPartnerMessages] = useState([]);
   const [partnerMessagesUnread, setPartnerMessagesUnread] = useState(0);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
@@ -164,6 +167,17 @@ export default function PartnerDashboard() {
       }
     }
   }, [activeTab]);
+
+  // Pré-remplir les champs prix boutique quand le menu est chargé (partenaires ayant accepté)
+  useEffect(() => {
+    if (strategyStatus.accepted && Array.isArray(menu) && menu.length > 0) {
+      const initial = {};
+      menu.filter((m) => m.nom && (m.prix != null || m.prix === 0)).forEach((item) => {
+        initial[item.id] = String(parseFloat(item.prix) || 0);
+      });
+      setPrixBoutiqueInputs((prev) => (Object.keys(prev).length === 0 ? initial : prev));
+    }
+  }, [strategyStatus.accepted, menu]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -867,6 +881,89 @@ export default function PartnerDashboard() {
       alert(e?.message || 'Erreur lors de l\'ajustement');
     } finally {
       setBulkAdjusting(false);
+    }
+  };
+
+  const savePrixBoutique = async () => {
+    if (!restaurant?.id || !menu?.length) return;
+    const updates = Object.entries(prixBoutiqueInputs)
+      .filter(([, v]) => v !== '' && !isNaN(parseFloat(v)))
+      .map(([id, v]) => ({ id, prix: parseFloat(v) }));
+    if (updates.length === 0) {
+      alert('Remplissez au moins un prix.');
+      return;
+    }
+    setPrixBoutiqueSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/partner/menu/bulk-set-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        body: JSON.stringify({ restaurantId: restaurant.id, updates }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erreur');
+      await fetchMenu(restaurant.id);
+      alert(`✅ ${data.updated || 0} prix enregistrés.`);
+    } catch (e) {
+      alert(e?.message || 'Erreur');
+    } finally {
+      setPrixBoutiqueSaving(false);
+    }
+  };
+
+  const saveAndApplyPlus5 = async () => {
+    if (!restaurant?.id || !menu?.length) return;
+    const updates = Object.entries(prixBoutiqueInputs)
+      .filter(([, v]) => v !== '' && !isNaN(parseFloat(v)))
+      .map(([id, v]) => ({ id, prix: parseFloat(v) }));
+    if (updates.length === 0) {
+      alert('Remplissez au moins un prix.');
+      return;
+    }
+    setPrixBoutiqueSaving(true);
+    setApplyPlus5Loading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) };
+      let res = await fetch('/api/partner/menu/bulk-set-prices', {
+        method: 'POST', headers, body: JSON.stringify({ restaurantId: restaurant.id, updates }),
+      });
+      let data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erreur enregistrement');
+      res = await fetch('/api/partner/menu/apply-plus-5', {
+        method: 'POST', headers, body: JSON.stringify({ restaurantId: restaurant.id }),
+      });
+      data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erreur application');
+      await fetchMenu(restaurant.id);
+      alert(`C'est fait. ${data.updated ?? updates.length} article(s) mis à jour.`);
+    } catch (e) {
+      alert(e?.message || 'Erreur');
+    } finally {
+      setPrixBoutiqueSaving(false);
+      setApplyPlus5Loading(false);
+    }
+  };
+
+  const applyPlus5 = async () => {
+    if (!restaurant?.id) return;
+    setApplyPlus5Loading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/partner/menu/apply-plus-5', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        body: JSON.stringify({ restaurantId: restaurant.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erreur');
+      await fetchMenu(restaurant.id);
+      alert(`✅ +5% appliqué à ${data.updated || 0} article(s).`);
+    } catch (e) {
+      alert(e?.message || 'Erreur');
+    } finally {
+      setApplyPlus5Loading(false);
     }
   };
 
@@ -3043,6 +3140,54 @@ export default function PartnerDashboard() {
                     <li><strong>Prix :</strong> Mettez les mêmes prix qu&apos;en boutique, ou max +5%</li>
                     <li><strong>Vous avez accepté :</strong> Virement demain, puis passage en commission 15%</li>
                   </ul>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-green-300 dark:border-green-600 p-6 shadow">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Mes prix</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    <strong>1.</strong> Mettez vos prix comme en boutique. <strong>2.</strong> Cliquez sur le bouton vert. C&apos;est tout.
+                  </p>
+                  {Array.isArray(menu) && menu.filter((m) => m.nom && (m.prix != null || m.prix === 0)).length > 0 ? (
+                    <>
+                      <div className="max-h-64 overflow-y-auto border dark:border-gray-600 rounded-lg mb-4">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
+                            <tr>
+                              <th className="text-left py-2 px-2 font-medium">Plat</th>
+                              <th className="text-left py-2 px-2 font-medium w-24">Prix (€)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {menu.filter((m) => m.nom && (m.prix != null || m.prix === 0)).map((item) => (
+                              <tr key={item.id} className="border-t dark:border-gray-600">
+                                <td className="py-2 px-2 truncate max-w-[220px]" title={item.nom}>{item.nom}</td>
+                                <td className="py-2 px-2">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0"
+                                    value={prixBoutiqueInputs[item.id] ?? ''}
+                                    onChange={(e) => setPrixBoutiqueInputs((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                    className="w-16 px-2 py-1.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-base"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={saveAndApplyPlus5}
+                        disabled={prixBoutiqueSaving || applyPlus5Loading}
+                        className="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl text-lg disabled:opacity-50"
+                      >
+                        {prixBoutiqueSaving || applyPlus5Loading ? 'Enregistrement...' : 'Valider mes prix (+ 5% ajouté automatiquement)'}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500">Aucun plat. Allez dans l&apos;onglet Menu pour en ajouter.</p>
+                  )}
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-amber-300 dark:border-amber-600 p-6 shadow">
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Ajuster tous les prix en une fois</h3>
