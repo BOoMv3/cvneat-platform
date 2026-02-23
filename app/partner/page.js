@@ -2984,7 +2984,10 @@ export default function PartnerDashboard() {
                     <p className="text-green-700 dark:text-green-300 font-medium">→ Moins par commande, mais avec 2x ou 3x plus de volume, le total sera meilleur.</p>
                   </div>
                   <p className="text-red-900 dark:text-red-100 font-medium">
-                    En acceptant, vous vous engagez à remettre vos prix normaux (boutique ou +5–7% max). Un outil ci-dessous vous permettra d&apos;ajuster tous vos prix en une seule fois.
+                    En acceptant, vous vous engagez à remettre vos prix normaux (boutique ou +5% max). Un outil ci-dessous vous permettra d&apos;ajuster tous vos prix en une seule fois.
+                  </p>
+                  <p className="text-red-800 dark:text-red-200 text-sm">
+                    <strong>Si vous acceptez plus tard :</strong> le paiement de ce qui vous est dû sera effectué avant le passage à 15%. Même processus que les premiers : virement puis commission à 15%.
                   </p>
                   <p>
                     Vous êtes intéressé(e) ? Cliquez pour accepter. Vous pouvez aussi nous joindre au <a href="tel:0786014171" className="underline font-medium">07 86 01 41 71</a>.
@@ -3009,6 +3012,13 @@ export default function PartnerDashboard() {
                     <FaCheck className="text-green-600 shrink-0" />
                     Merci ! Vous avez accepté la stratégie &quot;Prix boutique&quot;. L&apos;admin a configuré votre réduction. Si elle est prête, cliquez pour appliquer.
                   </p>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-300 dark:border-blue-700 p-4">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Prochaines étapes</h3>
+                  <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+                    <li><strong>Prix :</strong> Mettez les mêmes prix qu&apos;en boutique, ou max +5%</li>
+                    <li><strong>Vous avez accepté :</strong> Virement demain, puis passage en commission 15%</li>
+                  </ul>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-amber-300 dark:border-amber-600 p-6 shadow">
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Ajuster tous les prix en une fois</h3>
