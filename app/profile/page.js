@@ -11,7 +11,7 @@ import NotificationToggle from '@/components/NotificationToggle';
 
 // Éviter de charger des composants lourds tant qu'ils ne sont pas visibles
 const LoyaltyProgram = dynamic(() => import('../components/LoyaltyProgram'), { ssr: false });
-const OrderCardSkeleton = dynamic(() => import('../components/OrderCardSkeleton'), { ssr: false });
+const OrderCardSkeleton = dynamic(() => import('@/components/OrderCardSkeleton'), { ssr: false });
 const PushNotificationService = dynamic(() => import('../components/PushNotificationService'), { ssr: false });
 const TestComponent = dynamic(() => import('../components/TestComponent'), { ssr: false });
 
