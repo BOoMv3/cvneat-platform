@@ -143,7 +143,7 @@ export default function Checkout() {
     instructions: ''
   });
   const [userPoints, setUserPoints] = useState(0);
-  const [pointsToUse, setPointsToUse] = useState(0); // Points à utiliser pour réduire le total (20 pts = 1€)
+  const [pointsToUse, setPointsToUse] = useState(0); // Points à utiliser (1 pt = 1€)
 
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
   // Mettre à true pour fermer les livraisons manuellement
@@ -562,7 +562,7 @@ export default function Checkout() {
 
       console.log('✅ Frais de livraison recalculés:', finalDeliveryFee, '€');
 
-      const { payload: finalPayload, subtotal: orderSubtotal, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(fullAddress);
+      const { payload: finalPayload, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(fullAddress);
       const resolvedRestaurant = activeRestaurant || payloadRestaurantInfo || null;
       
       if (!resolvedRestaurant) {
@@ -571,8 +571,8 @@ export default function Checkout() {
         return;
       }
 
-      // Calculer le total du panier (sous-total articles)
-      const cartTotal = orderSubtotal || computeCartTotalWithExtras(savedCart.items);
+      // IMPORTANT: Toujours utiliser savedCart.items (même source que l'API) pour éviter écart cart/state
+      const cartTotal = computeCartTotalWithExtras(savedCart.items);
 
       // Calculer la réduction du code promo
       const discountAmount = appliedPromoCode?.discountAmount || 0;
@@ -591,8 +591,8 @@ export default function Checkout() {
       
       // 2. Calculer le total final (sous-total + livraison + frais plateforme)
       const rawTotal = subtotalAfterDiscount + finalDeliveryFeeForTotal + PLATFORM_FEE;
-      // 2b. Déduction des points de fidélité (20 pts = 1€)
-      const pointsDiscountEur = pointsToUse > 0 ? Math.min(pointsToUse / 20, Math.max(0, rawTotal - 0.50)) : 0;
+      // 2b. Déduction des points de fidélité (1 pt = 1€)
+      const pointsDiscountEur = pointsToUse > 0 ? Math.min(pointsToUse, Math.max(0, rawTotal - 0.50)) : 0;
       const totalAmount = Math.max(0.50, Math.round((rawTotal - pointsDiscountEur) * 100) / 100); // Minimum 0.50€
       
       // 3. Vérification finale de cohérence
@@ -1292,7 +1292,7 @@ export default function Checkout() {
 
             {(() => {
               const PLATFORM_FEE = 0.49;
-              const pointsDiscount = pointsToUse > 0 ? (pointsToUse / 20) : 0; // 20 pts = 1€
+              const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0; // 1 pt = 1€
               let displayedDeliveryFee = fraisLivraison;
               if (appliedPromoCode?.discountType === 'free_delivery') {
                 displayedDeliveryFee = 0;
@@ -1353,9 +1353,9 @@ export default function Checkout() {
                   <FaGift className="h-4 w-4 text-amber-500 dark:text-amber-400 mr-2" />
                   Utiliser mes points ({userPoints} pts)
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">20 points = 1€ de réduction</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">1 point = 1€ de réduction</p>
                 <div className="flex gap-2 flex-wrap">
-                  {[50, 100, 200].filter(p => p <= userPoints).map((p) => (
+                  {[5, 10, 25].filter(p => p <= userPoints).map((p) => (
                     <button
                       key={p}
                       type="button"
@@ -1366,7 +1366,7 @@ export default function Checkout() {
                           : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50'
                       }`}
                     >
-                      {p} pts ({(p/20).toFixed(0)}€)
+                      {p} pts ({p}€)
                     </button>
                   ))}
                   {pointsToUse > 0 && (
@@ -1454,7 +1454,7 @@ export default function Checkout() {
                     const maxDiscount = Math.min(discountAmount, cartTotal);
                     const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
                     const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
-                    const pointsDiscount = pointsToUse > 0 ? (pointsToUse / 20) : 0;
+                    const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0;
                     const finalTotalDisplay = Math.max(0.50, Math.round((rawTotal - pointsDiscount) * 100) / 100);
                     return `Payer ${finalTotalDisplay.toFixed(2)}€`;
                   })()

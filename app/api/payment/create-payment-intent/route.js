@@ -118,9 +118,9 @@ export async function POST(request) {
               );
             }
 
-            // 2. Si écart > tolérance: utiliser expectedAmount (commande = source de vérité) au lieu de bloquer
-            // Évite les blocages liés aux écarts frontend (formules, panier stale, arrondis)
-            const MAX_ACCEPTABLE_DIFF = 5.0; // Refuser si écart > 5€ (sécurité)
+            // 2. Si écart > tolérance: utiliser expectedAmount uniquement pour petits écarts (arrondis)
+            // Au-delà de 0.50€ = problème à investiguer, on bloque
+            const MAX_ACCEPTABLE_DIFF = 0.50; // Tolérance max (arrondis, centimes)
             if (amountDiff > AMOUNT_TOLERANCE) {
               if (amountDiff > MAX_ACCEPTABLE_DIFF) {
                 console.error('❌ Écart de montant trop important (refus):', { amountNumber, expectedAmount, amountDiff });
