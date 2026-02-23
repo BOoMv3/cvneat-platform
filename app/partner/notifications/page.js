@@ -33,7 +33,7 @@ export default function PartnerNotifications() {
       // Vérifier le rôle
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, role')
         .eq('id', session.user.id)
         .single();
 

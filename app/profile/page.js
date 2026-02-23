@@ -439,7 +439,7 @@ export default function Profile() {
                   if (updatedUser) {
                     const { data: userData } = await supabase
                       .from('users')
-                      .select('*')
+                      .select('nom, prenom, telephone')
                       .eq('id', updatedUser.id)
                       .single();
                     if (userData) {

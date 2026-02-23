@@ -174,7 +174,7 @@ export default function Checkout() {
       // Charger les données utilisateur
       const { data: userData } = await supabase
         .from('users')
-        .select('*')
+        .select('nom, prenom, telephone, points_fidelite')
         .eq('id', user.id)
         .single();
       

@@ -193,7 +193,7 @@ export default function PartnerDashboard() {
       
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, role, nom, prenom, email, telephone, points_fidelite')
         .eq('id', session.user.id)
         .single();
 

@@ -49,7 +49,7 @@ export default function Profile() {
       // Récupérer les données utilisateur
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, nom, prenom, telephone, adresse')
         .eq('id', userId)
         .single();
 

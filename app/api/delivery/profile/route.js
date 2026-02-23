@@ -24,10 +24,10 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est un livreur
+    // Vérifier que l'utilisateur est un livreur (ne jamais exposer password)
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('*')
+      .select('id, nom, prenom, email, telephone, role, adresse, photo_url, created_at, updated_at')
       .eq('id', user.id)
       .single();
 
@@ -93,7 +93,7 @@ export async function PUT(request) {
       .from('users')
       .update(updateData)
       .eq('id', user.id)
-      .select()
+      .select('id, nom, prenom, email, telephone, role, adresse, photo_url, updated_at')
       .single();
 
     if (updateError) {
