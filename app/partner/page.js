@@ -2978,10 +2978,10 @@ export default function PartnerDashboard() {
                     <li>Les clients commanderont plus facilement avec des prix attractifs</li>
                   </ul>
                   <div className="bg-white dark:bg-red-950/30 rounded-lg p-4 border border-red-200 dark:border-red-800">
-                    <p className="font-semibold text-red-900 dark:text-red-100 mb-2">Exemple concret :</p>
-                    <p className="mb-1">Un tacos à 10€ en boutique affiché à 12,50€ sur CVN&apos;EAT aujourd&apos;hui (25% en plus) + frais de livraison. Pour le client, ça peut faire cher.</p>
-                    <p className="mb-1">Avec la nouvelle stratégie : 10€ ou 10,50€ max sur l&apos;article. Commission 15% = 1,50€ pour CVN&apos;EAT. Les frais de livraison restent perçus par le livreur.</p>
-                    <p className="text-green-700 dark:text-green-300 font-medium">→ Vous gardez 8,50€ au lieu de 10€ par commande, mais avec 2x ou 3x plus de commandes, c&apos;est bien mieux.</p>
+                    <p className="font-semibold text-red-900 dark:text-red-100 mb-2">Exemple concret (tacos 10€ en boutique) :</p>
+                    <p className="mb-1">Aujourd&apos;hui : affiché 12,50€ (25% en plus pour compenser la commission 20%). CVN&apos;EAT prend 2,50€, vous gardez 10€. + frais de livraison au client.</p>
+                    <p className="mb-1">Nouvelle stratégie : affichez 10€ (prix boutique) ou max 10,50€ (+5%). Commission 15% : à 10€ → 1,50€ pour CVN&apos;EAT, vous gardez 8,50€ ; à 10,50€ → 1,58€ pour CVN&apos;EAT, vous gardez 8,93€.</p>
+                    <p className="text-green-700 dark:text-green-300 font-medium">→ Moins par commande, mais avec 2x ou 3x plus de volume, le total sera meilleur.</p>
                   </div>
                   <p className="text-red-900 dark:text-red-100 font-medium">
                     En acceptant, vous vous engagez à remettre vos prix normaux (boutique ou +5–7% max). Un outil ci-dessous vous permettra d&apos;ajuster tous vos prix en une seule fois.

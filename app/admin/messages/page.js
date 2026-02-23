@@ -132,7 +132,8 @@ Ce message vous explique deux choses importantes :
 1️⃣ LE MESSAGE ROUGE SUR VOTRE DASHBOARD
 Quand vous allumez votre tablette et ouvrez CVN'EAT, vous verrez un bloc rouge en haut du tableau de bord. Il présente notre nouvelle stratégie commerciale :
 • CVN'EAT baisse sa commission à 15% (au lieu de 20%)
-• En échange : prix comme en boutique ou +5 à 7% max
+• En échange : prix comme en boutique ou +5 à 7% max sur vos articles
+• Exemple : tacos 10€ en boutique → affichez 10€ ou max 10,50€ (+5%). Commission 15% : vous gardez 8,50€ à 8,93€ selon le cas
 • Objectif : booster le volume de commandes pour tout le monde
 
 Si vous acceptez, l'admin configurera la réduction adaptée à votre situation. Certains d'entre vous avaient déjà des prix proches du prix boutique — aucune action nécessaire pour eux.
