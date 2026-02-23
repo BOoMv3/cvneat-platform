@@ -45,7 +45,7 @@ export async function POST(request) {
     const { amount, currency = 'eur', metadata = {} } = await request.json();
 
     // Validation du montant
-    const amountNumber = parseFloat(amount);
+    let amountNumber = parseFloat(amount);
     if (!amount || isNaN(amountNumber) || amountNumber <= 0) {
       console.error('❌ Montant invalide:', amount);
       return NextResponse.json(
@@ -118,24 +118,28 @@ export async function POST(request) {
               );
             }
 
-            // 2. Vérifier que le montant envoyé correspond au montant attendu (tolérance arrondi)
+            // 2. Si écart > tolérance: utiliser expectedAmount (commande = source de vérité) au lieu de bloquer
+            // Évite les blocages liés aux écarts frontend (formules, panier stale, arrondis)
+            const MAX_ACCEPTABLE_DIFF = 5.0; // Refuser si écart > 5€ (sécurité)
             if (amountDiff > AMOUNT_TOLERANCE) {
-              console.error('❌ Montant incohérent avec la commande:', {
+              if (amountDiff > MAX_ACCEPTABLE_DIFF) {
+                console.error('❌ Écart de montant trop important (refus):', { amountNumber, expectedAmount, amountDiff });
+                return NextResponse.json(
+                  {
+                    error: 'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
+                    code: 'AMOUNT_MISMATCH',
+                  },
+                  { status: 400, headers: corsHeaders }
+                );
+              }
+              console.warn('⚠️ Montant frontend diffère de la commande, utilisation du montant commande:', {
                 orderId,
                 amountNumber,
                 expectedAmount,
                 amountDiff,
-                subtotalAfterDiscount,
-                storedDeliveryFee,
-                isFreeDelivery,
               });
-              return NextResponse.json(
-                {
-                  error: 'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
-                  code: 'AMOUNT_MISMATCH',
-                },
-                { status: 400, headers: corsHeaders }
-              );
+              // Remplacer amountNumber par expectedAmount pour la suite (Stripe)
+              amountNumber = expectedAmount;
             }
           }
         } catch (e) {
