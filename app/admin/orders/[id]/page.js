@@ -234,9 +234,16 @@ export default function AdminOrderDetail() {
             </button>
             <h1 className="text-3xl font-bold">Commande #{order.id}</h1>
           </div>
-          <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.statut || order.status)}`}>
-            {getStatusText(order.statut || order.status)}
-          </span>
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.statut || order.status)}`}>
+              {getStatusText(order.statut || order.status)}
+            </span>
+            {(!order.payment_status || !['paid', 'succeeded'].includes((order.payment_status || '').toString().toLowerCase())) && (
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800" title="Client n'a pas terminé le paiement">
+                Non payée
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

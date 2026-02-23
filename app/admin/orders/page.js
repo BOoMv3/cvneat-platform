@@ -11,18 +11,23 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPayment, setFilterPayment] = useState('paid'); // 'paid' = payées uniquement, 'all' = toutes
 
   useEffect(() => {
     fetchOrders();
-  }, [filterStatus]);
+  }, [filterStatus, filterPayment]);
 
   const fetchOrders = async () => {
     try {
       let query = supabase
         .from('commandes')
         .select('*')
-        .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
         .order('created_at', { ascending: false });
+
+      // Par défaut : afficher uniquement les commandes payées
+      if (filterPayment === 'paid') {
+        query = query.in('payment_status', ['paid', 'succeeded']);
+      }
 
       if (filterStatus !== 'all') {
         // Mapper les statuts anglais vers français
@@ -41,15 +46,6 @@ export default function AdminOrders() {
       const { data, error } = await query;
 
       if (error) throw error;
-      
-      // DEBUG: Afficher toutes les commandes et leurs statuts
-      console.log('🔍 Commandes récupérées:', data?.length || 0);
-      console.log('🔍 Filtre actuel:', filterStatus);
-      if (data && data.length > 0) {
-        console.log('🔍 Statuts des commandes:', data.map(o => ({ id: o.id, statut: o.statut })));
-        console.log('🔍 Exemple commande complète:', data[0]);
-        console.log('🔍 Colonnes total disponibles:', Object.keys(data[0]).filter(k => k.includes('total') || k.includes('montant')));
-      }
       
       setOrders(data || []);
     } catch (err) {
@@ -124,31 +120,37 @@ export default function AdminOrders() {
           </div>
         )}
 
-        {/* Debug info */}
-        <div className="mb-4 p-4 bg-gray-100 rounded-lg">
-          <h3 className="font-semibold mb-2">Debug Info:</h3>
-          <p>Nombre de commandes trouvées: {orders.length}</p>
-          <p>Filtre actuel: {filterStatus}</p>
-          {orders.length > 0 && (
-            <div className="mt-2">
-              <p>Statuts présents:</p>
-              <ul className="text-sm text-gray-600">
-                {[...new Set(orders.map(o => o.statut))].map(statut => (
-                  <li key={statut}>- {statut}</li>
-                ))}
-              </ul>
-              <p className="mt-2">Première commande (valeurs total):</p>
-              <ul className="text-sm text-gray-600">
-                <li>total: {orders[0]?.total}</li>
-                <li>montant_total: {orders[0]?.montant_total}</li>
-                <li>total_amount: {orders[0]?.total_amount}</li>
-                <li>frais_livraison: {orders[0]?.frais_livraison}</li>
-              </ul>
-            </div>
-          )}
+        {/* Filtres paiement */}
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h3 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">Paiement</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilterPayment('paid')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filterPayment === 'paid' 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+              }`}
+            >
+              ✓ Payées uniquement (défaut)
+            </button>
+            <button
+              onClick={() => setFilterPayment('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filterPayment === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+              }`}
+            >
+              Toutes (y compris non payées)
+            </button>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+            Les commandes non payées sont celles abandonnées avant validation du paiement (panier non finalisé).
+          </p>
         </div>
 
-        {/* Filtres */}
+        {/* Filtres statut */}
         <div className="mb-6">
           <div className="flex flex-wrap gap-2">
             <button
@@ -244,9 +246,16 @@ export default function AdminOrders() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.statut)}`}>
-                      {getStatusText(order.statut)}
-                    </span>
+                    <div className="flex flex-wrap gap-1 items-center">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.statut)}`}>
+                        {getStatusText(order.statut)}
+                      </span>
+                      {(!order.payment_status || !['paid', 'succeeded'].includes((order.payment_status || '').toString().toLowerCase())) && (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" title="Client n'a pas terminé le paiement">
+                          Non payée
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
