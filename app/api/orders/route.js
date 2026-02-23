@@ -257,7 +257,7 @@ export async function GET(request) {
       
       // Calculer le vrai sous-total en incluant les suppléments
       let calculatedSubtotal = 0;
-      const items = (order.details_commande || []).map(detail => {
+      const items = (order.details_commande || []).map((detail) => {
         // Récupérer les suppléments
         let supplements = [];
         if (detail.supplements) {
@@ -309,6 +309,12 @@ export async function GET(request) {
           comboDetails: comboDetails // Détails du combo pour l'affichage
         };
       });
+
+      // FALLBACK CRITIQUE: si details_commande vide ou erreur (ex. Deliss'King, formules), utiliser order.total (sous-total plats stocké en BDD)
+      if (calculatedSubtotal === 0 && parseFloat(order.total || 0) > 0) {
+        calculatedSubtotal = parseFloat(order.total);
+        console.warn(`⚠️ API /orders: Commande ${order.id?.slice(0, 8)} sans détails, utilisation de order.total=${order.total}€ comme sous-total`);
+      }
 
       // Extraire l'adresse de livraison
       const addressParts = (order.adresse_livraison || '').split(',').map(s => s.trim());
