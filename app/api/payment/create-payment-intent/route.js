@@ -118,9 +118,9 @@ export async function POST(request) {
               );
             }
 
-            // 2. Si écart > tolérance: utiliser expectedAmount uniquement pour petits écarts (arrondis)
-            // Au-delà de 0.50€ = problème à investiguer, on bloque
-            const MAX_ACCEPTABLE_DIFF = 0.50; // Tolérance max (arrondis, centimes)
+            // 2. Si écart: utiliser expectedAmount (commande = source de vérité). On facture le bon montant.
+            // Au-delà de 2€ = suspect, on bloque par sécurité
+            const MAX_ACCEPTABLE_DIFF = 2.0;
             if (amountDiff > AMOUNT_TOLERANCE) {
               if (amountDiff > MAX_ACCEPTABLE_DIFF) {
                 console.error('❌ Écart de montant trop important (refus):', { amountNumber, expectedAmount, amountDiff });
