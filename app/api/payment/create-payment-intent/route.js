@@ -72,7 +72,7 @@ export async function POST(request) {
 
           if (!orderErr && order) {
             const PLATFORM_FEE = 0.49;
-            const AMOUNT_TOLERANCE = 0.05; // Tolérance arrondi sur le total
+            const AMOUNT_TOLERANCE = 0.10; // Tolérance arrondi sur le total (10 centimes)
 
             // Déterminer si la livraison est offerte via le code promo (si présent)
             let isFreeDelivery = false;
@@ -93,16 +93,17 @@ export async function POST(request) {
             const storedDeliveryFee = parseFloat(order.frais_livraison || 0) || 0;
 
             let expectedAmount = Math.round((subtotalAfterDiscount + (isFreeDelivery ? 0 : storedDeliveryFee) + PLATFORM_FEE) * 100) / 100;
-            // Déduction des points de fidélité (20 pts = 1€)
+            // Déduction des points de fidélité (1 pt = 1€)
             const pointsUsed = parseInt(metadata?.points_used || '0', 10) || 0;
             if (pointsUsed > 0) {
-              expectedAmount = Math.max(0.50, Math.round((expectedAmount - pointsUsed / 20) * 100) / 100);
+              expectedAmount = Math.max(0.50, Math.round((expectedAmount - pointsUsed) * 100) / 100);
             }
             const amountDiff = Math.abs(amountNumber - expectedAmount);
 
-            // 1. Vérifier frais_livraison >= 2.50€ (sauf livraison offerte)
-            if (!isFreeDelivery && storedDeliveryFee < 2.50) {
-              console.error('❌ Frais de livraison < 2.50€ dans la commande:', {
+            // 1. Vérifier frais_livraison : 0€ = livraison offerte (OK), >= 2.50€ = OK, 0 < x < 2.50 = erreur
+            // On autorise frais_livraison = 0 (promo livraison offerte) même si isFreeDelivery n'est pas détecté
+            if (!isFreeDelivery && storedDeliveryFee > 0 && storedDeliveryFee < 2.50) {
+              console.error('❌ Frais de livraison invalides (0 < x < 2.50€) dans la commande:', {
                 orderId,
                 storedDeliveryFee,
                 order_total: order.total,

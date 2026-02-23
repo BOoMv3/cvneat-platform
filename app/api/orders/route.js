@@ -614,7 +614,12 @@ export async function POST(request) {
     const discount = Math.max(0, parseFloat(discountAmount) || 0);
     const platform_fee = Math.max(0, parseFloat(platformFee) || 0);
     const total = subtotalBeforeDiscount; // on stocke dans 'total' le sous-total articles (hors frais/discount)
-    const fraisLivraison = Math.round(parseFloat(deliveryFee || restaurant.frais_livraison || 0) * 100) / 100;
+    let fraisLivraison = Math.round(parseFloat(deliveryFee ?? restaurant.frais_livraison ?? 0) * 100) / 100;
+    // Garde-fou: si frais entre 0 et 2.50€ (hors livraison offerte), forcer 2.50€ pour éviter blocage create-payment-intent
+    if (fraisLivraison > 0 && fraisLivraison < 2.50) {
+      console.warn('⚠️ Frais livraison anormalement bas, application du minimum 2.50€:', fraisLivraison);
+      fraisLivraison = 2.50;
+    }
 
     console.log('Total utilise:', total);
     console.log('Frais de livraison utilises (arrondis):', fraisLivraison);
