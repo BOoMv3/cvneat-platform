@@ -9,6 +9,7 @@ export default function AdminMessagesPage() {
   const router = useRouter();
   const [restaurants, setRestaurants] = useState([]);
   const [sentMessages, setSentMessages] = useState([]);
+  const [priceNotifications, setPriceNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [subject, setSubject] = useState('');
@@ -34,12 +35,23 @@ export default function AdminMessagesPage() {
         router.push('/login');
         return;
       }
-      const [restoRes, msgRes] = await Promise.all([
+      const [restoRes, msgRes, sess] = await Promise.all([
         supabase.from('restaurants').select('id, nom').order('nom'),
         supabase.from('partner_messages').select('id, subject, created_at, restaurant_id').order('created_at', { ascending: false }).limit(50),
+        supabase.auth.getSession(),
       ]);
       setRestaurants(restoRes.data || []);
       setSentMessages(msgRes.data || []);
+      const token = sess?.data?.session?.access_token;
+      if (token) {
+        const notifRes = await fetch('/api/admin/partner-price-notifications', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (notifRes.ok) {
+          const notifs = await notifRes.json();
+          setPriceNotifications(Array.isArray(notifs) ? notifs : []);
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -227,6 +239,31 @@ L'équipe CVN'EAT`);
             </button>
           </div>
         </form>
+
+        {priceNotifications.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
+            <h2 className="font-semibold text-gray-900 mb-4">🔔 Partenaires ont fait les changements de prix</h2>
+            <ul className="space-y-2">
+              {priceNotifications.map((n) => (
+                <li key={n.id} className="flex justify-between items-start py-2 border-b last:border-0">
+                  <div>
+                    <span className="font-medium text-green-700">{n.restaurants?.nom || 'Restaurant'}</span>
+                    <p className="text-sm text-gray-600 mt-0.5">{n.message}</p>
+                  </div>
+                  <span className="text-xs text-gray-400 shrink-0 ml-2">
+                    {new Date(n.created_at).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Messages envoyés</h2>

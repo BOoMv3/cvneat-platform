@@ -110,6 +110,8 @@ export default function PartnerDashboard() {
   const [strategyStatus, setStrategyStatus] = useState({ loading: true, accepted: false, acceptedAt: null, reductionPct: null });
   const [strategyAccepting, setStrategyAccepting] = useState(false);
   const [bulkAdjusting, setBulkAdjusting] = useState(false);
+  const [priceNotifySending, setPriceNotifySending] = useState(false);
+  const [priceNotifySent, setPriceNotifySent] = useState(false);
   const [partnerMessages, setPartnerMessages] = useState([]);
   const [partnerMessagesUnread, setPartnerMessagesUnread] = useState(0);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
@@ -865,6 +867,28 @@ export default function PartnerDashboard() {
       alert(e?.message || 'Erreur lors de l\'ajustement');
     } finally {
       setBulkAdjusting(false);
+    }
+  };
+
+  const notifyPriceChangesDone = async () => {
+    setPriceNotifySending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/partner/notify-price-changes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Erreur');
+      setPriceNotifySent(true);
+    } catch (e) {
+      alert(e?.message || 'Erreur lors de la notification');
+    } finally {
+      setPriceNotifySending(false);
     }
   };
 
@@ -3045,6 +3069,19 @@ export default function PartnerDashboard() {
                       </button>
                     </>
                   )}
+                </div>
+                <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Une fois vos prix mis à jour (bouton ci-dessus ou manuellement), notifiez l&apos;admin :
+                  </p>
+                  <button
+                    type="button"
+                    onClick={notifyPriceChangesDone}
+                    disabled={priceNotifySending || priceNotifySent}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {priceNotifySent ? '✓ Notifié' : priceNotifySending ? 'Envoi...' : "J'ai fait les changements de prix — Notifier l'admin"}
+                  </button>
                 </div>
               </div>
             )}
