@@ -190,12 +190,18 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
         <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 md:gap-5">
             <div className="flex items-center gap-2 sm:gap-2.5">
-              <StarRating 
-                rating={restaurant.rating || 0} 
-                size="sm" 
-                showValue={true}
-              />
-              <span className="text-gray-600 dark:text-gray-400 text-sm sm:text-base font-medium">({restaurant.reviews_count || '0'} avis)</span>
+              {(restaurant.reviews_count || 0) > 0 ? (
+                <>
+                  <StarRating 
+                    rating={restaurant.rating || 0} 
+                    size="sm" 
+                    showValue={true}
+                  />
+                  <span className="text-gray-600 dark:text-gray-400 text-sm sm:text-base font-medium">({restaurant.reviews_count || 0} avis)</span>
+                </>
+              ) : (
+                <span className="text-gray-600 dark:text-gray-400 text-sm sm:text-base font-medium">Pas encore noté</span>
+              )}
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <FaClock className="text-gray-600 dark:text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />

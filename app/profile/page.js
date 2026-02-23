@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug, FaTicketAlt, FaCopy, FaEnvelope } from 'react-icons/fa';
+import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug, FaTicketAlt, FaCopy, FaEnvelope, FaThumbsUp } from 'react-icons/fa';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/PageHeader';
 import DarkModeToggle from '@/components/DarkModeToggle';
@@ -11,6 +11,7 @@ import NotificationToggle from '@/components/NotificationToggle';
 
 // Éviter de charger des composants lourds tant qu'ils ne sont pas visibles
 const LoyaltyProgram = dynamic(() => import('../components/LoyaltyProgram'), { ssr: false });
+const OrderCardSkeleton = dynamic(() => import('../components/OrderCardSkeleton'), { ssr: false });
 const PushNotificationService = dynamic(() => import('../components/PushNotificationService'), { ssr: false });
 const TestComponent = dynamic(() => import('../components/TestComponent'), { ssr: false });
 
@@ -571,7 +572,13 @@ export default function Profile() {
           {/* Contenu des onglets */}
           {activeTab === 'orders' && (
             <div className="space-y-4 sm:space-y-6">
-              {orders.length === 0 ? (
+              {loading ? (
+                <>
+                  {[...Array(3)].map((_, i) => (
+                    <OrderCardSkeleton key={i} />
+                  ))}
+                </>
+              ) : orders.length === 0 ? (
                 <div className="text-center py-6 sm:py-8">
                   <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">Vous n'avez pas encore de commandes</p>
                 </div>
@@ -622,6 +629,12 @@ export default function Profile() {
                           <p>{order.deliveryCity}, {order.deliveryPostalCode}</p>
                         </div>
                         <div className="text-left sm:text-right">
+                          {/* Points gagnés pour les commandes livrées */}
+                          {(order.status === 'livree' || order.status === 'delivered' || order.statut === 'livree') && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">
+                              +{Math.floor(parseFloat(order.total || 0) + parseFloat(order.frais_livraison || order.deliveryFee || 0))} pts gagnés
+                            </p>
+                          )}
                           <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Total</p>
                           <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                             {(() => {
@@ -660,15 +673,25 @@ export default function Profile() {
                         </button>
                       </div>
                       
-                      {/* Bouton signaler un problème pour les commandes livrées */}
+                      {/* Boutons pour les commandes livrées : avis + signaler problème */}
                       {(order.status === 'delivered' || order.status === 'livree' || order.statut === 'livree' || order.statut === 'delivered') && (
-                        <div className="mt-3 pt-3 border-t">
+                        <div className="mt-3 pt-3 border-t space-y-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/orders/${order.id}/feedback`);
+                            }}
+                            className="w-full bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900/30 dark:hover:bg-green-900/50 dark:text-green-200 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                          >
+                            <FaThumbsUp className="w-4 h-4 mr-2" />
+                            Laisser un avis
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/complaint/${order.id}`);
                             }}
-                            className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                            className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-200 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
                           >
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -810,8 +833,17 @@ export default function Profile() {
                 </p>
               </div>
 
-              {/* Points de fidélité - Désactivé temporairement jusqu'à implémentation complète */}
-              {/* <LoyaltyProgram userPoints={user?.points_fidelite || 0} /> */}
+              {/* Programme de fidélité - mis en avant */}
+              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-xl border-2 border-amber-200 dark:border-amber-700 p-4 mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <FaGift className="text-amber-600 dark:text-amber-400" />
+                  Programme de fidélité CVN'EAT
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  Vos points sont maintenant actifs ! Gagnez 1 point par euro dépensé et échangez-les contre des récompenses.
+                </p>
+                <LoyaltyProgram userPoints={user?.points_fidelite || 0} />
+              </div>
 
               <PushNotificationService />
 

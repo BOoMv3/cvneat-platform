@@ -92,7 +92,12 @@ export async function POST(request) {
             const subtotalAfterDiscount = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
             const storedDeliveryFee = parseFloat(order.frais_livraison || 0) || 0;
 
-            const expectedAmount = Math.round((subtotalAfterDiscount + (isFreeDelivery ? 0 : storedDeliveryFee) + PLATFORM_FEE) * 100) / 100;
+            let expectedAmount = Math.round((subtotalAfterDiscount + (isFreeDelivery ? 0 : storedDeliveryFee) + PLATFORM_FEE) * 100) / 100;
+            // Déduction des points de fidélité (20 pts = 1€)
+            const pointsUsed = parseInt(metadata?.points_used || '0', 10) || 0;
+            if (pointsUsed > 0) {
+              expectedAmount = Math.max(0.50, Math.round((expectedAmount - pointsUsed / 20) * 100) / 100);
+            }
             const amountDiff = Math.abs(amountNumber - expectedAmount);
 
             // 1. Vérifier frais_livraison >= 2.50€ (sauf livraison offerte)

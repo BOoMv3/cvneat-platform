@@ -37,6 +37,7 @@ import {
 import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
+import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 
@@ -487,6 +488,7 @@ export default function Home() {
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
   const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
+  const [hasActiveOrder, setHasActiveOrder] = useState(false); // Commande en cours pour mettre en avant "Ma commande"
 
   const searchInputRef = useRef(null);
   const lastFocusKeyRef = useRef('');
@@ -660,9 +662,24 @@ export default function Home() {
               localStorage.setItem('userRole', userData.role);
             }
           }
+          // Vérifier si l'utilisateur a une commande active (pas livrée/annulée)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${session.access_token}` } });
+            if (res.ok) {
+              const orders = await res.json();
+              const active = Array.isArray(orders) && orders.some(o => {
+                const s = (o.status || o.statut || '').toLowerCase();
+                return s && s !== 'livree' && s !== 'delivered' && s !== 'annulee' && s !== 'cancelled';
+              });
+              setHasActiveOrder(!!active);
+            }
+          }
         } catch (error) {
           console.error('Erreur recuperation points:', error);
         }
+      } else {
+        setHasActiveOrder(false);
       }
     };
 
@@ -1396,19 +1413,30 @@ export default function Home() {
             <FaImage className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="hidden sm:inline">Pub</span>
           </Link>
-          {/* Bouton Suivre ma commande - Compact avec icône */}
-          <Link href="/track-order" className="bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
+          {/* Bouton Suivre ma commande - mis en avant si commande active */}
+          <Link
+            href="/track-order"
+            className={`px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation ${
+              hasActiveOrder
+                ? 'bg-green-500 hover:bg-green-600 text-white ring-2 ring-white/50'
+                : 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
+            }`}
+          >
             <FaTruck className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Ma commande</span>
+            <span className="hidden sm:inline">{hasActiveOrder ? 'Ma commande en cours' : 'Ma commande'}</span>
           </Link>
           
           {user ? (
             <>
-              {/* Points de fidélité - Compact avec icône */}
-              <div className="hidden sm:flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px]">
+              {/* Points de fidélité - Compact, cliquable */}
+              <Link
+                href="/profile"
+                className="hidden sm:flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px] hover:bg-white/30 transition-colors"
+                title="Voir mes points de fidélité"
+              >
                 <FaGift className="text-yellow-400 h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                 <span className="text-white text-[10px] sm:text-xs md:text-sm font-semibold">{userPoints}</span>
-              </div>
+              </Link>
               
               {/* Profil - Icône seule */}
               <Link href="/profile" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation">
@@ -1640,6 +1668,30 @@ export default function Home() {
             </button>
           </div>
 
+          {/* Bannière points de fidélité - visible pour les clients connectés */}
+          {user && (
+            <Link
+              href="/profile"
+              className="mb-6 block bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 dark:from-amber-600 dark:via-yellow-600 dark:to-amber-600 rounded-2xl p-4 sm:p-5 shadow-lg border border-amber-200 dark:border-amber-700 hover:shadow-xl hover:scale-[1.01] transition-all duration-200"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/90 dark:bg-gray-900/50 rounded-full flex items-center justify-center">
+                    <FaGift className="text-2xl sm:text-3xl text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg">Points de fidélité actifs</h3>
+                    <p className="text-gray-800 dark:text-gray-200 text-sm sm:text-base">Gagnez 1 point par € et échangez-les contre un article offert, une réduction ou la livraison gratuite !</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">{userPoints}</span>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">pts</span>
+                </div>
+              </div>
+            </Link>
+          )}
+
           {/* Filtres et tri - Optimisé mobile */}
           {showFilters && (
             <div className="bg-white rounded-3xl p-4 sm:p-6 mb-8 shadow-xl border border-gray-100">
@@ -1667,8 +1719,10 @@ export default function Home() {
 
           {/* Liste verticale des restaurants avec espacement élégant */}
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
+            <div className="space-y-8">
+              {[...Array(4)].map((_, i) => (
+                <RestaurantCardSkeleton key={i} />
+              ))}
             </div>
           ) : displayRestaurants.length === 0 ? (
             <div className="text-center py-16">
@@ -1834,7 +1888,9 @@ export default function Home() {
                             </h3>
                             <div className="flex items-center bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/40 dark:to-amber-900/40 px-2 sm:px-2.5 md:px-3 py-1 rounded-full flex-shrink-0 shadow-md border border-yellow-200/50 dark:border-yellow-700/50">
                               <FaStar className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-yellow-500 dark:text-yellow-400 mr-0.5 sm:mr-1 flex-shrink-0 drop-shadow-sm" />
-                              <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 dark:text-gray-200">{restaurant.rating || '4.5'}</span>
+                              <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 dark:text-gray-200">
+                                {(restaurant.reviews_count || 0) > 0 ? (restaurant.rating || 0).toFixed(1) : '—'}
+                              </span>
                             </div>
                           </div>
                           

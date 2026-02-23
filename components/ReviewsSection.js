@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FaStar, FaUser, FaThumbsUp, FaThumbsDown } from 'react-icons/fa';
 import StarRating from './StarRating';
+import { supabase } from '@/lib/supabase';
 
 export default function ReviewsSection({ restaurantId, userId, className = '' }) {
   const [reviews, setReviews] = useState([]);
@@ -15,47 +16,53 @@ export default function ReviewsSection({ restaurantId, userId, className = '' })
     comment: ''
   });
 
-  useEffect(() => {
-    fetchReviews();
-    checkCanReview();
-  }, [restaurantId, userId]);
-
   const fetchReviews = async () => {
-    try {
-      const response = await fetch(`/api/restaurants/${restaurantId}/reviews`);
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data || []);
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des avis:', error);
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch(`/api/restaurants/${restaurantId}/reviews`);
+    const data = res.ok ? await res.json() : [];
+    setReviews(data || []);
+    return data || [];
   };
 
-  const checkCanReview = async () => {
-    if (!userId) {
-      setCanReview(false);
-      return;
-    }
-    try {
-      // Vérifier si l'utilisateur a une commande livrée pour ce restaurant
-      const response = await fetch(`/api/orders?userId=${userId}`);
-      if (response.ok) {
-        const orders = await response.json();
-        const hasDeliveredOrder = orders.some(order => 
-          order.restaurant?.id === restaurantId && order.statut === 'livree'
-        );
-        // Vérifier aussi qu'il n'a pas déjà laissé un avis
-        const hasExistingReview = reviews.some(review => review.user_id === userId);
-        setCanReview(hasDeliveredOrder && !hasExistingReview);
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      const reviewsData = await fetch(`/api/restaurants/${restaurantId}/reviews`).then(r => r.ok ? r.json() : []).catch(() => []);
+      if (mounted) {
+        setReviews(reviewsData || []);
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Erreur vérification droit avis:', error);
-      setCanReview(false);
-    }
-  };
+      if (!userId || !mounted) {
+        setCanReview(false);
+        return;
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) {
+          if (mounted) setCanReview(false);
+          return;
+        }
+        const response = await fetch(`/api/orders?userId=${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok && mounted) {
+          const orders = await response.json();
+          const hasDeliveredOrder = Array.isArray(orders) && orders.some(order => 
+            (order.restaurant?.id === restaurantId || order.restaurant_id === restaurantId) && 
+            (order.status === 'livree' || order.statut === 'livree')
+          );
+          const hasExistingReview = (reviewsData || []).some(r => r.user_id === userId);
+          setCanReview(hasDeliveredOrder && !hasExistingReview);
+        } else if (mounted) {
+          setCanReview(false);
+        }
+      } catch (error) {
+        if (mounted) setCanReview(false);
+      }
+    };
+    run();
+    return () => { mounted = false; };
+  }, [restaurantId, userId]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();

@@ -36,14 +36,16 @@ export default function OrderFeedback() {
   const fetchOrder = async () => {
     try {
       const { data, error } = await supabase
-        .from('orders')
+        .from('commandes')
         .select(`
           id,
-          order_number,
-          total_amount,
-          status,
+          numero_commande,
+          total,
+          statut,
           created_at,
-          restaurant:restaurants(name, id)
+          livreur_id,
+          restaurant_id,
+          restaurants(nom, id)
         `)
         .eq('id', orderId)
         .single();
@@ -53,12 +55,17 @@ export default function OrderFeedback() {
         return;
       }
 
-      if (data.status !== 'delivered') {
+      if (data.statut !== 'livree') {
         setError('Vous ne pouvez donner votre avis que pour une commande livrée');
         return;
       }
 
-      setOrder(data);
+      setOrder({
+        ...data,
+        order_number: data.numero_commande || data.id?.slice(0, 8),
+        total_amount: data.total,
+        restaurant: { name: data.restaurants?.nom || 'Restaurant', id: data.restaurant_id }
+      });
     } catch (err) {
       setError('Erreur lors du chargement de la commande');
     } finally {
@@ -89,7 +96,7 @@ export default function OrderFeedback() {
       const feedbackData = {
         order_id: orderId,
         customer_id: session.user.id,
-        restaurant_id: order.restaurant.id,
+        restaurant_id: order.restaurant?.id || order.restaurant_id,
         ...feedback,
         submitted_at: new Date().toISOString()
       };
@@ -100,6 +107,27 @@ export default function OrderFeedback() {
 
       if (feedbackError) {
         throw feedbackError;
+      }
+
+      // Noter aussi le livreur (delivery_ratings) si livraison et note qualité livraison > 0
+      if (order.livreur_id && (feedback.delivery_quality || feedback.delivery_speed) > 0) {
+        const livreurRating = feedback.delivery_quality || feedback.delivery_speed || feedback.overall_satisfaction;
+        try {
+          await fetch('/api/delivery/ratings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              order_id: orderId,
+              rating: livreurRating,
+              comment: feedback.comment || null
+            })
+          });
+        } catch (e) {
+          console.warn('Erreur enregistrement note livreur:', e);
+        }
       }
 
       // Si le client a signalé des problèmes, proposer une réclamation

@@ -7,6 +7,7 @@ import { safeLocalStorage } from '@/lib/localStorage';
 import PaymentForm from '@/components/PaymentForm';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import PromoCodeInput from '@/components/PromoCodeInput';
+import SupportContactBlock from '@/components/SupportContactBlock';
 // PROMO TERMINÉE : Plus besoin du composant FreeDeliveryBanner
 // import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import { 
@@ -141,6 +142,8 @@ export default function Checkout() {
     email: '',
     instructions: ''
   });
+  const [userPoints, setUserPoints] = useState(0);
+  const [pointsToUse, setPointsToUse] = useState(0); // Points à utiliser pour réduire le total (20 pts = 1€)
 
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
   // Mettre à true pour fermer les livraisons manuellement
@@ -183,6 +186,7 @@ export default function Checkout() {
           email: user.email || '',
           instructions: ''
         });
+        setUserPoints(userData.points_fidelite || 0);
       }
 
       // Charger les adresses
@@ -586,9 +590,10 @@ export default function Checkout() {
       const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
       
       // 2. Calculer le total final (sous-total + livraison + frais plateforme)
-      // Le total doit être au minimum 0.50€ (minimum Stripe)
       const rawTotal = subtotalAfterDiscount + finalDeliveryFeeForTotal + PLATFORM_FEE;
-      const totalAmount = Math.max(0.50, Math.round(rawTotal * 100) / 100); // Minimum 0.50€, arrondi à 2 décimales
+      // 2b. Déduction des points de fidélité (20 pts = 1€)
+      const pointsDiscountEur = pointsToUse > 0 ? Math.min(pointsToUse / 20, Math.max(0, rawTotal - 0.50)) : 0;
+      const totalAmount = Math.max(0.50, Math.round((rawTotal - pointsDiscountEur) * 100) / 100); // Minimum 0.50€
       
       // 3. Vérification finale de cohérence
       if (isNaN(totalAmount) || totalAmount <= 0) {
@@ -696,7 +701,8 @@ export default function Checkout() {
         restaurant_id: resolvedRestaurant.id,
         promoCode: appliedPromoCode,
         cartTotal: cartTotal,
-        totalAmount: totalAmount // Montant final à payer
+        totalAmount: totalAmount,
+        pointsUsed: pointsToUse || 0
       });
 
       // Créer le PaymentIntent Stripe avec l'ID de commande
@@ -729,10 +735,11 @@ export default function Checkout() {
           amount: totalAmount,
           currency: 'eur',
           metadata: {
-            order_id: orderId, // Lier le paiement à la commande
+            order_id: orderId,
             user_id: user.id,
             restaurant_id: resolvedRestaurant.id,
-            promo_code: appliedPromoCode?.code || null
+            promo_code: appliedPromoCode?.code || null,
+            points_used: (pointsToUse || 0).toString()
           }
         })
       });
@@ -951,7 +958,20 @@ export default function Checkout() {
 
   const handlePaymentError = (error) => {
     console.error('❌ Erreur paiement:', error);
-    alert(`Erreur de paiement: ${error}`);
+    const msg = String(error?.message || error || '');
+    let friendly = 'Une erreur est survenue lors du paiement. ';
+    if (msg.toLowerCase().includes('card') || msg.toLowerCase().includes('carte')) {
+      friendly += 'Vérifiez les informations de votre carte (numéro, date, CVC).';
+    } else if (msg.toLowerCase().includes('declined') || msg.toLowerCase().includes('refus')) {
+      friendly += 'Votre banque a refusé le paiement. Essayez une autre carte ou contactez votre banque.';
+    } else if (msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('solde')) {
+      friendly += 'Solde insuffisant. Utilisez une autre carte ou moyen de paiement.';
+    } else if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch')) {
+      friendly += 'Problème de connexion. Vérifiez votre internet et réessayez.';
+    } else {
+      friendly += msg ? `Détails : ${msg}` : 'Réessayez ou contactez le support (07 86 01 41 71).';
+    }
+    alert(friendly);
     setShowPaymentForm(false);
     setSubmitting(false);
   };
@@ -1272,19 +1292,16 @@ export default function Checkout() {
 
             {(() => {
               const PLATFORM_FEE = 0.49;
-              
-              // Calculer les frais de livraison affichés (gérer la livraison gratuite si code promo)
+              const pointsDiscount = pointsToUse > 0 ? (pointsToUse / 20) : 0; // 20 pts = 1€
               let displayedDeliveryFee = fraisLivraison;
               if (appliedPromoCode?.discountType === 'free_delivery') {
                 displayedDeliveryFee = 0;
               }
-              
-              // Calculer le total avec réduction du code promo et livraison gratuite si applicable
               const discountAmount = appliedPromoCode?.discountAmount || 0;
-              const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas dépasser le panier
+              const maxDiscount = Math.min(discountAmount, cartTotal);
               const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
-              const finalTotalDisplay = Math.max(0.50, Math.round((subtotalAfterDiscount + displayedDeliveryFee + PLATFORM_FEE) * 100) / 100);
-              
+              const beforePoints = subtotalAfterDiscount + displayedDeliveryFee + PLATFORM_FEE;
+              const finalTotalDisplay = Math.max(0.50, Math.round((beforePoints - pointsDiscount) * 100) / 100);
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
@@ -1306,11 +1323,19 @@ export default function Checkout() {
                   {displayedDeliveryFee.toFixed(2)}€
                 </span>
               </div>
-              {/* PROMO TERMINÉE : Plus de bannière de promotion */}
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
                 <span>Frais plateforme</span>
                 <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>
               </div>
+              {pointsDiscount > 0 && (
+                <div className="flex justify-between text-amber-600 dark:text-amber-400 text-sm sm:text-base">
+                  <span className="flex items-center">
+                    <FaGift className="h-3 w-3 mr-1" />
+                    Points fidélité (-{pointsToUse} pts)
+                  </span>
+                  <span className="font-semibold">-{pointsDiscount.toFixed(2)}€</span>
+                </div>
+              )}
               <div key={`total-${forceUpdate}`} className="border-t dark:border-gray-700 pt-2 sm:pt-3">
                 <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
                   <span>Total</span>
@@ -1320,6 +1345,42 @@ export default function Checkout() {
             </div>
               );
             })()}
+
+            {/* Utiliser mes points de fidélité */}
+            {userPoints > 0 && (
+              <div className="border-t dark:border-gray-700 pt-4 mt-4">
+                <h3 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center text-sm sm:text-base">
+                  <FaGift className="h-4 w-4 text-amber-500 dark:text-amber-400 mr-2" />
+                  Utiliser mes points ({userPoints} pts)
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">20 points = 1€ de réduction</p>
+                <div className="flex gap-2 flex-wrap">
+                  {[50, 100, 200].filter(p => p <= userPoints).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPointsToUse(prev => prev === p ? 0 : p)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        pointsToUse === p
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50'
+                      }`}
+                    >
+                      {p} pts ({(p/20).toFixed(0)}€)
+                    </button>
+                  ))}
+                  {pointsToUse > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPointsToUse(0)}
+                      className="px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:underline"
+                    >
+                      Annuler
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Code promo */}
             <div className="border-t dark:border-gray-700 pt-4 sm:pt-4 mt-4 sm:mt-4">
@@ -1387,33 +1448,41 @@ export default function Checkout() {
                 ) : (
                   (() => {
                     const PLATFORM_FEE = 0.49;
-                    
-                    // PROMO TERMINÉE : Plus de livraison gratuite
-                    // const today = new Date().toISOString().split('T')[0];
-                    // const PROMO_DATE = '2025-11-21';
-                    // const MIN_ORDER_FOR_FREE_DELIVERY = 25.00;
-                    
                     let finalDeliveryFee = fraisLivraison;
-                    // Gérer la livraison gratuite si code promo
-                    if (appliedPromoCode?.discountType === 'free_delivery') {
-                      finalDeliveryFee = 0;
-                    }
-                    
-                    // Appliquer la réduction du code promo (même logique que prepareOrderAndPayment)
+                    if (appliedPromoCode?.discountType === 'free_delivery') finalDeliveryFee = 0;
                     const discountAmount = appliedPromoCode?.discountAmount || 0;
-                    const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas dépasser le panier
+                    const maxDiscount = Math.min(discountAmount, cartTotal);
                     const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
                     const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
-                    const finalTotalDisplay = Math.max(0.50, Math.round(rawTotal * 100) / 100); // Minimum 0.50€
+                    const pointsDiscount = pointsToUse > 0 ? (pointsToUse / 20) : 0;
+                    const finalTotalDisplay = Math.max(0.50, Math.round((rawTotal - pointsDiscount) * 100) / 100);
                     return `Payer ${finalTotalDisplay.toFixed(2)}€`;
                   })()
                 )}
               </button>
             ) : (
               <div className="mt-4 sm:mt-6">
+                {/* Récapitulatif final avant paiement */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <FaCheck className="h-4 w-4 text-green-600 dark:text-green-400 mr-2" />
+                    Récapitulatif de votre commande
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="text-gray-600 dark:text-gray-400">Restaurant :</span> <strong>{restaurant?.nom || '—'}</strong></p>
+                    <p><span className="text-gray-600 dark:text-gray-400">Articles :</span> {cart.length} article{cart.length > 1 ? 's' : ''}</p>
+                    <p><span className="text-gray-600 dark:text-gray-400">Adresse :</span> {selectedAddress ? `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}` : '—'}</p>
+                    <p className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                      <span className="text-gray-600 dark:text-gray-400">Total à payer :</span>{' '}
+                      <strong className="text-lg text-blue-600 dark:text-blue-400">
+                        {orderData?.totalAmount?.toFixed(2) || (cartTotal + fraisLivraison + 0.49).toFixed(2)}€
+                      </strong>
+                    </p>
+                  </div>
+                </div>
                 <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
                   <FaCreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
-                  Paiement
+                  Paiement sécurisé
                 </h3>
                 {clientSecret && (
                   <PaymentForm
@@ -1435,6 +1504,7 @@ export default function Checkout() {
                     setPaymentIntentId(null);
                     setClientSecret(null);
                     setOrderData(null);
+                    setPointsToUse(0);
                   }}
                   className="w-full mt-4 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 text-sm sm:text-base"
                 >
@@ -1442,6 +1512,7 @@ export default function Checkout() {
                 </button>
               </div>
             )}
+            <SupportContactBlock className="mt-4" />
           </div>
         </div>
       </div>

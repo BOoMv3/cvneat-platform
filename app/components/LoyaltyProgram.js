@@ -88,43 +88,46 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
   };
 
   const fetchRewards = async () => {
-    // Simulation des récompenses disponibles
-    const mockRewards = [
+    // Récompenses : 1 point = 1€ dépensé (ex: 50€ commandés = 50 pts)
+    const rewards = [
       {
-        id: 1,
-        name: 'Réduction 5€',
-        description: 'Bon de réduction de 5€ sur votre prochaine commande',
-        cost: 200,
-        icon: '🎫',
-        available: true
+        id: 'article-offert',
+        name: 'Article offert',
+        description: 'Un dessert ou une boisson au choix offert avec votre prochaine commande',
+        cost: 50,
+        icon: '🎁',
+        available: true,
+        featured: true
       },
       {
-        id: 2,
+        id: 'reduction-5',
+        name: 'Réduction 5€',
+        description: '5€ de réduction sur votre prochaine commande',
+        cost: 100,
+        icon: '🎫',
+        available: true,
+        featured: false
+      },
+      {
+        id: 'livraison-gratuite',
         name: 'Livraison gratuite',
         description: 'Livraison gratuite sur votre prochaine commande',
-        cost: 150,
+        cost: 80,
         icon: '🚚',
-        available: true
+        available: true,
+        featured: false
       },
       {
-        id: 3,
-        name: 'Dessert offert',
-        description: 'Un dessert au choix offert avec votre commande',
-        cost: 100,
-        icon: '🍰',
-        available: true
-      },
-      {
-        id: 4,
+        id: 'reduction-10',
         name: 'Réduction 10€',
-        description: 'Bon de réduction de 10€ sur votre prochaine commande',
-        cost: 500,
+        description: '10€ de réduction sur votre prochaine commande',
+        cost: 200,
         icon: '💳',
-        available: userPoints >= 500
+        available: true,
+        featured: false
       }
     ];
-    
-    setRewards(mockRewards);
+    setRewards(rewards);
   };
 
   const redeemReward = async (rewardId) => {
@@ -208,19 +211,24 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
       {/* Récompenses disponibles */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Récompenses disponibles</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Échangez vos points contre des récompenses à utiliser lors de votre prochaine commande.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {rewards.map((reward) => (
             <div 
               key={reward.id} 
               className={`border rounded-lg p-4 dark:border-gray-700 ${
-                reward.available 
-                  ? 'border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20' 
-                  : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 opacity-60'
+                reward.featured 
+                  ? 'border-orange-300 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/20 ring-2 ring-orange-200 dark:ring-orange-800' 
+                  : reward.available 
+                    ? 'border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20' 
+                    : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 opacity-60'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-2xl">{reward.icon}</span>
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{reward.cost} pts</span>
+                <span className={`text-sm font-medium ${reward.featured ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                  {reward.cost} pts {reward.featured && <span className="text-xs">(le plus populaire)</span>}
+                </span>
               </div>
               <h5 className="font-semibold text-gray-900 dark:text-white mb-1">{reward.name}</h5>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{reward.description}</p>
@@ -245,30 +253,17 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
         </div>
       </div>
 
-      {/* Historique des points */}
+      {/* Comment gagner des points */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Comment gagner des points ?</h4>
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-            <span className="text-gray-700 dark:text-gray-300">Commande terminée</span>
-            <span className="font-medium text-green-600 dark:text-green-400">+1 point par €</span>
+            <span className="text-gray-700 dark:text-gray-300">À chaque commande livrée</span>
+            <span className="font-medium text-green-600 dark:text-green-400">+1 point par euro dépensé</span>
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-            <span className="text-gray-700 dark:text-gray-300">Première commande</span>
-            <span className="font-medium text-green-600 dark:text-green-400">+50 points bonus</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-            <span className="text-gray-700 dark:text-gray-300">Avis laissé</span>
-            <span className="font-medium text-green-600 dark:text-green-400">+20 points</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-            <span className="text-gray-700 dark:text-gray-300">Parrainage d'un ami</span>
-            <span className="font-medium text-green-600 dark:text-green-400">+100 points</span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-gray-700 dark:text-gray-300">Commande d'anniversaire</span>
-            <span className="font-medium text-green-600 dark:text-green-400">+200 points</span>
-          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 pt-2">
+            Exemple : une commande de 25€ = 25 points. Avec 50 points, offrez-vous un dessert ou une boisson !
+          </p>
         </div>
       </div>
     </div>

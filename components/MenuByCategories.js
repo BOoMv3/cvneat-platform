@@ -164,7 +164,17 @@ export default function MenuByCategories({
     return 99;
   };
   
-  // Trier les catégories selon l'ordre personnalisé
+  // Alias pour matcher singulier/pluriel (Boisson <-> Boissons, Entrée <-> Entrées)
+  const addCategoryAliases = (index, label, k, name, idx) => {
+    if (!k) return;
+    if (label[k] === undefined) label[k] = name;
+    if (index[k] === undefined) index[k] = idx;
+    const base = k.replace(/s$/, ''); // "boissons" -> "boisson"
+    const plural = k + (k.endsWith('s') ? '' : 's'); // "boisson" -> "boissons"
+    if (base && index[base] === undefined) index[base] = idx;
+    if (plural && index[plural] === undefined) index[plural] = idx;
+  };
+
   const partnerCategoryMeta = useMemo(() => {
     if (!Array.isArray(categoryOrder)) {
       return { index: null, label: null };
@@ -176,9 +186,7 @@ export default function MenuByCategories({
     categoryOrder.forEach((entry, idx) => {
       const name = typeof entry === 'string' ? entry : entry?.name;
       const k = normalizeCategoryKey(name);
-      if (!k) return;
-      if (label[k] === undefined) label[k] = name;
-      if (index[k] === undefined) index[k] = idx;
+      addCategoryAliases(index, label, k, name, idx);
     });
 
     return { index, label };

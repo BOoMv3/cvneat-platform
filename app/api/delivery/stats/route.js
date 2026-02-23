@@ -92,11 +92,19 @@ export async function GET(request) {
     
     const todayDeliveries = todayOrders.length;
     
-    // Calculer le temps moyen de livraison (fixe pour la démo)
-    const averageDeliveryTime = totalDeliveries > 0 ? 25 : 0; // 25 min fixe
+    // Calculer le temps moyen de livraison (estimation)
+    const averageDeliveryTime = totalDeliveries > 0 ? 25 : 0;
     
-    // Note moyenne (fixe pour la démo)
-    const averageRating = totalDeliveries > 0 ? 4.5 : 0; // 4.5 fixe
+    // Note moyenne depuis delivery_ratings
+    let averageRating = 0;
+    const { data: ratings } = await supabaseAdmin
+      .from('delivery_ratings')
+      .select('rating')
+      .eq('livreur_id', user.id);
+    if (ratings && ratings.length > 0) {
+      const sum = ratings.reduce((s, r) => s + (r.rating || 0), 0);
+      averageRating = Math.round((sum / ratings.length) * 10) / 10;
+    }
 
     const stats = {
       total_earnings: totalEarnings,

@@ -105,10 +105,10 @@ export async function POST(request) {
       );
     }
 
-    // Charger la commande (pour calculs + notification)
+    // Charger la commande (pour calculs + notification + fidélité)
     const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
-      .select('id, order_number, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, payment_status')
+      .select('id, order_number, user_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, payment_status')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -199,6 +199,50 @@ export async function POST(request) {
     const isPaidNow = (updated.payment_status || '').toString().trim().toLowerCase() === 'paid';
     const transitionedToPaid = isPaidNow && !wasPaidBefore;
     if (transitionedToPaid) {
+      const orderUserId = order?.user_id;
+      const orderAmount = paidAmount ?? (parseFloat(order?.total || 0) + parseFloat(order?.frais_livraison || 0));
+      const pointsUsed = parseInt(paymentIntent?.metadata?.points_used || '0', 10) || 0;
+
+      // Déduire les points utilisés (non bloquant)
+      if (orderUserId && pointsUsed > 0) {
+        (async () => {
+          try {
+            const { data: u } = await supabaseAdmin.from('users').select('points_fidelite').eq('id', orderUserId).single();
+            const current = parseInt(u?.points_fidelite || 0, 10) || 0;
+            if (current >= pointsUsed) {
+              await supabaseAdmin.from('users').update({ points_fidelite: Math.max(0, current - pointsUsed) }).eq('id', orderUserId);
+              await supabaseAdmin.from('loyalty_history').insert({
+                user_id: orderUserId,
+                order_id: orderId,
+                points_spent: pointsUsed,
+                reason: 'Commande',
+                description: `Utilisation de ${pointsUsed} pts pour la commande`,
+              }).catch(() => {});
+            }
+          } catch (e) { /* non bloquant */ }
+        })();
+      }
+
+      // Créditer les points de fidélité (non bloquant)
+      if (orderUserId && orderAmount > 0) {
+        (async () => {
+          try {
+            const pointsEarned = Math.floor(orderAmount); // 1 pt / €
+            const { data: u } = await supabaseAdmin.from('users').select('points_fidelite').eq('id', orderUserId).single();
+            const current = parseInt(u?.points_fidelite || 0, 10) || 0;
+            await supabaseAdmin.from('users').update({ points_fidelite: current + pointsEarned }).eq('id', orderUserId);
+            await supabaseAdmin.from('loyalty_history').insert({
+              user_id: orderUserId,
+              order_id: orderId,
+              points_earned: pointsEarned,
+              reason: 'Commande',
+              description: `Commande - ${orderAmount.toFixed(2)}€`,
+            }).catch(() => {});
+          } catch (e) {
+            /* non bloquant */
+          }
+        })();
+      }
       try {
         const origin = new URL(request.url).origin;
         const notificationTotal = (

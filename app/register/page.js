@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 // import Navbar from '@/components/Navbar';
 import FormInput from '@/components/FormInput';
+import SupportContactBlock from '@/components/SupportContactBlock';
 import { supabase } from '@/lib/supabase';
 
 export default function Register() {
@@ -332,6 +333,7 @@ export default function Register() {
           >
             {loading ? "Inscription en cours..." : "S'inscrire"}
           </button>
+          <SupportContactBlock className="mt-4" />
         </form>
       </div>
     </main>

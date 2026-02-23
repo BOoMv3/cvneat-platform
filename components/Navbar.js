@@ -125,12 +125,16 @@ export default function Navbar() {
 
           {/* Right Side - Desktop */}
           <div className="hidden md:flex items-center space-x-2 lg:space-x-3 xl:space-x-4">
-            {/* Points de fidélité */}
+            {/* Points de fidélité - cliquable vers le profil */}
             {user && (
-              <div className="flex items-center space-x-1 bg-yellow-100 dark:bg-yellow-900/30 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg">
+              <Link
+                href="/profile"
+                className="flex items-center space-x-1 bg-yellow-100 dark:bg-yellow-900/30 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-800/50 transition-colors"
+                title="Voir mes points de fidélité"
+              >
                 <FaGift className="h-3 w-3 lg:h-4 lg:w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
                 <span className="text-xs lg:text-sm font-medium text-yellow-800 dark:text-yellow-200">{userPoints} pts</span>
-              </div>
+              </Link>
             )}
             
             {/* Panier */}

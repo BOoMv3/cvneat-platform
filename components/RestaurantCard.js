@@ -133,8 +133,12 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <FaStar className="text-yellow-400" />
-              <span className="font-semibold text-gray-800">{rating || '4.5'}</span>
-              <span className="text-gray-600">({review_count || '100+'})</span>
+              <span className="font-semibold text-gray-800">
+                {(review_count || 0) > 0 ? (parseFloat(rating) || 0).toFixed(1) : '—'}
+              </span>
+              <span className="text-gray-600">
+                ({(review_count || 0) > 0 ? review_count : '0'} avis)
+              </span>
             </div>
             {minimum_order && (
               <span className="text-xs text-gray-500">

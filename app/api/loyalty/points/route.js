@@ -70,8 +70,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'ID commande et montant requis' }, { status: 400 });
     }
 
-    // Calculer les points gagnés (10 points par euro)
-    const pointsEarned = Math.floor(orderAmount * 10);
+    // Calculer les points gagnés (1 point par euro)
+    const pointsEarned = Math.floor(orderAmount);
 
     // Mettre à jour les points de l'utilisateur
     const { data: updatedUser, error: updateError } = await supabase
