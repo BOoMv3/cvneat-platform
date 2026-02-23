@@ -1,9 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/admin/cleanup-expired-orders",
-      "schedule": "* * * * *"
-    }
-  ]
-}
-
+{}
