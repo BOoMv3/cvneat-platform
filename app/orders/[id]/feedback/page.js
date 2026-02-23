@@ -34,37 +34,44 @@ export default function OrderFeedback() {
   }, [orderId]);
 
   const fetchOrder = async () => {
+    if (!orderId) {
+      setError('Commande non trouvée');
+      setLoading(false);
+      return;
+    }
     try {
-      const { data, error } = await supabase
-        .from('commandes')
-        .select(`
-          id,
-          numero_commande,
-          total,
-          statut,
-          created_at,
-          livreur_id,
-          restaurant_id,
-          restaurants(nom, id)
-        `)
-        .eq('id', orderId)
-        .single();
-
-      if (error || !data) {
-        setError('Commande non trouvée');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Vous devez être connecté pour laisser un avis');
+        setLoading(false);
         return;
       }
 
-      if (data.statut !== 'livree') {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || 'Commande non trouvée');
+        return;
+      }
+
+      const data = await res.json();
+      const statut = data.statut || data.status;
+
+      if (statut !== 'livree') {
         setError('Vous ne pouvez donner votre avis que pour une commande livrée');
         return;
       }
 
       setOrder({
         ...data,
-        order_number: data.numero_commande || data.id?.slice(0, 8),
-        total_amount: data.total,
-        restaurant: { name: data.restaurants?.nom || 'Restaurant', id: data.restaurant_id }
+        order_number: data.numero_commande || data.order_number || data.id?.slice(0, 8),
+        total_amount: data.total || data.total_amount,
+        restaurant: data.restaurant || { name: 'Restaurant', id: data.restaurant_id },
+        restaurant_id: data.restaurant?.id || data.restaurant_id,
+        livreur_id: data.livreur_id
       });
     } catch (err) {
       setError('Erreur lors du chargement de la commande');

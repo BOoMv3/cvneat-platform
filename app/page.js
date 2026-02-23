@@ -1430,7 +1430,7 @@ export default function Home() {
             <>
               {/* Points de fidélité - Compact, cliquable */}
               <Link
-                href="/profile"
+                href="/profile?tab=loyalty"
                 className="hidden sm:flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px] hover:bg-white/30 transition-colors"
                 title="Voir mes points de fidélité"
               >

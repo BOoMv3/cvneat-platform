@@ -128,7 +128,7 @@ export default function Navbar() {
             {/* Points de fidélité - cliquable vers le profil */}
             {user && (
               <Link
-                href="/profile"
+                href="/profile?tab=loyalty"
                 className="flex items-center space-x-1 bg-yellow-100 dark:bg-yellow-900/30 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-800/50 transition-colors"
                 title="Voir mes points de fidélité"
               >

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { FaShoppingBag, FaMapMarkerAlt, FaStar, FaClock, FaMotorcycle, FaSignOutAlt, FaUser, FaGift, FaHeart, FaEdit, FaCog, FaArrowLeft, FaHome, FaImage, FaBug, FaTicketAlt, FaCopy, FaEnvelope, FaThumbsUp } from 'react-icons/fa';
 import dynamic from 'next/dynamic';
@@ -17,7 +17,12 @@ const TestComponent = dynamic(() => import('../components/TestComponent'), { ssr
 
 export default function Profile() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('orders');
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    ['orders', 'addresses', 'favorites', 'loyalty', 'settings'].includes(tabParam) ? tabParam : 'orders'
+  );
+  const LOYALTY_LAUNCH_DATE = '2025-01-27'; // Les points ne comptent qu'à partir de cette date
   const [orders, setOrders] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +38,12 @@ export default function Profile() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (tabParam && ['orders', 'addresses', 'favorites', 'loyalty', 'settings'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(() => {
     if (authChecked && user) {
@@ -550,6 +561,18 @@ export default function Profile() {
               <span className="xs:hidden">Pub</span>
             </button>
             <button
+              onClick={() => setActiveTab('loyalty')}
+              className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
+                activeTab === 'loyalty'
+                  ? 'bg-black text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
+              }`}
+            >
+              <FaGift className="inline-block mr-1 text-xs" />
+              <span className="hidden xs:inline">Points</span>
+              <span className="xs:hidden">Points</span>
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               className={`px-2 py-2 rounded-lg min-h-[44px] touch-manipulation text-xs sm:text-sm flex items-center justify-center ${
                 activeTab === 'settings'
@@ -629,12 +652,16 @@ export default function Profile() {
                           <p>{order.deliveryCity}, {order.deliveryPostalCode}</p>
                         </div>
                         <div className="text-left sm:text-right">
-                          {/* Points gagnés pour les commandes livrées */}
-                          {(order.status === 'livree' || order.status === 'delivered' || order.statut === 'livree') && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">
-                              +{Math.floor(parseFloat(order.total || 0) + parseFloat(order.frais_livraison || order.deliveryFee || 0))} pts gagnés
-                            </p>
-                          )}
+                          {/* Points gagnés pour les commandes livrées (uniquement à partir du lancement du programme) */}
+                          {(order.status === 'livree' || order.status === 'delivered' || order.statut === 'livree') && (() => {
+                            const orderDate = (order.createdAt || order.created_at || '').toString().split('T')[0];
+                            if (orderDate < LOYALTY_LAUNCH_DATE) return null;
+                            return (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">
+                                +{Math.floor(parseFloat(order.total || 0) + parseFloat(order.frais_livraison || order.deliveryFee || 0))} pts gagnés
+                              </p>
+                            );
+                          })()}
                           <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Total</p>
                           <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                             {(() => {
@@ -783,6 +810,22 @@ export default function Profile() {
                 >
                   Voir mes favoris
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Onglet Points de fidélité */}
+          {activeTab === 'loyalty' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-xl border-2 border-amber-200 dark:border-amber-700 p-4 sm:p-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <FaGift className="text-amber-600 dark:text-amber-400" />
+                  Programme de fidélité CVN&apos;EAT
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  Vos points sont maintenant actifs ! Gagnez 1 point par euro dépensé et échangez-les contre des récompenses.
+                </p>
+                <LoyaltyProgram userPoints={user?.points_fidelite || 0} />
               </div>
             </div>
           )}
