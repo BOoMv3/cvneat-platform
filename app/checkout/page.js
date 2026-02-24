@@ -46,62 +46,55 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   };
 }
 
+/** Calcule le total pour UN seul item (prix de base + suppléments + taille + boisson) × quantité. Utilisé pour l’affichage ligne par ligne = même logique que le total panier. */
+function getItemLineTotal(item) {
+  if (!item) return 0;
+  let itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
+  const itemQuantity = parseInt(item?.quantity ?? 1, 10);
+
+  if (!item?.price_includes_extras) {
+    let supplementsPrice = 0;
+    if (Array.isArray(item?.supplements)) {
+      supplementsPrice = item.supplements.reduce(
+        (acc, sup) => acc + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0),
+        0
+      );
+    }
+    let meatsPrice = 0;
+    if (Array.isArray(item?.customizations?.selectedMeats)) {
+      meatsPrice = item.customizations.selectedMeats.reduce(
+        (acc, m) => acc + (parseFloat(m?.prix ?? m?.price ?? 0) || 0),
+        0
+      );
+    }
+    let saucesPrice = 0;
+    if (Array.isArray(item?.customizations?.selectedSauces)) {
+      saucesPrice = item.customizations.selectedSauces.reduce(
+        (acc, s) => acc + (parseFloat(s?.prix ?? s?.price ?? 0) || 0),
+        0
+      );
+    }
+    let sizePrice = 0;
+    if (item?.size && typeof item.size === 'object' && item.size.prix !== undefined) {
+      sizePrice = parseFloat(item.size.prix) || 0;
+    } else if (item?.prix_taille !== undefined) {
+      sizePrice = parseFloat(item.prix_taille) || 0;
+    }
+    itemPrice += supplementsPrice + meatsPrice + saucesPrice + sizePrice;
+  }
+  if (item.selected_drink && item.selected_drink.prix) {
+    itemPrice += parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
+  }
+  return Math.round(itemPrice * itemQuantity * 100) / 100;
+}
+
 function computeCartTotalWithExtras(items = []) {
   if (!Array.isArray(items)) return 0;
-
-  return items.reduce((sum, item) => {
-    let itemPrice = parseFloat(item?.prix ?? item?.price ?? 0);
-    const itemQuantity = parseInt(item?.quantity ?? 1, 10);
-
-    // Compat: anciens paniers où item.prix n'incluait pas les extras
-    if (!item?.price_includes_extras) {
-      let supplementsPrice = 0;
-      if (Array.isArray(item?.supplements)) {
-        supplementsPrice = item.supplements.reduce(
-          (acc, sup) => acc + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0),
-          0
-        );
-      }
-
-      let meatsPrice = 0;
-      if (Array.isArray(item?.customizations?.selectedMeats)) {
-        meatsPrice = item.customizations.selectedMeats.reduce(
-          (acc, m) => acc + (parseFloat(m?.prix ?? m?.price ?? 0) || 0),
-          0
-        );
-      }
-
-      let saucesPrice = 0;
-      if (Array.isArray(item?.customizations?.selectedSauces)) {
-        saucesPrice = item.customizations.selectedSauces.reduce(
-          (acc, s) => acc + (parseFloat(s?.prix ?? s?.price ?? 0) || 0),
-          0
-        );
-      }
-
-      let sizePrice = 0;
-      if (item?.size && typeof item.size === 'object' && item.size.prix !== undefined) {
-        sizePrice = parseFloat(item.size.prix) || 0;
-      } else if (item?.prix_taille !== undefined) {
-        sizePrice = parseFloat(item.prix_taille) || 0;
-      }
-
-      itemPrice += supplementsPrice + meatsPrice + saucesPrice + sizePrice;
-    }
-    
-    // IMPORTANT: Ajouter le prix de la boisson si présente (pour les menus)
-    // Les boissons des menus ne sont pas incluses dans item.prix, elles sont ajoutées séparément
-    if (item.selected_drink && item.selected_drink.prix) {
-      const drinkPrice = parseFloat(item.selected_drink.prix || item.selected_drink.price || 0) || 0;
-      itemPrice += drinkPrice;
-      console.log('💰 Boisson ajoutée au calcul:', item.selected_drink.nom || 'Boisson', drinkPrice, '€');
-    }
-    
-    console.log('💰 Article:', item.nom, 'Prix unitaire (avec boisson):', itemPrice, 'Quantité:', itemQuantity);
-    
-    const totalItemPrice = itemPrice * itemQuantity;
-    return sum + totalItemPrice;
-  }, 0) || 0;
+  let sum = 0;
+  for (const item of items) {
+    sum += getItemLineTotal(item);
+  }
+  return Math.round(sum * 100) / 100;
 }
 
 export default function Checkout() {
@@ -208,7 +201,7 @@ export default function Checkout() {
   }, [router]);
 
   useEffect(() => {
-    // Charger le panier
+    // Charger le panier depuis le localStorage (source de vérité)
     const savedCart = safeLocalStorage.getJSON('cart');
     if (savedCart && Array.isArray(savedCart.items)) {
       setCart(savedCart.items);
@@ -216,6 +209,20 @@ export default function Checkout() {
       setFraisLivraison(savedCart.frais_livraison || 2.50);
     }
     setLoading(false);
+  }, []);
+
+  // Resynchroniser le panier avec le localStorage quand la page redevient visible (ex: autre onglet modifié)
+  useEffect(() => {
+    const syncCart = () => {
+      const savedCart = safeLocalStorage.getJSON('cart');
+      if (savedCart && Array.isArray(savedCart.items)) {
+        setCart(savedCart.items);
+        if (savedCart.frais_livraison != null) setFraisLivraison(savedCart.frais_livraison);
+      }
+    };
+    const onVisibility = () => { if (document.visibilityState === 'visible') syncCart(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
   useEffect(() => {
@@ -1283,7 +1290,7 @@ export default function Checkout() {
                       )}
                     </div>
                     <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base ml-2 flex-shrink-0">
-                      {((typeof item.prix === 'number' ? item.prix : Number(item.prix)) * item.quantity).toFixed(2)}€
+                      {getItemLineTotal(item).toFixed(2)}€
                     </p>
                   </div>
                 </div>

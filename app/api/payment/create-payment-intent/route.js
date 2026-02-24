@@ -72,7 +72,7 @@ export async function POST(request) {
 
           if (!orderErr && order) {
             const PLATFORM_FEE = 0.49;
-            const AMOUNT_TOLERANCE = 0.10; // Tolérance arrondi sur le total (10 centimes)
+            const AMOUNT_TOLERANCE = 0.50; // Tolérance arrondi (50 centimes) pour éviter refus sur petits écarts
 
             // Déterminer si la livraison est offerte via le code promo (si présent)
             let isFreeDelivery = false;
