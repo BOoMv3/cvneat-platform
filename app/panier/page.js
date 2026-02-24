@@ -22,6 +22,7 @@ import {
   FaSignInAlt
 } from 'react-icons/fa';
 import PriceInfoBanner from '@/components/PriceInfoBanner';
+import { getItemLineTotal } from '@/lib/cartUtils';
 
 export default function Panier() {
   const router = useRouter();
@@ -122,29 +123,7 @@ export default function Panier() {
   };
 
   const getSubtotal = () => {
-    return cart.reduce((total, item) => {
-      const itemPrice = parseFloat(item.price || item.prix || 0);
-      const itemQuantity = parseInt(item.quantity || 1, 10);
-      
-      // Calculer le prix des suppléments si présents
-      let supplementsPrice = 0;
-      if (item.supplements && Array.isArray(item.supplements)) {
-        supplementsPrice = item.supplements.reduce((sum, sup) => {
-          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
-        }, 0);
-      }
-      
-      // Calculer le prix de la taille si présente
-      let sizePrice = 0;
-      if (item.size && item.size.prix) {
-        sizePrice = parseFloat(item.size.prix) || 0;
-      } else if (item.prix_taille) {
-        sizePrice = parseFloat(item.prix_taille) || 0;
-      }
-      
-      const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * itemQuantity;
-      return total + totalItemPrice;
-    }, 0);
+    return cart.reduce((total, item) => total + getItemLineTotal(item), 0);
   };
 
   const getDeliveryFee = () => {
@@ -417,11 +396,7 @@ export default function Panier() {
                           )}
                           
                           <p className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
-                            {(parseFloat(item.price || item.prix || 0) + 
-                              (item.supplements ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0) : 0) +
-                              (item.size?.prix ? parseFloat(item.size.prix) : 0) +
-                              (item.prix_taille ? parseFloat(item.prix_taille) : 0)
-                            ).toFixed(2)}€
+                            {getItemLineTotal(item).toFixed(2)}€
                           </p>
                         </div>
                       </div>
@@ -450,15 +425,7 @@ export default function Panier() {
                         
                         <div className="text-right">
                           <p className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
-                            {(() => {
-                              const itemPrice = parseFloat(item.price || item.prix || 0);
-                              const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
-                                ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
-                                : 0;
-                              const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-                              const totalItemPrice = (itemPrice + supplementsPrice + sizePrice) * (item.quantity || 1);
-                              return totalItemPrice.toFixed(2);
-                            })()}€
+                            {getItemLineTotal(item).toFixed(2)}€
                           </p>
                           <button
                             onClick={() => removeFromCart(index)}

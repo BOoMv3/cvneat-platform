@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '../lib/supabase';
 import { safeLocalStorage } from '../lib/localStorage';
+import { getItemLineTotal, computeCartTotalWithExtras } from '@/lib/cartUtils';
 import { 
   FaSearch, 
   FaStar, 
@@ -564,6 +565,16 @@ export default function Home() {
   ], []);
 
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Synchroniser le panier avec le localStorage (panier rempli depuis une page restaurant)
+  useEffect(() => {
+    try {
+      const saved = safeLocalStorage.getJSON('cart');
+      if (saved && Array.isArray(saved.items) && saved.items.length > 0) {
+        setCart(saved.items);
+      }
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -1577,7 +1588,7 @@ export default function Home() {
                     <FaPlus className="h-3 w-3 sm:h-3 sm:w-3" />
                   </button>
                 </div>
-                <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-gray-200 ml-2 sm:ml-4">{(item.prix || 0) * (item.quantity || 1)}€</span>
+                <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-gray-200 ml-2 sm:ml-4">{getItemLineTotal(item).toFixed(2)}€</span>
               </div>
             ))}
           </div>
@@ -1586,7 +1597,7 @@ export default function Home() {
             <div className="flex justify-between mb-4">
               <span className="text-base sm:text-lg font-semibold text-gray-700">Total:</span>
               <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">
-                {cart.reduce((total, item) => total + ((item.prix || 0) * (item.quantity || 1)), 0).toFixed(2)}€
+                {computeCartTotalWithExtras(cart).toFixed(2)}€
               </span>
             </div>
             <Link

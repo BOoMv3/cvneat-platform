@@ -60,8 +60,6 @@ export async function GET(request, { params }) {
       .select('*')
       .eq('menu_item_id', id)
       .eq('disponible', true)
-      .order('ordre');('menu_item_id', id)
-      .eq('disponible', true)
       .order('ordre');
 
     if (!error && supplements && supplements.length > 0) {
