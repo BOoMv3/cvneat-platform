@@ -128,6 +128,7 @@ export async function GET(request) {
         statut,
         total,
         frais_livraison,
+        discount_amount,
         adresse_livraison,
         restaurant_id,
         user_id,
@@ -411,7 +412,8 @@ export async function GET(request) {
         // Informations de remboursement
         refund_amount: order.refund_amount ? parseFloat(order.refund_amount) : null,
         refunded_at: order.refunded_at || null,
-        payment_status: order.payment_status || 'pending'
+        payment_status: order.payment_status || 'pending',
+        discount_amount: order.discount_amount != null ? parseFloat(order.discount_amount) : 0
       };
     }));
 

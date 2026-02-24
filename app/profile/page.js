@@ -652,13 +652,16 @@ export default function Profile() {
                           <p>{order.deliveryCity}, {order.deliveryPostalCode}</p>
                         </div>
                         <div className="text-left sm:text-right">
-                          {/* Points gagnés pour les commandes livrées (uniquement à partir du lancement du programme) */}
+                          {/* Points gagnés : 1 pt / € sur le sous-total articles uniquement (hors livraison, hors 0,49€) */}
                           {(order.status === 'livree' || order.status === 'delivered' || order.statut === 'livree') && (() => {
                             const orderDate = (order.createdAt || order.created_at || '').toString().split('T')[0];
                             if (orderDate < LOYALTY_LAUNCH_DATE) return null;
+                            // Utiliser subtotal (articles) retourné par l'API, pas total (qui inclut livraison + 0,49€)
+                            const subtotalArticles = (order.subtotal != null && order.subtotal >= 0) ? parseFloat(order.subtotal) : (parseFloat(order.total || 0) - parseFloat(order.frais_livraison || order.deliveryFee || 0) - 0.49);
+                            const subtotalForPoints = Math.max(0, subtotalArticles - (parseFloat(order.discount_amount || 0) || 0));
                             return (
                               <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">
-                                +{Math.floor(parseFloat(order.total || 0) + parseFloat(order.frais_livraison || order.deliveryFee || 0))} pts gagnés
+                                +{Math.floor(subtotalForPoints)} pts gagnés
                               </p>
                             );
                           })()}

@@ -88,13 +88,13 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
   };
 
   const fetchRewards = async () => {
-    // Récompenses : 1 point = 1€ dépensé (ex: 50€ commandés = 50 pts)
+    // Récompenses : coûts doublés (1 pt = 1€ sur les articles) pour ne pas donner les réduc trop vite
     const rewards = [
       {
         id: 'article-offert',
         name: 'Article offert',
         description: 'Un dessert ou une boisson au choix offert avec votre prochaine commande',
-        cost: 50,
+        cost: 100,
         icon: '🎁',
         available: true,
         featured: true
@@ -103,7 +103,7 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
         id: 'reduction-5',
         name: 'Réduction 5€',
         description: '5€ de réduction sur votre prochaine commande',
-        cost: 100,
+        cost: 200,
         icon: '🎫',
         available: true,
         featured: false
@@ -112,7 +112,7 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
         id: 'livraison-gratuite',
         name: 'Livraison gratuite',
         description: 'Livraison gratuite sur votre prochaine commande',
-        cost: 80,
+        cost: 160,
         icon: '🚚',
         available: true,
         featured: false
@@ -121,7 +121,7 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
         id: 'reduction-10',
         name: 'Réduction 10€',
         description: '10€ de réduction sur votre prochaine commande',
-        cost: 200,
+        cost: 400,
         icon: '💳',
         available: true,
         featured: false
@@ -262,7 +262,7 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
             <span className="font-medium text-green-600 dark:text-green-400">+1 point par euro dépensé</span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 pt-2">
-            Exemple : une commande de 25€ = 25 points. Avec 50 points, offrez-vous un dessert ou une boisson !
+            Exemple : une commande de 25€ (articles) = 25 points. Avec 100 points, offrez-vous un dessert ou une boisson !
           </p>
         </div>
       </div>
