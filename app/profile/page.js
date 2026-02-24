@@ -45,11 +45,12 @@ export default function Profile() {
     }
   }, [tabParam]);
 
+  // Ne pas mettre `user` en dépendance : ça relancerait fetchData à chaque frappe (prénom/nom) et provoquerait un "refresh"
   useEffect(() => {
-    if (authChecked && user) {
+    if (authChecked && user?.id) {
       fetchData();
     }
-  }, [activeTab, authChecked, user]);
+  }, [activeTab, authChecked, user?.id]);
 
   // Charger les préférences sauvegardées
   useEffect(() => {
