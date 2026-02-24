@@ -165,6 +165,25 @@ L'équipe CVN'EAT`);
             >
               📋 Message d'accueil (stratégie + messagerie)
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSubject('Mise à jour de vos prix — passage à 15% de commission');
+                setBody(`Bonjour,
+
+Vous avez accepté le nouveau compromis de commission. Pour que nous passions votre restaurant à 15% de commission, il reste une étape de votre côté :
+
+📌 Mettez vos prix à jour sur CVN'EAT : prix boutique + 7% maximum (tous vos articles et suppléments).
+
+Dès que c'est fait, notifiez-nous en cliquant sur le bouton « J'ai fait les changements de prix — Notifier l'admin » dans votre tableau de bord partenaire. Nous enregistrerons alors votre passage à 15% de commission.
+
+Merci et à très vite,
+L'équipe CVN'EAT`);
+              }}
+              className="text-sm px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
+            >
+              📋 Prix boutique +7% max → puis passage 15% (hors 99 Street Food)
+            </button>
           </div>
           <div className="space-y-4">
             <div>
