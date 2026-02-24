@@ -118,12 +118,22 @@ export default function PartnerOrders() {
         itemName = `${itemName} 🥤 (boisson menu${menuName ? ` - ${menuName}` : ''})`;
       }
       
+      let supplements = [];
+      if (detail.supplements) {
+        if (typeof detail.supplements === 'string') {
+          try { supplements = JSON.parse(detail.supplements); } catch { supplements = []; }
+        } else if (Array.isArray(detail.supplements)) {
+          supplements = detail.supplements;
+        }
+      }
+      
       return {
         id: detail.id,
         name: itemName,
         quantity: detail.quantite || detail.quantity || 0,
         price: Number(detail.prix_unitaire || detail.price || detail.menus?.prix || 0),
-        customizations: customizations
+        customizations: customizations,
+        supplements: supplements
       };
     });
   };
@@ -341,11 +351,29 @@ export default function PartnerOrders() {
 
                   <div className="mb-4">
                     <h4 className="font-medium mb-2">Articles commandés :</h4>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {getOrderItems(order).map((item) => (
-                        <div key={item.id} className="flex justify-between text-sm">
-                          <span>{item.quantity}x {item.name}</span>
-                          <span>{(item.price * item.quantity).toFixed(2)}€</span>
+                        <div key={item.id} className="text-sm border-b border-gray-100 pb-2 last:border-0">
+                          <div className="flex justify-between">
+                            <span>{item.quantity}x {item.name}</span>
+                            <span>{(item.price * item.quantity).toFixed(2)}€</span>
+                          </div>
+                          {item.customizations && (
+                            <div className="ml-2 mt-1 text-xs text-gray-600 space-y-0.5">
+                              {item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats) && item.customizations.selectedMeats.length > 0 && (
+                                <div>🥩 Viande(s): {item.customizations.selectedMeats.map(m => m.nom || m.name).join(', ')}</div>
+                              )}
+                              {item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces) && item.customizations.selectedSauces.length > 0 && (
+                                <div>🧂 Sauce(s): {item.customizations.selectedSauces.map(s => s.nom || s.name).join(', ')}</div>
+                              )}
+                              {item.customizations.removedIngredients && Array.isArray(item.customizations.removedIngredients) && item.customizations.removedIngredients.length > 0 && (
+                                <div className="line-through">Sans: {item.customizations.removedIngredients.map(i => i.nom || i.name).join(', ')}</div>
+                              )}
+                            </div>
+                          )}
+                          {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
+                            <div className="ml-2 mt-1 text-xs text-green-600">➕ {item.supplements.map(s => s.nom || s.name).join(', ')}</div>
+                          )}
                         </div>
                       ))}
                     </div>

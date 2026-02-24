@@ -32,6 +32,8 @@ export async function GET(request, { params }) {
           plat_id,
           quantite,
           prix_unitaire,
+          supplements,
+          customizations,
           menus (
             nom,
             prix

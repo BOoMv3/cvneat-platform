@@ -184,6 +184,7 @@ export async function GET(request) {
         try {
           console.log(`🔍 Récupération détails pour ${orderIds.length} commandes...`);
           
+          // Supabase limite par défaut à 1000 lignes : avec 610 commandes on dépasse → augmenter la limite
           const { data: allDetails, error: detailsError } = await serviceClient
             .from('details_commande')
             .select(`
@@ -199,7 +200,8 @@ export async function GET(request) {
                 prix
               )
             `)
-            .in('commande_id', orderIds);
+            .in('commande_id', orderIds)
+            .limit(10000);
           
           if (detailsError) {
             console.error('❌ Erreur récupération détails (non bloquant):', detailsError.message);
@@ -1250,7 +1252,9 @@ export async function POST(request) {
       const meatsPrice = (itemCustomizations.selectedMeats || []).reduce((sum, meat) => sum + (parseFloat(meat.prix || meat.price || 0) || 0), 0);
       const saucesPrice = (itemCustomizations.selectedSauces || []).reduce((sum, sauce) => sum + (parseFloat(sauce.prix || sauce.price || 0) || 0), 0);
       const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-      const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
+      // Menus (non-formule) : le front envoie item.prix sans boisson + item.selected_drink.prix à part → inclure la boisson dans le total ligne pour que sous-total BDD = panier
+      const drinkPriceForLine = (!isFormula && item.selected_drink) ? (parseFloat(item.selected_drink.prix ?? item.selected_drink.price ?? 0) || 0) : 0;
+      const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice + drinkPriceForLine;
 
       // Pour les combos, on doit trouver un plat_id valide du restaurant
       let platId = item.id;
