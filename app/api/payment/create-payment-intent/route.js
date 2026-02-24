@@ -100,45 +100,24 @@ export async function POST(request) {
             }
             const amountDiff = Math.abs(amountNumber - expectedAmount);
 
-            // 1. Vérifier frais_livraison : 0€ = livraison offerte (OK), >= 2.50€ = OK, 0 < x < 2.50 = erreur
-            // On autorise frais_livraison = 0 (promo livraison offerte) même si isFreeDelivery n'est pas détecté
+            // 1. Frais de livraison invalides (0 < x < 2.50€) : corriger en BDD au lieu de bloquer le client
             if (!isFreeDelivery && storedDeliveryFee > 0 && storedDeliveryFee < 2.50) {
-              console.error('❌ Frais de livraison invalides (0 < x < 2.50€) dans la commande:', {
-                orderId,
-                storedDeliveryFee,
-                order_total: order.total,
-                order_frais_livraison: order.frais_livraison,
-              });
-              return NextResponse.json(
-                {
-                  error: 'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
-                  code: 'DELIVERY_FEE_TOO_LOW',
-                },
-                { status: 400, headers: corsHeaders }
-              );
-            }
-
-            // 2. Si écart: utiliser expectedAmount (commande = source de vérité). On facture le bon montant.
-            // Au-delà de 2€ = suspect, on bloque par sécurité
-            const MAX_ACCEPTABLE_DIFF = 2.0;
-            if (amountDiff > AMOUNT_TOLERANCE) {
-              if (amountDiff > MAX_ACCEPTABLE_DIFF) {
-                console.error('❌ Écart de montant trop important (refus):', { amountNumber, expectedAmount, amountDiff });
-                return NextResponse.json(
-                  {
-                    error: 'Erreur de calcul des frais de livraison. Veuillez rafraîchir et réessayer (si le problème persiste, contactez le support).',
-                    code: 'AMOUNT_MISMATCH',
-                  },
-                  { status: 400, headers: corsHeaders }
-                );
+              console.warn('⚠️ Frais de livraison corrigés (0 < x < 2.50€) → 2.50€ pour commande:', orderId);
+              await sb.from('commandes').update({ frais_livraison: 2.50 }).eq('id', orderId);
+              // Recalculer expectedAmount avec 2.50€ de frais
+              expectedAmount = Math.round((subtotalAfterDiscount + 2.50 + PLATFORM_FEE) * 100) / 100;
+              if (pointsUsed > 0) {
+                expectedAmount = Math.max(0.50, Math.round((expectedAmount - pointsUsed) * 100) / 100);
               }
+              amountNumber = expectedAmount;
+            } else if (amountDiff > AMOUNT_TOLERANCE) {
+              // 2. Toujours facturer le montant de la commande (source de vérité) — ne jamais bloquer pour écart de montant
               console.warn('⚠️ Montant frontend diffère de la commande, utilisation du montant commande:', {
                 orderId,
                 amountNumber,
                 expectedAmount,
                 amountDiff,
               });
-              // Remplacer amountNumber par expectedAmount pour la suite (Stripe)
               amountNumber = expectedAmount;
             }
           }
