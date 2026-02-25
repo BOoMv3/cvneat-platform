@@ -146,7 +146,10 @@ export async function POST(request) {
           : 0;
     }
 
-    // Mettre à jour la commande: paid + lier le PaymentIntentId (si besoin)
+    // Points fidélité utilisés (pour informer le partenaire sur le détail de la commande)
+    const pointsUsed = parseInt(paymentIntent?.metadata?.points_used || '0', 10) || 0;
+
+    // Mettre à jour la commande: paid + lier le PaymentIntentId (si besoin) + fidélité
     const updatePayload = {
       payment_status: 'paid',
       updated_at: new Date().toISOString(),
@@ -156,6 +159,7 @@ export async function POST(request) {
         ? { delivery_commission_cvneat: deliveryCommissionCvneat }
         : {}),
       ...(order.stripe_payment_intent_id ? {} : { stripe_payment_intent_id: paymentIntent.id }),
+      ...(pointsUsed > 0 ? { loyalty_points_used: pointsUsed, loyalty_discount_amount: pointsUsed } : {}),
     };
 
     const { data: updated, error: updateError } = await supabaseAdmin
@@ -200,8 +204,11 @@ export async function POST(request) {
     const transitionedToPaid = isPaidNow && !wasPaidBefore;
     if (transitionedToPaid) {
       const orderUserId = order?.user_id;
-      const orderAmount = paidAmount ?? (parseFloat(order?.total || 0) + parseFloat(order?.frais_livraison || 0));
-      const pointsUsed = parseInt(paymentIntent?.metadata?.points_used || '0', 10) || 0;
+
+      // Montant servant à calculer les points = sous-total articles uniquement (hors livraison, hors 0,49€)
+      // 1 point = 1€ dépensé sur les articles (après réduction éventuelle)
+      const subtotalForPoints = Math.max(0, (parseFloat(order?.total || 0) || 0) - (parseFloat(order?.discount_amount || 0) || 0));
+      const orderAmountForPoints = Math.round(subtotalForPoints * 100) / 100;
 
       // Déduire les points utilisés (non bloquant)
       if (orderUserId && pointsUsed > 0) {
@@ -223,11 +230,11 @@ export async function POST(request) {
         })();
       }
 
-      // Créditer les points de fidélité (non bloquant)
-      if (orderUserId && orderAmount > 0) {
+      // Créditer les points de fidélité : 1 point par euro (sous-total articles uniquement, hors livraison)
+      if (orderUserId && orderAmountForPoints > 0) {
         (async () => {
           try {
-            const pointsEarned = Math.floor(orderAmount); // 1 pt / €
+            const pointsEarned = Math.floor(orderAmountForPoints); // 1 pt / € sur les articles
             const { data: u } = await supabaseAdmin.from('users').select('points_fidelite').eq('id', orderUserId).single();
             const current = parseInt(u?.points_fidelite || 0, 10) || 0;
             await supabaseAdmin.from('users').update({ points_fidelite: current + pointsEarned }).eq('id', orderUserId);
@@ -236,7 +243,7 @@ export async function POST(request) {
               order_id: orderId,
               points_earned: pointsEarned,
               reason: 'Commande',
-              description: `Commande - ${orderAmount.toFixed(2)}€`,
+              description: `Commande - ${orderAmountForPoints.toFixed(2)}€ (articles)`,
             }).catch(() => {});
           } catch (e) {
             /* non bloquant */

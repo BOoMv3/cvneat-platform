@@ -1312,7 +1312,7 @@ export default function Checkout() {
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">1 point = 1€ de réduction</p>
                 <div className="flex gap-2 flex-wrap">
-                  {[5, 10, 25].filter(p => p <= userPoints).map((p) => (
+                  {[5, 10, 25, 50, 100].filter(p => p <= userPoints).map((p) => (
                     <button
                       key={p}
                       type="button"
