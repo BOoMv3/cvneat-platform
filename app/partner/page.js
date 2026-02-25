@@ -884,11 +884,17 @@ export default function PartnerDashboard() {
     }
   };
 
+  const parsePrixInput = (v) => {
+    if (v == null || v === '') return NaN;
+    const s = String(v).trim().replace(',', '.');
+    return parseFloat(s);
+  };
+
   const savePrixBoutique = async () => {
     if (!restaurant?.id || !menu?.length) return;
     const updates = Object.entries(prixBoutiqueInputs)
-      .filter(([, v]) => v !== '' && !isNaN(parseFloat(v)))
-      .map(([id, v]) => ({ id, prix: parseFloat(v) }));
+      .filter(([, v]) => v !== '' && Number.isFinite(parsePrixInput(v)))
+      .map(([id, v]) => ({ id, prix: parsePrixInput(v) }));
     if (updates.length === 0) {
       alert('Remplissez au moins un prix.');
       return;
@@ -915,8 +921,8 @@ export default function PartnerDashboard() {
   const saveAndApplyPlus5 = async () => {
     if (!restaurant?.id || !menu?.length) return;
     const updates = Object.entries(prixBoutiqueInputs)
-      .filter(([, v]) => v !== '' && !isNaN(parseFloat(v)))
-      .map(([id, v]) => ({ id, prix: parseFloat(v) }));
+      .filter(([, v]) => v !== '' && Number.isFinite(parsePrixInput(v)))
+      .map(([id, v]) => ({ id, prix: parsePrixInput(v) }));
     if (updates.length === 0) {
       alert('Remplissez au moins un prix.');
       return;
@@ -1600,12 +1606,32 @@ export default function PartnerDashboard() {
       return order.order_items;
     }
     if (Array.isArray(order?.details_commande) && order.details_commande.length > 0) {
-      return order.details_commande.map(detail => ({
-        id: detail.id,
-        name: detail.menus?.nom || detail.name || 'Article',
-        quantity: detail.quantite || detail.quantity || 0,
-        price: Number(detail.prix_unitaire || detail.price || detail.menus?.prix || 0)
-      }));
+      return order.details_commande.map(detail => {
+        let customizations = {};
+        if (detail.customizations) {
+          if (typeof detail.customizations === 'string') {
+            try { customizations = JSON.parse(detail.customizations); } catch { customizations = {}; }
+          } else if (detail.customizations && typeof detail.customizations === 'object') {
+            customizations = detail.customizations;
+          }
+        }
+        let supplements = [];
+        if (detail.supplements) {
+          if (typeof detail.supplements === 'string') {
+            try { supplements = JSON.parse(detail.supplements); } catch { supplements = []; }
+          } else if (Array.isArray(detail.supplements)) {
+            supplements = detail.supplements;
+          }
+        }
+        return {
+          id: detail.id,
+          name: detail.menus?.nom || detail.name || 'Article',
+          quantity: detail.quantite || detail.quantity || 0,
+          price: Number(detail.prix_unitaire || detail.price || detail.menus?.prix || 0),
+          customizations,
+          supplements
+        };
+      });
     }
     return [];
   };
@@ -3683,6 +3709,11 @@ export default function PartnerDashboard() {
                                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                     Total client: {(totalAmount + deliveryFee).toFixed(2)} €
                                   </p>
+                                  {(order.loyalty_points_used > 0 || order.loyalty_discount_amount > 0) && (
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                                      Réduction fidélité: {Number(order.loyalty_discount_amount || order.loyalty_points_used || 0).toFixed(2)} € ({order.loyalty_points_used || 0} pts utilisés par le client)
+                                    </p>
+                                  )}
                                 </>
                               ) : (
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Prix non disponible</p>
@@ -3847,6 +3878,43 @@ export default function PartnerDashboard() {
                                           ))}
                                         </div>
                                       )}
+                                      
+                                      {/* Détails combo (étapes : viande, sauce, etc.) — ex. Deliss'King tacos / gratins en combo */}
+                                      {customizations.combo && Array.isArray(customizations.combo.details) && customizations.combo.details.length > 0 && (
+                                        <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 ml-2">
+                                          <div className="font-semibold">Choix client (combo) :</div>
+                                          <ul className="list-disc list-inside ml-1 mt-0.5">
+                                            {customizations.combo.details.map((d, idx) => {
+                                              const label = [d.stepTitle, d.optionName, d.variantName].filter(Boolean).join(' · ');
+                                              const supp = (parseFloat(d.optionPrice || 0) + parseFloat(d.variantPrice || 0));
+                                              return (
+                                                <li key={idx}>
+                                                  {label || 'Option'}
+                                                  {supp > 0 && <span className="text-gray-500"> (+{supp.toFixed(2)}€)</span>}
+                                                </li>
+                                              );
+                                            })}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Alerte gratin / taco / galette sans viandes ou sauces renseignées */}
+                                      {(() => {
+                                        const hasMeats = customizations.selectedMeats && Array.isArray(customizations.selectedMeats) && customizations.selectedMeats.length > 0;
+                                        const hasSauces = customizations.selectedSauces && Array.isArray(customizations.selectedSauces) && customizations.selectedSauces.length > 0;
+                                        const hasComboDetails = customizations.combo && Array.isArray(customizations.combo.details) && customizations.combo.details.length > 0;
+                                        const nameLower = (nom || '').toLowerCase();
+                                        const isGratinOrTaco = nameLower.includes('gratin') || nameLower.includes('tacos') || nameLower.includes('taco') || nameLower.includes('galette') || nameLower.includes('kebab');
+                                        if (isGratinOrTaco && !hasComboDetails && (!hasMeats || !hasSauces)) {
+                                          return (
+                                            <div className="mt-1 pt-1 border-t border-amber-200 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-400 ml-2 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+                                              <span className="font-semibold">⚠️ Viandes/sauces non indiquées</span>
+                                              <span className="block mt-0.5">À confirmer avec le client.</span>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
                                       
                                       {/* Boisson de menu (pour les menus non-formule) */}
                                       {!isFormula && customizations.is_menu_drink === true && (

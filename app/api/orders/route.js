@@ -1241,12 +1241,28 @@ export async function POST(request) {
       }
 
       const comboDetails = item.comboDetails || itemCustomizations.comboDetails;
-      if (isCombo && comboDetails) {
+      if (isCombo && Array.isArray(comboDetails) && comboDetails.length > 0) {
         customizations.combo = {
           comboId: item.comboId || (typeof item.id === 'string' ? item.id.replace('combo-', '') : null),
           comboName: item.comboName || item.nom || 'Menu composé',
           details: comboDetails
         };
+        // Extraire viandes et sauces depuis combo.details pour affichage partenaire (ex: Deliss'King)
+        const stepLower = (t) => (t || '').toLowerCase();
+        const isViande = (t) => stepLower(t).includes('viande') || stepLower(t).includes('meat');
+        const isSauce = (t) => stepLower(t).includes('sauce');
+        const fromComboMeats = comboDetails.filter((d) => isViande(d.stepTitle)).map((d) => ({
+          id: d.optionName || d.optionId,
+          nom: d.optionName || 'Viande',
+          prix: parseFloat(d.optionPrice || 0) + parseFloat(d.variantPrice || 0)
+        }));
+        const fromComboSauces = comboDetails.filter((d) => isSauce(d.stepTitle)).map((d) => ({
+          id: d.optionName || d.optionId,
+          nom: d.optionName || 'Sauce',
+          prix: parseFloat(d.optionPrice || 0) + parseFloat(d.variantPrice || 0)
+        }));
+        if (fromComboMeats.length > 0) customizations.selectedMeats = fromComboMeats;
+        if (fromComboSauces.length > 0) customizations.selectedSauces = fromComboSauces;
       }
 
       const itemPrice = parseFloat(item.prix || item.price || 0) || 0;

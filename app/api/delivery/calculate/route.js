@@ -65,12 +65,14 @@ const COORDINATES_DB = {
   'ganges-est': { lat: 43.9350, lng: 3.7200, name: 'Est Ganges' },
   'ganges-ouest': { lat: 43.9340, lng: 3.7000, name: 'Ouest Ganges' },
   
-  // Autres villes
+  // Autres villes (coordonnées vérifiées : distance depuis Ganges cohérente avec la réalité)
   'laroque': { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
-  'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille' },
+  'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille-de-Putois' }, // ~3,5 km de Ganges
   'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
+  'cazilhac': { lat: 43.9250, lng: 3.7000, name: 'Cazilhac' },
   'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' },
-  'montoulieu': { lat: 43.9200, lng: 3.7050, name: 'Montoulieu' },
+  // Montoulieu (34190) : ~13 km de Ganges par la route, ~7 km à vol d'oiseau (43.9269°N, 3.79056°E)
+  'montoulieu': { lat: 43.9269, lng: 3.7906, name: 'Montoulieu' },
   'brissac': { lat: 43.8500, lng: 3.7000, name: 'Brissac' } // Coordonnées approximatives - À vérifier si dans la zone
 };
 
@@ -433,6 +435,34 @@ function extractCity(address) {
   return null;
 }
 
+/**
+ * Si l'adresse client correspond à une ville connue (COORDINATES_DB), retourne ses coordonnées.
+ * Garantit des frais cohérents (ex. Montoulieu plus cher que Saint-Bauzille car plus loin).
+ */
+function getKnownTownCoordsFromAddress(address) {
+  if (!address || typeof address !== 'string') return null;
+  const normalized = address.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, ' ');
+  const townKeys = [
+    { key: 'montoulieu', patterns: ['montoulieu'] },
+    { key: 'saint-bauzille', patterns: ['saint bauzille', 'saint-bauzille', 'bauzille'] },
+    { key: 'laroque', patterns: ['laroque'] },
+    { key: 'sumene', patterns: ['sumene', 'sumène'] },
+    { key: 'cazilhac', patterns: ['cazilhac'] },
+    { key: 'ganges-centre', patterns: ['ganges'] },
+    { key: 'pegairolles', patterns: ['pegairolles', 'pégairolles'] },
+    { key: 'brissac', patterns: ['brissac'] }
+  ];
+  for (const { key, patterns } of townKeys) {
+    if (patterns.some(p => normalized.includes(p))) {
+      const entry = COORDINATES_DB[key];
+      if (entry) {
+        return { lat: entry.lat, lng: entry.lng, display_name: entry.name, city: entry.name };
+      }
+    }
+  }
+  return null;
+}
+
 function buildCacheKey(address, prefix = 'addr') {
   const postalCode = extractPostalCode(address);
   const city = extractCity(address);
@@ -664,6 +694,12 @@ export async function POST(request) {
 
     try {
       clientCoords = await getCoordinatesWithCache(clientAddress, { prefix: 'client' });
+      // Priorité aux coordonnées des villes connues pour des frais cohérents (ex. Montoulieu > Saint-Bauzille)
+      const knownTown = getKnownTownCoordsFromAddress(clientAddress);
+      if (knownTown) {
+        clientCoords = { ...clientCoords, lat: knownTown.lat, lng: knownTown.lng, display_name: clientCoords.display_name, city: knownTown.city || clientCoords.city };
+        console.log('📍 Ville connue, utilisation des coordonnées de référence:', knownTown.display_name || knownTown.city);
+      }
     } catch (error) {
       console.error('❌ Géocodage échoué pour l\'adresse client:', error.message);
       

@@ -418,6 +418,16 @@ export default function RestaurantDetail({ params }) {
     };
     safeLocalStorage.setJSON('cart', cartData);
   };
+
+  // Sauvegarde synchrone du panier (évite que le checkout lise un panier obsolète si navigation rapide)
+  const saveCartWithItems = (items) => {
+    if (!items) return;
+    safeLocalStorage.setJSON('cart', {
+      items,
+      restaurant: restaurant || {},
+      frais_livraison: deliveryFee ?? 2.50
+    });
+  };
   
   const fetchRestaurantDetails = async () => {
     try {
@@ -658,9 +668,10 @@ export default function RestaurantDetail({ params }) {
         return cartItemKey === itemKey;
       });
       
+      let nextCart;
       if (existingItemIndex !== -1) {
         // Incrémenter la quantité si l'article existe déjà avec les mêmes suppléments/taille
-        return prevCart.map((cartItem, index) =>
+        nextCart = prevCart.map((cartItem, index) =>
           index === existingItemIndex
             ? { ...cartItem, quantity: (cartItem.quantity || 1) + finalQuantity }
             : cartItem
@@ -675,8 +686,11 @@ export default function RestaurantDetail({ params }) {
           size: itemSize,
           customizations: itemCustomizations // Conserver les customisations (viandes, sauces, ingrédients retirés)
         };
-        return [...prevCart, newItem];
+        nextCart = [...prevCart, newItem];
       }
+      // Sauvegarde synchrone pour que le checkout ait toujours les bons choix (viandes, sauces) même en navigation rapide
+      saveCartWithItems(nextCart);
+      return nextCart;
     });
     
     // Track Facebook Pixel - AddToCart
@@ -692,6 +706,7 @@ export default function RestaurantDetail({ params }) {
 
   const removeFromCart = (itemId, supplements = [], size = null) => {
     setCart(prevCart => {
+      let nextCart;
       // Si supplements et size ne sont pas fournis, utiliser l'index ou trouver le premier item avec cet ID
       if (!supplements.length && !size) {
         // Si on a un index (passé comme itemId), l'utiliser directement
@@ -699,60 +714,60 @@ export default function RestaurantDetail({ params }) {
         if (index !== -1 && index < prevCart.length) {
           const item = prevCart[index];
           if (item.quantity === 1) {
-            return prevCart.filter((_, i) => i !== index);
+            nextCart = prevCart.filter((_, i) => i !== index);
+          } else {
+            nextCart = prevCart.map((cartItem, i) =>
+              i === index
+                ? { ...cartItem, quantity: cartItem.quantity - 1 }
+                : cartItem
+            );
           }
-          return prevCart.map((cartItem, i) =>
-            i === index
-              ? { ...cartItem, quantity: cartItem.quantity - 1 }
-              : cartItem
-          );
+        } else {
+          nextCart = prevCart;
         }
-      }
-      
-      // Normaliser les suppléments pour la comparaison (comme dans addToCart)
-      const normalizedSupplements = [...(supplements || [])].sort((a, b) => {
-        const idA = a.id || a.nom || '';
-        const idB = b.id || b.nom || '';
-        return idA.localeCompare(idB);
-      });
-      
-      // Créer un identifiant unique basé sur l'ID, les suppléments (normalisés) et la taille
-      const itemKey = JSON.stringify({
-        id: itemId,
-        supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
-        size: size
-      });
-      
-      // Trouver l'article exact avec ces mêmes suppléments et taille
-      const existingItemIndex = prevCart.findIndex(cartItem => {
-        const cartItemSupplements = cartItem.supplements || [];
-        const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
+      } else {
+        // Normaliser les suppléments pour la comparaison (comme dans addToCart)
+        const normalizedSupplements = [...(supplements || [])].sort((a, b) => {
           const idA = a.id || a.nom || '';
           const idB = b.id || b.nom || '';
           return idA.localeCompare(idB);
         });
-        
-        const cartItemKey = JSON.stringify({
-          id: cartItem.id,
-          supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
-          size: cartItem.size || null
+        const itemKey = JSON.stringify({
+          id: itemId,
+          supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+          size: size
         });
-        return cartItemKey === itemKey;
-      });
-      
-      if (existingItemIndex === -1) return prevCart;
-      
-      const existingItem = prevCart[existingItemIndex];
-      if (existingItem.quantity === 1) {
-        // Retirer complètement l'article
-        return prevCart.filter((_, index) => index !== existingItemIndex);
+        const existingItemIndex = prevCart.findIndex(cartItem => {
+          const cartItemSupplements = cartItem.supplements || [];
+          const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
+            const idA = a.id || a.nom || '';
+            const idB = b.id || b.nom || '';
+            return idA.localeCompare(idB);
+          });
+          const cartItemKey = JSON.stringify({
+            id: cartItem.id,
+            supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+            size: cartItem.size || null
+          });
+          return cartItemKey === itemKey;
+        });
+        if (existingItemIndex === -1) {
+          nextCart = prevCart;
+        } else {
+          const existingItem = prevCart[existingItemIndex];
+          if (existingItem.quantity === 1) {
+            nextCart = prevCart.filter((_, index) => index !== existingItemIndex);
+          } else {
+            nextCart = prevCart.map((cartItem, index) =>
+              index === existingItemIndex
+                ? { ...cartItem, quantity: cartItem.quantity - 1 }
+                : cartItem
+            );
+          }
+        }
       }
-      // Décrémenter la quantité
-      return prevCart.map((cartItem, index) =>
-        index === existingItemIndex
-          ? { ...cartItem, quantity: cartItem.quantity - 1 }
-          : cartItem
-      );
+      saveCartWithItems(nextCart);
+      return nextCart;
     });
   };
 
@@ -764,51 +779,52 @@ export default function RestaurantDetail({ params }) {
     }
     
     setCart(prevCart => {
+      let nextCart;
       // Si on a un index (passé comme itemId), l'utiliser directement
       if (typeof itemId === 'number' && itemId < prevCart.length) {
-        return prevCart.map((cartItem, index) =>
+        nextCart = prevCart.map((cartItem, index) =>
           index === itemId
             ? { ...cartItem, quantity: newQuantity }
             : cartItem
         );
-      }
-      
-      // Sinon, utiliser la même logique de comparaison que addToCart
-      const normalizedSupplements = [...(supplements || [])].sort((a, b) => {
-        const idA = a.id || a.nom || '';
-        const idB = b.id || b.nom || '';
-        return idA.localeCompare(idB);
-      });
-      
-      const itemKey = JSON.stringify({
-        id: itemId,
-        supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
-        size: size
-      });
-      
-      const existingItemIndex = prevCart.findIndex(cartItem => {
-        const cartItemSupplements = cartItem.supplements || [];
-        const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
+      } else {
+        // Sinon, utiliser la même logique de comparaison que addToCart
+        const normalizedSupplements = [...(supplements || [])].sort((a, b) => {
           const idA = a.id || a.nom || '';
           const idB = b.id || b.nom || '';
           return idA.localeCompare(idB);
         });
-        
-        const cartItemKey = JSON.stringify({
-          id: cartItem.id,
-          supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
-          size: cartItem.size || null
+        const itemKey = JSON.stringify({
+          id: itemId,
+          supplements: normalizedSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+          size: size
         });
-        return cartItemKey === itemKey;
-      });
-      
-      if (existingItemIndex === -1) return prevCart;
-      
-      return prevCart.map((cartItem, index) =>
-        index === existingItemIndex
-          ? { ...cartItem, quantity: newQuantity }
-          : cartItem
-      );
+        const existingItemIndex = prevCart.findIndex(cartItem => {
+          const cartItemSupplements = cartItem.supplements || [];
+          const normalizedCartSupplements = [...cartItemSupplements].sort((a, b) => {
+            const idA = a.id || a.nom || '';
+            const idB = b.id || b.nom || '';
+            return idA.localeCompare(idB);
+          });
+          const cartItemKey = JSON.stringify({
+            id: cartItem.id,
+            supplements: normalizedCartSupplements.map(s => ({ id: s.id || s.nom, nom: s.nom || s.name, prix: s.prix || s.price })),
+            size: cartItem.size || null
+          });
+          return cartItemKey === itemKey;
+        });
+        if (existingItemIndex === -1) {
+          nextCart = prevCart;
+        } else {
+          nextCart = prevCart.map((cartItem, index) =>
+            index === existingItemIndex
+              ? { ...cartItem, quantity: newQuantity }
+              : cartItem
+          );
+        }
+      }
+      saveCartWithItems(nextCart);
+      return nextCart;
     });
   };
 
