@@ -1432,7 +1432,18 @@ export default function Checkout() {
                     <p className="pt-2 border-t border-blue-200 dark:border-blue-800">
                       <span className="text-gray-600 dark:text-gray-400">Total à payer :</span>{' '}
                       <strong className="text-lg text-blue-600 dark:text-blue-400">
-                        {orderData?.totalAmount?.toFixed(2) || (cartTotal + fraisLivraison + 0.49).toFixed(2)}€
+                        {(() => {
+                          const PLATFORM_FEE = 0.49;
+                          let finalDeliveryFee = fraisLivraison ?? 0;
+                          if (appliedPromoCode?.discountType === 'free_delivery') finalDeliveryFee = 0;
+                          const discountAmount = appliedPromoCode?.discountAmount || 0;
+                          const maxDiscount = Math.min(discountAmount, cartTotal);
+                          const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
+                          const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
+                          const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0;
+                          const totalDisplay = Math.max(0.50, Math.round((rawTotal - pointsDiscount) * 100) / 100);
+                          return `${totalDisplay.toFixed(2)}€`;
+                        })()}
                       </strong>
                     </p>
                   </div>
