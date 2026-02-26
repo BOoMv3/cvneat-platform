@@ -208,11 +208,16 @@ export async function PUT(request, { params }) {
     }
 
     // Ajouter preparation_time seulement si fourni et valide
+    // Si le partenaire AJOUTE du retard (nouveau temps > ancien), ne pas réinitialiser preparation_started_at.
     if (preparation_time !== null && preparation_time !== undefined && preparation_time > 0) {
+      const existingPrepTime = order.preparation_time ?? 0;
+      const existingStartedAt = order.preparation_started_at;
+      const isAddingDelay = existingStartedAt && preparation_time > existingPrepTime;
+
       updateData.preparation_time = preparation_time;
-      // IMPORTANT: démarrer le décompte au moment où le restaurant fixe le temps
-      // Sinon le timer part de created_at / accepted_at et il "manque" des minutes.
-      updateData.preparation_started_at = new Date().toISOString();
+      if (!isAddingDelay) {
+        updateData.preparation_started_at = new Date().toISOString();
+      }
     }
 
     console.log('📤 Données de mise à jour:', updateData);

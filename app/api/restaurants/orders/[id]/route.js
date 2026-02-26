@@ -219,14 +219,23 @@ export async function PUT(request, { params }) {
     }
 
     // Ajouter preparation_time seulement si fourni et valide
-    // IMPORTANT: Si on définit un nouveau preparation_time, TOUJOURS réinitialiser preparation_started_at
-    // pour que le décompte commence à partir de maintenant
+    // Si le partenaire AJOUTE du retard (nouveau temps > ancien) et que le décompte a déjà commencé,
+    // ne PAS réinitialiser preparation_started_at : on prolonge juste la fin, le timer continue.
+    // Sinon (première définition ou réduction du temps), réinitialiser preparation_started_at.
     if (preparation_time !== null && preparation_time !== undefined && preparation_time > 0) {
+      const existingPrepTime = order.preparation_time ?? 0;
+      const existingStartedAt = order.preparation_started_at;
+      const isAddingDelay = existingStartedAt && preparation_time > existingPrepTime;
+
       updateData.preparation_time = preparation_time;
-      // TOUJOURS réinitialiser preparation_started_at quand on définit un nouveau temps de préparation
-      // Cela garantit que le décompte démarre correctement à partir de maintenant
-      updateData.preparation_started_at = new Date().toISOString();
-      console.log('🔄 Réinitialisation de preparation_started_at pour nouveau preparation_time:', preparation_time, 'min');
+      if (isAddingDelay) {
+        // Ne pas toucher à preparation_started_at : le décompte continue, la fin est juste décalée
+        console.log('🔄 Ajout de retard: preparation_time', existingPrepTime, '→', preparation_time, 'min, preparation_started_at inchangé');
+      } else {
+        // Première définition ou nouveau temps ≤ ancien : (re)démarrer le décompte à partir de maintenant
+        updateData.preparation_started_at = new Date().toISOString();
+        console.log('🔄 preparation_started_at défini/réinitialisé pour preparation_time:', preparation_time, 'min');
+      }
     } else if (shouldUpdateStatus && (status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
       // Si on accepte la commande SANS définir de preparation_time explicite,
       // définir preparation_started_at seulement si il n'existe pas déjà
