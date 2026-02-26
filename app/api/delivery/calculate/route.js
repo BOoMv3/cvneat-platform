@@ -104,7 +104,7 @@ const SNAP_TOWN_CENTERS = [
   { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' }
 ];
 const SNAP_RADIUS_KM = 4; // Si le point géocodé est à moins de 4 km d'un centre, on utilise ce centre (frais stables, évite rejets abusifs)
-const MAX_DISTANCE_ROAD_KM_ZONE = 12; // Max 12 km quand code postal 34190/30440 (marge pour éviter rejets à tort)
+const MAX_DISTANCE_ROAD_KM_ZONE = 13; // Max 13 km quand CP 34190/30440 (évite rejets à tort, ex. 7 av Jeanne d'Arc Brissac)
 
 /**
  * Distance par la route (OpenRouteService) – retourne km ou null si indisponible.
