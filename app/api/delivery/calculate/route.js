@@ -746,9 +746,7 @@ function pickNumeric(candidates = [], fallback, { min } = {}) {
 }
 
 /**
- * Calculer les frais de livraison
- * FORMULE: 3€ de base + 0,80€ par km (distance route)
- * Ganges (0 km) = 3€. Plafond 10€.
+ * Frais de livraison : Ganges = 3€ ; hors Ganges = 3€ + 0,80€/km, plafond 7€.
  */
 function calculateDeliveryFee(distance, {
   baseFee = DEFAULT_BASE_FEE,
@@ -756,11 +754,15 @@ function calculateDeliveryFee(distance, {
 } = {}) {
   const safeDistance = Math.max(0, distance || 0);
   const fee = baseFee + (safeDistance * perKmFee);
-  const cappedFee = Math.min(fee, MAX_FEE);
-  const minFee = Math.max(cappedFee, DEFAULT_BASE_FEE);
-  
-  // Arrondir à 2 décimales pour garantir la cohérence
-  return Math.round(minFee * 100) / 100;
+  const capped = Math.min(Math.max(fee, baseFee), MAX_FEE);
+  return Math.round(capped * 100) / 100;
+}
+
+/** True si l'adresse correspond à Ganges (ville). */
+function isGangesAddress(address) {
+  if (!address || typeof address !== 'string') return false;
+  const n = address.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, ' ');
+  return n.includes('ganges');
 }
 
 export async function POST(request) {
@@ -1009,9 +1011,10 @@ export async function POST(request) {
     // 5. Distance utilisée : route (OpenRouteService) ou vol d'oiseau (déjà calculée au-dessus)
     const deliveryDistanceKm = tempRoundedDistance;
 
-    if (deliveryDistanceKm < 0.01) {
-      const finalDeliveryFee = DEFAULT_BASE_FEE; // Ganges (0 km) = 3€
-      console.log(`📏 Ganges / distance très faible → ${finalDeliveryFee}€`);
+    const isGanges = isGangesAddress(clientAddress);
+    if (deliveryDistanceKm < 0.01 || isGanges) {
+      const finalDeliveryFee = 3; // Ganges = 3€ fixe
+      console.log(`📏 ${isGanges ? 'Ganges (adresse)' : 'Distance très faible'} → ${finalDeliveryFee}€`);
       return json({
         success: true,
         livrable: true,
@@ -1031,7 +1034,7 @@ export async function POST(request) {
     const roundedDistance = deliveryDistanceKm;
     console.log(`📏 Distance livraison: ${roundedDistance.toFixed(1)} km (source: ${roadDistanceKm != null ? 'route' : 'vol d\'oiseau'})`);
 
-    // 7. Calcul des frais : 3 € base (Ganges) + 0,80 €/km (distance route si OpenRouteService dispo)
+    // 7. Frais : Ganges = 3€ ; sinon 3€ + 0,80€/km, plafond 7€
     const finalDistance = roundedDistance;
     if (isNaN(finalDistance) || finalDistance < 0) {
       console.error('❌ ERREUR: Distance invalide:', finalDistance);
@@ -1043,7 +1046,7 @@ export async function POST(request) {
     }
 
     const finalDeliveryFee = calculateDeliveryFee(finalDistance, { baseFee: DEFAULT_BASE_FEE, perKmFee: DEFAULT_PER_KM_FEE });
-    console.log(`💰 Frais: ${DEFAULT_BASE_FEE}€ + (${finalDistance.toFixed(1)} km × ${DEFAULT_PER_KM_FEE}€) = ${finalDeliveryFee.toFixed(2)}€ (distance ${roadDistanceKm != null ? 'route' : 'vol d\'oiseau'})`);
+    console.log(`💰 Frais: ${DEFAULT_BASE_FEE}€ + (${finalDistance.toFixed(1)} km × ${DEFAULT_PER_KM_FEE}€) = ${finalDeliveryFee.toFixed(2)}€`);
 
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
