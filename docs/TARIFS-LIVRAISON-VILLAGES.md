@@ -1,31 +1,29 @@
-# Tarifs de livraison par village
+# Tarifs de livraison
 
-**Restaurant de référence :** Ganges (43.9342°N, 3.7098°E)  
-**Formule :** 2,50 € de base + 0,50 € par kilomètre (distance à vol d'oiseau)  
-**Plafond :** 10,00 € | **Distance max :** 8 km à vol d'oiseau (livraison refusée au-delà)
-
----
-
-## Villages livrés
-
-| Ville | Distance (km) | Frais de livraison |
-|-------|---------------|---------------------|
-| **Ganges** | 0 | **2,50 €** |
-| **Cazilhac** | 1,3 | **3,15 €** |
-| **Laroque** | 1,8 | **3,38 €** |
-| **Pégairolles-de-Buèges** | 3,2 | **4,11 €** |
-| **Saint-Bauzille-de-Putois** | 3,4 | **4,22 €** |
-| **Sumène** | 4,0 | **4,47 €** |
-| **Montoulieu** | 6,5 | **5,76 €** |
+**Restaurant de référence :** Ganges (34190)  
+**Distance utilisée :** distance réelle par la route (OpenRouteService). Si l’API est indisponible, distance à vol d’oiseau en secours.  
+**Distance max :** 10 km par la route. Livraison refusée au-delà.
 
 ---
 
-## Hors zone (> 8 km)
+## Formule
 
-| Ville | Distance (km) | Livraison |
-|-------|---------------|-----------|
-| **Brissac** | 9,4 | Non livré (au-delà de 8 km) |
+- **Ganges (0 km) :** **3,00 €** fixe.
+- **Hors Ganges :** **3,00 € de base + 0,80 € par kilomètre** (distance route), plafond **10,00 €**.
+
+Exemples :
+- 0 km (Ganges) → **3,00 €**
+- 3 km → 3 + 2,40 = **5,40 €**
+- 5 km → 3 + 4,00 = **7,00 €**
+- 10 km → 3 + 8,00 = **10,00 €** (plafond)
 
 ---
 
-*Distances calculées à vol d’oiseau depuis le centre de Ganges. La distance réelle par la route peut être plus longue ; les frais restent ceux du tableau.*
+## Villes livrées / non livrées
+
+- **Livrées :** communes à moins de 10 km par la route (codes postaux 34190, 30440 et adresses géolocalisées dans la zone).
+- **Non livrées :** Pégairolles-de-Buèges (22 km), Saint-Bresson (14,2 km), et toute adresse à plus de 10 km.
+
+---
+
+*Dernière mise à jour : février 2025.*

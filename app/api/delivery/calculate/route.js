@@ -35,21 +35,24 @@ const DEFAULT_RESTAURANT = {
   name: 'Restaurant Ganges'
 };
 
-const DEFAULT_BASE_FEE = 2.50;      // 2.50€ de base
-const DEFAULT_PER_KM_FEE = 0.50;    // 0.50€ par kilomètre (tarif standard)
-const ALTERNATE_PER_KM_FEE = 0.89;  // 0.89€ par kilomètre (tarif premium éventuel)
-const MAX_FEE = 10.00;              // Maximum 10€
-// IMPORTANT: Limite réduite à 8km car la distance à vol d'oiseau (Haversine) est toujours inférieure à la distance réelle par la route
-// Pour garantir < 10km de route réelle, on limite à 8km à vol d'oiseau (compensation pour routes sinueuses/montagneuses)
-const MAX_DISTANCE = 8;            // Maximum 8km à vol d'oiseau (≈ 10km de route réelle) - au-delà, livraison non autorisée
+// Tarifs fixes par zone (plus de calcul au kilomètre) – voir docs/TARIFS-LIVRAISON-VILLAGES.md
+const FEE_ZONE_GANGES = 3;   // 3€ – Ganges uniquement
+const FEE_ZONE_PATELINS = 5; // 5€ – patelins proches (Laroque, Cazilhac, Saint-Laurent-le-Minier, etc.)
+const FEE_ZONE_REST = 7;     // 7€ – ~7–9 km (Saint-Julien-de-la-Nef, Brissac, etc.)
+const FEE_ZONE_10KM = 10;    // 10€ – 10 km pile (Roquedur)
+const MAX_DISTANCE = 8;           // Max à vol d'oiseau (fallback si pas d'API route)
+const MAX_DISTANCE_ROAD_KM = 10; // Max 10 km par la route (utilisé quand OpenRouteService est dispo)
+const DEFAULT_BASE_FEE = 3;     // 3€ – Ganges (0 km) ou base pour les autres
+const DEFAULT_PER_KM_FEE = 0.80; // 0,80 €/km (distance route)
+const ALTERNATE_PER_KM_FEE = 0.89;
+const MAX_FEE = 10.00;
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
-const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'pegairolles', 'brissac'];
-// Villes EXCLUES de la livraison (même si à moins de 10km)
-// Note: Le Crouzet n'est plus dans cette liste car il est automatiquement rejeté par la vérification de distance (> 10km)
-const EXCLUDED_CITIES = [];
+const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'brissac', 'roquedur', 'saint-laurent-le-minier', 'saint-julien-de-la-nef'];
+// Villes EXCLUES (distance route > 10 km) – pas de livraison
+const EXCLUDED_CITIES = ['pegairolles', 'saint-bresson'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -70,14 +73,58 @@ const COORDINATES_DB = {
   'saint-bauzille': { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille-de-Putois' }, // ~3,5 km de Ganges
   'sumene': { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
   'cazilhac': { lat: 43.9250, lng: 3.7000, name: 'Cazilhac' },
-  'pegairolles': { lat: 43.9178, lng: 3.7428, name: 'Pégairolles' },
-  // Montoulieu (34190) : ~13 km de Ganges par la route, ~7 km à vol d'oiseau (43.9269°N, 3.79056°E)
   'montoulieu': { lat: 43.9269, lng: 3.7906, name: 'Montoulieu' },
-  'brissac': { lat: 43.8500, lng: 3.7000, name: 'Brissac' } // Coordonnées approximatives - À vérifier si dans la zone
+  'brissac': { lat: 43.8500, lng: 3.7000, name: 'Brissac' },
+  'moules': { lat: 43.9500, lng: 3.7300, name: 'Moulès-et-Baucels' },
+  'agones': { lat: 43.9042, lng: 3.7211, name: 'Agonès' },
+  'gornies': { lat: 43.8833, lng: 3.6167, name: 'Gorniès' },
+  'saint-julien-de-la-nef': { lat: 43.9667, lng: 3.6833, name: 'Saint-Julien-de-la-Nef' },
+  'saint-martial': { lat: 43.9833, lng: 3.7333, name: 'Saint-Martial' },
+  'saint-roman-de-codieres': { lat: 43.9500, lng: 3.7667, name: 'Saint-Roman-de-Codières' },
+  'roquedur': { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
+  'saint-laurent-le-minier': { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' }
 };
 
 /**
- * Calculer la distance entre deux points (Haversine)
+ * Distance par la route (OpenRouteService) – retourne km ou null si indisponible.
+ * Coordonnées : lat, lng (WGS84). API attend [lng, lat].
+ */
+async function getDrivingDistanceKm(originLat, originLng, destLat, destLng) {
+  const apiKey = process.env.OPENROUTE_API_KEY?.trim();
+  if (!apiKey) return null;
+  try {
+    const url = 'https://api.openrouteservice.org/v2/directions/driving-car';
+    const body = {
+      coordinates: [
+        [originLng, originLat],
+        [destLng, destLat]
+      ]
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) {
+      console.warn('⚠️ OpenRouteService HTTP', res.status, await res.text().catch(() => ''));
+      return null;
+    }
+    const data = await res.json();
+    const distanceM = data.routes?.[0]?.summary?.distance;
+    if (typeof distanceM !== 'number' || distanceM < 0) return null;
+    return Math.round((distanceM / 1000) * 10) / 10; // km, 1 décimale
+  } catch (err) {
+    console.warn('⚠️ OpenRouteService erreur:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Calculer la distance entre deux points (Haversine, vol d'oiseau)
  */
 function calculateDistance(lat1, lng1, lat2, lng2) {
   const R = 6371; // Rayon de la Terre en km
@@ -435,9 +482,64 @@ function extractCity(address) {
   return null;
 }
 
+/** Zones tarifaires fixes (distances réelles par la route). */
+const DELIVERY_ZONE_FEE = {
+  ganges: FEE_ZONE_GANGES,
+  'ganges-centre': FEE_ZONE_GANGES,
+  'ganges-nord': FEE_ZONE_GANGES,
+  'ganges-sud': FEE_ZONE_GANGES,
+  'ganges-est': FEE_ZONE_GANGES,
+  'ganges-ouest': FEE_ZONE_GANGES,
+  laroque: FEE_ZONE_PATELINS,
+  cazilhac: FEE_ZONE_PATELINS,
+  'saint-bauzille': FEE_ZONE_PATELINS,
+  sumene: FEE_ZONE_PATELINS,
+  moules: FEE_ZONE_PATELINS,
+  agones: FEE_ZONE_PATELINS,
+  'saint-laurent-le-minier': FEE_ZONE_PATELINS,
+  'saint-julien-de-la-nef': FEE_ZONE_REST,
+  brissac: FEE_ZONE_REST,
+  montoulieu: FEE_ZONE_REST,
+  gornies: FEE_ZONE_REST,
+  'saint-martial': FEE_ZONE_REST,
+  'saint-roman-de-codieres': FEE_ZONE_REST,
+  roquedur: FEE_ZONE_10KM
+};
+
+/**
+ * Retourne le tarif fixe de livraison (3, 5 ou 7 €) selon la ville détectée dans l'adresse, ou null.
+ */
+function getDeliveryZoneFromAddress(address) {
+  if (!address || typeof address !== 'string') return null;
+  const normalized = address.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, ' ');
+  const townKeys = [
+    { key: 'ganges-centre', patterns: ['ganges'] },
+    { key: 'montoulieu', patterns: ['montoulieu'] },
+    { key: 'saint-bauzille', patterns: ['saint bauzille', 'saint-bauzille', 'bauzille'] },
+    { key: 'laroque', patterns: ['laroque'] },
+    { key: 'sumene', patterns: ['sumene', 'sumène'] },
+    { key: 'cazilhac', patterns: ['cazilhac'] },
+    { key: 'brissac', patterns: ['brissac'] },
+    { key: 'moules', patterns: ['moules', 'moulès', 'baucels'] },
+    { key: 'agones', patterns: ['agones', 'agonès'] },
+    { key: 'gornies', patterns: ['gornies', 'gorniès'] },
+    { key: 'saint-julien-de-la-nef', patterns: ['saint julien', 'saint-julien-de-la-nef'] },
+    { key: 'roquedur', patterns: ['roquedur'] },
+    { key: 'saint-laurent-le-minier', patterns: ['saint laurent', 'saint-laurent', 'minier'] },
+    { key: 'saint-martial', patterns: ['saint martial'] },
+    { key: 'saint-roman-de-codieres', patterns: ['saint roman', 'saint-roman', 'codieres', 'codières'] }
+  ];
+  for (const { key, patterns } of townKeys) {
+    if (patterns.some(p => normalized.includes(p))) {
+      const fee = DELIVERY_ZONE_FEE[key];
+      if (fee != null) return fee;
+    }
+  }
+  return null;
+}
+
 /**
  * Si l'adresse client correspond à une ville connue (COORDINATES_DB), retourne ses coordonnées.
- * Garantit des frais cohérents (ex. Montoulieu plus cher que Saint-Bauzille car plus loin).
  */
 function getKnownTownCoordsFromAddress(address) {
   if (!address || typeof address !== 'string') return null;
@@ -449,8 +551,15 @@ function getKnownTownCoordsFromAddress(address) {
     { key: 'sumene', patterns: ['sumene', 'sumène'] },
     { key: 'cazilhac', patterns: ['cazilhac'] },
     { key: 'ganges-centre', patterns: ['ganges'] },
-    { key: 'pegairolles', patterns: ['pegairolles', 'pégairolles'] },
-    { key: 'brissac', patterns: ['brissac'] }
+    { key: 'brissac', patterns: ['brissac'] },
+    { key: 'moules', patterns: ['moules', 'moulès', 'baucels'] },
+    { key: 'agones', patterns: ['agones', 'agonès'] },
+    { key: 'gornies', patterns: ['gornies', 'gorniès'] },
+    { key: 'saint-julien-de-la-nef', patterns: ['saint julien', 'saint-julien-de-la-nef'] },
+    { key: 'roquedur', patterns: ['roquedur'] },
+    { key: 'saint-laurent-le-minier', patterns: ['saint laurent', 'saint-laurent', 'minier'] },
+    { key: 'saint-martial', patterns: ['saint martial'] },
+    { key: 'saint-roman-de-codieres', patterns: ['saint roman', 'saint-roman', 'codieres', 'codières'] }
   ];
   for (const { key, patterns } of townKeys) {
     if (patterns.some(p => normalized.includes(p))) {
@@ -587,24 +696,16 @@ function pickNumeric(candidates = [], fallback, { min } = {}) {
 
 /**
  * Calculer les frais de livraison
- * FORMULE: 2.50€ de base + 0.50€ par kilomètre
- * IMPORTANT: Arrondir à 2 décimales pour éviter les micro-variations
- * GARANTIR un minimum de 2.50€ (frais de base)
+ * FORMULE: 3€ de base + 0,80€ par km (distance route)
+ * Ganges (0 km) = 3€. Plafond 10€.
  */
 function calculateDeliveryFee(distance, {
   baseFee = DEFAULT_BASE_FEE,
   perKmFee = DEFAULT_PER_KM_FEE
 } = {}) {
-  // S'assurer que la distance n'est pas négative
   const safeDistance = Math.max(0, distance || 0);
-  
-  // FORMULE: baseFee (2.50€) + (distance en km × perKmFee (0.50€))
   const fee = baseFee + (safeDistance * perKmFee);
-  
-  // Plafonner à MAX_FEE (10.00€)
   const cappedFee = Math.min(fee, MAX_FEE);
-  
-  // GARANTIR un minimum de 2.50€ (frais de base)
   const minFee = Math.max(cappedFee, DEFAULT_BASE_FEE);
   
   // Arrondir à 2 décimales pour garantir la cohérence
@@ -793,32 +894,31 @@ export async function POST(request) {
       };
     }
 
-    // Calculer la distance pour vérifier si elle dépasse 8km (≈ 10km de route réelle)
-    // SIMPLIFICATION: On ne vérifie plus le code postal, uniquement la distance
+    // Distance par la route (OpenRouteService) si clé API, sinon vol d'oiseau (Haversine)
     const tempRestaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000;
     const tempRestaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
     const tempClientLat = Math.round(clientCoords.lat * 1000) / 1000;
     const tempClientLng = Math.round(clientCoords.lng * 1000) / 1000;
-    
-    if (!isNaN(tempRestaurantLat) && !isNaN(tempRestaurantLng) && !isNaN(tempClientLat) && !isNaN(tempClientLng)) {
-      const tempDistance = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
-      const tempRoundedDistance = Math.round(tempDistance * 10) / 10; // Utiliser la distance réelle, sans minimum
-      
-      console.log(`🔍 Vérification précoce - Distance: ${tempRoundedDistance.toFixed(1)}km`);
-      console.log(`🔍 Restaurant: ${restaurantName} - Coordonnées: ${tempRestaurantLat.toFixed(3)}, ${tempRestaurantLng.toFixed(3)}`);
-      console.log(`🔍 Client - Coordonnées: ${tempClientLat.toFixed(3)}, ${tempClientLng.toFixed(3)}`);
-      
-      // REJETER si la distance dépasse 8km à vol d'oiseau (≈ 10km de route réelle)
-      if (tempRoundedDistance > MAX_DISTANCE) {
-        console.log(`❌ REJET: Distance trop grande (${tempRoundedDistance.toFixed(1)}km > ${MAX_DISTANCE}km) pour: ${clientAddress}`);
-        return json({
-          success: false,
-          livrable: false,
-          distance: tempRoundedDistance,
-          max_distance: MAX_DISTANCE,
-          message: `❌ Livraison impossible: ${tempRoundedDistance.toFixed(1)}km (maximum ${MAX_DISTANCE}km autorisé)`
-        }, { status: 200 });
-      }
+    const roadDistanceKm = await getDrivingDistanceKm(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
+    const haversineKm = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
+    const tempRoundedDistance = roadDistanceKm != null ? roadDistanceKm : Math.round(haversineKm * 10) / 10;
+    const maxKm = roadDistanceKm != null ? MAX_DISTANCE_ROAD_KM : MAX_DISTANCE;
+
+    console.log(roadDistanceKm != null
+      ? `🔍 Distance route (OpenRouteService): ${tempRoundedDistance.toFixed(1)} km`
+      : `🔍 Distance à vol d'oiseau (fallback): ${tempRoundedDistance.toFixed(1)} km`);
+    console.log(`🔍 Restaurant: ${restaurantName} - Client: ${clientCoords.display_name || clientAddress}`);
+
+    if (!isNaN(tempRoundedDistance) && tempRoundedDistance > maxKm) {
+      console.log(`❌ REJET: Trop loin (${tempRoundedDistance.toFixed(1)} km > ${maxKm} km)`);
+      return json({
+        success: false,
+        livrable: false,
+        distance: tempRoundedDistance,
+        max_distance: maxKm,
+        distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
+        message: `❌ Livraison impossible: ${tempRoundedDistance.toFixed(1)} km (maximum ${maxKm} km)`
+      }, { status: 200 });
     }
 
     // 4. Vérifier que les coordonnées sont valides
@@ -840,233 +940,62 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    // 5. Calculer la distance entre restaurant et client
-    // IMPORTANT: Arrondir les coordonnées AVANT le calcul pour garantir la cohérence
-    const restaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000; // 3 décimales = ~100m
-    const restaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
-    const clientLat = Math.round(clientCoords.lat * 1000) / 1000;
-    const clientLng = Math.round(clientCoords.lng * 1000) / 1000;
-    
-    // Vérifier que les coordonnées sont des nombres valides
-    if (isNaN(restaurantLat) || isNaN(restaurantLng) || isNaN(clientLat) || isNaN(clientLng)) {
-      console.error('❌ ERREUR: Coordonnées non numériques', {
-        restaurantLat, restaurantLng, clientLat, clientLng
-      });
-      return json({
-        success: false,
-        error: 'Coordonnées invalides',
-        message: 'Erreur lors du calcul de la distance'
-      }, { status: 500 });
-    }
-    
-    const rawDistance = calculateDistance(
-      restaurantLat, restaurantLng,
-      clientLat, clientLng
-    );
+    // 5. Distance utilisée : route (OpenRouteService) ou vol d'oiseau (déjà calculée au-dessus)
+    const deliveryDistanceKm = tempRoundedDistance;
 
-    // VÉRIFICATION IMPORTANTE : Si la distance est exactement 0 km, c'est probablement une erreur de géocodage
-    // (même coordonnées = même adresse que le restaurant, ce qui est anormal)
-    if (rawDistance < 0.01) { // Moins de 10 mètres = probablement une erreur
-      console.error('⚠️ ATTENTION: Distance très faible (< 10m) - probable erreur de géocodage');
-      console.error('   Coordonnées restaurant:', restaurantLat, restaurantLng);
-      console.error('   Coordonnées client:', clientLat, clientLng);
-      console.error('   Adresse client:', clientAddress);
-      // Pour les très courtes distances (< 10m), utiliser un minimum de 0.1 km pour éviter les frais à 0€
-      const roundedDistance = 0.1;
-      console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km, minimum appliqué pour éviter erreur)`);
-      console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)}`);
-      console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)}`);
-      
-      // Calculer les frais avec cette distance minimale
-      const resolvedBaseFee = pickNumeric(
-        [
-          baseFeeOverride,
-          restaurantData?.frais_livraison_base,
-          restaurantData?.frais_livraison_minimum,
-          restaurantData?.frais_livraison
-        ],
-        DEFAULT_BASE_FEE,
-        { min: DEFAULT_BASE_FEE }
-      );
-      const safeBaseFee = Math.max(DEFAULT_BASE_FEE, Math.max(resolvedBaseFee || DEFAULT_BASE_FEE, DEFAULT_BASE_FEE));
-      
-      let resolvedPerKmFee = pickNumeric(
-        [
-          perKmRate,
-          body?.perKmFee,
-          restaurantData?.frais_livraison_par_km,
-          restaurantData?.frais_livraison_km,
-          restaurantData?.delivery_fee_per_km,
-          restaurantData?.tarif_kilometre
-        ],
-        DEFAULT_PER_KM_FEE,
-        { min: DEFAULT_PER_KM_FEE }
-      );
-      const safePerKmFee = Math.max(resolvedPerKmFee, DEFAULT_PER_KM_FEE);
-      
-      const deliveryFee = calculateDeliveryFee(roundedDistance, {
-        baseFee: safeBaseFee,
-        perKmFee: safePerKmFee
-      });
-      const finalDeliveryFee = Math.max(deliveryFee, DEFAULT_BASE_FEE);
-      
+    if (deliveryDistanceKm < 0.01) {
+      const finalDeliveryFee = DEFAULT_BASE_FEE; // Ganges (0 km) = 3€
+      console.log(`📏 Ganges / distance très faible → ${finalDeliveryFee}€`);
       return json({
         success: true,
         livrable: true,
-        distance: roundedDistance,
+        distance: deliveryDistanceKm,
+        distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
         frais_livraison: finalDeliveryFee,
         restaurant: restaurantName,
         restaurant_coordinates: restaurantCoords,
         client_coordinates: clientCoords,
-        applied_base_fee: safeBaseFee,
-        applied_per_km_fee: safePerKmFee,
+        applied_base_fee: DEFAULT_BASE_FEE,
+        applied_per_km_fee: DEFAULT_PER_KM_FEE,
         client_address: clientCoords.display_name,
-        message: `Livraison possible: ${finalDeliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
+        message: `Livraison possible: ${finalDeliveryFee.toFixed(2)}€ (${deliveryDistanceKm.toFixed(1)} km)`
       });
     }
 
-    // Utiliser la distance réelle calculée (sans minimum artificiel)
-    // Arrondir la distance à 1 décimale pour éviter les micro-variations
-    // Cela garantit que la même adresse donne toujours la même distance (et donc les mêmes frais)
-    const roundedDistance = Math.round(rawDistance * 10) / 10; // 1 décimale = précision ~100m
+    const roundedDistance = deliveryDistanceKm;
+    console.log(`📏 Distance livraison: ${roundedDistance.toFixed(1)} km (source: ${roadDistanceKm != null ? 'route' : 'vol d\'oiseau'})`);
 
-    console.log(`📏 Distance: ${roundedDistance.toFixed(1)}km (brut: ${rawDistance.toFixed(2)}km)`);
-    console.log(`📏 Coordonnées restaurant: ${restaurantLat.toFixed(3)}, ${restaurantLng.toFixed(3)} (${restaurantName})`);
-    console.log(`📏 Coordonnées client: ${clientLat.toFixed(3)}, ${clientLng.toFixed(3)} (${clientCoords.display_name || clientAddress})`);
-    console.log(`📏 Source coordonnées restaurant: ${restaurantData?.latitude && restaurantData?.longitude ? 'Base de données' : restaurantAddress ? 'Géocodage' : 'Par défaut'}`);
-    console.log(`📏 Adresse restaurant utilisée: ${restaurantAddress || 'Coordonnées par défaut'}`);
-    console.log(`📏 Adresse client: ${clientAddress}`);
-
-    // 6. Vérifier la distance maximum
-    if (roundedDistance > MAX_DISTANCE) {
-      console.log(`❌ REJET: Trop loin: ${roundedDistance.toFixed(2)}km > ${MAX_DISTANCE}km`);
-      return json({
-        success: false,
-        livrable: false,
-        distance: roundedDistance,
-        max_distance: MAX_DISTANCE,
-        message: `❌ Livraison impossible: ${roundedDistance.toFixed(1)}km (maximum ${MAX_DISTANCE}km)`
-      }, { status: 200 }); // Status 200 pour que le frontend puisse parser la réponse
-    }
-
-    // 7. Déterminer les paramètres tarifaires
-    const resolvedBaseFee = pickNumeric(
-      [
-        baseFeeOverride,
-        restaurantData?.frais_livraison_base,
-        restaurantData?.frais_livraison_minimum,
-        restaurantData?.frais_livraison
-      ],
-      DEFAULT_BASE_FEE,
-      { min: DEFAULT_BASE_FEE } // GARANTIR un minimum de 2.50€
-    );
-
-    // VALIDATION CRITIQUE: S'assurer que baseFee est au minimum 2.50€
-    // Protection absolue contre les valeurs incorrectes
-    if (isNaN(resolvedBaseFee) || resolvedBaseFee < DEFAULT_BASE_FEE || resolvedBaseFee <= 0) {
-      console.error(`❌ ERREUR CRITIQUE: baseFee invalide (${resolvedBaseFee}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
-      console.error('   Données restaurant:', {
-        frais_livraison_base: restaurantData?.frais_livraison_base,
-        frais_livraison_minimum: restaurantData?.frais_livraison_minimum,
-        frais_livraison: restaurantData?.frais_livraison,
-        baseFeeOverride
-      });
-    }
-    const safeBaseFee = Math.max(DEFAULT_BASE_FEE, Math.max(resolvedBaseFee || DEFAULT_BASE_FEE, DEFAULT_BASE_FEE));
-
-    let resolvedPerKmFee = pickNumeric(
-      [
-        perKmRate,
-        body?.perKmFee,
-        restaurantData?.frais_livraison_par_km,
-        restaurantData?.frais_livraison_km,
-        restaurantData?.delivery_fee_per_km,
-        restaurantData?.tarif_kilometre
-      ],
-      undefined,
-      { min: DEFAULT_PER_KM_FEE } // GARANTIR un minimum de 0.50€
-    );
-
-    if (resolvedPerKmFee === undefined) {
-      // Certains restaurants peuvent avoir un indicateur spécifique pour le tarif premium
-      if ((restaurantData?.tarif_livraison || restaurantData?.delivery_mode)?.toLowerCase?.() === 'premium') {
-        resolvedPerKmFee = ALTERNATE_PER_KM_FEE;
-      } else {
-        resolvedPerKmFee = DEFAULT_PER_KM_FEE;
-      }
-    }
-
-    // VALIDATION CRITIQUE: S'assurer que perKmFee est au minimum 0.50€
-    if (resolvedPerKmFee < DEFAULT_PER_KM_FEE) {
-      console.warn(`⚠️ perKmFee trop bas (${resolvedPerKmFee}€), utilisation du minimum ${DEFAULT_PER_KM_FEE}€`);
-    }
-    const safePerKmFee = Math.max(resolvedPerKmFee, DEFAULT_PER_KM_FEE);
-
-    // 8. Calculer les frais
-    // FORMULE FIXE: 2.50€ de base + 0.50€ par kilomètre
-    // TOUTES les commandes suivent cette formule, SANS exception
+    // 7. Calcul des frais : 3 € base (Ganges) + 0,80 €/km (distance route si OpenRouteService dispo)
     const finalDistance = roundedDistance;
-    
-    // VALIDATION CRITIQUE: Vérifier que la distance est valide
     if (isNaN(finalDistance) || finalDistance < 0) {
-      console.error('❌ ERREUR: Distance invalide pour le calcul des frais:', finalDistance);
+      console.error('❌ ERREUR: Distance invalide:', finalDistance);
       return json({
         success: false,
         error: 'Distance invalide',
         message: 'Erreur lors du calcul de la distance de livraison'
       }, { status: 500 });
     }
-    
-    // TOUJOURS appliquer la formule : baseFee + (distance × perKmFee)
-    // Utiliser les valeurs sécurisées (safeBaseFee et safePerKmFee)
-    const deliveryFee = calculateDeliveryFee(finalDistance, {
-      baseFee: safeBaseFee,
-      perKmFee: safePerKmFee
-    });
 
-    // VALIDATION FINALE: Les frais ne peuvent JAMAIS être < 2.50€
-    // Protection absolue contre les erreurs de calcul
-    if (isNaN(deliveryFee) || deliveryFee < DEFAULT_BASE_FEE || deliveryFee <= 0) {
-      console.error(`❌ ERREUR CRITIQUE: Frais calculés invalides (${deliveryFee}€), utilisation du minimum ${DEFAULT_BASE_FEE}€`);
-      console.error('   Distance:', finalDistance, 'km');
-      console.error('   baseFee:', safeBaseFee, '€');
-      console.error('   perKmFee:', safePerKmFee, '€');
-      console.error('   Adresse client:', clientAddress);
-      console.error('   Restaurant:', restaurantName);
-    }
-    // Protection absolue: garantir un minimum de 2.50€ même si le calcul est incorrect
-    const finalDeliveryFee = Math.max(DEFAULT_BASE_FEE, Math.max(deliveryFee || DEFAULT_BASE_FEE, DEFAULT_BASE_FEE));
-    
-    // Vérification finale de sécurité
-    if (finalDeliveryFee < DEFAULT_BASE_FEE) {
-      console.error(`🚨 ALERTE SÉCURITÉ: finalDeliveryFee toujours < 2.50€ après toutes les validations! Valeur: ${finalDeliveryFee}€`);
-      // Forcer le minimum absolu
-      return json({
-        success: false,
-        error: 'Erreur de calcul des frais',
-        message: 'Erreur lors du calcul des frais de livraison. Veuillez réessayer.'
-      }, { status: 500 });
-    }
+    const finalDeliveryFee = calculateDeliveryFee(finalDistance, { baseFee: DEFAULT_BASE_FEE, perKmFee: DEFAULT_PER_KM_FEE });
+    console.log(`💰 Frais: ${DEFAULT_BASE_FEE}€ + (${finalDistance.toFixed(1)} km × ${DEFAULT_PER_KM_FEE}€) = ${finalDeliveryFee.toFixed(2)}€ (distance ${roadDistanceKm != null ? 'route' : 'vol d\'oiseau'})`);
 
-    console.log(`💰 Frais: ${safeBaseFee}€ + (${finalDistance.toFixed(1)}km × ${safePerKmFee}€) = ${finalDeliveryFee.toFixed(2)}€`);
-
-    // Calculer orderAmountNumeric pour la réponse
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
     return json({
       success: true,
       livrable: true,
       distance: finalDistance,
-      raw_distance: roundedDistance, // Distance brute pour debug
-      frais_livraison: finalDeliveryFee, // Utiliser finalDeliveryFee (garanti >= 2.50€)
+      raw_distance: roundedDistance,
+      distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
+      frais_livraison: finalDeliveryFee,
       restaurant: restaurantName,
       restaurant_coordinates: restaurantCoords,
       client_coordinates: clientCoords,
-      applied_base_fee: safeBaseFee,
-      applied_per_km_fee: safePerKmFee,
+      applied_base_fee: DEFAULT_BASE_FEE,
+      applied_per_km_fee: DEFAULT_PER_KM_FEE,
       order_amount: orderAmountNumeric,
       client_address: clientCoords.display_name,
-      message: `Livraison possible: ${finalDeliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)}km)`
+      message: `Livraison possible: ${finalDeliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)} km)`
     });
 
   } catch (error) {
