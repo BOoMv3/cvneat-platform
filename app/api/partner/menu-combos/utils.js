@@ -334,13 +334,18 @@ const enrichCombos = async (combos) => {
     )
   ];
   let menuDisponibleMap = new Map();
+  let menuPrixMap = new Map();
   if (linkedMenuIds.length > 0 && supabaseAdmin) {
     const { data: menusData } = await supabaseAdmin
       .from('menus')
-      .select('id, disponible')
+      .select('id, disponible, prix')
       .in('id', linkedMenuIds);
     (menusData || []).forEach((m) => {
       menuDisponibleMap.set(m.id, m.disponible === true);
+      if (m.prix != null && m.prix !== '') {
+        const p = parseFloat(m.prix);
+        if (!Number.isNaN(p)) menuPrixMap.set(m.id, p);
+      }
     });
   }
 
@@ -351,9 +356,11 @@ const enrichCombos = async (combos) => {
       ? (menuDisponibleMap.get(option.linked_menu_id) ?? true)
       : true;
     const optionDisponible = option.disponible !== false && linkedMenuDisponible;
+    const linkedMenuPrix = option.linked_menu_id ? (menuPrixMap.get(option.linked_menu_id) ?? null) : null;
     list.push({
       ...option,
       prix_supplementaire: option.prix_supplementaire !== null ? parseFloat(option.prix_supplementaire) : 0,
+      linked_menu_prix: linkedMenuPrix,
       variants: variantsByOption.get(option.id) || [],
       base_ingredients: baseIngredientsByOption.get(option.id) || [],
       disponible: optionDisponible

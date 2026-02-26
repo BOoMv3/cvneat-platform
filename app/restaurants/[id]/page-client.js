@@ -922,6 +922,17 @@ export default function RestaurantDetail({ params }) {
     };
   }, [activeCombo, comboSelections]);
 
+  // Prix effectif d'une option : si l'option est liée à un article du menu, utiliser son prix (formules Deliss'King etc.)
+  const getOptionPrice = (option, variant) => {
+    const linkedPrix = option?.linked_menu_prix != null && option.linked_menu_prix > 0
+      ? parseFloat(option.linked_menu_prix)
+      : null;
+    const supplement = parseFloat(option?.prix_supplementaire || 0) || 0;
+    const variantSupplement = parseFloat(variant?.prix_supplementaire || 0) || 0;
+    if (linkedPrix != null) return linkedPrix + variantSupplement;
+    return supplement + variantSupplement;
+  };
+
   const comboTotalPrice = useMemo(() => {
     if (!activeCombo) return 0;
     let total = parseFloat(activeCombo.prix_base || 0) || 0;
@@ -930,9 +941,7 @@ export default function RestaurantDetail({ params }) {
       const key = getStepKey(step, index);
       const selections = comboSelections[key]?.options || [];
       selections.forEach((selection) => {
-        const optionPrice = parseFloat(selection.option?.prix_supplementaire || 0) || 0;
-        const variantPrice = parseFloat(selection.variant?.prix_supplementaire || 0) || 0;
-        total += optionPrice + variantPrice;
+        total += getOptionPrice(selection.option, selection.variant);
       });
     });
 
@@ -967,9 +976,7 @@ export default function RestaurantDetail({ params }) {
         }
         const label = labelParts.filter(Boolean).join(' · ');
 
-        const optionPrice = parseFloat(option?.prix_supplementaire || 0) || 0;
-        const variantPrice = parseFloat(variant?.prix_supplementaire || 0) || 0;
-        const supplementPrice = optionPrice + variantPrice;
+        const supplementPrice = getOptionPrice(option, variant);
 
         supplements.push({
           id: `${getStepKey(step, index)}-${option.id}${variant ? `-${variant.id}` : ''}`,
@@ -990,6 +997,8 @@ export default function RestaurantDetail({ params }) {
           })
           .filter(Boolean);
 
+        const optionPrice = option?.linked_menu_prix != null ? parseFloat(option.linked_menu_prix) : (parseFloat(option?.prix_supplementaire || 0) || 0);
+        const variantPrice = parseFloat(variant?.prix_supplementaire || 0) || 0;
         comboDetails.push({
           stepTitle: step.title,
           optionName: option.nom,
@@ -1001,10 +1010,12 @@ export default function RestaurantDetail({ params }) {
       });
     });
 
+    const basePrice = parseFloat(activeCombo.prix_base || 0) || 0;
+
     const cartItem = {
       id: `combo-${activeCombo.id}`,
       nom: activeCombo.nom,
-      prix: parseFloat(activeCombo.prix_base || 0) || 0,
+      prix: basePrice,
       type: 'combo',
       comboId: activeCombo.id,
       comboName: activeCombo.nom,
@@ -1386,7 +1397,10 @@ export default function RestaurantDetail({ params }) {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">Prix de base</p>
                   <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {(parseFloat(activeCombo.prix_base || 0) || 0).toFixed(2)}€
+                    {comboEffectiveBase.toFixed(2)}€
+                    {comboEffectiveBase === 0 && activeCombo.prix_base > 0 && (
+                      <span className="text-xs font-normal text-gray-500 ml-1">(inclus dans le choix)</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -1465,7 +1479,7 @@ export default function RestaurantDetail({ params }) {
                               .map((option) => {
                                 const selected = isOptionSelected(step, option, stepIndex);
                                 const variant = getSelectedVariant(step, option, stepIndex);
-                                const optionSupplement = parseFloat(option?.prix_supplementaire || 0) || 0;
+                                const optionPriceDisplay = getOptionPrice(option, variant);
                                 return (
                                   <div
                                     key={option.id}
@@ -1496,7 +1510,7 @@ export default function RestaurantDetail({ params }) {
                                         </div>
                                         <div className="text-right">
                                           <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                            {optionSupplement > 0 ? `+${optionSupplement.toFixed(2)}€` : 'Inclus'}
+                                            {optionPriceDisplay > 0 ? `+${optionPriceDisplay.toFixed(2)}€` : 'Inclus'}
                                           </p>
                                           <span
                                             className={`inline-flex items-center justify-center px-2 py-0.5 mt-2 rounded-full text-xs font-medium ${

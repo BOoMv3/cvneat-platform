@@ -35,24 +35,24 @@ const DEFAULT_RESTAURANT = {
   name: 'Restaurant Ganges'
 };
 
-// Tarifs fixes par zone (plus de calcul au kilomètre) – voir docs/TARIFS-LIVRAISON-VILLAGES.md
-const FEE_ZONE_GANGES = 3;   // 3€ – Ganges uniquement
-const FEE_ZONE_PATELINS = 5; // 5€ – patelins proches (Laroque, Cazilhac, Saint-Laurent-le-Minier, etc.)
-const FEE_ZONE_REST = 7;     // 7€ – ~7–9 km (Saint-Julien-de-la-Nef, Brissac, etc.)
-const FEE_ZONE_10KM = 10;    // 10€ – 10 km pile (Roquedur)
+// Tarifs fixes par commune – voir docs/TARIFS-LIVRAISON-VILLAGES.md
+const FEE_GANGES = 3;      // 3€ – Ganges
+const FEE_5_EUR = 5;       // 5€ – Laroque, Moulès, Cazilhac
+const FEE_BRISSAC = 7.5;   // 7,50€ – Brissac (un peu plus loin)
+const FEE_REST = 7;        // 7€ – le reste des villages
 const MAX_DISTANCE = 8;           // Max à vol d'oiseau (fallback si pas d'API route)
 const MAX_DISTANCE_ROAD_KM = 10; // Max 10 km par la route (utilisé quand OpenRouteService est dispo)
-const DEFAULT_BASE_FEE = 3;     // 3€ – Ganges (0 km) ou base pour les autres
-const DEFAULT_PER_KM_FEE = 0.80; // 0,80 €/km (distance route)
+const DEFAULT_BASE_FEE = 3;
+const DEFAULT_PER_KM_FEE = 0.80;
 const ALTERNATE_PER_KM_FEE = 0.89;
-const MAX_FEE = 7.00; // Plafond 7€ (ex. Brissac, loin)
+const MAX_FEE = 7.5;
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
-const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'montoulieu', 'cazilhac', 'brissac', 'roquedur', 'saint-laurent-le-minier', 'saint-julien-de-la-nef'];
-// Villes EXCLUES (distance route > 10 km) – pas de livraison
-const EXCLUDED_CITIES = ['pegairolles', 'saint-bresson'];
+const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'cazilhac', 'brissac', 'roquedur', 'saint-laurent-le-minier', 'saint-julien-de-la-nef'];
+// Villes EXCLUES (trop loin ou hors zone) – pas de livraison
+const EXCLUDED_CITIES = ['pegairolles', 'saint-bresson', 'montoulieu'];
 
 // Cache pour les coordonnées géocodées (en mémoire, pour éviter les variations)
 // En production, utiliser une table Supabase pour un cache persistant
@@ -765,6 +765,28 @@ function isGangesAddress(address) {
   return n.includes('ganges');
 }
 
+/** Normalise une chaîne pour comparaison (sans accents, minuscule). */
+function normalizeForTown(s) {
+  if (!s || typeof s !== 'string') return '';
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, ' ').trim();
+}
+
+/**
+ * Frais de livraison fixes par commune : Ganges 3€, Laroque/Moulès/Cazilhac 5€, Brissac 7,50€, reste 7€.
+ * Retourne le montant en € ou null si on doit garder l’ancien calcul (fallback).
+ */
+function getFixedDeliveryFeeByTown(city, address) {
+  const cityN = normalizeForTown(city || '');
+  const addrN = normalizeForTown(address || '');
+  const combined = `${cityN} ${addrN}`;
+  if (combined.includes('ganges')) return FEE_GANGES;
+  if (combined.includes('laroque')) return FEE_5_EUR;
+  if (combined.includes('moules') || combined.includes('moulès')) return FEE_5_EUR;
+  if (combined.includes('cazilhac')) return FEE_5_EUR;
+  if (combined.includes('brissac')) return FEE_BRISSAC;
+  return FEE_REST;
+}
+
 export async function POST(request) {
   try {
     console.log('🚚 === API DELIVERY CALCULATE START ===');
@@ -845,26 +867,12 @@ export async function POST(request) {
     // 3. Géocoder avec cache pour éviter les variations
     console.log('🌐 Géocodage avec cache pour les adresses...');
     let clientCoords;
+    let clientCoordsForDistance;
 
     try {
       clientCoords = await getCoordinatesWithCache(clientAddress, { prefix: 'client' });
-      const hasStreet = hasExplicitStreetAddress(clientAddress);
-      const knownTown = getKnownTownCoordsFromAddress(clientAddress);
-      // Adresse précise (ex. "7 av Jeanne d'Arc, Brissac") → on garde le géocodage pour la vraie distance (~8 km)
-      if (knownTown && !hasStreet) {
-        clientCoords = { ...clientCoords, lat: knownTown.lat, lng: knownTown.lng, display_name: clientCoords.display_name, city: knownTown.city || clientCoords.city };
-        console.log('📍 Ville reconnue (adresse vague) → centre:', knownTown.display_name || knownTown.city);
-      } else if (!knownTown || hasStreet) {
-        if (!hasStreet) {
-          const snapTown = getNearestKnownTownWithinRadius(clientCoords.lat, clientCoords.lng);
-          if (snapTown) {
-            clientCoords = { ...clientCoords, lat: snapTown.lat, lng: snapTown.lng, display_name: clientCoords.display_name, city: snapTown.name };
-            console.log('📍 Snap vers centre commune:', snapTown.name);
-          }
-        } else {
-          console.log('📍 Adresse précise (rue + numéro) → distance réelle via géocodage');
-        }
-      }
+      // Toujours utiliser le point géocodé pour la distance (évite 7€ partout : Laroque, Moulès etc.)
+      clientCoordsForDistance = { lat: clientCoords.lat, lng: clientCoords.lng };
     } catch (error) {
       console.error('❌ Géocodage échoué pour l\'adresse client:', error.message);
       
@@ -958,11 +966,11 @@ export async function POST(request) {
       };
     }
 
-    // Distance par la route (OpenRouteService) si clé API, sinon vol d'oiseau (Haversine)
+    // Distance = toujours depuis le point géocodé (pas le centre-ville) → Laroque ~3 km = 5,40€, pas 7€
     const tempRestaurantLat = Math.round(restaurantCoords.lat * 1000) / 1000;
     const tempRestaurantLng = Math.round(restaurantCoords.lng * 1000) / 1000;
-    const tempClientLat = Math.round(clientCoords.lat * 1000) / 1000;
-    const tempClientLng = Math.round(clientCoords.lng * 1000) / 1000;
+    const tempClientLat = Math.round(clientCoordsForDistance.lat * 1000) / 1000;
+    const tempClientLng = Math.round(clientCoordsForDistance.lng * 1000) / 1000;
     const roadDistanceKm = await getDrivingDistanceKm(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
     const haversineKm = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
     const tempRoundedDistance = roadDistanceKm != null ? roadDistanceKm : Math.round(haversineKm * 10) / 10;
@@ -1034,7 +1042,6 @@ export async function POST(request) {
     const roundedDistance = deliveryDistanceKm;
     console.log(`📏 Distance livraison: ${roundedDistance.toFixed(1)} km (source: ${roadDistanceKm != null ? 'route' : 'vol d\'oiseau'})`);
 
-    // 7. Frais : Ganges = 3€ ; sinon 3€ + 0,80€/km, plafond 7€
     const finalDistance = roundedDistance;
     if (isNaN(finalDistance) || finalDistance < 0) {
       console.error('❌ ERREUR: Distance invalide:', finalDistance);
@@ -1045,8 +1052,9 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    const finalDeliveryFee = calculateDeliveryFee(finalDistance, { baseFee: DEFAULT_BASE_FEE, perKmFee: DEFAULT_PER_KM_FEE });
-    console.log(`💰 Frais: ${DEFAULT_BASE_FEE}€ + (${finalDistance.toFixed(1)} km × ${DEFAULT_PER_KM_FEE}€) = ${finalDeliveryFee.toFixed(2)}€`);
+    // 7. Frais fixes par commune : Laroque/Moulès/Cazilhac 5€, Brissac 7,50€, reste 7€
+    const finalDeliveryFee = getFixedDeliveryFeeByTown(clientCoords.city, clientAddress);
+    console.log(`💰 Frais (tarif commune): ${finalDeliveryFee}€`);
 
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
@@ -1060,11 +1068,11 @@ export async function POST(request) {
       restaurant: restaurantName,
       restaurant_coordinates: restaurantCoords,
       client_coordinates: clientCoords,
-      applied_base_fee: DEFAULT_BASE_FEE,
-      applied_per_km_fee: DEFAULT_PER_KM_FEE,
+      applied_base_fee: null,
+      applied_per_km_fee: null,
       order_amount: orderAmountNumeric,
       client_address: clientCoords.display_name,
-      message: `Livraison possible: ${finalDeliveryFee.toFixed(2)}€ (${roundedDistance.toFixed(1)} km)`
+      message: `Livraison possible: ${Number(finalDeliveryFee).toFixed(2)}€ (${roundedDistance.toFixed(1)} km)`
     });
 
   } catch (error) {
