@@ -578,6 +578,18 @@ function getNearestKnownTownWithinRadius(lat, lng, radiusKm = SNAP_RADIUS_KM) {
 }
 
 /**
+ * True si l'adresse contient une rue précise (ex. "7 av Jeanne d'Arc") → on garde le géocodage pour la vraie distance.
+ * Sinon (ex. "Brissac" seul) on peut utiliser le centre de la commune.
+ */
+function hasExplicitStreetAddress(address) {
+  if (!address || typeof address !== 'string') return false;
+  const n = address.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const hasNumber = /\d/.test(n);
+  const hasStreet = /\b(rue|av\.?|avenue[s]?|route|chemin|lotissement|place|bd|boulevard|impasse|allee|cours)\b/i.test(n);
+  return hasNumber && hasStreet;
+}
+
+/**
  * Si l'adresse client correspond à une ville connue (COORDINATES_DB), retourne ses coordonnées.
  */
 function getKnownTownCoordsFromAddress(address) {
@@ -834,17 +846,21 @@ export async function POST(request) {
 
     try {
       clientCoords = await getCoordinatesWithCache(clientAddress, { prefix: 'client' });
-      // 1) Si la ville est reconnue dans l'adresse (ex. "Laroque"), on utilise son centre
+      const hasStreet = hasExplicitStreetAddress(clientAddress);
       const knownTown = getKnownTownCoordsFromAddress(clientAddress);
-      if (knownTown) {
+      // Adresse précise (ex. "7 av Jeanne d'Arc, Brissac") → on garde le géocodage pour la vraie distance (~8 km)
+      if (knownTown && !hasStreet) {
         clientCoords = { ...clientCoords, lat: knownTown.lat, lng: knownTown.lng, display_name: clientCoords.display_name, city: knownTown.city || clientCoords.city };
-        console.log('📍 Ville reconnue dans l\'adresse → centre:', knownTown.display_name || knownTown.city);
-      } else {
-        // 2) Sinon, si le point géocodé est à moins de 2 km d'un centre de commune connu, on "snap" dessus pour éviter que les frais varient (ex. "28 Rue X, 34190" → Laroque)
-        const snapTown = getNearestKnownTownWithinRadius(clientCoords.lat, clientCoords.lng);
-        if (snapTown) {
-          clientCoords = { ...clientCoords, lat: snapTown.lat, lng: snapTown.lng, display_name: clientCoords.display_name, city: snapTown.name };
-          console.log('📍 Snap vers centre commune pour frais stables:', snapTown.name);
+        console.log('📍 Ville reconnue (adresse vague) → centre:', knownTown.display_name || knownTown.city);
+      } else if (!knownTown || hasStreet) {
+        if (!hasStreet) {
+          const snapTown = getNearestKnownTownWithinRadius(clientCoords.lat, clientCoords.lng);
+          if (snapTown) {
+            clientCoords = { ...clientCoords, lat: snapTown.lat, lng: snapTown.lng, display_name: clientCoords.display_name, city: snapTown.name };
+            console.log('📍 Snap vers centre commune:', snapTown.name);
+          }
+        } else {
+          console.log('📍 Adresse précise (rue + numéro) → distance réelle via géocodage');
         }
       }
     } catch (error) {
