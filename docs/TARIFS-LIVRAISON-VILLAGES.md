@@ -9,13 +9,13 @@
 ## Formule
 
 - **Ganges (0 km) :** **3,00 €** fixe.
-- **Hors Ganges :** **3,00 € de base + 0,80 € par kilomètre** (distance route), plafond **10,00 €**.
+- **Hors Ganges :** **3,00 € de base + 0,80 € par kilomètre** (distance route), plafond **7,00 €**.
 
 Exemples :
 - 0 km (Ganges) → **3,00 €**
 - 3 km → 3 + 2,40 = **5,40 €**
-- 5 km → 3 + 4,00 = **7,00 €**
-- 10 km → 3 + 8,00 = **10,00 €** (plafond)
+- 5 km → 3 + 4,00 = **7,00 €** (plafond)
+- 8 km → 3 + 6,40 = **7,00 €** (plafond)
 
 ---
 

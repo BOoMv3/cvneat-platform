@@ -45,7 +45,7 @@ const MAX_DISTANCE_ROAD_KM = 10; // Max 10 km par la route (utilisé quand OpenR
 const DEFAULT_BASE_FEE = 3;     // 3€ – Ganges (0 km) ou base pour les autres
 const DEFAULT_PER_KM_FEE = 0.80; // 0,80 €/km (distance route)
 const ALTERNATE_PER_KM_FEE = 0.89;
-const MAX_FEE = 10.00;
+const MAX_FEE = 7.00; // Plafond 7€ (ex. Brissac, loin)
 
 // Codes postaux autorisés
 const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
