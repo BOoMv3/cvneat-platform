@@ -85,6 +85,27 @@ const COORDINATES_DB = {
   'saint-laurent-le-minier': { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' }
 };
 
+// Centres des communes pour le "snap" (une entrée par commune, pour frais stables)
+const SNAP_TOWN_CENTERS = [
+  { lat: 43.9342, lng: 3.7098, name: 'Ganges' },
+  { lat: 43.9188, lng: 3.7146, name: 'Laroque' },
+  { lat: 43.9033, lng: 3.7067, name: 'Saint-Bauzille-de-Putois' },
+  { lat: 43.8994, lng: 3.7194, name: 'Sumène' },
+  { lat: 43.9250, lng: 3.7000, name: 'Cazilhac' },
+  { lat: 43.9269, lng: 3.7906, name: 'Montoulieu' },
+  { lat: 43.8500, lng: 3.7000, name: 'Brissac' },
+  { lat: 43.9500, lng: 3.7300, name: 'Moulès-et-Baucels' },
+  { lat: 43.9042, lng: 3.7211, name: 'Agonès' },
+  { lat: 43.8833, lng: 3.6167, name: 'Gorniès' },
+  { lat: 43.9667, lng: 3.6833, name: 'Saint-Julien-de-la-Nef' },
+  { lat: 43.9833, lng: 3.7333, name: 'Saint-Martial' },
+  { lat: 43.9500, lng: 3.7667, name: 'Saint-Roman-de-Codières' },
+  { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
+  { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' }
+];
+const SNAP_RADIUS_KM = 4; // Si le point géocodé est à moins de 4 km d'un centre, on utilise ce centre (frais stables, évite rejets abusifs)
+const MAX_DISTANCE_ROAD_KM_ZONE = 12; // Max 12 km quand code postal 34190/30440 (marge pour éviter rejets à tort)
+
 /**
  * Distance par la route (OpenRouteService) – retourne km ou null si indisponible.
  * Coordonnées : lat, lng (WGS84). API attend [lng, lat].
@@ -515,7 +536,7 @@ function getDeliveryZoneFromAddress(address) {
   const townKeys = [
     { key: 'ganges-centre', patterns: ['ganges'] },
     { key: 'montoulieu', patterns: ['montoulieu'] },
-    { key: 'saint-bauzille', patterns: ['saint bauzille', 'saint-bauzille', 'bauzille'] },
+    { key: 'saint-bauzille', patterns: ['saint bauzille', 'saint-bauzille', 'bauzille', 'bauzil', 'putois'] },
     { key: 'laroque', patterns: ['laroque'] },
     { key: 'sumene', patterns: ['sumene', 'sumène'] },
     { key: 'cazilhac', patterns: ['cazilhac'] },
@@ -539,6 +560,24 @@ function getDeliveryZoneFromAddress(address) {
 }
 
 /**
+ * Retourne le centre de la commune connue le plus proche du point (lat, lng) si à moins de radiusKm.
+ * Permet de stabiliser les frais : une adresse géocodée "dans" Laroque utilise toujours le centre Laroque.
+ */
+function getNearestKnownTownWithinRadius(lat, lng, radiusKm = SNAP_RADIUS_KM) {
+  if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return null;
+  let nearest = null;
+  let minDist = radiusKm + 1;
+  for (const town of SNAP_TOWN_CENTERS) {
+    const d = calculateDistance(lat, lng, town.lat, town.lng);
+    if (d < minDist) {
+      minDist = d;
+      nearest = town;
+    }
+  }
+  return nearest;
+}
+
+/**
  * Si l'adresse client correspond à une ville connue (COORDINATES_DB), retourne ses coordonnées.
  */
 function getKnownTownCoordsFromAddress(address) {
@@ -546,7 +585,7 @@ function getKnownTownCoordsFromAddress(address) {
   const normalized = address.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, ' ');
   const townKeys = [
     { key: 'montoulieu', patterns: ['montoulieu'] },
-    { key: 'saint-bauzille', patterns: ['saint bauzille', 'saint-bauzille', 'bauzille'] },
+    { key: 'saint-bauzille', patterns: ['saint bauzille', 'saint-bauzille', 'bauzille', 'bauzil', 'putois'] },
     { key: 'laroque', patterns: ['laroque'] },
     { key: 'sumene', patterns: ['sumene', 'sumène'] },
     { key: 'cazilhac', patterns: ['cazilhac'] },
@@ -795,11 +834,18 @@ export async function POST(request) {
 
     try {
       clientCoords = await getCoordinatesWithCache(clientAddress, { prefix: 'client' });
-      // Priorité aux coordonnées des villes connues pour des frais cohérents (ex. Montoulieu > Saint-Bauzille)
+      // 1) Si la ville est reconnue dans l'adresse (ex. "Laroque"), on utilise son centre
       const knownTown = getKnownTownCoordsFromAddress(clientAddress);
       if (knownTown) {
         clientCoords = { ...clientCoords, lat: knownTown.lat, lng: knownTown.lng, display_name: clientCoords.display_name, city: knownTown.city || clientCoords.city };
-        console.log('📍 Ville connue, utilisation des coordonnées de référence:', knownTown.display_name || knownTown.city);
+        console.log('📍 Ville reconnue dans l\'adresse → centre:', knownTown.display_name || knownTown.city);
+      } else {
+        // 2) Sinon, si le point géocodé est à moins de 2 km d'un centre de commune connu, on "snap" dessus pour éviter que les frais varient (ex. "28 Rue X, 34190" → Laroque)
+        const snapTown = getNearestKnownTownWithinRadius(clientCoords.lat, clientCoords.lng);
+        if (snapTown) {
+          clientCoords = { ...clientCoords, lat: snapTown.lat, lng: snapTown.lng, display_name: clientCoords.display_name, city: snapTown.name };
+          console.log('📍 Snap vers centre commune pour frais stables:', snapTown.name);
+        }
       }
     } catch (error) {
       console.error('❌ Géocodage échoué pour l\'adresse client:', error.message);
@@ -902,7 +948,11 @@ export async function POST(request) {
     const roadDistanceKm = await getDrivingDistanceKm(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
     const haversineKm = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
     const tempRoundedDistance = roadDistanceKm != null ? roadDistanceKm : Math.round(haversineKm * 10) / 10;
-    const maxKm = roadDistanceKm != null ? MAX_DISTANCE_ROAD_KM : MAX_DISTANCE;
+    const clientPostal = extractPostalCode(clientAddress) || (clientCoords.postcode && String(clientCoords.postcode).trim()) || '';
+    const isInDeliveryZonePostal = AUTHORIZED_POSTAL_CODES.includes(clientPostal);
+    const maxKm = roadDistanceKm != null
+      ? (isInDeliveryZonePostal ? MAX_DISTANCE_ROAD_KM_ZONE : MAX_DISTANCE_ROAD_KM)
+      : (isInDeliveryZonePostal ? 10 : MAX_DISTANCE);
 
     console.log(roadDistanceKm != null
       ? `🔍 Distance route (OpenRouteService): ${tempRoundedDistance.toFixed(1)} km`
