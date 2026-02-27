@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ['google-auth-library'],
+  },
+
   images: {
     domains: [
       'images.unsplash.com',
