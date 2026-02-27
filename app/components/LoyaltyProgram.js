@@ -131,20 +131,12 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
   };
 
   const redeemReward = async (rewardId) => {
-    try {
-      // Logique pour échanger une récompense
-      console.log('Échange de la récompense:', rewardId);
-      
-      // Ici on appellerait l'API pour échanger la récompense
-      // Pour l'instant, on simule le succès
-      alert(`Récompense ${rewardId} échangée avec succès !`);
-      
-      // Recharger les récompenses
-      fetchRewards();
-    } catch (error) {
-      console.error('Erreur lors de l\'échange de la récompense:', error);
-      alert('Erreur lors de l\'échange de la récompense');
-    }
+    const reward = rewards.find((r) => r.id === rewardId);
+    const cost = reward?.cost ?? 0;
+    // Les récompenses sont utilisées au moment du paiement : le client choisit combien de points utiliser au checkout.
+    alert(
+      `Pour utiliser cette récompense (${cost} pts), passez une commande puis au moment de payer (page panier → Valider la commande), choisissez "Utiliser ${cost} points" dans le récapitulatif. Les points seront déduits et la réduction appliquée.`
+    );
   };
 
   const CurrentLevelIcon = LOYALTY_LEVELS[currentLevel].icon;
@@ -211,7 +203,8 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
       {/* Récompenses disponibles */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Récompenses disponibles</h4>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Échangez vos points contre des récompenses à utiliser lors de votre prochaine commande.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Échangez vos points contre des récompenses. Pour en bénéficier, utilisez vos points au moment de payer (panier → Valider la commande → choisir le nombre de points à utiliser).</p>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">Le partenaire sera informé de la réduction fidélité sur le détail de la commande.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {rewards.map((reward) => (
             <div 

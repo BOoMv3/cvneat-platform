@@ -12,7 +12,6 @@ import MenuByCategories from '@/components/MenuByCategories';
 import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
-import PriceInfoBanner from '@/components/PriceInfoBanner';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -1119,8 +1118,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
               isOpen={isRestaurantOpen && !isManuallyClosed}
               isManuallyClosed={isManuallyClosed}
             />
-
-            <PriceInfoBanner variant="compact" />
 
             <div className="space-y-8 sm:space-y-12 pt-12 sm:pt-14 md:pt-16">
               {(comboLoading || comboError || comboMenus.length > 0) && (

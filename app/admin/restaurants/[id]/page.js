@@ -18,6 +18,9 @@ export default function RestaurantDetail({ params }) {
   const [sireneResults, setSireneResults] = useState([]);
   const [reductionPct, setReductionPct] = useState('');
   const [savingReduction, setSavingReduction] = useState(false);
+  const [commissionRate, setCommissionRate] = useState('');
+  const [savingCommission, setSavingCommission] = useState(false);
+  const [adjustingMarkup, setAdjustingMarkup] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -37,6 +40,7 @@ export default function RestaurantDetail({ params }) {
       if (error) throw error;
       setRestaurant(data);
       setReductionPct(data?.strategie_boost_reduction_pct != null ? String(data.strategie_boost_reduction_pct) : '');
+      setCommissionRate(data?.commission_rate != null && data?.commission_rate !== '' ? String(data.commission_rate) : '');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -73,6 +77,66 @@ export default function RestaurantDetail({ params }) {
       setSireneError(e.message || 'Erreur INSEE SIRENE');
     } finally {
       setSireneLoading(false);
+    }
+  };
+
+  const saveCommissionRate = async () => {
+    if (!restaurant) return;
+    setSavingCommission(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+      const val = commissionRate === '' ? null : parseFloat(commissionRate);
+      if (val !== null && (Number.isNaN(val) || val < 0 || val > 100)) {
+        alert('Valeur invalide (0 à 100)');
+        return;
+      }
+      const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ commission_rate: val }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Erreur sauvegarde');
+      setRestaurant((prev) => ({ ...prev, commission_rate: val }));
+    } catch (e) {
+      alert(e.message || 'Erreur');
+    } finally {
+      setSavingCommission(false);
+    }
+  };
+
+  const adjustPricesMarkup = async (oldPct, newPct) => {
+    if (!restaurant) return;
+    if (!confirm(`Passer tous les prix de +${oldPct}% à +${newPct}% pour ce restaurant ? Cette action modifie le menu.`)) return;
+    setAdjustingMarkup(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+      const res = await fetch(`/api/admin/restaurants/${restaurant.id}/adjust-prices-markup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ oldMarkupPercent: oldPct, newMarkupPercent: newPct }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Erreur');
+      alert(json.message || `${json.updated} article(s) mis à jour.`);
+    } catch (e) {
+      alert(e.message || 'Erreur');
+    } finally {
+      setAdjustingMarkup(false);
     }
   };
 
@@ -345,7 +409,28 @@ export default function RestaurantDetail({ params }) {
                     <p><span className="font-medium">Telephone :</span> {restaurant.telephone}</p>
                     <p><span className="font-medium">Type de cuisine :</span> {restaurant.type_cuisine}</p>
                     <p><span className="font-medium">Capacite :</span> {restaurant.capacite} couverts</p>
-                    <p><span className="font-medium">Commission CVN'EAT :</span> {restaurant.commission_rate ?? 20}%</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">Commission CVN'EAT :</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={commissionRate}
+                        onChange={(e) => setCommissionRate(e.target.value)}
+                        placeholder="20"
+                        className="w-16 px-2 py-1 border rounded text-sm"
+                      />
+                      <span>%</span>
+                      <button
+                        onClick={saveCommissionRate}
+                        disabled={savingCommission}
+                        className="px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-60"
+                      >
+                        {savingCommission ? '...' : 'Appliquer'}
+                      </button>
+                      <span className="text-xs text-gray-500">(défaut 20%, partenaire Boost = 15%)</span>
+                    </div>
                     <div className="mt-2 pt-2 border-t">
                       <p className="font-medium text-amber-800">Stratégie Boost — Réduction prévue (admin)</p>
                       <div className="flex items-center gap-2 mt-1">
@@ -368,6 +453,18 @@ export default function RestaurantDetail({ params }) {
                         </button>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">-20 (+25%), -17 (+20%), -13 (+15%), -9 (+10%), 0 (déjà OK). Vide = partenaire doit appeler.</p>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-amber-200">
+                      <p className="font-medium text-amber-800 mb-1">Ajuster les prix (ex. Deliss King)</p>
+                      <p className="text-xs text-gray-500 mb-2">Si les prix sont actuellement à +25% et doivent passer à +7% (nouvelle stratégie 15% commission) :</p>
+                      <button
+                        type="button"
+                        onClick={() => adjustPricesMarkup(25, 7)}
+                        disabled={adjustingMarkup}
+                        className="px-3 py-1.5 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 disabled:opacity-60"
+                      >
+                        {adjustingMarkup ? 'Application...' : 'Passer les prix de +25% à +7%'}
+                      </button>
                     </div>
                   </div>
                 </div>

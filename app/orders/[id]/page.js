@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { FaArrowLeft, FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaUtensils, FaBox, FaTruck, FaExclamationTriangle, FaStar } from 'react-icons/fa';
 import NotificationPermission from '../../components/NotificationPermission';
@@ -478,10 +479,19 @@ export default function OrderStatus({ params }) {
                     Commande livrée avec succès !
                   </h3>
                   <div className="mt-2 text-sm text-green-700 dark:text-green-300">
-                    <p>Votre commande a été livrée. Si vous rencontrez un problème, vous pouvez nous le signaler dans les 48h.</p>
+                    <p>Votre commande a été livrée. Votre avis nous aide à améliorer le service ! Si vous rencontrez un problème, signalez-le dans les 48h.</p>
                   </div>
                   
-                  {/* Affichage de la note existante ou bouton pour noter */}
+                  {/* Lien vers le feedback complet (restaurant + livreur) */}
+                  <Link
+                    href={`/orders/${params.id}/feedback`}
+                    className="mt-4 inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <FaStar className="h-4 w-4" />
+                    Donner mon avis sur cette commande
+                  </Link>
+                  
+                  {/* Affichage de la note existante ou bouton pour noter le livreur */}
                   {hasRated && existingRating ? (
                     <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Votre note :</p>

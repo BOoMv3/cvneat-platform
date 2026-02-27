@@ -25,8 +25,16 @@ async function assertRestaurantOwner(restaurantId, userId) {
   return !!data;
 }
 
+// Accepte virgule ou point décimal (ex. 10,50 ou 10.50)
+function parsePrix(v) {
+  if (v == null || v === '') return NaN;
+  const s = String(v).trim().replace(',', '.');
+  return parseFloat(s);
+}
+
 function roundPrice(v) {
-  return Math.round(parseFloat(v) * 100) / 100;
+  const n = parsePrix(v);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
 }
 
 export async function POST(request) {
@@ -45,7 +53,7 @@ export async function POST(request) {
     let updated = 0;
     for (const u of updates) {
       const menuId = u.id || u.menuId;
-      const prix = roundPrice(parseFloat(u.prix) || 0);
+      const prix = roundPrice(u.prix);
       if (!menuId || prix < 0) continue;
 
       const { error } = await supabaseAdmin

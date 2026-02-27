@@ -30,7 +30,9 @@ export async function GET(request) {
       );
     }
 
-    return NextResponse.json(menu || []);
+    return NextResponse.json(menu || [], {
+      headers: { 'Cache-Control': 'no-store, max-age=0' },
+    });
   } catch (error) {
     console.error('Erreur API récupération menu:', error);
     return NextResponse.json(

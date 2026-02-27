@@ -503,28 +503,28 @@ function extractCity(address) {
   return null;
 }
 
-/** Zones tarifaires fixes (distances réelles par la route). */
+/** Zones tarifaires fixes (utilisé par getDeliveryZoneFromAddress si besoin). */
 const DELIVERY_ZONE_FEE = {
-  ganges: FEE_ZONE_GANGES,
-  'ganges-centre': FEE_ZONE_GANGES,
-  'ganges-nord': FEE_ZONE_GANGES,
-  'ganges-sud': FEE_ZONE_GANGES,
-  'ganges-est': FEE_ZONE_GANGES,
-  'ganges-ouest': FEE_ZONE_GANGES,
-  laroque: FEE_ZONE_PATELINS,
-  cazilhac: FEE_ZONE_PATELINS,
-  'saint-bauzille': FEE_ZONE_PATELINS,
-  sumene: FEE_ZONE_PATELINS,
-  moules: FEE_ZONE_PATELINS,
-  agones: FEE_ZONE_PATELINS,
-  'saint-laurent-le-minier': FEE_ZONE_PATELINS,
-  'saint-julien-de-la-nef': FEE_ZONE_REST,
-  brissac: FEE_ZONE_REST,
-  montoulieu: FEE_ZONE_REST,
-  gornies: FEE_ZONE_REST,
-  'saint-martial': FEE_ZONE_REST,
-  'saint-roman-de-codieres': FEE_ZONE_REST,
-  roquedur: FEE_ZONE_10KM
+  ganges: FEE_GANGES,
+  'ganges-centre': FEE_GANGES,
+  'ganges-nord': FEE_GANGES,
+  'ganges-sud': FEE_GANGES,
+  'ganges-est': FEE_GANGES,
+  'ganges-ouest': FEE_GANGES,
+  laroque: FEE_5_EUR,
+  cazilhac: FEE_5_EUR,
+  'saint-bauzille': FEE_REST,
+  sumene: FEE_REST,
+  moules: FEE_5_EUR,
+  agones: FEE_REST,
+  'saint-laurent-le-minier': FEE_REST,
+  'saint-julien-de-la-nef': FEE_REST,
+  brissac: FEE_BRISSAC,
+  montoulieu: FEE_REST,
+  gornies: FEE_REST,
+  'saint-martial': FEE_REST,
+  'saint-roman-de-codieres': FEE_REST,
+  roquedur: FEE_REST
 };
 
 /**
