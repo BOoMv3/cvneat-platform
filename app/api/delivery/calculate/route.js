@@ -75,6 +75,7 @@ const COORDINATES_DB = {
   'cazilhac': { lat: 43.9250, lng: 3.7000, name: 'Cazilhac' },
   'montoulieu': { lat: 43.9269, lng: 3.7906, name: 'Montoulieu' },
   'brissac': { lat: 43.8500, lng: 3.7000, name: 'Brissac' },
+  'la-vernede': { lat: 43.8500, lng: 3.7000, name: 'La Vernède (Brissac)' },
   'moules': { lat: 43.9500, lng: 3.7300, name: 'Moulès-et-Baucels' },
   'agones': { lat: 43.9042, lng: 3.7211, name: 'Agonès' },
   'gornies': { lat: 43.8833, lng: 3.6167, name: 'Gorniès' },
@@ -176,9 +177,9 @@ function generateAddressVariants(address) {
   const postalCode = postalMatch ? postalMatch[1] : null;
   
   // Extraire la ville (plusieurs méthodes)
-  const cityPatterns = [
+  const   cityPatterns = [
     address.match(/,\s*([^,]+?)(?:\s+\d{5})?$/),
-    address.match(/\b(saint[- ]?bauzille?|ganges?|laroque?|cazilhac?|sumene?|sumène?|montoulieu?|pegairolles?|brissac?)\b/gi)
+    address.match(/\b(saint[- ]?bauzille?|ganges?|laroque?|cazilhac?|sumene?|sumène?|montoulieu?|pegairolles?|brissac?|vernede|vernède)\b/gi)
   ];
   
   const cities = [];
@@ -413,6 +414,10 @@ function cleanAddressForGeocoding(address) {
       'bauzille': '34190',
       'cazilhac': '34190',
       'cazilh': '34190',
+      'brissac': '34190',
+      'vernede': '34190',
+      'vernède': '34190',
+      'la vernede': '34190',
       'sumene': '30440',
       'sumène': '30440',
       'sumen': '30440'
@@ -540,7 +545,7 @@ function getDeliveryZoneFromAddress(address) {
     { key: 'laroque', patterns: ['laroque'] },
     { key: 'sumene', patterns: ['sumene', 'sumène'] },
     { key: 'cazilhac', patterns: ['cazilhac'] },
-    { key: 'brissac', patterns: ['brissac'] },
+    { key: 'brissac', patterns: ['brissac', 'vernede', 'vernède', 'la vernede'] },
     { key: 'moules', patterns: ['moules', 'moulès', 'baucels'] },
     { key: 'agones', patterns: ['agones', 'agonès'] },
     { key: 'gornies', patterns: ['gornies', 'gorniès'] },
@@ -602,7 +607,7 @@ function getKnownTownCoordsFromAddress(address) {
     { key: 'sumene', patterns: ['sumene', 'sumène'] },
     { key: 'cazilhac', patterns: ['cazilhac'] },
     { key: 'ganges-centre', patterns: ['ganges'] },
-    { key: 'brissac', patterns: ['brissac'] },
+    { key: 'brissac', patterns: ['brissac', 'vernede', 'vernède', 'la vernede'] },
     { key: 'moules', patterns: ['moules', 'moulès', 'baucels'] },
     { key: 'agones', patterns: ['agones', 'agonès'] },
     { key: 'gornies', patterns: ['gornies', 'gorniès'] },
