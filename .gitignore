@@ -63,3 +63,6 @@ scripts/*-secrets.js
 *.secret
 *.key
 *.pem
+# Ne jamais versionner les comptes de service Firebase
+firebase-service-account.json
+*firebase-adminsdk*.json

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendAPNsNotification } from '../../../../lib/apns';
+import { sendFcmV1Message, isFcmV1Configured } from '../../../../lib/fcm-v1';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -123,40 +124,55 @@ export async function POST(request) {
       }
     }
 
-    // Envoyer aux appareils Android via Firebase Cloud Messaging
+    // Envoyer aux appareils Android via FCM (v1 prioritaire, sinon legacy)
     if (androidTokens.length > 0) {
+      const useV1 = isFcmV1Configured();
       const fcmServerKey = process.env.FIREBASE_SERVER_KEY;
-      
-      if (!fcmServerKey) {
-        console.log('Firebase Server Key non configurée - notifications Android non envoyées');
+
+      if (!useV1 && !fcmServerKey) {
+        console.log('Firebase non configuré (ni compte de service v1, ni Server key) - notifications Android non envoyées');
         errors.push({ platform: 'android', error: 'Firebase non configuré' });
       } else {
         for (const tokenData of androidTokens) {
           try {
-            const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `key=${fcmServerKey}`
-              },
-              body: JSON.stringify({
-                to: tokenData.token,
-                notification: {
-                  title,
-                  body,
-                  sound: soundName || 'default',
-                  // Ne pas forcer de badge par défaut (sinon badge fantôme).
-                },
-                data: { ...(data || {}), ...(soundName ? { sound: soundName } : {}) },
-                priority: 'high'
-              })
-            });
-
-            if (response.ok) {
-              sentCount++;
+            if (useV1) {
+              const result = await sendFcmV1Message(
+                tokenData.token,
+                title,
+                body,
+                { ...(data || {}), ...(soundName ? { sound: soundName } : {}) },
+                soundName || null
+              );
+              if (result.ok) {
+                sentCount++;
+              } else {
+                errors.push({ token: tokenData.token.substring(0, 10) + '...', error: result.error });
+              }
             } else {
-              const errorText = await response.text();
-              errors.push({ token: tokenData.token.substring(0, 10) + '...', error: errorText });
+              const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `key=${fcmServerKey}`
+                },
+                body: JSON.stringify({
+                  to: tokenData.token,
+                  notification: {
+                    title,
+                    body,
+                    sound: soundName || 'default',
+                  },
+                  data: { ...(data || {}), ...(soundName ? { sound: soundName } : {}) },
+                  priority: 'high'
+                })
+              });
+
+              if (response.ok) {
+                sentCount++;
+              } else {
+                const errorText = await response.text();
+                errors.push({ token: tokenData.token.substring(0, 10) + '...', error: errorText });
+              }
             }
           } catch (err) {
             errors.push({ token: tokenData.token.substring(0, 10) + '...', error: err.message });
