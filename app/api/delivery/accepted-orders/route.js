@@ -34,7 +34,8 @@ export async function GET(request) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'delivery') {
+    const role = (userData?.role || '').toString().trim().toLowerCase();
+    if (userError || !userData || (role !== 'delivery' && role !== 'livreur')) {
       console.log('❌ Rôle incorrect:', userData?.role, 'pour ID:', user.id);
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
     }

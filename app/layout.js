@@ -133,13 +133,22 @@ export default function RootLayout({ children }) {
                     return r === 'delivery' || r === 'livreur';
                   }
 
+                  function isAdminNow() {
+                    return roleNow() === 'admin';
+                  }
+
                   // Verrouillage ultra-tôt (avant hydration React):
                   // si un rôle livreur est en cache, on force /delivery/dashboard.
+                  // si admin sur accueil, on force /admin.
                   // IMPORTANT: on le fait même si la détection Capacitor rate (selon iOS/localhost).
                   try {
                     var pathNow = window.location && window.location.pathname ? window.location.pathname : '';
                     if (isDeliveryNow() && pathNow && pathNow !== '/delivery/dashboard') {
                       window.location.replace('/delivery/dashboard');
+                      return;
+                    }
+                    if (isAdminNow() && pathNow === '/') {
+                      window.location.replace('/admin');
                       return;
                     }
                   } catch (e0) {

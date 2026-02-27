@@ -756,12 +756,28 @@ export default function DeliveryDashboard() {
         // Retirer la commande de la liste des commandes disponibles immédiatement
         setAvailableOrders(prev => prev.filter(o => o.id !== selectedOrderForAccept.id));
         
-        // Attendre un peu pour que la base de données soit mise à jour
+        // Mise à jour optimiste: ajouter immédiatement la commande acceptée à la liste
+        // (évite que la course "disparaisse" avant que fetchCurrentOrder ne revienne)
+        if (result.order) {
+          const enrichedOrder = {
+            ...result.order,
+            customer_name: getCustomerName(result.order),
+            customer_phone: getCustomerPhone(result.order),
+            customer_email: getCustomerEmail(result.order),
+          };
+          setAcceptedOrders(prev => {
+            const exists = prev.some(o => o.id === enrichedOrder.id);
+            if (exists) return prev.map(o => o.id === enrichedOrder.id ? enrichedOrder : o);
+            return [enrichedOrder, ...prev];
+          });
+          setCurrentOrder(enrichedOrder);
+        }
+        
+        // Rafraîchir en arrière-plan pour avoir les données complètes
         setTimeout(() => {
-          console.log('🔄 Mise à jour des commandes acceptées...');
           fetchAvailableOrders();
           fetchCurrentOrder();
-        }, 500); // Délai de 500ms pour laisser le temps à la BDD
+        }, 500);
         
         alert("Commande acceptée avec succès !");
       } else {

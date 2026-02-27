@@ -136,8 +136,13 @@ export default function AppAutoRedirect() {
       const enforceFromCache = (reason) => {
       const cachedRole = getCachedRole();
       const isDelivery = cachedRole === 'delivery' || cachedRole === 'livreur';
+      const isAdmin = cachedRole === 'admin';
       if (isDelivery && pathname !== '/delivery/dashboard') {
         forceTo('/delivery/dashboard', `cache_${reason}`, { role: cachedRole });
+        return true;
+      }
+      if (isAdmin && pathname === '/') {
+        forceTo('/admin', `cache_${reason}`, { role: cachedRole });
         return true;
       }
       return false;
@@ -235,6 +240,7 @@ export default function AppAutoRedirect() {
 
       const isDelivery = role === 'delivery' || role === 'livreur';
       const isRestaurant = role === 'restaurant' || role === 'partner';
+      const isAdmin = role === 'admin';
 
       if (role) {
         setCachedRole(role);
@@ -267,6 +273,11 @@ export default function AppAutoRedirect() {
       // Restaurant/partner: rediriger uniquement si on est sur l'accueil
       if (isRestaurant && pathname === '/') {
         forceTo('/partner', reason, { role });
+      }
+
+      // Admin: rediriger vers le dashboard admin si on est sur l'accueil
+      if (isAdmin && pathname === '/') {
+        forceTo('/admin', reason, { role });
       }
 
       try {
