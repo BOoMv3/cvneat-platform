@@ -35,19 +35,20 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function main() {
-  const userId = process.argv[2];
+  const identifier = process.argv[2];
   const newRole = process.argv[3] || 'admin';
 
-  if (!userId) {
-    console.error('Usage: node scripts/update-user-role.js <userId> [role]');
+  if (!identifier) {
+    console.error('Usage: node scripts/update-user-role.js <userId | email> [role]');
     process.exit(1);
   }
 
-  const { data: existingUser, error: fetchError } = await supabaseAdmin
-    .from('users')
-    .select('id, email, role')
-    .eq('id', userId)
-    .maybeSingle();
+  const isEmail = identifier.includes('@');
+  const query = isEmail
+    ? supabaseAdmin.from('users').select('id, email, role').eq('email', identifier.trim().toLowerCase())
+    : supabaseAdmin.from('users').select('id, email, role').eq('id', identifier);
+
+  const { data: existingUser, error: fetchError } = await query.maybeSingle();
 
   if (fetchError) {
     console.error('Erreur récupération utilisateur :', fetchError.message);
@@ -55,9 +56,11 @@ async function main() {
   }
 
   if (!existingUser) {
-    console.error('Utilisateur introuvable avec cet ID.');
+    console.error(isEmail ? `Utilisateur introuvable avec cet email: ${identifier}` : 'Utilisateur introuvable avec cet ID.');
     process.exit(1);
   }
+
+  const userId = existingUser.id;
 
   const { error: updateError } = await supabaseAdmin
     .from('users')
