@@ -146,7 +146,7 @@ export async function POST(request) {
         adresse: sanitizedData.adresse,
         code_postal: sanitizedData.codePostal,
         ville: sanitizedData.ville,
-        role: 'customer',
+        role: 'user',
       });
     if (insertError) {
       // Si l'insertion échoue, supprimer l'utilisateur Auth pour éviter les doublons

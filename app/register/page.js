@@ -115,81 +115,26 @@ export default function Register() {
       }
     }
 
-    // Vérifier si l'utilisateur existe déjà
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', formData.email)
-      .maybeSingle();
-    
-    if (existingUser) {
-      setErrors({ email: 'Cet email est déjà utilisé' });
-      setLoading(false);
-      return;
-    }
-
-    // Inscription avec Supabase Auth avec redirection email
-    const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
-    const redirectBase = rawSiteUrl.endsWith('/') ? rawSiteUrl.slice(0, -1) : rawSiteUrl;
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        emailRedirectTo: `${redirectBase}/auth/confirm`,
-        data: {
-          nom: formData.nom,
-          prenom: formData.prenom,
-          telephone: formData.telephone
-        }
-      }
+    // Inscription via API (createUser avec email_confirm: true) → aucun email de confirmation envoyé
+    const registerRes = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nom: formData.nom,
+        prenom: formData.prenom,
+        email: formData.email,
+        password: formData.password,
+        telephone: formData.telephone,
+        adresse: formData.adresse,
+        codePostal: formData.code_postal,
+        ville: formData.ville,
+      }),
     });
-    if (signUpError) {
-      setErrors({ email: signUpError.message });
+    const registerData = await registerRes.json().catch(() => ({}));
+    if (!registerRes.ok) {
+      setErrors({ email: registerData.message || 'Erreur lors de l\'inscription' });
       setLoading(false);
       return;
-    }
-
-    // Vérifier si l'utilisateur a été créé
-    if (!signUpData.user) {
-      setErrors({ global: 'Erreur lors de la création du compte' });
-      setLoading(false);
-      return;
-    }
-
-    // Ajout des infos complémentaires dans la table users
-    const { error: insertError } = await supabase.from('users').insert({
-      id: signUpData.user.id,
-      nom: formData.nom,
-      prenom: formData.prenom,
-      email: formData.email,
-      telephone: formData.telephone,
-      adresse: formData.adresse,
-      code_postal: formData.code_postal,
-      ville: formData.ville,
-      role: 'user',
-    });
-    if (insertError) {
-      // Si l'insertion échoue, supprimer l'utilisateur Auth pour éviter les doublons
-      console.error('Erreur insertion utilisateur:', insertError);
-      await supabase.auth.admin.deleteUser(signUpData.user.id).catch(() => {});
-      setErrors({ global: insertError.message || 'Erreur lors de la création du profil' });
-      setLoading(false);
-      return;
-    }
-
-    // Confirmer automatiquement l'email
-    try {
-      const confirmResponse = await fetch('/api/auth/auto-confirm-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: signUpData.user.id }),
-      });
-      
-      if (!confirmResponse.ok) {
-        console.warn('Impossible de confirmer automatiquement l\'email, mais l\'inscription est réussie');
-      }
-    } catch (confirmError) {
-      console.warn('Erreur lors de la confirmation automatique de l\'email:', confirmError);
     }
 
     // Vérifier s'il y a une intention de redirection (ex: checkout)

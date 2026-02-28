@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+const ALLOWED_VEHICLE_TYPES = ['bike', 'scooter', 'trotinette', 'car', 'motorcycle'];
+const VEHICLE_ALIASES = {
+  velo: 'bike', vélo: 'bike', bike: 'bike',
+  scooter: 'scooter',
+  trotinette: 'trotinette',
+  voiture: 'car', car: 'car',
+  moto: 'motorcycle', motorcycle: 'motorcycle'
+};
+
+function normalizeVehicleType(val) {
+  if (!val || typeof val !== 'string') return 'bike';
+  const v = val.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (ALLOWED_VEHICLE_TYPES.includes(v)) return v;
+  return VEHICLE_ALIASES[v] || 'bike';
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -9,6 +25,8 @@ export async function POST(request) {
     if (!userId || !nom || !prenom || !email || !phone || !address || !city || !postalCode || !hasLicense || !availability) {
       return NextResponse.json({ error: 'Tous les champs obligatoires doivent être remplis' }, { status: 400 });
     }
+
+    const sanitizedVehicleType = normalizeVehicleType(vehicleType);
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -27,7 +45,7 @@ export async function POST(request) {
         address,
         city,
         postal_code: postalCode,
-        vehicle_type: vehicleType,
+        vehicle_type: sanitizedVehicleType,
         has_license: hasLicense,
         experience: experience || null,
         availability,
