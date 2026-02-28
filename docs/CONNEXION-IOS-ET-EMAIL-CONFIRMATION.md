@@ -25,7 +25,7 @@ Pour être sûr que Supabase n’envoie plus d’emails de confirmation :
 
 ## 3. Réinitialisation du mot de passe
 
-La page **« Mot de passe oublié »** (`/auth/forgot-password`) est visible sur la page de connexion. L'utilisateur entre son email et reçoit un lien par email pour définir un nouveau mot de passe.
+La page **« Mot de passe oublié »** (`/auth/forgot-password`) est désormais bien visible sur la page de connexion (encadré dédié + lien dans le message d'erreur en cas d'échec). L'utilisateur entre son email et reçoit un lien par email pour définir un nouveau mot de passe.
 
 **Config Supabase requise** : Dans **Supabase Dashboard** → **Authentication** → **URL Configuration** → **Redirect URLs**, ajouter :
 - `https://www.cvneat.fr/auth/update-password`
