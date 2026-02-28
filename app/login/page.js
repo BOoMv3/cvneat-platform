@@ -311,11 +311,18 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
-              <p className="mt-2 text-right">
-                <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400">
-                  Mot de passe oublié ?
-                </Link>
+            </div>
+
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
+              <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
+                Mot de passe oublié ou problème de connexion ?
               </p>
+              <Link
+                href="/auth/forgot-password"
+                className="inline-flex items-center justify-center w-full py-2 px-4 border border-amber-300 dark:border-amber-700 rounded-md text-sm font-medium text-amber-800 dark:text-amber-200 bg-white dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+              >
+                Réinitialiser mon mot de passe
+              </Link>
             </div>
 
             {success && (
@@ -324,8 +331,15 @@ export default function LoginPage() {
               </div>
             )}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-                {error}
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded space-y-2">
+                <p>{error}</p>
+                {(error.includes('incorrect') || error.includes('Invalid') || error.includes('credentials') || error.includes('confirmé')) && (
+                  <p className="text-sm">
+                    <Link href="/auth/forgot-password" className="font-medium underline hover:no-underline">
+                      Réinitialiser mon mot de passe →
+                    </Link>
+                  </p>
+                )}
               </div>
             )}
 

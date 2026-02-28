@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 function getRedirectBase() {
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
+  // Toujours utiliser l'URL du site en prod pour que Supabase accepte le redirect
+  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
+  return base.replace(/\/$/, '');
 }
 
 export default function ForgotPasswordPage() {

@@ -22,3 +22,13 @@ Pour être sûr que Supabase n’envoie plus d’emails de confirmation :
 
 1. Ouvrir **Supabase Dashboard** → **Authentication** → **Providers** → **Email**
 2. Vérifier **Confirm email** : si activé, le désactiver pour ne plus exiger de confirmation par email.
+
+## 3. Réinitialisation du mot de passe
+
+La page **« Mot de passe oublié »** (`/auth/forgot-password`) est visible sur la page de connexion. L'utilisateur entre son email et reçoit un lien par email pour définir un nouveau mot de passe.
+
+**Config Supabase requise** : Dans **Supabase Dashboard** → **Authentication** → **URL Configuration** → **Redirect URLs**, ajouter :
+- `https://www.cvneat.fr/auth/update-password`
+- `https://cvneat.fr/auth/update-password` (si redirection)
+
+Sans ces URLs, le lien de réinitialisation envoyé par email ne fonctionnera pas.
