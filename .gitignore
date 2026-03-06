@@ -38,13 +38,29 @@ yarn-error.log*
 _duplicates_backup/
 _mobile_build_backups/
 
-# fichiers dupliqués accidentellement (espaces + suffixes)
+# fichiers dupliqués accidentellement (espaces + suffixes numérotés)
 app/**/page *.js
+app/**/page-wrapper *.js
+app/**/page.server *.js
 app/**/layout *.js
 app/**/route *.js
+app/robots *.js
+app/sitemap *.js
 
 # dossiers dupliqués accidentellement (ex: "api/admin 2/")
 app/**/* [0-9]*/
+
+# docs / scripts one-off (générés ou temporaires)
+PRICE-PREVIEW-25-TO-7.md
+app/components/DisableServiceWorkerInApp.js
+scripts/patch-ios-*.js
+scripts/fix-ios-*.js
+scripts/inject-*.js
+scripts/restore-mobile-build-backups.js
+scripts/cleanup-app-duplicates-spaces.js
+scripts/generate-price-preview-25-to-7.js
+scripts/cancel-order-admin.js
+scripts/create-promo-code.js
 
 # typescript
 *.tsbuildinfo
