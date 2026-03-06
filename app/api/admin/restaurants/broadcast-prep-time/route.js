@@ -27,8 +27,9 @@ function isOpenNowFromHoraires(horairesRaw, now = new Date()) {
   }
 
   const tz = 'Europe/Paris';
-  const frTime = now.toLocaleString('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
-  const [ch, cm] = frTime.split(':').map(Number);
+  const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
+  const ch = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+  const cm = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
   const current = ch * 60 + cm;
 
   const dayName = now.toLocaleString('fr-FR', { timeZone: tz, weekday: 'long' }).toLowerCase();

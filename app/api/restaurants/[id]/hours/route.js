@@ -188,6 +188,10 @@ export async function POST(request, { params }) {
       }
     }
     if (!todayHours && horaires[dayOfWeekParis] !== undefined) todayHours = horaires[dayOfWeekParis];
+    if (!todayHours && dayOfWeekParis >= 0 && dayOfWeekParis < dayNames.length) {
+      const dayKey = dayNames[dayOfWeekParis];
+      if (horaires[dayKey]) todayHours = horaires[dayKey];
+    }
     
     // Log détaillé pour debug
     console.log('🔍 DEBUG horaires:', {
@@ -253,31 +257,16 @@ export async function POST(request, { params }) {
     // Vérifier l'heure actuelle (en heure locale française Europe/Paris)
     // IMPORTANT: Le serveur Vercel utilise UTC, il faut convertir en heure française
     const now = checkDate ? new Date(checkDate) : new Date();
-    
-    // Convertir en heure locale française (Europe/Paris)
-    // Utiliser toLocaleString pour obtenir l'heure dans le bon fuseau horaire
-    const frTime = now.toLocaleString('fr-FR', { 
+    // Heure Paris robuste (toLocaleString = date+heure → mauvais split; on utilise formatToParts)
+    const timeParts = new Intl.DateTimeFormat('fr-FR', {
       timeZone: 'Europe/Paris',
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
-    });
-    
-    // Parser l'heure française (format HH:MM)
-    const [currentHours, currentMinutes] = frTime.split(':').map(Number);
+    }).formatToParts(now);
+    const currentHours = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+    const currentMinutes = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
     const currentTimeMinutes = currentHours * 60 + currentMinutes;
-    
-    // Log pour debug
-    console.log('🕐 Heure système:', {
-      dateISO: now.toISOString(),
-      dateUTC: now.toUTCString(),
-      dateLocale: now.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }),
-      frTimeString: frTime,
-      hours: currentHours,
-      minutes: currentMinutes,
-      timeMinutes: currentTimeMinutes,
-      timeString: `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`
-    });
 
     // Parser les heures d'ouverture et fermeture
     const parseTime = (timeStr) => {

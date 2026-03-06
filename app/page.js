@@ -239,14 +239,10 @@ const getNextOpeningTime = (restaurant = {}) => {
     const now = new Date();
     const todayName = todayFormatter.format(now).toLowerCase();
     
-    // Obtenir l'heure actuelle
-    const frTime = now.toLocaleString('fr-FR', { 
-      timeZone: 'Europe/Paris',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    const [currentHours, currentMinutes] = frTime.split(':').map(Number);
+    // Heure Paris robuste (formatToParts évite le bug toLocaleString = date+heure)
+    const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
+    const currentHours = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+    const currentMinutes = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
     const currentTime = currentHours * 60 + currentMinutes;
 
     // Vérifier les 7 prochains jours (index basé sur Paris pour cohérence)
@@ -385,15 +381,11 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     // Jour marqué fermé explicitement
     if (heuresJour.is_closed === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
 
-    // Obtenir l'heure actuelle à Paris
+    // Heure Paris robuste (formatToParts évite le bug toLocaleString = date+heure)
     const now = new Date();
-    const frTime = now.toLocaleString('fr-FR', { 
-      timeZone: 'Europe/Paris',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    const [currentHours, currentMinutes] = frTime.split(':').map(Number);
+    const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
+    const currentHours = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+    const currentMinutes = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
     const currentTime = currentHours * 60 + currentMinutes;
 
     const parseTime = (timeStr) => {
