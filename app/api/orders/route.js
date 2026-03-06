@@ -664,16 +664,15 @@ export async function POST(request) {
       }
     }
 
-    // Calculs financiers: commission/payout (AVANT la création de orderData)
-    // Règles fixes (important pour éviter toute incohérence):
-    // - La Bonne Pâte = 0%
-    // - All'ovale pizza = 15%
-    // - Sinon restaurant.commission_rate si présent, sinon 20%
+    // Calculs financiers: commission/payout sur le montant RÉELLEMENT payé par le client (après réduction)
+    // Sinon fuite: on paierait le restaurant sur le montant avant réduction alors qu'on n'encaisse que l'après-réduction.
+    const totalAfterDiscount = Math.max(0, Math.round((total - discount) * 100) / 100);
+    // Règles fixes: La Bonne Pâte = 0%, All'ovale = 15%, sinon restaurant.commission_rate ou 20%
     const effectiveRatePercent = getEffectiveCommissionRatePercent({
       restaurantName: restaurant?.nom,
       restaurantRatePercent: restaurant?.commission_rate,
     });
-    const computedCommission = computeCommissionAndPayout(total, effectiveRatePercent);
+    const computedCommission = computeCommissionAndPayout(totalAfterDiscount, effectiveRatePercent);
     const commissionGross = computedCommission.commission;
     const restaurantPayout = computedCommission.payout;
     const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme

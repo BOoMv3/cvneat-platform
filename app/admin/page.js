@@ -184,10 +184,16 @@ export default function AdminPage() {
       const monthlyRevenueMap = new Map(); // Map<"YYYY-MM", amount>
       
       orders?.filter(o => o.statut === 'livree').forEach(order => {
-        const orderAmount = parseFloat(order.total || 0); // Montant des articles uniquement
+        // Montant articles après réduction = ce que le client a réellement payé pour les articles
+        const totalArticles = parseFloat(order.total || 0);
+        const discount = parseFloat(order.discount_amount || 0) || 0;
+        const orderAmount = Math.max(0, totalArticles - discount);
         const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
         
-        // Trouver le restaurant associé à la commande
+        // Utiliser les montants stockés en BDD (cohérents avec les virements) si présents
+        const storedCommission = order.commission_amount != null ? parseFloat(order.commission_amount) : null;
+        const storedPayout = order.restaurant_payout != null ? parseFloat(order.restaurant_payout) : null;
+        
         const orderRestaurant = restaurants?.find(r => r.id === order.restaurant_id);
         const normalizedRestaurantName = (orderRestaurant?.nom || '')
           .normalize('NFD')
@@ -195,32 +201,27 @@ export default function AdminPage() {
           .toLowerCase();
         const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
         
-        // Utiliser le commission_rate du restaurant (comme dans payments)
         const restaurantCommissionRate = orderRestaurant?.commission_rate 
           ? parseFloat(orderRestaurant.commission_rate) / 100 
-          : 0.20; // 20% par défaut
+          : 0.20;
         const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
         
-        const restaurantShare = orderAmount - (orderAmount * commissionRate);
-        const cvneatCommission = orderAmount * commissionRate;
-        const PLATFORM_FEE = 0.49; // Frais de plateforme fixe par commande
-        const cvneatTotalRevenue = cvneatCommission + PLATFORM_FEE; // Commission + frais plateforme
+        const restaurantShare = storedPayout != null ? storedPayout : (orderAmount - (orderAmount * commissionRate));
+        const cvneatCommission = storedCommission != null ? storedCommission : (orderAmount * commissionRate);
+        const PLATFORM_FEE = 0.49;
+        const cvneatTotalRevenue = cvneatCommission + PLATFORM_FEE;
 
-        // CA total = articles + frais de livraison
+        // CA total = articles (après réduction) + frais de livraison
         totalRevenue += orderAmount + deliveryFee;
         
-        // Commission CVN'EAT sur la livraison (10% de la partie > 2.50€)
         const deliveryCommission = parseFloat(order.delivery_commission_cvneat || 0);
         cvneatDeliveryRevenue += deliveryCommission;
 
-        // CA CVN'EAT = commission des articles + frais de plateforme + commission livraison
         cvneatRevenue += cvneatTotalRevenue + deliveryCommission;
         
-        // Gains Livreur (net) = frais de livraison - commission CVN'EAT
         const livreurEarning = deliveryFee - deliveryCommission;
         livreurRevenue += livreurEarning;
 
-        // CA Restaurant = articles - commission
         restaurantRevenue += restaurantShare;
 
         // Calculer le mois de la commande pour le CA mensuel
