@@ -174,7 +174,8 @@ const getTodayHoursLabel = (restaurant = {}) => {
       }
     }
 
-    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long' });
+    // Toujours utiliser Europe/Paris pour le "jour actuel" (éviter décalage liste fermée / détail ouvert)
+    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
     const todayName = todayFormatter.format(new Date()).toLowerCase();
     const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
     let heuresJour = null;
@@ -184,12 +185,18 @@ const getTodayHoursLabel = (restaurant = {}) => {
         break;
       }
     }
+    // Fallback: horaires par index de jour (0 = dimanche, 1 = lundi, ...)
+    if (!heuresJour) {
+      const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+      const dayIndex = dayNames.indexOf(todayName);
+      if (dayIndex >= 0 && horaires[dayIndex]) heuresJour = horaires[dayIndex];
+    }
 
     if (!heuresJour) return null;
 
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
       const ranges = heuresJour.plages
-        .map(plage => formatTimeRangeLabel(plage?.ouverture, plage?.fermeture))
+        .map(plage => formatTimeRangeLabel(plage?.ouverture || plage?.debut, plage?.fermeture || plage?.fin))
         .filter(Boolean);
       return ranges.length > 0 ? ranges.join(' / ') : null;
     }
@@ -242,16 +249,16 @@ const getNextOpeningTime = (restaurant = {}) => {
     const [currentHours, currentMinutes] = frTime.split(':').map(Number);
     const currentTime = currentHours * 60 + currentMinutes;
 
-    // Vérifier les 7 prochains jours
+    // Vérifier les 7 prochains jours (index basé sur Paris pour cohérence)
     const daysOfWeek = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
     const daysOfWeekLabels = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    const currentDayIndex = now.getDay(); // 0 = dimanche, 1 = lundi, etc.
+    const currentDayIndex = daysOfWeek.indexOf(todayName);
+    if (currentDayIndex < 0) return null;
 
     for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
       const checkDayIndex = (currentDayIndex + dayOffset) % 7;
       const checkDayName = daysOfWeek[checkDayIndex];
       const checkDayVariants = [checkDayName, checkDayName.charAt(0).toUpperCase() + checkDayName.slice(1), checkDayName.toUpperCase()];
-      
       let heuresJour = null;
       for (const key of checkDayVariants) {
         if (horaires?.[key]) {
@@ -259,8 +266,9 @@ const getNextOpeningTime = (restaurant = {}) => {
           break;
         }
       }
+      if (!heuresJour && horaires[checkDayIndex] !== undefined) heuresJour = horaires[checkDayIndex];
 
-      if (!heuresJour) continue;
+      if (!heuresJour || heuresJour.is_closed === true) continue;
 
       // Vérifier les plages horaires
       const parseTime = (timeStr) => {
@@ -272,37 +280,33 @@ const getNextOpeningTime = (restaurant = {}) => {
       let nextOpeningTime = null;
 
       if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
-        // Nouveau format avec plages multiples
+        // Nouveau format avec plages multiples (ouverture/fermeture ou debut/fin)
         for (const plage of heuresJour.plages) {
-          if (!plage.ouverture) continue;
-          const openTime = parseTime(plage.ouverture);
+          const openStr = plage.ouverture || plage.debut;
+          if (!openStr) continue;
+          const openTime = parseTime(openStr);
           if (openTime === null) continue;
 
           // Si c'est aujourd'hui et que l'heure d'ouverture est dans le futur
           if (dayOffset === 0 && currentTime < openTime) {
-            nextOpeningTime = plage.ouverture;
+            nextOpeningTime = openStr;
             break;
           }
           // Si c'est un jour futur, retourner la première heure d'ouverture
           if (dayOffset > 0) {
-            nextOpeningTime = plage.ouverture;
+            nextOpeningTime = openStr;
             break;
           }
         }
-      } else if (heuresJour.ouverture && heuresJour.fermeture) {
+      } else if ((heuresJour.ouverture || heuresJour.debut) && (heuresJour.fermeture || heuresJour.fin)) {
         // Ancien format avec une seule plage
-        const openTime = parseTime(heuresJour.ouverture);
+        const openStr = heuresJour.ouverture || heuresJour.debut;
+        const openTime = parseTime(openStr);
         if (openTime !== null) {
-          // Si c'est aujourd'hui et que l'heure d'ouverture est dans le futur
-          if (dayOffset === 0 && currentTime < openTime) {
-            nextOpeningTime = heuresJour.ouverture;
-          }
-          // Si c'est un jour futur, retourner l'heure d'ouverture
-          if (dayOffset > 0) {
-            nextOpeningTime = heuresJour.ouverture;
-          }
+          if (dayOffset === 0 && currentTime < openTime) nextOpeningTime = openStr;
+          if (dayOffset > 0) nextOpeningTime = openStr;
         }
-      } else if (heuresJour.ouvert === true) {
+      } else if (heuresJour.ouvert === true || heuresJour.ouvert === 'true' || heuresJour.ouvert === 1) {
         // Si ouvert toute la journée et c'est un jour futur
         if (dayOffset > 0) {
           nextOpeningTime = '00:00';
@@ -359,10 +363,10 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       try { horaires = JSON.parse(horaires); } catch { return { isOpen: false, isManuallyClosed: false, reason: 'parse_error' }; }
     }
 
+    // Toujours utiliser Europe/Paris pour le jour actuel (cohérence tous restaurants)
     const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
     const todayName = todayFormatter.format(new Date()).toLowerCase();
     const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
-    
     let heuresJour = null;
     for (const key of variants) {
       if (horaires?.[key]) {
@@ -370,8 +374,16 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
         break;
       }
     }
+    // Fallback: horaires par index (0 = dimanche, 1 = lundi, ...)
+    if (!heuresJour) {
+      const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+      const dayIndex = dayNames.indexOf(todayName);
+      if (dayIndex >= 0 && horaires[dayIndex]) heuresJour = horaires[dayIndex];
+    }
 
     if (!heuresJour) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
+    // Jour marqué fermé explicitement
+    if (heuresJour.is_closed === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
 
     // Obtenir l'heure actuelle à Paris
     const now = new Date();
@@ -393,18 +405,22 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     };
 
     // Vérifier les plages et horaires pour déterminer si le restaurant devrait être ouvert
+    // Accepter ouverture/fermeture ou debut/fin (formats partenaire / import)
     let shouldBeOpenByHours = false;
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
       for (const plage of heuresJour.plages) {
-        if (!plage.ouverture || !plage.fermeture) continue;
+        const openStr = plage.ouverture || plage.debut;
+        const closeStr = plage.fermeture || plage.fin;
+        if (!openStr || !closeStr) continue;
         
-        const start = parseTime(plage.ouverture);
-        let end = parseTime(plage.fermeture);
+        const start = parseTime(openStr);
+        let end = parseTime(closeStr);
         
         if (start === null || end === null) continue;
         
         // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
-        const isMidnightClose = plage.fermeture === '00:00' || plage.fermeture === '0:00';
+        const closeRaw = plage.fermeture || plage.fin;
+        const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
         if (isMidnightClose) {
           end = 24 * 60; // 1440 minutes
         }
@@ -445,8 +461,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
           shouldBeOpenByHours = true;
         }
       }
-    } else if (heuresJour.ouvert === true) {
-      // Fallback sur le flag ouvert si pas d'heures précises
+    } else if (heuresJour.ouvert === true || heuresJour.ouvert === 'true' || heuresJour.ouvert === 1) {
+      // Fallback sur le flag ouvert si pas d'heures précises (accepte true, 'true', 1)
       shouldBeOpenByHours = true;
     }
 
@@ -1089,10 +1105,10 @@ export default function Home() {
     // Cela permet de détecter les changements même si l'événement window n'est pas capturé (onglets différents)
     const refreshInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        console.log('[Restaurants] Rafraîchissement automatique des restaurants (30s)...');
+        console.log('[Restaurants] Rafraîchissement automatique des restaurants (15s)...');
         fetchRestaurants();
       }
-    }, 30000); // 30 secondes
+    }, 15000); // 15 secondes pour voir ouvert/fermé plus vite
     
     return () => {
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);

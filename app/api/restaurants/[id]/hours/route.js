@@ -124,6 +124,14 @@ export async function POST(request, { params }) {
     }
     
     const checkDate = body.date ? new Date(body.date) : new Date();
+    // Jour actuel en Europe/Paris (éviter décalage serveur UTC → "fermé" à tort)
+    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
+    const todayNameParis = todayFormatter.format(checkDate).toLowerCase();
+    const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    const dayOfWeekParis = dayNames.indexOf(todayNameParis);
+    if (dayOfWeekParis < 0) {
+      return json({ isOpen: false, message: 'Erreur fuseau horaire', reason: 'tz_error' }, { status: 500 });
+    }
 
     const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
@@ -170,23 +178,8 @@ export async function POST(request, { params }) {
       }
     }
     
-    const dayOfWeek = checkDate.getDay(); // 0 = dimanche, 1 = lundi, etc.
-    
-    // Mapping des jours avec toutes les variantes possibles
-    const dayVariants = {
-      0: ['dimanche', 'Dimanche', 'DIMANCHE'],
-      1: ['lundi', 'Lundi', 'LUNDI'],
-      2: ['mardi', 'Mardi', 'MARDI'],
-      3: ['mercredi', 'Mercredi', 'MERCREDI'],
-      4: ['jeudi', 'Jeudi', 'JEUDI'],
-      5: ['vendredi', 'Vendredi', 'VENDREDI'],
-      6: ['samedi', 'Samedi', 'SAMEDI']
-    };
-
-    const variants = dayVariants[dayOfWeek] || ['lundi'];
-    const todayKey = variants[0]; // Clé principale en minuscule
-    
-    // Chercher les horaires avec toutes les variantes de casse
+    const todayKey = todayNameParis;
+    const variants = [todayNameParis, todayNameParis.charAt(0).toUpperCase() + todayNameParis.slice(1), todayNameParis.toUpperCase()];
     let todayHours = null;
     for (const variant of variants) {
       if (horaires[variant]) {
@@ -194,24 +187,21 @@ export async function POST(request, { params }) {
         break;
       }
     }
+    if (!todayHours && horaires[dayOfWeekParis] !== undefined) todayHours = horaires[dayOfWeekParis];
     
     // Log détaillé pour debug
     console.log('🔍 DEBUG horaires:', {
       restaurantId: id,
-      dayOfWeek,
+      dayOfWeekParis,
       todayKey,
       variants,
       allHorairesKeys: Object.keys(horaires),
       todayHours,
       todayHoursOuvert: todayHours?.ouvert,
-      todayHoursOuvertType: typeof todayHours?.ouvert,
-      todayHoursOuvertStrict: todayHours?.ouvert === true,
       hasPlages: Array.isArray(todayHours?.plages),
-      plagesCount: todayHours?.plages?.length,
-      allHoraires: JSON.stringify(horaires, null, 2)
+      plagesCount: todayHours?.plages?.length
     });
 
-    // Si pas de configuration ou fermé ce jour
     if (!todayHours) {
       console.log('🔴 Restaurant fermé - Pas de configuration pour aujourd\'hui:', todayKey);
       return json({
@@ -219,14 +209,16 @@ export async function POST(request, { params }) {
         message: 'Restaurant fermé aujourd\'hui (pas de configuration)',
         reason: 'closed_today',
         today: todayKey,
-        dayOfWeek,
-        debug: { 
-          todayKey, 
-          todayHours: null, 
-          allHorairesKeys: Object.keys(horaires),
-          allHoraires: horaires,
-          variants: variants
-        }
+        dayOfWeek: dayOfWeekParis
+      });
+    }
+    if (todayHours.is_closed === true) {
+      return json({
+        isOpen: false,
+        message: 'Restaurant fermé aujourd\'hui',
+        reason: 'closed_today_flag',
+        today: todayKey,
+        isManuallyClosed: false
       });
     }
 
@@ -234,10 +226,9 @@ export async function POST(request, { params }) {
     // on IGNORE complètement le flag "ouvert" et on vérifie uniquement les heures
     // C'est la logique la plus fiable pour déterminer si un restaurant est ouvert
     const hasPlages = Array.isArray(todayHours.plages) && todayHours.plages.length > 0;
-    const hasExplicitHours = hasPlages || (todayHours.ouverture && todayHours.fermeture);
+    const hasExplicitHours = hasPlages || (todayHours.ouverture || todayHours.debut) && (todayHours.fermeture || todayHours.fin);
     
-    // Seulement si pas d'horaires explicites ET ouvert === false, on considère comme fermé
-    if (!hasExplicitHours && todayHours.ouvert === false) {
+    if (!hasExplicitHours && todayHours.ouvert === false && todayHours.ouvert !== 'true' && todayHours.ouvert !== 1) {
       console.log('🔴 Restaurant fermé - ouvert = false et pas d\'horaires explicites:', {
         ouvert: todayHours.ouvert,
         hasPlages,
@@ -250,13 +241,7 @@ export async function POST(request, { params }) {
         message: 'Restaurant fermé aujourd\'hui',
         reason: 'closed_today',
         today: todayKey,
-        dayOfWeek,
-        debug: { 
-          todayKey, 
-          todayHours, 
-          hasExplicitHours,
-          hasPlages
-        }
+        dayOfWeek: dayOfWeekParis
       });
     }
     
@@ -311,17 +296,17 @@ export async function POST(request, { params }) {
     let matchingPlage = null;
 
     if (Array.isArray(todayHours.plages) && todayHours.plages.length > 0) {
-      // Nouveau format avec plages multiples
       for (const plage of todayHours.plages) {
-        if (!plage.ouverture || !plage.fermeture) continue;
+        const openStr = plage.ouverture || plage.debut;
+        const closeStr = plage.fermeture || plage.fin;
+        if (!openStr || !closeStr) continue;
 
-        const openTimeMinutes = parseTime(plage.ouverture);
-        let closeTimeMinutes = parseTime(plage.fermeture);
+        const openTimeMinutes = parseTime(openStr);
+        let closeTimeMinutes = parseTime(closeStr);
 
         if (openTimeMinutes === null || closeTimeMinutes === null) continue;
 
-        // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
-        const isMidnightClose = plage.fermeture === '00:00' || plage.fermeture === '0:00';
+        const isMidnightClose = closeStr === '00:00' || closeStr === '0:00';
         if (isMidnightClose) {
           closeTimeMinutes = 24 * 60; // 1440 minutes
         }
@@ -348,9 +333,10 @@ export async function POST(request, { params }) {
         matchingPlage
       });
     } else {
-      // Ancien format avec une seule plage (rétrocompatibilité)
-      const openTimeMinutes = parseTime(todayHours.ouverture);
-      let closeTimeMinutes = parseTime(todayHours.fermeture);
+      const openStr = todayHours.ouverture || todayHours.debut;
+      const closeStr = todayHours.fermeture || todayHours.fin;
+      const openTimeMinutes = parseTime(openStr);
+      let closeTimeMinutes = parseTime(closeStr);
 
       if (openTimeMinutes === null || closeTimeMinutes === null) {
         return json({
@@ -360,8 +346,7 @@ export async function POST(request, { params }) {
         });
       }
 
-      // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
-      const isMidnightClose = todayHours.fermeture === '00:00' || todayHours.fermeture === '0:00';
+      const isMidnightClose = closeStr === '00:00' || closeStr === '0:00';
       if (isMidnightClose) {
         closeTimeMinutes = 24 * 60; // 1440 minutes
       }
@@ -372,6 +357,9 @@ export async function POST(request, { params }) {
       } else {
         isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
       }
+    } else if (todayHours.ouvert === true || todayHours.ouvert === 'true' || todayHours.ouvert === 1) {
+      // Pas de plages ni ouverture/fermeture mais flag "ouvert" → considéré ouvert
+      isOpen = true;
     }
 
     console.log('🕐 Vérification horaires:', {

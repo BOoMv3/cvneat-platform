@@ -251,27 +251,36 @@ export default function RestaurantDetail({ params }) {
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir le statut d'ouverture toutes les minutes
+    // Rafraîchir statut: d'abord GET restaurant (source de vérité ferme_manuellement), puis POST hours si pas fermé manuellement
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
+          const restRes = await fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' });
+          if (!restRes.ok) return;
+          const restData = await restRes.json();
+          const fm = restData.ferme_manuellement;
+          const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+            (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
+          setIsManuallyClosed(isManuallyClosed);
+          if (isManuallyClosed) {
+            setIsRestaurantOpen(false);
+            return;
+          }
           const response = await fetch(`/api/restaurants/${restaurantId}/hours`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store'
           });
           if (response.ok) {
             const data = await response.json();
             setIsRestaurantOpen(data.isOpen === true);
-            // Mettre à jour isManuallyClosed pour éviter incohérence (affichage fermé/ouvert qui clignote)
-            setIsManuallyClosed(data.reason === 'manual' || data.isManuallyClosed === true);
-            console.log('Statut rafraîchi:', data);
           }
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }
       };
       checkStatus();
-    }, 60000); // Toutes les minutes
+    }, 20000); // 20 secondes pour voir les changements (ouvert/fermé) plus vite
     
     // Subscription Supabase Realtime pour les menus (mise à jour automatique)
     const menuChannel = supabase
@@ -432,13 +441,14 @@ export default function RestaurantDetail({ params }) {
     try {
       setLoading(true);
       const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse, openStatusResponse] = await Promise.all([
-        fetch(`/api/restaurants/${restaurantId}`),
-        fetch(`/api/restaurants/${restaurantId}/menu`),
-        fetch(`/api/restaurants/${restaurantId}/categories`),
-        fetch(`/api/restaurants/${restaurantId}/hours`),
+        fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${restaurantId}/menu`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${restaurantId}/categories`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${restaurantId}/hours`, { cache: 'no-store' }),
         fetch(`/api/restaurants/${restaurantId}/hours`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store'
         })
       ]);
       if (!restaurantResponse.ok) throw new Error('Erreur de chargement du restaurant');
@@ -490,13 +500,13 @@ export default function RestaurantDetail({ params }) {
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Forcer le booléen strict - Par défaut FERMÉ si pas explicitement ouvert
-      // IMPORTANT: Utiliser UNIQUEMENT la réponse POST hours comme source de vérité pour isManuallyClosed
-      // (éviter incohérence liste=ouvert / détail=fermé manuellement)
-      const isOpen = openStatusData.isOpen === true;
-      const isManuallyClosed = openStatusData.reason === 'manual' || openStatusData.isManuallyClosed === true;
-      setIsRestaurantOpen(isOpen);
+      // SOURCE DE VÉRITÉ: ferme_manuellement vient du GET restaurant (toujours frais), pas du POST hours
+      const fm = restaurantData.ferme_manuellement;
+      const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+        (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
       setIsManuallyClosed(isManuallyClosed);
+      const isOpen = isManuallyClosed ? false : (openStatusData.isOpen === true);
+      setIsRestaurantOpen(isOpen);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
