@@ -18,7 +18,6 @@ const nextConfig = {
       'cdn.pixabay.com',
       'images.pexels.com',
       'res.cloudinary.com',
-      'images.unsplash.com',
       'i.ibb.co', // ImgBB pour les uploads d'images
       'ibb.co', // ImgBB domaines alternatifs
       'encrypted-tbn0.gstatic.com', // Google Images
@@ -50,11 +49,6 @@ const nextConfig = {
         protocol: 'https',
         hostname: '*.googleusercontent.com',
       },
-      {
-        protocol: 'https',
-        hostname: '*.google.com',
-        pathname: '/images/**',
-      }
     ],
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
