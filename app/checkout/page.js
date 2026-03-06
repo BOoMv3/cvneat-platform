@@ -462,15 +462,18 @@ export default function Checkout() {
         return;
       }
 
-      // Vérifier si le restaurant est ouvert
+      // Vérifier si le restaurant est ouvert (sans cache pour avoir la réponse à jour)
       const hoursCheckResponse = await fetch(`/api/restaurants/${activeRestaurant.id}/hours`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
       });
 
       if (hoursCheckResponse.ok) {
         const hoursData = await hoursCheckResponse.json();
-        if (!hoursData.isOpen || hoursData.is_manually_closed) {
+        const isOpen = hoursData.isOpen === true;
+        const isManuallyClosed = hoursData.isManuallyClosed === true || hoursData.is_manually_closed === true;
+        if (!isOpen || isManuallyClosed) {
           alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
           setSubmitting(false);
           router.push(`/restaurant-view?id=${encodeURIComponent(activeRestaurant.id)}`);

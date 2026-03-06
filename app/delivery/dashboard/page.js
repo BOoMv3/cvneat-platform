@@ -291,10 +291,14 @@ export default function DeliveryDashboard() {
       fetchAvailableOrders();
     }, 3000);
     
-    // Rafraîchir les statistiques toutes les 30 secondes
-    const statsInterval = setInterval(() => {
-      fetchStats();
-    }, 30000);
+    // Rafraîchir les stats toutes les 10 secondes (gain livraison visible rapidement)
+    const statsInterval = setInterval(() => fetchStats(), 10000);
+
+    // Recharger les stats quand le livreur revient sur l'onglet
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchStats();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Rafraîchir les alertes de préparation toutes les 30 secondes
     const alertsInterval = setInterval(() => {
@@ -311,6 +315,7 @@ export default function DeliveryDashboard() {
       clearInterval(statsInterval);
       clearInterval(alertsInterval);
       clearInterval(preventiveInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -657,7 +662,7 @@ export default function DeliveryDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetchWithAuth('/api/delivery/stats', { cache: 'no-store' });
+      const response = await fetchWithAuth(`/api/delivery/stats?t=${Date.now()}`, { cache: 'no-store' });
       const data = await response.json();
       
       if (response.ok) {
@@ -863,9 +868,10 @@ export default function DeliveryDashboard() {
         setAcceptedOrders(prev => prev.filter(o => o.id !== orderId));
         setCurrentOrder(null);
         setChatOpen(false); // Fermer le chat après la livraison
-        // Rafraîchir les stats tout de suite (sans cache) pour afficher les 5€
+        // Rafraîchir les stats immédiatement et 2x pour garantir l'affichage des gains
         fetchStats();
-        setTimeout(() => fetchStats(), 800);
+        setTimeout(fetchStats, 500);
+        setTimeout(fetchStats, 1500);
         fetchAvailableOrders();
         fetchCurrentOrder();
       } else {
