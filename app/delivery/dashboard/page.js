@@ -657,7 +657,7 @@ export default function DeliveryDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetchWithAuth('/api/delivery/stats');
+      const response = await fetchWithAuth('/api/delivery/stats', { cache: 'no-store' });
       const data = await response.json();
       
       if (response.ok) {
@@ -863,7 +863,9 @@ export default function DeliveryDashboard() {
         setAcceptedOrders(prev => prev.filter(o => o.id !== orderId));
         setCurrentOrder(null);
         setChatOpen(false); // Fermer le chat après la livraison
+        // Rafraîchir les stats tout de suite (sans cache) pour afficher les 5€
         fetchStats();
+        setTimeout(() => fetchStats(), 800);
         fetchAvailableOrders();
         fetchCurrentOrder();
       } else {

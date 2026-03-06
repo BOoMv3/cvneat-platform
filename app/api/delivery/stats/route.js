@@ -119,7 +119,9 @@ export async function GET(request) {
     };
 
     console.log('📊 Stats calculées:', stats);
-    return NextResponse.json(stats);
+    const res = NextResponse.json(stats);
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    return res;
   } catch (error) {
     console.error('Erreur API stats livreur:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
