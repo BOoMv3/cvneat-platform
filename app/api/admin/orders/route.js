@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
+
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 // GET /api/admin/orders - Récupérer la liste des commandes
 export async function GET(request) {
@@ -31,18 +36,23 @@ export async function GET(request) {
     const status = searchParams.get('status');
     const restaurant_id = searchParams.get('restaurant_id');
     const user_id = searchParams.get('user_id');
+    const payment = searchParams.get('payment');
     const limit = parseInt(searchParams.get('limit')) || 50;
     const offset = parseInt(searchParams.get('offset')) || 0;
 
-    let query = supabase
+    const client = supabaseAdmin || supabase;
+    let query = client
       .from('commandes')
       .select(`
         *,
         restaurant:restaurants(nom, adresse)
-      `)
-      .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      `);
+
+    if (payment !== 'all') {
+      query = query.in('payment_status', ['paid', 'succeeded']);
+    }
+    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
 
     if (status) {
       query = query.eq('statut', status);
@@ -58,7 +68,9 @@ export async function GET(request) {
 
     if (error) throw error;
 
-    return NextResponse.json(orders || []);
+    const res = NextResponse.json(orders || []);
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    return res;
   } catch (error) {
     console.error('Erreur récupération commandes:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
@@ -113,8 +125,9 @@ export async function POST(request) {
     const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
     // Code de sécurité généré (non loggé pour des raisons de sécurité)
 
-    // Créer la commande
-    const { data: order, error: orderError } = await supabase
+    // Créer la commande (supabaseAdmin pour bypass RLS)
+    const client = supabaseAdmin || supabase;
+    const { data: order, error: orderError } = await client
       .from('commandes')
       .insert([{
         user_id: null, // Commande manuelle admin

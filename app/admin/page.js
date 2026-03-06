@@ -61,16 +61,10 @@ export default function AdminPage() {
     checkAuth();
   }, []);
 
-  // Rafraîchir le dashboard toutes les 30s et au retour sur l'onglet
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(fetchDashboardStats, 30000);
-    const onVisible = () => { if (document.visibilityState === 'visible') fetchDashboardStats(); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
+    const refreshInterval = setInterval(() => fetchDashboardStats(true), 30000);
+    return () => clearInterval(refreshInterval);
   }, [user]);
 
   const checkAuth = async () => {
@@ -130,20 +124,23 @@ export default function AdminPage() {
     }
   };
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
 
-      // Récupérer toutes les commandes PAYÉES (paid ou succeeded selon Stripe)
-      const { data: orders, error: ordersError } = await supabase
-        .from('commandes')
-        .select('*')
-        .in('payment_status', ['paid', 'succeeded'])
-        .order('created_at', { ascending: false });
-
-      if (ordersError) {
-        throw ordersError;
+      // Récupérer les commandes via l'API (service role = bypass RLS, garantit les vraies données)
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      let orders = [];
+      if (token) {
+        const res = await fetch(`/api/admin/orders?limit=5000&t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          orders = await res.json();
+        }
       }
 
       // Récupérer tous les restaurants

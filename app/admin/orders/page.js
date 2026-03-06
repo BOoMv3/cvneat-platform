@@ -17,48 +17,29 @@ export default function AdminOrders() {
     fetchOrders();
   }, [filterStatus, filterPayment]);
 
-  // Rafraîchir les commandes toutes les 30s et au retour sur l'onglet
   useEffect(() => {
-    const interval = setInterval(fetchOrders, 30000);
-    const onVisible = () => { if (document.visibilityState === 'visible') fetchOrders(); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
+    const interval = setInterval(() => fetchOrders(true), 30000);
+    return () => clearInterval(interval);
   }, [filterStatus, filterPayment]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (silent = false) => {
     try {
-      let query = supabase
-        .from('commandes')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Par défaut : afficher uniquement les commandes payées
-      if (filterPayment === 'paid') {
-        query = query.in('payment_status', ['paid', 'succeeded']);
+      if (!silent) setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setOrders([]);
+        return;
       }
-
+      let url = `/api/admin/orders?limit=500&payment=${filterPayment}&t=${Date.now()}`;
       if (filterStatus !== 'all') {
-        // Mapper les statuts anglais vers français
-        const statusMap = {
-          'pending': 'en_attente',
-          'accepted': 'acceptee', 
-          'rejected': 'refusee',
-          'preparing': 'en_preparation',
-          'ready': 'pret_a_livrer',
-          'delivered': 'livree'
-        };
-        const frenchStatus = statusMap[filterStatus] || filterStatus;
-        query = query.eq('statut', frenchStatus);
+        const statusMap = { 'pending': 'en_attente', 'accepted': 'acceptee', 'rejected': 'refusee', 'preparing': 'en_preparation', 'ready': 'pret_a_livrer', 'delivered': 'livree' };
+        url += `&status=${statusMap[filterStatus] || filterStatus}`;
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      
-      setOrders(data || []);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      if (!res.ok) throw new Error('Erreur chargement');
+      const data = await res.json() || [];
+      setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message);
     } finally {
