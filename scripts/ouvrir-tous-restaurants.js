@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Met ferme_manuellement = false pour TOUS les restaurants.
+ * ATTENTION: Met ferme_manuellement = false pour TOUS les restaurants.
+ * À utiliser UNIQUEMENT en urgence (ex: bug qui a mis tout le monde en fermé manuellement).
+ * En temps normal, seuls les restaurants ouverts volontairement doivent être ouverts :
+ * ne pas exécuter ce script, l'app affiche déjà ouvert/fermé selon horaires + ferme_manuellement.
  * Usage: node scripts/ouvrir-tous-restaurants.js
  */
 
@@ -15,6 +18,8 @@ const supabase = createClient(
 
 async function ouvrirTousRestaurants() {
   try {
+    console.log('⚠️  Ce script met TOUS les restaurants en "pas fermé manuellement".');
+    console.log('   À n\'utiliser qu\'en urgence. Sinon les partenaires ferment via l\'interface.\n');
     console.log('🔍 Liste des restaurants...\n');
 
     const { data: restaurants, error: listError } = await supabase

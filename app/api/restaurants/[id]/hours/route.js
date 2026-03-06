@@ -332,7 +332,7 @@ export async function POST(request, { params }) {
         isOpen,
         matchingPlage
       });
-    } else {
+    } else if (todayHours.ouverture || todayHours.debut) {
       const openStr = todayHours.ouverture || todayHours.debut;
       const closeStr = todayHours.fermeture || todayHours.fin;
       const openTimeMinutes = parseTime(openStr);
@@ -351,14 +351,12 @@ export async function POST(request, { params }) {
         closeTimeMinutes = 24 * 60; // 1440 minutes
       }
 
-      // Vérifier si on est dans la plage horaire
       if (isMidnightClose) {
         isOpen = currentTimeMinutes >= openTimeMinutes;
       } else {
         isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
       }
     } else if (todayHours.ouvert === true || todayHours.ouvert === 'true' || todayHours.ouvert === 1) {
-      // Pas de plages ni ouverture/fermeture mais flag "ouvert" → considéré ouvert
       isOpen = true;
     }
 
