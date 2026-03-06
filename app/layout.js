@@ -156,11 +156,29 @@ export default function RootLayout({ children }) {
                   }
 
                   // Le reste (intercepteur fetch + link handler) est uniquement pour Capacitor.
-                  var isCapacitor =
-                    window.location.protocol === 'capacitor:' ||
-                    window.location.href.indexOf('capacitor://') === 0 ||
-                    !!window.Capacitor;
+                  var isCapacitor = false;
+                  try {
+                    isCapacitor = window.location.protocol === 'capacitor:' ||
+                      (window.location.href && window.location.href.indexOf('capacitor://') === 0) ||
+                      !!(window.Capacitor);
+                  } catch (eCap) {}
                   if (!isCapacitor) return;
+                  // Clic notif (iOS): rediriger dès qu'une URL en attente apparaît (sans attendre React)
+                  try {
+                    var pendingCheckCount = 0;
+                    var pendingInterval = setInterval(function() {
+                      pendingCheckCount++;
+                      if (pendingCheckCount > 20) { clearInterval(pendingInterval); return; }
+                      try {
+                        var pending = sessionStorage.getItem('cvneat-pending-notification-url');
+                        if (pending && pending.indexOf('/') === 0) {
+                          sessionStorage.removeItem('cvneat-pending-notification-url');
+                          clearInterval(pendingInterval);
+                          window.location.replace(pending);
+                        }
+                      } catch (eP) {}
+                    }, 500);
+                  } catch (ePending) {}
                   // IMPORTANT: cvneat.fr redirige (307) vers www.cvneat.fr.
                   // Dans WKWebView (Capacitor), éviter les redirects améliore fortement la fiabilité des appels fetch.
                   var API_BASE_URL = 'https://www.cvneat.fr';

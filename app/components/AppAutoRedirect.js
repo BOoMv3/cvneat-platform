@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
+import { getPendingNotificationUrl } from '@/lib/capacitor-push-notifications';
 
 const isCapacitorApp = () => {
   if (typeof window === 'undefined') return false;
@@ -71,6 +72,24 @@ export default function AppAutoRedirect() {
     const boot = () => {
       if (cleanup) return;
       if (!isCapacitorApp()) return;
+
+      // Priorité: si on a une URL en attente (clic sur notif), rediriger immédiatement (évite accueil au lieu du dashboard sur iOS)
+      const pendingUrl = getPendingNotificationUrl();
+      if (pendingUrl && pendingUrl.startsWith('/')) {
+        try {
+          if (window.location?.pathname !== pendingUrl.split('?')[0]) {
+            lastForcedAtRef.current = Date.now();
+            router.replace(pendingUrl);
+            setTimeout(() => {
+              try {
+                if (window.location?.pathname !== pendingUrl.split('?')[0]) {
+                  window.location.replace(pendingUrl);
+                }
+              } catch (_) {}
+            }, 100);
+          }
+        } catch (_) {}
+      }
 
       const forceTo = (target, reason, extra = {}) => {
       const now = Date.now();
@@ -151,6 +170,16 @@ export default function AppAutoRedirect() {
       async function run(reason = 'mount') {
       if (runningRef.current) return;
       runningRef.current = true;
+      // Clic sur notif (iOS): appliquer l'URL en attente dès qu'on la voit (tick, visibility, etc.)
+      const pending = getPendingNotificationUrl();
+      if (pending && pending.startsWith('/')) {
+        const path = pending.split('?')[0];
+        if (window.location?.pathname !== path) {
+          forceTo(pending, 'pending_notification');
+        }
+        runningRef.current = false;
+        return;
+      }
       const { data } = await supabase.auth.getSession();
       const session = data?.session;
       if (!session?.access_token || !session?.user) {
