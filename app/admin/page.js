@@ -61,6 +61,18 @@ export default function AdminPage() {
     checkAuth();
   }, []);
 
+  // Rafraîchir le dashboard toutes les 30s et au retour sur l'onglet
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(fetchDashboardStats, 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchDashboardStats(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [user]);
+
   const checkAuth = async () => {
     try {
       setAuthLoading(true);
@@ -123,11 +135,11 @@ export default function AdminPage() {
       setLoading(true);
       setError(null);
 
-      // Récupérer toutes les commandes PAYÉES uniquement
+      // Récupérer toutes les commandes PAYÉES (paid ou succeeded selon Stripe)
       const { data: orders, error: ordersError } = await supabase
         .from('commandes')
         .select('*')
-        .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
+        .in('payment_status', ['paid', 'succeeded'])
         .order('created_at', { ascending: false });
 
       if (ordersError) {

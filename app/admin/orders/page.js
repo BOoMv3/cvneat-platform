@@ -17,6 +17,17 @@ export default function AdminOrders() {
     fetchOrders();
   }, [filterStatus, filterPayment]);
 
+  // Rafraîchir les commandes toutes les 30s et au retour sur l'onglet
+  useEffect(() => {
+    const interval = setInterval(fetchOrders, 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchOrders(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [filterStatus, filterPayment]);
+
   const fetchOrders = async () => {
     try {
       let query = supabase
