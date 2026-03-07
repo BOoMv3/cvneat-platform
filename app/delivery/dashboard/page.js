@@ -291,8 +291,8 @@ export default function DeliveryDashboard() {
       fetchAvailableOrders();
     }, 3000);
     
-    // Rafraîchir les stats toutes les 10 secondes (gain livraison visible rapidement)
-    const statsInterval = setInterval(() => fetchStats(), 10000);
+    // Rafraîchir les stats toutes les 5 secondes (frais de course à jour)
+    const statsInterval = setInterval(() => fetchStats(), 5000);
 
     // Recharger les stats quand le livreur revient sur l'onglet
     const handleVisibilityChange = () => {
@@ -660,13 +660,16 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (retry = true) => {
     try {
       const response = await fetchWithAuth(`/api/delivery/stats?t=${Date.now()}`, { cache: 'no-store' });
       const data = await response.json();
       
       if (response.ok) {
         setStats(data);
+      } else if (response.status === 401 && retry) {
+        await supabase.auth.refreshSession();
+        fetchStats(false);
       } else {
         console.error('❌ Erreur API stats:', data);
       }
@@ -868,10 +871,11 @@ export default function DeliveryDashboard() {
         setAcceptedOrders(prev => prev.filter(o => o.id !== orderId));
         setCurrentOrder(null);
         setChatOpen(false); // Fermer le chat après la livraison
-        // Rafraîchir les stats immédiatement et 2x pour garantir l'affichage des gains
+        // Rafraîchir les stats immédiatement et 4x (délais croissants) pour garantir l'affichage
         fetchStats();
-        setTimeout(fetchStats, 500);
-        setTimeout(fetchStats, 1500);
+        setTimeout(fetchStats, 400);
+        setTimeout(fetchStats, 1200);
+        setTimeout(fetchStats, 2500);
         fetchAvailableOrders();
         fetchCurrentOrder();
       } else {

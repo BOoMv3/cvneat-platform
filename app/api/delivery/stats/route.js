@@ -38,7 +38,8 @@ export async function GET(request) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'delivery') {
+    const role = (userData?.role || '').toString().trim().toLowerCase();
+    if (userError || !userData || (role !== 'delivery' && role !== 'livreur')) {
       console.log('❌ Rôle incorrect:', userData?.role, 'pour ID:', user.id);
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
     }
@@ -120,7 +121,9 @@ export async function GET(request) {
 
     console.log('📊 Stats calculées:', stats);
     const res = NextResponse.json(stats);
-    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
     return res;
   } catch (error) {
     console.error('Erreur API stats livreur:', error);
