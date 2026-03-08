@@ -190,9 +190,19 @@ export default function GestionPartenaire() {
     await supabase.from('restaurants').update({ categories: newCats }).eq('id', restaurant.id);
   };
 
-  // Gestion commandes
+  // Gestion commandes - passer par l'API pour préserver livreur_id (sinon la commande disparaît du dashboard livreur)
   const updateStatutCommande = async (id, statut) => {
-    await supabase.from('commandes').update({ statut }).eq('id', id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/restaurants/orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ status: statut }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setError(err?.error || 'Erreur mise à jour');
+      return;
+    }
     // Refresh commandes (après update statut)
     const { data: commandesData } = await supabase
       .from('commandes')

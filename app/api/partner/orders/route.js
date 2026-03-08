@@ -277,15 +277,15 @@ export async function POST(request) {
     // Mettre à jour la commande avec le temps de préparation
     // Le temps de livraison est défini par le livreur lors de l'acceptation
     // Le statut passe à 'en_preparation' (statut valide selon les contraintes CHECK)
-    const { data: updatedOrder, error: updateError } = await supabase
+    const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('commandes')
       .update({
-        statut: 'en_preparation', // Statut valide : 'en_attente', 'en_preparation', 'en_livraison', 'livree', 'annulee'
+        statut: 'en_preparation',
         preparation_time: preparationTime,
         preparation_started_at: new Date().toISOString(),
-        // delivery_time et estimated_total_time sont définis par le livreur, pas par le restaurant
         accepted_at: new Date().toISOString(),
-        accepted_by: user.id
+        accepted_by: user.id,
+        livreur_id: order.livreur_id // CRITIQUE: préserver pour que la commande reste sur le dashboard livreur
       })
       .eq('id', orderId)
       .select()
