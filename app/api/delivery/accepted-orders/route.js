@@ -74,11 +74,20 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Erreur récupération commandes' }, { status: 500 });
       }
       
-      return NextResponse.json({ orders: simpleOrders || [] });
+      const safe = (simpleOrders || []).filter(o =>
+        String(o.statut || '').toLowerCase() !== 'livree' &&
+        ['paid', 'succeeded'].includes(String(o.payment_status || '').toLowerCase())
+      );
+      return NextResponse.json({ orders: safe });
     }
 
+    const paidOrders = (orders || []).filter(o =>
+      String(o.statut || '').toLowerCase() !== 'livree' &&
+      ['paid', 'succeeded'].includes(String(o.payment_status || '').toLowerCase())
+    );
+
     // Enrichir les commandes avec les adresses et informations complètes
-    const ordersWithAddresses = await Promise.all((orders || []).map(async (order) => {
+    const ordersWithAddresses = await Promise.all(paidOrders.map(async (order) => {
       try {
         // D'abord, vérifier si adresse_livraison existe directement dans la commande
         let deliveryAddress = null;
