@@ -630,34 +630,9 @@ export async function PUT(request, { params }) {
 
     console.log(`✅ [API PUT /orders/${id}] Commande mise à jour avec succès`);
 
-    // Notifier immédiatement quand on passe à paid:
-    // NOUVEAU WORKFLOW: d'abord notifier les livreurs.
-    // Le restaurant sera notifié uniquement quand un livreur accepte la commande.
-    try {
-      const afterStatus = (data?.payment_status || '').toString().trim().toLowerCase();
-      const beforeStatus = (before?.payment_status || '').toString().trim().toLowerCase();
-      const transitionedToPaid = afterStatus === 'paid' && beforeStatus !== 'paid';
-
-      if (transitionedToPaid && data?.restaurant_id) {
-        const origin = new URL(request.url).origin;
-        const notificationTotal = (
-          parseFloat(data.total || 0) + parseFloat(data.frais_livraison || 0)
-        ).toFixed(2);
-
-        await fetch(`${origin}/api/notifications/send-push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            role: 'delivery',
-            title: 'Nouvelle commande disponible 🚚',
-            body: `Commande #${data.id?.slice(0, 8)} - ${notificationTotal}€`,
-            data: { type: 'new_order_available', orderId: data.id, url: '/delivery/dashboard' },
-          }),
-        }).catch(() => {});
-      }
-    } catch (e) {
-      console.warn('⚠️ [API PUT /orders/[id]] Erreur non bloquante notifications:', e?.message || e);
-    }
+    // NE PAS notifier les livreurs depuis PUT : cette route peut être appelée par divers acteurs
+    // sans garantie que le paiement soit réellement confirmé. Les notifications sont envoyées
+    // uniquement par : 1) Stripe webhook (payment_intent.succeeded) 2) payment/confirm (PI vérifié)
 
     return json(data);
   } catch (error) {
