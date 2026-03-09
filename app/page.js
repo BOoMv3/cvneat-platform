@@ -551,6 +551,7 @@ export default function Home() {
   // Catégories de restaurants avec icônes et couleurs
   const categories = [
     { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-orange-500 to-amber-600', tagline: 'Tout découvrir' },
+    { id: 'offres', name: 'Offres', icon: FaGift, color: 'from-red-500 to-orange-500', tagline: 'Promos & réductions' },
     { id: 'traditional', name: 'Traditionnel', icon: FaUtensils, color: 'from-amber-600 to-red-500', tagline: 'Recettes authentiques' },
     { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-red-500 to-orange-500', tagline: 'Aux saveurs d\'Italie' },
     { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-amber-500 to-orange-500', tagline: 'Gourmand et fondant' },
@@ -1195,6 +1196,9 @@ export default function Home() {
     
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
+      if (selectedCategory === 'offres') {
+        if (!restaurant.offre_active) return false;
+      } else {
       const restaurantTokens = restaurant.category_tokens || [];
 
       const categoryMap = {
@@ -1225,6 +1229,7 @@ export default function Home() {
         restaurantTokens.some((token) => token.includes(normalizeToken(cat)))
       );
       if (!matchesCategory) return false;
+      }
     }
     
     // Filtre par recherche textuelle
@@ -1370,7 +1375,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
       {/* Bannière Livraison Offerte */}
       <FreeDeliveryBanner />
       
@@ -1862,6 +1867,11 @@ export default function Home() {
                           {isClosed && (
                             <span className="bg-red-600 text-white/95 px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-3.5 md:py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-lg border border-white/40">
                               Fermé
+                            </span>
+                          )}
+                          {!isClosed && restaurant.offre_active && (
+                            <span className="bg-gradient-to-r from-red-500 via-orange-500 to-red-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-sm border border-white/30">
+                              🏷️ {restaurant.offre_label || 'Promo'}
                             </span>
                           )}
                           {!isClosed && restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (

@@ -116,9 +116,11 @@ export default function OrderFeedback() {
         throw feedbackError;
       }
 
-      // Noter aussi le livreur (delivery_ratings) si livraison et note qualité livraison > 0
-      if (order.livreur_id && (feedback.delivery_quality || feedback.delivery_speed) > 0) {
-        const livreurRating = feedback.delivery_quality || feedback.delivery_speed || feedback.overall_satisfaction;
+      // Noter aussi le livreur (delivery_ratings) si livraison et au moins une note > 0
+      // (avant: seulement delivery_quality/delivery_speed → beaucoup de clients ne notaient jamais)
+      const livreurNote = feedback.delivery_quality || feedback.delivery_speed || feedback.overall_satisfaction;
+      if (order.livreur_id && livreurNote > 0) {
+        const livreurRating = livreurNote;
         try {
           await fetch('/api/delivery/ratings', {
             method: 'POST',

@@ -24,7 +24,8 @@ import {
   FaArrowUp,
   FaMotorcycle,
   FaEnvelope,
-  FaComments
+  FaComments,
+  FaTag
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
@@ -2950,6 +2951,15 @@ export default function PartnerDashboard() {
                 <FaClock className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Horaires</span>
                 <span className="sm:hidden">Horaires</span>
+              </button>
+              <button
+                onClick={() => router.push('/partner/offre')}
+                className="bg-amber-500 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-amber-600 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
+                title="Créer une offre / Promo"
+              >
+                <FaTag className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Offre</span>
+                <span className="sm:hidden">Offre</span>
               </button>
               <button
                 onClick={toggleRestaurantClosed}
