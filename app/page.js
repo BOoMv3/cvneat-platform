@@ -1107,7 +1107,7 @@ export default function Home() {
       if (document.visibilityState === 'visible') {
         fetchRestaurants();
       }
-    }, 15000);
+    }, 60000);
     
     return () => {
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
