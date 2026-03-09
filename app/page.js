@@ -813,7 +813,7 @@ export default function Home() {
           // Sur le web, utiliser l'API Next.js
           console.log('[Restaurants] Mode Web - Utilisation de l\'API Next.js');
           
-          const response = await fetch(`/api/restaurants?t=${Date.now()}`, {
+          const response = await fetch(`/api/restaurants?t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`, {
             cache: 'no-store',
             headers: {
               'Content-Type': 'application/json',
@@ -1781,7 +1781,10 @@ export default function Home() {
                 }
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                // Liste: pour "La Bonne Pâte", afficher fermé sauf si ferme_manuellement est explicitement false
+                const isBonnePate = normalizedName.includes('bonne pate') || normalizedName.includes('la bonne pate');
+                const closedBonnePate = isBonnePate && restaurant.ferme_manuellement !== false;
+                const isClosed = closedBonnePate || !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
                 // Utiliser normalizedName qui est déjà calculé plus haut

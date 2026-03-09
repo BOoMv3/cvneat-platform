@@ -60,11 +60,35 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
+    // Relecture ferme_manuellement pour "La Bonne Pâte" (éviter cache / incohérence liste vs détail)
+    const bonnePate = filtered.find((r) => normalize(r.nom).includes('bonne pate'));
+    let bonnePateFermeManuel = bonnePate
+      ? (bonnePate.ferme_manuellement === true || bonnePate.ferme_manuellement === 1 || String(bonnePate.ferme_manuellement || '').trim().toLowerCase() === 'true')
+      : null;
+    if (bonnePate?.id) {
+      const { data: fresh } = await supabaseAdmin
+        .from('restaurants')
+        .select('ferme_manuellement')
+        .eq('id', bonnePate.id)
+        .single();
+      if (fresh && (fresh.ferme_manuellement === true || fresh.ferme_manuellement === 1)) {
+        bonnePateFermeManuel = true;
+      } else if (fresh && fresh.ferme_manuellement === false) {
+        bonnePateFermeManuel = false;
+      }
+    }
+
     // Garantir ferme_manuellement toujours booléen explicite (évite undefined côté front)
-    const withFermeManuel = filtered.map((r) => ({
-      ...r,
-      ferme_manuellement: r.ferme_manuellement === true || r.ferme_manuellement === 1 || String(r.ferme_manuellement).trim().toLowerCase() === 'true'
-    }));
+    const withFermeManuel = filtered.map((r) => {
+      const n = normalize(r.nom);
+      const isBonnePate = n.includes('bonne pate');
+      const raw = r.ferme_manuellement;
+      let value = raw === true || raw === 1 || String(raw || '').trim().toLowerCase() === 'true';
+      if (isBonnePate && bonnePateFermeManuel !== null) {
+        value = bonnePateFermeManuel;
+      }
+      return { ...r, ferme_manuellement: value };
+    });
 
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
