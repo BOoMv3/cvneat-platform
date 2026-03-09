@@ -339,19 +339,18 @@ const getNextOpeningTime = (restaurant = {}) => {
 // Fonction pour vérifier si un restaurant est ouvert (calcul local, pas d'API)
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
-    // Normaliser ferme_manuellement
+    // Normaliser ferme_manuellement (DB peut renvoyer true, 'true', 1, '1', etc.)
     let fermeManuel = restaurant.ferme_manuellement;
-    if (typeof fermeManuel === 'string') {
-      fermeManuel = fermeManuel.toLowerCase() === 'true' || fermeManuel === '1';
+    if (fermeManuel === undefined || fermeManuel === null) {
+      fermeManuel = false;
+    } else if (typeof fermeManuel === 'string') {
+      const s = fermeManuel.trim().toLowerCase();
+      fermeManuel = s === 'true' || s === '1' || s === 'oui';
     }
     // LOGIQUE CRITIQUE: 
     // - Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
     // - Si ferme_manuellement = false → Vérifier les horaires (peut être ouvert)
-    // - Si ferme_manuellement = null ou undefined → Vérifier les horaires (peut être ouvert)
-    const isManuallyClosed = fermeManuel === true || 
-                             fermeManuel === 'true' || 
-                             fermeManuel === '1' || 
-                             fermeManuel === 1;
+    const isManuallyClosed = fermeManuel === true || fermeManuel === 1;
     
     // Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
     if (isManuallyClosed) {
@@ -813,11 +812,13 @@ export default function Home() {
           // Sur le web, utiliser l'API Next.js
           console.log('[Restaurants] Mode Web - Utilisation de l\'API Next.js');
           
-          const response = await fetch('/api/restaurants', {
+          const response = await fetch(`/api/restaurants?t=${Date.now()}`, {
             cache: 'no-store',
             headers: {
               'Content-Type': 'application/json',
-              'Accept': 'application/json'
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
             }
           });
           
@@ -1087,17 +1088,23 @@ export default function Home() {
     
     window.addEventListener('restaurant-status-changed', handleRestaurantStatusChange);
     
-    // AJOUT: Rafraîchissement automatique toutes les 30 secondes pour détecter les changements manuels
-    // Cela permet de détecter les changements même si l'événement window n'est pas capturé (onglets différents)
-    const refreshInterval = setInterval(() => {
+    // Rafraîchir dès que l’utilisateur revient sur l’onglet (fermeture manuelle dans l’autre onglet)
+    const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[Restaurants] Rafraîchissement automatique des restaurants (15s)...');
         fetchRestaurants();
       }
-    }, 15000); // 15 secondes pour voir ouvert/fermé plus vite
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    
+    const refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchRestaurants();
+      }
+    }, 15000);
     
     return () => {
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       clearInterval(refreshInterval);
     };
   }, []);
