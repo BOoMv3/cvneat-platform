@@ -1753,18 +1753,24 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {displayRestaurants.map((restaurant, index) => {
-                // Si le statut n'existe pas, le calculer immédiatement pour éviter les valeurs par défaut incorrectes
                 let restaurantStatus = restaurantsOpenStatus[restaurant.id];
                 if (!restaurantStatus) {
-                  // Calculer le statut si pas encore calculé (fallback)
                   const calculatedStatus = checkRestaurantOpenStatus(restaurant);
                   restaurantStatus = {
                     isOpen: calculatedStatus.isOpen,
                     isManuallyClosed: calculatedStatus.isManuallyClosed,
                     hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
                   };
-                  
-                  // Log pour O'Toasty si problème
+                }
+                // Priorité absolue: si la donnée restaurant dit fermé manuellement, on affiche fermé (évite cache / API lente)
+                const fm = restaurant.ferme_manuellement;
+                const forceFermeManuel = fm === true || fm === 1 || (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
+                if (forceFermeManuel) {
+                  restaurantStatus = {
+                    ...restaurantStatus,
+                    isOpen: false,
+                    isManuallyClosed: true
+                  };
                 }
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
