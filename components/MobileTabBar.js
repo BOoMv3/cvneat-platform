@@ -71,7 +71,7 @@ export default function MobileTabBar() {
       <div className="h-16 md:hidden" aria-hidden="true" />
 
       <nav
-        className="fixed left-0 right-0 bottom-0 z-[80] md:hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-gray-200 dark:border-gray-700"
+        className="fixed left-0 right-0 bottom-0 z-[80] md:hidden bg-zinc-900/95 backdrop-blur border-t border-zinc-800"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Navigation"
       >
@@ -79,7 +79,7 @@ export default function MobileTabBar() {
           <Link
             href="/"
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/') ? 'text-orange-600' : 'text-gray-600 dark:text-gray-300'
+              isActive('/') ? 'text-orange-500' : 'text-zinc-400'
             }`}
           >
             <FaHome className="h-5 w-5" />
@@ -98,7 +98,7 @@ export default function MobileTabBar() {
               }
             }}
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/search') ? 'text-orange-600' : 'text-gray-600 dark:text-gray-300'
+              isActive('/search') ? 'text-orange-500' : 'text-zinc-400'
             }`}
           >
             <FaSearch className="h-5 w-5" />
@@ -108,7 +108,7 @@ export default function MobileTabBar() {
           <Link
             href="/panier"
             className={`relative flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/panier') ? 'text-orange-600' : 'text-gray-600 dark:text-gray-300'
+              isActive('/panier') ? 'text-orange-500' : 'text-zinc-400'
             }`}
           >
             <FaShoppingCart className="h-5 w-5" />
@@ -123,7 +123,7 @@ export default function MobileTabBar() {
           <Link
             href="/profile"
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/profile') ? 'text-orange-600' : 'text-gray-600 dark:text-gray-300'
+              isActive('/profile') ? 'text-orange-500' : 'text-zinc-400'
             }`}
           >
             <FaUser className="h-5 w-5" />

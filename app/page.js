@@ -1375,12 +1375,12 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-zinc-950">
       {/* Bannière Livraison Offerte */}
       <FreeDeliveryBanner />
       
-      {/* Hero Section avec carrousel visuel */}
-      <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
+      {/* Hero Section - compact, fond sombre */}
+      <section className="relative h-[320px] sm:h-[360px] md:h-[400px] overflow-hidden bg-zinc-900">
         {heroSlides.map((slide, index) => (
           <div
             key={slide.id}
@@ -1399,7 +1399,7 @@ export default function Home() {
             ) : (
               <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient || 'from-orange-500 to-red-600'}`} />
             )}
-            <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-zinc-950/40" />
           </div>
         ))}
         
@@ -1412,14 +1412,12 @@ export default function Home() {
                   <FaUtensils className="h-2.5 w-2.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-orange-600" />
                 </div>
               </div>
-              <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-2 border-white shadow-md animate-pulse"></div>
-              <div className="absolute -bottom-0.5 -left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border-1.5 sm:border-2 border-white"></div>
+              <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-orange-500 rounded-full border-2 border-white shadow-md"></div>
+              <div className="absolute -bottom-0.5 -left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-amber-400 rounded-full border-1.5 sm:border-2 border-white"></div>
             </div>
             <div className="flex flex-col">
-              <span className="text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent tracking-tight leading-tight drop-shadow-lg animate-pulse">
-                CVN'EAT
-              </span>
-              <span className="text-[10px] sm:text-xs text-gray-300 -mt-0.5 sm:-mt-1 font-medium hidden sm:block">Excellence culinaire</span>
+              <span className="text-base sm:text-xl md:text-2xl font-black text-white tracking-tight">CVN&apos;EAT</span>
+              <span className="text-[10px] sm:text-xs text-zinc-400 -mt-0.5 sm:-mt-1 font-medium hidden sm:block">Excellence culinaire</span>
             </div>
           </div>
         </div>
@@ -1429,27 +1427,27 @@ export default function Home() {
             On garde les raccourcis (Partenaire/Livreur/Pub/Ma commande) uniquement sur sm+ */}
         <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 z-20 hidden sm:flex items-center flex-wrap gap-1 sm:gap-1.5 md:gap-2 max-w-[calc(100vw-5rem)] sm:max-w-none">
           {/* Bouton Devenir Partenaire */}
-          <Link href="/restaurant-request" className="bg-blue-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
+          <Link href="/restaurant-request" className="bg-orange-500/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-orange-600 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
             <FaStore className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="hidden sm:inline">Partenaire</span>
           </Link>
           {/* Bouton Devenir Livreur */}
-          <Link href="/become-delivery" className="bg-green-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-green-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
+          <Link href="/become-delivery" className="bg-zinc-700/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-zinc-600 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
             <FaMotorcycle className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="hidden sm:inline">Livreur</span>
           </Link>
           {/* Bouton Publicité */}
-          <Link href="/advertise" className="bg-purple-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-purple-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
+          <Link href="/advertise" className="bg-zinc-700/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-zinc-600 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
             <FaImage className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="hidden sm:inline">Pub</span>
           </Link>
           {/* Bouton Suivre ma commande - mis en avant si commande active */}
           <Link
             href="/track-order"
-            className={`px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation ${
+            className={`px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation ${
               hasActiveOrder
-                ? 'bg-green-500 hover:bg-green-600 text-white ring-2 ring-white/50'
-                : 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
+                ? 'bg-orange-500 hover:bg-orange-600 text-white ring-2 ring-white/30'
+                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 border border-white/20'
             }`}
           >
             <FaTruck className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
@@ -1519,48 +1517,35 @@ export default function Home() {
               {heroSlides[currentSlide]?.subtitle}
             </p>
 
-            {/* Barre de recherche intégrée - Optimisée mobile */}
-            <div className="bg-white rounded-xl p-3 sm:p-4 shadow-lg max-w-full sm:max-w-lg">
+            {/* Barre de recherche */}
+            <div className="bg-zinc-900/90 backdrop-blur-sm border border-zinc-700 rounded-xl p-3 sm:p-4 max-w-full sm:max-w-lg">
               <div className="flex items-center space-x-2 sm:space-x-3">
-                <FaSearch className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
+                <FaSearch className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-500 flex-shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Nom du restaurant, cuisine, plat..."
+                  placeholder="Rechercher un restaurant..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1 border-none outline-none text-gray-900 placeholder-gray-500 text-sm sm:text-base min-h-[44px] touch-manipulation"
+                  className="flex-1 bg-transparent border-none outline-none text-white placeholder-zinc-500 text-sm sm:text-base min-h-[44px] touch-manipulation"
                 />
               </div>
             </div>
 
-            {/* CTA clair sur mobile (au lieu des icônes en haut à droite) */}
-            <div className="mt-3 sm:hidden">
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href="/track-order"
-                  className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
-                >
-                  <FaTruck className="h-4 w-4" />
-                  <span>Suivre ma commande</span>
-                </Link>
-
-                <Link
-                  href="/restaurant-request"
-                  className="inline-flex items-center justify-center gap-2 bg-blue-600/90 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
-                >
-                  <FaStore className="h-4 w-4" />
-                  <span>Devenir partenaire</span>
-                </Link>
-
-                <Link
-                  href="/become-delivery"
-                  className="inline-flex items-center justify-center gap-2 bg-green-600/90 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-green-700 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
-                >
-                  <FaMotorcycle className="h-4 w-4" />
-                  <span>Devenir livreur</span>
-                </Link>
-              </div>
+            {/* CTA mobile */}
+            <div className="mt-3 sm:hidden flex flex-wrap gap-2">
+              <Link href="/track-order" className="inline-flex items-center gap-2 bg-white/15 border border-white/30 px-4 py-2 rounded-full text-white text-sm font-medium min-h-[44px] touch-manipulation">
+                <FaTruck className="h-4 w-4" />
+                <span>Ma commande</span>
+              </Link>
+              <Link href="/restaurant-request" className="inline-flex items-center gap-2 bg-orange-500 px-4 py-2 rounded-full text-white hover:bg-orange-600 text-sm font-medium min-h-[44px] touch-manipulation">
+                <FaStore className="h-4 w-4" />
+                <span>Partenaire</span>
+              </Link>
+              <Link href="/become-delivery" className="inline-flex items-center gap-2 bg-zinc-700/80 px-4 py-2 rounded-full text-white text-sm font-medium min-h-[44px] touch-manipulation">
+                <FaMotorcycle className="h-4 w-4" />
+                <span>Livreur</span>
+              </Link>
             </div>
 
           </div>
@@ -1581,11 +1566,11 @@ export default function Home() {
 
 
 
-      {/* Panier flottant - Optimisé mobile */}
+      {/* Panier flottant */}
       {showFloatingCart && cart.length > 0 && (
-        <div className="fixed top-16 sm:top-24 right-2 sm:right-6 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 z-50 w-[calc(100vw-1rem)] sm:w-80 sm:min-w-96 max-w-[calc(100vw-1rem)] sm:max-w-96">
+        <div className="fixed top-16 sm:top-24 right-2 sm:right-6 bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-700 p-4 sm:p-6 z-50 w-[calc(100vw-1rem)] sm:w-80 max-w-[calc(100vw-1rem)] sm:max-w-96">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Votre panier</h3>
+            <h3 className="text-lg font-bold text-white">Votre panier</h3>
             <button
               onClick={() => setShowFloatingCart(false)}
               className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -1596,32 +1581,32 @@ export default function Home() {
           
           <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
             {cart.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-3 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                <span className="flex-1 font-medium text-gray-800 dark:text-gray-200 text-sm sm:text-base pr-2">{item.nom}</span>
+              <div key={item.id} className="flex items-center justify-between p-3 bg-zinc-800 rounded-xl">
+                <span className="flex-1 font-medium text-white text-sm pr-2">{item.nom}</span>
                 <div className="flex items-center space-x-2 sm:space-x-3">
-                  <button className="w-10 h-10 sm:w-8 sm:h-8 bg-white dark:bg-gray-600 border-2 border-gray-200 dark:border-gray-600 rounded-full flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors touch-manipulation active:scale-95">
-                    <FaMinus className="h-3 w-3 sm:h-3 sm:w-3 text-gray-600 dark:text-gray-200" />
+                  <button className="w-10 h-10 sm:w-8 sm:h-8 bg-zinc-700 border border-zinc-600 rounded-full flex items-center justify-center hover:bg-zinc-600 transition-colors touch-manipulation">
+                    <FaMinus className="h-3 w-3 text-zinc-300" />
                   </button>
-                  <span className="w-8 sm:w-10 text-center font-semibold text-gray-900 dark:text-gray-200 text-sm sm:text-base">{item.quantity || 1}</span>
+                  <span className="w-8 sm:w-10 text-center font-semibold text-white text-sm">{item.quantity || 1}</span>
                   <button className="w-10 h-10 sm:w-8 sm:h-8 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full flex items-center justify-center hover:from-orange-600 hover:to-amber-600 transition-all duration-200 touch-manipulation active:scale-95">
                     <FaPlus className="h-3 w-3 sm:h-3 sm:w-3" />
                   </button>
                 </div>
-                <span className="font-bold text-base sm:text-lg text-gray-900 dark:text-gray-200 ml-2 sm:ml-4">{getItemLineTotal(item).toFixed(2)}€</span>
+                <span className="font-bold text-base text-orange-500 ml-4">{getItemLineTotal(item).toFixed(2)}€</span>
               </div>
             ))}
           </div>
           
-          <div className="border-t border-gray-200 pt-4">
+          <div className="border-t border-zinc-700 pt-4">
             <div className="flex justify-between mb-4">
-              <span className="text-base sm:text-lg font-semibold text-gray-700">Total:</span>
+              <span className="text-base font-semibold text-zinc-300">Total:</span>
               <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">
                 {computeCartTotalWithExtras(cart).toFixed(2)}€
               </span>
             </div>
             <Link
               href="/checkout"
-              className="block w-full bg-gradient-to-r from-orange-500 to-amber-600 text-white text-center py-4 sm:py-4 px-6 rounded-2xl font-bold text-base sm:text-lg hover:from-orange-600 hover:to-amber-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 touch-manipulation active:scale-95 min-h-[52px] sm:min-h-[56px]"
+              className="block w-full bg-orange-500 text-white text-center py-4 px-6 rounded-xl font-bold text-base hover:bg-orange-600 transition-colors min-h-[52px] touch-manipulation"
             >
               Commander maintenant
             </Link>
@@ -1629,9 +1614,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Notification d'ajout au panier */}
       {showCartNotification && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 animate-bounce">
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-2xl z-50">
           <div className="flex items-center space-x-2">
             <FaShoppingCart className="h-5 w-5" />
             <span className="font-semibold">Article ajouté au panier !</span>
@@ -1639,10 +1623,10 @@ export default function Home() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Section des catégories style Uber Eats - Optimisé mobile */}
-        <section className="mb-10">
-          <div className="flex items-stretch space-x-2 sm:space-x-3 lg:space-x-4 overflow-x-auto pb-4 scrollbar-hide px-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Catégories - pills simples */}
+        <section className="mb-8">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => {
               const Icon = category.icon;
               const isSelected = selectedCategory === category.id;
@@ -1650,27 +1634,14 @@ export default function Home() {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`relative flex-shrink-0 w-28 sm:w-32 md:w-36 h-24 sm:h-28 rounded-3xl transition-all duration-300 focus:outline-none group ${
-                    isSelected ? 'scale-105 shadow-2xl' : 'hover:scale-105 hover:shadow-xl'
+                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
+                    isSelected
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white border border-zinc-700'
                   }`}
                 >
-                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${category.color} ${isSelected ? 'opacity-100 shadow-2xl' : 'opacity-85 group-hover:opacity-100 group-hover:shadow-xl'} transition-all duration-300`} />
-                  <div className={`absolute inset-0 rounded-3xl border-2 ${isSelected ? 'border-white/80 shadow-inner' : 'border-white/30 group-hover:border-white/60'} transition-all duration-300`} />
-                  {/* Effet de brillance au hover */}
-                  {!isSelected && (
-                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 opacity-0 group-hover:opacity-100"></div>
-                  )}
-                  <div className="relative h-full w-full p-3 sm:p-4 flex flex-col justify-between text-left text-white">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center shadow-md">
-                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm sm:text-lg font-bold leading-tight">{category.name}</p>
-                      <p className="text-[10px] sm:text-xs text-white/85 mt-0.5">
-                        {category.tagline}
-                      </p>
-                    </div>
-                  </div>
+                  <Icon className="w-4 h-4" />
+                  {category.name}
                 </button>
               );
             })}
@@ -1682,56 +1653,50 @@ export default function Home() {
           <Advertisement position="banner_middle" />
         </section>
 
-        {/* Section des restaurants avec défilement vertical élégant */}
+        {/* Section restaurants */}
         <section className="mb-12">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
             <div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent mb-2">Restaurants populaires</h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base font-medium">Découvrez les meilleurs restaurants de votre région</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Restaurants</h2>
+              <p className="text-zinc-400 text-sm mt-0.5">Vos restaurants partenaires</p>
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-2xl hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-xl hover:shadow-orange-500/20 hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base font-bold min-h-[48px] sm:min-h-[52px] touch-manipulation active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-full hover:bg-zinc-700 text-sm font-medium min-h-[44px] touch-manipulation"
             >
-              <FaFilter className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-              <span className="font-semibold">Filtres</span>
+              <FaFilter className="h-4 w-4" />
+              Filtres
             </button>
           </div>
 
-          {/* Bannière points de fidélité - visible pour les clients connectés */}
+          {/* Points fidélité */}
           {user && (
-            <Link
-              href="/profile"
-              className="mb-6 block bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 dark:from-amber-600 dark:via-yellow-600 dark:to-amber-600 rounded-2xl p-4 sm:p-5 shadow-lg border border-amber-200 dark:border-amber-700 hover:shadow-xl hover:scale-[1.01] transition-all duration-200"
-            >
+            <Link href="/profile" className="mb-6 block bg-zinc-800/80 border border-zinc-700 rounded-2xl p-4 hover:border-orange-500/50 transition-colors">
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/90 dark:bg-gray-900/50 rounded-full flex items-center justify-center">
-                    <FaGift className="text-2xl sm:text-3xl text-amber-600 dark:text-amber-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
+                    <FaGift className="text-xl text-orange-500" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg">Points de fidélité actifs</h3>
-                    <p className="text-gray-800 dark:text-gray-200 text-sm sm:text-base">Gagnez 1 point par € et échangez-les contre un article offert, une réduction ou la livraison gratuite !</p>
+                    <h3 className="font-semibold text-white">Points fidélité</h3>
+                    <p className="text-zinc-400 text-sm">1 point par € dépensé</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">{userPoints}</span>
-                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">pts</span>
-                </div>
+                <span className="text-2xl font-bold text-orange-500">{userPoints} pts</span>
               </div>
             </Link>
           )}
 
-          {/* Filtres et tri - Optimisé mobile */}
+          {/* Filtres */}
           {showFilters && (
-            <div className="bg-white rounded-3xl p-4 sm:p-6 mb-8 shadow-xl border border-gray-100">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 mb-8">
               <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-6 items-start sm:items-center">
                 <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-                  <span className="text-gray-700 font-semibold text-sm sm:text-base">Trier par:</span>
+                  <span className="text-zinc-300 font-medium text-sm">Trier par:</span>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="px-4 py-3 sm:py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition-all duration-200 text-sm sm:text-base min-h-[48px] sm:min-h-[44px] w-full sm:w-auto"
+                    className="px-4 py-2 bg-zinc-800 border border-zinc-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm min-h-[44px] w-full sm:w-auto"
                   >
                     <option value="recommended">Recommandés</option>
                     <option value="rating">Mieux notés</option>
@@ -1740,7 +1705,7 @@ export default function Home() {
                   </select>
                 </div>
                 
-                <div className="text-gray-600 text-sm sm:text-base bg-gray-100 px-4 py-3 sm:py-2 rounded-full font-medium min-h-[48px] sm:min-h-[44px] flex items-center justify-center">
+                <div className="text-zinc-400 text-sm bg-zinc-800 px-4 py-2 rounded-full font-medium min-h-[44px] flex items-center justify-center">
                   {displayRestaurants.length} restaurant{displayRestaurants.length !== 1 ? 's' : ''} trouvé{displayRestaurants.length !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -1756,11 +1721,11 @@ export default function Home() {
             </div>
           ) : displayRestaurants.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-6xl">🔍</span>
+              <div className="w-24 h-24 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FaSearch className="text-4xl text-zinc-500" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Aucun restaurant trouvé</h3>
-              <p className="text-gray-600 text-lg">Essayez de modifier vos critères de recherche</p>
+              <h3 className="text-xl font-semibold text-white mb-2">Aucun restaurant trouvé</h3>
+              <p className="text-zinc-400">Modifiez vos filtres ou votre recherche</p>
             </div>
           ) : (
             <div className="space-y-8">
@@ -1842,7 +1807,7 @@ export default function Home() {
                   className={`group transform transition-all duration-300 ${isClosed ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'}`}
                   onClick={() => !isClosed && handleRestaurantClick(restaurant)}
                 >
-                  <div className={`bg-white dark:bg-gray-800 rounded-3xl shadow-xl transition-all duration-500 overflow-hidden border-2 ${isClosed ? 'border-gray-300 dark:border-gray-600' : 'border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-1'}`}>
+                  <div className={`bg-zinc-900 rounded-2xl overflow-hidden border transition-all duration-300 ${isClosed ? 'border-zinc-800 opacity-70' : 'border-zinc-800 hover:border-orange-500/50'}`}>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
                       {/* Image du restaurant - Optimisé mobile */}
                       <div className="relative sm:col-span-1 overflow-hidden h-48 sm:h-56 md:h-64 lg:h-72">
@@ -1893,77 +1858,63 @@ export default function Home() {
                               e.stopPropagation();
                               handleToggleFavorite(restaurant);
                             }}
-                            className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-200 group-hover:scale-110 touch-manipulation active:scale-95 z-20"
+                            className="absolute top-2 right-2 sm:top-3 sm:right-3 w-10 h-10 sm:w-11 sm:h-11 bg-zinc-900/80 backdrop-blur-sm rounded-full flex items-center justify-center border border-zinc-700 hover:bg-zinc-800 z-20 touch-manipulation"
                           >
-                            <FaHeart className={`w-4 h-4 sm:w-5 sm:h-5 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
+                            <FaHeart className={`w-4 h-4 sm:w-5 sm:h-5 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-zinc-400'}`} />
                           </button>
                         )}
                         
-                        {/* Temps de livraison - Optimisé mobile avec glassmorphism */}
-                        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-xl border border-white/20 dark:border-gray-700/50 z-20 group-hover:bg-white dark:group-hover:bg-gray-900 transition-all duration-300">
-                          <div className="flex flex-col">
-                            <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
-                              <FaClock className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-gray-600 flex-shrink-0" />
-                              <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-800">
-                                {displayHoursLabel}
-                              </span>
-                            </div>
-                            {!restaurantStatus.isManuallyClosed && Number.isFinite(parseInt(restaurant.prep_time_minutes, 10)) && (
-                              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-0.5">
-                                Préparation ~{parseInt(restaurant.prep_time_minutes, 10)} min
-                              </span>
-                            )}
+                        {/* Horaires / livraison */}
+                        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 bg-zinc-900/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-zinc-700 z-20">
+                          <div className="flex items-center gap-2">
+                            <FaClock className="h-3.5 w-3.5 text-zinc-400" />
+                            <span className="text-xs font-medium text-white">{displayHoursLabel}</span>
                           </div>
+                          {!restaurantStatus.isManuallyClosed && Number.isFinite(parseInt(restaurant.prep_time_minutes, 10)) && (
+                            <span className="text-[10px] text-zinc-500 block mt-0.5">~{parseInt(restaurant.prep_time_minutes, 10)} min</span>
+                          )}
                         </div>
                       </div>
                       
-                      {/* Contenu de la carte - Optimisé mobile avec plus d'espacement */}
-                      <div className="sm:col-span-2 p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col justify-between">
+                      {/* Contenu carte */}
+                      <div className="sm:col-span-2 p-4 sm:p-6 flex flex-col justify-between">
                         <div>
-                          <div className="flex items-start justify-between mb-2 sm:mb-3 md:mb-4 gap-2">
-                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors flex-1 min-w-0 break-words font-display">
+                          <div className="flex items-start justify-between mb-2 gap-2">
+                            <h3 className="text-base sm:text-lg font-bold text-white flex-1 min-w-0">
                               {restaurant.nom}
                             </h3>
-                            <div className="flex items-center bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/40 dark:to-amber-900/40 px-2 sm:px-2.5 md:px-3 py-1 rounded-full flex-shrink-0 shadow-md border border-yellow-200/50 dark:border-yellow-700/50">
-                              <FaStar className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-yellow-500 dark:text-yellow-400 mr-0.5 sm:mr-1 flex-shrink-0 drop-shadow-sm" />
-                              <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 dark:text-gray-200">
-                                {(restaurant.reviews_count || 0) > 0 ? (restaurant.rating || 0).toFixed(1) : '—'}
-                              </span>
-                            </div>
+                            {(restaurant.reviews_count || 0) > 0 && (
+                              <div className="flex items-center gap-1 bg-zinc-800 px-2 py-1 rounded-full flex-shrink-0">
+                                <FaStar className="h-3.5 w-3.5 text-amber-500" />
+                                <span className="text-xs font-semibold text-white">{(restaurant.rating || 0).toFixed(1)}</span>
+                              </div>
+                            )}
                           </div>
-                          
-                          <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed mb-4 sm:mb-5 md:mb-6 line-clamp-2 sm:line-clamp-3">
+                          <p className="text-zinc-400 text-sm line-clamp-2 mb-4">
                             {restaurant.description}
                           </p>
                           
-                          {/* Informations de livraison - Optimisé mobile */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[10px] sm:text-xs md:text-sm mb-3 sm:mb-4 md:mb-6 space-y-1 sm:space-y-0 sm:gap-2">
-                            <div className="flex items-center text-gray-500 dark:text-gray-400">
-                              <FaMotorcycle className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 mr-1 sm:mr-1.5 md:mr-2 flex-shrink-0" />
-                              <span className="whitespace-nowrap">Livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€</span>
-                            </div>
-                            <div className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                              Min. {restaurant.minOrder || 15}€
-                            </div>
+                          <div className="flex items-center justify-between text-xs text-zinc-500 mb-4">
+                            <span className="flex items-center gap-1">
+                              <FaMotorcycle className="h-3.5 w-3.5" />
+                              {(restaurant.frais_livraison ?? restaurant.deliveryFee ?? 2.50)}€ livraison
+                            </span>
+                            <span>Min. {restaurant.minOrder || 15}€</span>
                           </div>
                         </div>
-                        
-                        {/* Bouton commander - Design moderne et premium */}
                         <button 
                           onClick={(e) => {
-                            e.stopPropagation(); // Empêcher le clic sur le bouton de commande lui-même
-                            if (!isClosed) {
-                              handleRestaurantClick(restaurant);
-                            }
+                            e.stopPropagation();
+                            if (!isClosed) handleRestaurantClick(restaurant);
                           }}
                           disabled={isClosed}
-                          className={`w-full py-4 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation relative overflow-hidden font-display ${
+                          className={`w-full py-3 px-6 rounded-xl font-semibold text-base min-h-[48px] touch-manipulation ${
                             isClosed
-                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-sm'
-                              : 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2'
+                              ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                              : 'bg-orange-500 text-white hover:bg-orange-600 transition-colors'
                           }`}
                         >
-                          {isClosed ? 'Restaurant fermé pour le moment' : 'Voir le menu'}
+                          {isClosed ? 'Fermé' : 'Voir le menu'}
                         </button>
                       </div>
                     </div>
