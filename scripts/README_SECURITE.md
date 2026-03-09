@@ -2,30 +2,17 @@
 
 ## ⚠️ IMPORTANT : Ne jamais commiter les mots de passe dans le code !
 
-Les scripts de création de restaurants (`create-otoasty.js`, etc.) ont été modifiés pour ne plus contenir de mots de passe en dur.
+Les scripts de création de restaurants ont été modifiés pour ne plus contenir de mots de passe en dur. Utilisez des variables d'environnement ou des arguments en ligne de commande pour les identifiants.
 
 ## 📝 Utilisation sécurisée
 
 ### Option 1 : Variables d'environnement (Recommandé)
 
-Créez un fichier `.env.local` (déjà dans `.gitignore`) :
-
-```bash
-# .env.local
-OTOASTY_EMAIL=otoasty@cvneat.fr
-OTOASTY_PASSWORD=votre_mot_de_passe_securise
-```
-
-Puis exécutez le script concerné, par exemple :
-```bash
-node scripts/create-otoasty.js
-```
+Créez un fichier `.env.local` (déjà dans `.gitignore`) et définissez les variables nécessaires au script (email, mot de passe, etc.). Puis exécutez le script concerné.
 
 ### Option 2 : Arguments en ligne de commande
 
-```bash
-node scripts/create-otoasty.js otoasty@cvneat.fr votre_mot_de_passe_securise
-```
+Passez les identifiants en arguments selon la documentation du script (sans les commiter).
 
 ## 🔐 Actions à prendre immédiatement
 

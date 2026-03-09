@@ -59,9 +59,9 @@ Pour plus de contrôle, vous pouvez ajouter un champ `formula_choice_groups` à 
 }
 ```
 
-## Mise à jour du script O'Toasty
+## Mise à jour des formules / menus enfants
 
-Pour mettre à jour le script `update-otoasty-menu.js`, assurez-vous d'inclure les deux options dans formula_items :
+Pour ajouter des options à un menu enfant, assurez-vous d'inclure les deux options dans formula_items :
 
 ```javascript
 // Ajouter Cheese Burger ET 4 Nuggets comme formula_items
