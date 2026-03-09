@@ -86,6 +86,7 @@ export async function POST(request) {
 
     // Envoyer aux appareils iOS via APNs (Apple Push Notification service)
     if (iosTokens.length > 0) {
+      console.log(`📱 Envoi APNs: ${iosTokens.length} token(s) iOS`);
       for (const tokenData of iosTokens) {
         try {
           await sendAPNsNotification(
