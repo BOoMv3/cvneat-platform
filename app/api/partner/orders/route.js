@@ -69,13 +69,12 @@ export async function GET(request) {
     const limitRaw = searchParams.get('limit');
     const limit = Math.max(1, Math.min(100, parseInt(limitRaw || '50', 10) || 50));
 
-    // 1) Commandes (liste)
+    // 1) Commandes (liste) — payées uniquement, avec ou sans livreur (en attente d'assignation)
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select('id, created_at, updated_at, accepted_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, preparation_time, preparation_started_at, delivery_time, ready_for_delivery, payment_status, loyalty_points_used, loyalty_discount_amount')
       .eq('restaurant_id', restaurantData.id)
-      .eq('payment_status', 'paid')
-      .not('livreur_id', 'is', null)
+      .in('payment_status', ['paid', 'succeeded'])
       .order('created_at', { ascending: false })
       .limit(limit);
 

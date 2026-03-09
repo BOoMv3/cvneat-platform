@@ -1781,10 +1781,11 @@ export default function Home() {
                 }
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-                // Liste: pour "La Bonne Pâte", afficher fermé sauf si ferme_manuellement est explicitement false
+                // Liste: afficher fermé sauf si ferme_manuellement est explicitement false (La Bonne Pâte, Le Cinq Pizza)
                 const isBonnePate = normalizedName.includes('bonne pate') || normalizedName.includes('la bonne pate');
-                const closedBonnePate = isBonnePate && restaurant.ferme_manuellement !== false;
-                const isClosed = closedBonnePate || !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                const isCinqPizza = normalizedName.includes('cinq pizza') || normalizedName.includes('le cinq');
+                const closedParNom = (isBonnePate || isCinqPizza) && restaurant.ferme_manuellement !== false;
+                const isClosed = closedParNom || !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
                 // Utiliser normalizedName qui est déjà calculé plus haut

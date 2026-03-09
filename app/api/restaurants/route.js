@@ -60,33 +60,27 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
-    // Relecture ferme_manuellement pour "La Bonne Pâte" (éviter cache / incohérence liste vs détail)
+    // Relecture ferme_manuellement pour La Bonne Pâte + Le Cinq Pizza (éviter cache)
+    const getFermeManuel = async (resto) => {
+      if (!resto?.id) return null;
+      const { data } = await supabaseAdmin.from('restaurants').select('ferme_manuellement').eq('id', resto.id).single();
+      if (data && (data.ferme_manuellement === true || data.ferme_manuellement === 1)) return true;
+      if (data && data.ferme_manuellement === false) return false;
+      return resto.ferme_manuellement === true || resto.ferme_manuellement === 1;
+    };
     const bonnePate = filtered.find((r) => normalize(r.nom).includes('bonne pate'));
-    let bonnePateFermeManuel = bonnePate
-      ? (bonnePate.ferme_manuellement === true || bonnePate.ferme_manuellement === 1 || String(bonnePate.ferme_manuellement || '').trim().toLowerCase() === 'true')
-      : null;
-    if (bonnePate?.id) {
-      const { data: fresh } = await supabaseAdmin
-        .from('restaurants')
-        .select('ferme_manuellement')
-        .eq('id', bonnePate.id)
-        .single();
-      if (fresh && (fresh.ferme_manuellement === true || fresh.ferme_manuellement === 1)) {
-        bonnePateFermeManuel = true;
-      } else if (fresh && fresh.ferme_manuellement === false) {
-        bonnePateFermeManuel = false;
-      }
-    }
+    const cinqPizza = filtered.find((r) => normalize(r.nom).includes('cinq pizza'));
+    const [bonnePateFm, cinqPizzaFm] = await Promise.all([
+      bonnePate ? getFermeManuel(bonnePate) : null,
+      cinqPizza ? getFermeManuel(cinqPizza) : null
+    ]);
 
-    // Garantir ferme_manuellement toujours booléen explicite (évite undefined côté front)
     const withFermeManuel = filtered.map((r) => {
       const n = normalize(r.nom);
-      const isBonnePate = n.includes('bonne pate');
       const raw = r.ferme_manuellement;
       let value = raw === true || raw === 1 || String(raw || '').trim().toLowerCase() === 'true';
-      if (isBonnePate && bonnePateFermeManuel !== null) {
-        value = bonnePateFermeManuel;
-      }
+      if (n.includes('bonne pate') && bonnePateFm !== null) value = !!bonnePateFm;
+      if (n.includes('cinq pizza') && cinqPizzaFm !== null) value = !!cinqPizzaFm;
       return { ...r, ferme_manuellement: value };
     });
 
