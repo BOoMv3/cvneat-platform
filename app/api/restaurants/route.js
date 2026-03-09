@@ -60,9 +60,15 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
+    // Garantir ferme_manuellement toujours booléen explicite (évite undefined côté front)
+    const withFermeManuel = filtered.map((r) => ({
+      ...r,
+      ferme_manuellement: r.ferme_manuellement === true || r.ferme_manuellement === 1 || String(r.ferme_manuellement).trim().toLowerCase() === 'true'
+    }));
+
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
-    const res = NextResponse.json(filtered);
+    const res = NextResponse.json(withFermeManuel);
     // Pas de cache pour ferme_manuellement frais (cohérence liste/détail)
     res.headers.set('Cache-Control', 'no-store, max-age=0');
     return res;
