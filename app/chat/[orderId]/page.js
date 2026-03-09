@@ -15,8 +15,8 @@ export default function ChatPage({ params }) {
     fetchUser();
     fetchMessages();
     
-    // Polling pour les nouveaux messages
-    const interval = setInterval(fetchMessages, 2000);
+    // Polling toutes les 10 s (limite charge serveur)
+    const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [orderId]);
 

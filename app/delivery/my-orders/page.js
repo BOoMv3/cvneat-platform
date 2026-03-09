@@ -73,8 +73,8 @@ export default function MyOrdersPage() {
   useEffect(() => {
     fetchMyOrders();
     
-    // Rafraîchir toutes les 5 secondes
-    const interval = setInterval(fetchMyOrders, 5000);
+    // Rafraîchir toutes les 20 secondes (limite charge serveur)
+    const interval = setInterval(fetchMyOrders, 20000);
     return () => clearInterval(interval);
   }, []);
 

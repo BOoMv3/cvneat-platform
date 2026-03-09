@@ -26,8 +26,8 @@ export default function TrackOrder() {
     // Récupérer les données initiales
     fetchTracking();
 
-    // Polling toutes les 5 secondes pour mettre à jour la position
-    const interval = setInterval(fetchTracking, 5000);
+    // Polling toutes les 15 secondes (limite charge serveur)
+    const interval = setInterval(fetchTracking, 15000);
 
     return () => clearInterval(interval);
   }, [orderId]);

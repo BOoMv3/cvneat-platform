@@ -187,7 +187,7 @@ export default function OrderConfirmation() {
 
     setTimeElapsed(0);
     loadOrder();
-    const fetchInterval = setInterval(loadOrder, 3000);
+    const fetchInterval = setInterval(loadOrder, 15000);
     const timerInterval = setInterval(() => {
       setTimeElapsed(prev => prev + 1);
     }, 1000);

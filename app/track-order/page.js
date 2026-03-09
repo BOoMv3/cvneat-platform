@@ -407,7 +407,7 @@ export default function TrackOrder() {
       } catch (error) {
         console.error('❌ [Track Order Polling] Erreur polling:', error);
       }
-    }, 5000); // Vérifier toutes les 5 secondes
+    }, 15000); // 15 s (limite charge serveur)
 
     return () => {
       console.log(`🛑 [Track Order] Arrêt du polling pour commande ${orderId}`);

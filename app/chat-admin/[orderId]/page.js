@@ -124,7 +124,7 @@ export default function ChatAdmin({ params }) {
     if (orderId) {
       fetchMessages();
       // Polling pour les nouveaux messages
-      const interval = setInterval(fetchMessages, 2000);
+      const interval = setInterval(fetchMessages, 10000);
       return () => clearInterval(interval);
     }
   }, [orderId]);

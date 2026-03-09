@@ -327,7 +327,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       } catch (pollingError) {
         console.warn('⚠️ Erreur polling:', pollingError);
       }
-    }, 5000); // Toutes les 5 secondes
+    }, 20000); // 20 s (limite charge serveur)
 
     // Nettoyer la connexion
     return () => {

@@ -296,31 +296,30 @@ export default function DeliveryDashboard() {
     };
   }, [currentOrder]);
 
-  // Rechargement automatique des commandes pour détecter les nouvelles et les commandes prises
+  // Rechargement automatique (intervalles allongés pour limiter la charge CPU / quota Vercel)
+  // Pas de polling quand l'onglet est en arrière-plan
   useEffect(() => {
-    // Rafraîchir toutes les 3 secondes pour détecter rapidement les commandes prises par d'autres livreurs
-    const interval = setInterval(() => {
-      fetchAvailableOrders();
-    }, 3000);
-    
-    // Rafraîchir les stats toutes les 5 secondes (gains toujours à jour)
-    const statsInterval = setInterval(() => fetchStats(), 5000);
+    const POLL_ORDERS_MS = 20000;   // 20 s (commandes disponibles)
+    const POLL_STATS_MS = 60000;    // 60 s (gains)
+    const POLL_ALERTS_MS = 60000;   // 60 s (alertes prépa)
+    const POLL_PREVENTIVE_MS = 45000; // 45 s (alertes préventives)
 
-    // Recharger les stats quand le livreur revient sur l'onglet
+    const maybeFetch = (fn) => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') fn();
+    };
+
+    const interval = setInterval(() => maybeFetch(fetchAvailableOrders), POLL_ORDERS_MS);
+    const statsInterval = setInterval(() => maybeFetch(fetchStats), POLL_STATS_MS);
+    const alertsInterval = setInterval(() => maybeFetch(fetchPreparationAlerts), POLL_ALERTS_MS);
+    const preventiveInterval = setInterval(() => maybeFetch(fetchPreventiveAlerts), POLL_PREVENTIVE_MS);
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') fetchStats();
+      if (document.visibilityState === 'visible') {
+        fetchStats();
+        fetchAvailableOrders();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Rafraîchir les alertes de préparation toutes les 30 secondes
-    const alertsInterval = setInterval(() => {
-      fetchPreparationAlerts();
-    }, 30000);
-
-    // Rafraîchir les alertes préventives toutes les 10 secondes
-    const preventiveInterval = setInterval(() => {
-      fetchPreventiveAlerts();
-    }, 10000);
 
     return () => {
       clearInterval(interval);
@@ -883,10 +882,7 @@ export default function DeliveryDashboard() {
         setAcceptedOrders(prev => prev.filter(o => o.id !== orderId));
         setCurrentOrder(null);
         setChatOpen(false); // Fermer le chat après la livraison
-        // Rafraîchir les stats immédiatement et 2x pour garantir l'affichage des gains
         fetchStats();
-        setTimeout(fetchStats, 500);
-        setTimeout(fetchStats, 1500);
         fetchAvailableOrders();
         fetchCurrentOrder();
       } else {

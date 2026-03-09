@@ -52,10 +52,9 @@ export default function RestaurantOrders() {
     };
   }, [restaurantId]);
 
-  // Polling automatique toutes les 15 secondes
+  // Polling toutes les 30 s (limite charge serveur)
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('🔄 Polling automatique des commandes');
       // TOUJOURS rafraîchir les commandes, indépendamment du son
       // C'est crucial pour que le partenaire voie les nouvelles commandes
       fetchOrders();
@@ -64,7 +63,7 @@ export default function RestaurantOrders() {
       if (audioEnabledRef.current) {
         playNotificationSound().catch(err => console.warn('Erreur son rafraîchissement:', err));
       }
-    }, 15000);
+    }, 30000);
     
     return () => clearInterval(interval);
   }, []); // Pas de dépendance pour éviter de recréer l'interval à chaque changement
