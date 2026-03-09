@@ -117,8 +117,7 @@ export async function GET(request) {
     // Les admins peuvent voir toutes les commandes
     const isAdmin = userData && userData.role === 'admin';
 
-    // Construire la requête (très simplifiée - récupérer relations séparément pour éviter erreurs)
-    // NOTE: platform_fee n'existe pas dans la table commandes, donc on ne le sélectionne pas
+    // Construire la requête avec jointure restaurant (évite .in() sur beaucoup d'IDs)
     let query = serviceClient
       .from('commandes')
       .select(`
@@ -136,7 +135,8 @@ export async function GET(request) {
         refund_amount,
         refunded_at,
         stripe_refund_id,
-        payment_status
+        payment_status,
+        restaurant:restaurants(id, nom, adresse, ville)
       `)
       .order('created_at', { ascending: false });
 
@@ -149,33 +149,10 @@ export async function GET(request) {
 
     if (ordersError) {
       console.error('❌ API /orders: Erreur récupération commandes:', ordersError);
-      console.error('   Détails:', JSON.stringify(ordersError, null, 2));
       return json({ error: 'Erreur lors de la récupération des commandes', details: ordersError.message }, { status: 500 });
     }
     
     console.log(`✅ API /orders: ${orders?.length || 0} commandes récupérées pour utilisateur ${user.id?.slice(0, 8)}`);
-
-    // Récupérer les restaurants séparément
-    const restaurantIds = [...new Set((orders || []).map(o => o.restaurant_id).filter(Boolean))];
-    const restaurantsMap = new Map();
-    
-    if (restaurantIds.length > 0) {
-      try {
-        const { data: restaurants, error: restaurantsError } = await serviceClient
-          .from('restaurants')
-          .select('id, nom, adresse, ville')
-          .in('id', restaurantIds);
-        
-        if (!restaurantsError && restaurants) {
-          restaurants.forEach(r => restaurantsMap.set(r.id, r));
-          console.log(`✅ ${restaurants.length} restaurants récupérés`);
-        } else if (restaurantsError) {
-          console.error('❌ Erreur récupération restaurants (non bloquant):', restaurantsError.message);
-        }
-      } catch (restaurantsErr) {
-        console.error('❌ Exception récupération restaurants (non bloquant):', restaurantsErr?.message);
-      }
-    }
 
     // Récupérer les détails séparément pour toutes les commandes
     let ordersWithDetails = orders || [];
@@ -218,28 +195,26 @@ export async function GET(request) {
               detailsByOrderId.get(detail.commande_id).push(detail);
             });
             
-            // Ajouter les détails et restaurants aux commandes
+            // Ajouter les détails (restaurant déjà dans order via jointure)
             ordersWithDetails = orders.map(order => ({
               ...order,
               details_commande: detailsByOrderId.get(order.id) || [],
-              restaurants: restaurantsMap.get(order.restaurant_id) || null
+              restaurants: order.restaurant || null
             }));
           } else {
             console.log(`ℹ️ Aucun détail trouvé pour ${orderIds.length} commandes`);
-            // Ajouter quand même les restaurants
             ordersWithDetails = orders.map(order => ({
               ...order,
               details_commande: [],
-              restaurants: restaurantsMap.get(order.restaurant_id) || null
+              restaurants: order.restaurant || null
             }));
           }
         } catch (detailsFetchError) {
           console.error('❌ Erreur récupération détails (non bloquant):', detailsFetchError?.message);
-          // Ajouter quand même les restaurants même si détails échouent
           ordersWithDetails = orders.map(order => ({
             ...order,
             details_commande: [],
-            restaurants: restaurantsMap.get(order.restaurant_id) || null
+            restaurants: order.restaurant || null
           }));
         }
       }
