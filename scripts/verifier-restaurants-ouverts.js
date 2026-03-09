@@ -192,7 +192,7 @@ async function verifierRestaurantsOuverts() {
       
       // Ignorer les restaurants en vacances
       const enVacances = ['99 street food', 'le cévenol burger', 'cévenol burger', 'cevenol burger', 'le cevenol burger', 'l\'assiette des saisons', 'assiette des saisons'].includes(normalized);
-      const nonOperationnel = ['molokai', 'le molokai'].includes(normalized);
+      const nonOperationnel = false;
       
       if (enVacances || nonOperationnel) {
         return; // Ignorer

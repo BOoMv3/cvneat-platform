@@ -69,7 +69,7 @@ export default function MenuByCategories({
       return 0;
     }
     
-    // ========== CATÉGORIES MOLOKAI (Sushi/Poke) ==========
+    // ========== Catégories Sushi/Poke ==========
     // Signatures x6 (1)
     if (catLower.includes('signatures x6') || catLower === 'signatures') {
       return 1;

@@ -58,6 +58,10 @@ const RESTAURANTS_EN_VACANCES = new Set([
 
 // Restaurants pas encore prêts/opérationnels
 const RESTAURANTS_NON_OPERATIONNELS = new Set([
+]);
+
+// Restaurants à ne plus afficher (fermés définitivement / retirés)
+const RESTAURANTS_MASQUES = new Set([
   'molokai',
   'le molokai'
 ]);
@@ -1259,9 +1263,8 @@ export default function Home() {
     const seen = new Set();
     const uniqueRestaurants = finalRestaurants.filter((restaurant) => {
       const key = normalizeName(restaurant.nom) || restaurant.id;
-      if (seen.has(key)) {
-        return false;
-      }
+      if (seen.has(key)) return false;
+      if (RESTAURANTS_MASQUES.has(key)) return false;
       seen.add(key);
       return true;
     });
@@ -1280,8 +1283,6 @@ export default function Home() {
       if (normalized.includes('all\'ovale') || normalized.includes('all ovale') || normalized.includes('allovale')) return 997; // Toujours en bas
       if (normalized.includes('burger cevenol') || normalized.includes('burger cévenol') || normalized.includes('burgercevenol')) return 996; // Presque toujours en bas
       
-      // Derniers restaurants (ne partagent jamais)
-      if (normalized.includes('molokai')) return 999; // Avant-dernier
       if (normalized.includes('dolce vita')) return 1000; // Dernier
       
       // Autres restaurants = ordre normal (5+)

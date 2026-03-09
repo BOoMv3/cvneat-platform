@@ -177,7 +177,7 @@ const MenuSection = ({ restaurantId, restaurant, onAddToCart, addingToCart }) =>
       return 0;
     }
     
-    // Catégories Molokai (Sushi/Poke)
+    // Catégories Sushi/Poke
     if (catLower.includes('signatures x6') || catLower === 'signatures') return 1;
     if (catLower.includes('sushi nigiri') || catLower.includes('nigiri')) return 1.1;
     if (catLower.includes('spring rolls')) return 1.2;

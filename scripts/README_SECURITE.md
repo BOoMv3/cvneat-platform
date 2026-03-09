@@ -2,7 +2,7 @@
 
 ## ⚠️ IMPORTANT : Ne jamais commiter les mots de passe dans le code !
 
-Les scripts de création de restaurants (`create-molokai.js`, `create-otoasty.js`) ont été modifiés pour ne plus contenir de mots de passe en dur.
+Les scripts de création de restaurants (`create-otoasty.js`, etc.) ont été modifiés pour ne plus contenir de mots de passe en dur.
 
 ## 📝 Utilisation sécurisée
 
@@ -12,21 +12,19 @@ Créez un fichier `.env.local` (déjà dans `.gitignore`) :
 
 ```bash
 # .env.local
-MOLOKAI_EMAIL=molokai@cvneat.fr
-MOLOKAI_PASSWORD=votre_mot_de_passe_securise
 OTOASTY_EMAIL=otoasty@cvneat.fr
 OTOASTY_PASSWORD=votre_mot_de_passe_securise
 ```
 
-Puis exécutez :
+Puis exécutez le script concerné, par exemple :
 ```bash
-node scripts/create-molokai.js
+node scripts/create-otoasty.js
 ```
 
 ### Option 2 : Arguments en ligne de commande
 
 ```bash
-node scripts/create-molokai.js molokai@cvneat.fr votre_mot_de_passe_securise
+node scripts/create-otoasty.js otoasty@cvneat.fr votre_mot_de_passe_securise
 ```
 
 ## 🔐 Actions à prendre immédiatement
