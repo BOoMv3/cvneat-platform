@@ -52,9 +52,17 @@ export async function GET() {
       return res;
     }
 
+    // Exclure les restaurants retirés (Molokai, O Toasty, etc.)
+    const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const masquesContient = ['molokai', 'otoasty'];
+    const filtered = data.filter((r) => {
+      const n = normalize(r.nom);
+      return !masquesContient.some((mot) => n.includes(mot));
+    });
+
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
-    const res = NextResponse.json(data);
+    const res = NextResponse.json(filtered);
     // Pas de cache pour ferme_manuellement frais (cohérence liste/détail)
     res.headers.set('Cache-Control', 'no-store, max-age=0');
     return res;

@@ -63,8 +63,13 @@ const RESTAURANTS_NON_OPERATIONNELS = new Set([
 // Restaurants à ne plus afficher (fermés définitivement / retirés)
 const RESTAURANTS_MASQUES = new Set([
   'molokai',
-  'le molokai'
+  'le molokai',
+  'o toasty',
+  'otoasty',
+  "o'toasty"
 ]);
+// Mots-clés : si le nom normalisé contient l’un d’eux, le restaurant est masqué
+const RESTAURANTS_MASQUES_CONTIENT = ['molokai', 'otoasty'];
 
 const normalizeName = (value = '') =>
   value
@@ -999,21 +1004,6 @@ export default function Home() {
               });
             }
             
-            // Log spécial pour O'Toasty
-            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('otoasty') || restaurant.nom.toLowerCase().includes('o\'toasty'))) {
-              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "O'Toasty":`, {
-                nom: restaurant.nom,
-                isOpen: status.isOpen,
-                reason: status.reason,
-                isManuallyClosed: status.isManuallyClosed,
-                ferme_manuellement: restaurant.ferme_manuellement,
-                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
-                ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
-                ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
-                hasHoraires: !!restaurant.horaires
-              });
-            }
-            
             // Log spécial pour Deliss King (liste vs détail)
             if (restaurant.nom && (restaurant.nom.toLowerCase().includes('deliss') || restaurant.nom.toLowerCase().includes('deliss\''))) {
               console.log(`[Restaurants] 🔍 DEBUG Deliss King (LISTE):`, {
@@ -1265,6 +1255,7 @@ export default function Home() {
       const key = normalizeName(restaurant.nom) || restaurant.id;
       if (seen.has(key)) return false;
       if (RESTAURANTS_MASQUES.has(key)) return false;
+      if (RESTAURANTS_MASQUES_CONTIENT.some((mot) => key.includes(mot))) return false;
       seen.add(key);
       return true;
     });
@@ -1767,13 +1758,6 @@ export default function Home() {
                   };
                   
                   // Log pour O'Toasty si problème
-                  if (restaurant.nom && (restaurant.nom.toLowerCase().includes('otoasty') || restaurant.nom.toLowerCase().includes('o\'toasty'))) {
-                    console.warn(`[Restaurants] ⚠️ O'Toasty: statut calculé en fallback:`, {
-                      isOpen: restaurantStatus.isOpen,
-                      isManuallyClosed: restaurantStatus.isManuallyClosed,
-                      ferme_manuellement: restaurant.ferme_manuellement
-                    });
-                  }
                 }
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
