@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '../lib/supabase';
 import { safeLocalStorage } from '../lib/localStorage';
@@ -486,6 +486,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
 export default function Home() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1096,6 +1097,11 @@ export default function Home() {
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
     
+    const onWindowFocus = () => {
+      if (pathname === '/') fetchRestaurants();
+    };
+    window.addEventListener('focus', onWindowFocus);
+    
     const refreshInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchRestaurants();
@@ -1105,9 +1111,10 @@ export default function Home() {
     return () => {
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onWindowFocus);
       clearInterval(refreshInterval);
     };
-  }, []);
+  }, [pathname]);
 
   const handleToggleFavorite = (restaurant) => {
     const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
