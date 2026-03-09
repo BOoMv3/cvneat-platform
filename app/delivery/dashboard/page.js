@@ -124,6 +124,13 @@ export default function DeliveryDashboard() {
 
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
+  // Gain net du livreur (frais - commission CVNeat), sans mention de la commission
+  const getOrderGain = (order) => {
+    const frais = parseFloat(order?.frais_livraison || 0);
+    const commission = parseFloat(order?.delivery_commission_cvneat || 0);
+    return Math.max(0, frais - commission);
+  };
+
   // Fonction pour calculer la distance entre deux points (formule de Haversine)
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371; // Rayon de la Terre en km
@@ -145,19 +152,24 @@ export default function DeliveryDashboard() {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        
+        // Utiliser getSession() en premier (cache local, plus rapide) pour éviter blocage "Chargement..."
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          setDeliveryId(session.user.id);
+          fetchAvailableOrders();
+          fetchStats();
+          fetchCurrentOrder();
+          fetchPreparationAlerts();
+          fetchPreventiveAlerts();
+          return;
+        }
+        // Fallback: getUser() si pas de session en cache
         const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error) {
+        if (error || !user) {
           router.push('/login');
           return;
         }
-        
-        if (!user) {
-          router.push('/login');
-          return;
-        }
-        
         setUser(user);
         setDeliveryId(user.id);
         fetchAvailableOrders();
@@ -291,8 +303,8 @@ export default function DeliveryDashboard() {
       fetchAvailableOrders();
     }, 3000);
     
-    // Rafraîchir les stats toutes les 10 secondes (gain livraison visible rapidement)
-    const statsInterval = setInterval(() => fetchStats(), 10000);
+    // Rafraîchir les stats toutes les 5 secondes (gains toujours à jour)
+    const statsInterval = setInterval(() => fetchStats(), 5000);
 
     // Recharger les stats quand le livreur revient sur l'onglet
     const handleVisibilityChange = () => {
@@ -662,7 +674,10 @@ export default function DeliveryDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetchWithAuth(`/api/delivery/stats?t=${Date.now()}`, { cache: 'no-store' });
+      const response = await fetchWithAuth(`/api/delivery/stats?t=${Date.now()}`, { 
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      });
       const data = await response.json();
       
       if (response.ok) {
@@ -1478,7 +1493,7 @@ export default function DeliveryDashboard() {
                                 #{order.id || 'N/A'}
                               </span>
                               <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                {order.frais_livraison || 'N/A'}€
+                                {getOrderGain(order).toFixed(2)}€
                               </span>
                               <span className="text-sm text-gray-500">
                                 {order.created_at ? new Date(order.created_at).toLocaleTimeString('fr-FR', { 
@@ -1510,7 +1525,7 @@ export default function DeliveryDashboard() {
                             
                             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
                               <span>Total: {order.total || 'N/A'}€</span>
-                              <span>Frais: {order.frais_livraison || 'N/A'}€</span>
+                              <span>Gain: {getOrderGain(order).toFixed(2)}€</span>
                               <span>Est. {order.preparation_time || 'N/A'} min</span>
                             </div>
                           

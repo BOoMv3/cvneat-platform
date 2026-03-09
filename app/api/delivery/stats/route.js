@@ -3,27 +3,29 @@ import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request) {
   try {
-    console.log('🔍 API stats appelée');
     
-    // Récupérer le token depuis les cookies ou headers
+    // Récupérer le token depuis les headers ou cookies (priorité au header)
     const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '') || 
-                  request.cookies.get('sb-access-token')?.value ||
-                  request.cookies.get('supabase-auth-token')?.value;
+    let token = authHeader?.replace('Bearer ', '')?.trim();
+    if (!token && request.cookies) {
+      const sbToken = request.cookies.get?.('sb-access-token');
+      if (sbToken?.value) token = sbToken.value;
+    }
     
-    // Token vérifié (non loggé pour des raisons de sécurité)
+    if (!token) {
+      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    }
     
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
-    if (!user) {
-      console.log('❌ Pas d\'utilisateur connecté');
+    if (authError || !user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    console.log('✅ Utilisateur connecté:', user.email);
 
     // Créer un client admin pour bypasser RLS
     const supabaseAdmin = createClient(
@@ -44,7 +46,6 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Accès refusé - Rôle livreur requis' }, { status: 403 });
     }
 
-    console.log('✅ Rôle livreur confirmé');
 
     // Calculer les statistiques en temps réel à partir des commandes
     const today = new Date();
@@ -63,16 +64,6 @@ export async function GET(request) {
       console.error('Erreur récupération commandes:', ordersError);
       return NextResponse.json({ error: "Erreur récupération commandes" }, { status: 500 });
     }
-
-    console.log('📦 Commandes trouvées:', orders?.length || 0);
-    console.log('📦 Détails commandes:', orders?.map(o => ({ id: o.id, statut: o.statut, frais_livraison: o.frais_livraison, total: o.total })));
-    
-    // Debug: vérifier toutes les commandes
-    const { data: allOrders, error: allOrdersError } = await supabaseAdmin
-      .from('commandes')
-      .select('id, statut, frais_livraison, total');
-    
-    console.log('🔍 Toutes les commandes:', allOrders);
 
     // Calculer les statistiques
     // IMPORTANT: Utiliser frais_livraison - delivery_commission_cvneat pour calculer les gains réels du livreur
@@ -107,21 +98,38 @@ export async function GET(request) {
       averageRating = Math.round((sum / ratings.length) * 10) / 10;
     }
 
+    // Récupérer aussi le total historique (toutes les livrées, payées ou non) pour cohérence affichage
+    const { data: allDelivered } = await supabaseAdmin
+      .from('commandes')
+      .select('frais_livraison, delivery_commission_cvneat')
+      .eq('statut', 'livree')
+      .eq('livreur_id', user.id);
+
+    const totalEarningsAll = (allDelivered || []).reduce((sum, o) => {
+      const f = parseFloat(o.frais_livraison || 0);
+      const c = parseFloat(o.delivery_commission_cvneat || 0);
+      return sum + (f - c);
+    }, 0);
+    const totalDeliveriesAll = allDelivered?.length || 0;
+
     const stats = {
       total_earnings: totalEarnings,
       total_deliveries: totalDeliveries,
+      total_earnings_all: totalEarningsAll,
+      total_deliveries_all: totalDeliveriesAll,
       today_deliveries: todayDeliveries,
       completed_deliveries: totalDeliveries,
-      average_delivery_time: averageDeliveryTime,
+      average_delivery_time: totalDeliveries > 0 ? 25 : 0,
       average_rating: averageRating,
-      last_month_earnings: totalEarnings, // Simplification
-      total_distance_km: totalDeliveries * 5, // Estimation 5km par livraison
-      total_time_hours: totalDeliveries * 0.5 // Estimation 30min par livraison
+      last_month_earnings: totalEarnings,
+      total_distance_km: totalDeliveries * 5,
+      total_time_hours: totalDeliveries * 0.5
     };
 
-    console.log('📊 Stats calculées:', stats);
     const res = NextResponse.json(stats);
-    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
     return res;
   } catch (error) {
     console.error('Erreur API stats livreur:', error);

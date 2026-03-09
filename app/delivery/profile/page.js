@@ -50,7 +50,7 @@ export default function DeliveryProfile() {
 
       setUser(session.user);
       await fetchProfile(session.user.id);
-      await fetchStats(session.user.id);
+      await fetchStats();
     } catch (error) {
       console.error('Erreur auth:', error);
       router.push('/login');
@@ -86,15 +86,19 @@ export default function DeliveryProfile() {
     }
   };
 
-  const fetchStats = async (userId) => {
+  const fetchStats = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
       
-      const response = await fetch('/api/delivery/stats', {
+      const response = await fetch(`/api/delivery/stats?t=${Date.now()}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store'
       });
 
       if (response.ok) {

@@ -94,7 +94,7 @@ export async function POST(request) {
       .from('users')
       .select('id, nom, prenom, email, role')
       .eq('id', delivery_id)
-      .eq('role', 'delivery')
+      .or('role.eq.delivery,role.eq.livreur')
       .single();
 
     if (driverError || !driver) {

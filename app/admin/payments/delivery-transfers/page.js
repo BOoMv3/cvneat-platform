@@ -95,7 +95,7 @@ export default function DeliveryTransfersTracking() {
       const { data, error } = await supabase
         .from('users')
         .select('id, nom, prenom, email')
-        .eq('role', 'delivery')
+        .or('role.eq.delivery,role.eq.livreur')
         .order('nom', { ascending: true });
 
       if (error) throw error;
@@ -142,7 +142,7 @@ export default function DeliveryTransfersTracking() {
       const { data: allDrivers, error: driversError } = await supabase
         .from('users')
         .select('id, nom, prenom, email')
-        .eq('role', 'delivery')
+        .or('role.eq.delivery,role.eq.livreur')
         .order('nom', { ascending: true });
 
       if (driversError) throw driversError;
