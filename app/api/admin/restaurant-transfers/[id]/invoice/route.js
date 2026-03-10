@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getFixedCommissionRatePercentFromName, getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../../../lib/commission';
+import { buildRestaurantTransferInvoiceHtml } from '../../../../../../lib/restaurant-invoice';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -47,34 +49,111 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Virement introuvable' }, { status: 404 });
   }
 
-  // Si archivé, renvoyer directement
-  if (transfer.invoice_html) {
-    return new NextResponse(transfer.invoice_html, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store, max-age=0',
-      },
-    });
+  const { data: restaurant, error: restErr } = await supabaseAdmin
+    .from('restaurants')
+    .select('id, nom, legal_name, siret, vat_number, adresse, code_postal, ville, email, commission_rate')
+    .eq('id', transfer.restaurant_id)
+    .single();
+  if (restErr || !restaurant) {
+    return NextResponse.json({ error: 'Restaurant introuvable' }, { status: 404 });
   }
 
-  // Sinon, fallback: rediriger vers le générateur (brouillon) basé sur période
-  // (Cela n'est pas aussi fiable qu'une archive générée au moment du virement)
-  const start = transfer.period_start
-    ? new Date(transfer.period_start).toISOString()
-    : new Date(transfer.transfer_date).toISOString();
-  const end = transfer.period_end
-    ? new Date(transfer.period_end).toISOString()
-    : new Date(transfer.transfer_date).toISOString();
+  let ordersQuery = supabaseAdmin
+    .from('commandes')
+    .select('id, created_at, total, payment_status, commission_rate, commission_amount, restaurant_payout')
+    .eq('restaurant_id', transfer.restaurant_id)
+    .eq('statut', 'livree')
+    .order('created_at', { ascending: true });
 
-  const url = new URL(request.url);
-  url.pathname = '/api/admin/invoices/restaurant';
-  url.searchParams.set('restaurantId', transfer.restaurant_id);
-  url.searchParams.set('start', start);
-  url.searchParams.set('end', end);
-  url.searchParams.set('kind', 'commission');
+  if (transfer.period_start && transfer.period_end) {
+    ordersQuery = ordersQuery
+      .gte('created_at', new Date(transfer.period_start).toISOString())
+      .lte('created_at', new Date(new Date(transfer.period_end).setHours(23, 59, 59, 999)).toISOString());
+  } else {
+    const start = new Date(transfer.transfer_date);
+    start.setDate(start.getDate() - 60);
+    const end = new Date(transfer.transfer_date);
+    end.setDate(end.getDate() + 1);
+    ordersQuery = ordersQuery
+      .gte('created_at', start.toISOString())
+      .lte('created_at', end.toISOString());
+  }
 
-  return NextResponse.redirect(url);
+  const { data: ordersRaw, error: ordersErr } = await ordersQuery;
+  if (ordersErr) {
+    return NextResponse.json({ error: 'Erreur chargement commandes' }, { status: 500 });
+  }
+
+  const paidOrders = (ordersRaw || []).filter((o) => {
+    const s = (o.payment_status || '').toString().trim().toLowerCase();
+    return !['failed', 'cancelled', 'refunded'].includes(s);
+  });
+
+  let orders = paidOrders;
+  const fixedRatePercent = getFixedCommissionRatePercentFromName(restaurant.nom);
+  const restRate = restaurant.commission_rate ?? 20;
+
+  if (!transfer.period_start || !transfer.period_end) {
+    const targetAmount = parseFloat(transfer.amount || 0);
+    let sum = 0;
+    orders = [];
+    for (const o of paidOrders) {
+      const ratePercent = getEffectiveCommissionRatePercent({
+        restaurantName: restaurant.nom,
+        orderRatePercent: o.commission_rate,
+        restaurantRatePercent: restRate,
+      });
+      const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+      const payout = fixedRatePercent !== null ? computed.payout : (o.restaurant_payout ?? computed.payout);
+      if (sum + payout <= targetAmount + 0.02) {
+        orders.push(o);
+        sum += payout;
+      } else {
+        break;
+      }
+    }
+  }
+
+  const totals = orders.reduce(
+    (acc, o) => {
+      const ratePercent = getEffectiveCommissionRatePercent({
+        restaurantName: restaurant.nom,
+        orderRatePercent: o.commission_rate,
+        restaurantRatePercent: restRate,
+      });
+      const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+      const commission = fixedRatePercent !== null ? computed.commission : (o.commission_amount ?? computed.commission);
+      const payout = fixedRatePercent !== null ? computed.payout : (o.restaurant_payout ?? computed.payout);
+      acc.totalRevenue += Number(o.total || 0);
+      acc.totalCommission += commission;
+      acc.totalPayoutDue += payout;
+      return acc;
+    },
+    { totalRevenue: 0, totalCommission: 0, totalPayoutDue: 0 }
+  );
+
+  const invoiceNumber = transfer.invoice_number || `FAC-${new Date(transfer.transfer_date).getFullYear()}-${(transfer.id || '').slice(0, 6).toUpperCase()}`;
+
+  const transferForInvoice = { ...transfer };
+  if (!transfer.period_start && !transfer.period_end && orders.length > 0) {
+    const first = new Date(orders[0].created_at);
+    const last = new Date(orders[orders.length - 1].created_at);
+    transferForInvoice.periodComputed = `${first.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })} au ${last.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+  }
+
+  const html = buildRestaurantTransferInvoiceHtml({
+    restaurant,
+    transfer: transferForInvoice,
+    orders,
+    totals,
+    invoiceNumber,
+  });
+
+  return new NextResponse(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, max-age=0',
+    },
+  });
 }
-
-
