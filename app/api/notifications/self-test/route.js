@@ -89,8 +89,9 @@ export async function POST(request) {
       );
     }
 
-    const iosTokens = tokens.filter((t) => t.platform === 'ios').map((t) => t.token);
-    const androidTokens = tokens.filter((t) => t.platform === 'android').map((t) => t.token);
+    const platformNorm = (p) => (p || '').toString().toLowerCase().trim();
+    const iosTokens = tokens.filter((t) => platformNorm(t.platform) === 'ios').map((t) => t.token);
+    const androidTokens = tokens.filter((t) => platformNorm(t.platform) === 'android').map((t) => t.token);
 
     let sent = 0;
     const errors = [];

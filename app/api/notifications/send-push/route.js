@@ -56,13 +56,17 @@ export async function POST(request) {
     if (userId) {
       query = query.eq('user_id', userId);
     } else if (role) {
-      // Récupérer les tokens des utilisateurs avec ce rôle
+      // Récupérer les tokens des utilisateurs avec ce rôle (insensible à la casse)
       const roleOr = buildRoleOrFilter(roleCandidates);
       const usersQuery = supabase.from('users').select('id');
-      const { data: users } = roleOr
+      const { data: users, error: usersErr } = roleOr
         ? await usersQuery.or(roleOr)
-        : await usersQuery.eq('role', role);
+        : await usersQuery.eq('role', requestedRole);
 
+      if (usersErr) {
+        console.error('❌ Erreur récupération users livreurs:', usersErr);
+        return NextResponse.json({ sent: 0, message: 'Erreur users' }, { status: 500 });
+      }
       if (users && users.length > 0) {
         const userIds = users.map(u => u.id);
         query = query.in('user_id', userIds);
@@ -77,9 +81,10 @@ export async function POST(request) {
       return NextResponse.json({ sent: 0, message: 'Aucun token trouvé' });
     }
 
-    // Séparer les tokens iOS et Android
-    const iosTokens = tokens.filter(t => t.platform === 'ios');
-    const androidTokens = tokens.filter(t => t.platform === 'android');
+    // Séparer les tokens iOS et Android (tolérance casse: iOS, ios, IOS)
+    const platformNorm = (p) => (p || '').toString().toLowerCase().trim();
+    const iosTokens = tokens.filter(t => platformNorm(t.platform) === 'ios');
+    const androidTokens = tokens.filter(t => platformNorm(t.platform) === 'android');
 
     let sentCount = 0;
     const errors = [];

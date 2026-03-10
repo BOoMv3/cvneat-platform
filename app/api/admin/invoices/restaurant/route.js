@@ -93,14 +93,16 @@ function buildHtml({ title, subtitle, issuer, customer, lines, totals, meta }) {
       .meta { margin-top: 10px; font-size: 12px; color:#6b7280; }
       .right { text-align: right; }
       @media print {
-        body { margin: 0; }
-        .no-print { display:none; }
+        body { margin: 0; padding: 16px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .no-print { display: none !important; }
+        .card, table { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     </style>
   </head>
-  <body>
-    <div class="no-print" style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:12px;">
-      <button onclick="window.print()" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#111; color:#fff; cursor:pointer;">Imprimer / PDF</button>
+  <body style="background: #fff;">
+    <div class="no-print" style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:12px; flex-wrap: wrap;">
+      <button onclick="(function(){var h='<!DOCTYPE html>'+document.documentElement.outerHTML;var b=new Blob([h],{type:'text/html;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='facture-restaurant-'+document.title.replace(/[^a-zA-Z0-9-]/g,'-')+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);})();" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#111; color:#fff; cursor:pointer;">Télécharger</button>
+      <button onclick="window.print()" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#374151; color:#fff; cursor:pointer;">Imprimer</button>
     </div>
 
     <h1>${title}</h1>
@@ -120,6 +122,7 @@ function buildHtml({ title, subtitle, issuer, customer, lines, totals, meta }) {
     <div class="card">
       <h3>Infos</h3>
       <div class="line"><strong>Période:</strong> ${meta.period}</div>
+      <div class="line"><strong>Nombre de commandes:</strong> ${meta.ordersCount}</div>
       <div class="line"><strong>Généré le:</strong> ${meta.generatedAt}</div>
       <div class="line"><strong>Référence:</strong> ${meta.reference}</div>
       ${meta.note ? `<div class="meta">${meta.note}</div>` : ''}
@@ -182,7 +185,7 @@ export async function GET(request) {
 
   const { data: restaurant, error: restErr } = await supabaseAdmin
     .from('restaurants')
-    .select('id, nom, adresse, code_postal, ville, email, commission_rate')
+    .select('id, nom, adresse, code_postal, ville, email, commission_rate, legal_name, siret, vat_number')
     .eq('id', restaurantId)
     .single();
   if (restErr || !restaurant) {
@@ -282,7 +285,9 @@ export async function GET(request) {
   };
   const customer = {
     lines: [
-      `${restaurant.nom}`,
+      restaurant.legal_name || restaurant.nom,
+      restaurant.siret ? `SIRET: ${restaurant.siret}` : null,
+      restaurant.vat_number ? `TVA: ${restaurant.vat_number}` : null,
       `${restaurant.adresse || ''} ${restaurant.code_postal || ''} ${restaurant.ville || ''}`.trim(),
       restaurant.email ? `Email: ${restaurant.email}` : null,
       `Commission: ${Number(displayRatePercent).toFixed(2)}%`,
@@ -309,11 +314,12 @@ export async function GET(request) {
     },
     meta: {
       kind,
-      period: `${formatDateFR(startDate)} → ${formatDateFR(endDate)}`,
+      period: `${formatDateFR(startDate)} au ${formatDateFR(endDate)}`,
+      ordersCount: paidOrders.length,
       generatedAt: new Date().toLocaleString('fr-FR'),
       reference: ref,
       note:
-        "Astuce: utilise le bouton « Imprimer / PDF » pour archiver une preuve comptable. Pour une facture conforme, ajoute SIRET/TVA de CVN'EAT et du restaurant.",
+        "Document généré par CVN'EAT. Exonération de TVA, art. 293 B du CGI.",
     },
   });
 

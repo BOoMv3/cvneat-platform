@@ -104,7 +104,34 @@ export async function POST(request) {
       );
     }
 
-    // Créer l'enregistrement de paiement
+    const montantCible = parseFloat(amount);
+    let totalMarque = 0;
+    let ordersToMark = [];
+
+    // Calculer quelles commandes seront payées (pour orders_count + order_ids sur la facture)
+    const { data: orders, error: ordersError } = await supabaseAdmin
+      .from('commandes')
+      .select('id, frais_livraison, delivery_commission_cvneat, created_at')
+      .eq('livreur_id', delivery_id)
+      .eq('statut', 'livree')
+      .is('livreur_paid_at', null)
+      .order('created_at', { ascending: true });
+
+    if (!ordersError && orders && orders.length > 0) {
+      for (const order of orders) {
+        const fraisLivraison = parseFloat(order.frais_livraison || 0);
+        const commission = parseFloat(order.delivery_commission_cvneat || 0);
+        const livreurEarning = fraisLivraison - commission;
+        if (totalMarque + livreurEarning <= montantCible) {
+          ordersToMark.push(order.id);
+          totalMarque += livreurEarning;
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Créer l'enregistrement de paiement (avec détail des courses pour la facture)
     const { data: transfer, error: transferError } = await supabaseAdmin
       .from('delivery_transfers')
       .insert({
@@ -118,7 +145,9 @@ export async function POST(request) {
         period_end: period_end || null,
         notes: notes || null,
         status: 'completed',
-        created_by: auth.userId
+        created_by: auth.userId,
+        orders_count: ordersToMark.length,
+        order_ids: ordersToMark.length > 0 ? ordersToMark : [],
       })
       .select()
       .single();
@@ -131,54 +160,16 @@ export async function POST(request) {
       );
     }
 
-    // Marquer les commandes comme payées (les plus anciennes d'abord jusqu'à atteindre le montant)
-    // IMPORTANT: Cela met à jour automatiquement TOUS les dashboards des livreurs
-    // car l'API /api/delivery/stats (utilisée par les dashboards) filtre avec livreur_paid_at IS NULL
-    // Donc quand on marque les commandes comme payées, les gains affichés diminuent automatiquement
-    const montantCible = parseFloat(amount);
-    let totalMarque = 0;
-    let ordersToMark = []; // Initialiser ordersToMark pour éviter les erreurs
+    if (ordersToMark.length > 0) {
+      const { error: updateError } = await supabaseAdmin
+        .from('commandes')
+        .update({ livreur_paid_at: new Date().toISOString() })
+        .in('id', ordersToMark);
 
-    // Récupérer les commandes non payées dans l'ordre chronologique
-    const { data: orders, error: ordersError } = await supabaseAdmin
-      .from('commandes')
-      .select('id, frais_livraison, delivery_commission_cvneat, created_at')
-      .eq('livreur_id', delivery_id)
-      .eq('statut', 'livree')
-      .is('livreur_paid_at', null)
-      .order('created_at', { ascending: true });
-
-    if (ordersError) {
-      console.error('Erreur récupération commandes:', ordersError);
-      // Ne pas échouer si on ne peut pas marquer les commandes, le paiement est quand même enregistré
-    } else if (orders && orders.length > 0) {
-      // Marquer les commandes jusqu'à atteindre le montant
-      // IMPORTANT: Utiliser frais_livraison - delivery_commission_cvneat (gain réel du livreur)
-      for (const order of orders) {
-        const fraisLivraison = parseFloat(order.frais_livraison || 0);
-        const commission = parseFloat(order.delivery_commission_cvneat || 0);
-        const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
-        if (totalMarque + livreurEarning <= montantCible) {
-          ordersToMark.push(order.id);
-          totalMarque += livreurEarning;
-        } else {
-          break;
-        }
-      }
-
-      if (ordersToMark.length > 0) {
-        const { error: updateError } = await supabaseAdmin
-          .from('commandes')
-          .update({ livreur_paid_at: new Date().toISOString() })
-          .in('id', ordersToMark);
-
-        if (updateError) {
-          console.error('Erreur mise à jour commandes:', updateError);
-          // Ne pas échouer, le paiement est quand même enregistré
-        } else {
-          console.log(`✅ ${ordersToMark.length} commande(s) marquée(s) comme payée(s) pour un total de ${totalMarque.toFixed(2)}€`);
-          console.log(`✅ Le dashboard du livreur sera automatiquement mis à jour (les gains ne compteront plus ces commandes)`);
-        }
+      if (updateError) {
+        console.error('Erreur mise à jour commandes:', updateError);
+      } else {
+        console.log(`✅ ${ordersToMark.length} commande(s) marquée(s) comme payée(s) pour un total de ${totalMarque.toFixed(2)}€`);
       }
     }
 

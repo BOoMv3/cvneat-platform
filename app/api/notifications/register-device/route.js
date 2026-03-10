@@ -13,7 +13,10 @@ const supabase = createClient(
  */
 export async function POST(request) {
   try {
-    const { token, platform } = await request.json();
+    const raw = (await request.json()) || {};
+    const token = raw.token;
+    const rawPlatform = (raw.platform || 'web').toString().toLowerCase().trim();
+    const platform = ['ios', 'android', 'web'].includes(rawPlatform) ? rawPlatform : 'web';
 
     if (!token) {
       return NextResponse.json(
