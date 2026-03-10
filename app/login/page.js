@@ -72,7 +72,7 @@ export default function LoginPage() {
         // Traduire les messages d'erreur en français
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Email ou mot de passe incorrect. Utilisez le même email qu’à l’inscription (en minuscules. Vérifiez qu'il n'y a pas d'espace parasite. Réinitialisez le mot de passe.';
+          errorMessage = "Email ou mot de passe incorrect. Vérifiez l'orthographe, l'email en minuscules, et qu'il n'y a pas d'espace parasite. Réinitialisez le mot de passe ci-dessous si besoin.";
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = 'Votre compte n’est pas encore confirmé. Utilisez le lien reçu par email ou réinitialisez votre mot de passe ci-dessous.';
         } else if (error.message.includes('User is banned') || error.message?.includes('banned')) {
