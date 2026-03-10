@@ -1024,6 +1024,14 @@ export default function DeliveryDashboard() {
                   <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="text-xs sm:text-sm">Export</span>
                 </button>
+
+                <button
+                  onClick={() => router.push('/push-test')}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
+                >
+                  <FaBell className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm">Test notif</span>
+                </button>
               </div>
               
               <div className="flex items-center justify-center sm:justify-end space-x-2">

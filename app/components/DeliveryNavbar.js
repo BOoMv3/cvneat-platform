@@ -100,6 +100,14 @@ export default function DeliveryNavbar() {
               <FaCog className="h-4 w-4" />
               <span>Profil</span>
             </Link>
+
+            <Link 
+              href="/push-test" 
+              className="text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
+            >
+              <FaBell className="h-4 w-4" />
+              <span>Test notif</span>
+            </Link>
           </div>
 
           {/* Menu utilisateur */}
@@ -188,6 +196,15 @@ export default function DeliveryNavbar() {
               >
                 <FaCog className="h-4 w-4" />
                 <span>Profil</span>
+              </Link>
+
+              <Link 
+                href="/push-test" 
+                className="text-indigo-600 hover:text-indigo-700 block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <FaBell className="h-4 w-4" />
+                <span>Test notif</span>
               </Link>
 
               {user && (
