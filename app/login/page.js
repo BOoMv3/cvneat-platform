@@ -34,10 +34,12 @@ export default function LoginPage() {
     try {
       // Normaliser l'email en minuscules (Supabase stocke en lowercase)
       const normalizedEmail = String(email).trim().toLowerCase();
+      // Supprimer les espaces parasites (autofill, copier-coller) souvent cause de "mot de passe incorrect"
+      const trimmedPassword = String(password).trim();
 
       let loginResult = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
-        password: password,
+        password: trimmedPassword,
       });
       let { data, error } = loginResult;
 
@@ -56,7 +58,7 @@ export default function LoginPage() {
           if (confirmData?.success && confirmData?.updated) {
             loginResult = await supabase.auth.signInWithPassword({
               email: normalizedEmail,
-              password: password,
+              password: trimmedPassword,
             });
             data = loginResult.data;
             error = loginResult.error;
@@ -70,7 +72,7 @@ export default function LoginPage() {
         // Traduire les messages d'erreur en français
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Email ou mot de passe incorrect. Utilisez le même email qu’à l’inscription (en minuscules) et vérifiez votre mot de passe.';
+          errorMessage = 'Email ou mot de passe incorrect. Utilisez le même email qu’à l’inscription (en minuscules. Vérifiez qu'il n'y a pas d'espace parasite. Réinitialisez le mot de passe.';
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = 'Votre compte n’est pas encore confirmé. Utilisez le lien reçu par email ou réinitialisez votre mot de passe ci-dessous.';
         } else if (error.message.includes('User is banned') || error.message?.includes('banned')) {
