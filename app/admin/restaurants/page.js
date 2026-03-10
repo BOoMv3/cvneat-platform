@@ -247,7 +247,15 @@ export default function AdminRestaurants() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {restaurants.map((restaurant) => (
-                <tr key={restaurant.id} className="hover:bg-gray-50">
+                <tr
+                  key={restaurant.id}
+                  onClick={(e) => {
+                    if (!e.target.closest('button')) {
+                      router.push(`/admin/restaurants/${restaurant.id}`);
+                    }
+                  }}
+                  className="hover:bg-gray-50 cursor-pointer"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div>
@@ -275,7 +283,7 @@ export default function AdminRestaurants() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(restaurant.created_at).toLocaleDateString('fr-FR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end space-x-2">
                       <button
                         onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
