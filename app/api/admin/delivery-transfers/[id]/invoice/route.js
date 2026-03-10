@@ -41,6 +41,8 @@ function buildDeliveryInvoiceHtml({
   const hasOrders = ordersDetail && ordersDetail.length > 0;
   const countDisplay = ordersCount != null ? ordersCount : (hasOrders ? ordersDetail.length : 0);
 
+  const netLivreur = (o) =>
+    parseFloat(o.frais_livraison || 0) - parseFloat(o.delivery_commission_cvneat || 0);
   const rowsHtml = hasOrders
     ? ordersDetail
         .map(
@@ -50,7 +52,7 @@ function buildDeliveryInvoiceHtml({
           <td>${(o.id || '').slice(0, 8).toUpperCase()}</td>
           <td class="right">${formatEUR(o.frais_livraison)}</td>
           <td class="right">${formatEUR(o.delivery_commission_cvneat)}</td>
-          <td class="right">${formatEUR((parseFloat(o.frais_livraison || 0) - parseFloat(o.delivery_commission_cvneat || 0))}</td>
+          <td class="right">${formatEUR(netLivreur(o))}</td>
         </tr>
       `
         )
