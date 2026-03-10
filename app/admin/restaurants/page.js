@@ -145,9 +145,9 @@ export default function AdminRestaurants() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Gestion des restaurants</h1>
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-bold">Gestion des restaurants</h1>
           <button
             onClick={() => router.push('/admin')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -218,26 +218,26 @@ export default function AdminRestaurants() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: 700 }}>
+                <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Restaurant
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                   Contact
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                   Adresse
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Commission
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                   Date d'inscription
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -256,7 +256,7 @@ export default function AdminRestaurants() {
                   }}
                   className="hover:bg-gray-50 cursor-pointer"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{restaurant.nom}</div>
@@ -264,30 +264,30 @@ export default function AdminRestaurants() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap hidden md:table-cell">
                     <div className="text-sm text-gray-900">{restaurant.email}</div>
                     <div className="text-sm text-gray-500">{restaurant.telephone}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                     <div className="text-sm text-gray-900">{restaurant.adresse}</div>
                     <div className="text-sm text-gray-500">{restaurant.code_postal} {restaurant.ville}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(restaurant.status)}`}>
                       {getStatusText(restaurant.status)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {restaurant.commission_rate ?? 20}%
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
                     {new Date(restaurant.created_at).toLocaleDateString('fr-FR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end space-x-2">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-white sticky right-0 shadow-[-4px_0_8px_rgba(0,0,0,0.04)]" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1 sm:gap-2">
                       <button
                         onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
-                        className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="text-gray-600 hover:text-gray-900 p-2 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                         title="Voir les détails"
                       >
                         <FaEye />

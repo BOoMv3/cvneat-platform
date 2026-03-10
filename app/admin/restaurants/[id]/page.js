@@ -21,6 +21,10 @@ export default function RestaurantDetail({ params }) {
   const [commissionRate, setCommissionRate] = useState('');
   const [savingCommission, setSavingCommission] = useState(false);
   const [adjustingMarkup, setAdjustingMarkup] = useState(false);
+  const [legalName, setLegalName] = useState('');
+  const [siret, setSiret] = useState('');
+  const [vatNumber, setVatNumber] = useState('');
+  const [savingLegal, setSavingLegal] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -41,6 +45,9 @@ export default function RestaurantDetail({ params }) {
       setRestaurant(data);
       setReductionPct(data?.strategie_boost_reduction_pct != null ? String(data.strategie_boost_reduction_pct) : '');
       setCommissionRate(data?.commission_rate != null && data?.commission_rate !== '' ? String(data.commission_rate) : '');
+      setLegalName(data?.legal_name || '');
+      setSiret(data?.siret || '');
+      setVatNumber(data?.vat_number || '');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -172,6 +179,38 @@ export default function RestaurantDetail({ params }) {
     }
   };
 
+  const saveLegalInfo = async () => {
+    if (!restaurant) return;
+    setSavingLegal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+      const payload = {
+        legal_name: legalName.trim() || null,
+        siret: siret.trim().replace(/\s/g, '') || null,
+        vat_number: vatNumber.trim() || null,
+      };
+      const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Erreur sauvegarde');
+      setRestaurant((prev) => ({ ...prev, ...payload }));
+    } catch (e) {
+      alert(e.message || 'Erreur');
+    } finally {
+      setSavingLegal(false);
+    }
+  };
+
   const applySireneResult = async (r) => {
     try {
       setUpdating(true);
@@ -200,6 +239,9 @@ export default function RestaurantDetail({ params }) {
       if (!res.ok) throw new Error(json.error || 'Erreur sauvegarde restaurant');
 
       setRestaurant((prev) => ({ ...prev, ...payload }));
+      setLegalName(r.legal_name || '');
+      setSiret(r.siret || '');
+      setVatNumber(r.vat_number || '');
       setSireneResults([]);
       setSireneError(null);
     } catch (e) {
@@ -268,27 +310,27 @@ export default function RestaurantDetail({ params }) {
   };
 
   const getOrderStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'accepted': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'preparing': return 'bg-blue-100 text-blue-800';
-      case 'ready': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    const s = (status || '').toLowerCase();
+    if (['pending', 'en_attente'].includes(s)) return 'bg-yellow-100 text-yellow-800';
+    if (['accepted', 'acceptee'].includes(s)) return 'bg-green-100 text-green-800';
+    if (['rejected', 'refusee', 'annulee'].includes(s)) return 'bg-red-100 text-red-800';
+    if (['preparing', 'en_preparation'].includes(s)) return 'bg-blue-100 text-blue-800';
+    if (['ready', 'prete'].includes(s)) return 'bg-purple-100 text-purple-800';
+    if (['en_livraison', 'in_delivery'].includes(s)) return 'bg-indigo-100 text-indigo-800';
+    if (['delivered', 'livree'].includes(s)) return 'bg-gray-100 text-gray-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   const getOrderStatusText = (status) => {
-    switch (status) {
-      case 'pending': return 'En attente';
-      case 'accepted': return 'Acceptee';
-      case 'rejected': return 'Refusee';
-      case 'preparing': return 'En preparation';
-      case 'ready': return 'Prete';
-      case 'delivered': return 'Livree';
-      default: return status;
-    }
+    const s = (status || '').toLowerCase();
+    if (['pending', 'en_attente'].includes(s)) return 'En attente';
+    if (['accepted', 'acceptee'].includes(s)) return 'Acceptée';
+    if (['rejected', 'refusee', 'annulee'].includes(s)) return s === 'annulee' ? 'Annulée' : 'Refusée';
+    if (['preparing', 'en_preparation'].includes(s)) return 'En préparation';
+    if (['ready', 'prete'].includes(s)) return 'Prête';
+    if (['en_livraison', 'in_delivery'].includes(s)) return 'En livraison';
+    if (['delivered', 'livree'].includes(s)) return 'Livrée';
+    return status || '—';
   };
 
   const formatHoraires = (horaires) => {
@@ -348,26 +390,28 @@ export default function RestaurantDetail({ params }) {
     );
   }
 
-  const totalRevenue = orders.filter(o => ['accepted', 'preparing', 'ready', 'delivered'].includes(o.status))
-    .reduce((sum, order) => sum + (order.total_amount || 0), 0);
+  const st = (o) => o.statut || o.status || '';
+  const totalRevenue = orders
+    .filter(o => ['acceptee', 'en_preparation', 'prete', 'en_livraison', 'livree', 'accepted', 'preparing', 'ready', 'in_delivery', 'delivered'].includes(st(o)))
+    .reduce((sum, order) => sum + parseFloat(order.total || order.total_amount || 0), 0);
   const totalOrders = orders.length;
-  const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const pendingOrders = orders.filter(o => st(o) === 'en_attente' || st(o) === 'pending').length;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
               onClick={() => router.push('/admin/restaurants')}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <FaArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">{restaurant.nom}</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">{restaurant.nom}</h1>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(restaurant.status)}`}>
               {getStatusText(restaurant.status)}
             </span>
@@ -387,7 +431,7 @@ export default function RestaurantDetail({ params }) {
                 ) : (
                   <>
                     {restaurant.status === 'active' ? <FaToggleOn /> : <FaToggleOff />}
-                    <span>{restaurant.status === 'active' ? 'Desactiver' : 'Activer'}</span>
+                    <span className="hidden sm:inline">{restaurant.status === 'active' ? 'Désactiver' : 'Activer'}</span>
                   </>
                 )}
               </button>
@@ -397,8 +441,8 @@ export default function RestaurantDetail({ params }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Informations du restaurant</h2>
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">Informations du restaurant</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -482,10 +526,44 @@ export default function RestaurantDetail({ params }) {
               <div className="mt-6 border-t pt-6">
                 <h3 className="font-medium text-gray-900 mb-2">Informations légales (facturation)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Raison sociale :</span> {restaurant.legal_name || '—'}</p>
-                    <p><span className="font-medium">SIRET :</span> {restaurant.siret || '—'}</p>
-                    <p><span className="font-medium">TVA :</span> {restaurant.vat_number || '—'}</p>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <label className="block font-medium text-gray-700 mb-1">Raison sociale</label>
+                      <input
+                        type="text"
+                        value={legalName}
+                        onChange={(e) => setLegalName(e.target.value)}
+                        placeholder="Nom de l'entreprise (facturation)"
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-medium text-gray-700 mb-1">SIRET</label>
+                      <input
+                        type="text"
+                        value={siret}
+                        onChange={(e) => setSiret(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                        placeholder="14 chiffres"
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-medium text-gray-700 mb-1">TVA intracommunautaire</label>
+                      <input
+                        type="text"
+                        value={vatNumber}
+                        onChange={(e) => setVatNumber(e.target.value)}
+                        placeholder="FR..."
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={saveLegalInfo}
+                      disabled={savingLegal}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {savingLegal ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-sm font-medium text-gray-900 mb-2">Rechercher via INSEE SIRENE</p>
@@ -564,8 +642,8 @@ export default function RestaurantDetail({ params }) {
 
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Statistiques</h2>
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">Statistiques</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
@@ -583,8 +661,8 @@ export default function RestaurantDetail({ params }) {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold mb-4">Commandes recentes</h2>
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 overflow-x-auto">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">Commandes récentes</h2>
               
               {orders.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">Aucune commande pour ce restaurant</p>
@@ -598,10 +676,10 @@ export default function RestaurantDetail({ params }) {
                         <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString('fr-FR')}</p>
                       </div>
                       <div className="text-right">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getOrderStatusColor(order.status)}`}>
-                          {getOrderStatusText(order.status)}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getOrderStatusColor(order.statut || order.status)}`}>
+                          {getOrderStatusText(order.statut || order.status)}
                         </span>
-                        <p className="text-sm font-medium mt-1">{order.total_amount}€</p>
+                        <p className="text-sm font-medium mt-1">{(order.total || order.total_amount || 0)}€</p>
                       </div>
                     </div>
                   ))}
@@ -611,13 +689,13 @@ export default function RestaurantDetail({ params }) {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold mb-4">Actions rapides</h2>
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">Actions rapides</h2>
               
               <div className="space-y-3">
                 <button
                   onClick={() => router.push(`/restaurants/${restaurant.id}`)}
-                  className="w-full flex items-center justify-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm sm:text-base"
                 >
                   <FaEye className="h-4 w-4 text-blue-600" />
                   <span className="font-medium text-blue-600">Voir le restaurant</span>
