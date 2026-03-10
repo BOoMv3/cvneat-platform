@@ -12,7 +12,8 @@ import {
   FaCalendarAlt,
   FaMotorcycle,
   FaEuroSign,
-  FaSearch
+  FaSearch,
+  FaFileInvoice
 } from 'react-icons/fa';
 
 export default function DeliveryTransfersTracking() {
@@ -545,6 +546,9 @@ export default function DeliveryTransfersTracking() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Notes
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Facture
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -579,11 +583,43 @@ export default function DeliveryTransfersTracking() {
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {transfer.notes || '-'}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const { data: { session } } = await supabase.auth.getSession();
+                              if (!session?.access_token) {
+                                router.push('/login');
+                                return;
+                              }
+                              const res = await fetch(`/api/admin/delivery-transfers/${transfer.id}/invoice`, {
+                                headers: { Authorization: `Bearer ${session.access_token}` },
+                              });
+                              const html = await res.text();
+                              const w = window.open('', '_blank');
+                              if (w) {
+                                w.document.open();
+                                w.document.write(html);
+                                w.document.close();
+                              }
+                            } catch (e) {
+                              console.error(e);
+                              alert(e?.message || 'Erreur ouverture facture');
+                            }
+                          }}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-black transition-colors"
+                          title="Ouvrir la facture / attestation de virement"
+                        >
+                          <FaFileInvoice />
+                          <span>Facture</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {filteredTransfers.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                         Aucun paiement enregistré
                       </td>
                     </tr>
