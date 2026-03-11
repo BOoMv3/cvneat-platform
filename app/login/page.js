@@ -72,7 +72,7 @@ export default function LoginPage() {
         // Traduire les messages d'erreur en français
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
-          errorMessage = "Email ou mot de passe incorrect. Vérifiez l'orthographe, l'email en minuscules, et qu'il n'y a pas d'espace parasite. Réinitialisez le mot de passe ci-dessous si besoin.";
+          errorMessage = "Email ou mot de passe incorrect. Pas encore inscrit ? Créez un compte ci-dessous — c'est rapide et gratuit.";
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = 'Votre compte n’est pas encore confirmé. Utilisez le lien reçu par email ou réinitialisez votre mot de passe ci-dessous.';
         } else if (error.message.includes('User is banned') || error.message?.includes('banned')) {
@@ -356,12 +356,23 @@ export default function LoginPage() {
             </div>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Vous n'avez pas de compte ?{' '}
-              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
-                Créer un compte
+          <div className="mt-6 space-y-4">
+            <div className="rounded-lg bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 p-4">
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-2">
+                Pas encore inscrit ?
+              </p>
+              <p className="text-xs text-orange-700 dark:text-orange-300 mb-3">
+                Créez un compte en 1 minute pour commander.
+              </p>
+              <Link
+                href="/register"
+                className="flex items-center justify-center w-full py-3 px-4 rounded-lg font-bold text-orange-800 bg-orange-400 hover:bg-orange-500 text-base shadow-md transition-colors"
+              >
+                Créer un compte gratuitement
               </Link>
+            </div>
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+              Vous avez déjà un compte ? Connectez-vous ci-dessus.
             </p>
           </div>
           <SupportContactBlock />

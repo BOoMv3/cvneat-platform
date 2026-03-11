@@ -344,6 +344,12 @@ export default function PartnerDashboard() {
             if (data?.type === 'prep_time_prompt') {
               setShowPrepTimeModal(true);
             }
+            // Nouvelle commande (livreur a accepté) — déclencher l'alerte dans RealTimeNotifications
+            if (data?.type === 'new_order' && data?.order) {
+              window.dispatchEvent(new CustomEvent('partner-new-order', { detail: data.order }));
+              setActiveTab('orders');
+              if (restaurant?.id) fetchOrders(restaurant.id);
+            }
           } catch {
             // ignore
           }

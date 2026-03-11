@@ -1130,6 +1130,37 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
               isManuallyClosed={isManuallyClosed}
             />
 
+            {!user && (
+              <div className="mt-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700 p-4">
+                <p className="font-semibold text-amber-800 dark:text-amber-200 mb-2">Connectez-vous pour commander</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">Créez un compte ou connectez-vous avant de passer commande.</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('redirectAfterLogin', `/restaurant-view?id=${restaurantId}`);
+                      }
+                      router.push('/login');
+                    }}
+                    className="px-4 py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600"
+                  >
+                    Se connecter
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('redirectAfterLogin', `/restaurant-view?id=${restaurantId}`);
+                      }
+                      router.push('/register');
+                    }}
+                    className="px-4 py-2 bg-white text-orange-600 border-2 border-orange-400 font-medium rounded-lg hover:bg-orange-50"
+                  >
+                    Créer un compte
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-8 sm:space-y-12 pt-12 sm:pt-14 md:pt-16">
               {(comboLoading || comboError || comboMenus.length > 0) && (
                 <section className="space-y-4">

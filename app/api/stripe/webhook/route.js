@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { supabase as supabasePublic, supabaseAdmin } from '../../../../lib/supabase';
 import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
+import { notifyDeliverySubscribers } from '../../../../lib/pushNotifications';
 // SSE resto désactivé dans ce workflow: on notifie le resto uniquement après acceptation livreur.
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -353,7 +354,19 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
           } catch (pushError) {
             console.warn('⚠️ Erreur envoi notification push livreurs:', pushError);
           }
-          
+          // Web Push (livreurs dashboard web) — en plus de device_tokens (app mobile)
+          try {
+            const db = supabaseAdmin || supabasePublic;
+            if (db) {
+              await notifyDeliverySubscribers(db, {
+                title: 'Nouvelle commande disponible 🚚',
+                body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
+              });
+            }
+          } catch (webPushErr) {
+            console.warn('⚠️ Erreur Web Push livreurs:', webPushErr?.message || webPushErr);
+          }
           console.log('💰 Montant notification (avec frais):', notificationTotal, '€');
         } catch (broadcastError) {
           console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);

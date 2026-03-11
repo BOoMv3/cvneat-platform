@@ -339,6 +339,19 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     };
   }, [restaurantId]); // Retirer lastOrderId des dépendances pour éviter la boucle infinie
 
+  // Écouter les événements new_order envoyés via SSE (partner page) — fallback si Supabase Realtime ne reçoit pas
+  useEffect(() => {
+    const handler = (e) => {
+      const order = e?.detail;
+      if (order && order.restaurant_id === restaurantId) {
+        console.log('🔔 Nouvelle commande reçue via SSE, déclenchement alerte:', order.id);
+        triggerNewOrderAlert(order);
+      }
+    };
+    window.addEventListener('partner-new-order', handler);
+    return () => window.removeEventListener('partner-new-order', handler);
+  }, [restaurantId]);
+
   // Fonction pour déclencher l'alerte de nouvelle commande
   const triggerNewOrderAlert = (order) => {
     // Ne déclencher l'alerte que pour les commandes en attente

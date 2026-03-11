@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
+import { notifyDeliverySubscribers } from '../../../../lib/pushNotifications';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -321,6 +322,11 @@ export async function POST(request) {
               body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
               data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
             }),
+          }).catch(() => {});
+          await notifyDeliverySubscribers(supabaseAdmin, {
+            title: 'Nouvelle commande disponible 🚚',
+            body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
+            data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
           }).catch(() => {});
         }
       } catch {
