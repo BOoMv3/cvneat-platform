@@ -69,12 +69,15 @@ export async function GET(request) {
     const limitRaw = searchParams.get('limit');
     const limit = Math.max(1, Math.min(100, parseInt(limitRaw || '50', 10) || 50));
 
-    // 1) Commandes (liste) — payées uniquement, avec ou sans livreur (en attente d'assignation)
+    // 1) Commandes (liste) — payées uniquement
+    // IMPORTANT: Ne pas montrer en_attente sans livreur — le restaurant ne doit voir la commande qu'après qu'un livreur l'ait acceptée
+    // Exclure: statut='en_attente' ET livreur_id IS NULL (évite préparation inutile si aucun livreur)
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select('id, created_at, updated_at, accepted_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, preparation_time, preparation_started_at, delivery_time, ready_for_delivery, payment_status, loyalty_points_used, loyalty_discount_amount')
       .eq('restaurant_id', restaurantData.id)
       .in('payment_status', ['paid', 'succeeded'])
+      .or('statut.neq.en_attente,livreur_id.not.is.null')
       .order('created_at', { ascending: false })
       .limit(limit);
 
