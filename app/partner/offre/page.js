@@ -83,7 +83,7 @@ export default function PartnerOffrePage() {
 
   if (loading) {
     return (
-      <AuthGuard requiredRole="partner">
+      <AuthGuard allowedRoles={['partner', 'restaurant']}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-200 border-t-orange-600" />
         </div>
@@ -92,7 +92,7 @@ export default function PartnerOffrePage() {
   }
 
   return (
-    <AuthGuard requiredRole="partner">
+    <AuthGuard allowedRoles={['partner', 'restaurant']}>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-2xl mx-auto px-4 py-8">
           <Link
