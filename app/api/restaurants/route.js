@@ -61,27 +61,32 @@ export async function GET() {
     });
 
     // Relecture ferme_manuellement pour La Bonne Pâte + Le Cinq Pizza (éviter cache)
-    const getFermeManuel = async (resto) => {
+    const getFreshStatus = async (resto) => {
       if (!resto?.id) return null;
-      const { data } = await supabaseAdmin.from('restaurants').select('ferme_manuellement').eq('id', resto.id).single();
-      if (data && (data.ferme_manuellement === true || data.ferme_manuellement === 1)) return true;
-      if (data && data.ferme_manuellement === false) return false;
-      return resto.ferme_manuellement === true || resto.ferme_manuellement === 1;
+      const { data } = await supabaseAdmin.from('restaurants').select('ferme_manuellement, ouvert_manuellement').eq('id', resto.id).single();
+      return data;
     };
     const bonnePate = filtered.find((r) => normalize(r.nom).includes('bonne pate'));
     const cinqPizza = filtered.find((r) => normalize(r.nom).includes('cinq pizza'));
-    const [bonnePateFm, cinqPizzaFm] = await Promise.all([
-      bonnePate ? getFermeManuel(bonnePate) : null,
-      cinqPizza ? getFermeManuel(cinqPizza) : null
+    const [bonnePateStatus, cinqPizzaStatus] = await Promise.all([
+      bonnePate ? getFreshStatus(bonnePate) : null,
+      cinqPizza ? getFreshStatus(cinqPizza) : null
     ]);
 
     const withFermeManuel = filtered.map((r) => {
       const n = normalize(r.nom);
       const raw = r.ferme_manuellement;
-      let value = raw === true || raw === 1 || String(raw || '').trim().toLowerCase() === 'true';
-      if (n.includes('bonne pate') && bonnePateFm !== null) value = !!bonnePateFm;
-      if (n.includes('cinq pizza') && cinqPizzaFm !== null) value = !!cinqPizzaFm;
-      return { ...r, ferme_manuellement: value };
+      let fm = raw === true || raw === 1 || String(raw || '').trim().toLowerCase() === 'true';
+      let om = r.ouvert_manuellement === true || r.ouvert_manuellement === 1 || String(r.ouvert_manuellement || '').trim().toLowerCase() === 'true';
+      if (n.includes('bonne pate') && bonnePateStatus) {
+        fm = !!(bonnePateStatus.ferme_manuellement === true || bonnePateStatus.ferme_manuellement === 1);
+        om = !!(bonnePateStatus.ouvert_manuellement === true || bonnePateStatus.ouvert_manuellement === 1);
+      }
+      if (n.includes('cinq pizza') && cinqPizzaStatus) {
+        fm = !!(cinqPizzaStatus.ferme_manuellement === true || cinqPizzaStatus.ferme_manuellement === 1);
+        om = !!(cinqPizzaStatus.ouvert_manuellement === true || cinqPizzaStatus.ouvert_manuellement === 1);
+      }
+      return { ...r, ferme_manuellement: fm, ouvert_manuellement: om };
     });
 
     // Performance: do not query `reviews` per restaurant (N+1 queries).

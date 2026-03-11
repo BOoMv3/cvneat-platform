@@ -1946,7 +1946,8 @@ export default function PartnerDashboard() {
       });
       
       const requestBody = {
-        ferme_manuellement: newStatus // Envoyer directement le booléen
+        ferme_manuellement: newStatus,
+        ouvert_manuellement: !newStatus
       };
       
       console.log('📤 Envoi requête API:', {
