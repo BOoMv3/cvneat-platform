@@ -342,7 +342,13 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
             
             if (pushResponse.ok) {
               const result = await pushResponse.json();
-              console.log('✅ Notification push envoyée aux livreurs:', result.sent, '/', result.total);
+              console.log('✅ Notification push livreurs:', result.sent, '/', result.total, result.message || '');
+              if (result.sent === 0 && result.total === 0) {
+                console.warn('⚠️ Aucun token livreur: vérifier rôles (delivery/livreur) et device_tokens.');
+              }
+            } else {
+              const errText = await pushResponse.text();
+              console.warn('⚠️ send-push non OK:', pushResponse.status, errText);
             }
           } catch (pushError) {
             console.warn('⚠️ Erreur envoi notification push livreurs:', pushError);

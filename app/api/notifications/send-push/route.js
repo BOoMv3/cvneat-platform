@@ -41,13 +41,10 @@ export async function POST(request) {
       return [requestedRole];
     })();
 
-    // PostgREST: les filtres `.eq()` / `.in()` sont sensibles à la casse et aux espaces.
-    // On utilise donc `.or(role.ilike.X%)` pour matcher "Delivery", "delivery ", etc.
+    // PostgREST: .or() avec ilike pour matcher toute casse (Delivery, livreur, etc.)
     const buildRoleOrFilter = (candidates) => {
       if (!Array.isArray(candidates) || candidates.length === 0) return null;
-      // Roles attendus: simples (letters), donc pas besoin d'escape complexe.
-      // On tolère des espaces en fin via wildcard "%".
-      return candidates.map((r) => `role.ilike.${r}%`).join(',');
+      return candidates.map((r) => `role.ilike.%${r}%`).join(',');
     };
 
     // Récupérer les tokens de l'utilisateur ou du rôle
@@ -56,7 +53,6 @@ export async function POST(request) {
     if (userId) {
       query = query.eq('user_id', userId);
     } else if (role) {
-      // Récupérer les tokens des utilisateurs avec ce rôle (insensible à la casse)
       const roleOr = buildRoleOrFilter(roleCandidates);
       const usersQuery = supabase.from('users').select('id');
       const { data: users, error: usersErr } = roleOr
@@ -64,24 +60,30 @@ export async function POST(request) {
         : await usersQuery.eq('role', requestedRole);
 
       if (usersErr) {
-        console.error('❌ Erreur récupération users pour rôle:', requestedRole, usersErr);
+        console.error('❌ [send-push] Erreur users rôle', requestedRole, usersErr);
         return NextResponse.json({ sent: 0, message: 'Erreur users' }, { status: 500 });
       }
       if (users && users.length > 0) {
         const userIds = users.map((u) => u.id);
         query = query.in('user_id', userIds);
+        console.log(`📱 [send-push] Rôle ${requestedRole}: ${users.length} user(s), ${userIds.length} id(s)`);
       } else {
-        // Aucun user avec ce rôle → ne rien envoyer
-        console.warn('⚠️ Aucun user trouvé pour le rôle', requestedRole);
+        console.warn('⚠️ [send-push] Aucun user pour rôle', requestedRole, 'filter:', roleOr);
         return NextResponse.json({ sent: 0, message: 'Aucun utilisateur trouvé pour ce rôle' });
       }
     }
 
     const { data: tokens, error } = await query;
 
-    if (error || !tokens || tokens.length === 0) {
+    if (error) {
+      console.error('❌ [send-push] Erreur device_tokens', error);
+      return NextResponse.json({ sent: 0, message: 'Erreur tokens' }, { status: 500 });
+    }
+    if (!tokens || tokens.length === 0) {
+      console.warn('⚠️ [send-push] Aucun token trouvé pour la cible');
       return NextResponse.json({ sent: 0, message: 'Aucun token trouvé' });
     }
+    console.log(`📱 [send-push] ${tokens.length} token(s) à envoyer`);
 
     // Séparer les tokens iOS et Android (tolérance casse: iOS, ios, IOS)
     const platformNorm = (p) => (p || '').toString().toLowerCase().trim();
