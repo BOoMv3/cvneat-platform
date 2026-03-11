@@ -64,14 +64,16 @@ export async function POST(request) {
         : await usersQuery.eq('role', requestedRole);
 
       if (usersErr) {
-        console.error('❌ Erreur récupération users livreurs:', usersErr);
+        console.error('❌ Erreur récupération users pour rôle:', requestedRole, usersErr);
         return NextResponse.json({ sent: 0, message: 'Erreur users' }, { status: 500 });
       }
       if (users && users.length > 0) {
-        const userIds = users.map(u => u.id);
+        const userIds = users.map((u) => u.id);
         query = query.in('user_id', userIds);
       } else {
-        return NextResponse.json({ sent: 0, message: 'Aucun utilisateur trouvé' });
+        // Aucun user avec ce rôle → ne rien envoyer
+        console.warn('⚠️ Aucun user trouvé pour le rôle', requestedRole);
+        return NextResponse.json({ sent: 0, message: 'Aucun utilisateur trouvé pour ce rôle' });
       }
     }
 
