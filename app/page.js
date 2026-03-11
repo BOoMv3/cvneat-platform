@@ -1941,6 +1941,20 @@ export default function Home() {
                             {restaurant.description}
                           </p>
                           
+                          {/* Détails de la promo (partenaires qui ont activé une offre) */}
+                          {restaurant.offre_active && (restaurant.offre_label || restaurant.offre_description) && (
+                            <div className="mb-3 sm:mb-4 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200/60 dark:border-orange-700/40">
+                              <p className="text-xs sm:text-sm font-semibold text-orange-800 dark:text-orange-200 mb-0.5">
+                                🏷️ {restaurant.offre_label || 'Offre en cours'}
+                              </p>
+                              {restaurant.offre_description && (
+                                <p className="text-xs sm:text-sm text-orange-700/90 dark:text-orange-300/90">
+                                  {restaurant.offre_description}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          
                           {/* Informations de livraison - Optimisé mobile */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[10px] sm:text-xs md:text-sm mb-3 sm:mb-4 md:mb-6 space-y-1 sm:space-y-0 sm:gap-2">
                             <div className="flex items-center text-gray-500 dark:text-gray-400">
