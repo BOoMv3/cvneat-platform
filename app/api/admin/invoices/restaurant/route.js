@@ -93,16 +93,31 @@ function buildHtml({ title, subtitle, issuer, customer, lines, totals, meta }) {
       .meta { margin-top: 10px; font-size: 12px; color:#6b7280; }
       .right { text-align: right; }
       @media print {
-        body { margin: 0; padding: 16px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        html, body { margin: 0; padding: 16px; background: #fff !important; color: #111 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .no-print { display: none !important; }
-        .card, table { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .card, table, th, td, tfoot td { background: #fff !important; color: #111 !important; }
       }
     </style>
   </head>
-  <body style="background: #fff;">
+  <body style="background: #fff; color: #111;">
+    <script>
+      function downloadFacture() {
+        var fn = 'facture-restaurant-' + (document.title || 'cvneat').replace(/[^a-zA-Z0-9-]/g, '-') + '.html';
+        var h = '<!DOCTYPE html>' + document.documentElement.outerHTML;
+        var blob = new Blob([h], { type: 'text/html;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      }
+    </script>
     <div class="no-print" style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:12px; flex-wrap: wrap;">
-      <button onclick="(function(){var h='<!DOCTYPE html>'+document.documentElement.outerHTML;var b=new Blob([h],{type:'text/html;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='facture-restaurant-'+document.title.replace(/[^a-zA-Z0-9-]/g,'-')+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);})();" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#111; color:#fff; cursor:pointer;">Télécharger</button>
-      <button onclick="window.print()" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#374151; color:#fff; cursor:pointer;">Imprimer</button>
+      <button type="button" onclick="downloadFacture()" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#111; color:#fff; cursor:pointer;">Télécharger</button>
+      <button type="button" onclick="window.print()" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#374151; color:#fff; cursor:pointer;">Imprimer</button>
     </div>
 
     <h1>${title}</h1>

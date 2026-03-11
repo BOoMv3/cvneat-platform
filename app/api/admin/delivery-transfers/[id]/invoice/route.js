@@ -101,16 +101,32 @@ function buildDeliveryInvoiceHtml({
       .summary-block .row { display: flex; justify-content: space-between; margin: 6px 0; }
       .summary-block .total { font-size: 18px; font-weight: 700; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
       @media print {
-        body { padding: 16px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        html, body { padding: 16px; background: #fff !important; color: #111 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .no-print { display: none !important; }
-        .card, table { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .card, table, th, td, tfoot td { background: #fff !important; color: #111 !important; }
       }
     </style>
   </head>
-  <body style="background: #fff;">
+  <body style="background: #fff; color: #111;">
+    <script>
+      function downloadFacture() {
+        var fn = document.getElementById('facture-download-name').getAttribute('data-filename');
+        var h = '<!DOCTYPE html>' + document.documentElement.outerHTML;
+        var blob = new Blob([h], { type: 'text/html;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fn || 'facture-livreur.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      }
+    </script>
+    <span id="facture-download-name" data-filename="facture-livreur-${(reference || 'cvneat').replace(/[^a-zA-Z0-9-]/g, '-')}.html" style="display:none"></span>
     <div class="no-print" style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-      <button onclick="(function(){var h='<!DOCTYPE html>'+document.documentElement.outerHTML;var b=new Blob([h],{type:'text/html;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='facture-livreur-${(reference || 'cvneat').replace(/[^a-zA-Z0-9-]/g, '-')}.html';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);})();" style="padding: 10px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #111; color: #fff; cursor: pointer; font-weight: 500;">Télécharger</button>
-      <button onclick="window.print()" style="padding: 10px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #374151; color: #fff; cursor: pointer;">Imprimer</button>
+      <button type="button" onclick="downloadFacture()" style="padding: 10px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #111; color: #fff; cursor: pointer; font-weight: 500;">Télécharger</button>
+      <button type="button" onclick="window.print()" style="padding: 10px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #374151; color: #fff; cursor: pointer;">Imprimer</button>
     </div>
 
     <div class="invoice">
