@@ -929,7 +929,7 @@ export default function Home() {
               console.warn('[Restaurants] Erreur getTodayHoursLabel:', e);
             }
 
-            // S'assurer que ferme_manuellement est bien préservé
+            // S'assurer que ferme_manuellement et offre (promo) sont bien préservés
             const normalizedRestaurant = {
               ...restaurant,
               image_url: primaryImage,
@@ -939,8 +939,11 @@ export default function Home() {
               category: restaurant.category || restaurant.categorie,
               category_tokens: categoryTokens,
               today_hours_label: todayHoursLabel,
-              // FORCER la préservation de ferme_manuellement
-              ferme_manuellement: restaurant.ferme_manuellement
+              ferme_manuellement: restaurant.ferme_manuellement,
+              // Badge promo : uniquement pour les partenaires qui ont activé une promo (ex: La Bonne Pâte)
+              offre_active: !!(restaurant.offre_active === true || restaurant.offre_active === 1 || String(restaurant.offre_active || '').trim().toLowerCase() === 'true'),
+              offre_label: restaurant.offre_label ?? null,
+              offre_description: restaurant.offre_description ?? null
             };
             
             // Log pour "Le O Saona Tea" spécifiquement

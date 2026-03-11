@@ -37,7 +37,7 @@ export async function GET() {
     
     const { data, error } = await supabaseAdmin
       .from('restaurants')
-      .select('*, frais_livraison, ferme_manuellement, horaires');
+      .select('*, frais_livraison, ferme_manuellement, horaires, offre_active, offre_label, offre_description');
       // .eq('status', 'active'); // Temporairement désactivé pour debug
 
     if (error) {
@@ -78,6 +78,10 @@ export async function GET() {
       const raw = r.ferme_manuellement;
       let fm = raw === true || raw === 1 || String(raw || '').trim().toLowerCase() === 'true';
       let om = r.ouvert_manuellement === true || r.ouvert_manuellement === 1 || String(r.ouvert_manuellement || '').trim().toLowerCase() === 'true';
+      // Promo : pour tous les restaurants, on utilise les données du select (ceux qui ont activé une promo l'ont en base)
+      const offreActive = r.offre_active === true || r.offre_active === 1 || String(r.offre_active || '').trim().toLowerCase() === 'true';
+      const offreLabel = r.offre_label ?? null;
+      const offreDesc = r.offre_description ?? null;
       if (n.includes('bonne pate') && bonnePateStatus) {
         fm = !!(bonnePateStatus.ferme_manuellement === true || bonnePateStatus.ferme_manuellement === 1);
         om = !!(bonnePateStatus.ouvert_manuellement === true || bonnePateStatus.ouvert_manuellement === 1);
@@ -86,7 +90,7 @@ export async function GET() {
         fm = !!(cinqPizzaStatus.ferme_manuellement === true || cinqPizzaStatus.ferme_manuellement === 1);
         om = !!(cinqPizzaStatus.ouvert_manuellement === true || cinqPizzaStatus.ouvert_manuellement === 1);
       }
-      return { ...r, ferme_manuellement: fm, ouvert_manuellement: om };
+      return { ...r, ferme_manuellement: fm, ouvert_manuellement: om, offre_active: offreActive, offre_label: offreLabel, offre_description: offreDesc };
     });
 
     // Performance: do not query `reviews` per restaurant (N+1 queries).
