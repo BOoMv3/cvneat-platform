@@ -204,10 +204,10 @@ export default function PartnerDashboard() {
       console.log('🔍 DEBUG PARTNER - Rôle attendu: restaurant');
       console.log('🔍 DEBUG PARTNER - Comparaison:', userData?.role === 'restaurant');
       
-      // Autoriser les restaurants ET les admins
-      if (userError || !userData || (userData.role !== 'restaurant' && userData.role !== 'admin')) {
+      // Autoriser les restaurants, partenaires et admins
+      if (userError || !userData || !['restaurant', 'partner', 'admin'].includes(userData.role)) {
         console.log('❌ ACCÈS REFUSÉ - Redirection vers login');
-        console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant ou admin');
+        console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant, partner ou admin');
         router.push('/login');
         return;
       }
@@ -2082,10 +2082,16 @@ export default function PartnerDashboard() {
         body: JSON.stringify({ prep_time_minutes: minutes })
       });
 
-      const payload = await res.json().catch(() => ({}));
+      let payload;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = {};
+      }
       if (!res.ok) {
-        console.error('❌ Erreur update prep_time:', payload);
-        alert(`Erreur: ${payload.error || payload.details || 'Impossible de mettre à jour le temps de préparation'}`);
+        console.error('❌ Erreur update prep_time:', res.status, payload);
+        const errMsg = payload.error || payload.details || 'Impossible de mettre à jour le temps de préparation. Vérifiez votre connexion.';
+        alert(`Erreur: ${errMsg}`);
         return;
       }
 

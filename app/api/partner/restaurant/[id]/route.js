@@ -24,8 +24,8 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
     .eq('id', user.id)
     .single();
 
-  if (userError || !userData || userData.role !== 'restaurant') {
-    return { error: 'Accès refusé - Rôle restaurant requis', status: 403 };
+  if (userError || !userData || !['restaurant', 'partner'].includes(userData.role)) {
+    return { error: 'Accès refusé - Rôle restaurant/partenaire requis', status: 403 };
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
