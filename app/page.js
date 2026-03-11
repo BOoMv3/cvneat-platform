@@ -1870,7 +1870,7 @@ export default function Home() {
                             </span>
                           )}
                           {!isClosed && restaurant.offre_active && (
-                            <span className="bg-gradient-to-r from-red-500 via-orange-500 to-red-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-sm border border-white/30">
+                            <span className="inline-flex items-center bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 rounded-full text-xs sm:text-sm font-extrabold shadow-xl shadow-orange-500/40 ring-2 ring-white/50 animate-pulse">
                               🏷️ {restaurant.offre_label || 'Promo'}
                             </span>
                           )}
