@@ -39,7 +39,14 @@ function buildDeliveryInvoiceHtml({
         : '—';
 
   const hasOrders = ordersDetail && ordersDetail.length > 0;
-  const countDisplay = ordersCount != null ? ordersCount : (hasOrders ? ordersDetail.length : 0);
+  const numericCount = typeof ordersCount === 'number' ? ordersCount : null;
+  const effectiveCount =
+    (numericCount && numericCount > 0)
+      ? numericCount
+      : hasOrders
+        ? ordersDetail.length
+        : null;
+  const countDisplay = effectiveCount != null ? effectiveCount : '—';
 
   const netLivreur = (o) =>
     parseFloat(o.frais_livraison || 0) - parseFloat(o.delivery_commission_cvneat || 0);
