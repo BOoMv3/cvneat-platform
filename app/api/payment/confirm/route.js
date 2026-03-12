@@ -313,16 +313,33 @@ export async function POST(request) {
             // non bloquant
           }
 
-          await fetch(`${origin}/api/notifications/send-push`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              role: 'delivery',
-              title: 'Nouvelle commande disponible 🚚',
-              body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
-              data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
-            }),
-          }).catch(() => {});
+          const pushPayload = {
+            role: 'delivery',
+            title: 'Nouvelle commande disponible 🚚',
+            body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
+            data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
+          };
+          const pushBases = [
+            origin || new URL(request.url).origin,
+            process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr',
+          ].filter(Boolean);
+          for (const base of [...new Set(pushBases)]) {
+            try {
+              const res = await fetch(`${base}/api/notifications/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pushPayload),
+              });
+              if (res.ok) {
+                const result = await res.json().catch(() => ({}));
+                console.log('✅ [payment/confirm] Push livreurs:', result.sent, '/', result.total);
+                break;
+              }
+              console.warn('⚠️ [payment/confirm] send-push', res.status, await res.text().catch(() => ''));
+            } catch (e) {
+              console.warn('⚠️ [payment/confirm] send-push erreur', base, e?.message || e);
+            }
+          }
           await notifyDeliverySubscribers(supabaseAdmin, {
             title: 'Nouvelle commande disponible 🚚',
             body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,

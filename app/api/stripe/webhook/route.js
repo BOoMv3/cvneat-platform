@@ -323,36 +323,45 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
           
           // NOUVEAU WORKFLOW: d'abord notifier les livreurs uniquement.
           // Le restaurant sera notifié uniquement quand un livreur accepte la commande.
-          // Notification push pour les livreurs (commande disponible)
-          try {
-            const pushBase = origin || process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
-            const pushResponse = await fetch(`${pushBase}/api/notifications/send-push`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                role: 'delivery',
-                title: 'Nouvelle commande disponible 🚚',
-                body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
-                data: {
-                  type: 'new_order_available',
-                  orderId: order.id,
-                  url: '/delivery/dashboard'
-                }
-              })
-            });
-            
-            if (pushResponse.ok) {
-              const result = await pushResponse.json();
-              console.log('✅ Notification push livreurs:', result.sent, '/', result.total, result.message || '');
-              if (result.sent === 0 && result.total === 0) {
-                console.warn('⚠️ Aucun token livreur: vérifier rôles (delivery/livreur) et device_tokens.');
-              }
-            } else {
-              const errText = await pushResponse.text();
-              console.warn('⚠️ send-push non OK:', pushResponse.status, errText);
+          // Notification push pour les livreurs (app mobile device_tokens)
+          const pushPayload = {
+            role: 'delivery',
+            title: 'Nouvelle commande disponible 🚚',
+            body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+            data: {
+              type: 'new_order_available',
+              orderId: order.id,
+              url: '/delivery/dashboard'
             }
-          } catch (pushError) {
-            console.warn('⚠️ Erreur envoi notification push livreurs:', pushError);
+          };
+          const pushUrls = [
+            origin || process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr',
+            process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'
+          ].filter(Boolean);
+          const pushUrlsUnique = [...new Set(pushUrls)];
+          let pushDone = false;
+          for (const base of pushUrlsUnique) {
+            if (pushDone) break;
+            try {
+              const pushResponse = await fetch(`${base}/api/notifications/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pushPayload)
+              });
+              if (pushResponse.ok) {
+                const result = await pushResponse.json().catch(() => ({}));
+                console.log('✅ Notification push livreurs (app):', result.sent, '/', result.total, result.message || '');
+                if (result.sent === 0 && result.total === 0) {
+                  console.warn('⚠️ Aucun token livreur: vérifier user_details.role=delivery et device_tokens.');
+                }
+                pushDone = true;
+              } else {
+                const errText = await pushResponse.text();
+                console.warn('⚠️ send-push non OK', base, pushResponse.status, errText);
+              }
+            } catch (pushError) {
+              console.warn('⚠️ Erreur envoi push livreurs', base, pushError?.message || pushError);
+            }
           }
           // Web Push (livreurs dashboard web) — en plus de device_tokens (app mobile)
           try {

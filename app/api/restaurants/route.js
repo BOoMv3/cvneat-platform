@@ -60,7 +60,7 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
-    // Relecture ferme_manuellement pour La Bonne Pâte + Le Cinq Pizza (éviter cache)
+    // Relecture ferme_manuellement + ouvert_manuellement pour certains restos (éviter cache, affichage correct "ouvert manuellement")
     const getFreshStatus = async (resto) => {
       if (!resto?.id) return null;
       const { data } = await supabaseAdmin.from('restaurants').select('ferme_manuellement, ouvert_manuellement').eq('id', resto.id).single();
@@ -68,9 +68,11 @@ export async function GET() {
     };
     const bonnePate = filtered.find((r) => normalize(r.nom).includes('bonne pate'));
     const cinqPizza = filtered.find((r) => normalize(r.nom).includes('cinq pizza'));
-    const [bonnePateStatus, cinqPizzaStatus] = await Promise.all([
+    const saonaTea = filtered.find((r) => normalize(r.nom).includes('saona'));
+    const [bonnePateStatus, cinqPizzaStatus, saonaTeaStatus] = await Promise.all([
       bonnePate ? getFreshStatus(bonnePate) : null,
-      cinqPizza ? getFreshStatus(cinqPizza) : null
+      cinqPizza ? getFreshStatus(cinqPizza) : null,
+      saonaTea ? getFreshStatus(saonaTea) : null
     ]);
 
     const withFermeManuel = filtered.map((r) => {
@@ -89,6 +91,10 @@ export async function GET() {
       if (n.includes('cinq pizza') && cinqPizzaStatus) {
         fm = !!(cinqPizzaStatus.ferme_manuellement === true || cinqPizzaStatus.ferme_manuellement === 1);
         om = !!(cinqPizzaStatus.ouvert_manuellement === true || cinqPizzaStatus.ouvert_manuellement === 1);
+      }
+      if (n.includes('saona') && saonaTeaStatus) {
+        fm = !!(saonaTeaStatus.ferme_manuellement === true || saonaTeaStatus.ferme_manuellement === 1);
+        om = !!(saonaTeaStatus.ouvert_manuellement === true || saonaTeaStatus.ouvert_manuellement === 1);
       }
       return { ...r, ferme_manuellement: fm, ouvert_manuellement: om, offre_active: offreActive, offre_label: offreLabel, offre_description: offreDesc };
     });

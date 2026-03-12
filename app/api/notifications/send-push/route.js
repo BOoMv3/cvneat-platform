@@ -41,23 +41,33 @@ export async function POST(request) {
       return [requestedRole];
     })();
 
-    // PostgREST: .or() avec ilike pour matcher toute casse (Delivery, livreur, etc.)
-    const buildRoleOrFilter = (candidates) => {
-      if (!Array.isArray(candidates) || candidates.length === 0) return null;
-      return candidates.map((r) => `role.ilike.%${r}%`).join(',');
-    };
-
     // Récupérer les tokens de l'utilisateur ou du rôle
     let query = supabase.from('device_tokens').select('token, platform');
 
     if (userId) {
       query = query.eq('user_id', userId);
     } else if (role) {
-      const roleOr = buildRoleOrFilter(roleCandidates);
-      const usersQuery = supabase.from('users').select('id');
-      const { data: users, error: usersErr } = roleOr
-        ? await usersQuery.or(roleOr)
-        : await usersQuery.eq('role', requestedRole);
+      // Requête users: .in('role', [...]) fiable; fallback .or(ilike) si 0 résultat (casse / variantes)
+      let usersQuery = supabase.from('users').select('id');
+      let users = [];
+      let usersErr = null;
+
+      if (roleCandidates.length > 0) {
+        const { data: byIn, error: errIn } = await usersQuery.in('role', roleCandidates);
+        usersErr = errIn;
+        users = byIn || [];
+      }
+      if ((!users || users.length === 0) && roleCandidates.length > 0) {
+        const roleOr = roleCandidates.map((r) => `role.ilike.%${r}%`).join(',');
+        const { data: byIlike, error: errIlike } = await supabase.from('users').select('id').or(roleOr);
+        if (!usersErr) usersErr = errIlike;
+        if (byIlike && byIlike.length > 0) users = byIlike;
+      }
+      if (requestedRole && (!users || users.length === 0)) {
+        const { data: byEq, error: errEq } = await supabase.from('users').select('id').eq('role', requestedRole);
+        if (!usersErr) usersErr = errEq;
+        if (byEq && byEq.length > 0) users = byEq;
+      }
 
       if (usersErr) {
         console.error('❌ [send-push] Erreur users rôle', requestedRole, usersErr);
@@ -68,7 +78,7 @@ export async function POST(request) {
         query = query.in('user_id', userIds);
         console.log(`📱 [send-push] Rôle ${requestedRole}: ${users.length} user(s), ${userIds.length} id(s)`);
       } else {
-        console.warn('⚠️ [send-push] Aucun user pour rôle', requestedRole, 'filter:', roleOr);
+        console.warn('⚠️ [send-push] Aucun user pour rôle', requestedRole, 'candidates:', roleCandidates);
         return NextResponse.json({ sent: 0, message: 'Aucun utilisateur trouvé pour ce rôle' });
       }
     }
