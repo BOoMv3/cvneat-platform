@@ -70,8 +70,7 @@ export async function GET(request) {
     const limit = Math.max(1, Math.min(100, parseInt(limitRaw || '50', 10) || 50));
 
     // 1) Commandes (liste) — payées uniquement
-    // IMPORTANT: Ne pas montrer en_attente sans livreur — le restaurant ne doit voir la commande qu'après qu'un livreur l'ait acceptée
-    // Exclure: statut='en_attente' ET livreur_id IS NULL (évite préparation inutile si aucun livreur)
+    // Ne montrer que quand un livreur a accepté — le restaurant reçoit la commande APRÈS le livreur
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
       .select('id, created_at, updated_at, accepted_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, preparation_time, preparation_started_at, delivery_time, ready_for_delivery, payment_status, loyalty_points_used, loyalty_discount_amount')
@@ -268,11 +267,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Cette commande ne peut plus être modifiée' }, { status: 400 });
     }
 
-    // NOUVEAU WORKFLOW: Vérifier qu'un livreur a accepté la commande AVANT que le restaurant puisse accepter
+    // WORKFLOW: Le livreur doit accepter AVANT — le restaurant ne peut accepter qu'une fois le livreur assigné
     if (!order.livreur_id) {
       return NextResponse.json({ 
         error: 'Aucun livreur disponible', 
-        details: 'Cette commande ne peut pas être acceptée car aucun livreur ne l\'a encore acceptée. Veuillez patienter.' 
+        details: 'Un livreur doit d\'abord accepter la commande. Veuillez patienter.' 
       }, { status: 400 });
     }
 
