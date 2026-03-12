@@ -88,16 +88,18 @@ export async function PUT(request, { params }) {
       updated_at: new Date().toISOString()
     };
     
+    // Ouvrir/Fermer : on met à jour d'abord les colonnes qui existent toujours (ferme_manuellement)
+    // puis ouvert_manuellement en option (peut ne pas exister si migration non appliquée)
+    const wantOuvertManuel = body.ferme_manuellement !== undefined && !(
+      body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
+      body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
+    );
+
     if (body.ferme_manuellement !== undefined) {
-      if (body.ferme_manuellement === true || body.ferme_manuellement === 'true' || body.ferme_manuellement === 1 || body.ferme_manuellement === '1') {
-        updateData.ferme_manuellement = true;
-        updateData.ouvert_manuellement = false;
-      } else {
-        updateData.ferme_manuellement = false;
-        updateData.ouvert_manuellement = body.ouvert_manuellement !== undefined
-          ? !!(body.ouvert_manuellement === true || body.ouvert_manuellement === 'true' || body.ouvert_manuellement === 1)
-          : true;
-      }
+      updateData.ferme_manuellement = (
+        body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
+        body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
+      );
     }
 
     // Temps de préparation déclaré (minutes)
@@ -117,25 +119,51 @@ export async function PUT(request, { params }) {
       restaurant_id: id,
       updateData,
       ferme_manuellement_body_value: body.ferme_manuellement,
-      ferme_manuellement_body_type: typeof body.ferme_manuellement,
       ferme_manuellement_final: updateData.ferme_manuellement
     });
 
-    // Mettre à jour le restaurant
-    // IMPORTANT: ne pas demander de colonnes non existantes dans le select (sinon l'UPDATE échoue)
+    // 1) Mise à jour avec colonnes garanties (sans ouvert_manuellement pour éviter erreur si migration absente)
     const { data: updatedRestaurant, error: updateError } = await supabaseAdmin
       .from('restaurants')
       .update(updateData)
       .eq('id', id)
-      .select('id, nom, ferme_manuellement, ouvert_manuellement, updated_at')
+      .select('id, nom, ferme_manuellement, updated_at')
       .single();
 
     if (updateError) {
       console.error('❌ Erreur mise à jour restaurant:', updateError);
-      return NextResponse.json({ 
-        error: 'Erreur lors de la mise à jour', 
-        details: updateError.message 
+      return NextResponse.json({
+        error: 'Erreur lors de la mise à jour',
+        details: updateError.message
       }, { status: 500 });
+    }
+
+    // 2) Si "Ouvrir" (ferme_manuellement = false), mettre à jour ouvert_manuellement si la colonne existe
+    if (wantOuvertManuel) {
+      try {
+        const { error: openErr } = await supabaseAdmin
+          .from('restaurants')
+          .update({ ouvert_manuellement: true, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        if (!openErr && updatedRestaurant) updatedRestaurant.ouvert_manuellement = true;
+      } catch (e) {
+        console.warn('⚠️ ouvert_manuellement non mis à jour (colonne absente ?):', e?.message || e);
+      }
+    } else if (body.ferme_manuellement !== undefined) {
+      try {
+        await supabaseAdmin
+          .from('restaurants')
+          .update({ ouvert_manuellement: false, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        if (updatedRestaurant) updatedRestaurant.ouvert_manuellement = false;
+      } catch (e) {
+        console.warn('⚠️ ouvert_manuellement non mis à jour:', e?.message || e);
+      }
+    }
+
+    // Attacher ouvert_manuellement à la réponse si on le connaît (pour le front)
+    if (updatedRestaurant && body.ferme_manuellement !== undefined) {
+      updatedRestaurant.ouvert_manuellement = wantOuvertManuel;
     }
 
     // Si on a tenté de mettre à jour le temps de préparation, essayer de le renvoyer (si les colonnes existent)
