@@ -135,12 +135,26 @@ export async function POST(request, { params }) {
 
     const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
-      .select('horaires, ferme_manuellement')
+      .select('horaires, ferme_manuellement, ouvert_manuellement')
       .eq('id', id)
       .single();
 
     if (error || !restaurant) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
+    }
+
+    // Si ouvert_manuellement = true → TOUJOURS OUVERT (override horaires) — ex: O Saona Tea
+    const om = restaurant.ouvert_manuellement === true || restaurant.ouvert_manuellement === 1 ||
+      (typeof restaurant.ouvert_manuellement === 'string' && restaurant.ouvert_manuellement.trim().toLowerCase() === 'true');
+    if (om) {
+      const res = json({
+        isOpen: true,
+        message: 'Restaurant ouvert manuellement',
+        reason: 'manual_open',
+        isManuallyClosed: false
+      });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
     }
 
     // Normaliser ferme_manuellement - UNIQUEMENT true si valeur explicitement truthy
