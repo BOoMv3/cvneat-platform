@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { supabase as supabasePublic, supabaseAdmin } from '../../../../lib/supabase';
 import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
 import { notifyDeliverySubscribers } from '../../../../lib/pushNotifications';
+import { sendDeliveryAppPush } from '../../../../lib/sendDeliveryAppPush';
 // SSE resto désactivé dans ce workflow: on notifie le resto uniquement après acceptation livreur.
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -322,46 +323,36 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
           const notificationTotal = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
           
           // NOUVEAU WORKFLOW: d'abord notifier les livreurs uniquement.
-          // Le restaurant sera notifié uniquement quand un livreur accepte la commande.
-          // Notification push pour les livreurs (app mobile device_tokens)
-          const pushPayload = {
-            role: 'delivery',
-            title: 'Nouvelle commande disponible 🚚',
-            body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
-            data: {
-              type: 'new_order_available',
+          // Appel direct (pas de fetch HTTP) pour éviter timeout / cold start
+          try {
+            const pushResult = await sendDeliveryAppPush({
               orderId: order.id,
-              url: '/delivery/dashboard'
+              total: notificationTotal,
+              data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
+            });
+            console.log('✅ Notification push livreurs (app):', pushResult.sent, '/', pushResult.total);
+            if (pushResult.sent === 0 && pushResult.total === 0) {
+              console.warn('⚠️ Aucun token livreur: vérifier user_details.role=delivery et device_tokens.');
             }
-          };
-          const pushUrls = [
-            origin || process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr',
-            process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'
-          ].filter(Boolean);
-          const pushUrlsUnique = [...new Set(pushUrls)];
-          let pushDone = false;
-          for (const base of pushUrlsUnique) {
-            if (pushDone) break;
+          } catch (pushErr) {
+            console.warn('⚠️ Erreur push direct, tentative fallback HTTP:', pushErr?.message);
             try {
-              const pushResponse = await fetch(`${base}/api/notifications/send-push`, {
+              const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
+              const pushRes = await fetch(`${base}/api/notifications/send-push`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(pushPayload)
+                body: JSON.stringify({
+                  role: 'delivery',
+                  title: 'Nouvelle commande disponible 🚚',
+                  body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                  data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
+                })
               });
-              if (pushResponse.ok) {
-                const result = await pushResponse.json().catch(() => ({}));
-                console.log('✅ Notification push livreurs (app):', result.sent, '/', result.total, result.message || '');
-                if (result.sent === 0 && result.total === 0) {
-                  console.warn('⚠️ Aucun token livreur: vérifier user_details.role=delivery et device_tokens.');
-                }
-                pushDone = true;
-              } else {
-                const errText = await pushResponse.text();
-                console.warn('⚠️ send-push non OK', base, pushResponse.status, errText);
+              if (pushRes.ok) {
+                const fallback = await pushRes.json().catch(() => ({}));
+                console.log('✅ Fallback HTTP push:', fallback.sent, '/', fallback.total);
               }
-            } catch (pushError) {
-              console.warn('⚠️ Erreur envoi push livreurs', base, pushError?.message || pushError);
-            }
+            } catch (_) {}
           }
           // Web Push (livreurs dashboard web) — en plus de device_tokens (app mobile)
           try {

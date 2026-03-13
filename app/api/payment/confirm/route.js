@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
 import { notifyDeliverySubscribers } from '../../../../lib/pushNotifications';
+import { sendDeliveryAppPush } from '../../../../lib/sendDeliveryAppPush';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -313,32 +314,16 @@ export async function POST(request) {
             // non bloquant
           }
 
-          const pushPayload = {
-            role: 'delivery',
-            title: 'Nouvelle commande disponible 🚚',
-            body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
-            data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
-          };
-          const pushBases = [
-            origin || new URL(request.url).origin,
-            process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr',
-          ].filter(Boolean);
-          for (const base of [...new Set(pushBases)]) {
-            try {
-              const res = await fetch(`${base}/api/notifications/send-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(pushPayload),
-              });
-              if (res.ok) {
-                const result = await res.json().catch(() => ({}));
-                console.log('✅ [payment/confirm] Push livreurs:', result.sent, '/', result.total);
-                break;
-              }
-              console.warn('⚠️ [payment/confirm] send-push', res.status, await res.text().catch(() => ''));
-            } catch (e) {
-              console.warn('⚠️ [payment/confirm] send-push erreur', base, e?.message || e);
-            }
+          // Appel direct (même logique que webhook) pour fiabilité
+          try {
+            const pushResult = await sendDeliveryAppPush({
+              orderId: updated.id,
+              total: notificationTotal,
+              data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
+            });
+            console.log('✅ [payment/confirm] Push livreurs:', pushResult.sent, '/', pushResult.total);
+          } catch (e) {
+            console.warn('⚠️ [payment/confirm] send-push erreur:', e?.message || e);
           }
           await notifyDeliverySubscribers(supabaseAdmin, {
             title: 'Nouvelle commande disponible 🚚',
