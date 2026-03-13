@@ -144,7 +144,7 @@ export async function POST(request) {
       }
     }
 
-    // Envoyer aux appareils Android via FCM (v1 prioritaire, sinon legacy)
+    // Envoyer aux appareils Android via FCM (v1 prioritaire, sinon legacy, avec Fallback auto)
     if (androidTokens.length > 0) {
       const useV1 = isFcmV1Configured();
       const fcmServerKey = process.env.FIREBASE_SERVER_KEY;
@@ -155,7 +155,12 @@ export async function POST(request) {
       } else {
         for (const tokenData of androidTokens) {
           try {
+            let v1Tried = false;
+            let v1Ok = false;
+
+            // 1) Tentative FCM v1 si configuré
             if (useV1) {
+              v1Tried = true;
               const result = await sendFcmV1Message(
                 tokenData.token,
                 title,
@@ -164,11 +169,15 @@ export async function POST(request) {
                 soundName || null
               );
               if (result.ok) {
+                v1Ok = true;
                 sentCount++;
               } else {
-                errors.push({ token: tokenData.token.substring(0, 10) + '...', error: result.error });
+                console.warn('⚠️ FCM v1 échec, erreur:', result.error);
               }
-            } else {
+            }
+
+            // 2) Fallback automatique sur l’API legacy si une Server key est présente
+            if ((!v1Tried || !v1Ok) && fcmServerKey) {
               const response = await fetch('https://fcm.googleapis.com/fcm/send', {
                 method: 'POST',
                 headers: {
@@ -191,6 +200,7 @@ export async function POST(request) {
                 sentCount++;
               } else {
                 const errorText = await response.text();
+                console.warn('⚠️ FCM legacy échec:', errorText);
                 errors.push({ token: tokenData.token.substring(0, 10) + '...', error: errorText });
               }
             }

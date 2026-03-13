@@ -172,7 +172,7 @@ const buildBaseIngredients = (names = []) =>
 const pizzasBaseTomate = [
   {
     nom: 'Margherita',
-    prix: 10,
+    prix: 11,
     category: 'Pizzas - Base tomate',
     description: 'Mozzarella Fior Di Latte, pesto de basilic',
     baseIngredients: ['Base tomate', 'Mozzarella Fior Di Latte', 'Pesto de basilic'],
@@ -212,7 +212,7 @@ const pizzasBaseTomate = [
   },
   {
     nom: 'Calzone',
-    prix: 12,
+    prix: 14.5,
     category: 'Pizzas - Base tomate',
     description: 'Mozzarella Fior Di Latte, jambon blanc, œuf',
     baseIngredients: ['Base tomate', 'Mozzarella Fior Di Latte', 'Jambon blanc', 'Œuf'],
