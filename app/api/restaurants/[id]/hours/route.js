@@ -135,7 +135,7 @@ export async function POST(request, { params }) {
 
     const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
-      .select('horaires, ferme_manuellement, ouvert_manuellement')
+      .select('horaires, ferme_manuellement')
       .eq('id', id)
       .single();
 
@@ -143,9 +143,13 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Si ouvert_manuellement = true → TOUJOURS OUVERT (override horaires) — ex: O Saona Tea
-    const om = restaurant.ouvert_manuellement === true || restaurant.ouvert_manuellement === 1 ||
-      (typeof restaurant.ouvert_manuellement === 'string' && restaurant.ouvert_manuellement.trim().toLowerCase() === 'true');
+    // Ouvert manuellement ? (requête à part au cas où la colonne n'existe pas encore en prod)
+    let om = false;
+    try {
+      const { data: omData } = await supabaseAdmin.from('restaurants').select('ouvert_manuellement').eq('id', id).single();
+      om = omData?.ouvert_manuellement === true || omData?.ouvert_manuellement === 1 ||
+        (typeof omData?.ouvert_manuellement === 'string' && omData.ouvert_manuellement.trim().toLowerCase() === 'true');
+    } catch (_) {}
     if (om) {
       const res = json({
         isOpen: true,

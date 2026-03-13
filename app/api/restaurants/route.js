@@ -37,7 +37,7 @@ export async function GET() {
     
     const { data, error } = await supabaseAdmin
       .from('restaurants')
-      .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description');
+      .select('*, frais_livraison, ferme_manuellement, horaires, offre_active, offre_label, offre_description');
       // .eq('status', 'active'); // Temporairement désactivé pour debug
 
     if (error) {
@@ -63,17 +63,29 @@ export async function GET() {
     // Relecture ferme_manuellement + ouvert_manuellement pour certains restos (éviter cache, affichage correct "ouvert manuellement")
     const getFreshStatus = async (resto) => {
       if (!resto?.id) return null;
-      const { data } = await supabaseAdmin.from('restaurants').select('ferme_manuellement, ouvert_manuellement').eq('id', resto.id).single();
-      return data;
+      try {
+        const { data: fresh, error: freshErr } = await supabaseAdmin.from('restaurants').select('ferme_manuellement, ouvert_manuellement').eq('id', resto.id).single();
+        if (freshErr || !fresh) return null;
+        return fresh;
+      } catch (_) {
+        return null;
+      }
     };
     const bonnePate = filtered.find((r) => normalize(r.nom).includes('bonne pate'));
     const cinqPizza = filtered.find((r) => normalize(r.nom).includes('cinq pizza'));
     const saonaTea = filtered.find((r) => normalize(r.nom).includes('saona'));
-    const [bonnePateStatus, cinqPizzaStatus, saonaTeaStatus] = await Promise.all([
-      bonnePate ? getFreshStatus(bonnePate) : null,
-      cinqPizza ? getFreshStatus(cinqPizza) : null,
-      saonaTea ? getFreshStatus(saonaTea) : null
-    ]);
+    let bonnePateStatus = null;
+    let cinqPizzaStatus = null;
+    let saonaTeaStatus = null;
+    try {
+      [bonnePateStatus, cinqPizzaStatus, saonaTeaStatus] = await Promise.all([
+        bonnePate ? getFreshStatus(bonnePate) : null,
+        cinqPizza ? getFreshStatus(cinqPizza) : null,
+        saonaTea ? getFreshStatus(saonaTea) : null
+      ]);
+    } catch (_) {
+      // Si colonne ouvert_manuellement absente ou autre erreur, on garde les données du premier select
+    }
 
     const withFermeManuel = filtered.map((r) => {
       const n = normalize(r.nom);
