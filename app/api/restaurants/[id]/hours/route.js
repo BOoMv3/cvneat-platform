@@ -143,23 +143,7 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Ouvert manuellement ? (requête à part au cas où la colonne n'existe pas encore en prod)
-    let om = false;
-    try {
-      const { data: omData } = await supabaseAdmin.from('restaurants').select('ouvert_manuellement').eq('id', id).single();
-      om = omData?.ouvert_manuellement === true || omData?.ouvert_manuellement === 1 ||
-        (typeof omData?.ouvert_manuellement === 'string' && omData.ouvert_manuellement.trim().toLowerCase() === 'true');
-    } catch (_) {}
-    if (om) {
-      const res = json({
-        isOpen: true,
-        message: 'Restaurant ouvert manuellement',
-        reason: 'manual_open',
-        isManuallyClosed: false
-      });
-      res.headers.set('Cache-Control', 'no-store, max-age=0');
-      return res;
-    }
+    // Pas d'override ouvert_manuellement : ouvert/fermé selon horaires uniquement (ouvert_manuellement = juste "réouvert")
 
     // Normaliser ferme_manuellement - UNIQUEMENT true si valeur explicitement truthy
     const fm = restaurant.ferme_manuellement;

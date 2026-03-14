@@ -76,19 +76,21 @@ export async function GET() {
     }
 
     const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
+    const isLaBonnePate = (nom) => nom && (String(nom).toLowerCase().includes('bonne pâte') || String(nom).toLowerCase().includes('bonne pate'));
     const withFermeManuel = filtered.map((r) => {
       const fresh = freshMap[r.id] || r;
       const fm = toBool(fresh.ferme_manuellement);
       const om = toBool(fresh.ouvert_manuellement);
       const oa = fresh.offre_active;
-      const offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
+      let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
+      if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
       return {
         ...r,
         ferme_manuellement: fm,
         ouvert_manuellement: om,
         offre_active: offreActiveFinal,
-        offre_label: fresh.offre_label ?? r.offre_label ?? null,
-        offre_description: fresh.offre_description ?? r.offre_description ?? null
+        offre_label: isLaBonnePate(r.nom) ? null : (fresh.offre_label ?? r.offre_label ?? null),
+        offre_description: isLaBonnePate(r.nom) ? null : (fresh.offre_description ?? r.offre_description ?? null)
       };
     });
 

@@ -348,20 +348,13 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       fermeManuel = s === 'true' || s === '1' || s === 'oui';
     }
     const isManuallyClosed = fermeManuel === true || fermeManuel === 1;
-    const ouvertManuel = restaurant.ouvert_manuellement === true || restaurant.ouvert_manuellement === 1 ||
-      (typeof restaurant.ouvert_manuellement === 'string' && restaurant.ouvert_manuellement.trim().toLowerCase() === 'true');
     
-    // Si ferme_manuellement = true → TOUJOURS FERMÉ
+    // Si ferme_manuellement = true → TOUJOURS FERMÉ (jusqu'à réouverture manuelle)
     if (isManuallyClosed) {
-      console.log(`[checkRestaurantOpenStatus] ${restaurant?.nom || restaurant?.id} - FERMÉ MANUELLEMENT (ferme_manuellement = ${fermeManuel})`);
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
     
-    // Si ouvert_manuellement = true → TOUJOURS OUVERT (override horaires)
-    if (ouvertManuel) {
-      return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
-    }
-    
+    // Sinon : ouvert/fermé selon les horaires (ouvert_manuellement = juste "réouvert", pas d'override horaires)
     let horaires = restaurant.horaires;
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
@@ -943,10 +936,16 @@ export default function Home() {
               today_hours_label: todayHoursLabel,
               ferme_manuellement: restaurant.ferme_manuellement,
               ouvert_manuellement: restaurant.ouvert_manuellement,
-              // Badge promo : uniquement pour les partenaires qui ont activé une promo (ex: La Bonne Pâte)
-              offre_active: restaurant.offre_active === true || restaurant.offre_active === 1 || (typeof restaurant.offre_active === 'string' && restaurant.offre_active.trim().toLowerCase() === 'true'),
-              offre_label: restaurant.offre_label ?? null,
-              offre_description: restaurant.offre_description ?? null
+              // Badge promo : partenaires avec promo activée (La Bonne Pâte exclue définitivement)
+              ...(function () {
+                const isLaBonnePate = restaurant.nom && (String(restaurant.nom).toLowerCase().includes('bonne pâte') || String(restaurant.nom).toLowerCase().includes('bonne pate'));
+                const offreActive = isLaBonnePate ? false : (restaurant.offre_active === true || restaurant.offre_active === 1 || (typeof restaurant.offre_active === 'string' && restaurant.offre_active.trim().toLowerCase() === 'true'));
+                return {
+                  offre_active: offreActive,
+                  offre_label: isLaBonnePate ? null : (restaurant.offre_label ?? null),
+                  offre_description: isLaBonnePate ? null : (restaurant.offre_description ?? null)
+                };
+              })()
             };
             
             // Log pour "Le O Saona Tea" spécifiquement
@@ -1205,7 +1204,7 @@ export default function Home() {
     // Filtre par catégorie
     if (selectedCategory !== 'all') {
       if (selectedCategory === 'offres') {
-        if (!restaurant.offre_active) return false;
+        if (restaurant.offre_active !== true) return false;
       } else {
       const restaurantTokens = restaurant.category_tokens || [];
 
@@ -1792,16 +1791,7 @@ export default function Home() {
                     isManuallyClosed: true
                   };
                 }
-                // Priorité 2: ouvert manuellement → toujours ouvert (O Saona Tea, Deliss King, etc.)
-                const om = restaurant.ouvert_manuellement === true || restaurant.ouvert_manuellement === 1 ||
-                  (typeof restaurant.ouvert_manuellement === 'string' && String(restaurant.ouvert_manuellement).trim().toLowerCase() === 'true');
-                if (om && !forceFermeManuel) {
-                  restaurantStatus = {
-                    ...restaurantStatus,
-                    isOpen: true,
-                    isManuallyClosed: false
-                  };
-                }
+                // Pas d'override : ouvert_manuellement = juste "réouvert", le statut suit les horaires
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 // Statut unique : fermé si ferme_manuellement OU si horaires/ouvert_manuellement disent fermé
@@ -1884,7 +1874,7 @@ export default function Home() {
                               Fermé
                             </span>
                           )}
-                          {!isClosed && restaurant.offre_active && (
+                          {!isClosed && restaurant.offre_active === true && (
                             <span className="inline-flex items-center bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 rounded-full text-xs sm:text-sm font-extrabold shadow-xl shadow-orange-500/40 ring-2 ring-white/50 animate-pulse">
                               🏷️ {restaurant.offre_label || 'Promo'}
                             </span>
@@ -1952,7 +1942,7 @@ export default function Home() {
                           </p>
                           
                           {/* Détails de la promo (partenaires qui ont activé une offre) */}
-                          {restaurant.offre_active && (restaurant.offre_label || restaurant.offre_description) && (
+                          {restaurant.offre_active === true && (restaurant.offre_label || restaurant.offre_description) && (
                             <div className="mb-3 sm:mb-4 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200/60 dark:border-orange-700/40">
                               <p className="text-xs sm:text-sm font-semibold text-orange-800 dark:text-orange-200 mb-0.5">
                                 🏷️ {restaurant.offre_label || 'Offre en cours'}
