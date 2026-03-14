@@ -440,14 +440,16 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
           break;
         }
       }
-    } else if (heuresJour.ouverture && heuresJour.fermeture) {
-      // Vérifier horaires simples
-      const start = parseTime(heuresJour.ouverture);
-      let end = parseTime(heuresJour.fermeture);
+    } else if ((heuresJour.ouverture || heuresJour.debut) && (heuresJour.fermeture || heuresJour.fin)) {
+      // Vérifier horaires simples (ouverture/fermeture ou debut/fin)
+      const openStr = heuresJour.ouverture || heuresJour.debut;
+      const closeStr = heuresJour.fermeture || heuresJour.fin;
+      const start = parseTime(openStr);
+      let end = parseTime(closeStr);
       
       if (start !== null && end !== null) {
         // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
-        const isMidnightClose = heuresJour.fermeture === '00:00' || heuresJour.fermeture === '0:00';
+        const isMidnightClose = (heuresJour.fermeture || heuresJour.fin || '') === '00:00' || (heuresJour.fermeture || heuresJour.fin || '') === '0:00';
         if (isMidnightClose) {
           end = 24 * 60; // 1440 minutes
         }
@@ -929,7 +931,7 @@ export default function Home() {
               console.warn('[Restaurants] Erreur getTodayHoursLabel:', e);
             }
 
-            // S'assurer que ferme_manuellement et offre (promo) sont bien préservés
+            // S'assurer que ferme_manuellement, ouvert_manuellement et offre (promo) sont bien préservés
             const normalizedRestaurant = {
               ...restaurant,
               image_url: primaryImage,
@@ -940,8 +942,9 @@ export default function Home() {
               category_tokens: categoryTokens,
               today_hours_label: todayHoursLabel,
               ferme_manuellement: restaurant.ferme_manuellement,
+              ouvert_manuellement: restaurant.ouvert_manuellement,
               // Badge promo : uniquement pour les partenaires qui ont activé une promo (ex: La Bonne Pâte)
-              offre_active: !!(restaurant.offre_active === true || restaurant.offre_active === 1 || String(restaurant.offre_active || '').trim().toLowerCase() === 'true'),
+              offre_active: restaurant.offre_active === true || restaurant.offre_active === 1 || (typeof restaurant.offre_active === 'string' && restaurant.offre_active.trim().toLowerCase() === 'true'),
               offre_label: restaurant.offre_label ?? null,
               offre_description: restaurant.offre_description ?? null
             };
@@ -1779,7 +1782,7 @@ export default function Home() {
                     hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
                   };
                 }
-                // Priorité absolue: si la donnée restaurant dit fermé manuellement, on affiche fermé (évite cache / API lente)
+                // Priorité 1: fermé manuellement → toujours fermé
                 const fm = restaurant.ferme_manuellement;
                 const forceFermeManuel = fm === true || fm === 1 || (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
                 if (forceFermeManuel) {
@@ -1789,13 +1792,20 @@ export default function Home() {
                     isManuallyClosed: true
                   };
                 }
+                // Priorité 2: ouvert manuellement → toujours ouvert (O Saona Tea, Deliss King, etc.)
+                const om = restaurant.ouvert_manuellement === true || restaurant.ouvert_manuellement === 1 ||
+                  (typeof restaurant.ouvert_manuellement === 'string' && String(restaurant.ouvert_manuellement).trim().toLowerCase() === 'true');
+                if (om && !forceFermeManuel) {
+                  restaurantStatus = {
+                    ...restaurantStatus,
+                    isOpen: true,
+                    isManuallyClosed: false
+                  };
+                }
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-                // Liste: afficher fermé sauf si ferme_manuellement est explicitement false (La Bonne Pâte, Le Cinq Pizza)
-                const isBonnePate = normalizedName.includes('bonne pate') || normalizedName.includes('la bonne pate');
-                const isCinqPizza = normalizedName.includes('cinq pizza') || normalizedName.includes('le cinq');
-                const closedParNom = (isBonnePate || isCinqPizza) && restaurant.ferme_manuellement !== false;
-                const isClosed = closedParNom || !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                // Statut unique : fermé si ferme_manuellement OU si horaires/ouvert_manuellement disent fermé
+                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
                 // Utiliser normalizedName qui est déjà calculé plus haut

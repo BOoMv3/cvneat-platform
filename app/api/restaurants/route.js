@@ -60,55 +60,36 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
-    // Relecture ferme_manuellement + ouvert_manuellement pour certains restos (éviter cache, affichage correct "ouvert manuellement")
-    const getFreshStatus = async (resto) => {
-      if (!resto?.id) return null;
-      try {
-        const { data: fresh, error: freshErr } = await supabaseAdmin.from('restaurants').select('ferme_manuellement, ouvert_manuellement').eq('id', resto.id).single();
-        if (freshErr || !fresh) return null;
-        return fresh;
-      } catch (_) {
-        return null;
-      }
-    };
-    const bonnePate = filtered.find((r) => normalize(r.nom).includes('bonne pate'));
-    const cinqPizza = filtered.find((r) => normalize(r.nom).includes('cinq pizza'));
-    const saonaTea = filtered.find((r) => normalize(r.nom).includes('saona'));
-    let bonnePateStatus = null;
-    let cinqPizzaStatus = null;
-    let saonaTeaStatus = null;
+    // Relecture fraîche pour TOUS les restos : ferme_manuellement, ouvert_manuellement, offre
+    const ids = filtered.map((r) => r.id);
+    let freshMap = {};
     try {
-      [bonnePateStatus, cinqPizzaStatus, saonaTeaStatus] = await Promise.all([
-        bonnePate ? getFreshStatus(bonnePate) : null,
-        cinqPizza ? getFreshStatus(cinqPizza) : null,
-        saonaTea ? getFreshStatus(saonaTea) : null
-      ]);
+      const { data: freshList, error: freshErr } = await supabaseAdmin
+        .from('restaurants')
+        .select('id, ferme_manuellement, ouvert_manuellement, offre_active, offre_label, offre_description')
+        .in('id', ids);
+      if (!freshErr && freshList?.length) {
+        freshList.forEach((row) => { freshMap[row.id] = row; });
+      }
     } catch (_) {
-      // Si colonne ouvert_manuellement absente ou autre erreur, on garde les données du premier select
+      // Fallback sur les données du select principal
     }
 
+    const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
     const withFermeManuel = filtered.map((r) => {
-      const n = normalize(r.nom);
-      const raw = r.ferme_manuellement;
-      let fm = raw === true || raw === 1 || String(raw || '').trim().toLowerCase() === 'true';
-      let om = r.ouvert_manuellement === true || r.ouvert_manuellement === 1 || String(r.ouvert_manuellement || '').trim().toLowerCase() === 'true';
-      // Promo : pour tous les restaurants, on utilise les données du select (ceux qui ont activé une promo l'ont en base)
-      const offreActive = r.offre_active === true || r.offre_active === 1 || String(r.offre_active || '').trim().toLowerCase() === 'true';
-      const offreLabel = r.offre_label ?? null;
-      const offreDesc = r.offre_description ?? null;
-      if (n.includes('bonne pate') && bonnePateStatus) {
-        fm = !!(bonnePateStatus.ferme_manuellement === true || bonnePateStatus.ferme_manuellement === 1);
-        om = !!(bonnePateStatus.ouvert_manuellement === true || bonnePateStatus.ouvert_manuellement === 1);
-      }
-      if (n.includes('cinq pizza') && cinqPizzaStatus) {
-        fm = !!(cinqPizzaStatus.ferme_manuellement === true || cinqPizzaStatus.ferme_manuellement === 1);
-        om = !!(cinqPizzaStatus.ouvert_manuellement === true || cinqPizzaStatus.ouvert_manuellement === 1);
-      }
-      if (n.includes('saona') && saonaTeaStatus) {
-        fm = !!(saonaTeaStatus.ferme_manuellement === true || saonaTeaStatus.ferme_manuellement === 1);
-        om = !!(saonaTeaStatus.ouvert_manuellement === true || saonaTeaStatus.ouvert_manuellement === 1);
-      }
-      return { ...r, ferme_manuellement: fm, ouvert_manuellement: om, offre_active: offreActive, offre_label: offreLabel, offre_description: offreDesc };
+      const fresh = freshMap[r.id] || r;
+      const fm = toBool(fresh.ferme_manuellement);
+      const om = toBool(fresh.ouvert_manuellement);
+      const oa = fresh.offre_active;
+      const offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
+      return {
+        ...r,
+        ferme_manuellement: fm,
+        ouvert_manuellement: om,
+        offre_active: offreActiveFinal,
+        offre_label: fresh.offre_label ?? r.offre_label ?? null,
+        offre_description: fresh.offre_description ?? r.offre_description ?? null
+      };
     });
 
     // Performance: do not query `reviews` per restaurant (N+1 queries).
