@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { sendDeliveryAppPush } from '../../../../lib/sendDeliveryAppPush';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
 
@@ -630,9 +631,24 @@ export async function PUT(request, { params }) {
 
     console.log(`✅ [API PUT /orders/${id}] Commande mise à jour avec succès`);
 
-    // NE PAS notifier les livreurs depuis PUT : cette route peut être appelée par divers acteurs
-    // sans garantie que le paiement soit réellement confirmé. Les notifications sont envoyées
-    // uniquement par : 1) Stripe webhook (payment_intent.succeeded) 2) payment/confirm (PI vérifié)
+    // Fallback push : si le client vient de marquer payment_status=paid avec stripe_payment_intent_id
+    // (paiement Stripe confirmé), envoyer la notif livreurs. Le webhook peut être en retard ou échouer.
+    const nowPaid = (data?.payment_status || '').toString().trim().toLowerCase() === 'paid';
+    const wasNotPaid = (before?.payment_status || '').toString().trim().toLowerCase() !== 'paid';
+    const hasStripePi = !!(body.stripe_payment_intent_id || data?.stripe_payment_intent_id);
+    if (nowPaid && wasNotPaid && hasStripePi && before?.restaurant_id) {
+      try {
+        const total = parseFloat(before.total || 0) + parseFloat(before.frais_livraison || 0);
+        const pushResult = await sendDeliveryAppPush({
+          orderId: id,
+          total: total.toFixed(2),
+          data: { type: 'new_order_available', orderId: id, url: '/delivery/dashboard' },
+        });
+        console.log(`✅ [PUT /orders] Push livreurs (fallback):`, pushResult.sent, '/', pushResult.total);
+      } catch (e) {
+        console.warn(`⚠️ [PUT /orders] Push fallback erreur:`, e?.message);
+      }
+    }
 
     return json(data);
   } catch (error) {
