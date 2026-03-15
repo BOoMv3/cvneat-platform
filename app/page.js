@@ -356,13 +356,19 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       fermeManuel = s === 'true' || s === '1' || s === 'oui';
     }
     const isManuallyClosed = fermeManuel === true || fermeManuel === 1;
-    
+    const ouvertManuel = restaurant.ouvert_manuellement === true || restaurant.ouvert_manuellement === 1 ||
+      (typeof restaurant.ouvert_manuellement === 'string' && String(restaurant.ouvert_manuellement).trim().toLowerCase() === 'true');
+
     // Si ferme_manuellement = true → TOUJOURS FERMÉ (jusqu'à réouverture manuelle)
     if (isManuallyClosed) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
-    
-    // Sinon : ouvert/fermé selon les horaires (ouvert_manuellement = juste "réouvert", pas d'override horaires)
+    // Si le partenaire a cliqué "Ouvrir" → afficher OUVERT (La Bonne Pâte, Deliss King, Dolce Vita, etc.)
+    if (ouvertManuel) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
+    }
+
+    // Sinon : ouvert/fermé selon les plages horaires
     let horaires = restaurant.horaires;
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
@@ -1757,7 +1763,16 @@ export default function Home() {
                     isManuallyClosed: true
                   };
                 }
-                // Pas d'override : ouvert_manuellement = juste "réouvert", le statut suit les horaires
+                // Partenaire a cliqué "Ouvrir" → afficher ouvert (La Bonne Pâte, Deliss King, Dolce Vita, etc.)
+                const om = restaurant.ouvert_manuellement === true || restaurant.ouvert_manuellement === 1 ||
+                  (typeof restaurant.ouvert_manuellement === 'string' && String(restaurant.ouvert_manuellement).trim().toLowerCase() === 'true');
+                if (om && !forceFermeManuel) {
+                  restaurantStatus = {
+                    ...restaurantStatus,
+                    isOpen: true,
+                    isManuallyClosed: false
+                  };
+                }
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 // Statut unique : fermé si ferme_manuellement OU si horaires/ouvert_manuellement disent fermé

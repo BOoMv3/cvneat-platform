@@ -143,7 +143,23 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Pas d'override ouvert_manuellement : ouvert/fermé selon horaires uniquement (ouvert_manuellement = juste "réouvert")
+    // Si ouvert_manuellement = true (partenaire a cliqué "Ouvrir") → ouvert
+    let ouvertManuel = false;
+    try {
+      const { data: omRow } = await supabaseAdmin.from('restaurants').select('ouvert_manuellement').eq('id', id).single();
+      const ov = omRow?.ouvert_manuellement;
+      ouvertManuel = ov === true || ov === 1 || (typeof ov === 'string' && String(ov).trim().toLowerCase() === 'true');
+    } catch (_) {}
+    if (ouvertManuel) {
+      const res = json({
+        isOpen: true,
+        message: 'Restaurant ouvert manuellement',
+        reason: 'manual_open',
+        isManuallyClosed: false
+      });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
+    }
 
     // Normaliser ferme_manuellement - UNIQUEMENT true si valeur explicitement truthy
     const fm = restaurant.ferme_manuellement;
