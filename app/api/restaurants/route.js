@@ -60,27 +60,26 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
-    // Relecture fraîche pour TOUS les restos : ferme_manuellement, ouvert_manuellement, offre
+    // Relecture fraîche (sans ouvert_manuellement pour ne pas faire échouer si la colonne absente)
     const ids = filtered.map((r) => r.id);
     let freshMap = {};
     try {
       const { data: freshList, error: freshErr } = await supabaseAdmin
         .from('restaurants')
-        .select('id, ferme_manuellement, ouvert_manuellement, offre_active, offre_label, offre_description')
+        .select('id, ferme_manuellement, offre_active, offre_label, offre_description')
         .in('id', ids);
       if (!freshErr && freshList?.length) {
         freshList.forEach((row) => { freshMap[row.id] = row; });
       }
-    } catch (_) {
-      // Fallback sur les données du select principal
-    }
+    } catch (_) {}
 
     const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
     const isLaBonnePate = (nom) => nom && (String(nom).toLowerCase().includes('bonne pâte') || String(nom).toLowerCase().includes('bonne pate'));
     const withFermeManuel = filtered.map((r) => {
       const fresh = freshMap[r.id] || r;
       const fm = toBool(fresh.ferme_manuellement);
-      const om = toBool(fresh.ouvert_manuellement);
+      // ouvert_manuellement vient de r (*) pour que la liste ne plante pas si la colonne n'existe pas encore
+      const om = toBool(fresh.ouvert_manuellement ?? r.ouvert_manuellement);
       const oa = fresh.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
