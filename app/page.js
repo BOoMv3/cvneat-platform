@@ -174,33 +174,10 @@ const getTodayHoursLabel = (restaurant = {}) => {
   try {
     let horaires = restaurant.horaires;
     if (!horaires) return null;
-
     if (typeof horaires === 'string') {
-      try {
-        horaires = JSON.parse(horaires);
-      } catch {
-        return null;
-      }
+      try { horaires = JSON.parse(horaires); } catch { return null; }
     }
-
-    // Toujours utiliser Europe/Paris pour le "jour actuel" (éviter décalage liste fermée / détail ouvert)
-    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
-    const todayName = todayFormatter.format(new Date()).toLowerCase();
-    const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
-    let heuresJour = null;
-    for (const key of variants) {
-      if (horaires?.[key]) {
-        heuresJour = horaires[key];
-        break;
-      }
-    }
-    // Fallback: horaires par index de jour (0 = dimanche, 1 = lundi, ...)
-    if (!heuresJour) {
-      const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-      const dayIndex = dayNames.indexOf(todayName);
-      if (dayIndex >= 0 && horaires[dayIndex]) heuresJour = horaires[dayIndex];
-    }
-
+    const heuresJour = getHeuresJourForToday(horaires);
     if (!heuresJour) return null;
 
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
@@ -336,10 +313,41 @@ const getNextOpeningTime = (restaurant = {}) => {
   }
 };
 
-// Fonction pour vérifier si un restaurant est ouvert (calcul local, pas d'API)
+// Parse "HH:MM" ou "HHhMM" en minutes depuis minuit. 00:00 en fermeture = 24h (1440).
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const trimmed = timeStr.trim();
+  const match = trimmed.match(/^(\d{1,2})[h:](\d{2})$/);
+  const h = match ? parseInt(match[1], 10) : parseInt(trimmed.split(':')[0], 10);
+  const m = match ? parseInt(match[2], 10) : parseInt(trimmed.split(':')[1] || '0', 10);
+  if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 24 || m < 0 || m > 59) return null;
+  let tot = h * 60 + m;
+  if (tot === 0 && h === 0 && m === 0) tot = 1440;
+  if (trimmed === '24:00' || trimmed === '24h00') tot = 1440;
+  return tot;
+};
+
+// Récupère les horaires du jour actuel (Europe/Paris).
+const getHeuresJourForToday = (horaires) => {
+  if (!horaires || typeof horaires !== 'object') return null;
+  const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
+  const todayName = todayFormatter.format(new Date()).toLowerCase();
+  const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
+  for (const key of variants) {
+    if (horaires[key]) return horaires[key];
+  }
+  const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const dayIndex = dayNames.indexOf(todayName);
+  if (dayIndex >= 0 && horaires[dayIndex] != null) return horaires[dayIndex];
+  for (const k of Object.keys(horaires)) {
+    if (String(k).trim().toLowerCase() === todayName) return horaires[k];
+  }
+  return null;
+};
+
+// Ouvert/fermé : ferme_manuellement = true → fermé ; sinon selon plages horaires uniquement.
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
-    // Normaliser ferme_manuellement (DB peut renvoyer true, 'true', 1, '1', etc.)
     let fermeManuel = restaurant.ferme_manuellement;
     if (fermeManuel === undefined || fermeManuel === null) {
       fermeManuel = false;
@@ -362,24 +370,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       try { horaires = JSON.parse(horaires); } catch { return { isOpen: false, isManuallyClosed: false, reason: 'parse_error' }; }
     }
 
-    // Toujours utiliser Europe/Paris pour le jour actuel (cohérence tous restaurants)
-    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
-    const todayName = todayFormatter.format(new Date()).toLowerCase();
-    const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
-    let heuresJour = null;
-    for (const key of variants) {
-      if (horaires?.[key]) {
-        heuresJour = horaires[key];
-        break;
-      }
-    }
-    // Fallback: horaires par index (0 = dimanche, 1 = lundi, ...)
-    if (!heuresJour) {
-      const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-      const dayIndex = dayNames.indexOf(todayName);
-      if (dayIndex >= 0 && horaires[dayIndex]) heuresJour = horaires[dayIndex];
-    }
-
+    const heuresJour = getHeuresJourForToday(horaires);
     if (!heuresJour) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     // Jour marqué fermé explicitement
     if (heuresJour.is_closed === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
@@ -391,16 +382,6 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     const currentMinutes = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
     const currentTime = currentHours * 60 + currentMinutes;
 
-    const parseTime = (timeStr) => {
-      if (!timeStr) return null;
-      const [h, m] = timeStr.split(':').map(Number);
-      let tot = h * 60 + m;
-      if (tot === 0 && h === 0 && m === 0) tot = 1440; // Minuit = 24h
-      return tot;
-    };
-
-    // Vérifier les plages et horaires pour déterminer si le restaurant devrait être ouvert
-    // Accepter ouverture/fermeture ou debut/fin (formats partenaire / import)
     let shouldBeOpenByHours = false;
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
       for (const plage of heuresJour.plages) {
@@ -408,37 +389,22 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
         const closeStr = plage.fermeture || plage.fin;
         if (!openStr || !closeStr) continue;
         
-        const start = parseTime(openStr);
-        let end = parseTime(closeStr);
-        
-        if (start === null || end === null) continue;
-        
-        // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
-        const closeRaw = plage.fermeture || plage.fin;
-        const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-        if (isMidnightClose) {
-          end = 24 * 60; // 1440 minutes
-        }
-        
-        // Vérifier si on est dans cette plage horaire
-        let inPlage;
-        if (isMidnightClose) {
-          inPlage = currentTime >= start;
-        } else {
-          inPlage = currentTime >= start && currentTime <= end;
-        }
-        
-        if (inPlage) {
-          shouldBeOpenByHours = true;
-          break;
-        }
+        const start = parseTimeToMinutes(openStr);
+        let end = parseTimeToMinutes(closeStr);
+        if (start == null || end == null) continue;
+        const closeRaw = String(plage.fermeture || plage.fin || '').trim();
+        if (closeRaw === '00:00' || closeRaw === '0:00') end = 24 * 60;
+        const inPlage = (closeRaw === '00:00' || closeRaw === '0:00')
+          ? (currentTime >= start)
+          : (currentTime >= start && currentTime <= end);
+        if (inPlage) { shouldBeOpenByHours = true; break; }
       }
     } else if ((heuresJour.ouverture || heuresJour.debut) && (heuresJour.fermeture || heuresJour.fin)) {
       // Vérifier horaires simples (ouverture/fermeture ou debut/fin)
       const openStr = heuresJour.ouverture || heuresJour.debut;
       const closeStr = heuresJour.fermeture || heuresJour.fin;
-      const start = parseTime(openStr);
-      let end = parseTime(closeStr);
+      const start = parseTimeToMinutes(openStr);
+      let end = parseTimeToMinutes(closeStr);
       
       if (start !== null && end !== null) {
         // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)

@@ -194,7 +194,15 @@ export async function POST(request, { params }) {
       const dayKey = dayNames[dayOfWeekParis];
       if (horaires[dayKey]) todayHours = horaires[dayKey];
     }
-    
+    if (!todayHours) {
+      for (const k of Object.keys(horaires)) {
+        if (String(k).trim().toLowerCase() === todayNameParis) {
+          todayHours = horaires[k];
+          break;
+        }
+      }
+    }
+
     // Log détaillé pour debug
     console.log('🔍 DEBUG horaires:', {
       restaurantId: id,
@@ -270,16 +278,18 @@ export async function POST(request, { params }) {
     const currentMinutes = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
     const currentTimeMinutes = currentHours * 60 + currentMinutes;
 
-    // Parser les heures d'ouverture et fermeture
-    const parseTime = (timeStr) => {
-      if (!timeStr) return null;
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      let totalMinutes = hours * 60 + minutes;
-      // Si c'est 00:00 (minuit), on le traite comme 24:00 (1440 minutes) pour la fermeture
-      if (totalMinutes === 0 && hours === 0 && minutes === 0) {
-        totalMinutes = 24 * 60; // 1440 minutes = minuit de la journée suivante
-      }
-      return totalMinutes;
+    // Parser "HH:MM" ou "HHhMM" en minutes (aligné avec la page d'accueil)
+    const parseTimeToMinutes = (timeStr) => {
+      if (!timeStr || typeof timeStr !== 'string') return null;
+      const trimmed = timeStr.trim();
+      const match = trimmed.match(/^(\d{1,2})[h:](\d{2})$/);
+      const h = match ? parseInt(match[1], 10) : parseInt(trimmed.split(':')[0], 10);
+      const m = match ? parseInt(match[2], 10) : parseInt(trimmed.split(':')[1] || '0', 10);
+      if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 24 || m < 0 || m > 59) return null;
+      let tot = h * 60 + m;
+      if (tot === 0 && h === 0 && m === 0) tot = 1440;
+      if (trimmed === '24:00' || trimmed === '24h00') tot = 1440;
+      return tot;
     };
 
     // Support pour plusieurs plages horaires (nouveau format)
@@ -292,8 +302,8 @@ export async function POST(request, { params }) {
         const closeStr = plage.fermeture || plage.fin;
         if (!openStr || !closeStr) continue;
 
-        const openTimeMinutes = parseTime(openStr);
-        let closeTimeMinutes = parseTime(closeStr);
+        const openTimeMinutes = parseTimeToMinutes(openStr);
+        let closeTimeMinutes = parseTimeToMinutes(closeStr);
 
         if (openTimeMinutes === null || closeTimeMinutes === null) continue;
 
@@ -326,8 +336,8 @@ export async function POST(request, { params }) {
     } else if (todayHours.ouverture || todayHours.debut) {
       const openStr = todayHours.ouverture || todayHours.debut;
       const closeStr = todayHours.fermeture || todayHours.fin;
-      const openTimeMinutes = parseTime(openStr);
-      let closeTimeMinutes = parseTime(closeStr);
+      const openTimeMinutes = parseTimeToMinutes(openStr);
+      let closeTimeMinutes = parseTimeToMinutes(closeStr);
 
       if (openTimeMinutes === null || closeTimeMinutes === null) {
         return json({
