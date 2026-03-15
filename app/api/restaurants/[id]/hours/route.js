@@ -357,9 +357,8 @@ export async function POST(request, { params }) {
       } else {
         isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
       }
-    } else if (todayHours.ouvert === true || todayHours.ouvert === 'true' || todayHours.ouvert === 1) {
-      isOpen = true;
     }
+    // Pas de fallback ouvert=true sans plage : ouvert uniquement si plage explicite contient l'heure
 
     console.log('🕐 Vérification horaires:', {
       restaurantId: id,

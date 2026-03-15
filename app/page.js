@@ -426,7 +426,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       }
     } else if (heuresJour.ouvert === true || heuresJour.ouvert === 'true' || heuresJour.ouvert === 1) {
       // Fallback sur le flag ouvert si pas d'heures précises (accepte true, 'true', 1)
-      shouldBeOpenByHours = true;
+      // shouldBeOpenByHours = true; // Désactivé : ouvert seulement si plage explicite
     }
 
     // Si on arrive ici, ferme_manuellement = false ou null
