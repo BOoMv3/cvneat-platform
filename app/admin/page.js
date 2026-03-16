@@ -124,11 +124,11 @@ export default function AdminPage() {
       setLoading(true);
       setError(null);
 
-      // Récupérer toutes les commandes PAYÉES uniquement
+      // Même source que "Gestion des commandes" > Payées : payment_status paid ou succeeded
       const { data: orders, error: ordersError } = await supabase
         .from('commandes')
         .select('*')
-        .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
+        .in('payment_status', ['paid', 'succeeded'])
         .order('created_at', { ascending: false });
 
       if (ordersError) {
@@ -522,9 +522,9 @@ export default function AdminPage() {
             </button>
           </div>
           
-          {/* Boutons d'action - Scroll horizontal sur mobile */}
-          <div className="overflow-x-auto scrollbar-hide -mx-2 px-2">
-            <div className="flex gap-2 sm:gap-3 min-w-max pb-2">
+          {/* Boutons d'action - Scroll horizontal sur mobile, grille lisible sur PC */}
+          <div className="overflow-x-auto sm:overflow-visible scrollbar-hide -mx-2 px-2">
+            <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-3 min-w-max sm:min-w-0 pb-2">
               <button
                 onClick={broadcastPrepTimeToOpenRestaurants}
                 className="flex items-center justify-center px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0 disabled:opacity-50"

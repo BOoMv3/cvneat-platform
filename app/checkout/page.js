@@ -1395,31 +1395,41 @@ export default function Checkout() {
             )}
 
             {!showPaymentForm ? (
-              <button
-                onClick={submitOrder}
-                disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed || !ordersOpen}
-                className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
-              >
-                {submitting ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
-                    Préparation...
-                  </div>
-                ) : (
-                  (() => {
-                    const PLATFORM_FEE = 0.49;
-                    let finalDeliveryFee = fraisLivraison;
-                    if (appliedPromoCode?.discountType === 'free_delivery') finalDeliveryFee = 0;
-                    const discountAmount = appliedPromoCode?.discountAmount || 0;
-                    const maxDiscount = Math.min(discountAmount, cartTotal);
-                    const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
-                    const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
-                    const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0;
-                    const finalTotalDisplay = Math.max(0.50, Math.round((rawTotal - pointsDiscount) * 100) / 100);
-                    return `Payer ${finalTotalDisplay.toFixed(2)}€`;
-                  })()
+              <>
+                <button
+                  onClick={submitOrder}
+                  disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed || !ordersOpen}
+                  className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
+                >
+                  {submitting ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
+                      Préparation...
+                    </div>
+                  ) : (
+                    (() => {
+                      const PLATFORM_FEE = 0.49;
+                      let finalDeliveryFee = fraisLivraison;
+                      if (appliedPromoCode?.discountType === 'free_delivery') finalDeliveryFee = 0;
+                      const discountAmount = appliedPromoCode?.discountAmount || 0;
+                      const maxDiscount = Math.min(discountAmount, cartTotal);
+                      const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
+                      const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
+                      const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0;
+                      const finalTotalDisplay = Math.max(0.50, Math.round((rawTotal - pointsDiscount) * 100) / 100);
+                      return `Payer ${finalTotalDisplay.toFixed(2)}€`;
+                    })()
+                  )}
+                </button>
+                {(submitting || !selectedAddress || deliveryError !== null || deliveryClosed || !ordersOpen) && !submitting && (
+                  <p className="text-center text-sm text-amber-600 dark:text-amber-400 mt-2">
+                    {!selectedAddress && 'Sélectionnez une adresse de livraison pour continuer.'}
+                    {selectedAddress && deliveryError !== null && 'Vérifiez l\'adresse de livraison.'}
+                    {selectedAddress && deliveryError === null && deliveryClosed && 'Les livraisons sont fermées pour ce créneau.'}
+                    {selectedAddress && deliveryError === null && !deliveryClosed && !ordersOpen && 'Le restaurant n\'accepte pas les commandes pour le moment.'}
+                  </p>
                 )}
-              </button>
+              </>
             ) : (
               <div className="mt-4 sm:mt-6">
                 {/* Récapitulatif final avant paiement */}

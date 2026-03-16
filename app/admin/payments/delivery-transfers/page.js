@@ -148,16 +148,15 @@ export default function DeliveryTransfersTracking() {
 
       if (driversError) throw driversError;
 
-      // Pour chaque livreur, calculer les gains dus
-      // Les gains dus = somme des frais_livraison des commandes avec livreur_paid_at IS NULL
-      // Quand on marque les commandes comme payées via l'API, les dashboards se mettent à jour automatiquement
+      // Pour chaque livreur : commandes livrées NON ENCORE PAYÉES au livreur (livreur_paid_at IS NULL)
+      // Quand tu enregistres un virement, les commandes sont marquées payées (livreur_paid_at) → elles sortent du "reste à payer"
+      // Ainsi Justin (déjà tout payé) = 0 livraison en attente, Dany = ses livraisons non encore payées
       const driversWithPaymentsData = await Promise.all(
         (allDrivers || []).map(async (driver) => {
-          // Récupérer les commandes livrées non payées
-          // IMPORTANT: livreur_paid_at IS NULL = commandes non encore payées
-          const { data: orders, error: ordersError } = await supabase
+          // Commandes livrées par ce livreur et pas encore payées au livreur
+          const { data: ordersRaw, error: ordersError } = await supabase
             .from('commandes')
-            .select('id, frais_livraison, delivery_commission_cvneat, created_at, statut')
+            .select('id, frais_livraison, delivery_commission_cvneat, created_at, statut, payment_status')
             .eq('livreur_id', driver.id)
             .eq('statut', 'livree')
             .is('livreur_paid_at', null);
@@ -173,15 +172,20 @@ export default function DeliveryTransfersTracking() {
             };
           }
 
-          // Calculer les gains dus (somme des gains réels du livreur = frais_livraison - commission)
-          const totalEarnings = (orders || []).reduce((sum, order) => {
+          // Ne compter que les livraisons où le client a payé (pas remboursé/annulé)
+          const orders = (ordersRaw || []).filter(
+            (o) => !['failed', 'cancelled', 'refunded'].includes((o.payment_status || '').toString().trim().toLowerCase())
+          );
+
+          // Gains dus = somme (frais_livraison - commission) pour ces livraisons non encore payées au livreur
+          const totalEarnings = orders.reduce((sum, order) => {
             const fraisLivraison = parseFloat(order.frais_livraison || 0);
             const commission = parseFloat(order.delivery_commission_cvneat || 0);
-            const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
+            const livreurEarning = fraisLivraison - commission;
             return sum + livreurEarning;
           }, 0);
 
-          // Récupérer les virements déjà effectués pour ce livreur
+          // Virements déjà effectués (affichage info)
           let totalTransfers = 0;
           try {
             const { data: transfers, error: transfersError } = await supabase
@@ -197,9 +201,7 @@ export default function DeliveryTransfersTracking() {
             console.warn(`Erreur récupération virements pour ${driver.email}:`, err);
           }
 
-          // Calculer ce qui reste à payer (gains dus - virements déjà effectués)
-          // Note: On suppose que les virements marquent les commandes comme payées
-          // Donc remainingToPay = totalEarnings (commandes non payées actuellement)
+          // Reste à payer = gains des livraisons pas encore marquées payées (livreur_paid_at null)
           const remainingToPay = totalEarnings;
 
           return {
@@ -207,7 +209,7 @@ export default function DeliveryTransfersTracking() {
             totalEarnings: Math.round(totalEarnings * 100) / 100,
             totalTransfers: Math.round(totalTransfers * 100) / 100,
             remainingToPay: Math.round(remainingToPay * 100) / 100,
-            orderCount: orders?.length || 0
+            orderCount: orders.length
           };
         })
       );
@@ -413,7 +415,10 @@ export default function DeliveryTransfersTracking() {
         <div className="bg-white rounded-lg shadow-sm mb-6">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Gains dus aux livreurs</h2>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Gains dus aux livreurs</h2>
+                <p className="text-sm text-gray-500 mt-1">Livraisons et gains = commandes pas encore payées au livreur (livreur_paid_at vide). Quand tu enregistres un virement, les commandes sont marquées payées.</p>
+              </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <FaSearch className="text-gray-400" />
@@ -458,13 +463,13 @@ export default function DeliveryTransfersTracking() {
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Commandes non payées
+                      Livraisons à payer
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Gains dus
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total payé
+                      Déjà versé
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Reste à payer

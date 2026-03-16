@@ -30,6 +30,11 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
   const [error, setError] = useState(null);
   const [isElementReady, setIsElementReady] = useState(false);
 
+  // Réinitialiser quand le clientSecret change (nouveau formulaire)
+  useEffect(() => {
+    setIsElementReady(false);
+  }, [clientSecret]);
+
   // Gérer le retour après une authentification 3DS / redirection Stripe (return_url)
   // Sans ça, le client peut voir "ça charge puis rien" alors que Stripe a bien débité.
   useEffect(() => {
@@ -328,6 +333,13 @@ const CheckoutForm = ({ clientSecret, amount, paymentIntentId, onSuccess, onErro
           `Payer ${Number(amount || 0).toFixed(2)}€`
         )}
       </button>
+      {(!stripe || !isElementReady) && !loading && (
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+          {!isElementReady
+            ? 'Chargement du formulaire de paiement… Merci de patienter quelques secondes.'
+            : 'Préparation du paiement…'}
+        </p>
+      )}
     </form>
   );
 };

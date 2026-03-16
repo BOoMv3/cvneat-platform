@@ -1,7 +1,7 @@
 -- Diagnostic "La Tortue Paysanne" (pourquoi affichée ouverte ?)
 -- Exécuter dans Supabase → SQL Editor
 
-SELECT id, nom, ferme_manuellement, ouvert_manuellement, horaires, updated_at
+SELECT id, nom, ferme_manuellement, horaires, updated_at
 FROM restaurants
 WHERE nom ILIKE '%tortue%' OR nom ILIKE '%tortu%' OR nom ILIKE '%paysanne%';
 

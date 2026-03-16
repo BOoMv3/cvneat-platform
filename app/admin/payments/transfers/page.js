@@ -33,11 +33,15 @@ export default function TransfersTracking() {
   const [showQuickValidateModal, setShowQuickValidateModal] = useState(false);
   const [selectedRestaurantForValidation, setSelectedRestaurantForValidation] = useState(null);
   const [quickValidateAmount, setQuickValidateAmount] = useState('');
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [restaurantForOverride, setRestaurantForOverride] = useState(null);
+  const [overrideAmount, setOverrideAmount] = useState('');
   const [globalStats, setGlobalStats] = useState({
     totalDue: 0,
     totalTransferred: 0,
     remainingToPay: 0
   });
+  const [paymentLoadError, setPaymentLoadError] = useState(null);
   
   // Formulaire nouveau virement
   const [formData, setFormData] = useState({
@@ -140,7 +144,23 @@ export default function TransfersTracking() {
   const fetchRestaurantPayments = async () => {
     try {
       setLoadingPayments(true);
-      
+      setPaymentLoadError(null);
+
+      // Commandes exclues du calcul (doublons, erreurs) — table commandes_payout_exclude
+      // Normaliser en minuscules pour éviter les soucis de casse UUID (Supabase peut varier)
+      let excludedCommandeIds = new Set();
+      try {
+        const { data: excluded, error: excludedError } = await supabase.from('commandes_payout_exclude').select('commande_id');
+        if (excludedError) {
+          console.warn('Exclusions payout (commandes_payout_exclude):', excludedError.message);
+        } else if (Array.isArray(excluded)) {
+          excluded.forEach(r => {
+            const id = (r.commande_id || '').toString().trim().toLowerCase();
+            if (id) excludedCommandeIds.add(id);
+          });
+        }
+      } catch (_) { /* table peut ne pas exister encore */ }
+
       // Récupérer tous les restaurants
       const { data: allRestaurants, error: restaurantsError } = await supabase
         .from('restaurants')
@@ -149,14 +169,18 @@ export default function TransfersTracking() {
 
       if (restaurantsError) throw restaurantsError;
 
-      // Pour chaque restaurant, calculer les revenus dus
+      // Même logique pour tous les restaurants : toutes les commandes livrées + payées, puis on déduit les virements
+      const is99StreetFood = (nom) => {
+        const n = (nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        return n.includes('99 street') || n.includes('99street') || n.includes('99 street food');
+      };
+
+      // Pour chaque restaurant, calculer les revenus dus (toutes les commandes livrées, puis − virements)
       const restaurantsWithPaymentsData = await Promise.all(
         (allRestaurants || []).map(async (restaurant) => {
-          // Récupérer TOUTES les commandes livrées et payées par le client
-          // (même si elles ont été marquées comme payées au restaurant)
           const { data: orders, error: ordersError } = await supabase
             .from('commandes')
-            .select('id, total, created_at, statut, payment_status, restaurant_paid_at, commission_rate, commission_amount, restaurant_payout')
+            .select('id, total, created_at, statut, payment_status, user_id, restaurant_paid_at, commission_rate, commission_amount, restaurant_payout')
             .eq('restaurant_id', restaurant.id)
             .eq('statut', 'livree');
 
@@ -173,10 +197,31 @@ export default function TransfersTracking() {
             };
           }
 
-          // Filtrer les commandes payées par le client
-          const paidOrders = (orders || []).filter(order => 
-            !['failed', 'cancelled', 'refunded'].includes((order.payment_status || '').toString().trim().toLowerCase())
+          // Filtrer les commandes payées par le client et exclure celles en commandes_payout_exclude
+          let paidOrders = (orders || []).filter(order =>
+            !['failed', 'cancelled', 'refunded'].includes((order.payment_status || '').toString().trim().toLowerCase()) &&
+            !excludedCommandeIds.has((order.id || '').toString().trim().toLowerCase())
           );
+
+          // 99 Street Food : ne compter que les commandes à partir du 06/03/2026 (inclus) — dernier virement au 05/03
+          const DEBUT_99SF_UTC = new Date('2026-03-05T23:00:00.000Z'); // 00h00 le 06/03 à Paris
+          if (is99StreetFood(restaurant.nom) && paidOrders.length > 0) {
+            paidOrders = paidOrders.filter((o) => new Date(o.created_at) >= DEBUT_99SF_UTC);
+          }
+
+          // 99 Street Food : déduplication côté app (même date Paris, total, user_id) — garde une seule commande par groupe
+          if (is99StreetFood(restaurant.nom) && paidOrders.length > 0) {
+            const seen = new Set();
+            paidOrders = paidOrders.filter((order) => {
+              const dateParis = order.created_at
+                ? new Date(order.created_at).toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' })
+                : '';
+              const key = `${dateParis}|${Number(order.total) || 0}|${(order.user_id || '').toString().toLowerCase()}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+          }
 
           // Calculer les revenus
           const totalRevenue = paidOrders.reduce((sum, order) => {
@@ -257,8 +302,18 @@ export default function TransfersTracking() {
           commission = round2(commission);
           restaurantPayout = round2(restaurantPayout);
           
-          // Calculer ce qui reste à payer (revenus dus - virements déjà effectués)
-          const remainingToPay = Math.max(0, restaurantPayout - totalTransfers);
+          // Reste à payer = total part restaurant − virements déjà effectués
+          // 99 SF : on ne compte que les commandes depuis le 06/03, donc on ne soustrait PAS les virements passés (ils couvraient avant le 06/03)
+          const is99 = is99StreetFood(restaurant.nom);
+          let remainingToPay = is99
+            ? restaurantPayout
+            : Math.max(0, restaurantPayout - totalTransfers);
+          // Override manuel : si un montant a été saisi manuellement, on l'utilise à la place
+          const hasManualOverride = restaurant.remaining_to_pay_override != null && restaurant.remaining_to_pay_override !== '';
+          if (hasManualOverride) {
+            const override = parseFloat(restaurant.remaining_to_pay_override);
+            remainingToPay = Number.isFinite(override) ? Math.max(0, override) : remainingToPay;
+          }
 
           return {
             ...restaurant,
@@ -268,8 +323,9 @@ export default function TransfersTracking() {
             totalTransfers: Math.round(totalTransfers * 100) / 100,
             remainingToPay: Math.round(remainingToPay * 100) / 100,
             orderCount: paidOrders.length,
-            // Pour affichage: taux actuel du resto (ou 0% internal), pas un taux "moyen"
-            commissionRate: fixedRate !== null ? fixedRate : (defaultRestaurantRatePercent ?? 20)
+            commissionRate: fixedRate !== null ? fixedRate : (defaultRestaurantRatePercent ?? 20),
+            is99StreetFood: is99StreetFood(restaurant.nom),
+            hasManualOverride
           };
         })
       );
@@ -289,6 +345,9 @@ export default function TransfersTracking() {
       });
     } catch (err) {
       console.error('Erreur récupération paiements dus:', err);
+      const msg = err?.message || err?.error_description || String(err);
+      setPaymentLoadError(msg);
+      setRestaurantsWithPayments([]);
     } finally {
       setLoadingPayments(false);
     }
@@ -323,6 +382,46 @@ export default function TransfersTracking() {
     setSelectedRestaurantForValidation(restaurant);
     setQuickValidateAmount(restaurant.remainingToPay.toFixed(2));
     setShowQuickValidateModal(true);
+  };
+
+  const handleOpenOverride = (restaurant) => {
+    setRestaurantForOverride(restaurant);
+    setOverrideAmount(restaurant.remaining_to_pay_override != null ? String(restaurant.remaining_to_pay_override) : '0');
+    setShowOverrideModal(true);
+  };
+
+  const handleSaveOverride = async () => {
+    if (!restaurantForOverride) return;
+    const val = parseFloat(overrideAmount.replace(',', '.'));
+    const amount = Number.isFinite(val) ? Math.max(0, val) : null;
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ remaining_to_pay_override: amount })
+        .eq('id', restaurantForOverride.id);
+      if (error) throw error;
+      setShowOverrideModal(false);
+      setRestaurantForOverride(null);
+      fetchRestaurantPayments();
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la mise à jour : ' + (err.message || err));
+    }
+  };
+
+  const handleClearOverride = async (restaurant) => {
+    if (!confirm(`Supprimer le montant manuel pour ${restaurant.nom} ? Le calcul automatique sera réutilisé.`)) return;
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ remaining_to_pay_override: null })
+        .eq('id', restaurant.id);
+      if (error) throw error;
+      fetchRestaurantPayments();
+    } catch (err) {
+      console.error(err);
+      alert('Erreur : ' + (err.message || err));
+    }
   };
 
   const handleQuickValidate = async () => {
@@ -527,8 +626,101 @@ export default function TransfersTracking() {
           </div>
         )}
 
-        {/* Total global */}
-        {!loadingPayments && globalStats.totalDue > 0 && (
+        {/* Section : Montants dus aux restaurants — TOUJOURS visible (en premier) */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">💰 Montants dus aux restaurants</h2>
+          <p className="text-sm text-gray-500 mb-4">Commandes livrées payées − virements déjà effectués = reste à payer.</p>
+          {loadingPayments ? (
+            <p className="text-gray-500 flex items-center gap-2 py-4">
+              <FaSpinner className="animate-spin" /> Chargement des montants dus...
+            </p>
+          ) : restaurantsWithPayments.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className="text-gray-500 mb-3">Les montants n&apos;ont pas pu être chargés.</p>
+              {paymentLoadError && (
+                <p className="text-sm text-red-600 mb-3 max-w-md mx-auto">{paymentLoadError}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => fetchRestaurantPayments()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Réessayer
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {restaurantsWithPayments
+                .filter(r => r.orderCount > 0 || r.totalTransfers > 0 || r.remainingToPay > 0 || r.is99StreetFood || r.hasManualOverride)
+                .map((restaurant) => (
+                  <div key={restaurant.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <FaStore className="text-blue-600" />
+                        <div>
+                          <p className="font-semibold text-gray-900">{restaurant.nom}</p>
+                          <p className="text-sm text-gray-600">
+                            {restaurant.orderCount} commande(s) • CA: {restaurant.totalRevenue.toFixed(2)}€ • Commission: {restaurant.commission.toFixed(2)}€
+                            {restaurant.is99StreetFood && (
+                              <span className="ml-1 text-xs text-amber-600">(depuis le 06/03/2026)</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">Montant dû</p>
+                        <p className="text-xl font-bold text-purple-600">{restaurant.remainingToPay.toFixed(2)}€</p>
+                        {restaurant.hasManualOverride && (
+                          <p className="text-xs text-amber-600 mt-1">Montant saisi manuellement</p>
+                        )}
+                        {restaurant.totalTransfers > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">Déjà versé: {restaurant.totalTransfers.toFixed(2)}€</p>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenOverride(restaurant)}
+                          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-700"
+                          title="Forcer le montant dû (si le calcul est faux)"
+                        >
+                          {restaurant.hasManualOverride ? 'Modifier' : 'Montant manuel'}
+                        </button>
+                        {restaurant.hasManualOverride && (
+                          <button type="button" onClick={() => handleClearOverride(restaurant)} className="px-2 py-2 text-xs text-gray-500 hover:text-red-600" title="Supprimer le montant manuel">
+                            Réinitialiser
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleQuickValidateClick(restaurant)}
+                          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                          disabled={loading || restaurant.remainingToPay <= 0}
+                        >
+                          <FaCheck />
+                          <span>J&apos;ai effectué ce virement</span>
+                        </button>
+                        <button
+                          onClick={() => handleQuickPayment(restaurant)}
+                          className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          disabled={loading}
+                        >
+                          <span>Détails</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {restaurantsWithPayments.filter(r => r.orderCount > 0 || r.totalTransfers > 0 || r.remainingToPay > 0 || r.is99StreetFood || r.hasManualOverride).length === 0 && (
+                <p className="text-gray-500 text-center py-4">Aucun restaurant avec commandes ou virements</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Total global — toujours affiché une fois les données chargées */}
+        {!loadingPayments && restaurantsWithPayments.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
               <div className="flex items-center justify-between">
@@ -556,63 +748,6 @@ export default function TransfersTracking() {
                 </div>
                 <FaCheck className="h-10 w-10 opacity-80" />
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section : Montants dus aux restaurants */}
-        {!loadingPayments && restaurantsWithPayments.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">💰 Montants dus aux restaurants</h2>
-            <div className="space-y-3">
-              {restaurantsWithPayments
-                .filter(r => r.remainingToPay > 0)
-                .map((restaurant) => (
-                  <div key={restaurant.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <FaStore className="text-blue-600" />
-                        <div>
-                          <p className="font-semibold text-gray-900">{restaurant.nom}</p>
-                          <p className="text-sm text-gray-600">
-                            {restaurant.orderCount} commande(s) • CA: {restaurant.totalRevenue.toFixed(2)}€ • Commission: {restaurant.commission.toFixed(2)}€
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">Montant dû</p>
-                        <p className="text-xl font-bold text-purple-600">{restaurant.remainingToPay.toFixed(2)}€</p>
-                        {restaurant.totalTransfers > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Déjà versé: {restaurant.totalTransfers.toFixed(2)}€
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleQuickValidateClick(restaurant)}
-                          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                          disabled={loading || restaurant.remainingToPay <= 0}
-                        >
-                          <FaCheck />
-                          <span>J'ai effectué ce virement</span>
-                        </button>
-                        <button
-                          onClick={() => handleQuickPayment(restaurant)}
-                          className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                          disabled={loading}
-                        >
-                          <span>Détails</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              {restaurantsWithPayments.filter(r => r.remainingToPay > 0).length === 0 && (
-                <p className="text-gray-500 text-center py-4">Aucun montant dû pour le moment</p>
-              )}
             </div>
           </div>
         )}
@@ -1011,6 +1146,58 @@ export default function TransfersTracking() {
                     )}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal montant manuel (forcer le reste à payer) */}
+      {showOverrideModal && restaurantForOverride && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Montant manuel</h2>
+                <button
+                  type="button"
+                  onClick={() => { setShowOverrideModal(false); setRestaurantForOverride(null); }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes className="h-6 w-6" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Tu es sûr du montant dû pour <strong>{restaurantForOverride.nom}</strong> ? Saisis le montant à afficher (le calcul automatique sera ignoré).
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Montant dû (€)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={overrideAmount}
+                  onChange={(e) => setOverrideAmount(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="0"
+                />
+                <p className="text-xs text-gray-500 mt-1">Ex. 0 si tu es à jour, ou le montant réel que tu lui dois.</p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowOverrideModal(false); setRestaurantForOverride(null); }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveOverride}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  Enregistrer
+                </button>
               </div>
             </div>
           </div>

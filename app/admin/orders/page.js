@@ -147,6 +147,7 @@ export default function AdminOrders() {
           </div>
           <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
             Les commandes non payées sont celles abandonnées avant validation du paiement (panier non finalisé).
+            Les commandes « Payées uniquement » sont la même base que le CA du tableau de bord (Total commandes, CA CVN'EAT, CA Livreur).
           </p>
         </div>
 
