@@ -163,7 +163,16 @@ export async function POST(request, { params }) {
     }
 
     // LOGIQUE: Si ouvert_manuellement = true → OUVERT (force l'ouverture, sauf si fermé manuellement)
-    const om = restaurant.ouvert_manuellement;
+    // NOTE: `ouvert_manuellement` peut ne pas exister (migration non appliquée). Dans ce cas on ignore.
+    let om = undefined;
+    try {
+      const { data: omRow, error: omErr } = await supabaseAdmin
+        .from('restaurants')
+        .select('ouvert_manuellement')
+        .eq('id', id)
+        .single();
+      if (!omErr && omRow) om = omRow.ouvert_manuellement;
+    } catch (_) {}
     const isManuallyOpen =
       om === true || om === 'true' || om === 1 || om === '1' ||
       (typeof om === 'string' && om.toLowerCase().trim() === 'true');

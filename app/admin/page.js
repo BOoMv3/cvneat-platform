@@ -103,18 +103,35 @@ export default function AdminPage() {
   const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
     try {
       setTogglingRestaurantId(restaurant.id);
-      // Ouvrir => ferme_manuellement false + ouvert_manuellement true (reste ouvert même hors plage)
-      // Fermer => ferme_manuellement true + ouvert_manuellement false
+      // IMPORTANT: `ouvert_manuellement` peut ne pas exister si la migration n'a pas été appliquée en prod.
+      // Donc: 1) update ferme_manuellement (toujours), 2) best-effort update ouvert_manuellement.
+
       const { error: updateError } = await supabase
         .from('restaurants')
         .update({
+          // Ouvrir => ferme_manuellement = false ; Fermer => true
           ferme_manuellement: !shouldOpen,
-          ouvert_manuellement: shouldOpen,
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
 
       if (updateError) throw updateError;
+
+      // Best-effort: sync ouvert_manuellement si la colonne existe
+      try {
+        const { error: omErr } = await supabase
+          .from('restaurants')
+          .update({
+            ouvert_manuellement: shouldOpen,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', restaurant.id);
+        if (omErr) {
+          console.warn('⚠️ ouvert_manuellement non mis à jour (admin):', omErr?.message || omErr);
+        }
+      } catch (e) {
+        console.warn('⚠️ ouvert_manuellement non mis à jour (admin):', e?.message || e);
+      }
 
       setStats((prev) => ({
         ...prev,
