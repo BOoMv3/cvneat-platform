@@ -33,14 +33,16 @@ const coerceHorairesObject = (horairesRaw) => {
 };
 
 const getTodayDayObject = (horairesObj, now = new Date()) => {
-  if (!horairesObj || typeof horairesObj !== 'object') return null;
+  if (!horairesObj || typeof horairesObj !== 'object') return { day: null, meta: { reason: 'no_horaires' } };
   const tz = 'Europe/Paris';
   const todayName = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: tz }).format(now).toLowerCase();
   // Support: horaires stockés en ARRAY où index 0 = LUNDI (très courant)
   if (Array.isArray(horairesObj) && horairesObj.length >= 7) {
     const dayNamesMonday0 = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
     const idxMonday0 = dayNamesMonday0.indexOf(todayName);
-    if (idxMonday0 >= 0 && horairesObj[idxMonday0] != null) return horairesObj[idxMonday0];
+    if (idxMonday0 >= 0 && horairesObj[idxMonday0] != null) {
+      return { day: horairesObj[idxMonday0], meta: { source: 'array_monday0', idx: idxMonday0, todayName } };
+    }
   }
   const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -66,20 +68,24 @@ const getTodayDayObject = (horairesObj, now = new Date()) => {
   if (dayIndex >= 0) candidates.push(dayIndex, String(dayIndex));
 
   for (const k of candidates) {
-    if (horairesObj[k] != null) return horairesObj[k];
+    if (horairesObj[k] != null) return { day: horairesObj[k], meta: { source: 'key', key: k, todayName, dayIndex } };
   }
   // fallback lowercase match
   const candLower = new Set(candidates.map((x) => String(x).trim().toLowerCase()));
   for (const k of Object.keys(horairesObj)) {
-    if (candLower.has(String(k).trim().toLowerCase())) return horairesObj[k];
+    if (candLower.has(String(k).trim().toLowerCase())) {
+      return { day: horairesObj[k], meta: { source: 'key_lower', key: k, todayName, dayIndex } };
+    }
   }
-  return null;
+  return { day: null, meta: { reason: 'no_day_match', todayName, dayIndex, keys: Object.keys(horairesObj).slice(0, 20) } };
 };
 
 const isOpenNowFromHoraires = (horairesRaw, now = new Date()) => {
   const horairesObj = coerceHorairesObject(horairesRaw);
-  const day = getTodayDayObject(horairesObj, now);
-  if (!day || day.is_closed === true || day.ouvert === false) return false;
+  const { day, meta } = getTodayDayObject(horairesObj, now);
+  if (!day) return { isOpen: false, reason: meta?.reason || 'no_day', meta };
+  if (day.is_closed === true) return { isOpen: false, reason: 'closed_today_flag', meta };
+  if (day.ouvert === false) return { isOpen: false, reason: 'closed_today', meta };
 
   const tz = 'Europe/Paris';
   const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
@@ -95,7 +101,7 @@ const isOpenNowFromHoraires = (horairesRaw, now = new Date()) => {
   };
 
   if (Array.isArray(day.plages) && day.plages.length > 0) {
-    return day.plages.some((plage) => {
+    const any = day.plages.some((plage) => {
       const openStr = plage?.ouverture || plage?.debut;
       const closeStr = plage?.fermeture || plage?.fin;
       const start = toMinutes(openStr);
@@ -104,6 +110,7 @@ const isOpenNowFromHoraires = (horairesRaw, now = new Date()) => {
       const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
       return inRange(start, end, isMidnightClose);
     });
+    return { isOpen: any, reason: any ? 'open' : 'outside_hours', meta: { ...meta, current } };
   }
 
   const openStr = day.ouverture || day.debut;
@@ -112,7 +119,9 @@ const isOpenNowFromHoraires = (horairesRaw, now = new Date()) => {
   const end = toMinutes(closeStr);
   const closeRaw = String(closeStr || '').trim();
   const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-  return inRange(start, end, isMidnightClose);
+  if (start == null || end == null) return { isOpen: false, reason: 'time_parse_error', meta: { ...meta, openStr, closeStr, current } };
+  const open = inRange(start, end, isMidnightClose);
+  return { isOpen: open, reason: open ? 'open' : 'outside_hours', meta: { ...meta, openStr, closeStr, start, end, current } };
 };
 
 export async function POST(request) {
@@ -127,6 +136,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const ids = Array.isArray(body?.ids) ? body.ids.filter(Boolean) : [];
     const now = new Date();
+    const debug = body?.debug === true;
 
     let query = sb.from('restaurants').select('id, horaires, ferme_manuellement');
     if (ids.length > 0) query = query.in('id', ids);
@@ -140,9 +150,11 @@ export async function POST(request) {
     const map = {};
     for (const r of data || []) {
       const isManuallyClosed = r?.ferme_manuellement === true || r?.ferme_manuellement === 1 || r?.ferme_manuellement === 'true';
+      const computed = isManuallyClosed ? { isOpen: false, reason: 'manual', meta: {} } : isOpenNowFromHoraires(r?.horaires, now);
       map[r.id] = {
-        isOpen: isManuallyClosed ? false : isOpenNowFromHoraires(r?.horaires, now),
+        isOpen: computed?.isOpen === true,
         isManuallyClosed,
+        ...(debug ? { reason: computed?.reason, meta: computed?.meta } : {}),
       };
     }
 

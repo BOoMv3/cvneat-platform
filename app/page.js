@@ -1026,7 +1026,7 @@ export default function Home() {
           const res = await fetch('/api/restaurants/open-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-            body: JSON.stringify({ ids }),
+            body: JSON.stringify({ ids, debug: true }),
             cache: 'no-store',
           });
           const json = await res.json().catch(() => ({}));
@@ -1037,6 +1037,10 @@ export default function Home() {
           for (const restaurant of normalizedRestaurants) {
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
             const s = serverMap?.[restaurant.id];
+            // Debug ciblé (évite de spam)
+            if (s?.reason && (restaurant.nom || '').toLowerCase().includes('smaash')) {
+              console.log('[OPEN-STATUS DEBUG]', restaurant.nom, s);
+            }
             // Filet de sécurité: si le serveur dit "fermé" mais que le calcul local (horaires) dit "ouvert",
             // on garde "ouvert" pour éviter le bug ouvert -> fermé au refresh.
             // (On garde toujours la priorité à ferme_manuellement plus loin dans le rendu.)
