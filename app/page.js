@@ -1040,7 +1040,23 @@ export default function Home() {
 
           setRestaurantsOpenStatus(openStatusMap);
         } catch (e) {
-          console.error('[Restaurants] open-status server failed (keep previous):', e);
+          console.error('[Restaurants] open-status server failed (fallback local if empty):', e);
+          // Si on n'a AUCUN statut (1er chargement) et que l'API open-status est KO/404,
+          // on fait un fallback local pour éviter "tout fermé".
+          setRestaurantsOpenStatus((prev) => {
+            if (prev && Object.keys(prev).length > 0) return prev;
+            const fallback = {};
+            for (const restaurant of normalizedRestaurants) {
+              const status = checkRestaurantOpenStatus(restaurant);
+              const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+              fallback[restaurant.id] = {
+                isOpen: status.isOpen === true,
+                isManuallyClosed: status.isManuallyClosed === true,
+                hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+              };
+            }
+            return fallback;
+          });
         }
         setOpenStatusLoading(false);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
