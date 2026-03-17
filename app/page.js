@@ -1765,7 +1765,9 @@ export default function Home() {
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 // Statut unique : fermé si ferme_manuellement OU si horaires/ouvert_manuellement disent fermé
-                const effectiveIsOpen = openStatusLoading ? false : restaurantStatus.isOpen;
+                // Pendant un refresh, NE PAS forcer "fermé" : on garde le dernier statut connu.
+                // Sinon, toutes les cartes passent fermées à chaque refresh automatique.
+                const effectiveIsOpen = restaurantStatus.isOpen;
                 const isClosed = !effectiveIsOpen || restaurantStatus.isManuallyClosed;
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
