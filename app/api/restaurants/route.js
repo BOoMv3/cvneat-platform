@@ -75,6 +75,97 @@ export async function GET() {
 
     const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
     const isLaBonnePate = (nom) => nom && (String(nom).toLowerCase().includes('bonne pâte') || String(nom).toLowerCase().includes('bonne pate'));
+
+    // Statut ouvert/fermé calculé côté serveur (Europe/Paris) pour éviter les divergences client.
+    const toMinutes = (timeStr) => {
+      if (!timeStr || typeof timeStr !== 'string') return null;
+      const trimmed = timeStr.trim();
+      const match = trimmed.match(/^(\d{1,2})[h:](\d{2})$/i);
+      const hh = match ? parseInt(match[1], 10) : parseInt(trimmed.split(':')[0], 10);
+      const mm = match ? parseInt(match[2], 10) : parseInt(trimmed.split(':')[1] || '0', 10);
+      if (Number.isNaN(hh) || Number.isNaN(mm) || hh < 0 || hh > 24 || mm < 0 || mm > 59) return null;
+      let tot = hh * 60 + mm;
+      if (tot === 0 && hh === 0 && mm === 0) tot = 1440;
+      if (trimmed === '24:00' || trimmed.toLowerCase() === '24h00') tot = 1440;
+      return tot;
+    };
+
+    const coerceHorairesObject = (horairesRaw) => {
+      let h = horairesRaw;
+      for (let i = 0; i < 3; i += 1) {
+        if (typeof h !== 'string') break;
+        const s = h.trim();
+        if (!s) break;
+        try { h = JSON.parse(s); } catch { break; }
+      }
+      if (h && typeof h === 'object' && !Array.isArray(h) && h.horaires && typeof h.horaires === 'object') return h.horaires;
+      return h;
+    };
+
+    const getDayObjectParis = (horairesObj, now = new Date()) => {
+      if (!horairesObj || typeof horairesObj !== 'object') return null;
+      const tz = 'Europe/Paris';
+      const todayName = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: tz }).format(now).toLowerCase();
+      // ARRAY lundi=0
+      if (Array.isArray(horairesObj) && horairesObj.length >= 7) {
+        const dayNamesMonday0 = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+        const idxMonday0 = dayNamesMonday0.indexOf(todayName);
+        if (idxMonday0 >= 0 && horairesObj[idxMonday0] != null) return horairesObj[idxMonday0];
+      }
+      const candidates = [
+        todayName,
+        todayName.charAt(0).toUpperCase() + todayName.slice(1),
+        todayName.toUpperCase(),
+        todayName.slice(0, 3),
+        todayName.slice(0, 3).toUpperCase(),
+      ];
+      const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+      const dayIndex = dayNamesFr.indexOf(todayName);
+      if (dayIndex >= 0) candidates.push(dayIndex, String(dayIndex));
+      for (const k of candidates) {
+        if (horairesObj[k] != null) return horairesObj[k];
+      }
+      const candLower = new Set(candidates.map((x) => String(x).trim().toLowerCase()));
+      for (const k of Object.keys(horairesObj)) {
+        if (candLower.has(String(k).trim().toLowerCase())) return horairesObj[k];
+      }
+      return null;
+    };
+
+    const isOpenNowParis = (horairesRaw, now = new Date()) => {
+      const horairesObj = coerceHorairesObject(horairesRaw);
+      const day = getDayObjectParis(horairesObj, now);
+      if (!day || day.is_closed === true || day.ouvert === false) return false;
+      const tz = 'Europe/Paris';
+      const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
+      const ch = parseInt(timeParts.find((p) => p.type === 'hour')?.value || '0', 10);
+      const cm = parseInt(timeParts.find((p) => p.type === 'minute')?.value || '0', 10);
+      const current = ch * 60 + cm;
+      const inRange = (start, end, isMidnightClose) => {
+        if (start == null || end == null) return false;
+        if (isMidnightClose) return current >= start;
+        const spansMidnight = end < start;
+        return spansMidnight ? (current >= start || current <= end) : (current >= start && current <= end);
+      };
+      if (Array.isArray(day.plages) && day.plages.length > 0) {
+        return day.plages.some((plage) => {
+          const openStr = plage?.ouverture || plage?.debut;
+          const closeStr = plage?.fermeture || plage?.fin;
+          const start = toMinutes(openStr);
+          const end = toMinutes(closeStr);
+          const closeRaw = String(closeStr || '').trim();
+          const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
+          return inRange(start, end, isMidnightClose);
+        });
+      }
+      const openStr = day.ouverture || day.debut;
+      const closeStr = day.fermeture || day.fin;
+      const start = toMinutes(openStr);
+      const end = toMinutes(closeStr);
+      const closeRaw = String(closeStr || '').trim();
+      const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
+      return inRange(start, end, isMidnightClose);
+    };
     const withFermeManuel = filtered.map((r) => {
       const fresh = freshMap[r.id] || r;
       const fm = toBool(fresh.ferme_manuellement);
@@ -83,10 +174,12 @@ export async function GET() {
       const oa = fresh.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
+      const isOpenNow = fm ? false : isOpenNowParis(r.horaires, new Date());
       return {
         ...r,
         ferme_manuellement: fm,
         ouvert_manuellement: om,
+        is_open_now: isOpenNow,
         offre_active: offreActiveFinal,
         offre_label: isLaBonnePate(r.nom) ? null : (fresh.offre_label ?? r.offre_label ?? null),
         offre_description: isLaBonnePate(r.nom) ? null : (fresh.offre_description ?? r.offre_description ?? null)
