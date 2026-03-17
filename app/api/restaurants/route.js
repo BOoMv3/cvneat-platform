@@ -104,46 +104,24 @@ export async function GET() {
 
     const getDayObjectParis = (horairesObj, now = new Date()) => {
       if (!horairesObj || typeof horairesObj !== 'object') return null;
-      // Calculer l'index du jour en Europe/Paris sans dépendre de la locale
       const tz = 'Europe/Paris';
-      const paris = new Date(
-        new Intl.DateTimeFormat('en-GB', {
-          timeZone: tz,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        }).format(now)
-      );
-      const dow = paris.getDay(); // 0=dimanche, 1=lundi, ...
-      const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-      const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const todayName = dayNamesFr[dow];
-      const todayEn = dayNamesEn[dow];
-
+      const todayName = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: tz }).format(now).toLowerCase();
       // ARRAY lundi=0
       if (Array.isArray(horairesObj) && horairesObj.length >= 7) {
         const dayNamesMonday0 = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
         const idxMonday0 = dayNamesMonday0.indexOf(todayName);
         if (idxMonday0 >= 0 && horairesObj[idxMonday0] != null) return horairesObj[idxMonday0];
       }
+      const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+      const dayIndex = dayNamesFr.indexOf(todayName);
       const candidates = [
         todayName,
         todayName.charAt(0).toUpperCase() + todayName.slice(1),
         todayName.toUpperCase(),
         todayName.slice(0, 3),
-        todayName.slice(0, 3).toUpperCase(),
-        todayEn,
-        todayEn.charAt(0).toUpperCase() + todayEn.slice(1),
-        todayEn.toUpperCase(),
-        todayEn.slice(0, 3),
-        todayEn.slice(0, 3).toUpperCase(),
-        dow,
-        String(dow)
+        todayName.slice(0, 3).toUpperCase()
       ];
+      if (dayIndex >= 0) candidates.push(dayIndex, String(dayIndex));
       for (const k of candidates) {
         if (horairesObj[k] != null) return horairesObj[k];
       }
