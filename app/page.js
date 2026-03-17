@@ -393,9 +393,13 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
         if (start == null || end == null) continue;
         const closeRaw = String(plage.fermeture || plage.fin || '').trim();
         if (closeRaw === '00:00' || closeRaw === '0:00') end = 24 * 60;
+        // Support plages qui passent minuit (ex: 18:00 -> 02:00)
+        const spansMidnight = end < start;
         const inPlage = (closeRaw === '00:00' || closeRaw === '0:00')
           ? (currentTime >= start)
-          : (currentTime >= start && currentTime <= end);
+          : spansMidnight
+            ? (currentTime >= start || currentTime <= end)
+            : (currentTime >= start && currentTime <= end);
         if (inPlage) { shouldBeOpenByHours = true; break; }
       }
     } else if ((heuresJour.ouverture || heuresJour.debut) && (heuresJour.fermeture || heuresJour.fin)) {
@@ -416,7 +420,10 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
         if (isMidnightClose) {
           inPlage = currentTime >= start;
         } else {
-          inPlage = currentTime >= start && currentTime <= end;
+          const spansMidnight = end < start;
+          inPlage = spansMidnight
+            ? (currentTime >= start || currentTime <= end)
+            : (currentTime >= start && currentTime <= end);
         }
         
         if (inPlage) {

@@ -315,7 +315,10 @@ export async function POST(request, { params }) {
         if (isMidnightClose) {
           inPlage = currentTimeMinutes >= openTimeMinutes;
         } else {
-          inPlage = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
+          const spansMidnight = closeTimeMinutes < openTimeMinutes;
+          inPlage = spansMidnight
+            ? (currentTimeMinutes >= openTimeMinutes || currentTimeMinutes <= closeTimeMinutes)
+            : (currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes);
         }
 
         if (inPlage) {
@@ -353,7 +356,10 @@ export async function POST(request, { params }) {
       if (isMidnightClose) {
         isOpen = currentTimeMinutes >= openTimeMinutes;
       } else {
-        isOpen = currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes;
+        const spansMidnight = closeTimeMinutes < openTimeMinutes;
+        isOpen = spansMidnight
+          ? (currentTimeMinutes >= openTimeMinutes || currentTimeMinutes <= closeTimeMinutes)
+          : (currentTimeMinutes >= openTimeMinutes && currentTimeMinutes <= closeTimeMinutes);
       }
     }
     // Pas de fallback ouvert=true sans plage : ouvert uniquement si plage explicite contient l'heure
