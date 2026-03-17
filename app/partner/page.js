@@ -218,27 +218,42 @@ export default function PartnerDashboard() {
       setUserData(userData); // Stocker userData dans le state
 
       // Recuperer le restaurant (si admin, on peut afficher la page mais sans restaurant)
+      // IMPORTANT: `.single()` plante si:
+      // - 0 ligne (nouveau partenaire)
+      // - OU plusieurs lignes (doublon user_id) => le partenaire est redirigé à tort vers "créer le restaurant"
+      // On prend le plus récent (limit 1) et on gère proprement les erreurs.
       const { data: resto, error: restoError } = await supabase
         .from('restaurants')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       console.log('🔍 DEBUG PARTNER - Restaurant:', resto);
       console.log('🔍 DEBUG PARTNER - Restaurant Error:', restoError);
 
       // Si ce n'est pas un admin et qu'il n'y a pas de restaurant, rediriger
+      // Si erreur "pas trouvé" => normal (nouveau partenaire)
+      // Si autre erreur => on n'envoie pas vers "créer", on affiche une vraie erreur.
       if (userData.role !== 'admin' && (restoError || !resto)) {
         console.log('⚠️ Aucun restaurant trouvé pour cet utilisateur, redirection vers profil-partenaire');
         console.log('Restaurant Error Code:', restoError?.code);
         console.log('Restaurant Error Message:', restoError?.message);
         
-        // Si l'erreur est "PGRST116" (pas trouvé), c'est normal pour un nouveau partenaire
-        // Sinon, il y a peut-être un problème
-        if (restoError && restoError.code !== 'PGRST116') {
-          console.error('❌ Erreur inattendue lors de la récupération du restaurant:', restoError);
+        // Si on a une erreur autre que "pas trouvé", ne pas rediriger vers création
+        if (restoError && restoError.code && restoError.code !== 'PGRST116') {
+          console.error('❌ Erreur lors de la récupération du restaurant (partner):', restoError);
+          setError(
+            restoError?.message
+              ? `Erreur récupération restaurant: ${restoError.message}`
+              : "Erreur récupération restaurant. Réessaie ou contacte l'admin."
+          );
+          setLoading(false);
+          return;
         }
-        
+
+        // Pas de restaurant: flux normal de création
         router.push('/profil-partenaire');
         return;
       }
