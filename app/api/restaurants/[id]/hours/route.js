@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
 
     const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
-      .select('horaires, ferme_manuellement')
+      .select('horaires, ferme_manuellement, ouvert_manuellement')
       .eq('id', id)
       .single();
 
@@ -143,8 +143,6 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // "Ouvert manuellement" ne force plus l'ouverture : on suit les horaires
-
     // Normaliser ferme_manuellement - UNIQUEMENT true si valeur explicitement truthy
     const fm = restaurant.ferme_manuellement;
     const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
@@ -159,6 +157,23 @@ export async function POST(request, { params }) {
         message: 'Restaurant fermé manuellement - Nécessite une ouverture manuelle',
         reason: 'manual',
         isManuallyClosed: true
+      });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
+    }
+
+    // LOGIQUE: Si ouvert_manuellement = true → OUVERT (force l'ouverture, sauf si fermé manuellement)
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyOpen =
+      om === true || om === 'true' || om === 1 || om === '1' ||
+      (typeof om === 'string' && om.toLowerCase().trim() === 'true');
+    if (isManuallyOpen) {
+      console.log(`[API hours POST] Restaurant ${id} - OUVERT MANUELLEMENT (ouvert_manuellement = ${om})`);
+      const res = json({
+        isOpen: true,
+        message: 'Restaurant ouvert manuellement',
+        reason: 'manual_open',
+        isManuallyClosed: false,
       });
       res.headers.set('Cache-Control', 'no-store, max-age=0');
       return res;

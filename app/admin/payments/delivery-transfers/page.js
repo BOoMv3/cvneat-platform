@@ -287,7 +287,8 @@ export default function DeliveryTransfersTracking() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la création du paiement');
+        const msg = data.error || data.details || 'Erreur lors de la création du paiement';
+        throw new Error(msg);
       }
 
       // Réinitialiser le formulaire

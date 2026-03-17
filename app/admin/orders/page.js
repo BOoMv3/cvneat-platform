@@ -12,6 +12,7 @@ export default function AdminOrders() {
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPayment, setFilterPayment] = useState('paid'); // 'paid' = payées uniquement, 'all' = toutes
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -52,6 +53,34 @@ export default function AdminOrders() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const quickUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      setUpdatingOrderId(orderId);
+
+      const statusMap = {
+        pending: 'en_attente',
+        accepted: 'acceptee',
+        rejected: 'refusee',
+        preparing: 'en_preparation',
+        ready: 'pret_a_livrer',
+        delivered: 'livree'
+      };
+      const frenchStatus = statusMap[newStatus] || newStatus;
+
+      const { error } = await supabase
+        .from('commandes')
+        .update({ statut: frenchStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      await fetchOrders();
+    } catch (err) {
+      setError(err.message || 'Erreur mise à jour commande');
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -267,13 +296,35 @@ export default function AdminOrders() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => router.push(`/admin/orders/${order.id}`)}
-                      className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100"
-                      title="Voir les détails"
-                    >
-                      <FaEye />
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      {order.statut === 'en_attente' && (
+                        <>
+                          <button
+                            onClick={() => quickUpdateOrderStatus(order.id, 'accepted')}
+                            disabled={updatingOrderId === order.id}
+                            className="px-3 py-1 rounded-lg text-xs font-semibold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                            title="Accepter la commande"
+                          >
+                            {updatingOrderId === order.id ? '...' : 'Accepter'}
+                          </button>
+                          <button
+                            onClick={() => quickUpdateOrderStatus(order.id, 'rejected')}
+                            disabled={updatingOrderId === order.id}
+                            className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                            title="Refuser la commande"
+                          >
+                            {updatingOrderId === order.id ? '...' : 'Refuser'}
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => router.push(`/admin/orders/${order.id}`)}
+                        className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100"
+                        title="Voir les détails"
+                      >
+                        <FaEye />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -154,8 +154,14 @@ export async function POST(request) {
 
     if (transferError) {
       console.error('Erreur création transfer:', transferError);
+      const detail = transferError.message || transferError.code || '';
       return NextResponse.json(
-        { error: 'Erreur lors de la création du paiement', details: transferError.message },
+        {
+          error: detail
+            ? `Erreur lors de la création du paiement: ${detail}`
+            : 'Erreur lors de la création du paiement',
+          details: transferError.message
+        },
         { status: 500 }
       );
     }

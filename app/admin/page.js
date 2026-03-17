@@ -54,6 +54,7 @@ export default function AdminPage() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [togglingRestaurantId, setTogglingRestaurantId] = useState(null);
   const [broadcastPrepLoading, setBroadcastPrepLoading] = useState(false);
   const [broadcastPrepResult, setBroadcastPrepResult] = useState(null);
   const router = useRouter();
@@ -96,6 +97,33 @@ export default function AdminPage() {
       router.push('/login');
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
+    try {
+      setTogglingRestaurantId(restaurant.id);
+      const { error: updateError } = await supabase
+        .from('restaurants')
+        .update({
+          ferme_manuellement: !shouldOpen,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', restaurant.id);
+
+      if (updateError) throw updateError;
+
+      setStats((prev) => ({
+        ...prev,
+        allRestaurants: (prev.allRestaurants || []).map((r) =>
+          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen } : r
+        )
+      }));
+    } catch (e) {
+      console.error('Erreur ouverture/fermeture restaurant (admin):', e);
+      alert(e?.message || "Erreur lors de l'ouverture/fermeture du restaurant.");
+    } finally {
+      setTogglingRestaurantId(null);
     }
   };
 
@@ -618,6 +646,72 @@ export default function AdminPage() {
                 <FaBell className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Test notif</span>
               </button>
+            </div>
+          </div>
+
+          {/* Contrôle manuel des restaurants (ouvrir / fermer) */}
+          <div className="mt-3 sm:mt-4 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+            <div className="px-3 py-3 sm:px-4 sm:py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Contrôle des restaurants (ouverture / fermeture)
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                  Liste complète des restaurants. Tu peux les ouvrir ou les fermer manuellement depuis ici pour éviter les oublis.
+                </p>
+              </div>
+            </div>
+            <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+              {(stats.allRestaurants || []).map((r) => {
+                const isClosed = !!r.ferme_manuellement;
+                return (
+                  <div
+                    key={r.id}
+                    className="px-3 py-2 sm:px-4 sm:py-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {r.nom || 'Restaurant sans nom'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {isClosed ? 'Fermé manuellement' : 'Ouvert (suivant les horaires)'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          isClosed
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                            : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                        }`}
+                      >
+                        {isClosed ? 'Fermé' : 'Ouvert'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleRestaurantOpen(r, true)}
+                        disabled={!isClosed || togglingRestaurantId === r.id}
+                        className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-green-500 text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Ouvrir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleRestaurantOpen(r, false)}
+                        disabled={isClosed || togglingRestaurantId === r.id}
+                        className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-red-500 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Fermer
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {(stats.allRestaurants || []).length === 0 && (
+                <div className="px-3 py-4 sm:px-4 sm:py-5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">
+                  Aucun restaurant trouvé.
+                </div>
+              )}
             </div>
           </div>
 

@@ -308,6 +308,10 @@ export default function TransfersTracking() {
           let remainingToPay = is99
             ? restaurantPayout
             : Math.max(0, restaurantPayout - totalTransfers);
+          // Pénalité fixe 99 Street Food : -15€ (retiré du reste à payer)
+          if (is99) {
+            remainingToPay = Math.max(0, remainingToPay - 15);
+          }
           // Override manuel : si un montant a été saisi manuellement, on l'utilise à la place
           const hasManualOverride = restaurant.remaining_to_pay_override != null && restaurant.remaining_to_pay_override !== '';
           if (hasManualOverride) {
