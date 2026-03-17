@@ -1013,6 +1013,7 @@ export default function Home() {
         setOpenStatusLoading(true);
         
         // Statut ouvert/fermé: source unique côté serveur (évite les divergences au refresh)
+        // IMPORTANT: en cas d'échec, ne pas écraser l'ancien état (sinon tout redevient "fermé").
         const openStatusMap = {};
         try {
           const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
@@ -1023,6 +1024,9 @@ export default function Home() {
             cache: 'no-store',
           });
           const json = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(json?.error || `Erreur open-status (${res.status})`);
+          }
           const serverMap = json?.map || {};
           for (const restaurant of normalizedRestaurants) {
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
@@ -1033,18 +1037,11 @@ export default function Home() {
               hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
           }
+
+          setRestaurantsOpenStatus(openStatusMap);
         } catch (e) {
-          console.error('[Restaurants] open-status server failed, fallback fermé:', e);
-          for (const restaurant of normalizedRestaurants) {
-            const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-            openStatusMap[restaurant.id] = {
-              isOpen: false,
-              isManuallyClosed: false,
-              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
-            };
-          }
+          console.error('[Restaurants] open-status server failed (keep previous):', e);
         }
-        setRestaurantsOpenStatus(openStatusMap);
         setOpenStatusLoading(false);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
