@@ -419,11 +419,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
 
-    // Si le backend a déjà calculé le statut (source de vérité), l'utiliser.
-    if (typeof restaurant.is_open_now === 'boolean') {
-      return { isOpen: restaurant.is_open_now, isManuallyClosed: false, reason: 'server' };
-    }
-    // Sinon : ouvert/fermé selon les plages horaires
+    // Ouvert/fermé selon les plages horaires (on NE fait plus confiance à is_open_now serveur
+    // pour éviter les divergences ou les bugs de calcul côté API).
     let horaires = coerceHorairesObject(restaurant.horaires);
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
