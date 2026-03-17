@@ -14,6 +14,24 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
+const coerceHorairesObject = (horairesRaw) => {
+  let h = horairesRaw;
+  for (let i = 0; i < 3; i += 1) {
+    if (typeof h !== 'string') break;
+    const s = h.trim();
+    if (!s) break;
+    try {
+      h = JSON.parse(s);
+    } catch {
+      break;
+    }
+  }
+  if (h && typeof h === 'object' && !Array.isArray(h) && h.horaires && typeof h.horaires === 'object') {
+    return h.horaires;
+  }
+  return h;
+};
+
 function json(body, init) {
   const res = NextResponse.json(body, init);
   for (const [k, v] of Object.entries(corsHeaders)) {
@@ -42,9 +60,9 @@ export async function GET(request, { params }) {
     }
 
     // Convertir les horaires JSON en format lisible
-    let horaires = restaurant.horaires || {};
+    let horaires = coerceHorairesObject(restaurant.horaires) || {};
     
-    // Si horaires est une chaîne JSON, la parser
+    // Si horaires est une chaîne JSON, la parser (fallback)
     if (typeof horaires === 'string') {
       try {
         horaires = JSON.parse(horaires);
@@ -166,9 +184,9 @@ export async function POST(request, { params }) {
     console.log(`[API hours POST] Restaurant ${id} - Vérification horaires (ferme_manuellement = ${fm})`);
 
     // Si ferme_manuellement = false ou null, vérifier les horaires normalement
-    let horaires = restaurant.horaires || {};
+    let horaires = coerceHorairesObject(restaurant.horaires) || {};
     
-    // Si horaires est une chaîne JSON, la parser
+    // Si horaires est une chaîne JSON, la parser (fallback)
     if (typeof horaires === 'string') {
       try {
         horaires = JSON.parse(horaires);

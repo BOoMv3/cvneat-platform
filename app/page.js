@@ -327,6 +327,27 @@ const parseTimeToMinutes = (timeStr) => {
   return tot;
 };
 
+// Tolérant: certaines BDD ont `horaires` en JSON string (voire double-encodé).
+const coerceHorairesObject = (horairesRaw) => {
+  let h = horairesRaw;
+  for (let i = 0; i < 3; i += 1) {
+    if (typeof h !== 'string') break;
+    const s = h.trim();
+    if (!s) break;
+    // Tenter parse JSON; si ça échoue, on stop.
+    try {
+      h = JSON.parse(s);
+    } catch {
+      break;
+    }
+  }
+  // Parfois stocké sous forme { horaires: {...} }
+  if (h && typeof h === 'object' && !Array.isArray(h) && h.horaires && typeof h.horaires === 'object') {
+    return h.horaires;
+  }
+  return h;
+};
+
 // Récupère les horaires du jour actuel (Europe/Paris).
 const getHeuresJourForToday = (horaires) => {
   if (!horaires || typeof horaires !== 'object') return null;
@@ -392,10 +413,11 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
     // Sinon : ouvert/fermé selon les plages horaires
-    let horaires = restaurant.horaires;
+    let horaires = coerceHorairesObject(restaurant.horaires);
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
 
     if (typeof horaires === 'string') {
+      // Dernier fallback (au cas où)
       try { horaires = JSON.parse(horaires); } catch { return { isOpen: false, isManuallyClosed: false, reason: 'parse_error' }; }
     }
 
