@@ -488,20 +488,21 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
       const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
         (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+      const isOpen = ouvertManuel; // alias pour compatibilité
       setIsManuallyClosed(isManuallyClosed);
       setIsRestaurantOpen(ouvertManuel);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
       console.log('📊 Statut ouvert reçu:', openStatusData);
-      console.log('🔓 isRestaurantOpen sera:', ouvertManuel);
+      console.log('🔓 isRestaurantOpen sera:', isOpen);
       console.log('🔒 isManuallyClosed sera:', hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
       // Debug Deliss King (liste vs détail)
       if (restaurantData?.nom && (restaurantData.nom.toLowerCase().includes('deliss') || restaurantData.nom.toLowerCase().includes("deliss'"))) {
         console.log(`[Restaurants] 🔍 DEBUG Deliss King (DÉTAIL):`, {
           nom: restaurantData.nom,
           id: restaurantData.id,
-          isOpen: ouvertManuel,
+          isOpen,
           isManuallyClosed,
           openStatusData
         });
