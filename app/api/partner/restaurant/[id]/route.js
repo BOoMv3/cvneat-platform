@@ -88,12 +88,14 @@ export async function PUT(request, { params }) {
       updated_at: new Date().toISOString()
     };
 
-    // Ouvrir/Fermer (partenaires gardent la main)
-    const wantOuvertManuel = body.ferme_manuellement !== undefined && !(
+    // Ouvrir/Fermer : ne mettre à jour ferme_manuellement QUE si la requête est explicitement un toggle
+    // (pas si on envoie prep_time_minutes ou autre, pour éviter qu'un autre appel écrase par erreur)
+    const isToggleRequest = body.ferme_manuellement !== undefined && body.prep_time_minutes === undefined;
+    const wantOuvertManuel = isToggleRequest && !(
       body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
       body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
     );
-    if (body.ferme_manuellement !== undefined) {
+    if (isToggleRequest) {
       updateData.ferme_manuellement = (
         body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
         body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
@@ -140,7 +142,7 @@ export async function PUT(request, { params }) {
       } catch (e) {
         console.warn('⚠️ ouvert_manuellement non mis à jour (colonne absente ?):', e?.message || e);
       }
-    } else if (body.ferme_manuellement !== undefined) {
+    } else if (isToggleRequest) {
       try {
         await supabaseAdmin
           .from('restaurants')
@@ -151,7 +153,7 @@ export async function PUT(request, { params }) {
         console.warn('⚠️ ouvert_manuellement non mis à jour:', e?.message || e);
       }
     }
-    if (updatedRestaurant && body.ferme_manuellement !== undefined) {
+    if (updatedRestaurant && isToggleRequest) {
       updatedRestaurant.ouvert_manuellement = wantOuvertManuel;
     }
 
