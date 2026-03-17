@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const toMinutes = (hhmm) => {
-  if (!hhmm || typeof hhmm !== 'string') return null;
-  const [h, m = '0'] = hhmm.split(':');
-  const hh = parseInt(h, 10);
-  const mm = parseInt(m, 10);
-  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+const toMinutes = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const trimmed = timeStr.trim();
+  // Support "HH:MM" et "HHhMM"
+  const match = trimmed.match(/^(\d{1,2})[h:](\d{2})$/i);
+  const hh = match ? parseInt(match[1], 10) : parseInt(trimmed.split(':')[0], 10);
+  const mm = match ? parseInt(match[2], 10) : parseInt(trimmed.split(':')[1] || '0', 10);
+  if (Number.isNaN(hh) || Number.isNaN(mm) || hh < 0 || hh > 24 || mm < 0 || mm > 59) return null;
   let tot = hh * 60 + mm;
-  if (tot === 0 && hh === 0 && mm === 0) tot = 1440; // 00:00 = 24:00 (fin de service)
+  // 00:00 / 0:00 peut représenter 24:00 (fin de service)
+  if (tot === 0 && hh === 0 && mm === 0) tot = 1440;
+  if (trimmed === '24:00' || trimmed.toLowerCase() === '24h00') tot = 1440;
   return tot;
 };
 
