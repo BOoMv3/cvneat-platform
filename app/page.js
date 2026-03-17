@@ -1037,8 +1037,14 @@ export default function Home() {
           for (const restaurant of normalizedRestaurants) {
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
             const s = serverMap?.[restaurant.id];
+            // Filet de sécurité: si le serveur dit "fermé" mais que le calcul local (horaires) dit "ouvert",
+            // on garde "ouvert" pour éviter le bug ouvert -> fermé au refresh.
+            // (On garde toujours la priorité à ferme_manuellement plus loin dans le rendu.)
+            const local = checkRestaurantOpenStatus(restaurant);
+            const serverIsOpen = s?.isOpen === true;
+            const localIsOpen = local?.isOpen === true;
             openStatusMap[restaurant.id] = {
-              isOpen: s?.isOpen === true,
+              isOpen: serverIsOpen || localIsOpen,
               isManuallyClosed: s?.isManuallyClosed === true,
               hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
