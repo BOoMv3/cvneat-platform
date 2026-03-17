@@ -87,14 +87,12 @@ export async function PUT(request, { params }) {
     const updateData = {
       updated_at: new Date().toISOString()
     };
-    
-    // Ouvrir/Fermer : on met à jour d'abord les colonnes qui existent toujours (ferme_manuellement)
-    // puis ouvert_manuellement en option (peut ne pas exister si migration non appliquée)
+
+    // Ouvrir/Fermer (partenaires gardent la main)
     const wantOuvertManuel = body.ferme_manuellement !== undefined && !(
       body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
       body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
     );
-
     if (body.ferme_manuellement !== undefined) {
       updateData.ferme_manuellement = (
         body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
@@ -115,14 +113,7 @@ export async function PUT(request, { params }) {
       updateData.prep_time_updated_at = new Date().toISOString();
     }
 
-    console.log('📝 Mise à jour restaurant:', {
-      restaurant_id: id,
-      updateData,
-      ferme_manuellement_body_value: body.ferme_manuellement,
-      ferme_manuellement_final: updateData.ferme_manuellement
-    });
-
-    // 1) Mise à jour avec colonnes garanties (sans ouvert_manuellement pour éviter erreur si migration absente)
+    // 1) Mise à jour (ferme_manuellement + prep_time si envoyés)
     const { data: updatedRestaurant, error: updateError } = await supabaseAdmin
       .from('restaurants')
       .update(updateData)
@@ -141,11 +132,11 @@ export async function PUT(request, { params }) {
     // 2) Si "Ouvrir" (ferme_manuellement = false), mettre à jour ouvert_manuellement si la colonne existe
     if (wantOuvertManuel) {
       try {
-        const { error: openErr } = await supabaseAdmin
+        await supabaseAdmin
           .from('restaurants')
           .update({ ouvert_manuellement: true, updated_at: new Date().toISOString() })
           .eq('id', id);
-        if (!openErr && updatedRestaurant) updatedRestaurant.ouvert_manuellement = true;
+        if (updatedRestaurant) updatedRestaurant.ouvert_manuellement = true;
       } catch (e) {
         console.warn('⚠️ ouvert_manuellement non mis à jour (colonne absente ?):', e?.message || e);
       }
@@ -160,8 +151,6 @@ export async function PUT(request, { params }) {
         console.warn('⚠️ ouvert_manuellement non mis à jour:', e?.message || e);
       }
     }
-
-    // Attacher ouvert_manuellement à la réponse si on le connaît (pour le front)
     if (updatedRestaurant && body.ferme_manuellement !== undefined) {
       updatedRestaurant.ouvert_manuellement = wantOuvertManuel;
     }

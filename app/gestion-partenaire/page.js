@@ -558,12 +558,13 @@ export default function GestionPartenaire() {
             setSuccess('');
             setError('');
             // Sauvegarde sûre: toujours sauvegarder la semaine complète (lundi->dimanche)
+            // Le formulaire utilise 'Lundi', 'Mardi' (joursSemaine) donc il faut lire les deux clés
             const cleanedHoraires = {};
-            joursMap.forEach(({ key }) => {
-              const h = horaires?.[key] || {};
+            joursMap.forEach(({ key, label }) => {
+              const h = horaires?.[key] || horaires?.[label] || {};
               cleanedHoraires[key] = {
-                ouverture: h.ouverture || '',
-                fermeture: h.fermeture || '',
+                ouverture: (h.ouverture || '').trim(),
+                fermeture: (h.fermeture || '').trim(),
                 ferme: h.ferme === true,
               };
             });

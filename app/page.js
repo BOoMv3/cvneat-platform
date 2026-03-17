@@ -429,8 +429,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
     const heuresJour = getHeuresJourForToday(horaires);
     if (!heuresJour) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    // Jour marqué fermé explicitement
-    if (heuresJour.is_closed === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
+    // Jour marqué fermé explicitement (is_closed ou ferme depuis gestion-partenaire)
+    if (heuresJour.is_closed === true || heuresJour.ferme === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
 
     // Heure actuelle basée sur l'horloge locale du navigateur
     const now = new Date();
