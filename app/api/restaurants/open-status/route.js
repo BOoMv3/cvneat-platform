@@ -32,6 +32,12 @@ const getTodayDayObject = (horairesObj, now = new Date()) => {
   if (!horairesObj || typeof horairesObj !== 'object') return null;
   const tz = 'Europe/Paris';
   const todayName = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: tz }).format(now).toLowerCase();
+  // Support: horaires stockés en ARRAY où index 0 = LUNDI (très courant)
+  if (Array.isArray(horairesObj) && horairesObj.length >= 7) {
+    const dayNamesMonday0 = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+    const idxMonday0 = dayNamesMonday0.indexOf(todayName);
+    if (idxMonday0 >= 0 && horairesObj[idxMonday0] != null) return horairesObj[idxMonday0];
+  }
   const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayIndex = dayNamesFr.indexOf(todayName);
