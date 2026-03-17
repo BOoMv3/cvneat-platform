@@ -504,14 +504,14 @@ export default function RestaurantDetail({ params }) {
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
       console.log('📊 Statut ouvert reçu:', openStatusData);
-      console.log('🔓 isRestaurantOpen sera:', isOpen);
+      console.log('🔓 isRestaurantOpen sera:', ouvertManuel);
       console.log('🔒 isManuallyClosed sera:', hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
       // Debug Deliss King (liste vs détail)
       if (restaurantData?.nom && (restaurantData.nom.toLowerCase().includes('deliss') || restaurantData.nom.toLowerCase().includes("deliss'"))) {
         console.log(`[Restaurants] 🔍 DEBUG Deliss King (DÉTAIL):`, {
           nom: restaurantData.nom,
           id: restaurantData.id,
-          isOpen,
+          isOpen: ouvertManuel,
           isManuallyClosed,
           openStatusData
         });

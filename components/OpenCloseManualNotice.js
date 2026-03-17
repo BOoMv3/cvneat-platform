@@ -3,17 +3,29 @@
 import { useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'cvneat_openclose_manual_notice_seen';
+const REMIND_AFTER_MS = 90 * 60 * 1000; // 1h30 après avoir fermé le message
 
 export default function OpenCloseManualNotice() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const seen = typeof window !== 'undefined' && sessionStorage.getItem(STORAGE_KEY);
-    if (!seen) setVisible(true);
+    if (typeof window === 'undefined') return;
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      setVisible(true);
+      return;
+    }
+    const lastDismissed = parseInt(raw, 10);
+    if (isNaN(lastDismissed)) {
+      setVisible(true);
+      return;
+    }
+    // Réafficher 1h30 après la dernière fermeture pour ne pas oublier
+    if (Date.now() - lastDismissed >= REMIND_AFTER_MS) setVisible(true);
   }, []);
 
   const handleClose = () => {
-    if (typeof window !== 'undefined') sessionStorage.setItem(STORAGE_KEY, '1');
+    if (typeof window !== 'undefined') sessionStorage.setItem(STORAGE_KEY, String(Date.now()));
     setVisible(false);
   };
 
