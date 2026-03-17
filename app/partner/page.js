@@ -29,6 +29,7 @@ import {
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
+import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
@@ -2803,6 +2804,7 @@ export default function PartnerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <OpenCloseManualNotice />
       {/* Popup quotidien: temps de préparation */}
       {showPrepTimeModal && restaurant?.id && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">

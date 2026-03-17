@@ -27,6 +27,7 @@ import {
   FaComments,
   FaBell
 } from 'react-icons/fa';
+import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 
 export default function AdminPage() {
   const [stats, setStats] = useState({
@@ -540,6 +541,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <OpenCloseManualNotice />
       <div className="max-w-full mx-auto px-2 fold:px-2 xs:px-3 sm:px-4 py-2 fold:py-2 xs:py-3 sm:py-8">
         {/* Header avec bouton retour et info utilisateur - Optimisé mobile et foldable */}
         <div className="mb-3 fold:mb-3 xs:mb-4 sm:mb-6">

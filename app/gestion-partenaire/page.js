@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 
 const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const joursMap = [
@@ -374,6 +375,7 @@ export default function GestionPartenaire() {
 
   return (
     <div className="max-w-5xl mx-auto p-8 space-y-12">
+      <OpenCloseManualNotice />
       <h1 className="text-2xl font-bold mb-6">Gestion partenaire</h1>
       {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
         <div className="mb-4 p-2 bg-yellow-100 text-yellow-800 rounded font-bold inline-block">

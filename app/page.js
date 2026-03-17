@@ -415,7 +415,7 @@ const getHeuresJourForToday = (horaires) => {
   return null;
 };
 
-// Ouvert/fermé : ouvert_manuellement prime ; sinon ferme_manuellement = true → fermé ; sinon selon horaires (Europe/Paris).
+// Ouvert/fermé : UNIQUEMENT manuel (bouton Ouvrir / Fermer). Plus de calcul sur les horaires.
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
     let ouvertManuel = restaurant.ouvert_manuellement;
@@ -426,104 +426,18 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     if (ouvertManuel === true || ouvertManuel === 1) {
       return { isOpen: true, isManuallyClosed: false, reason: 'open_manuel' };
     }
-
     let fermeManuel = restaurant.ferme_manuellement;
-    if (fermeManuel === undefined || fermeManuel === null) {
-      fermeManuel = false;
-    } else if (typeof fermeManuel === 'string') {
-      const s = fermeManuel.trim().toLowerCase();
+    if (fermeManuel === undefined || fermeManuel === null) fermeManuel = false;
+    else if (typeof fermeManuel === 'string') {
+      const s = String(fermeManuel).trim().toLowerCase();
       fermeManuel = s === 'true' || s === '1' || s === 'oui';
     }
-    const isManuallyClosed = fermeManuel === true || fermeManuel === 1;
-
-    if (isManuallyClosed) {
+    if (fermeManuel === true || fermeManuel === 1) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
-
-    // Ouvert/fermé selon les plages horaires (on NE fait plus confiance à is_open_now serveur
-    // pour éviter les divergences ou les bugs de calcul côté API).
-    let horaires = coerceHorairesObject(restaurant.horaires);
-    if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };
-
-    if (typeof horaires === 'string') {
-      // Dernier fallback (au cas où)
-      try { horaires = JSON.parse(horaires); } catch { return { isOpen: false, isManuallyClosed: false, reason: 'parse_error' }; }
-    }
-
-    const heuresJour = getHeuresJourForToday(horaires);
-    if (!heuresJour) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    // Jour marqué fermé explicitement (is_closed, ferme, ou ouvert === false)
-    if (heuresJour.is_closed === true || heuresJour.ferme === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
-    if (heuresJour.ouvert === false || heuresJour.ouvert === 'false' || heuresJour.ouvert === 0) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
-
-    // Heure actuelle en Europe/Paris (référence unique pour tous les restos en France)
-    const paris = getParisNow();
-    const currentTime = paris.hour * 60 + paris.minute;
-
-    let shouldBeOpenByHours = false;
-    if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
-      for (const plage of heuresJour.plages) {
-        const openStr = plage.ouverture || plage.debut;
-        const closeStr = plage.fermeture || plage.fin;
-        if (!openStr || !closeStr) continue;
-        
-        const start = parseTimeToMinutes(openStr);
-        let end = parseTimeToMinutes(closeStr);
-        if (start == null || end == null) continue;
-        const closeRaw = String(plage.fermeture || plage.fin || '').trim();
-        if (closeRaw === '00:00' || closeRaw === '0:00') end = 24 * 60;
-        // Support plages qui passent minuit (ex: 18:00 -> 02:00)
-        const spansMidnight = end < start;
-        const inPlage = (closeRaw === '00:00' || closeRaw === '0:00')
-          ? (currentTime >= start)
-          : spansMidnight
-            ? (currentTime >= start || currentTime <= end)
-            : (currentTime >= start && currentTime <= end);
-        if (inPlage) { shouldBeOpenByHours = true; break; }
-      }
-    } else if ((heuresJour.ouverture || heuresJour.debut) && (heuresJour.fermeture || heuresJour.fin)) {
-      // Vérifier horaires simples (ouverture/fermeture ou debut/fin)
-      const openStr = heuresJour.ouverture || heuresJour.debut;
-      const closeStr = heuresJour.fermeture || heuresJour.fin;
-      const start = parseTimeToMinutes(openStr);
-      let end = parseTimeToMinutes(closeStr);
-      
-      if (start !== null && end !== null) {
-        // Si la fermeture est à 00:00 (minuit), on la traite comme 24:00 (1440 minutes)
-        const isMidnightClose = (heuresJour.fermeture || heuresJour.fin || '') === '00:00' || (heuresJour.fermeture || heuresJour.fin || '') === '0:00';
-        if (isMidnightClose) {
-          end = 24 * 60; // 1440 minutes
-        }
-        
-        let inPlage;
-        if (isMidnightClose) {
-          inPlage = currentTime >= start;
-        } else {
-          const spansMidnight = end < start;
-          inPlage = spansMidnight
-            ? (currentTime >= start || currentTime <= end)
-            : (currentTime >= start && currentTime <= end);
-        }
-        
-        if (inPlage) {
-          shouldBeOpenByHours = true;
-        }
-      }
-    } else if (heuresJour.ouvert === true || heuresJour.ouvert === 'true' || heuresJour.ouvert === 1) {
-      // Fallback sur le flag ouvert si pas d'heures précises (accepte true, 'true', 1)
-      // shouldBeOpenByHours = true; // Désactivé : ouvert seulement si plage explicite
-    }
-
-    // Si on arrive ici, ferme_manuellement = false ou null
-    // Utiliser le résultat des horaires (si ferme_manuellement = false, on vérifie les horaires)
-    if (shouldBeOpenByHours) {
-      return { isOpen: true, isManuallyClosed: false, reason: 'open' };
-    }
-    
-    return { isOpen: false, isManuallyClosed: false, reason: 'closed' };
+    return { isOpen: false, isManuallyClosed: false, reason: 'manual' };
   } catch (e) {
-    console.error('[checkRestaurantOpenStatus] Erreur pour restaurant:', restaurant?.nom || restaurant?.id, e);
-    // En cas d'erreur, considérer comme fermé pour éviter d'afficher des restaurants ouverts par erreur
+    console.error('[checkRestaurantOpenStatus] Erreur:', restaurant?.nom || restaurant?.id, e);
     return { isOpen: false, isManuallyClosed: false, reason: 'error' };
   }
 };
@@ -1773,6 +1687,7 @@ export default function Home() {
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 // Statut unique : fermé si ferme_manuellement OU hors horaires
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                // Cartes toujours accessibles (plus de grisage) : le client voit Ouvert/Fermé mais peut toujours ouvrir la page
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
                 // Utiliser normalizedName qui est déjà calculé plus haut
@@ -1821,65 +1736,64 @@ export default function Home() {
                 return (
                 <div
                   key={restaurant.id}
-                  className={`group transform transition-all duration-300 ${isClosed ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'}`}
-                  onClick={() => !isClosed && handleRestaurantClick(restaurant)}
+                  className="group transform transition-all duration-300 cursor-pointer hover:scale-[1.02]"
+                  onClick={() => handleRestaurantClick(restaurant)}
                 >
-                  <div className={`bg-white dark:bg-gray-800 rounded-3xl shadow-xl transition-all duration-500 overflow-hidden border-2 ${isClosed ? 'border-gray-300 dark:border-gray-600' : 'border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-1'}`}>
+                  <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl transition-all duration-500 overflow-hidden border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-1">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
                       {/* Image du restaurant - Optimisé mobile */}
                       <div className="relative sm:col-span-1 overflow-hidden h-48 sm:h-56 md:h-64 lg:h-72">
                         <div className="relative h-full w-full">
                           <OptimizedRestaurantImage
                             restaurant={restaurant}
-                            className={`h-full w-full object-cover transition-all duration-300 ${isClosed ? 'grayscale opacity-40' : ''}`}
+                            className="h-full w-full object-cover transition-all duration-300"
                             priority={false}
                             sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
                         </div>
                         
                         {/* Overlay avec effet de brillance amélioré */}
-                        <div className={`absolute inset-0 ${isClosed ? 'bg-gradient-to-t from-black/70 via-black/50 to-black/30' : 'bg-gradient-to-t from-black/60 via-black/20 to-transparent group-hover:from-black/50 group-hover:via-black/10 group-hover:to-transparent'} z-0 transition-all duration-500`}></div>
-                        {/* Effet de lumière au hover */}
-                        {!isClosed && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 z-10"></div>
-                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent group-hover:from-black/50 group-hover:via-black/10 group-hover:to-transparent z-0 transition-all duration-500"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 z-10"></div>
                         
-                        {/* Badges - Optimisé mobile */}
+                        {/* Badges - Ouvert/Fermé toujours visible + promo etc. */}
                         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 flex flex-col space-y-1.5 sm:space-y-2 z-20">
-                          {isClosed && (
+                          {isClosed ? (
                             <span className="bg-red-600 text-white/95 px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-3.5 md:py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-lg border border-white/40">
                               Fermé
                             </span>
+                          ) : (
+                            <span className="bg-green-600 text-white/95 px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-3.5 md:py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-lg border border-white/40">
+                              Ouvert
+                            </span>
                           )}
-                          {!isClosed && restaurant.offre_active === true && (
+                          {restaurant.offre_active === true && (
                             <span className="inline-flex items-center bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 rounded-full text-xs sm:text-sm font-extrabold shadow-xl shadow-orange-500/40 ring-2 ring-white/50 animate-pulse">
                               🏷️ {restaurant.offre_label || 'Promo'}
                             </span>
                           )}
-                          {!isClosed && restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
+                          {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
                             <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-sm border border-white/30 animate-pulse">
                               ⭐ Sponsorisé
                             </span>
                           )}
-                          {!isClosed && favorites.includes(restaurant.id) && (
+                          {favorites.includes(restaurant.id) && (
                             <span className="bg-gradient-to-r from-red-500 via-pink-500 to-red-500 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-sm border border-white/30">
                               ❤️ Favori
                             </span>
                           )}
                         </div>
                         
-                        {/* Bouton favori - Optimisé mobile Android */}
-                        {!isClosed && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleFavorite(restaurant);
-                            }}
-                            className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-200 group-hover:scale-110 touch-manipulation active:scale-95 z-20"
-                          >
-                            <FaHeart className={`w-4 h-4 sm:w-5 sm:h-5 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
-                          </button>
-                        )}
+                        {/* Bouton favori */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleFavorite(restaurant);
+                          }}
+                          className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-200 group-hover:scale-110 touch-manipulation active:scale-95 z-20"
+                        >
+                          <FaHeart className={`w-4 h-4 sm:w-5 sm:h-5 ${favorites.includes(restaurant.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
+                        </button>
                         
                         {/* Temps de livraison - Optimisé mobile avec glassmorphism */}
                         <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-xl border border-white/20 dark:border-gray-700/50 z-20 group-hover:bg-white dark:group-hover:bg-gray-900 transition-all duration-300">
@@ -1890,7 +1804,7 @@ export default function Home() {
                                 {displayHoursLabel}
                               </span>
                             </div>
-                            {!restaurantStatus.isManuallyClosed && Number.isFinite(parseInt(restaurant.prep_time_minutes, 10)) && (
+                            {restaurantStatus.isOpen && Number.isFinite(parseInt(restaurant.prep_time_minutes, 10)) && (
                               <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-0.5">
                                 Préparation ~{parseInt(restaurant.prep_time_minutes, 10)} min
                               </span>
@@ -1947,19 +1861,12 @@ export default function Home() {
                         {/* Bouton commander - Design moderne et premium */}
                         <button 
                           onClick={(e) => {
-                            e.stopPropagation(); // Empêcher le clic sur le bouton de commande lui-même
-                            if (!isClosed) {
-                              handleRestaurantClick(restaurant);
-                            }
+                            e.stopPropagation();
+                            handleRestaurantClick(restaurant);
                           }}
-                          disabled={isClosed}
-                          className={`w-full py-4 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation relative overflow-hidden font-display ${
-                            isClosed
-                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-sm'
-                              : 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2'
-                          }`}
+                          className="w-full py-4 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation relative overflow-hidden font-display bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
                         >
-                          {isClosed ? 'Restaurant fermé pour le moment' : 'Voir le menu'}
+                          Voir le menu
                         </button>
                       </div>
                     </div>
