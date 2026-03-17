@@ -103,10 +103,13 @@ export default function AdminPage() {
   const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
     try {
       setTogglingRestaurantId(restaurant.id);
+      // Ouvrir => ferme_manuellement false + ouvert_manuellement true (reste ouvert même hors plage)
+      // Fermer => ferme_manuellement true + ouvert_manuellement false
       const { error: updateError } = await supabase
         .from('restaurants')
         .update({
           ferme_manuellement: !shouldOpen,
+          ouvert_manuellement: shouldOpen,
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
@@ -116,7 +119,7 @@ export default function AdminPage() {
       setStats((prev) => ({
         ...prev,
         allRestaurants: (prev.allRestaurants || []).map((r) =>
-          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen } : r
+          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen, ouvert_manuellement: shouldOpen } : r
         )
       }));
     } catch (e) {
