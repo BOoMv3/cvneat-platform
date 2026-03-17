@@ -332,15 +332,45 @@ const getHeuresJourForToday = (horaires) => {
   if (!horaires || typeof horaires !== 'object') return null;
   const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
   const todayName = todayFormatter.format(new Date()).toLowerCase();
-  const variants = [todayName, todayName.charAt(0).toUpperCase() + todayName.slice(1), todayName.toUpperCase()];
-  for (const key of variants) {
-    if (horaires[key]) return horaires[key];
+  const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayIndex = dayNamesFr.indexOf(todayName);
+  const todayEn = dayIndex >= 0 ? dayNamesEn[dayIndex] : null;
+
+  // Variantes possibles des clés (FR/EN + abréviations + index)
+  const candidates = new Set();
+  const add = (v) => { if (v != null && String(v).trim() !== '') candidates.add(String(v)); };
+
+  add(todayName);
+  add(todayName.charAt(0).toUpperCase() + todayName.slice(1));
+  add(todayName.toUpperCase());
+  if (todayEn) {
+    add(todayEn);
+    add(todayEn.charAt(0).toUpperCase() + todayEn.slice(1));
+    add(todayEn.toUpperCase());
+    add(todayEn.slice(0, 3)); // mon, tue...
+    add(todayEn.slice(0, 3).toUpperCase()); // MON...
   }
-  const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-  const dayIndex = dayNames.indexOf(todayName);
+  // Abréviations FR (lun, mar, mer...)
+  add(todayName.slice(0, 3));
+  add(todayName.slice(0, 3).toUpperCase());
+
+  // Index jour (0..6) parfois stocké en clé string
+  if (dayIndex >= 0) {
+    add(dayIndex);
+    add(String(dayIndex));
+  }
+
+  // 1) Accès direct par candidates
+  for (const key of candidates) {
+    if (horaires[key] != null) return horaires[key];
+  }
+  // 2) Accès direct par index numérique si l'objet est un tableau / pseudo-tableau
   if (dayIndex >= 0 && horaires[dayIndex] != null) return horaires[dayIndex];
+  // 3) Fallback : comparer les clés en lowercase trim
+  const candidatesLower = new Set(Array.from(candidates).map((k) => String(k).trim().toLowerCase()));
   for (const k of Object.keys(horaires)) {
-    if (String(k).trim().toLowerCase() === todayName) return horaires[k];
+    if (candidatesLower.has(String(k).trim().toLowerCase())) return horaires[k];
   }
   return null;
 };

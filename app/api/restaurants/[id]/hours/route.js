@@ -179,7 +179,28 @@ export async function POST(request, { params }) {
     }
     
     const todayKey = todayNameParis;
-    const variants = [todayNameParis, todayNameParis.charAt(0).toUpperCase() + todayNameParis.slice(1), todayNameParis.toUpperCase()];
+    const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayEn = dayOfWeekParis >= 0 ? dayNamesEn[dayOfWeekParis] : null;
+
+    const variants = [
+      todayNameParis,
+      todayNameParis.charAt(0).toUpperCase() + todayNameParis.slice(1),
+      todayNameParis.toUpperCase(),
+      // FR abrégé
+      todayNameParis.slice(0, 3),
+      todayNameParis.slice(0, 3).toUpperCase(),
+      // EN (si jamais stocké comme Monday/mon)
+      ...(todayEn
+        ? [
+            todayEn,
+            todayEn.charAt(0).toUpperCase() + todayEn.slice(1),
+            todayEn.toUpperCase(),
+            todayEn.slice(0, 3),
+            todayEn.slice(0, 3).toUpperCase(),
+          ]
+        : [])
+    ];
     let todayHours = null;
     for (const variant of variants) {
       if (horaires[variant]) {
@@ -188,9 +209,12 @@ export async function POST(request, { params }) {
       }
     }
     if (!todayHours && horaires[dayOfWeekParis] !== undefined) todayHours = horaires[dayOfWeekParis];
-    if (!todayHours && dayOfWeekParis >= 0 && dayOfWeekParis < dayNames.length) {
-      const dayKey = dayNames[dayOfWeekParis];
+    if (!todayHours && dayOfWeekParis >= 0 && dayOfWeekParis < dayNamesFr.length) {
+      const dayKey = dayNamesFr[dayOfWeekParis];
       if (horaires[dayKey]) todayHours = horaires[dayKey];
+      if (!todayHours && todayEn && horaires[todayEn]) todayHours = horaires[todayEn];
+      // support clé string "0".."6"
+      if (!todayHours && horaires[String(dayOfWeekParis)] !== undefined) todayHours = horaires[String(dayOfWeekParis)];
     }
     if (!todayHours) {
       for (const k of Object.keys(horaires)) {
