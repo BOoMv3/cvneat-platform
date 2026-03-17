@@ -719,7 +719,7 @@ export default function Home() {
           const { data: restaurants, error: supabaseError } = await supabaseClient
             .from('restaurants')
             // IMPORTANT: `horaires` est requis pour calculer ouvert/fermé correctement.
-            .select('*, frais_livraison, ferme_manuellement, horaires');
+            .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires');
           
           console.log('[Restaurants] Requête Supabase terminée');
           console.log('[Restaurants] Résultat Supabase:', {

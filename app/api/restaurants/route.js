@@ -37,7 +37,7 @@ export async function GET() {
     
     const { data, error } = await supabaseAdmin
       .from('restaurants')
-      .select('*, frais_livraison, ferme_manuellement, horaires, offre_active, offre_label, offre_description');
+      .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description');
       // .eq('status', 'active'); // Temporairement désactivé pour debug
 
     if (error) {
