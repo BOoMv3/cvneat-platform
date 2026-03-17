@@ -246,8 +246,8 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
                     }
                   </div>
                 )}
-                {!currentHours || !currentHours.ouvert || currentHours.is_closed ? (
-                  currentHours && (
+                {!isOpen ? (
+                  currentHours && (!currentHours.ouvert || currentHours.is_closed) && (
                     <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
                       Fermé aujourd'hui ({currentHours.day})
                     </div>

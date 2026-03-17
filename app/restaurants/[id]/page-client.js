@@ -251,36 +251,27 @@ export default function RestaurantDetail({ params }) {
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir statut: d'abord GET restaurant (source de vérité ferme_manuellement), puis POST hours si pas fermé manuellement
+    // Rafraîchir statut: 100 % manuel (ouvert_manuellement / ferme_manuellement uniquement)
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
           const restRes = await fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' });
           if (!restRes.ok) return;
           const restData = await restRes.json();
+          const om = restData.ouvert_manuellement;
           const fm = restData.ferme_manuellement;
+          const ouvertManuel = om === true || om === 'true' || om === 1 || om === '1' ||
+            (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
           const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
-            (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
+            (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
           setIsManuallyClosed(isManuallyClosed);
-          if (isManuallyClosed) {
-            setIsRestaurantOpen(false);
-            return;
-          }
-          const response = await fetch(`/api/restaurants/${restaurantId}/hours`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            cache: 'no-store'
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setIsRestaurantOpen(data.isOpen === true);
-          }
+          setIsRestaurantOpen(ouvertManuel);
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }
       };
       checkStatus();
-    }, 20000); // 20 secondes pour voir les changements (ouvert/fermé) plus vite
+    }, 20000);
     
     // Subscription Supabase Realtime pour les menus (mise à jour automatique)
     const menuChannel = supabase
@@ -500,13 +491,15 @@ export default function RestaurantDetail({ params }) {
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // SOURCE DE VÉRITÉ: ferme_manuellement vient du GET restaurant (toujours frais), pas du POST hours
+      // Statut 100 % manuel (comme l'accueil)
+      const om = restaurantData.ouvert_manuellement;
       const fm = restaurantData.ferme_manuellement;
+      const ouvertManuel = om === true || om === 'true' || om === 1 || om === '1' ||
+        (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
       const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
-        (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
+        (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
       setIsManuallyClosed(isManuallyClosed);
-      const isOpen = isManuallyClosed ? false : (openStatusData.isOpen === true);
-      setIsRestaurantOpen(isOpen);
+      setIsRestaurantOpen(ouvertManuel);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);

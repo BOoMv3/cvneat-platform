@@ -1724,12 +1724,14 @@ export default function Home() {
                         displayHoursLabel = `Ouvre à : ${nextOpening.time}`;
                       }
                     } else {
-                      // Sinon, afficher les horaires normaux
-                      displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
+                      // Sinon, afficher les horaires normaux ou un libellé adapté
+                      const todayLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant);
+                      displayHoursLabel = todayLabel || (restaurantStatus.isOpen ? 'Selon le partenaire' : 'Horaires non communiquées');
                     }
                   } else {
-                    // Si ouvert, afficher les horaires normaux
-                    displayHoursLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant) || 'Horaires non communiquées';
+                    // Si ouvert (manuel), horaires du jour ou libellé clair
+                    const todayLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant);
+                    displayHoursLabel = todayLabel || (restaurantStatus.isOpen ? 'Selon le partenaire' : 'Horaires non communiquées');
                   }
                 }
                 
