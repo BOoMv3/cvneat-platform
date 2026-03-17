@@ -532,7 +532,6 @@ export default function Home() {
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
-  const [openStatusLoading, setOpenStatusLoading] = useState(false); // Empêche le clignotement (fallback client)
   const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false); // Commande en cours pour mettre en avant "Ma commande"
 
@@ -1016,65 +1015,21 @@ export default function Home() {
           console.error('[Restaurants] Premier restaurant reçu:', data[0]);
         }
         setRestaurants(normalizedRestaurants);
-        setOpenStatusLoading(true);
-        
-        // Statut ouvert/fermé: source unique côté serveur (évite les divergences au refresh)
-        // IMPORTANT: en cas d'échec, ne pas écraser l'ancien état (sinon tout redevient "fermé").
-        const openStatusMap = {};
-        try {
-          const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
-          const res = await fetch('/api/restaurants/open-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-            body: JSON.stringify({ ids, debug: true }),
-            cache: 'no-store',
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(json?.error || `Erreur open-status (${res.status})`);
-          }
-          const serverMap = json?.map || {};
-          for (const restaurant of normalizedRestaurants) {
-            const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-            const s = serverMap?.[restaurant.id];
-            // Debug ciblé (évite de spam)
-            if (s?.reason && (restaurant.nom || '').toLowerCase().includes('smaash')) {
-              console.log('[OPEN-STATUS DEBUG]', restaurant.nom, s);
-            }
-            // Filet de sécurité: si le serveur dit "fermé" mais que le calcul local (horaires) dit "ouvert",
-            // on garde "ouvert" pour éviter le bug ouvert -> fermé au refresh.
-            // (On garde toujours la priorité à ferme_manuellement plus loin dans le rendu.)
-            const local = checkRestaurantOpenStatus(restaurant);
-            const serverIsOpen = s?.isOpen === true;
-            const localIsOpen = local?.isOpen === true;
-            openStatusMap[restaurant.id] = {
-              isOpen: serverIsOpen || localIsOpen,
-              isManuallyClosed: s?.isManuallyClosed === true,
-              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
-            };
-          }
 
-          setRestaurantsOpenStatus(openStatusMap);
-        } catch (e) {
-          console.error('[Restaurants] open-status server failed (fallback local if empty):', e);
-          // Si on n'a AUCUN statut (1er chargement) et que l'API open-status est KO/404,
-          // on fait un fallback local pour éviter "tout fermé".
-          setRestaurantsOpenStatus((prev) => {
-            if (prev && Object.keys(prev).length > 0) return prev;
-            const fallback = {};
-            for (const restaurant of normalizedRestaurants) {
-              const status = checkRestaurantOpenStatus(restaurant);
-              const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-              fallback[restaurant.id] = {
-                isOpen: status.isOpen === true,
-                isManuallyClosed: status.isManuallyClosed === true,
-                hoursLabel: todayHoursLabel || 'Horaires non communiquées',
-              };
-            }
-            return fallback;
-          });
+        // Statut ouvert/fermé: calcul LOCAL uniquement (règle simple)
+        // - fermé si ferme_manuellement = true
+        // - sinon ouvert si dans une plage horaire du jour (Europe/Paris)
+        const openStatusMap = {};
+        for (const restaurant of normalizedRestaurants) {
+          const status = checkRestaurantOpenStatus(restaurant);
+          const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+          openStatusMap[restaurant.id] = {
+            isOpen: status.isOpen === true,
+            isManuallyClosed: status.isManuallyClosed === true,
+            hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+          };
         }
-        setOpenStatusLoading(false);
+        setRestaurantsOpenStatus(openStatusMap);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
         console.error('[Restaurants] Erreur lors du chargement des restaurants:', error);
@@ -1083,7 +1038,6 @@ export default function Home() {
         setError(`Erreur lors du chargement des restaurants: ${errorMessage}`);
         setRestaurants([]);
         setRestaurantsOpenStatus({});
-        setOpenStatusLoading(false);
       } finally {
         setLoading(false);
       }
@@ -1796,11 +1750,8 @@ export default function Home() {
                 // Pas d'override "ouvert manuellement" : on suit toujours les horaires
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-                // Statut unique : fermé si ferme_manuellement OU si horaires/ouvert_manuellement disent fermé
-                // Pendant un refresh, NE PAS forcer "fermé" : on garde le dernier statut connu.
-                // Sinon, toutes les cartes passent fermées à chaque refresh automatique.
-                const effectiveIsOpen = restaurantStatus.isOpen;
-                const isClosed = !effectiveIsOpen || restaurantStatus.isManuallyClosed;
+                // Statut unique : fermé si ferme_manuellement OU hors horaires
+                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
                 // Utiliser normalizedName qui est déjà calculé plus haut
