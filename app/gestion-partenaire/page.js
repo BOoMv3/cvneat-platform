@@ -53,13 +53,17 @@ export default function GestionPartenaire() {
       }
       setUser(session.user);
       // Récupérer le restaurant
+      // IMPORTANT: `.single()` plante si 0 ligne (nouveau) ou plusieurs lignes (doublon user_id)
+      // On prend le plus récent pour éviter de demander de "recréer la fiche" à tort.
       const { data: resto, error: restoError } = await supabase
         .from('restaurants')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (restoError || !resto) {
-        setError('Aucun restaurant associé à ce compte.');
+        setError(restoError?.message ? `Erreur récupération restaurant: ${restoError.message}` : 'Aucun restaurant associé à ce compte.');
         setLoading(false);
         return;
       }
