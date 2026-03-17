@@ -348,14 +348,29 @@ const coerceHorairesObject = (horairesRaw) => {
   return h;
 };
 
-// Récupère les horaires du jour actuel (en se basant sur l'heure locale du navigateur).
+// Heure et jour en Europe/Paris (référence unique pour les horaires des restos en France).
+const getParisNow = () => {
+  const now = new Date();
+  const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  try {
+    const formatter = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'long' });
+    const parts = formatter.formatToParts(now);
+    const hour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+    const minute = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
+    const weekday = (parts.find((p) => p.type === 'weekday')?.value || '').toLowerCase();
+    const dayIndex = dayNamesFr.indexOf(weekday);
+    return { hour, minute, dayIndex: dayIndex >= 0 ? dayIndex : now.getDay(), todayName: weekday || dayNamesFr[now.getDay()], dayNamesFr };
+  } catch (_) {
+    const dayIndex = now.getDay();
+    return { hour: now.getHours(), minute: now.getMinutes(), dayIndex, todayName: dayNamesFr[dayIndex] || 'lundi', dayNamesFr };
+  }
+};
+
+// Récupère les horaires du jour actuel (jour et heure en Europe/Paris pour cohérence).
 const getHeuresJourForToday = (horaires) => {
   if (!horaires || typeof horaires !== 'object') return null;
-  const now = new Date();
-  const dayIndex = now.getDay(); // 0 = dimanche, 1 = lundi, ...
-  const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const { dayIndex, todayName, dayNamesFr } = getParisNow();
   const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const todayName = dayNamesFr[dayIndex] || 'lundi';
   const todayEn = dayNamesEn[dayIndex] || 'monday';
   // Support: horaires stockés en ARRAY où index 0 = LUNDI
   if (Array.isArray(horaires) && horaires.length >= 7) {
@@ -400,9 +415,18 @@ const getHeuresJourForToday = (horaires) => {
   return null;
 };
 
-// Ouvert/fermé : ferme_manuellement = true → fermé ; sinon selon plages horaires uniquement.
+// Ouvert/fermé : ouvert_manuellement prime ; sinon ferme_manuellement = true → fermé ; sinon selon horaires (Europe/Paris).
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
+    let ouvertManuel = restaurant.ouvert_manuellement;
+    if (typeof ouvertManuel === 'string') {
+      const s = String(ouvertManuel).trim().toLowerCase();
+      ouvertManuel = s === 'true' || s === '1' || s === 'oui';
+    }
+    if (ouvertManuel === true || ouvertManuel === 1) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'open_manuel' };
+    }
+
     let fermeManuel = restaurant.ferme_manuellement;
     if (fermeManuel === undefined || fermeManuel === null) {
       fermeManuel = false;
@@ -412,7 +436,6 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     }
     const isManuallyClosed = fermeManuel === true || fermeManuel === 1;
 
-    // Si ferme_manuellement = true → TOUJOURS FERMÉ (jusqu'à ce qu'il clique "Ouvrir")
     if (isManuallyClosed) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
@@ -429,14 +452,13 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
 
     const heuresJour = getHeuresJourForToday(horaires);
     if (!heuresJour) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    // Jour marqué fermé explicitement (is_closed ou ferme depuis gestion-partenaire)
+    // Jour marqué fermé explicitement (is_closed, ferme, ou ouvert === false)
     if (heuresJour.is_closed === true || heuresJour.ferme === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
+    if (heuresJour.ouvert === false || heuresJour.ouvert === 'false' || heuresJour.ouvert === 0) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
 
-    // Heure actuelle basée sur l'horloge locale du navigateur
-    const now = new Date();
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTime = currentHours * 60 + currentMinutes;
+    // Heure actuelle en Europe/Paris (référence unique pour tous les restos en France)
+    const paris = getParisNow();
+    const currentTime = paris.hour * 60 + paris.minute;
 
     let shouldBeOpenByHours = false;
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {

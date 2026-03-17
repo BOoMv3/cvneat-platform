@@ -562,10 +562,12 @@ export default function GestionPartenaire() {
             const cleanedHoraires = {};
             joursMap.forEach(({ key, label }) => {
               const h = horaires?.[key] || horaires?.[label] || {};
+              const ferme = h.ferme === true;
               cleanedHoraires[key] = {
                 ouverture: (h.ouverture || '').trim(),
                 fermeture: (h.fermeture || '').trim(),
-                ferme: h.ferme === true,
+                ferme,
+                ouvert: !ferme,
               };
             });
             const { error } = await supabase
