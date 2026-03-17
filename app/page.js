@@ -1026,6 +1026,11 @@ export default function Home() {
             isOpen: status.isOpen === true,
             isManuallyClosed: status.isManuallyClosed === true,
             hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+            // DEBUG visible sur la carte pour comprendre pourquoi le resto est fermé/ouvert
+            debug: {
+              reason: status.reason || null,
+              ferme_manuellement: restaurant.ferme_manuellement ?? null,
+            },
           };
         }
         setRestaurantsOpenStatus(openStatusMap);
@@ -1873,6 +1878,13 @@ export default function Home() {
                                 Préparation ~{parseInt(restaurant.prep_time_minutes, 10)} min
                               </span>
                             )}
+                            {/* Ligne DEBUG visible pour comprendre les fermetures intempestives */}
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5">
+                              DEBUG: {restaurantStatus.isOpen ? 'open' : 'closed'}
+                              {restaurantStatus.debug
+                                ? ` / reason=${restaurantStatus.debug.reason ?? 'n/a'} / ferme_manuellement=${String(restaurantStatus.debug.ferme_manuellement)}`
+                                : ''}
+                            </span>
                           </div>
                         </div>
                       </div>
