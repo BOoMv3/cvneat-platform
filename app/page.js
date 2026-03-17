@@ -348,21 +348,21 @@ const coerceHorairesObject = (horairesRaw) => {
   return h;
 };
 
-// Récupère les horaires du jour actuel (Europe/Paris).
+// Récupère les horaires du jour actuel (en se basant sur l'heure locale du navigateur).
 const getHeuresJourForToday = (horaires) => {
   if (!horaires || typeof horaires !== 'object') return null;
-  const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
-  const todayName = todayFormatter.format(new Date()).toLowerCase();
+  const now = new Date();
+  const dayIndex = now.getDay(); // 0 = dimanche, 1 = lundi, ...
+  const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const todayName = dayNamesFr[dayIndex] || 'lundi';
+  const todayEn = dayNamesEn[dayIndex] || 'monday';
   // Support: horaires stockés en ARRAY où index 0 = LUNDI
   if (Array.isArray(horaires) && horaires.length >= 7) {
     const dayNamesMonday0 = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
     const idxMonday0 = dayNamesMonday0.indexOf(todayName);
     if (idxMonday0 >= 0 && horaires[idxMonday0] != null) return horaires[idxMonday0];
   }
-  const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-  const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayIndex = dayNamesFr.indexOf(todayName);
-  const todayEn = dayIndex >= 0 ? dayNamesEn[dayIndex] : null;
 
   // Variantes possibles des clés (FR/EN + abréviations + index)
   const candidates = new Set();
@@ -383,10 +383,8 @@ const getHeuresJourForToday = (horaires) => {
   add(todayName.slice(0, 3).toUpperCase());
 
   // Index jour (0..6) parfois stocké en clé string
-  if (dayIndex >= 0) {
-    add(dayIndex);
-    add(String(dayIndex));
-  }
+  add(dayIndex);
+  add(String(dayIndex));
 
   // 1) Accès direct par candidates
   for (const key of candidates) {
@@ -434,11 +432,10 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     // Jour marqué fermé explicitement
     if (heuresJour.is_closed === true) return { isOpen: false, isManuallyClosed: false, reason: 'closed_today_flag' };
 
-    // Heure Paris robuste (formatToParts évite le bug toLocaleString = date+heure)
+    // Heure actuelle basée sur l'horloge locale du navigateur
     const now = new Date();
-    const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
-    const currentHours = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
-    const currentMinutes = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
     const currentTime = currentHours * 60 + currentMinutes;
 
     let shouldBeOpenByHours = false;
