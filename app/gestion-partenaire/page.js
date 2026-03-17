@@ -4,6 +4,15 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 
 const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const joursMap = [
+  { label: 'Lundi', key: 'lundi' },
+  { label: 'Mardi', key: 'mardi' },
+  { label: 'Mercredi', key: 'mercredi' },
+  { label: 'Jeudi', key: 'jeudi' },
+  { label: 'Vendredi', key: 'vendredi' },
+  { label: 'Samedi', key: 'samedi' },
+  { label: 'Dimanche', key: 'dimanche' },
+];
 
 export default function GestionPartenaire() {
   const [user, setUser] = useState(null);
@@ -68,7 +77,21 @@ export default function GestionPartenaire() {
         return;
       }
       setRestaurant(resto);
-      setHoraires(resto.horaires || {});
+      // Normaliser les horaires pour toujours avoir 7 jours et éviter d'écraser la semaine
+      let horairesRaw = resto.horaires || {};
+      if (typeof horairesRaw === 'string') {
+        try { horairesRaw = JSON.parse(horairesRaw); } catch { horairesRaw = {}; }
+      }
+      const normalizedHoraires = {};
+      joursMap.forEach(({ key }) => {
+        const h = horairesRaw?.[key] || horairesRaw?.[key.charAt(0).toUpperCase() + key.slice(1)] || null;
+        normalizedHoraires[key] = {
+          ouverture: h?.ouverture || '',
+          fermeture: h?.fermeture || '',
+          ferme: h?.ferme === true,
+        };
+      });
+      setHoraires(normalizedHoraires);
       setCategories(resto.categories || []);
       // Récupérer les menus
       const { data: menusData, error: menusError } = await supabase
@@ -534,9 +557,19 @@ export default function GestionPartenaire() {
             setLoading(true);
             setSuccess('');
             setError('');
+            // Sauvegarde sûre: toujours sauvegarder la semaine complète (lundi->dimanche)
+            const cleanedHoraires = {};
+            joursMap.forEach(({ key }) => {
+              const h = horaires?.[key] || {};
+              cleanedHoraires[key] = {
+                ouverture: h.ouverture || '',
+                fermeture: h.fermeture || '',
+                ferme: h.ferme === true,
+              };
+            });
             const { error } = await supabase
               .from('restaurants')
-              .update({ horaires })
+              .update({ horaires: cleanedHoraires, updated_at: new Date().toISOString() })
               .eq('id', restaurant.id);
             if (error) setError(error.message);
             else setSuccess('Horaires mis à jour !');
