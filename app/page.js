@@ -1010,91 +1010,35 @@ export default function Home() {
         }
         setRestaurants(normalizedRestaurants);
         
-        // Vérifier le statut d'ouverture pour chaque restaurant
-        // Vérifier le statut d'ouverture localement (sans appel API)
+        // Statut ouvert/fermé: source unique côté serveur (évite les divergences au refresh)
         const openStatusMap = {};
-        for (const restaurant of normalizedRestaurants) {
-          try {
-            // Vérifier le statut d'ouverture normalement (vérifie les horaires)
-            // Si ferme_manuellement = false, on vérifie quand même les horaires
-            // Seul ferme_manuellement = true force la fermeture
-            const status = checkRestaurantOpenStatus(restaurant);
-            // Calculer le label des horaires à partir des horaires du restaurant
+        try {
+          const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
+          const res = await fetch('/api/restaurants/open-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+            body: JSON.stringify({ ids }),
+            cache: 'no-store',
+          });
+          const json = await res.json().catch(() => ({}));
+          const serverMap = json?.map || {};
+          for (const restaurant of normalizedRestaurants) {
             const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-            
-            // Log de debug pour TOUS les restaurants (pour voir la valeur de ferme_manuellement)
-            // Log spécial pour "La Bonne Pâte"
-            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('bonne pâte') || restaurant.nom.toLowerCase().includes('bonne pate'))) {
-              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "La Bonne Pâte":`, {
-                nom: restaurant.nom,
-                isOpen: status.isOpen,
-                reason: status.reason,
-                ferme_manuellement: restaurant.ferme_manuellement,
-                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
-                ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
-                ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
-                hasHoraires: !!restaurant.horaires,
-                horairesType: typeof restaurant.horaires,
-                horairesPreview: restaurant.horaires ? JSON.stringify(restaurant.horaires).substring(0, 200) : 'null'
-              });
-            }
-            
-            // Log spécial pour Deliss King (liste vs détail)
-            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('deliss') || restaurant.nom.toLowerCase().includes('deliss\''))) {
-              console.log(`[Restaurants] 🔍 DEBUG Deliss King (LISTE):`, {
-                nom: restaurant.nom,
-                id: restaurant.id,
-                isOpen: status.isOpen,
-                isManuallyClosed: status.isManuallyClosed,
-                reason: status.reason,
-                ferme_manuellement: restaurant.ferme_manuellement,
-                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
-                ferme_manuellement_JSON: JSON.stringify(restaurant.ferme_manuellement),
-                hasHoraires: !!restaurant.horaires,
-                horairesKeys: restaurant.horaires && typeof restaurant.horaires === 'object' ? Object.keys(restaurant.horaires) : 'N/A'
-              });
-            }
-            
-            // Log spécial pour Smaash Burger
-            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('smaash') || restaurant.nom.toLowerCase().includes('smaash burger'))) {
-              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "Smaash Burger":`, {
-                nom: restaurant.nom,
-                isOpen: status.isOpen,
-                reason: status.reason,
-                isManuallyClosed: status.isManuallyClosed,
-                ferme_manuellement: restaurant.ferme_manuellement,
-                ferme_manuellement_type: typeof restaurant.ferme_manuellement,
-                ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
-                ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
-                hasHoraires: !!restaurant.horaires,
-                horairesType: typeof restaurant.horaires,
-                horairesPreview: restaurant.horaires ? JSON.stringify(restaurant.horaires).substring(0, 300) : 'null'
-              });
-            }
-            
-            console.log(`[Restaurants] ${restaurant.nom} - Statut:`, {
-              isOpen: status.isOpen,
-              reason: status.reason,
-              ferme_manuellement: restaurant.ferme_manuellement,
-              ferme_manuellement_type: typeof restaurant.ferme_manuellement,
-              ferme_manuellement_strict_false: restaurant.ferme_manuellement === false,
-              ferme_manuellement_strict_true: restaurant.ferme_manuellement === true,
-              hasHoraires: !!restaurant.horaires,
-              horairesType: typeof restaurant.horaires
-            });
-            
+            const s = serverMap?.[restaurant.id];
             openStatusMap[restaurant.id] = {
-              isOpen: status.isOpen,
-              isManuallyClosed: status.isManuallyClosed,
-              hoursLabel: todayHoursLabel || 'Horaires non communiquées'
+              isOpen: s?.isOpen === true,
+              isManuallyClosed: s?.isManuallyClosed === true,
+              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
-          } catch (statusError) {
-            console.error(`[Restaurants] Erreur vérification statut pour ${restaurant.nom}:`, statusError);
-            // En cas d'erreur, considérer comme fermé
+          }
+        } catch (e) {
+          console.error('[Restaurants] open-status server failed, fallback fermé:', e);
+          for (const restaurant of normalizedRestaurants) {
+            const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
             openStatusMap[restaurant.id] = {
               isOpen: false,
               isManuallyClosed: false,
-              hoursLabel: 'Horaires non communiquées'
+              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
           }
         }
