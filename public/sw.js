@@ -96,12 +96,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stratégie Network First pour les API
+  // Stratégie Network First pour les API (sauf /api/restaurants : jamais en cache)
   if (url.pathname.startsWith('/api/')) {
+    const pathNoCache = url.pathname === '/api/restaurants';
+    if (pathNoCache) {
+      event.respondWith(fetch(request));
+      return;
+    }
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Mettre en cache les réponses API valides
           if (response.ok) {
             const responseClone = response.clone();
             caches.open(DYNAMIC_CACHE)
@@ -112,7 +116,6 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Retourner une réponse en cache si le réseau échoue
           return caches.match(request)
             .then((response) => {
               if (response) {

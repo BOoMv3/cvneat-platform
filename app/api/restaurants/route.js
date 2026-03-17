@@ -60,19 +60,7 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
-    // Relecture fraîche (sans ouvert_manuellement pour ne pas faire échouer si la colonne absente)
-    const ids = filtered.map((r) => r.id);
-    let freshMap = {};
-    try {
-      const { data: freshList, error: freshErr } = await supabaseAdmin
-        .from('restaurants')
-        .select('id, ferme_manuellement, offre_active, offre_label, offre_description')
-        .in('id', ids);
-      if (!freshErr && freshList?.length) {
-        freshList.forEach((row) => { freshMap[row.id] = row; });
-      }
-    } catch (_) {}
-
+    // Une seule lecture : on utilise directement les données du select (pas de relecture pour éviter cache/replica)
     const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
     const isLaBonnePate = (nom) => nom && (String(nom).toLowerCase().includes('bonne pâte') || String(nom).toLowerCase().includes('bonne pate'));
 
@@ -167,11 +155,9 @@ export async function GET() {
       return inRange(start, end, isMidnightClose);
     };
     const withFermeManuel = filtered.map((r) => {
-      const fresh = freshMap[r.id] || r;
-      const fm = toBool(fresh.ferme_manuellement);
-      // ouvert_manuellement vient de r (*) pour que la liste ne plante pas si la colonne n'existe pas encore
-      const om = toBool(fresh.ouvert_manuellement ?? r.ouvert_manuellement);
-      const oa = fresh.offre_active;
+      const fm = toBool(r.ferme_manuellement);
+      const om = toBool(r.ouvert_manuellement);
+      const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
       const isOpenNow = fm ? false : isOpenNowParis(r.horaires, new Date());
@@ -181,16 +167,19 @@ export async function GET() {
         ouvert_manuellement: om,
         is_open_now: isOpenNow,
         offre_active: offreActiveFinal,
-        offre_label: isLaBonnePate(r.nom) ? null : (fresh.offre_label ?? r.offre_label ?? null),
-        offre_description: isLaBonnePate(r.nom) ? null : (fresh.offre_description ?? r.offre_description ?? null)
+        offre_label: isLaBonnePate(r.nom) ? null : (r.offre_label ?? null),
+        offre_description: isLaBonnePate(r.nom) ? null : (r.offre_description ?? null)
       };
     });
 
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
     const res = NextResponse.json(withFermeManuel);
-    // Pas de cache pour ferme_manuellement frais (cohérence liste/détail)
-    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    // Bloquer tout cache (navigateur, CDN Vercel, proxies) pour éviter données périmées
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+    res.headers.set('Vercel-CDN-Cache-Control', 'no-store');
     return res;
   } catch (error) {
     console.error('❌ Erreur serveur lors de la récupération des restaurants:', error);
