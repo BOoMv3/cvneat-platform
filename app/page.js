@@ -526,6 +526,7 @@ export default function Home() {
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
+  const [openStatusLoading, setOpenStatusLoading] = useState(false); // Empêche le clignotement (fallback client)
   const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false); // Commande en cours pour mettre en avant "Ma commande"
 
@@ -1009,6 +1010,7 @@ export default function Home() {
           console.error('[Restaurants] Premier restaurant reçu:', data[0]);
         }
         setRestaurants(normalizedRestaurants);
+        setOpenStatusLoading(true);
         
         // Statut ouvert/fermé: source unique côté serveur (évite les divergences au refresh)
         const openStatusMap = {};
@@ -1043,6 +1045,7 @@ export default function Home() {
           }
         }
         setRestaurantsOpenStatus(openStatusMap);
+        setOpenStatusLoading(false);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
         console.error('[Restaurants] Erreur lors du chargement des restaurants:', error);
@@ -1051,6 +1054,7 @@ export default function Home() {
         setError(`Erreur lors du chargement des restaurants: ${errorMessage}`);
         setRestaurants([]);
         setRestaurantsOpenStatus({});
+        setOpenStatusLoading(false);
       } finally {
         setLoading(false);
       }
@@ -1743,10 +1747,10 @@ export default function Home() {
               {displayRestaurants.map((restaurant, index) => {
                 let restaurantStatus = restaurantsOpenStatus[restaurant.id];
                 if (!restaurantStatus) {
-                  const calculatedStatus = checkRestaurantOpenStatus(restaurant);
                   restaurantStatus = {
-                    isOpen: calculatedStatus.isOpen,
-                    isManuallyClosed: calculatedStatus.isManuallyClosed,
+                    // Pas de fallback client: on attend la source serveur
+                    isOpen: false,
+                    isManuallyClosed: false,
                     hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
                   };
                 }
@@ -1764,7 +1768,8 @@ export default function Home() {
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 // Statut unique : fermé si ferme_manuellement OU si horaires/ouvert_manuellement disent fermé
-                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                const effectiveIsOpen = openStatusLoading ? false : restaurantStatus.isOpen;
+                const isClosed = !effectiveIsOpen || restaurantStatus.isManuallyClosed;
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
                 // Utiliser normalizedName qui est déjà calculé plus haut
