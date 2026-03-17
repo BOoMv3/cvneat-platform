@@ -104,7 +104,7 @@ export default function AdminPage() {
     try {
       setTogglingRestaurantId(restaurant.id);
       // IMPORTANT: `ouvert_manuellement` peut ne pas exister si la migration n'a pas été appliquée en prod.
-      // Donc: 1) update ferme_manuellement (toujours), 2) best-effort update ouvert_manuellement.
+      // Donc: on update uniquement `ferme_manuellement`.
 
       const { error: updateError } = await supabase
         .from('restaurants')
@@ -117,26 +117,10 @@ export default function AdminPage() {
 
       if (updateError) throw updateError;
 
-      // Best-effort: sync ouvert_manuellement si la colonne existe
-      try {
-        const { error: omErr } = await supabase
-          .from('restaurants')
-          .update({
-            ouvert_manuellement: shouldOpen,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', restaurant.id);
-        if (omErr) {
-          console.warn('⚠️ ouvert_manuellement non mis à jour (admin):', omErr?.message || omErr);
-        }
-      } catch (e) {
-        console.warn('⚠️ ouvert_manuellement non mis à jour (admin):', e?.message || e);
-      }
-
       setStats((prev) => ({
         ...prev,
         allRestaurants: (prev.allRestaurants || []).map((r) =>
-          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen, ouvert_manuellement: shouldOpen } : r
+          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen } : r
         )
       }));
     } catch (e) {

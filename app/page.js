@@ -361,12 +361,6 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     if (isManuallyClosed) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     }
-    // Si ouvert_manuellement = true → OUVERT (admin ou partenaire a cliqué "Ouvrir")
-    const om = restaurant.ouvert_manuellement;
-    const isManuallyOpen = om === true || om === 1 || (typeof om === 'string' && om.trim().toLowerCase() === 'true');
-    if (isManuallyOpen) {
-      return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
-    }
     // Sinon : ouvert/fermé selon les plages horaires
     let horaires = restaurant.horaires;
     if (!horaires) return { isOpen: false, isManuallyClosed: false, reason: 'no_hours' };

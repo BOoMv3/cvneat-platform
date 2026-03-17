@@ -162,32 +162,6 @@ export async function POST(request, { params }) {
       return res;
     }
 
-    // LOGIQUE: Si ouvert_manuellement = true → OUVERT (force l'ouverture, sauf si fermé manuellement)
-    // NOTE: `ouvert_manuellement` peut ne pas exister (migration non appliquée). Dans ce cas on ignore.
-    let om = undefined;
-    try {
-      const { data: omRow, error: omErr } = await supabaseAdmin
-        .from('restaurants')
-        .select('ouvert_manuellement')
-        .eq('id', id)
-        .single();
-      if (!omErr && omRow) om = omRow.ouvert_manuellement;
-    } catch (_) {}
-    const isManuallyOpen =
-      om === true || om === 'true' || om === 1 || om === '1' ||
-      (typeof om === 'string' && om.toLowerCase().trim() === 'true');
-    if (isManuallyOpen) {
-      console.log(`[API hours POST] Restaurant ${id} - OUVERT MANUELLEMENT (ouvert_manuellement = ${om})`);
-      const res = json({
-        isOpen: true,
-        message: 'Restaurant ouvert manuellement',
-        reason: 'manual_open',
-        isManuallyClosed: false,
-      });
-      res.headers.set('Cache-Control', 'no-store, max-age=0');
-      return res;
-    }
-    
     // Si ferme_manuellement = false ou null/undefined → Vérifier les horaires
     console.log(`[API hours POST] Restaurant ${id} - Vérification horaires (ferme_manuellement = ${fm})`);
 
