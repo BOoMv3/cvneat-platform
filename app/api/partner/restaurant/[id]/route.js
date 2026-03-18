@@ -81,7 +81,7 @@ export async function PUT(request, { params }) {
 
     const auth = await getAuthedRestaurantOwner(request, id);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-    const { supabaseAdmin } = auth;
+    const { supabaseAdmin, user } = auth;
 
     // Préparer les données à mettre à jour
     const updateData = {
@@ -100,6 +100,11 @@ export async function PUT(request, { params }) {
         body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
         body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
       );
+      // Statut 100% manuel : toujours garder la cohérence des deux flags
+      updateData.ouvert_manuellement = wantOuvertManuel;
+      // Preuve anti-flip (enforced par trigger SQL en prod)
+      updateData.manual_status_updated_at = new Date().toISOString();
+      updateData.manual_status_updated_by = user.id;
     }
 
     // Temps de préparation déclaré (minutes)
@@ -115,47 +120,57 @@ export async function PUT(request, { params }) {
       updateData.prep_time_updated_at = new Date().toISOString();
     }
 
-    // 1) Mise à jour (ferme_manuellement + prep_time si envoyés)
-    const { data: updatedRestaurant, error: updateError } = await supabaseAdmin
-      .from('restaurants')
-      .update(updateData)
-      .eq('id', id)
-      .select('id, nom, ferme_manuellement, updated_at')
-      .single();
+    // 1) Mise à jour (statut manuel + prep_time si envoyés)
+    let updatedRestaurant = null;
+    let updateError = null;
+    {
+      const { data, error } = await supabaseAdmin
+        .from('restaurants')
+        .update(updateData)
+        .eq('id', id)
+        .select('id, nom, ferme_manuellement, ouvert_manuellement, updated_at')
+        .single();
+      updatedRestaurant = data;
+      updateError = error;
+    }
 
     if (updateError) {
-      console.error('❌ Erreur mise à jour restaurant:', updateError);
-      return NextResponse.json({
-        error: 'Erreur lors de la mise à jour',
-        details: updateError.message
-      }, { status: 500 });
-    }
+      // Compat: si colonnes ouvertes/anti-flip n'existent pas encore, retomber sur l'ancien comportement
+      const msg = String(updateError?.message || '').toLowerCase();
+      const missingCols =
+        msg.includes('ouvert_manuellement') ||
+        msg.includes('manual_status_updated_at') ||
+        msg.includes('manual_status_updated_by') ||
+        msg.includes('does not exist') ||
+        msg.includes('column');
 
-    // 2) Si "Ouvrir" (ferme_manuellement = false), mettre à jour ouvert_manuellement si la colonne existe
-    if (wantOuvertManuel) {
-      try {
-        await supabaseAdmin
+      if (missingCols) {
+        // Retirer les champs potentiellement absents et réessayer
+        const fallbackUpdate = { ...updateData };
+        delete fallbackUpdate.ouvert_manuellement;
+        delete fallbackUpdate.manual_status_updated_at;
+        delete fallbackUpdate.manual_status_updated_by;
+
+        const { data: fbData, error: fbErr } = await supabaseAdmin
           .from('restaurants')
-          .update({ ouvert_manuellement: true, updated_at: new Date().toISOString() })
-          .eq('id', id);
-        if (updatedRestaurant) updatedRestaurant.ouvert_manuellement = true;
-      } catch (e) {
-        console.warn('⚠️ ouvert_manuellement non mis à jour (colonne absente ?):', e?.message || e);
-      }
-    } else if (isToggleRequest) {
-      try {
-        await supabaseAdmin
-          .from('restaurants')
-          .update({ ouvert_manuellement: false, updated_at: new Date().toISOString() })
-          .eq('id', id);
-        if (updatedRestaurant) updatedRestaurant.ouvert_manuellement = false;
-      } catch (e) {
-        console.warn('⚠️ ouvert_manuellement non mis à jour:', e?.message || e);
+          .update(fallbackUpdate)
+          .eq('id', id)
+          .select('id, nom, ferme_manuellement, updated_at')
+          .single();
+        if (fbErr) {
+          console.error('❌ Erreur mise à jour restaurant (fallback):', fbErr);
+          return NextResponse.json({ error: 'Erreur lors de la mise à jour', details: fbErr.message }, { status: 500 });
+        }
+        updatedRestaurant = fbData;
+      } else {
+        console.error('❌ Erreur mise à jour restaurant:', updateError);
+        return NextResponse.json({
+          error: 'Erreur lors de la mise à jour',
+          details: updateError.message
+        }, { status: 500 });
       }
     }
-    if (updatedRestaurant && isToggleRequest) {
-      updatedRestaurant.ouvert_manuellement = wantOuvertManuel;
-    }
+    // NB: ouvert_manuellement est désormais géré dans la même requête que ferme_manuellement (atomic).
 
     // Si on a tenté de mettre à jour le temps de préparation, essayer de le renvoyer (si les colonnes existent)
     if (body.prep_time_minutes !== undefined) {

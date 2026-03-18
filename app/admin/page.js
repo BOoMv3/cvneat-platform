@@ -110,6 +110,9 @@ export default function AdminPage() {
       // Fallback: si la colonne ouvert_manuellement n'existe pas, on met à jour uniquement ferme_manuellement.
       const baseUpdate = {
         ferme_manuellement: !shouldOpen,
+        // Preuve anti-flip (si trigger activé en DB)
+        manual_status_updated_at: new Date().toISOString(),
+        manual_status_updated_by: user?.id || null,
         updated_at: new Date().toISOString()
       };
 
@@ -127,11 +130,16 @@ export default function AdminPage() {
 
       if (updateError) {
         const msg = String(updateError?.message || '');
-        const missingColumn = msg.toLowerCase().includes('ouvert_manuellement') || msg.toLowerCase().includes('column') || msg.toLowerCase().includes('does not exist');
+        const missingColumn =
+          msg.toLowerCase().includes('ouvert_manuellement') ||
+          msg.toLowerCase().includes('manual_status_updated_at') ||
+          msg.toLowerCase().includes('manual_status_updated_by') ||
+          msg.toLowerCase().includes('column') ||
+          msg.toLowerCase().includes('does not exist');
         if (!missingColumn) throw updateError;
         const { error: fallbackErr } = await supabase
           .from('restaurants')
-          .update(baseUpdate)
+          .update({ ferme_manuellement: !shouldOpen, updated_at: baseUpdate.updated_at })
           .eq('id', restaurant.id);
         if (fallbackErr) throw fallbackErr;
       }
