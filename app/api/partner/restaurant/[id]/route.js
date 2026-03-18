@@ -29,14 +29,18 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) {
     return { error: 'Configuration serveur manquante (Supabase)', status: 500 };
   }
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+  // Client "user-scoped" (RLS) → permet au trigger de lire request.jwt.claim.sub
+  const supabaseUser = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
 
-  const { data: restaurant, error: restaurantError } = await supabaseAdmin
+  const { data: restaurant, error: restaurantError } = await supabaseUser
     .from('restaurants')
     // IMPORTANT: ne pas sélectionner des colonnes qui peuvent ne pas exister (migration non appliquée)
     .select('id, user_id, nom, ferme_manuellement, updated_at')
@@ -56,7 +60,7 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
     return { error: "Vous n'êtes pas autorisé à accéder à ce restaurant", status: 403 };
   }
 
-  return { user, restaurant, supabaseAdmin };
+  return { user, restaurant, supabaseUser };
 }
 
 // GET /api/partner/restaurant/[id] - Récupérer un restaurant (owner only)
@@ -81,7 +85,7 @@ export async function PUT(request, { params }) {
 
     const auth = await getAuthedRestaurantOwner(request, id);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-    const { supabaseAdmin, user } = auth;
+    const { supabaseUser, user } = auth;
 
     // Préparer les données à mettre à jour
     const updateData = {
@@ -120,11 +124,11 @@ export async function PUT(request, { params }) {
       updateData.prep_time_updated_at = new Date().toISOString();
     }
 
-    // 1) Mise à jour (statut manuel + prep_time si envoyés)
+    // 1) Mise à jour (statut manuel + prep_time si envoyés) via RLS (user token)
     let updatedRestaurant = null;
     let updateError = null;
     {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabaseUser
         .from('restaurants')
         .update(updateData)
         .eq('id', id)
@@ -135,40 +139,8 @@ export async function PUT(request, { params }) {
     }
 
     if (updateError) {
-      // Compat: si colonnes ouvertes/anti-flip n'existent pas encore, retomber sur l'ancien comportement
-      const msg = String(updateError?.message || '').toLowerCase();
-      const missingCols =
-        msg.includes('ouvert_manuellement') ||
-        msg.includes('manual_status_updated_at') ||
-        msg.includes('manual_status_updated_by') ||
-        msg.includes('does not exist') ||
-        msg.includes('column');
-
-      if (missingCols) {
-        // Retirer les champs potentiellement absents et réessayer
-        const fallbackUpdate = { ...updateData };
-        delete fallbackUpdate.ouvert_manuellement;
-        delete fallbackUpdate.manual_status_updated_at;
-        delete fallbackUpdate.manual_status_updated_by;
-
-        const { data: fbData, error: fbErr } = await supabaseAdmin
-          .from('restaurants')
-          .update(fallbackUpdate)
-          .eq('id', id)
-          .select('id, nom, ferme_manuellement, updated_at')
-          .single();
-        if (fbErr) {
-          console.error('❌ Erreur mise à jour restaurant (fallback):', fbErr);
-          return NextResponse.json({ error: 'Erreur lors de la mise à jour', details: fbErr.message }, { status: 500 });
-        }
-        updatedRestaurant = fbData;
-      } else {
-        console.error('❌ Erreur mise à jour restaurant:', updateError);
-        return NextResponse.json({
-          error: 'Erreur lors de la mise à jour',
-          details: updateError.message
-        }, { status: 500 });
-      }
+      console.error('❌ Erreur mise à jour restaurant:', updateError);
+      return NextResponse.json({ error: 'Erreur lors de la mise à jour', details: updateError.message }, { status: 500 });
     }
     // NB: ouvert_manuellement est désormais géré dans la même requête que ferme_manuellement (atomic).
 
