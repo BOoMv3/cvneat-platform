@@ -1663,26 +1663,15 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {displayRestaurants.map((restaurant, index) => {
-                let restaurantStatus = restaurantsOpenStatus[restaurant.id];
-                if (!restaurantStatus) {
-                  restaurantStatus = {
-                    // Pas de fallback client: on attend la source serveur
-                    isOpen: false,
-                    isManuallyClosed: false,
-                    hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
-                  };
-                }
-                // Priorité 1: fermé manuellement → toujours fermé
-                const fm = restaurant.ferme_manuellement;
-                const forceFermeManuel = fm === true || fm === 1 || (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
-                if (forceFermeManuel) {
-                  restaurantStatus = {
-                    ...restaurantStatus,
-                    isOpen: false,
-                    isManuallyClosed: true
-                  };
-                }
-                // Pas d'override "ouvert manuellement" : on suit toujours les horaires
+                // Statut affiché sur l'accueil = 100% manuel (source de vérité : flags DB)
+                // Priorité : ferme_manuellement > ouvert_manuellement
+                const status = checkRestaurantOpenStatus(restaurant);
+                const restaurantStatus = {
+                  isOpen: status.isOpen === true,
+                  isManuallyClosed: status.isManuallyClosed === true,
+                  hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
+                };
+
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
                 // Statut unique : fermé si ferme_manuellement OU hors horaires
