@@ -478,12 +478,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Statut 100 % manuel (ouvert_manuellement uniquement) — ignore ferme_manuellement (bug prod)
-      const om = restaurantData.ouvert_manuellement;
-      const ouvertManuel = (om === true || om === 'true' || om === 1 || om === '1' ||
-        (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
-      const isOpen = ouvertManuel;
-      setIsManuallyClosed(false);
+      // Statut : horaires (source /api/restaurants/[id]/hours POST), override ferme_manuellement
+      const fm = restaurantData.ferme_manuellement;
+      const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+        (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+      const isOpen = !isManuallyClosed && openStatusData?.isOpen === true;
+      setIsManuallyClosed(isManuallyClosed);
       setIsRestaurantOpen(isOpen);
       
       // Debug: afficher les horaires récupérées

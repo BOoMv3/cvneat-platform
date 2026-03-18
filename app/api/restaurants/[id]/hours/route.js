@@ -51,7 +51,7 @@ export async function GET(request, { params }) {
 
     const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
-      .select('horaires, ferme_manuellement, ouvert_manuellement')
+      .select('horaires, ferme_manuellement')
       .eq('id', id)
       .single();
 
@@ -161,22 +161,17 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Système 100% manuel : on suit UNIQUEMENT ouvert_manuellement (ignore ferme_manuellement - bug prod)
-    const om = restaurant.ouvert_manuellement;
-    const isManuallyOpen = om === true || om === 'true' || om === 1 || om === '1' ||
-      (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
-    const statusRes = json({
-      isOpen: isManuallyOpen,
-      message: isManuallyOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
-      reason: isManuallyOpen ? 'open_manuel' : 'manual',
-      isManuallyClosed: false
-    });
-    statusRes.headers.set('Cache-Control', 'no-store, max-age=0');
-    return statusRes;
+    // Override manuel : ferme_manuellement = true => toujours fermé
+    const fm = restaurant.ferme_manuellement;
+    const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+      (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+    if (isManuallyClosed) {
+      const res = json({ isOpen: false, message: 'Restaurant fermé manuellement', reason: 'manual', isManuallyClosed: true });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
+    }
 
-    // NOTE: Ancienne logique basée sur les horaires supprimée (système 100% manuel)
-    // (On retourne ci-dessus.)
-    /* eslint-disable no-unreachable */
+    // Suite : calculer l'ouverture via les horaires (Europe/Paris)
     let horaires = coerceHorairesObject(restaurant.horaires) || {};
     
     // Si horaires est une chaîne JSON, la parser (fallback)
