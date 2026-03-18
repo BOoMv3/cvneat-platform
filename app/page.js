@@ -1765,9 +1765,18 @@ export default function Home() {
                         displayHoursLabel = `Ouvre à : ${nextOpening.time}`;
                       }
                     } else {
-                      // Sinon, afficher les horaires normaux ou un libellé adapté
+                      // Sinon, fallback: essayer d'extraire une prochaine ouverture depuis le label du jour
                       const todayLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant);
-                      displayHoursLabel = todayLabel || (restaurantStatus.isOpen ? 'Selon le partenaire' : 'Horaires non communiquées');
+                      if (todayLabel && typeof todayLabel === 'string') {
+                        const m = todayLabel.trim().match(/^(\d{1,2}(?:[:h])\d{2})\s*-\s*/i);
+                        if (m && m[1]) {
+                          displayHoursLabel = `Ouvre à : ${m[1].replace('h', ':')}`;
+                        } else {
+                          displayHoursLabel = todayLabel;
+                        }
+                      } else {
+                        displayHoursLabel = 'Horaires non communiquées';
+                      }
                     }
                   } else {
                     // Si ouvert (manuel), horaires du jour ou libellé clair
