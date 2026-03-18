@@ -271,7 +271,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         }
       };
       checkStatus();
-    }, 20000);
+    }, 60000);
     
     // Subscription Supabase Realtime pour les menus (mise à jour automatique)
     const menuChannel = supabase

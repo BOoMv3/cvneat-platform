@@ -17,7 +17,7 @@ export async function POST(request) {
     // 1. Vérifier si le restaurant existe et est actif
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, nom, is_active, horaires')
+      .select('id, nom, is_active, horaires, ferme_manuellement, ouvert_manuellement, commande_min')
       .eq('id', restaurantId)
       .single();
 
@@ -39,15 +39,20 @@ export async function POST(request) {
       );
     }
 
-    // 2. Vérifier les horaires d'ouverture
-    const isOpen = checkRestaurantHours(restaurant.horaires);
-    if (!isOpen.isOpen) {
+    // 2. Vérifier le statut d'ouverture (100% manuel)
+    const fm = restaurant.ferme_manuellement;
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyClosed = fm === true || fm === 1 || fm === 'true' || fm === '1' ||
+      (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+    const isManuallyOpen = !isManuallyClosed && (om === true || om === 1 || om === 'true' || om === '1' ||
+      (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
+
+    if (!isManuallyOpen) {
       return NextResponse.json(
         { 
           error: 'Restaurant fermé',
           code: 'RESTAURANT_CLOSED',
-          message: isOpen.message,
-          nextOpening: isOpen.nextOpening
+          message: 'Ce restaurant n\'accepte pas de commandes pour le moment (ouverture/fermeture manuelle).'
         },
         { status: 400 }
       );

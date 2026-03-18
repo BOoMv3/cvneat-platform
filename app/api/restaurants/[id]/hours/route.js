@@ -153,7 +153,7 @@ export async function POST(request, { params }) {
 
     const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
-      .select('horaires, ferme_manuellement')
+      .select('horaires, ferme_manuellement, ouvert_manuellement')
       .eq('id', id)
       .single();
 
@@ -180,8 +180,18 @@ export async function POST(request, { params }) {
       return res;
     }
 
-    // Si ferme_manuellement = false ou null/undefined → Vérifier les horaires
-    console.log(`[API hours POST] Restaurant ${id} - Vérification horaires (ferme_manuellement = ${fm})`);
+    // Système 100% manuel : si pas fermé manuellement, on suit ouvert_manuellement
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyOpen = om === true || om === 'true' || om === 1 || om === '1' ||
+      (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
+    const res = json({
+      isOpen: isManuallyOpen,
+      message: isManuallyOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
+      reason: isManuallyOpen ? 'open_manuel' : 'manual',
+      isManuallyClosed: false
+    });
+    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    return res;
 
     // Si ferme_manuellement = false ou null, vérifier les horaires normalement
     let horaires = coerceHorairesObject(restaurant.horaires) || {};
