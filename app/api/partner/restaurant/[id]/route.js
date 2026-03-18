@@ -34,23 +34,25 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
     return { error: 'Configuration serveur manquante (Supabase)', status: 500 };
   }
 
-  // Client user-scoped (RLS) avec JWT partenaire.
-  // -> le trigger voit request.jwt.claim.sub
-  const supabaseUser = createClient(supabaseUrl, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}`, apikey: anonKey } },
+  // IMPORTANT:
+  // Sur certains environnements (iOS/Safari), supabase-js peut ne pas propager correctement
+  // `request.jwt.claim.sub` jusqu'à Postgres via PostgREST dans les triggers.
+  // On utilise donc l'API REST Supabase directement (apikey + Authorization) pour garantir le JWT.
+  const selectUrl = `${supabaseUrl}/rest/v1/restaurants?id=eq.${encodeURIComponent(restaurantId)}&select=id,user_id,nom,ferme_manuellement,ouvert_manuellement,updated_at`;
+  const restaurantRes = await fetch(selectUrl, {
+    method: 'GET',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
   });
-
-  const { data: restaurant, error: restaurantError } = await supabaseUser
-    .from('restaurants')
-    // IMPORTANT: ne pas sélectionner des colonnes qui peuvent ne pas exister (migration non appliquée)
-    .select('id, user_id, nom, ferme_manuellement, updated_at')
-    .eq('id', restaurantId)
-    .single();
+  const restaurantJson = await restaurantRes.json().catch(() => null);
+  const restaurant = Array.isArray(restaurantJson) ? restaurantJson[0] : null;
+  const restaurantError = restaurantRes.ok ? null : { message: restaurantJson?.message || restaurantJson?.error || `HTTP ${restaurantRes.status}` };
 
   if (restaurantError || !restaurant) {
-    // PGRST116 = no rows found
-    if (restaurantError?.code === 'PGRST116') {
+    if (restaurantRes.status === 404) {
       return { error: 'Restaurant non trouvé', status: 404 };
     }
     console.error('❌ Erreur récupération restaurant (admin):', restaurantError);
@@ -61,7 +63,7 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
     return { error: "Vous n'êtes pas autorisé à accéder à ce restaurant", status: 403 };
   }
 
-  return { user, restaurant, supabaseUser };
+  return { user, restaurant, token, supabaseUrl, anonKey };
 }
 
 // GET /api/partner/restaurant/[id] - Récupérer un restaurant (owner only)
@@ -86,7 +88,7 @@ export async function PUT(request, { params }) {
 
     const auth = await getAuthedRestaurantOwner(request, id);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-    const { supabaseUser, user } = auth;
+    const { user, token, supabaseUrl, anonKey } = auth;
 
     // Préparer les données à mettre à jour
     const updateData = {
@@ -125,60 +127,33 @@ export async function PUT(request, { params }) {
       updateData.prep_time_updated_at = new Date().toISOString();
     }
 
-    // 1) Mise à jour (statut manuel + prep_time si envoyés) via RLS + JWT user
-    let updatedRestaurant = null;
-    let updateError = null;
-    {
-      const { data, error } = await supabaseUser
-        .from('restaurants')
-        .update(updateData)
-        .eq('id', id)
-        .select('id, nom, ferme_manuellement, ouvert_manuellement, updated_at')
-        .single();
-      updatedRestaurant = data;
-      updateError = error;
-    }
-
-    if (updateError) {
-      console.error('❌ Erreur mise à jour restaurant:', {
-        message: updateError?.message,
-        details: updateError?.details,
-        hint: updateError?.hint,
-        code: updateError?.code,
-      });
+    // 1) Mise à jour via REST (JWT garanti pour le trigger)
+    const updateUrl = `${supabaseUrl}/rest/v1/restaurants?id=eq.${encodeURIComponent(id)}&select=id,nom,ferme_manuellement,ouvert_manuellement,updated_at,prep_time_minutes,prep_time_updated_at`;
+    const updateRes = await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(updateData),
+      cache: 'no-store',
+    });
+    const updateJson = await updateRes.json().catch(() => null);
+    if (!updateRes.ok) {
+      console.error('❌ Erreur mise à jour restaurant (REST):', updateRes.status, updateJson);
       return NextResponse.json(
         {
           error: 'Erreur lors de la mise à jour',
-          details: updateError?.message || null,
-          supabase: {
-            message: updateError?.message || null,
-            details: updateError?.details || null,
-            hint: updateError?.hint || null,
-            code: updateError?.code || null,
-          },
+          details: updateJson?.message || updateJson?.error || `HTTP ${updateRes.status}`,
+          supabase: updateJson || null,
         },
         { status: 500 }
       );
     }
+    const updatedRestaurant = Array.isArray(updateJson) ? updateJson[0] : updateJson;
     // NB: ouvert_manuellement est désormais géré dans la même requête que ferme_manuellement (atomic).
-
-    // Si on a tenté de mettre à jour le temps de préparation, essayer de le renvoyer (si les colonnes existent)
-    if (body.prep_time_minutes !== undefined) {
-      try {
-        const { data: extra, error: extraErr } = await supabaseUser
-          .from('restaurants')
-          .select('prep_time_minutes, prep_time_updated_at')
-          .eq('id', id)
-          .single();
-        if (!extraErr && extra) {
-          updatedRestaurant.prep_time_minutes = extra.prep_time_minutes;
-          updatedRestaurant.prep_time_updated_at = extra.prep_time_updated_at;
-        }
-      } catch (e) {
-        // Si la migration n'est pas appliquée, on ne bloque pas l'ouverture/fermeture manuelle
-        console.warn('⚠️ Colonnes prep_time_* indisponibles (migration non appliquée ?):', e?.message || e);
-      }
-    }
 
     console.log('✅ Restaurant mis à jour:', {
       id: updatedRestaurant.id,
