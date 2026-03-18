@@ -140,8 +140,25 @@ export async function PUT(request, { params }) {
     }
 
     if (updateError) {
-      console.error('❌ Erreur mise à jour restaurant:', updateError);
-      return NextResponse.json({ error: 'Erreur lors de la mise à jour', details: updateError.message }, { status: 500 });
+      console.error('❌ Erreur mise à jour restaurant:', {
+        message: updateError?.message,
+        details: updateError?.details,
+        hint: updateError?.hint,
+        code: updateError?.code,
+      });
+      return NextResponse.json(
+        {
+          error: 'Erreur lors de la mise à jour',
+          details: updateError?.message || null,
+          supabase: {
+            message: updateError?.message || null,
+            details: updateError?.details || null,
+            hint: updateError?.hint || null,
+            code: updateError?.code || null,
+          },
+        },
+        { status: 500 }
+      );
     }
     // NB: ouvert_manuellement est désormais géré dans la même requête que ferme_manuellement (atomic).
 
