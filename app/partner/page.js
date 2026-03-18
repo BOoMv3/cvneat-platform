@@ -2065,7 +2065,14 @@ export default function PartnerDashboard() {
           statusText: response.statusText,
           error: responseData
         });
-        alert(`Erreur: ${responseData.error || responseData.details || 'Impossible de mettre à jour le statut'}`);
+        const payloadStr = (() => {
+          try { return JSON.stringify(responseData, null, 2); } catch { return String(responseData); }
+        })();
+        alert(
+          `Erreur API (${response.status} ${response.statusText})\n` +
+          `${responseData?.error || responseData?.details || 'Impossible de mettre à jour le statut'}\n\n` +
+          `Détails:\n${payloadStr}`
+        );
       }
     } catch (error) {
       console.error('❌ Erreur toggle fermeture:', error);
