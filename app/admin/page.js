@@ -104,24 +104,42 @@ export default function AdminPage() {
   const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
     try {
       setTogglingRestaurantId(restaurant.id);
-      // IMPORTANT: `ouvert_manuellement` peut ne pas exister si la migration n'a pas été appliquée en prod.
-      // Donc: on update uniquement `ferme_manuellement`.
+      // Système 100% manuel:
+      // - Fermer => ferme_manuellement=true ET ouvert_manuellement=false
+      // - Ouvrir => ferme_manuellement=false ET ouvert_manuellement=true
+      // Fallback: si la colonne ouvert_manuellement n'existe pas, on met à jour uniquement ferme_manuellement.
+      const baseUpdate = {
+        ferme_manuellement: !shouldOpen,
+        updated_at: new Date().toISOString()
+      };
 
-      const { error: updateError } = await supabase
-        .from('restaurants')
-        .update({
-          // Ouvrir => ferme_manuellement = false ; Fermer => true
-          ferme_manuellement: !shouldOpen,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', restaurant.id);
+      let updateError = null;
+      {
+        const { error } = await supabase
+          .from('restaurants')
+          .update({
+            ...baseUpdate,
+            ouvert_manuellement: shouldOpen
+          })
+          .eq('id', restaurant.id);
+        updateError = error;
+      }
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        const msg = String(updateError?.message || '');
+        const missingColumn = msg.toLowerCase().includes('ouvert_manuellement') || msg.toLowerCase().includes('column') || msg.toLowerCase().includes('does not exist');
+        if (!missingColumn) throw updateError;
+        const { error: fallbackErr } = await supabase
+          .from('restaurants')
+          .update(baseUpdate)
+          .eq('id', restaurant.id);
+        if (fallbackErr) throw fallbackErr;
+      }
 
       setStats((prev) => ({
         ...prev,
         allRestaurants: (prev.allRestaurants || []).map((r) =>
-          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen } : r
+          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen, ouvert_manuellement: shouldOpen } : r
         )
       }));
     } catch (e) {
