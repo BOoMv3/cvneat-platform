@@ -979,6 +979,22 @@ export default function Home() {
     };
     
     window.addEventListener('restaurant-status-changed', handleRestaurantStatusChange);
+
+    // Support multi-onglets / mobile : BroadcastChannel
+    let bc;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('cvneat_restaurant_status');
+        bc.onmessage = (ev) => {
+          if (ev?.data?.type === 'restaurant-status-changed') {
+            console.log('[Restaurants] BroadcastChannel status change, rafraîchissement...');
+            fetchRestaurants();
+          }
+        };
+      }
+    } catch (e) {
+      // ignore
+    }
     
     // Rafraîchir dès que l’utilisateur revient sur l’onglet (fermeture manuelle dans l’autre onglet)
     const onVisibilityChange = () => {
@@ -1004,6 +1020,7 @@ export default function Home() {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('focus', onWindowFocus);
       clearInterval(refreshInterval);
+      try { bc?.close?.(); } catch { /* ignore */ }
     };
   }, [pathname]);
 

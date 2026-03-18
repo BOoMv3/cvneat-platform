@@ -2058,6 +2058,15 @@ export default function PartnerDashboard() {
         // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('restaurant-status-changed'));
+          try {
+            if ('BroadcastChannel' in window) {
+              const bc = new BroadcastChannel('cvneat_restaurant_status');
+              bc.postMessage({ type: 'restaurant-status-changed', restaurantId: restaurant.id, at: Date.now() });
+              bc.close();
+            }
+          } catch {
+            // ignore
+          }
         }
       } else {
         console.error('❌ Erreur API toggle fermeture:', {
