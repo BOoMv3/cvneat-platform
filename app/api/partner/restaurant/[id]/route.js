@@ -98,20 +98,11 @@ export async function PUT(request, { params }) {
     // Ouvrir/Fermer : ne mettre à jour ferme_manuellement QUE si la requête est explicitement un toggle
     // (pas si on envoie prep_time_minutes ou autre, pour éviter qu'un autre appel écrase par erreur)
     const isToggleRequest = body.ferme_manuellement !== undefined && body.prep_time_minutes === undefined;
-    const wantOuvertManuel = isToggleRequest && !(
-      body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
-      body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
-    );
     if (isToggleRequest) {
       updateData.ferme_manuellement = (
         body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
         body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
       );
-      // Statut 100% manuel : toujours garder la cohérence des deux flags
-      updateData.ouvert_manuellement = wantOuvertManuel;
-      // Preuve anti-flip (enforced par trigger SQL en prod)
-      updateData.manual_status_updated_at = new Date().toISOString();
-      updateData.manual_status_updated_by = user.id;
     }
 
     // Temps de préparation déclaré (minutes)

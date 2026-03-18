@@ -1967,10 +1967,9 @@ export default function PartnerDashboard() {
         new_status_type: typeof newStatus
       });
       
-      const requestBody = {
-        ferme_manuellement: newStatus,
-        ouvert_manuellement: !newStatus
-      };
+      // Mode horaires: le bouton sert uniquement à forcer une fermeture manuelle (override).
+      // "Ouvrir" = désactiver la fermeture manuelle.
+      const requestBody = { ferme_manuellement: newStatus };
       
       console.log('📤 Envoi requête API:', {
         url: `/api/partner/restaurant/${restaurant.id}`,
@@ -2053,7 +2052,7 @@ export default function PartnerDashboard() {
           type: typeof normalizedStatus
         });
         
-        alert(normalizedStatus ? 'Restaurant marqué comme fermé' : 'Restaurant marqué comme ouvert');
+        alert(normalizedStatus ? 'Restaurant fermé manuellement' : 'Fermeture manuelle désactivée (selon vos horaires)');
         
         // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
         if (typeof window !== 'undefined') {
