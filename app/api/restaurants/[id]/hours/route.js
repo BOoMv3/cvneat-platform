@@ -184,16 +184,18 @@ export async function POST(request, { params }) {
     const om = restaurant.ouvert_manuellement;
     const isManuallyOpen = om === true || om === 'true' || om === 1 || om === '1' ||
       (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
-    const res = json({
+    const statusRes = json({
       isOpen: isManuallyOpen,
       message: isManuallyOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
       reason: isManuallyOpen ? 'open_manuel' : 'manual',
       isManuallyClosed: false
     });
-    res.headers.set('Cache-Control', 'no-store, max-age=0');
-    return res;
+    statusRes.headers.set('Cache-Control', 'no-store, max-age=0');
+    return statusRes;
 
-    // Si ferme_manuellement = false ou null, vérifier les horaires normalement
+    // NOTE: Ancienne logique basée sur les horaires supprimée (système 100% manuel)
+    // (On retourne ci-dessus.)
+    /* eslint-disable no-unreachable */
     let horaires = coerceHorairesObject(restaurant.horaires) || {};
     
     // Si horaires est une chaîne JSON, la parser (fallback)
@@ -445,7 +447,7 @@ export async function POST(request, { params }) {
       ? todayHours.plages.map(p => ({ ouverture: p.ouverture, fermeture: p.fermeture }))
       : (todayHours.ouverture && todayHours.fermeture ? [{ ouverture: todayHours.ouverture, fermeture: todayHours.fermeture }] : []);
 
-    const res = json({
+    const hoursRes = json({
       isOpen: finalIsOpen,
       message: finalIsOpen ? 'Restaurant ouvert' : (reason === 'manual' ? 'Restaurant fermé manuellement' : 'Restaurant fermé'),
       reason: reason,
@@ -464,8 +466,8 @@ export async function POST(request, { params }) {
         plagesCount: todayHours.plages?.length
       }
     });
-    res.headers.set('Cache-Control', 'no-store, max-age=0');
-    return res;
+    hoursRes.headers.set('Cache-Control', 'no-store, max-age=0');
+    return hoursRes;
   } catch (error) {
     console.error('Erreur vérification horaires:', error);
     return json({ error: 'Erreur serveur' }, { status: 500 });
