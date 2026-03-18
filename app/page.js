@@ -415,18 +415,10 @@ const getHeuresJourForToday = (horaires) => {
   return null;
 };
 
-// Ouvert/fermé : UNIQUEMENT manuel. Priorité : Fermer manuellement > Ouvrir manuellement.
+// Ouvert/fermé : UNIQUEMENT via `ouvert_manuellement`.
+// NOTE: `ferme_manuellement` est ignoré car il bascule "tout seul" (bug prod).
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
-    let fermeManuel = restaurant.ferme_manuellement;
-    if (fermeManuel === undefined || fermeManuel === null) fermeManuel = false;
-    else if (typeof fermeManuel === 'string') {
-      const s = String(fermeManuel).trim().toLowerCase();
-      fermeManuel = s === 'true' || s === '1' || s === 'oui';
-    }
-    if (fermeManuel === true || fermeManuel === 1) {
-      return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
-    }
     let ouvertManuel = restaurant.ouvert_manuellement;
     if (typeof ouvertManuel === 'string') {
       const s = String(ouvertManuel).trim().toLowerCase();

@@ -161,26 +161,7 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Normaliser ferme_manuellement - UNIQUEMENT true si valeur explicitement truthy
-    const fm = restaurant.ferme_manuellement;
-    const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
-      (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
-    // Tout le reste (false, 'false', null, undefined, '', etc.) = PAS fermé manuellement
-    
-    // LOGIQUE: Si ferme_manuellement = true → TOUJOURS FERMÉ (ne s'ouvre jamais automatiquement)
-    if (isManuallyClosed) {
-      console.log(`[API hours POST] Restaurant ${id} - FERMÉ MANUELLEMENT (ferme_manuellement = ${fm})`);
-      const res = json({
-        isOpen: false,
-        message: 'Restaurant fermé manuellement - Nécessite une ouverture manuelle',
-        reason: 'manual',
-        isManuallyClosed: true
-      });
-      res.headers.set('Cache-Control', 'no-store, max-age=0');
-      return res;
-    }
-
-    // Système 100% manuel : si pas fermé manuellement, on suit ouvert_manuellement
+    // Système 100% manuel : on suit UNIQUEMENT ouvert_manuellement (ignore ferme_manuellement - bug prod)
     const om = restaurant.ouvert_manuellement;
     const isManuallyOpen = om === true || om === 'true' || om === 1 || om === '1' ||
       (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');

@@ -40,11 +40,8 @@ export async function POST(request) {
     }
 
     // 2. Vérifier le statut d'ouverture (100% manuel)
-    const fm = restaurant.ferme_manuellement;
     const om = restaurant.ouvert_manuellement;
-    const isManuallyClosed = fm === true || fm === 1 || fm === 'true' || fm === '1' ||
-      (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
-    const isManuallyOpen = !isManuallyClosed && (om === true || om === 1 || om === 'true' || om === '1' ||
+    const isManuallyOpen = (om === true || om === 1 || om === 'true' || om === '1' ||
       (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
 
     if (!isManuallyOpen) {
