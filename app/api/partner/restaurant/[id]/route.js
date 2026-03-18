@@ -38,7 +38,7 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
   // -> le trigger voit request.jwt.claim.sub
   const supabaseUser = createClient(supabaseUrl, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
+    global: { headers: { Authorization: `Bearer ${token}`, apikey: anonKey } },
   });
 
   const { data: restaurant, error: restaurantError } = await supabaseUser
