@@ -415,17 +415,9 @@ const getHeuresJourForToday = (horaires) => {
   return null;
 };
 
-// Ouvert/fermé : UNIQUEMENT manuel (bouton Ouvrir / Fermer). Plus de calcul sur les horaires.
+// Ouvert/fermé : UNIQUEMENT manuel. Priorité : Fermer manuellement > Ouvrir manuellement.
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
-    let ouvertManuel = restaurant.ouvert_manuellement;
-    if (typeof ouvertManuel === 'string') {
-      const s = String(ouvertManuel).trim().toLowerCase();
-      ouvertManuel = s === 'true' || s === '1' || s === 'oui';
-    }
-    if (ouvertManuel === true || ouvertManuel === 1) {
-      return { isOpen: true, isManuallyClosed: false, reason: 'open_manuel' };
-    }
     let fermeManuel = restaurant.ferme_manuellement;
     if (fermeManuel === undefined || fermeManuel === null) fermeManuel = false;
     else if (typeof fermeManuel === 'string') {
@@ -434,6 +426,14 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     }
     if (fermeManuel === true || fermeManuel === 1) {
       return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
+    }
+    let ouvertManuel = restaurant.ouvert_manuellement;
+    if (typeof ouvertManuel === 'string') {
+      const s = String(ouvertManuel).trim().toLowerCase();
+      ouvertManuel = s === 'true' || s === '1' || s === 'oui';
+    }
+    if (ouvertManuel === true || ouvertManuel === 1) {
+      return { isOpen: true, isManuallyClosed: false, reason: 'open_manuel' };
     }
     return { isOpen: false, isManuallyClosed: false, reason: 'manual' };
   } catch (e) {

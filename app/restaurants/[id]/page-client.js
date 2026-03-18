@@ -258,12 +258,12 @@ export default function RestaurantDetail({ params }) {
           const restRes = await fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' });
           if (!restRes.ok) return;
           const restData = await restRes.json();
-          const om = restData.ouvert_manuellement;
           const fm = restData.ferme_manuellement;
-          const ouvertManuel = om === true || om === 'true' || om === 1 || om === '1' ||
-            (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
+          const om = restData.ouvert_manuellement;
           const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
             (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+          const ouvertManuel = !isManuallyClosed && (om === true || om === 'true' || om === 1 || om === '1' ||
+            (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
           setIsManuallyClosed(isManuallyClosed);
           setIsRestaurantOpen(ouvertManuel);
         } catch (err) {
@@ -491,16 +491,16 @@ export default function RestaurantDetail({ params }) {
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Statut 100 % manuel (comme l'accueil)
-      const om = restaurantData.ouvert_manuellement;
+      // Statut 100 % manuel. Priorité : ferme_manuellement > ouvert_manuellement
       const fm = restaurantData.ferme_manuellement;
-      const ouvertManuel = om === true || om === 'true' || om === 1 || om === '1' ||
-        (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
+      const om = restaurantData.ouvert_manuellement;
       const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
         (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
-      const isOpen = ouvertManuel; // alias pour compatibilité
+      const ouvertManuel = !isManuallyClosed && (om === true || om === 'true' || om === 1 || om === '1' ||
+        (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
+      const isOpen = ouvertManuel;
       setIsManuallyClosed(isManuallyClosed);
-      setIsRestaurantOpen(ouvertManuel);
+      setIsRestaurantOpen(isOpen);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
