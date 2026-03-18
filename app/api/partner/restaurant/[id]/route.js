@@ -29,18 +29,20 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !anonKey) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) {
     return { error: 'Configuration serveur manquante (Supabase)', status: 500 };
   }
 
-  // Client "user-scoped" (RLS) → permet au trigger de lire request.jwt.claim.sub
-  const supabaseUser = createClient(supabaseUrl, anonKey, {
+  // Client service role MAIS avec Authorization=JWT user.
+  // -> bypass RLS (évite erreurs policy)
+  // -> le trigger voit request.jwt.claim.sub (anti-fermeture fantôme)
+  const supabaseAdminAsUser = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: restaurant, error: restaurantError } = await supabaseUser
+  const { data: restaurant, error: restaurantError } = await supabaseAdminAsUser
     .from('restaurants')
     // IMPORTANT: ne pas sélectionner des colonnes qui peuvent ne pas exister (migration non appliquée)
     .select('id, user_id, nom, ferme_manuellement, updated_at')
@@ -60,7 +62,7 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
     return { error: "Vous n'êtes pas autorisé à accéder à ce restaurant", status: 403 };
   }
 
-  return { user, restaurant, supabaseUser };
+  return { user, restaurant, supabaseAdminAsUser };
 }
 
 // GET /api/partner/restaurant/[id] - Récupérer un restaurant (owner only)
@@ -85,7 +87,7 @@ export async function PUT(request, { params }) {
 
     const auth = await getAuthedRestaurantOwner(request, id);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-    const { supabaseUser, user } = auth;
+    const { supabaseAdminAsUser, user } = auth;
 
     // Préparer les données à mettre à jour
     const updateData = {
@@ -124,11 +126,11 @@ export async function PUT(request, { params }) {
       updateData.prep_time_updated_at = new Date().toISOString();
     }
 
-    // 1) Mise à jour (statut manuel + prep_time si envoyés) via RLS (user token)
+    // 1) Mise à jour (statut manuel + prep_time si envoyés) via service role + JWT user
     let updatedRestaurant = null;
     let updateError = null;
     {
-      const { data, error } = await supabaseUser
+      const { data, error } = await supabaseAdminAsUser
         .from('restaurants')
         .update(updateData)
         .eq('id', id)
@@ -147,7 +149,7 @@ export async function PUT(request, { params }) {
     // Si on a tenté de mettre à jour le temps de préparation, essayer de le renvoyer (si les colonnes existent)
     if (body.prep_time_minutes !== undefined) {
       try {
-        const { data: extra, error: extraErr } = await supabaseAdmin
+        const { data: extra, error: extraErr } = await supabaseAdminAsUser
           .from('restaurants')
           .select('prep_time_minutes, prep_time_updated_at')
           .eq('id', id)
