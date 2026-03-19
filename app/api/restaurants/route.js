@@ -123,7 +123,7 @@ export async function GET() {
     const isOpenNowParis = (horairesRaw, now = new Date()) => {
       const horairesObj = coerceHorairesObject(horairesRaw);
       const day = getDayObjectParis(horairesObj, now);
-      if (!day || day.is_closed === true || day.ouvert === false) return false;
+      if (!day || day.is_closed === true) return false;
       const tz = 'Europe/Paris';
       const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
       const ch = parseInt(timeParts.find((p) => p.type === 'hour')?.value || '0', 10);
@@ -135,7 +135,15 @@ export async function GET() {
         const spansMidnight = end < start;
         return spansMidnight ? (current >= start || current <= end) : (current >= start && current <= end);
       };
-      if (Array.isArray(day.plages) && day.plages.length > 0) {
+      const hasPlages = Array.isArray(day.plages) && day.plages.length > 0;
+      const hasSingleRange = Boolean((day.ouverture || day.debut) && (day.fermeture || day.fin));
+      const hasExplicitHours = hasPlages || hasSingleRange;
+
+      // Même règle que /api/restaurants/[id]/hours :
+      // si plages/heures explicites existent, elles priment sur le flag ouvert.
+      if (!hasExplicitHours && day.ouvert === false) return false;
+
+      if (hasPlages) {
         return day.plages.some((plage) => {
           const openStr = plage?.ouverture || plage?.debut;
           const closeStr = plage?.fermeture || plage?.fin;

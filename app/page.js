@@ -436,7 +436,7 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     // Fallback client (Capacitor): calcul Europe/Paris depuis horaires
     const horaires = coerceHorairesObject(restaurant.horaires);
     const day = getHeuresJourForToday(horaires);
-    if (!day || day.is_closed === true || day.ferme === true || day.ouvert === false) {
+    if (!day || day.is_closed === true || day.ferme === true) {
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
 
@@ -450,7 +450,14 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return spansMidnight ? (current >= start || current <= end) : (current >= start && current <= end);
     };
 
-    if (Array.isArray(day.plages) && day.plages.length > 0) {
+    const hasPlages = Array.isArray(day.plages) && day.plages.length > 0;
+    const hasSingleRange = Boolean((day.ouverture || day.debut) && (day.fermeture || day.fin));
+    const hasExplicitHours = hasPlages || hasSingleRange;
+    if (!hasExplicitHours && day.ouvert === false) {
+      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
+    }
+
+    if (hasPlages) {
       const open = day.plages.some((plage) => {
         const openStr = plage?.ouverture || plage?.debut;
         const closeStr = plage?.fermeture || plage?.fin;

@@ -251,18 +251,25 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir statut: 100 % manuel (ouvert_manuellement uniquement) — ignore ferme_manuellement (bug prod)
+    // Rafraîchir le statut avec la même source que la page détail (POST /hours)
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
-          const restRes = await fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' });
-          if (!restRes.ok) return;
-          const restData = await restRes.json();
-          const om = restData.ouvert_manuellement;
-          const ouvertManuel = (om === true || om === 'true' || om === 1 || om === '1' ||
-            (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
-          setIsManuallyClosed(false);
-          setIsRestaurantOpen(ouvertManuel);
+          const [restRes, statusRes] = await Promise.all([
+            fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' }),
+            fetch(`/api/restaurants/${restaurantId}/hours`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              cache: 'no-store'
+            })
+          ]);
+          if (!restRes.ok || !statusRes.ok) return;
+          const [restData, statusData] = await Promise.all([restRes.json(), statusRes.json()]);
+          const fm = restData?.ferme_manuellement;
+          const manual = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+            (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+          setIsManuallyClosed(manual);
+          setIsRestaurantOpen(!manual && statusData?.isOpen === true);
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }

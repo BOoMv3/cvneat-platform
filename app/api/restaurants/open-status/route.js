@@ -85,7 +85,6 @@ const isOpenNowFromHoraires = (horairesRaw, now = new Date()) => {
   const { day, meta } = getTodayDayObject(horairesObj, now);
   if (!day) return { isOpen: false, reason: meta?.reason || 'no_day', meta };
   if (day.is_closed === true) return { isOpen: false, reason: 'closed_today_flag', meta };
-  if (day.ouvert === false) return { isOpen: false, reason: 'closed_today', meta };
 
   const tz = 'Europe/Paris';
   const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
@@ -100,7 +99,12 @@ const isOpenNowFromHoraires = (horairesRaw, now = new Date()) => {
     return spansMidnight ? (current >= start || current <= end) : (current >= start && current <= end);
   };
 
-  if (Array.isArray(day.plages) && day.plages.length > 0) {
+  const hasPlages = Array.isArray(day.plages) && day.plages.length > 0;
+  const hasSingleRange = Boolean((day.ouverture || day.debut) && (day.fermeture || day.fin));
+  const hasExplicitHours = hasPlages || hasSingleRange;
+  if (!hasExplicitHours && day.ouvert === false) return { isOpen: false, reason: 'closed_today', meta };
+
+  if (hasPlages) {
     const any = day.plages.some((plage) => {
       const openStr = plage?.ouverture || plage?.debut;
       const closeStr = plage?.fermeture || plage?.fin;
