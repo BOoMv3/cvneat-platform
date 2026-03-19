@@ -509,7 +509,6 @@ export default function Home() {
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
-  const openStatusRef = useRef({}); // Evite les bascules si le détail n'est pas récupéré (ou rate)
   const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false); // Commande en cours pour mettre en avant "Ma commande"
 
@@ -1036,29 +1035,30 @@ export default function Home() {
           (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
         const syncedById = new Map((syncedRestaurants || []).map((r) => [r.id, r]));
-        const openStatusMap = { ...(openStatusRef.current || {}) };
+        const openStatusMap = {};
         for (const restaurant of normalizedRestaurants) {
-          // Ne met à jour la carte que si le détail a été récupéré pour ce restaurant.
-          // Sinon, on garde le statut précédent pour éviter les bascules.
-          if (!detailIdSet.has(restaurant.id)) continue;
+          const fm = toBool(restaurant.ferme_manuellement);
+          const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
           const synced = syncedById.get(restaurant.id);
-          if (!synced) continue;
-
-          const fm = toBool(synced.ferme_manuellement);
-          const om = toBool(synced.ouvert_manuellement);
+          if (!synced) {
+            // Pas de détail = sécurité => on affiche Fermé (évite "Ouvert" stale)
+            openStatusMap[restaurant.id] = {
+              isOpen: false,
+              isManuallyClosed: fm,
+              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+            };
+            continue;
+          }
 
           // Priorité: ferme_manuellement => fermé, sinon horaires/is_open_now
           const isOpen = !fm && toBool(synced.is_open_now);
-          const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-
           openStatusMap[restaurant.id] = {
             isOpen,
             isManuallyClosed: fm,
             hoursLabel: todayHoursLabel || 'Horaires non communiquées',
           };
         }
-        openStatusRef.current = openStatusMap;
         setRestaurantsOpenStatus(openStatusMap);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
