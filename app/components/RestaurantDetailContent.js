@@ -251,25 +251,19 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir le statut avec la même source que la page détail (POST /hours)
+    // Rafraîchir le statut avec la même source que l'accueil (/api/restaurants/:id)
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
-          const [restRes, statusRes] = await Promise.all([
-            fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' }),
-            fetch(`/api/restaurants/${restaurantId}/hours`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              cache: 'no-store'
-            })
-          ]);
-          if (!restRes.ok || !statusRes.ok) return;
-          const [restData, statusData] = await Promise.all([restRes.json(), statusRes.json()]);
+          const restRes = await fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' });
+          if (!restRes.ok) return;
+          const restData = await restRes.json();
           const fm = restData?.ferme_manuellement;
           const manual = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
             (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
           setIsManuallyClosed(manual);
-          setIsRestaurantOpen(!manual && statusData?.isOpen === true);
+          const serverOpen = restData?.is_open_now === true || restData?.is_open_now === 1 || restData?.is_open_now === 'true';
+          setIsRestaurantOpen(!manual && serverOpen);
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }
@@ -485,11 +479,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Statut : horaires (source /api/restaurants/[id]/hours POST), override ferme_manuellement
+      // Statut : source /api/restaurants/[id] (is_open_now) + override ferme_manuellement
       const fm = restaurantData.ferme_manuellement;
       const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
         (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
-      const isOpen = !isManuallyClosed && openStatusData?.isOpen === true;
+      const serverOpen = restaurantData?.is_open_now === true || restaurantData?.is_open_now === 1 || restaurantData?.is_open_now === 'true';
+      const isOpen = !isManuallyClosed && serverOpen;
       setIsManuallyClosed(isManuallyClosed);
       setIsRestaurantOpen(isOpen);
       
