@@ -162,17 +162,16 @@ export async function GET() {
       const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
       return inRange(start, end, isMidnightClose);
     };
-    const withFermeManuel = filtered.map((r) => {
+      const withFermeManuel = filtered.map((r) => {
       const fm = toBool(r.ferme_manuellement);
       const om = toBool(r.ouvert_manuellement);
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
-      // Priorité statut manuel :
-      // 1) fermé manuellement => fermé
-      // 2) ouvert_manuellement => ouvert
-      // 3) sinon horaires
-      const isOpenNow = fm ? false : (om ? true : isOpenNowParis(r.horaires, new Date()));
+      // Priorité statut manuel:
+      // 1) ferme_manuellement=true => fermé
+      // 2) sinon on suit les horaires (ouvert_manuellement ignoré pour éviter les ouvertures permanentes)
+      const isOpenNow = fm ? false : isOpenNowParis(r.horaires, new Date());
       return {
         ...r,
         ferme_manuellement: fm,

@@ -425,12 +425,6 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
     if (isManuallyClosed) return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
 
-    const om = restaurant.ouvert_manuellement;
-    const isManuallyOpen =
-      om === true || om === 1 || om === 'true' || om === '1' ||
-      (typeof om === 'string' && String(om).trim().toLowerCase() === 'true');
-    if (isManuallyOpen) return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
-
     // Si l'API fournit déjà is_open_now (calcul serveur), on l'utilise.
     if (restaurant.is_open_now === true || restaurant.is_open_now === 1 || restaurant.is_open_now === 'true') {
       return { isOpen: true, isManuallyClosed: false, reason: 'horaires_server' };
@@ -1054,8 +1048,8 @@ export default function Home() {
           const fm = toBool(synced.ferme_manuellement);
           const om = toBool(synced.ouvert_manuellement);
 
-          // Priorité: ferme_manuellement => fermé, sinon ouvert_manuellement => ouvert, sinon is_open_now
-          const isOpen = !fm && (om || toBool(synced.is_open_now));
+          // Priorité: ferme_manuellement => fermé, sinon horaires/is_open_now
+          const isOpen = !fm && toBool(synced.is_open_now);
           const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
           openStatusMap[restaurant.id] = {

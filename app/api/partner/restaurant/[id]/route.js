@@ -104,8 +104,6 @@ export async function PUT(request, { params }) {
         body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
       );
       updateData.ferme_manuellement = isManualClose;
-      // Ouverture manuelle explicite quand on désactive la fermeture manuelle
-      updateData.ouvert_manuellement = !isManualClose;
       // Preuve explicite pour les triggers anti-flip DB
       updateData.manual_status_updated_at = new Date().toISOString();
       updateData.manual_status_updated_by = user.id;
