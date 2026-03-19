@@ -991,75 +991,58 @@ export default function Home() {
           console.error('[Restaurants] ⚠️ PROBLÈME: Aucun restaurant normalisé alors que', data.length, 'ont été reçus !');
           console.error('[Restaurants] Premier restaurant reçu:', data[0]);
         }
-        // IMPORTANT:
-        // En prod, on observe parfois un écart entre /api/restaurants (liste) et /api/restaurants/:id
-        // sur ferme_manuellement / ouvert_manuellement / is_open_now.
-        // On resynchronise donc chaque carte avec l'endpoint détail (source la plus fiable observée).
-        let syncedRestaurants = normalizedRestaurants;
-        let detailIdSet = new Set();
-        try {
-          const detailRows = await Promise.all(
-            normalizedRestaurants.map(async (r) => {
-              try {
-                const res = await fetch(`/api/restaurants/${r.id}?t=${Date.now()}`, { cache: 'no-store' });
-                if (!res.ok) return null;
-                return await res.json();
-              } catch {
-                return null;
-              }
-            })
-          );
-          const byId = new Map(detailRows.filter(Boolean).map((r) => [r.id, r]));
-          detailIdSet = new Set(byId.keys());
-          syncedRestaurants = normalizedRestaurants.map((r) => {
-            const d = byId.get(r.id);
-            if (!d) return r;
-            return {
-              ...r,
-              ferme_manuellement: d.ferme_manuellement,
-              ouvert_manuellement: d.ouvert_manuellement,
-              is_open_now: d.is_open_now
-            };
-          });
-        } catch (e) {
-          console.warn('[Restaurants] Sync détail indisponible, on garde la liste brute:', e);
-        }
+        // Statut ouvert/fermé: calcul unique côté serveur (plus stable que plein de fetch détails).
+        const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
 
-        setRestaurants(syncedRestaurants);
-
-        // Statut ouvert/fermé: uniquement à partir du détail (api/restaurants/:id).
-        // Si le détail manque pour une carte, on garde le statut précédent pour éviter "ouvert/fermé" alterné.
         const toBool = (v) =>
           v === true ||
           v === 1 ||
           (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
-        const syncedById = new Map((syncedRestaurants || []).map((r) => [r.id, r]));
+        let openStatusFromServer = {};
+        try {
+          const statusRes = await fetch('/api/restaurants/open-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids }),
+            cache: 'no-store',
+          });
+          if (statusRes.ok) {
+            const json = await statusRes.json().catch(() => ({}));
+            openStatusFromServer = json?.map || {};
+          } else {
+            console.warn('[Restaurants] open-status HTTP non OK:', statusRes.status);
+          }
+        } catch (e) {
+          console.warn('[Restaurants] open-status indisponible, fallback sécurité:', e);
+        }
+
+        setRestaurants(normalizedRestaurants);
+
         const openStatusMap = {};
         for (const restaurant of normalizedRestaurants) {
-          const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+          const todayHoursLabel =
+            getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
-          const synced = syncedById.get(restaurant.id);
-          if (!synced) {
-            // Pas de détail = sécurité => on affiche Fermé (évite "Ouvert" stale)
-            const fmList = toBool(restaurant.ferme_manuellement);
+          const st = openStatusFromServer?.[restaurant.id];
+          if (!st) {
+            // Fallback: sécurité => on affiche fermé
+            const fm = toBool(restaurant.ferme_manuellement);
             openStatusMap[restaurant.id] = {
               isOpen: false,
-              isManuallyClosed: fmList,
+              isManuallyClosed: fm,
               hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
             continue;
           }
 
-          // Priorité: ferme_manuellement => fermé, sinon horaires/is_open_now
-          const fm = toBool(synced.ferme_manuellement);
-          const isOpen = !fm && toBool(synced.is_open_now);
           openStatusMap[restaurant.id] = {
-            isOpen,
-            isManuallyClosed: fm,
+            isOpen: st.isOpen === true,
+            isManuallyClosed: st.isManuallyClosed === true,
             hoursLabel: todayHoursLabel || 'Horaires non communiquées',
           };
         }
+
         setRestaurantsOpenStatus(openStatusMap);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
