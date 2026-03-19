@@ -1037,21 +1037,22 @@ export default function Home() {
         const syncedById = new Map((syncedRestaurants || []).map((r) => [r.id, r]));
         const openStatusMap = {};
         for (const restaurant of normalizedRestaurants) {
-          const fm = toBool(restaurant.ferme_manuellement);
           const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
           const synced = syncedById.get(restaurant.id);
           if (!synced) {
             // Pas de détail = sécurité => on affiche Fermé (évite "Ouvert" stale)
+            const fmList = toBool(restaurant.ferme_manuellement);
             openStatusMap[restaurant.id] = {
               isOpen: false,
-              isManuallyClosed: fm,
+              isManuallyClosed: fmList,
               hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
             continue;
           }
 
           // Priorité: ferme_manuellement => fermé, sinon horaires/is_open_now
+          const fm = toBool(synced.ferme_manuellement);
           const isOpen = !fm && toBool(synced.is_open_now);
           openStatusMap[restaurant.id] = {
             isOpen,
