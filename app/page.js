@@ -1019,31 +1019,37 @@ export default function Home() {
 
         setRestaurants(normalizedRestaurants);
 
-        const openStatusMap = {};
-        for (const restaurant of normalizedRestaurants) {
-          const todayHoursLabel =
-            getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+        setRestaurantsOpenStatus((prev) => {
+          const openStatusMap = {};
+          for (const restaurant of normalizedRestaurants) {
+            const todayHoursLabel =
+              getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
-          const st = openStatusFromServer?.[restaurant.id];
-          if (!st) {
-            // Fallback: sécurité => on affiche fermé
-            const fm = toBool(restaurant.ferme_manuellement);
+            const st = openStatusFromServer?.[restaurant.id];
+            if (!st) {
+              // Si open-status échoue ponctuellement, on évite le "flip" en conservant l'état précédent.
+              if (prev?.[restaurant.id]) {
+                openStatusMap[restaurant.id] = prev[restaurant.id];
+                continue;
+              }
+
+              const fm = toBool(restaurant.ferme_manuellement);
+              openStatusMap[restaurant.id] = {
+                isOpen: false,
+                isManuallyClosed: fm,
+                hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+              };
+              continue;
+            }
+
             openStatusMap[restaurant.id] = {
-              isOpen: false,
-              isManuallyClosed: fm,
+              isOpen: st.isOpen === true,
+              isManuallyClosed: st.isManuallyClosed === true,
               hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
-            continue;
           }
-
-          openStatusMap[restaurant.id] = {
-            isOpen: st.isOpen === true,
-            isManuallyClosed: st.isManuallyClosed === true,
-            hoursLabel: todayHoursLabel || 'Horaires non communiquées',
-          };
-        }
-
-        setRestaurantsOpenStatus(openStatusMap);
+          return openStatusMap;
+        });
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
         console.error('[Restaurants] Erreur lors du chargement des restaurants:', error);
