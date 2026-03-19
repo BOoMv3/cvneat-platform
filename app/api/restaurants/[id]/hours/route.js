@@ -161,12 +161,20 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Override manuel : ferme_manuellement = true => toujours fermé
+    // Override manuel : fermé prioritaire, sinon ouverture manuelle prioritaire
     const fm = restaurant.ferme_manuellement;
     const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
       (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
     if (isManuallyClosed) {
       const res = json({ isOpen: false, message: 'Restaurant fermé manuellement', reason: 'manual', isManuallyClosed: true });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
+    }
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyOpen = om === true || om === 'true' || om === 1 || om === '1' ||
+      (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
+    if (isManuallyOpen) {
+      const res = json({ isOpen: true, message: 'Restaurant ouvert manuellement', reason: 'manual_open', isManuallyClosed: false });
       res.headers.set('Cache-Control', 'no-store, max-age=0');
       return res;
     }

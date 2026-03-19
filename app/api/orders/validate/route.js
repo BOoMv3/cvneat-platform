@@ -54,8 +54,12 @@ export async function POST(request) {
       );
     }
 
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyOpen = om === true || om === 1 || om === 'true' || om === '1' ||
+      (typeof om === 'string' && String(om).trim().toLowerCase() === 'true');
+
     const openCheck = checkRestaurantHours(restaurant.horaires);
-    if (!openCheck.isOpen) {
+    if (!isManuallyOpen && !openCheck.isOpen) {
       return NextResponse.json(
         {
           error: 'Restaurant fermé',

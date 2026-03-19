@@ -142,7 +142,7 @@ export async function POST(request) {
     const now = new Date();
     const debug = body?.debug === true;
 
-    let query = sb.from('restaurants').select('id, horaires, ferme_manuellement');
+    let query = sb.from('restaurants').select('id, horaires, ferme_manuellement, ouvert_manuellement');
     if (ids.length > 0) query = query.in('id', ids);
 
     const { data, error } = await query;
@@ -154,7 +154,10 @@ export async function POST(request) {
     const map = {};
     for (const r of data || []) {
       const isManuallyClosed = r?.ferme_manuellement === true || r?.ferme_manuellement === 1 || r?.ferme_manuellement === 'true';
-      const computed = isManuallyClosed ? { isOpen: false, reason: 'manual', meta: {} } : isOpenNowFromHoraires(r?.horaires, now);
+      const isManuallyOpen = r?.ouvert_manuellement === true || r?.ouvert_manuellement === 1 || r?.ouvert_manuellement === 'true';
+      const computed = isManuallyClosed
+        ? { isOpen: false, reason: 'manual', meta: {} }
+        : (isManuallyOpen ? { isOpen: true, reason: 'manual_open', meta: {} } : isOpenNowFromHoraires(r?.horaires, now));
       map[r.id] = {
         isOpen: computed?.isOpen === true,
         isManuallyClosed,

@@ -99,10 +99,13 @@ export async function PUT(request, { params }) {
     // (pas si on envoie prep_time_minutes ou autre, pour éviter qu'un autre appel écrase par erreur)
     const isToggleRequest = body.ferme_manuellement !== undefined && body.prep_time_minutes === undefined;
     if (isToggleRequest) {
-      updateData.ferme_manuellement = (
+      const isManualClose = (
         body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
         body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
       );
+      updateData.ferme_manuellement = isManualClose;
+      // Ouverture manuelle explicite quand on désactive la fermeture manuelle
+      updateData.ouvert_manuellement = !isManualClose;
       // Preuve explicite pour les triggers anti-flip DB
       updateData.manual_status_updated_at = new Date().toISOString();
       updateData.manual_status_updated_by = user.id;

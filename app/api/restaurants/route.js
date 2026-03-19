@@ -168,7 +168,11 @@ export async function GET() {
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
-      const isOpenNow = fm ? false : isOpenNowParis(r.horaires, new Date());
+      // Priorité statut manuel :
+      // 1) fermé manuellement => fermé
+      // 2) ouvert_manuellement => ouvert
+      // 3) sinon horaires
+      const isOpenNow = fm ? false : (om ? true : isOpenNowParis(r.horaires, new Date()));
       return {
         ...r,
         ferme_manuellement: fm,
