@@ -1000,6 +1000,7 @@ export default function Home() {
           (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
         let openStatusFromServer = {};
+        let openStatusRequestFailed = true;
         try {
           const statusRes = await fetch('/api/restaurants/open-status', {
             method: 'POST',
@@ -1009,7 +1010,10 @@ export default function Home() {
           });
           if (statusRes.ok) {
             const json = await statusRes.json().catch(() => ({}));
-            openStatusFromServer = json?.map || {};
+            const map = json?.map;
+            const mapIsObject = map && typeof map === 'object' && !Array.isArray(map);
+            openStatusFromServer = mapIsObject ? map : {};
+            openStatusRequestFailed = !mapIsObject;
           } else {
             console.warn('[Restaurants] open-status HTTP non OK:', statusRes.status);
           }
@@ -1027,8 +1031,9 @@ export default function Home() {
 
             const st = openStatusFromServer?.[restaurant.id];
             if (!st) {
-              // Si open-status échoue ponctuellement, on évite le "flip" en conservant l'état précédent.
-              if (prev?.[restaurant.id]) {
+              // On ne conserve l'état précédent que si l'appel open-status a réellement échoué.
+              // Sinon, on évite d'afficher un "Ouvert" périmé si l'entrée manque.
+              if (openStatusRequestFailed && prev?.[restaurant.id]) {
                 openStatusMap[restaurant.id] = prev[restaurant.id];
                 continue;
               }
