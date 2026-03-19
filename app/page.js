@@ -1783,7 +1783,9 @@ export default function Home() {
               {displayRestaurants.map((restaurant, index) => {
                 // Statut affiché sur l'accueil = 100% manuel (source de vérité : flags DB)
                 // Priorité : ferme_manuellement > ouvert_manuellement
-                const status = restaurantsOpenStatus?.[restaurant.id] || checkRestaurantOpenStatus(restaurant);
+                // IMPORTANT: éviter un recalcul local (peut diverger et provoquer des bascules).
+                // On ne rend que la valeur issue de `restaurantsOpenStatus`.
+                const status = restaurantsOpenStatus?.[restaurant.id] || { isOpen: false, isManuallyClosed: false };
                 const restaurantStatus = {
                   isOpen: status.isOpen === true,
                   isManuallyClosed: status.isManuallyClosed === true,
