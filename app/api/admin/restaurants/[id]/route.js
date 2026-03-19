@@ -102,6 +102,10 @@ export async function PUT(request, { params }) {
       description,
       horaires,
       is_active,
+      ferme_manuellement,
+      ouvert_manuellement,
+      manual_status_updated_at,
+      manual_status_updated_by,
       commission_rate,
       legal_name,
       siret,
@@ -122,6 +126,13 @@ export async function PUT(request, { params }) {
     if (siret !== undefined) updateData.siret = siret;
     if (vat_number !== undefined) updateData.vat_number = vat_number;
     if (strategie_boost_reduction_pct !== undefined) updateData.strategie_boost_reduction_pct = strategie_boost_reduction_pct === '' || strategie_boost_reduction_pct === null ? null : Number(strategie_boost_reduction_pct);
+    if (ferme_manuellement !== undefined) updateData.ferme_manuellement = !!ferme_manuellement;
+    if (ouvert_manuellement !== undefined) updateData.ouvert_manuellement = !!ouvert_manuellement;
+    if (manual_status_updated_at !== undefined) updateData.manual_status_updated_at = manual_status_updated_at;
+    if (manual_status_updated_by !== undefined) updateData.manual_status_updated_by = manual_status_updated_by;
+    if (ferme_manuellement !== undefined || ouvert_manuellement !== undefined) {
+      updateData.updated_at = new Date().toISOString();
+    }
 
     const { data: updatedRestaurant, error } = await supabase
       .from('restaurants')

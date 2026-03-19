@@ -104,50 +104,37 @@ export default function AdminPage() {
   const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
     try {
       setTogglingRestaurantId(restaurant.id);
-      // Système 100% manuel:
-      // - Fermer => ferme_manuellement=true ET ouvert_manuellement=false
-      // - Ouvrir => ferme_manuellement=false ET ouvert_manuellement=true
-      // Fallback: si la colonne ouvert_manuellement n'existe pas, on met à jour uniquement ferme_manuellement.
-      const baseUpdate = {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Session expirée');
+
+      const payload = {
         ferme_manuellement: !shouldOpen,
-        // Preuve anti-flip (si trigger activé en DB)
+        ouvert_manuellement: shouldOpen,
         manual_status_updated_at: new Date().toISOString(),
-        manual_status_updated_by: user?.id || null,
-        updated_at: new Date().toISOString()
+        manual_status_updated_by: user?.id || null
       };
-
-      let updateError = null;
-      {
-        const { error } = await supabase
-          .from('restaurants')
-          .update({
-            ...baseUpdate,
-            ouvert_manuellement: shouldOpen
-          })
-          .eq('id', restaurant.id);
-        updateError = error;
+      const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.error || json?.details || `Erreur HTTP ${res.status}`);
       }
-
-      if (updateError) {
-        const msg = String(updateError?.message || '');
-        const missingColumn =
-          msg.toLowerCase().includes('ouvert_manuellement') ||
-          msg.toLowerCase().includes('manual_status_updated_at') ||
-          msg.toLowerCase().includes('manual_status_updated_by') ||
-          msg.toLowerCase().includes('column') ||
-          msg.toLowerCase().includes('does not exist');
-        if (!missingColumn) throw updateError;
-        const { error: fallbackErr } = await supabase
-          .from('restaurants')
-          .update({ ferme_manuellement: !shouldOpen, updated_at: baseUpdate.updated_at })
-          .eq('id', restaurant.id);
-        if (fallbackErr) throw fallbackErr;
-      }
+      const updatedRestaurant = json?.restaurant || {};
+      const fm = updatedRestaurant?.ferme_manuellement;
+      const manualClosed = fm === true || fm === 'true' || fm === 1 || fm === '1';
+      const om = updatedRestaurant?.ouvert_manuellement;
+      const manualOpen = om === true || om === 'true' || om === 1 || om === '1';
 
       setStats((prev) => ({
         ...prev,
         allRestaurants: (prev.allRestaurants || []).map((r) =>
-          r.id === restaurant.id ? { ...r, ferme_manuellement: !shouldOpen, ouvert_manuellement: shouldOpen } : r
+          r.id === restaurant.id ? { ...r, ferme_manuellement: manualClosed, ouvert_manuellement: manualOpen } : r
         )
       }));
     } catch (e) {
