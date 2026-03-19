@@ -101,6 +101,7 @@ export default function PartnerDashboard() {
   });
 
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
+  const [togglingManualStatus, setTogglingManualStatus] = useState(false);
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(25);
   const [prepTimeUpdatedAt, setPrepTimeUpdatedAt] = useState(null);
   const [showPrepTimeModal, setShowPrepTimeModal] = useState(false);
@@ -1942,12 +1943,14 @@ export default function PartnerDashboard() {
   };
 
   const toggleRestaurantClosed = async () => {
+    if (togglingManualStatus) return;
     if (!restaurant?.id) {
       console.error('❌ toggleRestaurantClosed: restaurant.id manquant');
       return;
     }
     
     try {
+      setTogglingManualStatus(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.error('❌ toggleRestaurantClosed: session manquante');
@@ -1955,8 +1958,25 @@ export default function PartnerDashboard() {
         return;
       }
       
-      // S'assurer que isManuallyClosed est un booléen strict avant de le toggler
-      const currentIsManuallyClosed = isManuallyClosed === true;
+      // Lire l'état serveur juste avant le toggle pour éviter les inversions (double-clic / état local périmé)
+      let currentIsManuallyClosed = isManuallyClosed === true;
+      try {
+        const currentRes = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (currentRes.ok) {
+          const currentPayload = await currentRes.json().catch(() => ({}));
+          const fm = currentPayload?.restaurant?.ferme_manuellement;
+          currentIsManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+            (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+        }
+      } catch {
+        // fallback sur l'état local si la lecture serveur échoue
+      }
       const newStatus = !currentIsManuallyClosed;
       console.log('🔄 Toggle restaurant fermeture:', {
         restaurant_id: restaurant.id,
@@ -2085,6 +2105,8 @@ export default function PartnerDashboard() {
     } catch (error) {
       console.error('❌ Erreur toggle fermeture:', error);
       alert('Erreur lors de la mise à jour du statut: ' + error.message);
+    } finally {
+      setTogglingManualStatus(false);
     }
   };
 
@@ -3008,7 +3030,11 @@ export default function PartnerDashboard() {
               </button>
               <button
                 onClick={toggleRestaurantClosed}
+                disabled={togglingManualStatus}
                 className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium ${
+                  togglingManualStatus
+                    ? 'bg-gray-400 text-white cursor-wait'
+                    : 
                   isManuallyClosed === true
                     ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800'
                     : 'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
