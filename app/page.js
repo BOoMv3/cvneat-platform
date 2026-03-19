@@ -997,12 +997,44 @@ export default function Home() {
           console.error('[Restaurants] ⚠️ PROBLÈME: Aucun restaurant normalisé alors que', data.length, 'ont été reçus !');
           console.error('[Restaurants] Premier restaurant reçu:', data[0]);
         }
-        setRestaurants(normalizedRestaurants);
+        // IMPORTANT:
+        // En prod, on observe parfois un écart entre /api/restaurants (liste) et /api/restaurants/:id
+        // sur ferme_manuellement / ouvert_manuellement / is_open_now.
+        // On resynchronise donc chaque carte avec l'endpoint détail (source la plus fiable observée).
+        let syncedRestaurants = normalizedRestaurants;
+        try {
+          const detailRows = await Promise.all(
+            normalizedRestaurants.map(async (r) => {
+              try {
+                const res = await fetch(`/api/restaurants/${r.id}?t=${Date.now()}`, { cache: 'no-store' });
+                if (!res.ok) return null;
+                return await res.json();
+              } catch {
+                return null;
+              }
+            })
+          );
+          const byId = new Map(detailRows.filter(Boolean).map((r) => [r.id, r]));
+          syncedRestaurants = normalizedRestaurants.map((r) => {
+            const d = byId.get(r.id);
+            if (!d) return r;
+            return {
+              ...r,
+              ferme_manuellement: d.ferme_manuellement,
+              ouvert_manuellement: d.ouvert_manuellement,
+              is_open_now: d.is_open_now
+            };
+          });
+        } catch (e) {
+          console.warn('[Restaurants] Sync détail indisponible, on garde la liste brute:', e);
+        }
+
+        setRestaurants(syncedRestaurants);
 
         // Statut ouvert/fermé basé sur la même source que /api/restaurants:
         // ferme_manuellement + is_open_now (calcul serveur), fallback local si nécessaire.
         const openStatusMap = {};
-        for (const restaurant of normalizedRestaurants) {
+        for (const restaurant of syncedRestaurants) {
           const status = checkRestaurantOpenStatus(restaurant);
           const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
           openStatusMap[restaurant.id] = {
