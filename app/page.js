@@ -993,18 +993,41 @@ export default function Home() {
         }
         setRestaurants(normalizedRestaurants);
 
-        // Statut ouvert/fermé: calcul LOCAL uniquement (règle simple)
-        // - fermé si ferme_manuellement = true
-        // - sinon ouvert si dans une plage horaire du jour (Europe/Paris)
+        // Source de vérité statut: endpoint serveur unifié (même logique que le détail)
+        // Fallback local si endpoint indisponible.
         const openStatusMap = {};
-        for (const restaurant of normalizedRestaurants) {
-          const status = checkRestaurantOpenStatus(restaurant);
-          const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-          openStatusMap[restaurant.id] = {
-            isOpen: status.isOpen === true,
-            isManuallyClosed: status.isManuallyClosed === true,
-            hoursLabel: todayHoursLabel || 'Horaires non communiquées',
-          };
+        try {
+          const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
+          const statusRes = await fetch('/api/restaurants/open-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+            body: JSON.stringify({ ids })
+          });
+          if (!statusRes.ok) throw new Error(`open-status HTTP ${statusRes.status}`);
+          const statusJson = await statusRes.json();
+          const serverMap = statusJson?.map && typeof statusJson.map === 'object' ? statusJson.map : {};
+          for (const restaurant of normalizedRestaurants) {
+            const server = serverMap[restaurant.id];
+            const local = checkRestaurantOpenStatus(restaurant);
+            const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+            openStatusMap[restaurant.id] = {
+              isOpen: server ? server.isOpen === true : local.isOpen === true,
+              isManuallyClosed: server ? server.isManuallyClosed === true : local.isManuallyClosed === true,
+              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+            };
+          }
+        } catch (e) {
+          console.warn('[Restaurants] open-status indisponible, fallback local:', e);
+          for (const restaurant of normalizedRestaurants) {
+            const status = checkRestaurantOpenStatus(restaurant);
+            const todayHoursLabel = getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+            openStatusMap[restaurant.id] = {
+              isOpen: status.isOpen === true,
+              isManuallyClosed: status.isManuallyClosed === true,
+              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+            };
+          }
         }
         setRestaurantsOpenStatus(openStatusMap);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
@@ -1724,7 +1747,7 @@ export default function Home() {
               {displayRestaurants.map((restaurant, index) => {
                 // Statut affiché sur l'accueil = 100% manuel (source de vérité : flags DB)
                 // Priorité : ferme_manuellement > ouvert_manuellement
-                const status = checkRestaurantOpenStatus(restaurant);
+                const status = restaurantsOpenStatus?.[restaurant.id] || checkRestaurantOpenStatus(restaurant);
                 const restaurantStatus = {
                   isOpen: status.isOpen === true,
                   isManuallyClosed: status.isManuallyClosed === true,
