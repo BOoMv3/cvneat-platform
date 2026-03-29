@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FaShoppingCart, FaTimes, FaTrash } from 'react-icons/fa';
+import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
 
 export default function FloatingCart({ cart, onUpdateQuantity, onRemoveItem, onCheckout }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -9,28 +10,7 @@ export default function FloatingCart({ cart, onUpdateQuantity, onRemoveItem, onC
   const [itemCount, setItemCount] = useState(0);
 
   useEffect(() => {
-    const newTotal = cart.reduce((sum, item) => {
-      const itemPrice = parseFloat(item.price || item.prix || 0);
-      const itemQuantity = parseInt(item.quantity || 1, 10);
-      
-      // Calculer le prix des suppléments si présents
-      let supplementsPrice = 0;
-      if (item.supplements && Array.isArray(item.supplements)) {
-        supplementsPrice = item.supplements.reduce((supSum, sup) => {
-          return supSum + (parseFloat(sup.prix || sup.price || 0) || 0);
-        }, 0);
-      }
-      
-      // Calculer le prix de la taille si présente
-      let sizePrice = 0;
-      if (item.size && item.size.prix) {
-        sizePrice = parseFloat(item.size.prix) || 0;
-      } else if (item.prix_taille) {
-        sizePrice = parseFloat(item.prix_taille) || 0;
-      }
-      
-      return sum + ((itemPrice + supplementsPrice + sizePrice) * itemQuantity);
-    }, 0);
+    const newTotal = computeCartTotalWithExtras(cart);
     const newItemCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
     setTotal(newTotal);
     setItemCount(newItemCount);
@@ -90,14 +70,7 @@ export default function FloatingCart({ cart, onUpdateQuantity, onRemoveItem, onC
                           {item.nom || item.name}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {(() => {
-                            const itemPrice = parseFloat(item.prix || item.price || 0);
-                            const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
-                              ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
-                              : 0;
-                            const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-                            return (itemPrice + supplementsPrice + sizePrice).toFixed(2);
-                          })()}€
+                          {(getItemLineTotal(item) / (item.quantity || 1)).toFixed(2)}€
                         </p>
                         {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 italic">

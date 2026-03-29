@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../../lib/commission';
 import { supabase } from '../../../../../lib/supabase';
+import { getItemLineTotal } from '../../../../../lib/cartUtils';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -187,33 +188,11 @@ export async function POST(request) {
 
     for (const item of items) {
       const quantity = parseInt(item.quantity || 1, 10);
-      const basePrice = parseFloat(item.prix || item.price || 0) || 0;
       const isFormula = item.is_formula === true;
       const isCombo = item.is_combo === true;
 
-      // Calculer le prix total avec suppléments, viandes et sauces
-      let supplementsPrice = 0;
-      if (item.supplements && Array.isArray(item.supplements)) {
-        supplementsPrice = item.supplements.reduce((sum, sup) => {
-          return sum + (parseFloat(sup.prix || sup.price || 0) || 0);
-        }, 0);
-      }
-
-      let meatsPrice = 0;
-      if (item.customizations?.selectedMeats && Array.isArray(item.customizations.selectedMeats)) {
-        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => {
-          return sum + (parseFloat(meat.prix || meat.price || 0) || 0);
-        }, 0);
-      }
-
-      let saucesPrice = 0;
-      if (item.customizations?.selectedSauces && Array.isArray(item.customizations.selectedSauces)) {
-        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => {
-          return sum + (parseFloat(sauce.prix || sauce.price || 0) || 0);
-        }, 0);
-      }
-
-      const prixUnitaireTotal = basePrice + supplementsPrice + meatsPrice + saucesPrice;
+      const prixUnitaireTotal =
+        Math.round(getItemLineTotal({ ...item, quantity: 1 }) * 100) / 100;
       
       // Pour les combos, utiliser l'ID du combo (mais vérifier qu'il existe dans menu_combos)
       if (isCombo && item.comboId) {

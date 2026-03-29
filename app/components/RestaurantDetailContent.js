@@ -12,6 +12,7 @@ import MenuByCategories from '@/components/MenuByCategories';
 import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
+import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -665,47 +666,67 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
             : cartItem
         );
       } else {
-        // IMPORTANT: Calculer un prix unitaire FINAL (base + suppléments + customisations + taille)
-        // afin que le checkout puisse utiliser item.prix sans "oublier" les suppléments.
-        const basePrice = parseFloat(
-          item?.base_price ??
-            item?.basePrice ??
-            item?.prix ??
-            item?.price ??
-            0
-        ) || 0;
+        // Combos: prix_base dans item.prix + suppléments dans le tableau (pas le même schéma que la modal pizza).
+        // Modal / formule: item.prix inclut déjà base + viandes + sauces + suppléments (ne pas les rajouter).
+        const isCombo = item.type === 'combo';
+        const fromModalComplete =
+          !isCombo &&
+          (item._fromModal === true || item.price_includes_extras === true);
 
-        const supplementsPrice = Array.isArray(itemSupplements)
-          ? itemSupplements.reduce((sum, sup) => sum + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0), 0)
-          : 0;
+        let finalUnitPrice;
+        let basePriceForDebug;
 
-        const meatsPrice = Array.isArray(itemSelectedMeats)
-          ? itemSelectedMeats.reduce((sum, m) => sum + (parseFloat(m?.prix ?? m?.price ?? 0) || 0), 0)
-          : 0;
+        if (fromModalComplete) {
+          const unit = parseFloat(item?.prix ?? item?.price ?? 0) || 0;
+          let sizePrice = 0;
+          if (itemSize && typeof itemSize === 'object' && itemSize.prix !== undefined) {
+            sizePrice = parseFloat(itemSize.prix) || 0;
+          } else if (item?.prix_taille !== undefined) {
+            sizePrice = parseFloat(item.prix_taille) || 0;
+          }
+          finalUnitPrice = Math.max(0, unit + sizePrice);
+          basePriceForDebug = unit;
+        } else {
+          const basePrice = parseFloat(
+            item?.base_price ??
+              item?.basePrice ??
+              item?.prix ??
+              item?.price ??
+              0
+          ) || 0;
+          basePriceForDebug = basePrice;
 
-        const saucesPrice = Array.isArray(itemSelectedSauces)
-          ? itemSelectedSauces.reduce((sum, s) => sum + (parseFloat(s?.prix ?? s?.price ?? 0) || 0), 0)
-          : 0;
+          const supplementsPrice = Array.isArray(itemSupplements)
+            ? itemSupplements.reduce((sum, sup) => sum + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0), 0)
+            : 0;
 
-        let sizePrice = 0;
-        if (itemSize && typeof itemSize === 'object' && itemSize.prix !== undefined) {
-          sizePrice = parseFloat(itemSize.prix) || 0;
-        } else if (item?.prix_taille !== undefined) {
-          sizePrice = parseFloat(item.prix_taille) || 0;
+          const meatsPrice = Array.isArray(itemSelectedMeats)
+            ? itemSelectedMeats.reduce((sum, m) => sum + (parseFloat(m?.prix ?? m?.price ?? 0) || 0), 0)
+            : 0;
+
+          const saucesPrice = Array.isArray(itemSelectedSauces)
+            ? itemSelectedSauces.reduce((sum, s) => sum + (parseFloat(s?.prix ?? s?.price ?? 0) || 0), 0)
+            : 0;
+
+          let sizePrice = 0;
+          if (itemSize && typeof itemSize === 'object' && itemSize.prix !== undefined) {
+            sizePrice = parseFloat(itemSize.prix) || 0;
+          } else if (item?.prix_taille !== undefined) {
+            sizePrice = parseFloat(item.prix_taille) || 0;
+          }
+
+          finalUnitPrice = Math.max(0, basePrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice);
         }
 
-        const finalUnitPrice = Math.max(0, basePrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice);
-
-        // Ajouter un nouvel article avec suppléments, taille et customisations
-        // IMPORTANT: Chaque item garde ses propres suppléments et customisations indépendamment
         const newItem = {
           ...item,
           quantity: finalQuantity,
-          supplements: itemSupplements, // Conserver les suppléments originaux (pas normalisés)
+          supplements: itemSupplements,
           size: itemSize,
-          customizations: itemCustomizations, // Conserver les customisations (viandes, sauces, ingrédients retirés)
-          base_price: basePrice, // pour debug/affichage si besoin
+          customizations: itemCustomizations,
+          base_price: basePriceForDebug,
           prix: finalUnitPrice,
+          price: finalUnitPrice,
           price_includes_extras: true
         };
         return [...prevCart, newItem];
@@ -845,42 +866,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     });
   };
 
-  const getSubtotal = () => {
-    return cart.reduce((total, item) => {
-      const itemPrice = parseFloat(item.prix || item.price || 0);
-      const itemQuantity = parseInt(item.quantity || 1, 10);
-
-      // Compat: anciens paniers où item.prix n'incluait pas encore les extras
-      if (item.price_includes_extras) {
-        return total + (itemPrice * itemQuantity);
-      }
-
-      let supplementsPrice = 0;
-      if (Array.isArray(item.supplements)) {
-        supplementsPrice = item.supplements.reduce((sum, sup) => sum + (parseFloat(sup?.prix ?? sup?.price ?? 0) || 0), 0);
-      }
-
-      let meatsPrice = 0;
-      if (Array.isArray(item?.customizations?.selectedMeats)) {
-        meatsPrice = item.customizations.selectedMeats.reduce((sum, meat) => sum + (parseFloat(meat?.prix ?? meat?.price ?? 0) || 0), 0);
-      }
-
-      let saucesPrice = 0;
-      if (Array.isArray(item?.customizations?.selectedSauces)) {
-        saucesPrice = item.customizations.selectedSauces.reduce((sum, sauce) => sum + (parseFloat(sauce?.prix ?? sauce?.price ?? 0) || 0), 0);
-      }
-
-      let sizePrice = 0;
-      if (item?.size && typeof item.size === 'object' && item.size.prix !== undefined) {
-        sizePrice = parseFloat(item.size.prix) || 0;
-      } else if (item?.prix_taille !== undefined) {
-        sizePrice = parseFloat(item.prix_taille) || 0;
-      }
-
-      const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * itemQuantity;
-      return total + totalItemPrice;
-    }, 0);
-  };
+  const getSubtotal = () => computeCartTotalWithExtras(cart);
 
   const getDeliveryFee = () => {
     // La logique de calcul avancee pourrait etre ici si necessaire.
@@ -1286,27 +1272,14 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
               </div>
                 <div className="space-y-2 mb-3 max-h-[50vh] overflow-y-auto pr-1">
                   {cart.slice(0, 3).map((item, idx) => {
-                    const itemPrice = parseFloat(item.prix || item.price || 0);
-                    const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
-                      ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
-                      : 0;
-                    // Calculer le prix des viandes sélectionnées
-                    const meatsPrice = item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)
-                      ? item.customizations.selectedMeats.reduce((sum, meat) => sum + parseFloat(meat.prix || meat.price || 0), 0)
-                      : 0;
-                    // Calculer le prix des sauces sélectionnées
-                    const saucesPrice = item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)
-                      ? item.customizations.selectedSauces.reduce((sum, sauce) => sum + parseFloat(sauce.prix || sauce.price || 0), 0)
-                      : 0;
-                    const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-                    const totalItemPrice = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice;
-                    
+                    const qty = item.quantity || 1;
+                    const unitDisplay = (getItemLineTotal(item) / qty).toFixed(2);
                     return (
                       <div key={item.id || idx} className="flex items-start justify-between text-sm border-b dark:border-gray-700 pb-2">
                         <div className="flex-1 pr-2 min-w-0">
                           <p className="font-medium text-gray-900 dark:text-white truncate">{item.nom || item.name}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {totalItemPrice.toFixed(2)}€ x{item.quantity || 1}
+                            {unitDisplay}€ x{qty}
                           </p>
                           {item.supplements && Array.isArray(item.supplements) && item.supplements.length > 0 && (
                             <p className="text-xs text-gray-400 dark:text-gray-500 italic">
@@ -1686,27 +1659,14 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
             <h2 className="text-xl font-bold mb-4">Récapitulatif de votre commande</h2>
             <div className="space-y-2 mb-4">
               {cart.map((item, idx) => {
-                const itemPrice = parseFloat(item.prix || item.price || 0);
-                const supplementsPrice = item.supplements && Array.isArray(item.supplements) 
-                  ? item.supplements.reduce((sum, sup) => sum + parseFloat(sup.prix || sup.price || 0), 0)
-                  : 0;
-                // Calculer le prix des viandes sélectionnées
-                const meatsPrice = item.customizations && item.customizations.selectedMeats && Array.isArray(item.customizations.selectedMeats)
-                  ? item.customizations.selectedMeats.reduce((sum, meat) => sum + parseFloat(meat.prix || meat.price || 0), 0)
-                  : 0;
-                // Calculer le prix des sauces sélectionnées
-                const saucesPrice = item.customizations && item.customizations.selectedSauces && Array.isArray(item.customizations.selectedSauces)
-                  ? item.customizations.selectedSauces.reduce((sum, sauce) => sum + parseFloat(sauce.prix || sauce.price || 0), 0)
-                  : 0;
-                const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-                const totalItemPrice = (itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice) * (item.quantity || 1);
-                
+                const lineTotal = getItemLineTotal(item);
+                const qty = item.quantity || 1;
                 return (
                   <div key={`${item.id}-${idx}`} className="space-y-1 border-b dark:border-gray-700 pb-3">
                     <div className="flex justify-between items-center">
                       <div className="flex-1">
-                        <span className="font-medium">{item.nom || item.name} x{item.quantity || 1}</span>
-                        <span className="font-bold ml-2">{totalItemPrice.toFixed(2)}€</span>
+                        <span className="font-medium">{item.nom || item.name} x{qty}</span>
+                        <span className="font-bold ml-2">{lineTotal.toFixed(2)}€</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button

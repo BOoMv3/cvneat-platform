@@ -478,6 +478,8 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
       const formulaItem = {
         ...item,
         prix: finalPrice, // IMPORTANT: Mettre à jour le prix avec le prix total incluant suppléments
+        price_includes_extras: true, // base + viandes/sauces/suppléments (hors boisson, ajoutée par getItemLineTotal)
+        _fromModal: true,
         quantity: quantity,
         selected_drink: selectedDrink ? item.drink_options.find(d => d.id === selectedDrink) : null,
         selected_formula_options: selectedFormulaOptions, // Inclure les choix optionnels
@@ -563,6 +565,7 @@ export default function MenuItemModal({ item, isOpen, onClose, onAddToCart, rest
     const customizedItem = {
       ...item,
       prix: finalPrice, // IMPORTANT: Mettre à jour le prix avec le prix total incluant suppléments
+      price_includes_extras: true, // évite le double comptage panier/checkout (extras déjà dans prix)
       quantity: quantity, // Utiliser la quantité sélectionnée
       selected_drink: item.selected_drink || (selectedDrink && item.drink_options ? item.drink_options.find(d => d.id === selectedDrink) : null), // S'assurer que selected_drink est inclus
       supplements: supplementsList,

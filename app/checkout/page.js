@@ -25,7 +25,7 @@ import {
   FaCloudRain,
   FaGift
 } from 'react-icons/fa';
-import { getItemLineTotal, computeCartTotalWithExtras } from '@/lib/cartUtils';
+import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu } from '@/lib/cartUtils';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -160,6 +160,34 @@ export default function Checkout() {
     }
     setLoading(false);
   }, []);
+
+  // Réconcilier le panier avec les prix actuels du menu (Dashboard = Page = Paiement)
+  useEffect(() => {
+    if (!cart.length) return;
+    const restId = restaurant?.id ?? restaurant?.restaurant_id ?? restaurant?.uuid ?? null;
+    if (!restId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/restaurants/${restId}/menu`, { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const menuItems = await res.json();
+        if (!Array.isArray(menuItems) || cancelled) return;
+
+        const { items: reconciled, changed } = reconcileCartWithMenu(cart, menuItems);
+        if (changed && !cancelled) {
+          setCart(reconciled);
+          const saved = safeLocalStorage.getJSON('cart') || {};
+          safeLocalStorage.setJSON('cart', { ...saved, items: reconciled });
+          setForceUpdate((u) => u + 1);
+        }
+      } catch (e) {
+        console.warn('Réconciliation panier/menu:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [cart.length, restaurant?.id, restaurant?.restaurant_id, restaurant?.uuid]);
 
   // Resynchroniser le panier avec le localStorage quand la page redevient visible (ex: autre onglet modifié)
   useEffect(() => {
@@ -531,8 +559,19 @@ export default function Checkout() {
         return;
       }
 
-      // IMPORTANT: Toujours utiliser savedCart.items (même source que l'API) pour éviter écart cart/state
-      const cartTotal = computeCartTotalWithExtras(savedCart.items);
+      // IMPORTANT: Réconcilier le panier avec les prix actuels du menu avant calcul (Dashboard = Paiement)
+      let itemsToUse = savedCart.items;
+      try {
+        const menuRes = await fetch(`/api/restaurants/${resolvedRestaurant.id}/menu`, { cache: 'no-store' });
+        if (menuRes.ok) {
+          const menuItems = await menuRes.json();
+          const { items: reconciled } = reconcileCartWithMenu(savedCart.items, menuItems || []);
+          itemsToUse = reconciled;
+        }
+      } catch (e) {
+        console.warn('Réconciliation panier avant paiement:', e);
+      }
+      const cartTotal = computeCartTotalWithExtras(itemsToUse);
 
       // Calculer la réduction du code promo
       const discountAmount = appliedPromoCode?.discountAmount || 0;
@@ -622,7 +661,7 @@ export default function Checkout() {
             postalCode: selectedAddress.postal_code || selectedAddress.postalCode || '',
             instructions: orderDetails.instructions?.trim() || ''
           },
-          items: savedCart.items,
+          items: itemsToUse,
           deliveryFee: finalDeliveryFeeForTotal,
           totalAmount: cartTotal, // Sous-total articles (avant réduction)
           discountAmount: maxDiscount, // Réduction réelle appliquée (limitée au panier)

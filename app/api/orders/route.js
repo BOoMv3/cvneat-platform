@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../lib/commission';
 import { isOrdersClosed } from '@/lib/ordersClosed';
+import { getItemLineTotal } from '@/lib/cartUtils';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
@@ -1239,14 +1240,10 @@ export async function POST(request) {
         if (fromComboSauces.length > 0) customizations.selectedSauces = fromComboSauces;
       }
 
-      const itemPrice = parseFloat(item.prix || item.price || 0) || 0;
-      const supplementsPrice = supplementsData.reduce((sum, sup) => sum + (sup.prix || 0), 0);
-      const meatsPrice = (itemCustomizations.selectedMeats || []).reduce((sum, meat) => sum + (parseFloat(meat.prix || meat.price || 0) || 0), 0);
-      const saucesPrice = (itemCustomizations.selectedSauces || []).reduce((sum, sauce) => sum + (parseFloat(sauce.prix || sauce.price || 0) || 0), 0);
-      const sizePrice = item.size?.prix ? parseFloat(item.size.prix) : (item.prix_taille ? parseFloat(item.prix_taille) : 0);
-      // Menus (non-formule) : le front envoie item.prix sans boisson + item.selected_drink.prix à part → inclure la boisson dans le total ligne pour que sous-total BDD = panier
-      const drinkPriceForLine = (!isFormula && item.selected_drink) ? (parseFloat(item.selected_drink.prix ?? item.selected_drink.price ?? 0) || 0) : 0;
-      const prixUnitaireTotal = itemPrice + supplementsPrice + meatsPrice + saucesPrice + sizePrice + drinkPriceForLine;
+      // Aligné sur lib/cartUtils.getItemLineTotal : si price_includes_extras (modal / panier réconcilié),
+      // item.prix contient déjà base + suppléments + viandes + sauces (+ taille) — ne pas les rajouter (sinon double facturation).
+      const prixUnitaireTotal =
+        Math.round(getItemLineTotal({ ...item, quantity: 1 }) * 100) / 100;
 
       // Pour les combos, on doit trouver un plat_id valide du restaurant
       let platId = item.id;
