@@ -83,9 +83,12 @@ export default function LoginPage() {
           errorMessage = 'Aucun compte trouvé avec cet email';
         } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('load failed')) {
           errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet et réessayez.';
-        } else if (error.message.includes('Invalid email') || error.message.includes('email')) {
+        } else if (
+          error.message.includes('Invalid email') ||
+          /^invalid email/i.test(error.message || '')
+        ) {
           errorMessage = 'Adresse email invalide. Vérifiez l\'orthographe de votre email.';
-        } else if (error.message.includes('Password')) {
+        } else if (/password/i.test(error.message || '') && !/credentials/i.test(error.message || '')) {
           errorMessage = 'Mot de passe incorrect. Si vous avez oublié, utilisez « Mot de passe oublié » ci-dessous.';
         }
         setError(errorMessage);

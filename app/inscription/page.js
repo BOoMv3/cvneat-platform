@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import { validatePassword, isValidEmail, isValidPhone, isValidPostalCode } from '@/lib/validation';
 
 export default function Inscription() {
   const [formData, setFormData] = useState({
@@ -99,6 +100,29 @@ export default function Inscription() {
       return;
     }
 
+    const emailNorm = String(formData.email || '').trim().toLowerCase();
+    if (!isValidEmail(emailNorm)) {
+      setError('Format d’email invalide');
+      setLoading(false);
+      return;
+    }
+    const pwdVal = validatePassword(formData.password);
+    if (!pwdVal.isValid) {
+      setError(`Mot de passe : ${pwdVal.errors.join(' · ')}`);
+      setLoading(false);
+      return;
+    }
+    if (!isValidPhone(formData.telephone)) {
+      setError('Téléphone invalide : indiquez 10 chiffres (ex. 0612345678)');
+      setLoading(false);
+      return;
+    }
+    if (!isValidPostalCode(formData.codePostal)) {
+      setError('Code postal invalide : 5 chiffres');
+      setLoading(false);
+      return;
+    }
+
     // Vérifier reCAPTCHA (optionnel si non configuré)
     const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
     if (siteKey && recaptchaLoaded) {
@@ -127,7 +151,7 @@ export default function Inscription() {
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('email', formData.email)
+      .eq('email', emailNorm)
       .maybeSingle();
     
     if (existingUser) {
@@ -142,7 +166,7 @@ export default function Inscription() {
     const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
     const redirectBase = rawSiteUrl.endsWith('/') ? rawSiteUrl.slice(0, -1) : rawSiteUrl;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: formData.email,
+      email: emailNorm,
       password: formData.password,
       options: {
         emailRedirectTo: `${redirectBase}/auth/confirm`,
@@ -171,7 +195,7 @@ export default function Inscription() {
       id: signUpData.user.id,
       nom: formData.nom,
       prenom: formData.prenom,
-      email: formData.email,
+      email: emailNorm,
       telephone: formData.telephone,
       adresse: formData.adresse,
       code_postal: formData.codePostal,
@@ -389,6 +413,9 @@ export default function Inscription() {
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              8 caractères min., majuscule, minuscule, chiffre et un symbole (ex. ! - _ @).
+            </p>
           </div>
 
           <div>

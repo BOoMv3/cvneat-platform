@@ -5,6 +5,52 @@ import { useRouter } from 'next/navigation';
 import FormInput from '@/components/FormInput';
 import SupportContactBlock from '@/components/SupportContactBlock';
 import { supabase } from '@/lib/supabase';
+import {
+  isValidEmail,
+  validatePassword,
+  isValidPhone,
+  isValidPostalCode,
+} from '@/lib/validation';
+
+function mapRegisterApiError(data) {
+  const msg = (data?.message || '').trim();
+  const field = data?.field;
+  const detail =
+    Array.isArray(data?.errors) && data.errors.length > 0
+      ? data.errors.join(' · ')
+      : msg;
+
+  if (field === 'password') {
+    return { password: detail || msg };
+  }
+  if (field === 'email') {
+    return { email: msg };
+  }
+  if (field === 'telephone') {
+    return { telephone: msg };
+  }
+  if (field === 'code_postal') {
+    return { code_postal: msg };
+  }
+  if (field === 'global') {
+    return { global: msg };
+  }
+
+  const lower = msg.toLowerCase();
+  if (/mot de passe|password/i.test(msg)) {
+    return { password: detail || msg };
+  }
+  if (/email|déjà|already|utilisé/i.test(lower)) {
+    return { email: msg };
+  }
+  if (/téléphone|telephone|phone/i.test(lower)) {
+    return { telephone: msg };
+  }
+  if (/postal/i.test(lower)) {
+    return { code_postal: msg };
+  }
+  return { global: msg || 'Erreur lors de l\'inscription' };
+}
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -91,6 +137,27 @@ export default function Register() {
       return;
     }
 
+    const emailTrim = String(formData.email || '').trim().toLowerCase();
+    const nextErrors = {};
+    if (!isValidEmail(emailTrim)) {
+      nextErrors.email = 'Format d’email invalide';
+    }
+    const pwdCheck = validatePassword(formData.password);
+    if (!pwdCheck.isValid) {
+      nextErrors.password = pwdCheck.errors.join(' · ');
+    }
+    if (!isValidPhone(formData.telephone)) {
+      nextErrors.telephone = 'Numéro à 10 chiffres (ex. 0612345678)';
+    }
+    if (!isValidPostalCode(formData.code_postal)) {
+      nextErrors.code_postal = 'Code postal à 5 chiffres';
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      setLoading(false);
+      return;
+    }
+
     // Vérifier reCAPTCHA (optionnel si non configuré)
     const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
     if (siteKey && recaptchaLoaded) {
@@ -122,7 +189,7 @@ export default function Register() {
       body: JSON.stringify({
         nom: formData.nom,
         prenom: formData.prenom,
-        email: formData.email,
+        email: emailTrim,
         password: formData.password,
         telephone: formData.telephone,
         adresse: formData.adresse,
@@ -132,7 +199,7 @@ export default function Register() {
     });
     const registerData = await registerRes.json().catch(() => ({}));
     if (!registerRes.ok) {
-      setErrors({ email: registerData.message || 'Erreur lors de l\'inscription' });
+      setErrors(mapRegisterApiError(registerData));
       setLoading(false);
       return;
     }
@@ -261,6 +328,9 @@ export default function Register() {
             value={formData.password}
             onChange={handleChange}
           />
+          <p className="text-xs text-gray-500 -mt-2 mb-3 sm:mb-4">
+            8 caractères minimum, une majuscule, une minuscule, un chiffre et un symbole (ex. ! - _ @).
+          </p>
           <FormInput
             label="Confirmer le mot de passe"
             type="password"

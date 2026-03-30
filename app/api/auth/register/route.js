@@ -25,7 +25,7 @@ export async function POST(request) {
     // Validation des données
     if (!nom || !prenom || !email || !password || !telephone || !adresse || !codePostal || !ville) {
       return NextResponse.json(
-        { message: 'Tous les champs sont obligatoires' },
+        { message: 'Tous les champs sont obligatoires', field: 'global' },
         { status: 400 }
       );
     }
@@ -33,7 +33,7 @@ export async function POST(request) {
     // Validation du format email
     if (!isValidEmail(email)) {
       return NextResponse.json(
-        { message: 'Format d\'email invalide' },
+        { message: 'Format d\'email invalide', field: 'email' },
         { status: 400 }
       );
     }
@@ -42,7 +42,11 @@ export async function POST(request) {
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.isValid) {
       return NextResponse.json(
-        { message: 'Mot de passe invalide', errors: passwordValidation.errors },
+        {
+          message: 'Mot de passe invalide',
+          field: 'password',
+          errors: passwordValidation.errors,
+        },
         { status: 400 }
       );
     }
@@ -50,7 +54,7 @@ export async function POST(request) {
     // Validation du téléphone
     if (!isValidPhone(telephone)) {
       return NextResponse.json(
-        { message: 'Format de téléphone invalide' },
+        { message: 'Format de téléphone invalide (10 chiffres, ex. 0612345678)', field: 'telephone' },
         { status: 400 }
       );
     }
@@ -58,7 +62,7 @@ export async function POST(request) {
     // Validation du code postal
     if (!isValidPostalCode(codePostal)) {
       return NextResponse.json(
-        { message: 'Format de code postal invalide' },
+        { message: 'Format de code postal invalide (5 chiffres)', field: 'code_postal' },
         { status: 400 }
       );
     }
@@ -82,7 +86,7 @@ export async function POST(request) {
       .single();
     if (existingUser) {
       return NextResponse.json(
-        { message: 'Cet email est déjà utilisé' },
+        { message: 'Cet email est déjà utilisé', field: 'email' },
         { status: 400 }
       );
     }
@@ -101,7 +105,7 @@ export async function POST(request) {
       const existingAuthUser = listData.users.find((u) => u.email?.toLowerCase() === sanitizedData.email.toLowerCase());
       if (existingAuthUser) {
         return NextResponse.json(
-          { message: 'Cet email est déjà utilisé' },
+          { message: 'Cet email est déjà utilisé', field: 'email' },
           { status: 400 }
         );
       }
