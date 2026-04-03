@@ -944,14 +944,19 @@ export default function Home() {
               today_hours_label: todayHoursLabel,
               ferme_manuellement: restaurant.ferme_manuellement,
               ouvert_manuellement: restaurant.ouvert_manuellement,
-              // Badge promo : partenaires avec promo activée (La Bonne Pâte exclue définitivement)
+              // Badge promo : partenaires avec promo activée
               ...(function () {
-                const isLaBonnePate = restaurant.nom && (String(restaurant.nom).toLowerCase().includes('bonne pâte') || String(restaurant.nom).toLowerCase().includes('bonne pate'));
-                const offreActive = isLaBonnePate ? false : (restaurant.offre_active === true || restaurant.offre_active === 1 || (typeof restaurant.offre_active === 'string' && restaurant.offre_active.trim().toLowerCase() === 'true'));
+                const offreActive =
+                  restaurant.offre_active === true ||
+                  restaurant.offre_active === 1 ||
+                  (typeof restaurant.offre_active === 'string' &&
+                    ['true', '1', 'yes', 'oui', 'on'].includes(
+                      restaurant.offre_active.trim().toLowerCase()
+                    ));
                 return {
                   offre_active: offreActive,
-                  offre_label: isLaBonnePate ? null : (restaurant.offre_label ?? null),
-                  offre_description: isLaBonnePate ? null : (restaurant.offre_description ?? null)
+                  offre_label: restaurant.offre_label ?? null,
+                  offre_description: restaurant.offre_description ?? null
                 };
               })()
             };
