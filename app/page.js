@@ -1036,16 +1036,16 @@ export default function Home() {
 
             const st = openStatusFromServer?.[restaurant.id];
             if (!st) {
-              // On ne conserve l'état précédent que si l'appel open-status a réellement échoué.
-              // Sinon, on évite d'afficher un "Ouvert" périmé si l'entrée manque.
-              if (openStatusRequestFailed && prev?.[restaurant.id]) {
-                openStatusMap[restaurant.id] = prev[restaurant.id];
-                continue;
-              }
-
+              // Ne jamais conserver un ancien état "ouvert" en cache local:
+              // c'est ce qui peut créer un écart accueil (ouvert) vs fiche (fermé).
+              // Fallback direct sur la ligne restaurant courante.
               const fm = toBool(restaurant.ferme_manuellement);
+              const rowOpen =
+                restaurant?.is_open_now === true ||
+                restaurant?.is_open_now === 1 ||
+                restaurant?.is_open_now === 'true';
               openStatusMap[restaurant.id] = {
-                isOpen: false,
+                isOpen: !fm && rowOpen,
                 isManuallyClosed: fm,
                 hoursLabel: todayHoursLabel || 'Horaires non communiquées',
               };
