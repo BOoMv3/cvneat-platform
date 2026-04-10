@@ -139,8 +139,8 @@ export async function GET(request, { params }) {
     const om = toBool(data.ouvert_manuellement);
     restaurantWithDefaults.ferme_manuellement = fm;
     restaurantWithDefaults.ouvert_manuellement = om;
-    // En logique "horaires" : seul ferme_manuellement force la fermeture.
-    restaurantWithDefaults.is_open_now = fm ? false : isOpenNowParis(data.horaires, new Date());
+    // Priorité manuelle: fermé > ouvert > horaires.
+    restaurantWithDefaults.is_open_now = fm ? false : (om ? true : isOpenNowParis(data.horaires, new Date()));
 
     const res = NextResponse.json(restaurantWithDefaults);
     res.headers.set('Cache-Control', 'no-store, max-age=0');

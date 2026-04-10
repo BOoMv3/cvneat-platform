@@ -170,8 +170,9 @@ export async function GET() {
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
       // Priorité statut manuel:
       // 1) ferme_manuellement=true => fermé
-      // 2) sinon on suit les horaires (ouvert_manuellement ignoré pour éviter les ouvertures permanentes)
-      const isOpenNow = fm ? false : isOpenNowParis(r.horaires, new Date());
+      // 2) sinon ouvert_manuellement=true => ouvert
+      // 3) sinon on suit les horaires
+      const isOpenNow = fm ? false : (om ? true : isOpenNowParis(r.horaires, new Date()));
       return {
         ...r,
         ferme_manuellement: fm,

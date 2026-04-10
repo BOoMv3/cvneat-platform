@@ -170,6 +170,14 @@ export async function POST(request, { params }) {
       res.headers.set('Cache-Control', 'no-store, max-age=0');
       return res;
     }
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyOpened = om === true || om === 'true' || om === 1 || om === '1' ||
+      (typeof om === 'string' && String(om).toLowerCase().trim() === 'true');
+    if (isManuallyOpened) {
+      const res = json({ isOpen: true, message: 'Restaurant ouvert manuellement', reason: 'manual_open', isManuallyClosed: false });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
+    }
     // Suite : calculer l'ouverture via les horaires (Europe/Paris)
     let horaires = coerceHorairesObject(restaurant.horaires) || {};
     
