@@ -55,31 +55,45 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
 
+  const fetchStatusFromOpenStatus = async (requestedId) => {
+    const res = await fetch('/api/restaurants/open-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [requestedId] }),
+      cache: 'no-store'
+    });
+    if (!res.ok) return null;
+    const payload = await res.json().catch(() => ({}));
+    const statusMap = payload?.map && typeof payload.map === 'object' ? payload.map : {};
+    const directStatus = statusMap[requestedId];
+    const matchedKey =
+      directStatus
+        ? requestedId
+        : Object.keys(statusMap).find(
+            (k) => String(k).trim().toLowerCase() === requestedId.toLowerCase()
+          );
+    return directStatus || (matchedKey ? statusMap[matchedKey] : null);
+  };
+
   const applyRestaurantStatusFromOpenStatus = async (currentRestaurant = null) => {
     try {
       if (!restaurantId) return false;
       const requestedId = String(restaurantId).trim();
-      const res = await fetch('/api/restaurants/open-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [requestedId] }),
-        cache: 'no-store'
-      });
-      if (!res.ok) return false;
-      const payload = await res.json().catch(() => ({}));
-      const statusMap = payload?.map && typeof payload.map === 'object' ? payload.map : {};
-      const directStatus = statusMap[requestedId];
-      const matchedKey =
-        directStatus
-          ? requestedId
-          : Object.keys(statusMap).find(
-              (k) => String(k).trim().toLowerCase() === requestedId.toLowerCase()
-            );
-      const status = directStatus || (matchedKey ? statusMap[matchedKey] : null);
+      const status = await fetchStatusFromOpenStatus(requestedId);
       if (!status) return false;
 
-      const isManual = status.isManuallyClosed === true;
-      const isOpenNow = status.isOpen === true && !isManual;
+      // Anti-flap: exiger 2 lectures cohérentes pour "fermé manuellement"
+      let isManual = status.isManuallyClosed === true;
+      let isOpenNow = status.isOpen === true && !isManual;
+      if (isManual) {
+        const confirmStatus = await fetchStatusFromOpenStatus(requestedId);
+        const confirmedManual = confirmStatus?.isManuallyClosed === true;
+        if (!confirmedManual) {
+          isManual = false;
+          isOpenNow = confirmStatus?.isOpen === true;
+        }
+      }
+
       setIsManuallyClosed(isManual);
       setIsRestaurantOpen(isOpenNow);
       return true;
