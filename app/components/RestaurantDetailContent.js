@@ -82,36 +82,10 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       const status = await fetchStatusFromOpenStatus(requestedId);
       if (!status) return false;
 
-      const toBool = (v) =>
-        v === true || v === 1 || v === '1' ||
-        (typeof v === 'string' && String(v).trim().toLowerCase() === 'true');
-
-      // Source de vérité pour "fermé manuellement" = payload restaurant chargé sur la fiche.
-      // open-status peut flapper ponctuellement: on ne veut jamais afficher "fermé manuellement"
-      // si la fiche elle-même indique que la fermeture manuelle est désactivée.
-      const manualFromRestaurant = toBool(
-        (currentRestaurant && currentRestaurant.ferme_manuellement !== undefined)
-          ? currentRestaurant.ferme_manuellement
-          : restaurant?.ferme_manuellement
-      );
-
-      // Anti-flap: exiger 2 lectures cohérentes pour "fermé manuellement"
-      let isManual = status.isManuallyClosed === true;
-      let isOpenNow = status.isOpen === true && !isManual;
-      if (isManual) {
-        const confirmStatus = await fetchStatusFromOpenStatus(requestedId);
-        const confirmedManual = confirmStatus?.isManuallyClosed === true;
-        if (!confirmedManual) {
-          isManual = false;
-          isOpenNow = confirmStatus?.isOpen === true;
-        }
-      }
-
-      if (!manualFromRestaurant) {
-        isManual = false;
-      }
-
-      setIsManuallyClosed(isManual);
+      const isOpenNow = status.isOpen === true;
+      // Côté client, on n'affiche plus "fermé manuellement" (source de faux positifs).
+      // La fermeture d'achat reste pilotée par isOpen.
+      setIsManuallyClosed(false);
       setIsRestaurantOpen(isOpenNow);
       return true;
     } catch (e) {
