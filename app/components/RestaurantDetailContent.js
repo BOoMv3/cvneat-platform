@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { safeLocalStorage } from '../../lib/localStorage';
@@ -54,7 +54,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [activeCombo, setActiveCombo] = useState(null);
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
+  const restaurantRef = useRef(null);
   const toBool = (v) => v === true || v === 1 || v === '1' || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
+
+  useEffect(() => {
+    restaurantRef.current = restaurant;
+  }, [restaurant]);
 
   const fetchStatusFromOpenStatus = async (requestedId) => {
     const res = await fetch('/api/restaurants/open-status', {
@@ -71,9 +76,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       directStatus
         ? requestedId
         : Object.keys(statusMap).find(
-            (k) => String(k).trim().toLowerCase() === requestedId.toLowerCase()
+            (k) => String(k).trim().toLowerCase() === String(requestedId).trim().toLowerCase()
           );
-    return directStatus || (matchedKey ? statusMap[matchedKey] : null);
+    if (directStatus || matchedKey) return matchedKey ? statusMap[matchedKey] : directStatus;
+    const keys = Object.keys(statusMap);
+    if (keys.length === 1) return statusMap[keys[0]];
+    return null;
   };
 
   const applyRestaurantStatusFromOpenStatus = async (currentRestaurant = null) => {
@@ -305,10 +313,13 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     setIsFavorite(favorites.includes(restaurantId));
     
     // Rafraîchir le statut avec la même source que l'accueil (/api/restaurants/open-status)
+    // IMPORTANT: ne pas passer `restaurant` depuis cette closure — l'effet ne dépend que de
+    // restaurantId, donc `restaurant` resterait null / obsolète et open-status écraserait
+    // à tort un ouvert_manuellement=true après ~60s.
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
-          await applyRestaurantStatusFromOpenStatus(restaurant);
+          await applyRestaurantStatusFromOpenStatus(restaurantRef.current);
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }
@@ -465,7 +476,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     try {
       setLoading(true);
       const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse] = await Promise.all([
-        fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${restaurantId}?t=${Date.now()}`, { cache: 'no-store' }),
         fetch(`/api/restaurants/${restaurantId}/menu`, { cache: 'no-store' }),
         fetch(`/api/restaurants/${restaurantId}/categories`, { cache: 'no-store' }),
         fetch(`/api/restaurants/${restaurantId}/hours`, { cache: 'no-store' })
