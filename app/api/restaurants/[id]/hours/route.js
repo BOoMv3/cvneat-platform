@@ -6,6 +6,10 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+const EMERGENCY_FORCE_OPEN_IDS = new Set([
+  'd6725fe6-59ec-413a-b39b-ddb960824999',
+  'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824',
+]);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -128,6 +132,11 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const { id } = params;
+    if (EMERGENCY_FORCE_OPEN_IDS.has(String(id))) {
+      const res = json({ isOpen: true, message: 'Restaurant ouvert (override urgence)', reason: 'emergency_force_open', isManuallyClosed: false });
+      res.headers.set('Cache-Control', 'no-store, max-age=0');
+      return res;
+    }
     
     // Gérer le cas où le body est vide ou manquant
     let body = {};

@@ -4,6 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 // Important endpoint for the homepage: keep it fast.
 // We allow short CDN caching to reduce server CPU load.
 export const dynamic = 'force-dynamic';
+const EMERGENCY_FORCE_OPEN_IDS = new Set([
+  'd6725fe6-59ec-413a-b39b-ddb960824999',
+  'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824',
+]);
 
 // Créer un client admin pour bypasser RLS
 let supabaseAdmin = null;
@@ -172,7 +176,8 @@ export async function GET() {
       // 1) ferme_manuellement=true => fermé
       // 2) sinon ouvert_manuellement=true => ouvert
       // 3) sinon on suit les horaires
-      const isOpenNow = fm ? false : (om ? true : isOpenNowParis(r.horaires, new Date()));
+      const emergencyOpen = EMERGENCY_FORCE_OPEN_IDS.has(String(r.id));
+      const isOpenNow = emergencyOpen ? true : (fm ? false : (om ? true : isOpenNowParis(r.horaires, new Date())));
       return {
         ...r,
         ferme_manuellement: fm,

@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+const EMERGENCY_FORCE_OPEN_IDS = new Set([
+  'd6725fe6-59ec-413a-b39b-ddb960824999', // La Bonne Pâte
+  'f4e1a2ac-5dc9-4ead-9e61-caee1bbb1824', // All'ovale pizza
+]);
+
 const toMinutes = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return null;
   const trimmed = timeStr.trim();
@@ -153,6 +158,14 @@ export async function POST(request) {
 
     const map = {};
     for (const r of data || []) {
+      if (EMERGENCY_FORCE_OPEN_IDS.has(String(r?.id))) {
+        map[r.id] = {
+          isOpen: true,
+          isManuallyClosed: false,
+          ...(debug ? { reason: 'emergency_force_open', meta: {} } : {}),
+        };
+        continue;
+      }
       const isManuallyClosed = r?.ferme_manuellement === true || r?.ferme_manuellement === 1 || r?.ferme_manuellement === 'true';
       const isManuallyOpened = r?.ouvert_manuellement === true || r?.ouvert_manuellement === 1 || r?.ouvert_manuellement === 'true';
       const computed = isManuallyClosed
