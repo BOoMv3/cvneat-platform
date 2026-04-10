@@ -480,16 +480,16 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       }
       
       // Statut: aligné strictement avec l'accueil via /api/restaurants/open-status.
-      // Fallback sur /api/restaurants/[id] si open-status indisponible.
+      // IMPORTANT: ne pas dériver "fermé manuellement" d'une autre source ici,
+      // sinon on peut afficher un faux "fermé manuellement" sur la fiche.
       const synced = await applyRestaurantStatusFromOpenStatus(restaurantData);
       if (!synced) {
-        const fm = restaurantData.ferme_manuellement;
-        const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
-          (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+        // Si open-status est indisponible, on garde un fallback neutre:
+        // - jamais "fermé manuellement" sans confirmation open-status
+        // - on suit seulement is_open_now pour l'affichage ouvert/fermé
         const serverOpen = restaurantData?.is_open_now === true || restaurantData?.is_open_now === 1 || restaurantData?.is_open_now === 'true';
-        const isOpen = !isManuallyClosed && serverOpen;
-        setIsManuallyClosed(isManuallyClosed);
-        setIsRestaurantOpen(isOpen);
+        setIsManuallyClosed(false);
+        setIsRestaurantOpen(serverOpen);
       }
       
       // Debug: afficher les horaires récupérées
