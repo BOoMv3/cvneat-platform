@@ -531,7 +531,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
 
   const addToCart = (item, supplements = [], size = null, quantityToAdd = 1) => {
     // Vérifier si le restaurant est ouvert avant d'ajouter au panier
-    if (!isRestaurantOpen || isManuallyClosed) {
+    if (!isRestaurantOpen) {
       alert('Le restaurant est actuellement fermé. Vous ne pouvez pas ajouter d\'articles au panier.');
       return;
     }
@@ -1035,7 +1035,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     }
     
     // Vérifier si le restaurant est ouvert
-    if (!isRestaurantOpen || isManuallyClosed) {
+    if (!isRestaurantOpen) {
       alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
       return;
     }
@@ -1116,8 +1116,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
               isFavorite={isFavorite}
               onToggleFavorite={handleToggleFavorite}
               hours={restaurantHours}
-              isOpen={isRestaurantOpen && !isManuallyClosed}
-              isManuallyClosed={isManuallyClosed}
+              isOpen={isRestaurantOpen}
+              isManuallyClosed={false}
             />
 
             {!user && (
@@ -1334,15 +1334,15 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
                   </div>
                   <button
                     onClick={handleCheckout}
-                    disabled={!isRestaurantOpen || isManuallyClosed}
+                    disabled={!isRestaurantOpen}
                     className={`w-full py-3 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm min-h-[44px] touch-manipulation active:scale-95 ${
-                      !isRestaurantOpen || isManuallyClosed
+                      !isRestaurantOpen
                         ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
                         : 'bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700'
                     }`}
                   >
                     <FaShoppingCart className="h-4 w-4" />
-                    {!isRestaurantOpen || isManuallyClosed ? 'Fermé' : 'Commander'}
+                    {!isRestaurantOpen ? 'Fermé' : 'Commander'}
                   </button>
                 </div>
               </div>
