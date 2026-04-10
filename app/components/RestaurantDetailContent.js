@@ -54,6 +54,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [activeCombo, setActiveCombo] = useState(null);
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
+  const toBool = (v) => v === true || v === 1 || v === '1' || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
   const fetchStatusFromOpenStatus = async (requestedId) => {
     const res = await fetch('/api/restaurants/open-status', {
@@ -78,6 +79,18 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const applyRestaurantStatusFromOpenStatus = async (currentRestaurant = null) => {
     try {
       if (!restaurantId) return false;
+      const manualClosed = toBool(currentRestaurant?.ferme_manuellement);
+      const manualOpen = toBool(currentRestaurant?.ouvert_manuellement);
+      if (manualClosed) {
+        setIsManuallyClosed(false);
+        setIsRestaurantOpen(false);
+        return true;
+      }
+      if (manualOpen) {
+        setIsManuallyClosed(false);
+        setIsRestaurantOpen(true);
+        return true;
+      }
       const requestedId = String(restaurantId).trim();
       const status = await fetchStatusFromOpenStatus(requestedId);
       if (!status) return false;
@@ -496,6 +509,15 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       // Statut: aligné strictement avec l'accueil via /api/restaurants/open-status.
       // IMPORTANT: ne pas dériver "fermé manuellement" d'une autre source ici,
       // sinon on peut afficher un faux "fermé manuellement" sur la fiche.
+      const manualClosed = toBool(restaurantData?.ferme_manuellement);
+      const manualOpen = toBool(restaurantData?.ouvert_manuellement);
+      if (manualClosed) {
+        setIsManuallyClosed(false);
+        setIsRestaurantOpen(false);
+      } else if (manualOpen) {
+        setIsManuallyClosed(false);
+        setIsRestaurantOpen(true);
+      }
       const synced = await applyRestaurantStatusFromOpenStatus(restaurantData);
       if (!synced) {
         // Si open-status est indisponible, on garde un fallback neutre:
