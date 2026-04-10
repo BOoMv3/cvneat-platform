@@ -58,15 +58,24 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const applyRestaurantStatusFromOpenStatus = async (currentRestaurant = null) => {
     try {
       if (!restaurantId) return false;
+      const requestedId = String(restaurantId).trim();
       const res = await fetch('/api/restaurants/open-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [restaurantId] }),
+        body: JSON.stringify({ ids: [requestedId] }),
         cache: 'no-store'
       });
       if (!res.ok) return false;
       const payload = await res.json().catch(() => ({}));
-      const status = payload?.map?.[restaurantId];
+      const statusMap = payload?.map && typeof payload.map === 'object' ? payload.map : {};
+      const directStatus = statusMap[requestedId];
+      const matchedKey =
+        directStatus
+          ? requestedId
+          : Object.keys(statusMap).find(
+              (k) => String(k).trim().toLowerCase() === requestedId.toLowerCase()
+            );
+      const status = directStatus || (matchedKey ? statusMap[matchedKey] : null);
       if (!status) return false;
 
       const isManual = status.isManuallyClosed === true;
