@@ -252,18 +252,46 @@ export default function RestaurantDetail({ params }) {
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir statut: 100 % manuel (ouvert_manuellement uniquement) — ignore ferme_manuellement (bug prod)
+    // Rafraîchir statut: priorité ferme_manuellement > ouvert_manuellement > open-status API.
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
-          const restRes = await fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' });
+          const restRes = await fetch(`/api/restaurants/${restaurantId}?t=${Date.now()}`, { cache: 'no-store' });
           if (!restRes.ok) return;
           const restData = await restRes.json();
+          const fm = restData.ferme_manuellement;
           const om = restData.ouvert_manuellement;
+          const fermeManuel = (fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+            (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true'));
           const ouvertManuel = (om === true || om === 'true' || om === 1 || om === '1' ||
             (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
+          if (fermeManuel) {
+            setIsManuallyClosed(false);
+            setIsRestaurantOpen(false);
+            return;
+          }
+          if (ouvertManuel) {
+            setIsManuallyClosed(false);
+            setIsRestaurantOpen(true);
+            return;
+          }
+          const statusRes = await fetch('/api/restaurants/open-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: [restaurantId] }),
+            cache: 'no-store'
+          });
+          if (statusRes.ok) {
+            const payload = await statusRes.json().catch(() => ({}));
+            const st = payload?.map?.[restaurantId];
+            if (st) {
+              setIsManuallyClosed(false);
+              setIsRestaurantOpen(st.isOpen === true);
+              return;
+            }
+          }
           setIsManuallyClosed(false);
-          setIsRestaurantOpen(ouvertManuel);
+          setIsRestaurantOpen(restData?.is_open_now === true);
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }
@@ -489,11 +517,14 @@ export default function RestaurantDetail({ params }) {
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Statut 100 % manuel (ouvert_manuellement uniquement) — ignore ferme_manuellement (bug prod)
+      // Statut: priorité ferme_manuellement > ouvert_manuellement > open-status API.
+      const fm = restaurantData.ferme_manuellement;
       const om = restaurantData.ouvert_manuellement;
+      const fermeManuel = (fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+        (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true'));
       const ouvertManuel = (om === true || om === 'true' || om === 1 || om === '1' ||
         (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
-      const isOpen = ouvertManuel;
+      const isOpen = fermeManuel ? false : (ouvertManuel ? true : (openStatusData?.isOpen === true));
       setIsManuallyClosed(false);
       setIsRestaurantOpen(isOpen);
       

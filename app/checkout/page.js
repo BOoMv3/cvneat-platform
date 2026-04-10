@@ -500,8 +500,7 @@ export default function Checkout() {
       if (hoursCheckResponse.ok) {
         const hoursData = await hoursCheckResponse.json();
         const isOpen = hoursData.isOpen === true;
-        const isManuallyClosed = hoursData.isManuallyClosed === true || hoursData.is_manually_closed === true;
-        if (!isOpen || isManuallyClosed) {
+        if (!isOpen) {
           alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
           setSubmitting(false);
           router.push(`/restaurant-view?id=${encodeURIComponent(activeRestaurant.id)}`);
@@ -851,31 +850,52 @@ export default function Checkout() {
       throw new Error('ID de commande introuvable. Le paiement a été effectué, contactez le support avec votre numéro de transaction.');
     }
 
-    // Mettre à jour la commande existante (simplifié)
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
+    // IMPORTANT: passer d'abord par /api/payment/confirm pour déclencher
+    // le workflow serveur complet (points fidélité + notifications + sync Stripe).
+    let paymentConfirmedServerSide = false;
     try {
-      const updateResponse = await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          stripe_payment_intent_id: confirmedPaymentIntentId,
-          payment_status: 'paid',
-          statut: 'en_attente'
-        })
+      const confirmResponse = await fetch('/api/payment/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: confirmedPaymentIntentId })
       });
-
-      if (!updateResponse.ok) {
-        console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateResponse.status);
-        // Ne pas bloquer - le webhook Stripe gérera la mise à jour
+      if (confirmResponse.ok) {
+        paymentConfirmedServerSide = true;
+      } else {
+        const confirmError = await confirmResponse.json().catch(() => ({}));
+        console.warn('⚠️ /api/payment/confirm non OK:', confirmResponse.status, confirmError?.error || confirmError?.details || '');
       }
-    } catch (updateError) {
-      console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateError);
-      // Ne pas bloquer - continuer vers la confirmation
+    } catch (confirmError) {
+      console.warn('⚠️ /api/payment/confirm erreur (fallback update):', confirmError);
+    }
+
+    // Fallback historique: si la confirmation serveur n'a pas pu être exécutée,
+    // on garde la mise à jour minimale pour ne pas bloquer l'utilisateur.
+    if (!paymentConfirmedServerSide) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      try {
+        const updateResponse = await fetch(`/api/orders/${orderId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            stripe_payment_intent_id: confirmedPaymentIntentId,
+            payment_status: 'paid',
+            statut: 'en_attente'
+          })
+        });
+
+        if (!updateResponse.ok) {
+          console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateResponse.status);
+          // Ne pas bloquer - le webhook Stripe gérera la mise à jour
+        }
+      } catch (updateError) {
+        console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateError);
+        // Ne pas bloquer - continuer vers la confirmation
+      }
     }
 
     // Enregistrer l'utilisation du code promo si présent

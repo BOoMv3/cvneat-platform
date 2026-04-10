@@ -39,7 +39,7 @@ export async function POST(request) {
       );
     }
 
-    // 2. Vérifier le statut d'ouverture (horaires Europe/Paris, override ferme_manuellement)
+    // 2. Vérifier le statut d'ouverture (priorité: ferme_manuellement > ouvert_manuellement > horaires)
     const fm = restaurant.ferme_manuellement;
     const isManuallyClosed = fm === true || fm === 1 || fm === 'true' || fm === '1' ||
       (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
@@ -54,7 +54,12 @@ export async function POST(request) {
       );
     }
 
-    const openCheck = checkRestaurantHours(restaurant.horaires);
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyOpen = om === true || om === 1 || om === 'true' || om === '1' ||
+      (typeof om === 'string' && String(om).trim().toLowerCase() === 'true');
+    const openCheck = isManuallyOpen
+      ? { isOpen: true, message: 'Restaurant ouvert manuellement', nextOpening: null }
+      : checkRestaurantHours(restaurant.horaires);
     if (!openCheck.isOpen) {
       return NextResponse.json(
         {
