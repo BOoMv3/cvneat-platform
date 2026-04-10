@@ -159,7 +159,7 @@ export async function POST(request) {
     const map = {};
     for (const r of data || []) {
       if (EMERGENCY_FORCE_OPEN_IDS.has(String(r?.id))) {
-        map[r.id] = {
+        map[String(r.id)] = {
           isOpen: true,
           isManuallyClosed: false,
           ...(debug ? { reason: 'emergency_force_open', meta: {} } : {}),
@@ -173,11 +173,12 @@ export async function POST(request) {
         : isManuallyOpened
           ? { isOpen: true, reason: 'manual_open', meta: {} }
           : isOpenNowFromHoraires(r?.horaires, now);
-      map[r.id] = {
+      const row = {
         isOpen: computed?.isOpen === true,
         isManuallyClosed,
         ...(debug ? { reason: computed?.reason, meta: computed?.meta } : {}),
       };
+      map[String(r.id)] = row;
     }
 
     const res = NextResponse.json({ map });

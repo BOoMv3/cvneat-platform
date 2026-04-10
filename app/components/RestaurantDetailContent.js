@@ -13,6 +13,7 @@ import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
+import { pickOpenStatusRow, resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -55,7 +56,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
   const restaurantRef = useRef(null);
-  const toBool = (v) => v === true || v === 1 || v === '1' || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
   useEffect(() => {
     restaurantRef.current = restaurant;
@@ -71,43 +71,20 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     if (!res.ok) return null;
     const payload = await res.json().catch(() => ({}));
     const statusMap = payload?.map && typeof payload.map === 'object' ? payload.map : {};
-    const directStatus = statusMap[requestedId];
-    const matchedKey =
-      directStatus
-        ? requestedId
-        : Object.keys(statusMap).find(
-            (k) => String(k).trim().toLowerCase() === String(requestedId).trim().toLowerCase()
-          );
-    if (directStatus || matchedKey) return matchedKey ? statusMap[matchedKey] : directStatus;
-    const keys = Object.keys(statusMap);
-    if (keys.length === 1) return statusMap[keys[0]];
-    return null;
+    return pickOpenStatusRow(statusMap, requestedId);
   };
 
   const applyRestaurantStatusFromOpenStatus = async (currentRestaurant = null) => {
     try {
       if (!restaurantId) return false;
-      const manualClosed = toBool(currentRestaurant?.ferme_manuellement);
-      const manualOpen = toBool(currentRestaurant?.ouvert_manuellement);
-      if (manualClosed) {
-        setIsManuallyClosed(false);
-        setIsRestaurantOpen(false);
-        return true;
-      }
-      if (manualOpen) {
-        setIsManuallyClosed(false);
-        setIsRestaurantOpen(true);
-        return true;
-      }
       const requestedId = String(restaurantId).trim();
       const status = await fetchStatusFromOpenStatus(requestedId);
-      if (!status) return false;
-
-      const isOpenNow = status.isOpen === true;
-      // Côté client, on n'affiche plus "fermé manuellement" (source de faux positifs).
-      // La fermeture d'achat reste pilotée par isOpen.
+      const resolved = resolveRestaurantOpenFromSources({
+        restaurant: currentRestaurant || {},
+        openStatusRow: status,
+      });
       setIsManuallyClosed(false);
-      setIsRestaurantOpen(isOpenNow);
+      setIsRestaurantOpen(resolved.isOpen === true);
       return true;
     } catch (e) {
       console.warn('Statut open-status indisponible:', e?.message || e);
@@ -517,26 +494,15 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Statut: aligné strictement avec l'accueil via /api/restaurants/open-status.
-      // IMPORTANT: ne pas dériver "fermé manuellement" d'une autre source ici,
-      // sinon on peut afficher un faux "fermé manuellement" sur la fiche.
-      const manualClosed = toBool(restaurantData?.ferme_manuellement);
-      const manualOpen = toBool(restaurantData?.ouvert_manuellement);
-      if (manualClosed) {
-        setIsManuallyClosed(false);
-        setIsRestaurantOpen(false);
-      } else if (manualOpen) {
-        setIsManuallyClosed(false);
-        setIsRestaurantOpen(true);
-      }
+      // Statut: même résolution que l'accueil (lib/restaurant-open-client).
       const synced = await applyRestaurantStatusFromOpenStatus(restaurantData);
       if (!synced) {
-        // Si open-status est indisponible, on garde un fallback neutre:
-        // - jamais "fermé manuellement" sans confirmation open-status
-        // - on suit seulement is_open_now pour l'affichage ouvert/fermé
-        const serverOpen = restaurantData?.is_open_now === true || restaurantData?.is_open_now === 1 || restaurantData?.is_open_now === 'true';
+        const resolved = resolveRestaurantOpenFromSources({
+          restaurant: restaurantData,
+          openStatusRow: null,
+        });
         setIsManuallyClosed(false);
-        setIsRestaurantOpen(serverOpen);
+        setIsRestaurantOpen(resolved.isOpen === true);
       }
       
       // Debug: afficher les horaires récupérées

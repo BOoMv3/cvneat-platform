@@ -41,6 +41,7 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
+import { pickOpenStatusRow, resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -999,18 +1000,12 @@ export default function Home() {
         // Statut ouvert/fermé: calcul unique côté serveur (plus stable que plein de fetch détails).
         const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
 
-        const toBool = (v) =>
-          v === true ||
-          v === 1 ||
-          (typeof v === 'string' && v.trim().toLowerCase() === 'true');
-
         let openStatusFromServer = {};
-        let openStatusRequestFailed = true;
         try {
           const statusRes = await fetch('/api/restaurants/open-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids }),
+            body: JSON.stringify({ ids: ids.map((id) => String(id)) }),
             cache: 'no-store',
           });
           if (statusRes.ok) {
@@ -1018,7 +1013,6 @@ export default function Home() {
             const map = json?.map;
             const mapIsObject = map && typeof map === 'object' && !Array.isArray(map);
             openStatusFromServer = mapIsObject ? map : {};
-            openStatusRequestFailed = !mapIsObject;
           } else {
             console.warn('[Restaurants] open-status HTTP non OK:', statusRes.status);
           }
@@ -1034,27 +1028,15 @@ export default function Home() {
             const todayHoursLabel =
               getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
-            const st = openStatusFromServer?.[restaurant.id];
-            if (!st) {
-              // Ne jamais conserver un ancien état "ouvert" en cache local:
-              // c'est ce qui peut créer un écart accueil (ouvert) vs fiche (fermé).
-              // Fallback direct sur la ligne restaurant courante.
-              const fm = toBool(restaurant.ferme_manuellement);
-              const rowOpen =
-                restaurant?.is_open_now === true ||
-                restaurant?.is_open_now === 1 ||
-                restaurant?.is_open_now === 'true';
-              openStatusMap[restaurant.id] = {
-                isOpen: !fm && rowOpen,
-                isManuallyClosed: fm,
-                hoursLabel: todayHoursLabel || 'Horaires non communiquées',
-              };
-              continue;
-            }
+            const st = pickOpenStatusRow(openStatusFromServer, restaurant.id);
+            const resolved = resolveRestaurantOpenFromSources({
+              restaurant,
+              openStatusRow: st,
+            });
 
             openStatusMap[restaurant.id] = {
-              isOpen: st.isOpen === true,
-              isManuallyClosed: st.isManuallyClosed === true,
+              isOpen: resolved.isOpen === true,
+              isManuallyClosed: resolved.isManuallyClosed === true,
               hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
           }
