@@ -48,10 +48,7 @@ export async function POST(request) {
       now: new Date(),
     });
     if (!openState.isOpen) {
-      const msg =
-        openState.reason === 'manual'
-          ? 'Ce restaurant n\'accepte pas de commandes pour le moment (fermé manuellement).'
-          : 'Ce restaurant n\'accepte pas de commandes pour le moment.';
+      const msg = 'Ce restaurant n\'accepte pas de commandes pour le moment.';
       return NextResponse.json(
         {
           error: 'Restaurant fermé',
