@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { isValidId, isValidAmount } from '@/lib/validation';
+import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
 
 // POST /api/orders/validate - Valider une commande avant paiement
 export async function POST(request) {
@@ -39,34 +39,25 @@ export async function POST(request) {
       );
     }
 
-    // 2. Vérifier le statut d'ouverture (priorité: ferme_manuellement > ouvert_manuellement > horaires)
-    const fm = restaurant.ferme_manuellement;
-    const isManuallyClosed = fm === true || fm === 1 || fm === 'true' || fm === '1' ||
-      (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
-    if (isManuallyClosed) {
-      return NextResponse.json(
-        { 
-          error: 'Restaurant fermé',
-          code: 'RESTAURANT_CLOSED',
-          message: 'Ce restaurant n\'accepte pas de commandes pour le moment (fermé manuellement).'
-        },
-        { status: 400 }
-      );
-    }
-
-    const om = restaurant.ouvert_manuellement;
-    const isManuallyOpen = om === true || om === 1 || om === 'true' || om === '1' ||
-      (typeof om === 'string' && String(om).trim().toLowerCase() === 'true');
-    const openCheck = isManuallyOpen
-      ? { isOpen: true, message: 'Restaurant ouvert manuellement', nextOpening: null }
-      : checkRestaurantHours(restaurant.horaires);
-    if (!openCheck.isOpen) {
+    // 2. Statut ouverture (aligné liste / fiche / open-status)
+    const openState = computeRestaurantOpenState({
+      id: restaurant.id,
+      horaires: restaurant.horaires,
+      ferme_manuellement: restaurant.ferme_manuellement,
+      ouvert_manuellement: restaurant.ouvert_manuellement,
+      now: new Date(),
+    });
+    if (!openState.isOpen) {
+      const msg =
+        openState.reason === 'manual'
+          ? 'Ce restaurant n\'accepte pas de commandes pour le moment (fermé manuellement).'
+          : 'Ce restaurant n\'accepte pas de commandes pour le moment.';
       return NextResponse.json(
         {
           error: 'Restaurant fermé',
           code: 'RESTAURANT_CLOSED',
-          message: openCheck.message,
-          nextOpening: openCheck.nextOpening
+          message: msg,
+          nextOpening: null,
         },
         { status: 400 }
       );
@@ -160,110 +151,6 @@ export async function POST(request) {
       { status: 400 }
     );
   }
-}
-
-// Fonction pour vérifier les horaires du restaurant
-function checkRestaurantHours(horaires) {
-  if (!horaires) {
-    return { isOpen: true, message: 'Horaires non définis' };
-  }
-
-  let h = horaires;
-  if (typeof h === 'string') {
-    try { h = JSON.parse(h); } catch { return { isOpen: false, message: 'Horaires invalides' }; }
-  }
-
-  const now = new Date();
-  const tz = 'Europe/Paris';
-  const dayName = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: tz }).format(now).toLowerCase();
-  const candidates = [
-    dayName,
-    dayName.charAt(0).toUpperCase() + dayName.slice(1),
-    dayName.toUpperCase(),
-    dayName.slice(0, 3),
-    dayName.slice(0, 3).toUpperCase(),
-  ];
-  let today = null;
-  for (const k of candidates) {
-    if (h?.[k] != null) { today = h[k]; break; }
-  }
-  if (!today) {
-    return { isOpen: false, message: 'Restaurant fermé aujourd\'hui', nextOpening: getNextOpeningTime(h, now) };
-  }
-  if (today.is_closed === true || today.ferme === true || today.ouvert === false) {
-    return { isOpen: false, message: 'Restaurant fermé aujourd\'hui', nextOpening: getNextOpeningTime(h, now) };
-  }
-
-  const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
-  const ch = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
-  const cm = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
-  const current = ch * 60 + cm;
-  const toMinutes = (timeStr) => {
-    if (!timeStr || typeof timeStr !== 'string') return null;
-    const trimmed = timeStr.trim();
-    const match = trimmed.match(/^(\d{1,2})[h:](\d{2})$/i);
-    const hh = match ? parseInt(match[1], 10) : parseInt(trimmed.split(':')[0], 10);
-    const mm = match ? parseInt(match[2], 10) : parseInt(trimmed.split(':')[1] || '0', 10);
-    if (Number.isNaN(hh) || Number.isNaN(mm) || hh < 0 || hh > 24 || mm < 0 || mm > 59) return null;
-    let tot = hh * 60 + mm;
-    if (tot === 0 && hh === 0 && mm === 0) tot = 1440;
-    if (trimmed === '24:00' || trimmed.toLowerCase() === '24h00') tot = 1440;
-    return tot;
-  };
-  const inRange = (start, end, isMidnightClose) => {
-    if (start == null || end == null) return false;
-    if (isMidnightClose) return current >= start;
-    const spansMidnight = end < start;
-    return spansMidnight ? (current >= start || current <= end) : (current >= start && current <= end);
-  };
-
-  let open = false;
-  if (Array.isArray(today.plages) && today.plages.length > 0) {
-    open = today.plages.some((plage) => {
-      const openStr = plage?.ouverture || plage?.debut;
-      const closeStr = plage?.fermeture || plage?.fin;
-      const start = toMinutes(openStr);
-      const end = toMinutes(closeStr);
-      const closeRaw = String(closeStr || '').trim();
-      const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-      return inRange(start, end, isMidnightClose);
-    });
-  } else {
-    const openStr = today.ouverture || today.debut;
-    const closeStr = today.fermeture || today.fin;
-    const start = toMinutes(openStr);
-    const end = toMinutes(closeStr);
-    const closeRaw = String(closeStr || '').trim();
-    const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-    open = inRange(start, end, isMidnightClose);
-  }
-
-  return {
-    isOpen: open,
-    message: open ? 'Restaurant ouvert' : 'Restaurant fermé',
-    nextOpening: open ? null : getNextOpeningTime(h, now),
-  };
-}
-
-// Fonction pour obtenir la prochaine ouverture
-function getNextOpeningTime(horaires, currentDate) {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const currentDayIndex = currentDate.getDay();
-  
-  for (let i = 1; i <= 7; i++) {
-    const nextDayIndex = (currentDayIndex + i) % 7;
-    const nextDay = days[nextDayIndex];
-    const nextDayHours = horaires[nextDay];
-    
-    if (nextDayHours && nextDayHours.ouvert) {
-      return {
-        day: nextDay,
-        time: nextDayHours.ouverture
-      };
-    }
-  }
-  
-  return null;
 }
 
 // Fonction pour vérifier la zone de livraison

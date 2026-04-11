@@ -79,11 +79,20 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       if (!restaurantId) return false;
       const requestedId = String(restaurantId).trim();
       const status = await fetchStatusFromOpenStatus(requestedId);
+      let restaurantPayload = currentRestaurant || {};
+      if (!status) {
+        try {
+          const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, { cache: 'no-store' });
+          if (r.ok) restaurantPayload = await r.json();
+        } catch {
+          /* garder restaurantPayload */
+        }
+      }
       const resolved = resolveRestaurantOpenFromSources({
-        restaurant: currentRestaurant || {},
+        restaurant: restaurantPayload,
         openStatusRow: status,
       });
-      setIsManuallyClosed(false);
+      setIsManuallyClosed(resolved.isManuallyClosed === true);
       setIsRestaurantOpen(resolved.isOpen === true);
       return true;
     } catch (e) {
@@ -330,8 +339,34 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         console.log('📡 Statut subscription menu:', status);
       });
     
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !restaurantId) return;
+      (async () => {
+        try {
+          const r = await fetch(`/api/restaurants/${restaurantId}?t=${Date.now()}`, { cache: 'no-store' });
+          if (r.ok) {
+            const data = await r.json();
+            setRestaurant(data);
+            await applyRestaurantStatusFromOpenStatus(data);
+          } else {
+            await applyRestaurantStatusFromOpenStatus(restaurantRef.current);
+          }
+        } catch {
+          await applyRestaurantStatusFromOpenStatus(restaurantRef.current);
+        }
+      })();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    const onStatusChanged = () => {
+      fetchRestaurantDetails();
+    };
+    window.addEventListener('restaurant-status-changed', onStatusChanged);
+
     return () => {
       clearInterval(statusInterval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('restaurant-status-changed', onStatusChanged);
       supabase.removeChannel(menuChannel);
     };
   }, [restaurantId]);
@@ -501,7 +536,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
           restaurant: restaurantData,
           openStatusRow: null,
         });
-        setIsManuallyClosed(false);
+        setIsManuallyClosed(resolved.isManuallyClosed === true);
         setIsRestaurantOpen(resolved.isOpen === true);
       }
       
@@ -1115,8 +1150,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
               isFavorite={isFavorite}
               onToggleFavorite={handleToggleFavorite}
               hours={restaurantHours}
-              isOpen={isRestaurantOpen}
-              isManuallyClosed={false}
+              isOpen={isRestaurantOpen && !isManuallyClosed}
+              isManuallyClosed={isManuallyClosed}
             />
 
             {!user && (
