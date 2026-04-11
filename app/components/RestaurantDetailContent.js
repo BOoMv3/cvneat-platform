@@ -52,7 +52,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const [restaurantHours, setRestaurantHours] = useState([]);
-  const [isRestaurantOpen, setIsRestaurantOpen] = useState(true);
+  /** false par défaut : évite un flash « ouvert » avant la réponse API (confusion refresh). */
+  const [isRestaurantOpen, setIsRestaurantOpen] = useState(false);
   const [isManuallyClosed, setIsManuallyClosed] = useState(false);
   const [comboMenus, setComboMenus] = useState([]);
   const [comboLoading, setComboLoading] = useState(true);

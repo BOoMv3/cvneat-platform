@@ -10,14 +10,15 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
   
   useEffect(() => {
     if (hours && hours.length > 0) {
-      const today = new Date().getDay(); // 0 = dimanche, 1 = lundi, etc.
-      const todayHours = hours.find(h => h.day_of_week === today);
+      // Aligner « aujourd’hui » sur Europe/Paris (même logique que les APIs), pas le fuseau du navigateur.
+      const wd = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' })
+        .format(new Date())
+        .toLowerCase();
+      const map = { dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6 };
+      const today = map[wd] ?? new Date().getDay();
+      const todayHours = hours.find((h) => h.day_of_week === today);
       setCurrentHours(todayHours || null);
-      console.log('Horaires reçues:', hours);
-      console.log('Jour actuel:', today);
-      console.log('Horaires d\'aujourd\'hui:', todayHours);
     } else {
-      console.log('Aucune horaire reçue ou tableau vide');
       setCurrentHours(null);
     }
   }, [hours]);
@@ -226,7 +227,9 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
           <FaClock className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
           <div className="flex-1 min-w-0">
             <div className="text-gray-900 dark:text-gray-100 font-bold mb-2 sm:mb-3 text-base sm:text-lg">
-              {!isOpen ? (
+              {isManuallyClosed ? (
+                <span className="text-red-600 dark:text-red-400">🔴 Fermé manuellement</span>
+              ) : !isOpen ? (
                 <span className="text-orange-600 dark:text-orange-400">🟡 Fermé maintenant</span>
               ) : (
                 <span className="text-green-600 dark:text-green-400">🟢 Ouvert maintenant</span>

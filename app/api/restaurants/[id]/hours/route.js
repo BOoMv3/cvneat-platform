@@ -52,7 +52,7 @@ export async function GET(request, { params }) {
 
     const { data: restaurant, error } = await supabaseAdmin
       .from('restaurants')
-      .select('horaires, ferme_manuellement')
+      .select('horaires, ferme_manuellement, ouvert_manuellement')
       .eq('id', id)
       .single();
 
@@ -108,12 +108,16 @@ export async function GET(request, { params }) {
 
     console.log('Horaires formatées pour restaurant', id, ':', formattedHours);
 
-    const fm = restaurant.ferme_manuellement;
-    const isManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
-      (typeof fm === 'string' && fm.toLowerCase().trim() === 'true');
+    const manualState = computeRestaurantOpenState({
+      id,
+      horaires: restaurant.horaires,
+      ferme_manuellement: restaurant.ferme_manuellement,
+      ouvert_manuellement: restaurant.ouvert_manuellement,
+      now: new Date(),
+    });
     const res = json({
       hours: formattedHours,
-      is_manually_closed: isManuallyClosed
+      is_manually_closed: manualState.isManuallyClosed === true,
     });
     res.headers.set('Cache-Control', 'no-store, max-age=0');
     return res;
