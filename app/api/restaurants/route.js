@@ -82,6 +82,7 @@ export async function GET() {
         ferme_manuellement: fm,
         ouvert_manuellement: om,
         is_open_now: openState.isOpen === true,
+        is_manually_closed: openState.isManuallyClosed === true,
         offre_active: offreActiveFinal,
         offre_label: isLaBonnePate(r.nom) ? null : (r.offre_label ?? null),
         offre_description: isLaBonnePate(r.nom) ? null : (r.offre_description ?? null)

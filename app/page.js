@@ -820,6 +820,7 @@ export default function Home() {
               rating: calculatedRating || restaurant.rating || 0,
               reviews_count: reviewsCount || restaurant.reviews_count || 0,
               is_open_now: openSt.isOpen === true,
+              is_manually_closed: openSt.isManuallyClosed === true,
             };
           }));
           

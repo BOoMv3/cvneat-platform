@@ -65,6 +65,7 @@ export async function GET(request, { params }) {
       now: new Date(),
     });
     restaurantWithDefaults.is_open_now = openState.isOpen === true;
+    restaurantWithDefaults.is_manually_closed = openState.isManuallyClosed === true;
 
     const res = NextResponse.json(restaurantWithDefaults);
     res.headers.set('Cache-Control', 'no-store, max-age=0');
