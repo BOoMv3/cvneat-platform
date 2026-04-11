@@ -1043,7 +1043,7 @@ export default function RestaurantDetail({ params }) {
               isFavorite={isFavorite}
               onToggleFavorite={handleToggleFavorite}
               hours={restaurantHours}
-              isOpen={isRestaurantOpen && !isManuallyClosed}
+              isOpen={isRestaurantOpen}
               isManuallyClosed={isManuallyClosed}
             />
 

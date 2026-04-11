@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
+import { computeRestaurantOpenState, coerceManualBool } from '@/lib/restaurant-open-compute';
 
 // Important endpoint for the homepage: keep it fast.
 // We allow short CDN caching to reduce server CPU load.
