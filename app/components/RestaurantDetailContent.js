@@ -491,12 +491,20 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const fetchRestaurantDetails = async () => {
     try {
       setLoading(true);
-      const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse] = await Promise.all([
-        fetch(`/api/restaurants/${restaurantId}?t=${Date.now()}`, { cache: 'no-store' }),
-        fetch(`/api/restaurants/${restaurantId}/menu`, { cache: 'no-store' }),
-        fetch(`/api/restaurants/${restaurantId}/categories`, { cache: 'no-store' }),
-        fetch(`/api/restaurants/${restaurantId}/hours`, { cache: 'no-store' })
-      ]);
+      const rid = String(restaurantId).trim();
+      const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse, openStatusResponse] =
+        await Promise.all([
+          fetch(`/api/restaurants/${rid}?t=${Date.now()}`, { cache: 'no-store' }),
+          fetch(`/api/restaurants/${rid}/menu`, { cache: 'no-store' }),
+          fetch(`/api/restaurants/${rid}/categories`, { cache: 'no-store' }),
+          fetch(`/api/restaurants/${rid}/hours`, { cache: 'no-store' }),
+          fetch('/api/restaurants/open-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: [rid] }),
+            cache: 'no-store',
+          }),
+        ]);
       if (!restaurantResponse.ok) throw new Error('Erreur de chargement du restaurant');
       if (!menuResponse.ok) throw new Error('Erreur de chargement du menu');
       
