@@ -42,7 +42,7 @@ import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import { normalizeRestaurantOpenFields, applyEmergencyCustomerPayload } from '@/lib/restaurant-open-compute';
-import { getResolvedOpenFlags, pickHomeOpenEntry } from '@/lib/restaurant-open-client';
+import { resolveHomeOpenFromMap } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -937,7 +937,7 @@ export default function Home() {
             const todayHoursLabel =
               getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
-            const resolved = getResolvedOpenFlags(restaurant);
+            const resolved = resolveHomeOpenFromMap(restaurant, null);
 
             const entry = {
               isOpen: resolved.isOpen === true,
@@ -1201,14 +1201,14 @@ export default function Home() {
     };
 
     return uniqueRestaurants.sort((a, b) => {
-      const statusA =
-        pickHomeOpenEntry(
-          restaurantsOpenStatus[a.id] ?? restaurantsOpenStatus[String(a.id).trim()]
-        ) ?? getResolvedOpenFlags(a);
-      const statusB =
-        pickHomeOpenEntry(
-          restaurantsOpenStatus[b.id] ?? restaurantsOpenStatus[String(b.id).trim()]
-        ) ?? getResolvedOpenFlags(b);
+      const statusA = resolveHomeOpenFromMap(
+        a,
+        restaurantsOpenStatus[a.id] ?? restaurantsOpenStatus[String(a.id).trim()]
+      );
+      const statusB = resolveHomeOpenFromMap(
+        b,
+        restaurantsOpenStatus[b.id] ?? restaurantsOpenStatus[String(b.id).trim()]
+      );
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
@@ -1672,12 +1672,11 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {displayRestaurants.map((restaurant, index) => {
-                // Statut affiché : map accueil (dérivée de is_open_now normalisé) ou getResolvedOpenFlags (API d’abord).
+                // Statut affiché : urgence ID → ouvert ; sinon map accueil puis getResolvedOpenFlags.
                 const fromMap =
                   restaurantsOpenStatus?.[restaurant.id] ??
                   restaurantsOpenStatus?.[String(restaurant.id).trim()];
-                const status =
-                  pickHomeOpenEntry(fromMap) ?? getResolvedOpenFlags(restaurant);
+                const status = resolveHomeOpenFromMap(restaurant, fromMap);
                 const restaurantStatus = {
                   isOpen: status.isOpen === true,
                   isManuallyClosed: status.isManuallyClosed === true,
