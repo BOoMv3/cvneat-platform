@@ -41,7 +41,7 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
-import { resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
+import { resolveRestaurantOpenFromSources, getResolvedOpenFlags } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -1274,9 +1274,13 @@ export default function Home() {
 
     return uniqueRestaurants.sort((a, b) => {
       const statusA =
-        restaurantsOpenStatus[a.id] ?? restaurantsOpenStatus[String(a.id).trim()] ?? {};
+        restaurantsOpenStatus[a.id] ??
+        restaurantsOpenStatus[String(a.id).trim()] ??
+        getResolvedOpenFlags(a);
       const statusB =
-        restaurantsOpenStatus[b.id] ?? restaurantsOpenStatus[String(b.id).trim()] ?? {};
+        restaurantsOpenStatus[b.id] ??
+        restaurantsOpenStatus[String(b.id).trim()] ??
+        getResolvedOpenFlags(b);
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
@@ -1744,12 +1748,13 @@ export default function Home() {
                 // Priorité : ferme_manuellement > ouvert_manuellement
                 // IMPORTANT: éviter un recalcul local (peut diverger et provoquer des bascules).
                 // On ne rend que la valeur issue de `restaurantsOpenStatus`.
-                const status =
+                const fromMap =
                   restaurantsOpenStatus?.[restaurant.id] ??
-                  restaurantsOpenStatus?.[String(restaurant.id).trim()] ?? {
-                    isOpen: false,
-                    isManuallyClosed: false,
-                  };
+                  restaurantsOpenStatus?.[String(restaurant.id).trim()];
+                const status =
+                  fromMap != null && typeof fromMap === 'object'
+                    ? fromMap
+                    : getResolvedOpenFlags(restaurant);
                 const restaurantStatus = {
                   isOpen: status.isOpen === true,
                   isManuallyClosed: status.isManuallyClosed === true,
