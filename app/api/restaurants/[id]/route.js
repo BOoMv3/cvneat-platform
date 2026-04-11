@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields, applyEmergencyCustomerPayload } from '@/lib/restaurant-open-compute';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -53,8 +53,9 @@ export async function GET(request, { params }) {
     };
     const openFields = normalizeRestaurantOpenFields({ ...data, id }, new Date());
     Object.assign(restaurantWithDefaults, openFields);
+    const payload = applyEmergencyCustomerPayload(restaurantWithDefaults);
 
-    const res = NextResponse.json(restaurantWithDefaults);
+    const res = NextResponse.json(payload);
     res.headers.set('Cache-Control', 'no-store, max-age=0');
     return res;
   } catch (error) {

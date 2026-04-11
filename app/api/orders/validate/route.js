@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
-import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields, applyEmergencyCustomerPayload } from '@/lib/restaurant-open-compute';
 
 function dbForRestaurantRead() {
   return supabaseAdmin ?? supabase;
@@ -43,9 +43,10 @@ export async function POST(request) {
       );
     }
 
-    // 2. Statut ouverture (même normalisation que GET /api/restaurants)
+    // 2. Statut ouverture (même normalisation que GET /api/restaurants + override urgence)
     const openFields = normalizeRestaurantOpenFields(restaurant);
-    if (!openFields.is_open_now) {
+    const mergedOpen = applyEmergencyCustomerPayload({ ...restaurant, ...openFields });
+    if (!mergedOpen.is_open_now) {
       const msg = 'Ce restaurant n\'accepte pas de commandes pour le moment.';
       return NextResponse.json(
         {
