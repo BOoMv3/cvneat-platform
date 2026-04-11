@@ -1,24 +1,17 @@
--- Forcer l'ouverture du restaurant "La Bonne Pâte" par ID
--- ID: d6725fe6-59ec-413a-b39b-ddb960824999
+-- La Bonne Pâte — ouvrir en base (projet Supabase utilisé par www.cvneat.fr)
+-- IMPORTANT : exécuter dans Supabase → SQL Editor (session sans JWT service_role).
+-- Les mises à jour service_role sur ferme_manuellement peuvent être bloquées par trg_block_service_role_manual_close.
+-- La preuve manual_status_* est requise par trigger_enforce_manual_status_change_proof.
 
-UPDATE restaurants
-SET 
+UPDATE public.restaurants
+SET
   ferme_manuellement = false,
-  updated_at = NOW()
+  ouvert_manuellement = false,
+  manual_status_updated_at = now(),
+  manual_status_updated_by = user_id,
+  updated_at = now()
 WHERE id = 'd6725fe6-59ec-413a-b39b-ddb960824999';
 
--- Vérifier le résultat immédiatement
-SELECT 
-  id,
-  nom,
-  ferme_manuellement,
-  status,
-  updated_at,
-  CASE 
-    WHEN horaires IS NULL THEN 'NULL'
-    WHEN horaires::text = '{}' THEN 'Vide'
-    ELSE 'Configuré'
-  END as horaires_status
-FROM restaurants
+SELECT id, nom, ferme_manuellement, ouvert_manuellement, manual_status_updated_at, user_id
+FROM public.restaurants
 WHERE id = 'd6725fe6-59ec-413a-b39b-ddb960824999';
-
