@@ -104,6 +104,9 @@ export async function PUT(request, { params }) {
         body.ferme_manuellement === 1 || body.ferme_manuellement === '1'
       );
       updateData.ferme_manuellement = isManualClose;
+      // Toujours recoller ouvert_manuellement : le partenaire ne PATCH que ferme_manuellement ;
+      // sans ça, un ouvert_manuellement=true « coincé » en base + ferme remis à false donnait des incohérences multi-restaurants.
+      updateData.ouvert_manuellement = false;
       // Preuve explicite pour les triggers anti-flip DB
       updateData.manual_status_updated_at = new Date().toISOString();
       updateData.manual_status_updated_by = user.id;
