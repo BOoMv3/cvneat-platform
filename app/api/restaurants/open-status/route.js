@@ -30,9 +30,8 @@ export async function POST(request) {
       const state = computeRestaurantOpenState({
         id: r.id,
         horaires: r?.horaires,
-        ferme_manuellement: r?.ferme_manuellement,
-        ouvert_manuellement: r?.ouvert_manuellement,
         now,
+        restaurant: r,
       });
       map[String(r.id)] = {
         isOpen: state.isOpen === true,

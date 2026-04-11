@@ -811,9 +811,8 @@ export default function Home() {
             const openSt = computeRestaurantOpenState({
               id: restaurant.id,
               horaires: restaurant.horaires,
-              ferme_manuellement: restaurant.ferme_manuellement,
-              ouvert_manuellement: restaurant.ouvert_manuellement,
               now: new Date(),
+              restaurant,
             });
             return {
               ...restaurant,

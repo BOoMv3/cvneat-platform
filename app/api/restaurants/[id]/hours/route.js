@@ -111,9 +111,8 @@ export async function GET(request, { params }) {
     const manualState = computeRestaurantOpenState({
       id,
       horaires: restaurant.horaires,
-      ferme_manuellement: restaurant.ferme_manuellement,
-      ouvert_manuellement: restaurant.ouvert_manuellement,
       now: new Date(),
+      restaurant,
     });
     const res = json({
       hours: formattedHours,
@@ -157,9 +156,8 @@ export async function POST(request, { params }) {
     const state = computeRestaurantOpenState({
       id,
       horaires: restaurant.horaires,
-      ferme_manuellement: restaurant.ferme_manuellement,
-      ouvert_manuellement: restaurant.ouvert_manuellement,
       now: checkDate,
+      restaurant,
     });
 
     const hoursRes = json({

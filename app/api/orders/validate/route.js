@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
+
+function dbForRestaurantRead() {
+  return supabaseAdmin ?? supabase;
+}
 
 // POST /api/orders/validate - Valider une commande avant paiement
 export async function POST(request) {
@@ -15,7 +19,7 @@ export async function POST(request) {
     }
 
     // 1. Vérifier si le restaurant existe et est actif
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant, error: restaurantError } = await dbForRestaurantRead()
       .from('restaurants')
       .select('id, nom, is_active, horaires, ferme_manuellement, ouvert_manuellement, commande_min')
       .eq('id', restaurantId)
@@ -43,9 +47,8 @@ export async function POST(request) {
     const openState = computeRestaurantOpenState({
       id: restaurant.id,
       horaires: restaurant.horaires,
-      ferme_manuellement: restaurant.ferme_manuellement,
-      ouvert_manuellement: restaurant.ouvert_manuellement,
       now: new Date(),
+      restaurant,
     });
     if (!openState.isOpen) {
       const msg = 'Ce restaurant n\'accepte pas de commandes pour le moment.';
