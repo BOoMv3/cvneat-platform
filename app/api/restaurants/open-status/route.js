@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 export async function POST(request) {
   try {
@@ -27,16 +27,11 @@ export async function POST(request) {
 
     const map = {};
     for (const r of data || []) {
-      const state = computeRestaurantOpenState({
-        id: r.id,
-        horaires: r?.horaires,
-        now,
-        restaurant: r,
-      });
+      const openFields = normalizeRestaurantOpenFields(r, now);
       map[String(r.id)] = {
-        isOpen: state.isOpen === true,
-        isManuallyClosed: state.isManuallyClosed === true,
-        ...(debug ? { reason: state.reason, meta: state.meta } : {}),
+        isOpen: openFields.is_open_now === true,
+        isManuallyClosed: openFields.is_manually_closed === true,
+        ...(debug ? { reason: openFields.is_open_now ? 'open' : 'closed_manual_flag', meta: {} } : {}),
       };
     }
 

@@ -41,7 +41,7 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
-import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 import { getResolvedOpenFlags, pickHomeOpenEntry } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
@@ -417,75 +417,6 @@ const getHeuresJourForToday = (horaires) => {
   return null;
 };
 
-// Ouvert/fermé : basé sur les horaires (Europe/Paris).
-// Override: si ferme_manuellement = true → fermé.
-const checkRestaurantOpenStatus = (restaurant = {}) => {
-  try {
-    const fm = restaurant.ferme_manuellement;
-    const isManuallyClosed =
-      fm === true || fm === 1 || fm === 'true' || fm === '1' ||
-      (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
-    if (isManuallyClosed) return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
-
-    // Si l'API fournit déjà is_open_now (calcul serveur), on l'utilise.
-    if (restaurant.is_open_now === true || restaurant.is_open_now === 1 || restaurant.is_open_now === 'true') {
-      return { isOpen: true, isManuallyClosed: false, reason: 'horaires_server' };
-    }
-    if (restaurant.is_open_now === false || restaurant.is_open_now === 0 || restaurant.is_open_now === 'false') {
-      return { isOpen: false, isManuallyClosed: false, reason: 'horaires_server' };
-    }
-
-    // Fallback client (Capacitor): calcul Europe/Paris depuis horaires
-    const horaires = coerceHorairesObject(restaurant.horaires);
-    const day = getHeuresJourForToday(horaires);
-    if (!day || day.is_closed === true || day.ferme === true) {
-      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    }
-
-    const now = getParisNow();
-    const current = now.hours * 60 + now.minutes;
-    const toMinutes = (timeStr) => parseTimeToMinutes(timeStr);
-    const inRange = (start, end, isMidnightClose) => {
-      if (start == null || end == null) return false;
-      if (isMidnightClose) return current >= start;
-      const spansMidnight = end < start;
-      return spansMidnight ? (current >= start || current <= end) : (current >= start && current <= end);
-    };
-
-    const hasPlages = Array.isArray(day.plages) && day.plages.length > 0;
-    const hasSingleRange = Boolean((day.ouverture || day.debut) && (day.fermeture || day.fin));
-    const hasExplicitHours = hasPlages || hasSingleRange;
-    if (!hasExplicitHours && day.ouvert === false) {
-      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    }
-
-    if (hasPlages) {
-      const open = day.plages.some((plage) => {
-        const openStr = plage?.ouverture || plage?.debut;
-        const closeStr = plage?.fermeture || plage?.fin;
-        const start = toMinutes(openStr);
-        const end = toMinutes(closeStr);
-        const closeRaw = String(closeStr || '').trim();
-        const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-        return inRange(start, end, isMidnightClose);
-      });
-      return { isOpen: open, isManuallyClosed: false, reason: open ? 'open' : 'outside_hours' };
-    }
-
-    const openStr = day.ouverture || day.debut;
-    const closeStr = day.fermeture || day.fin;
-    const start = toMinutes(openStr);
-    const end = toMinutes(closeStr);
-    const closeRaw = String(closeStr || '').trim();
-    const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-    const open = inRange(start, end, isMidnightClose);
-    return { isOpen: open, isManuallyClosed: false, reason: open ? 'open' : 'outside_hours' };
-  } catch (e) {
-    console.error('[checkRestaurantOpenStatus] Erreur:', restaurant?.nom || restaurant?.id, e);
-    return { isOpen: false, isManuallyClosed: false, reason: 'error' };
-  }
-};
-
 // Runtime edge désactivé pour permettre l'export statique (mobile)
 // export const dynamic = 'force-dynamic';
 // export const runtime = 'edge';
@@ -808,18 +739,10 @@ export default function Home() {
               reviewsCount = reviews.length;
             }
             
-            const openSt = computeRestaurantOpenState({
-              id: restaurant.id,
-              horaires: restaurant.horaires,
-              now: new Date(),
-              restaurant,
-            });
             return {
               ...restaurant,
               rating: calculatedRating || restaurant.rating || 0,
               reviews_count: reviewsCount || restaurant.reviews_count || 0,
-              is_open_now: openSt.isOpen === true,
-              is_manually_closed: openSt.isManuallyClosed === true,
             };
           }));
           
@@ -942,9 +865,10 @@ export default function Home() {
               console.warn('[Restaurants] Erreur getTodayHoursLabel:', e);
             }
 
-            // S'assurer que ferme_manuellement, ouvert_manuellement et offre (promo) sont bien préservés
+            const openNorm = normalizeRestaurantOpenFields(restaurant);
             const normalizedRestaurant = {
               ...restaurant,
+              ...openNorm,
               image_url: primaryImage,
               banner_image: bannerImage,
               logo_image: logoImage,
@@ -952,8 +876,6 @@ export default function Home() {
               category: restaurant.category || restaurant.categorie,
               category_tokens: categoryTokens,
               today_hours_label: todayHoursLabel,
-              ferme_manuellement: restaurant.ferme_manuellement,
-              ouvert_manuellement: restaurant.ouvert_manuellement,
               // Badge promo : partenaires avec promo activée
               ...(function () {
                 const offreActive =
@@ -1006,7 +928,7 @@ export default function Home() {
           console.error('[Restaurants] ⚠️ PROBLÈME: Aucun restaurant normalisé alors que', data.length, 'ont été reçus !');
           console.error('[Restaurants] Premier restaurant reçu:', data[0]);
         }
-        // Statut ouvert/fermé : même payload que GET liste (is_open_now + flags), pas de 2e POST open-status.
+        // Statut ouvert/fermé : normalizeRestaurantOpenFields (identique à GET /api/restaurants).
         setRestaurants(normalizedRestaurants);
 
         setRestaurantsOpenStatus((prev) => {
@@ -1750,10 +1672,7 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {displayRestaurants.map((restaurant, index) => {
-                // Statut affiché sur l'accueil = 100% manuel (source de vérité : flags DB)
-                // Priorité : ferme_manuellement > ouvert_manuellement
-                // IMPORTANT: éviter un recalcul local (peut diverger et provoquer des bascules).
-                // On ne rend que la valeur issue de `restaurantsOpenStatus`.
+                // Statut affiché : map accueil (dérivée de is_open_now normalisé) ou getResolvedOpenFlags (API d’abord).
                 const fromMap =
                   restaurantsOpenStatus?.[restaurant.id] ??
                   restaurantsOpenStatus?.[String(restaurant.id).trim()];
@@ -1767,7 +1686,7 @@ export default function Home() {
 
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-                // Statut unique : fermé si ferme_manuellement OU hors horaires
+                // Badge Ouvert/Fermé : aligné sur is_open_now (manuel + règle om || !fm), pas sur les seuls horaires.
                 const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
                 // Cartes toujours accessibles (plus de grisage) : le client voit Ouvert/Fermé mais peut toujours ouvrir la page
                 

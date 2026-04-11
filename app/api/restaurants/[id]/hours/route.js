@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -108,15 +108,10 @@ export async function GET(request, { params }) {
 
     console.log('Horaires formatées pour restaurant', id, ':', formattedHours);
 
-    const manualState = computeRestaurantOpenState({
-      id,
-      horaires: restaurant.horaires,
-      now: new Date(),
-      restaurant,
-    });
+    const openFields = normalizeRestaurantOpenFields({ ...restaurant, id }, new Date());
     const res = json({
       hours: formattedHours,
-      is_manually_closed: manualState.isManuallyClosed === true,
+      is_manually_closed: openFields.is_manually_closed === true,
     });
     res.headers.set('Cache-Control', 'no-store, max-age=0');
     return res;
@@ -153,18 +148,14 @@ export async function POST(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    const state = computeRestaurantOpenState({
-      id,
-      horaires: restaurant.horaires,
-      now: checkDate,
-      restaurant,
-    });
+    const openFields = normalizeRestaurantOpenFields({ ...restaurant, id }, checkDate);
+    const isOpen = openFields.is_open_now === true;
 
     const hoursRes = json({
-      isOpen: state.isOpen === true,
-      message: state.isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
-      reason: state.reason,
-      isManuallyClosed: state.isManuallyClosed === true,
+      isOpen,
+      message: isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
+      reason: isOpen ? 'open' : 'closed_manual_flag',
+      isManuallyClosed: openFields.is_manually_closed === true,
       plages: [],
     });
     hoursRes.headers.set('Cache-Control', 'no-store, max-age=0');

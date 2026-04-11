@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { computeRestaurantOpenState, coerceManualBool, readManualFlags } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 // Important endpoint for the homepage: keep it fast.
 // We allow short CDN caching to reduce server CPU load.
@@ -65,25 +65,13 @@ export async function GET() {
     const now = new Date();
 
     const withFermeManuel = filtered.map((r) => {
-      const flags = readManualFlags(r);
-      const fm = coerceManualBool(flags.ferme_manuellement);
-      const om = coerceManualBool(flags.ouvert_manuellement);
+      const openFields = normalizeRestaurantOpenFields(r, now);
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
-      const openState = computeRestaurantOpenState({
-        id: r.id,
-        horaires: r.horaires,
-        ferme_manuellement: fm,
-        ouvert_manuellement: om,
-        now,
-      });
       return {
         ...r,
-        ferme_manuellement: fm,
-        ouvert_manuellement: om,
-        is_open_now: openState.isOpen === true,
-        is_manually_closed: openState.isManuallyClosed === true,
+        ...openFields,
         offre_active: offreActiveFinal,
         offre_label: isLaBonnePate(r.nom) ? null : (r.offre_label ?? null),
         offre_description: isLaBonnePate(r.nom) ? null : (r.offre_description ?? null)

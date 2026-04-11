@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
-import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 function dbForRestaurantRead() {
   return supabaseAdmin ?? supabase;
@@ -43,14 +43,9 @@ export async function POST(request) {
       );
     }
 
-    // 2. Statut ouverture (aligné liste / fiche / open-status)
-    const openState = computeRestaurantOpenState({
-      id: restaurant.id,
-      horaires: restaurant.horaires,
-      now: new Date(),
-      restaurant,
-    });
-    if (!openState.isOpen) {
+    // 2. Statut ouverture (même normalisation que GET /api/restaurants)
+    const openFields = normalizeRestaurantOpenFields(restaurant);
+    if (!openFields.is_open_now) {
       const msg = 'Ce restaurant n\'accepte pas de commandes pour le moment.';
       return NextResponse.json(
         {

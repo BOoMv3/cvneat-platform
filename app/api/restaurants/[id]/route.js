@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { computeRestaurantOpenState, coerceManualBool, readManualFlags } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
 export async function GET(request, { params }) {
   try {
@@ -53,20 +51,8 @@ export async function GET(request, { params }) {
       mise_en_avant: data.mise_en_avant || false,
       mise_en_avant_fin: data.mise_en_avant_fin || null
     };
-    const flags = readManualFlags(data);
-    const fm = coerceManualBool(flags.ferme_manuellement);
-    const om = coerceManualBool(flags.ouvert_manuellement);
-    restaurantWithDefaults.ferme_manuellement = fm;
-    restaurantWithDefaults.ouvert_manuellement = om;
-    const openState = computeRestaurantOpenState({
-      id,
-      horaires: data.horaires,
-      ferme_manuellement: fm,
-      ouvert_manuellement: om,
-      now: new Date(),
-    });
-    restaurantWithDefaults.is_open_now = openState.isOpen === true;
-    restaurantWithDefaults.is_manually_closed = openState.isManuallyClosed === true;
+    const openFields = normalizeRestaurantOpenFields({ ...data, id }, new Date());
+    Object.assign(restaurantWithDefaults, openFields);
 
     const res = NextResponse.json(restaurantWithDefaults);
     res.headers.set('Cache-Control', 'no-store, max-age=0');
