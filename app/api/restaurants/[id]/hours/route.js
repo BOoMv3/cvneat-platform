@@ -93,16 +93,29 @@ export async function GET(request, { params }) {
       }
 
       const hasPlages = Array.isArray(jourHoraire?.plages) && jourHoraire.plages.length > 0;
+      const hasSingleRange = Boolean(
+        jourHoraire &&
+          (jourHoraire.ouverture || jourHoraire.debut) &&
+          (jourHoraire.fermeture || jourHoraire.fin)
+      );
+      // Beaucoup de fiches n’ont pas `ouvert: true` mais seulement plages ou une plage ouverture/fermeture.
+      // L’ancien `jourHoraire?.ouvert || false` forçait « fermé » pour tous ces cas → bannière / textes incohérents.
+      const inferredOpen =
+        jourHoraire != null &&
+        jourHoraire.ouvert !== false &&
+        (jourHoraire.ouvert === true || hasPlages || hasSingleRange);
+      const ouvert = Boolean(inferredOpen);
+      const is_closed = jourHoraire == null ? true : !ouvert;
 
       return {
         day: jour.label,
         day_key: jour.key,
         day_of_week: jour.dayIndex,
-        ouvert: jourHoraire?.ouvert || false,
-        ouverture: hasPlages ? null : (jourHoraire?.ouverture || null),
-        fermeture: hasPlages ? null : (jourHoraire?.fermeture || null),
+        ouvert,
+        ouverture: hasPlages ? null : (jourHoraire?.ouverture || jourHoraire?.debut || null),
+        fermeture: hasPlages ? null : (jourHoraire?.fermeture || jourHoraire?.fin || null),
         plages: hasPlages ? jourHoraire.plages : null,
-        is_closed: !jourHoraire?.ouvert || false
+        is_closed,
       };
     });
 
