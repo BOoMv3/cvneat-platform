@@ -13,10 +13,7 @@ import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
-import {
-  pickOpenStatusRow,
-  resolveRestaurantOpenFromSources,
-} from '@/lib/restaurant-open-client';
+import { resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -65,42 +62,29 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     restaurantRef.current = restaurant;
   }, [restaurant]);
 
-  const fetchStatusFromOpenStatus = async (requestedId) => {
-    const res = await fetch('/api/restaurants/open-status', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [requestedId] }),
-      cache: 'no-store'
-    });
-    if (!res.ok) return null;
-    const payload = await res.json().catch(() => ({}));
-    const statusMap = payload?.map && typeof payload.map === 'object' ? payload.map : {};
-    return pickOpenStatusRow(statusMap, requestedId);
-  };
-
+  /** Rafraîchit ouvert/fermé depuis le GET détail (is_open_now + flags), sans 2e API open-status. */
   const applyRestaurantStatusFromOpenStatus = async (currentRestaurant = null) => {
     try {
       if (!restaurantId) return false;
       const requestedId = String(restaurantId).trim();
-      const status = await fetchStatusFromOpenStatus(requestedId);
       let restaurantPayload = currentRestaurant || restaurantRef.current || {};
-      if (!status && (!restaurantPayload || Object.keys(restaurantPayload).length === 0)) {
+      if (!restaurantPayload?.id) {
         try {
           const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, { cache: 'no-store' });
           if (r.ok) restaurantPayload = await r.json();
         } catch {
-          /* garder restaurantPayload */
+          /* */
         }
       }
       const resolved = resolveRestaurantOpenFromSources({
         restaurant: restaurantPayload,
-        openStatusRow: status,
+        openStatusRow: null,
       });
       setIsManuallyClosed(resolved.isManuallyClosed === true);
       setIsRestaurantOpen(resolved.isOpen === true);
       return true;
     } catch (e) {
-      console.warn('Statut open-status indisponible:', e?.message || e);
+      console.warn('Statut restaurant indisponible:', e?.message || e);
       return false;
     }
   };
@@ -302,10 +286,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir le statut avec la même source que l'accueil (/api/restaurants/open-status)
-    // IMPORTANT: ne pas passer `restaurant` depuis cette closure — l'effet ne dépend que de
-    // restaurantId, donc `restaurant` resterait null / obsolète et open-status écraserait
-    // à tort un ouvert_manuellement=true après ~60s.
+    // Rafraîchir depuis GET /api/restaurants/[id] (is_open_now aligné serveur), pas un 2e batch open-status.
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
@@ -492,19 +473,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     try {
       setLoading(true);
       const rid = String(restaurantId).trim();
-      const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse, openStatusResponse] =
-        await Promise.all([
-          fetch(`/api/restaurants/${rid}?t=${Date.now()}`, { cache: 'no-store' }),
-          fetch(`/api/restaurants/${rid}/menu`, { cache: 'no-store' }),
-          fetch(`/api/restaurants/${rid}/categories`, { cache: 'no-store' }),
-          fetch(`/api/restaurants/${rid}/hours`, { cache: 'no-store' }),
-          fetch('/api/restaurants/open-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: [rid] }),
-            cache: 'no-store',
-          }),
-        ]);
+      const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse] = await Promise.all([
+        fetch(`/api/restaurants/${rid}?t=${Date.now()}`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${rid}/menu`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${rid}/categories`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${rid}/hours`, { cache: 'no-store' }),
+      ]);
       if (!restaurantResponse.ok) throw new Error('Erreur de chargement du restaurant');
       if (!menuResponse.ok) throw new Error('Erreur de chargement du menu');
       
@@ -541,18 +515,9 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      let openStatusRow = null;
-      if (openStatusResponse.ok) {
-        try {
-          const pj = await openStatusResponse.json();
-          openStatusRow = pickOpenStatusRow(pj?.map, rid);
-        } catch {
-          /* ignore */
-        }
-      }
       const resolved = resolveRestaurantOpenFromSources({
         restaurant: restaurantData,
-        openStatusRow,
+        openStatusRow: null,
       });
       setIsManuallyClosed(resolved.isManuallyClosed === true);
       setIsRestaurantOpen(resolved.isOpen === true);

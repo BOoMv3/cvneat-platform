@@ -41,10 +41,7 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
-import {
-  pickOpenStatusRow,
-  resolveRestaurantOpenFromSources,
-} from '@/lib/restaurant-open-client';
+import { resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -1000,29 +997,7 @@ export default function Home() {
           console.error('[Restaurants] ⚠️ PROBLÈME: Aucun restaurant normalisé alors que', data.length, 'ont été reçus !');
           console.error('[Restaurants] Premier restaurant reçu:', data[0]);
         }
-        // Statut ouvert/fermé: calcul unique côté serveur (plus stable que plein de fetch détails).
-        const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
-
-        let openStatusFromServer = {};
-        try {
-          const statusRes = await fetch('/api/restaurants/open-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: ids.map((id) => String(id)) }),
-            cache: 'no-store',
-          });
-          if (statusRes.ok) {
-            const json = await statusRes.json().catch(() => ({}));
-            const map = json?.map;
-            const mapIsObject = map && typeof map === 'object' && !Array.isArray(map);
-            openStatusFromServer = mapIsObject ? map : {};
-          } else {
-            console.warn('[Restaurants] open-status HTTP non OK:', statusRes.status);
-          }
-        } catch (e) {
-          console.warn('[Restaurants] open-status indisponible, fallback sécurité:', e);
-        }
-
+        // Statut ouvert/fermé : même payload que GET liste (is_open_now + flags), pas de 2e POST open-status.
         setRestaurants(normalizedRestaurants);
 
         setRestaurantsOpenStatus((prev) => {
@@ -1031,10 +1006,9 @@ export default function Home() {
             const todayHoursLabel =
               getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
-            const st = pickOpenStatusRow(openStatusFromServer, restaurant.id);
             const resolved = resolveRestaurantOpenFromSources({
               restaurant,
-              openStatusRow: st,
+              openStatusRow: null,
             });
 
             const entry = {
