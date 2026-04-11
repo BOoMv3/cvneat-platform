@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { safeLocalStorage } from '../../lib/localStorage';
@@ -13,7 +13,7 @@ import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
-import { resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
+import { getResolvedOpenFlags } from '@/lib/restaurant-open-client';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -46,9 +46,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const [restaurantHours, setRestaurantHours] = useState([]);
-  /** true par défaut : politique « ouvert sauf fermeture manuelle » ; le GET ajuste si besoin. */
-  const [isRestaurantOpen, setIsRestaurantOpen] = useState(true);
-  const [isManuallyClosed, setIsManuallyClosed] = useState(false);
   const [comboMenus, setComboMenus] = useState([]);
   const [comboLoading, setComboLoading] = useState(true);
   const [comboError, setComboError] = useState(null);
@@ -56,38 +53,29 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [activeCombo, setActiveCombo] = useState(null);
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
-  const restaurantRef = useRef(null);
 
-  useEffect(() => {
-    restaurantRef.current = restaurant;
+  /** Toujours dérivé de `restaurant` : impossible de désynchroniser avec des setState séparés. */
+  const { isOpen: isRestaurantOpen, isManuallyClosed } = useMemo(() => {
+    if (!restaurant || typeof restaurant !== 'object') {
+      return { isOpen: true, isManuallyClosed: false };
+    }
+    return getResolvedOpenFlags(restaurant);
   }, [restaurant]);
 
-  /** Rafraîchit ouvert/fermé depuis le GET détail (is_open_now + flags), sans 2e API open-status. */
-  const applyRestaurantStatusFromOpenStatus = async (currentRestaurant = null) => {
+  /** Recharge le JSON restaurant (flags inclus) — l’UI suit via useMemo ci-dessus. */
+  const refreshRestaurantFromServer = useCallback(async () => {
+    if (!restaurantId) return false;
+    const requestedId = String(restaurantId).trim();
     try {
-      if (!restaurantId) return false;
-      const requestedId = String(restaurantId).trim();
-      let restaurantPayload = currentRestaurant || restaurantRef.current || {};
-      if (!restaurantPayload?.id) {
-        try {
-          const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, { cache: 'no-store' });
-          if (r.ok) restaurantPayload = await r.json();
-        } catch {
-          /* */
-        }
-      }
-      const resolved = resolveRestaurantOpenFromSources({
-        restaurant: restaurantPayload,
-        openStatusRow: null,
-      });
-      setIsManuallyClosed(resolved.isManuallyClosed === true);
-      setIsRestaurantOpen(resolved.isOpen === true);
+      const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) return false;
+      const data = await r.json();
+      setRestaurant(data);
       return true;
-    } catch (e) {
-      console.warn('Statut restaurant indisponible:', e?.message || e);
+    } catch {
       return false;
     }
-  };
+  }, [restaurantId]);
 
   const getStepKey = (step, index) => step?.id || `step-${index}`;
 
@@ -286,16 +274,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir depuis GET /api/restaurants/[id] (is_open_now aligné serveur), pas un 2e batch open-status.
     const statusInterval = setInterval(() => {
-      const checkStatus = async () => {
-        try {
-          await applyRestaurantStatusFromOpenStatus(restaurantRef.current);
-        } catch (err) {
-          console.error('Erreur rafraîchissement statut:', err);
-        }
-      };
-      checkStatus();
+      refreshRestaurantFromServer().catch(() => {});
     }, 60000);
     
     // Subscription Supabase Realtime pour les menus (mise à jour automatique)
@@ -326,20 +306,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     
     const onVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || !restaurantId) return;
-      (async () => {
-        try {
-          const r = await fetch(`/api/restaurants/${restaurantId}?t=${Date.now()}`, { cache: 'no-store' });
-          if (r.ok) {
-            const data = await r.json();
-            setRestaurant(data);
-            await applyRestaurantStatusFromOpenStatus(data);
-          } else {
-            await applyRestaurantStatusFromOpenStatus(restaurantRef.current);
-          }
-        } catch {
-          await applyRestaurantStatusFromOpenStatus(restaurantRef.current);
-        }
-      })();
+      refreshRestaurantFromServer();
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
 
@@ -354,7 +321,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       window.removeEventListener('restaurant-status-changed', onStatusChanged);
       supabase.removeChannel(menuChannel);
     };
-  }, [restaurantId]);
+  }, [restaurantId, refreshRestaurantFromServer]);
 
   useEffect(() => {
     // Sauvegarder le panier a chaque modification
@@ -514,13 +481,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       if (restaurantData) {
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
-      
-      const resolved = resolveRestaurantOpenFromSources({
-        restaurant: restaurantData,
-        openStatusRow: null,
-      });
-      setIsManuallyClosed(resolved.isManuallyClosed === true);
-      setIsRestaurantOpen(resolved.isOpen === true);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);

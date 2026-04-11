@@ -13,7 +13,7 @@ import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
-import { resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
+import { getResolvedOpenFlags } from '@/lib/restaurant-open-client';
 
 export default function RestaurantDetail({ params }) {
   const router = useRouter();
@@ -46,8 +46,6 @@ export default function RestaurantDetail({ params }) {
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const [restaurantHours, setRestaurantHours] = useState([]);
-  const [isRestaurantOpen, setIsRestaurantOpen] = useState(true);
-  const [isManuallyClosed, setIsManuallyClosed] = useState(false);
   const [comboMenus, setComboMenus] = useState([]);
   const [comboLoading, setComboLoading] = useState(true);
   const [comboError, setComboError] = useState(null);
@@ -55,6 +53,13 @@ export default function RestaurantDetail({ params }) {
   const [activeCombo, setActiveCombo] = useState(null);
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
+
+  const { isOpen: isRestaurantOpen, isManuallyClosed } = useMemo(() => {
+    if (!restaurant || typeof restaurant !== 'object') {
+      return { isOpen: true, isManuallyClosed: false };
+    }
+    return getResolvedOpenFlags(restaurant);
+  }, [restaurant]);
 
   const getStepKey = (step, index) => step?.id || `step-${index}`;
 
@@ -254,23 +259,16 @@ export default function RestaurantDetail({ params }) {
     setIsFavorite(favorites.includes(restaurantId));
     
     const statusInterval = setInterval(() => {
-      const checkStatus = async () => {
+      (async () => {
         try {
           const rid = String(restaurantId).trim();
           const restRes = await fetch(`/api/restaurants/${rid}?t=${Date.now()}`, { cache: 'no-store' });
           if (!restRes.ok) return;
-          const restData = await restRes.json();
-          const resolved = resolveRestaurantOpenFromSources({
-            restaurant: restData,
-            openStatusRow: null,
-          });
-          setIsManuallyClosed(resolved.isManuallyClosed === true);
-          setIsRestaurantOpen(resolved.isOpen === true);
+          setRestaurant(await restRes.json());
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }
-      };
-      checkStatus();
+      })();
     }, 60000);
     
     // Subscription Supabase Realtime pour les menus (mise à jour automatique)
@@ -473,24 +471,15 @@ export default function RestaurantDetail({ params }) {
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      const resolved = resolveRestaurantOpenFromSources({
-        restaurant: restaurantData,
-        openStatusRow: null,
-      });
-      setIsManuallyClosed(resolved.isManuallyClosed === true);
-      setIsRestaurantOpen(resolved.isOpen === true);
-      
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
-      console.log('🔓 isRestaurantOpen sera:', resolved.isOpen);
-      console.log('🔒 isManuallyClosed sera:', resolved.isManuallyClosed);
-      // Debug Deliss King (liste vs détail)
       if (restaurantData?.nom && (restaurantData.nom.toLowerCase().includes('deliss') || restaurantData.nom.toLowerCase().includes("deliss'"))) {
+        const flags = getResolvedOpenFlags(restaurantData);
         console.log(`[Restaurants] 🔍 DEBUG Deliss King (DÉTAIL):`, {
           nom: restaurantData.nom,
           id: restaurantData.id,
-          isOpen: resolved.isOpen,
-          isManuallyClosed: resolved.isManuallyClosed,
+          isOpen: flags.isOpen,
+          isManuallyClosed: flags.isManuallyClosed,
         });
       }
 

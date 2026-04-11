@@ -61,21 +61,20 @@ export async function GET() {
       return !masquesContient.some((mot) => n.includes(mot));
     });
 
-    const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
     const isLaBonnePate = (nom) => nom && (String(nom).toLowerCase().includes('bonne pâte') || String(nom).toLowerCase().includes('bonne pate'));
     const now = new Date();
 
     const withFermeManuel = filtered.map((r) => {
-      const fm = toBool(r.ferme_manuellement);
-      const om = toBool(r.ouvert_manuellement);
+      const fm = coerceManualBool(r.ferme_manuellement);
+      const om = coerceManualBool(r.ouvert_manuellement);
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
       const openState = computeRestaurantOpenState({
         id: r.id,
         horaires: r.horaires,
-        ferme_manuellement: r.ferme_manuellement,
-        ouvert_manuellement: r.ouvert_manuellement,
+        ferme_manuellement: fm,
+        ouvert_manuellement: om,
         now,
       });
       return {
