@@ -41,7 +41,11 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
-import { pickOpenStatusRow, resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
+import {
+  pickOpenStatusRow,
+  resolveRestaurantOpenFromSources,
+  writeRestaurantOpenSnapshotForNavigation,
+} from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -1034,11 +1038,15 @@ export default function Home() {
               openStatusRow: st,
             });
 
-            openStatusMap[restaurant.id] = {
+            const entry = {
               isOpen: resolved.isOpen === true,
               isManuallyClosed: resolved.isManuallyClosed === true,
               hoursLabel: todayHoursLabel || 'Horaires non communiquées',
             };
+            const rid = restaurant.id;
+            const ridStr = String(rid).trim();
+            openStatusMap[rid] = entry;
+            openStatusMap[ridStr] = entry;
           }
           return openStatusMap;
         });
@@ -1156,6 +1164,15 @@ export default function Home() {
   };
 
   const handleRestaurantClick = (restaurant) => {
+    const ridStr = String(restaurant.id).trim();
+    const cardStatus =
+      restaurantsOpenStatus?.[restaurant.id] ?? restaurantsOpenStatus?.[ridStr];
+    if (cardStatus && typeof window !== 'undefined') {
+      writeRestaurantOpenSnapshotForNavigation(ridStr, {
+        isOpen: cardStatus.isOpen === true,
+        isManuallyClosed: cardStatus.isManuallyClosed === true,
+      });
+    }
     // IMPORTANT: dans l'app mobile (export statique), éviter /restaurants/[id]
     // car le fallback HTML peut créer un refresh en boucle.
     // On utilise une route statique /restaurant-view?id=...
@@ -1292,8 +1309,10 @@ export default function Home() {
     };
 
     return uniqueRestaurants.sort((a, b) => {
-      const statusA = restaurantsOpenStatus[a.id] || {};
-      const statusB = restaurantsOpenStatus[b.id] || {};
+      const statusA =
+        restaurantsOpenStatus[a.id] ?? restaurantsOpenStatus[String(a.id).trim()] ?? {};
+      const statusB =
+        restaurantsOpenStatus[b.id] ?? restaurantsOpenStatus[String(b.id).trim()] ?? {};
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
@@ -1761,7 +1780,12 @@ export default function Home() {
                 // Priorité : ferme_manuellement > ouvert_manuellement
                 // IMPORTANT: éviter un recalcul local (peut diverger et provoquer des bascules).
                 // On ne rend que la valeur issue de `restaurantsOpenStatus`.
-                const status = restaurantsOpenStatus?.[restaurant.id] || { isOpen: false, isManuallyClosed: false };
+                const status =
+                  restaurantsOpenStatus?.[restaurant.id] ??
+                  restaurantsOpenStatus?.[String(restaurant.id).trim()] ?? {
+                    isOpen: false,
+                    isManuallyClosed: false,
+                  };
                 const restaurantStatus = {
                   isOpen: status.isOpen === true,
                   isManuallyClosed: status.isManuallyClosed === true,

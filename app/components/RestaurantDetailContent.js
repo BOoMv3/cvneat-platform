@@ -13,7 +13,13 @@ import ReviewsSection from '@/components/ReviewsSection';
 import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
-import { pickOpenStatusRow, resolveRestaurantOpenFromSources } from '@/lib/restaurant-open-client';
+import {
+  pickOpenStatusRow,
+  resolveRestaurantOpenFromSources,
+  alignDetailResolvedWithHomeSnapshot,
+  readRestaurantOpenSnapshotForNavigation,
+  consumeRestaurantOpenSnapshot,
+} from '@/lib/restaurant-open-client';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -92,8 +98,11 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         restaurant: restaurantPayload,
         openStatusRow: status,
       });
-      setIsManuallyClosed(resolved.isManuallyClosed === true);
-      setIsRestaurantOpen(resolved.isOpen === true);
+      const snapBefore = readRestaurantOpenSnapshotForNavigation(restaurantId);
+      const aligned = alignDetailResolvedWithHomeSnapshot(restaurantId, resolved);
+      setIsManuallyClosed(aligned.isManuallyClosed === true);
+      setIsRestaurantOpen(aligned.isOpen === true);
+      if (snapBefore) consumeRestaurantOpenSnapshot(restaurantId);
       return true;
     } catch (e) {
       console.warn('Statut open-status indisponible:', e?.message || e);
@@ -536,8 +545,11 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
           restaurant: restaurantData,
           openStatusRow: null,
         });
-        setIsManuallyClosed(resolved.isManuallyClosed === true);
-        setIsRestaurantOpen(resolved.isOpen === true);
+        const snapBefore = readRestaurantOpenSnapshotForNavigation(restaurantId);
+        const aligned = alignDetailResolvedWithHomeSnapshot(restaurantId, resolved);
+        setIsManuallyClosed(aligned.isManuallyClosed === true);
+        setIsRestaurantOpen(aligned.isOpen === true);
+        if (snapBefore) consumeRestaurantOpenSnapshot(restaurantId);
       }
       
       // Debug: afficher les horaires récupérées
