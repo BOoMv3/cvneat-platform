@@ -44,7 +44,6 @@ import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import {
   pickOpenStatusRow,
   resolveRestaurantOpenFromSources,
-  writeRestaurantOpenSnapshotForNavigation,
 } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
@@ -1164,15 +1163,6 @@ export default function Home() {
   };
 
   const handleRestaurantClick = (restaurant) => {
-    const ridStr = String(restaurant.id).trim();
-    const cardStatus =
-      restaurantsOpenStatus?.[restaurant.id] ?? restaurantsOpenStatus?.[ridStr];
-    if (cardStatus && typeof window !== 'undefined') {
-      writeRestaurantOpenSnapshotForNavigation(ridStr, {
-        isOpen: cardStatus.isOpen === true,
-        isManuallyClosed: cardStatus.isManuallyClosed === true,
-      });
-    }
     // IMPORTANT: dans l'app mobile (export statique), éviter /restaurants/[id]
     // car le fallback HTML peut créer un refresh en boucle.
     // On utilise une route statique /restaurant-view?id=...

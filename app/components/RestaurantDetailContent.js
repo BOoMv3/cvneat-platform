@@ -16,9 +16,6 @@ import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
 import {
   pickOpenStatusRow,
   resolveRestaurantOpenFromSources,
-  alignDetailResolvedWithHomeSnapshot,
-  readRestaurantOpenSnapshotForNavigation,
-  consumeRestaurantOpenSnapshot,
 } from '@/lib/restaurant-open-client';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
@@ -86,8 +83,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       if (!restaurantId) return false;
       const requestedId = String(restaurantId).trim();
       const status = await fetchStatusFromOpenStatus(requestedId);
-      let restaurantPayload = currentRestaurant || {};
-      if (!status) {
+      let restaurantPayload = currentRestaurant || restaurantRef.current || {};
+      if (!status && (!restaurantPayload || Object.keys(restaurantPayload).length === 0)) {
         try {
           const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, { cache: 'no-store' });
           if (r.ok) restaurantPayload = await r.json();
@@ -99,11 +96,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         restaurant: restaurantPayload,
         openStatusRow: status,
       });
-      const snapBefore = readRestaurantOpenSnapshotForNavigation(restaurantId);
-      const aligned = alignDetailResolvedWithHomeSnapshot(restaurantId, resolved);
-      setIsManuallyClosed(aligned.isManuallyClosed === true);
-      setIsRestaurantOpen(aligned.isOpen === true);
-      if (snapBefore) consumeRestaurantOpenSnapshot(restaurantId);
+      setIsManuallyClosed(resolved.isManuallyClosed === true);
+      setIsRestaurantOpen(resolved.isOpen === true);
       return true;
     } catch (e) {
       console.warn('Statut open-status indisponible:', e?.message || e);
@@ -539,19 +533,21 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Statut: même résolution que l'accueil (lib/restaurant-open-client).
-      const synced = await applyRestaurantStatusFromOpenStatus(restaurantData);
-      if (!synced) {
-        const resolved = resolveRestaurantOpenFromSources({
-          restaurant: restaurantData,
-          openStatusRow: null,
-        });
-        const snapBefore = readRestaurantOpenSnapshotForNavigation(restaurantId);
-        const aligned = alignDetailResolvedWithHomeSnapshot(restaurantId, resolved);
-        setIsManuallyClosed(aligned.isManuallyClosed === true);
-        setIsRestaurantOpen(aligned.isOpen === true);
-        if (snapBefore) consumeRestaurantOpenSnapshot(restaurantId);
+      let openStatusRow = null;
+      if (openStatusResponse.ok) {
+        try {
+          const pj = await openStatusResponse.json();
+          openStatusRow = pickOpenStatusRow(pj?.map, rid);
+        } catch {
+          /* ignore */
+        }
       }
+      const resolved = resolveRestaurantOpenFromSources({
+        restaurant: restaurantData,
+        openStatusRow,
+      });
+      setIsManuallyClosed(resolved.isManuallyClosed === true);
+      setIsRestaurantOpen(resolved.isOpen === true);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
