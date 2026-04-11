@@ -41,7 +41,8 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
-import { resolveRestaurantOpenFromSources, getResolvedOpenFlags } from '@/lib/restaurant-open-client';
+import { computeRestaurantOpenState } from '@/lib/restaurant-open-compute';
+import { getResolvedOpenFlags, pickHomeOpenEntry } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -807,10 +808,18 @@ export default function Home() {
               reviewsCount = reviews.length;
             }
             
+            const openSt = computeRestaurantOpenState({
+              id: restaurant.id,
+              horaires: restaurant.horaires,
+              ferme_manuellement: restaurant.ferme_manuellement,
+              ouvert_manuellement: restaurant.ouvert_manuellement,
+              now: new Date(),
+            });
             return {
               ...restaurant,
               rating: calculatedRating || restaurant.rating || 0,
-              reviews_count: reviewsCount || restaurant.reviews_count || 0
+              reviews_count: reviewsCount || restaurant.reviews_count || 0,
+              is_open_now: openSt.isOpen === true,
             };
           }));
           
@@ -1006,10 +1015,7 @@ export default function Home() {
             const todayHoursLabel =
               getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
 
-            const resolved = resolveRestaurantOpenFromSources({
-              restaurant,
-              openStatusRow: null,
-            });
+            const resolved = getResolvedOpenFlags(restaurant);
 
             const entry = {
               isOpen: resolved.isOpen === true,
@@ -1274,13 +1280,13 @@ export default function Home() {
 
     return uniqueRestaurants.sort((a, b) => {
       const statusA =
-        restaurantsOpenStatus[a.id] ??
-        restaurantsOpenStatus[String(a.id).trim()] ??
-        getResolvedOpenFlags(a);
+        pickHomeOpenEntry(
+          restaurantsOpenStatus[a.id] ?? restaurantsOpenStatus[String(a.id).trim()]
+        ) ?? getResolvedOpenFlags(a);
       const statusB =
-        restaurantsOpenStatus[b.id] ??
-        restaurantsOpenStatus[String(b.id).trim()] ??
-        getResolvedOpenFlags(b);
+        pickHomeOpenEntry(
+          restaurantsOpenStatus[b.id] ?? restaurantsOpenStatus[String(b.id).trim()]
+        ) ?? getResolvedOpenFlags(b);
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
@@ -1752,9 +1758,7 @@ export default function Home() {
                   restaurantsOpenStatus?.[restaurant.id] ??
                   restaurantsOpenStatus?.[String(restaurant.id).trim()];
                 const status =
-                  fromMap != null && typeof fromMap === 'object'
-                    ? fromMap
-                    : getResolvedOpenFlags(restaurant);
+                  pickHomeOpenEntry(fromMap) ?? getResolvedOpenFlags(restaurant);
                 const restaurantStatus = {
                   isOpen: status.isOpen === true,
                   isManuallyClosed: status.isManuallyClosed === true,
