@@ -30,6 +30,7 @@ import {
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
@@ -268,27 +269,20 @@ export default function PartnerDashboard() {
         return;
       }
 
-      setRestaurant(resto);
+      // Même moteur que l’accueil / GET /api/restaurants : conflit fm+om → pas « fermé manuellement » à tort
+      const openNorm = normalizeRestaurantOpenFields(resto);
+      setRestaurant({ ...resto, ...openNorm });
+      setIsManuallyClosed(openNorm.is_manually_closed === true);
       // Temps de préparation (si migration appliquée)
       setPrepTimeMinutes(Number.isFinite(parseInt(resto.prep_time_minutes, 10)) ? parseInt(resto.prep_time_minutes, 10) : 25);
       setPrepTimeUpdatedAt(resto.prep_time_updated_at || null);
-      // Normaliser ferme_manuellement pour être sûr que c'est un booléen strict
-      let normalizedFermeManuel;
-      if (resto?.ferme_manuellement === true || resto?.ferme_manuellement === 'true' || resto?.ferme_manuellement === 1 || resto?.ferme_manuellement === '1') {
-        normalizedFermeManuel = true;
-      } else if (resto?.ferme_manuellement === false || resto?.ferme_manuellement === 'false' || resto?.ferme_manuellement === 0 || resto?.ferme_manuellement === '0') {
-        normalizedFermeManuel = false;
-      } else {
-        // Valeur invalide ou undefined, utiliser false par défaut (ouvert)
-        normalizedFermeManuel = false;
-      }
-      setIsManuallyClosed(normalizedFermeManuel);
       console.log('📋 Restaurant chargé:', {
         nom: resto?.nom,
         ferme_manuellement_original: resto?.ferme_manuellement,
-        ferme_manuellement_type: typeof resto?.ferme_manuellement,
-        normalizedFermeManuel,
-        isManuallyClosed: normalizedFermeManuel
+        ouvert_manuellement_original: resto?.ouvert_manuellement,
+        ferme_manuellement_affiche: openNorm.ferme_manuellement,
+        ouvert_manuellement_affiche: openNorm.ouvert_manuellement,
+        is_manually_closed: openNorm.is_manually_closed,
       });
       
       if (resto?.id) {
@@ -1971,9 +1965,10 @@ export default function PartnerDashboard() {
         });
         if (currentRes.ok) {
           const currentPayload = await currentRes.json().catch(() => ({}));
-          const fm = currentPayload?.restaurant?.ferme_manuellement;
-          currentIsManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
-            (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+          const cr = currentPayload?.restaurant;
+          if (cr) {
+            currentIsManuallyClosed = normalizeRestaurantOpenFields(cr).is_manually_closed === true;
+          }
         }
       } catch {
         // fallback sur l'état local si la lecture serveur échoue
@@ -2018,48 +2013,36 @@ export default function PartnerDashboard() {
           ferme_manuellement_type: typeof responseData.restaurant?.ferme_manuellement
         });
         
-        // Utiliser la valeur retournée par l'API pour être sûr
-        const finalStatus = responseData.restaurant?.ferme_manuellement !== undefined 
-          ? responseData.restaurant.ferme_manuellement 
-          : newStatus;
-        
-        // Normaliser pour être sûr que c'est un booléen strict
-        let normalizedStatus;
-        if (finalStatus === true || finalStatus === 'true' || finalStatus === 1 || finalStatus === '1') {
-          normalizedStatus = true;
-        } else if (finalStatus === false || finalStatus === 'false' || finalStatus === 0 || finalStatus === '0') {
-          normalizedStatus = false;
-        } else {
-          // Valeur invalide, utiliser newStatus
-          normalizedStatus = newStatus;
-        }
-        
+        const r = responseData.restaurant;
+        const afterNorm = r ? normalizeRestaurantOpenFields(r) : null;
+        const normalizedStatus = afterNorm ? afterNorm.is_manually_closed === true : newStatus;
+
         console.log('✅ État avant mise à jour:', {
           isManuallyClosed_actuel: isManuallyClosed,
           newStatus,
-          finalStatus,
-          finalStatus_type: typeof finalStatus,
           normalizedStatus,
-          responseData_restaurant: responseData.restaurant
+          responseData_restaurant: responseData.restaurant,
+          afterNorm,
         });
-        
-        // FORCER la mise à jour de l'état avec la valeur normalisée
+
         console.log('🔄 Mise à jour état local...');
         console.log('   Avant: isManuallyClosed =', isManuallyClosed);
-        console.log('   Après: normalizedStatus =', normalizedStatus);
-        
+        console.log('   Après: normalizedStatus (canonique) =', normalizedStatus);
+
         setIsManuallyClosed(normalizedStatus);
-        setRestaurant(prev => {
-          const updated = { 
-            ...prev, 
-            ferme_manuellement: normalizedStatus,
-            updated_at: responseData.restaurant?.updated_at || new Date().toISOString()
+        setRestaurant((prev) => {
+          const base = r ? { ...prev, ...r } : prev;
+          const merged = afterNorm ? { ...base, ...afterNorm } : base;
+          const updated = {
+            ...merged,
+            updated_at: r?.updated_at || merged.updated_at || new Date().toISOString(),
           };
           console.log('   Restaurant state mis à jour:', {
             id: updated.id,
             nom: updated.nom,
             ferme_manuellement: updated.ferme_manuellement,
-            ferme_manuellement_type: typeof updated.ferme_manuellement
+            ouvert_manuellement: updated.ouvert_manuellement,
+            is_manually_closed: afterNorm?.is_manually_closed,
           });
           return updated;
         });
