@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -55,7 +58,10 @@ export async function GET(request, { params }) {
     Object.assign(restaurantWithDefaults, openFields);
 
     const res = NextResponse.json(restaurantWithDefaults);
-    res.headers.set('Cache-Control', 'no-store, max-age=0');
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+    res.headers.set('Vercel-CDN-Cache-Control', 'no-store');
     return res;
   } catch (error) {
     console.error('❌ Erreur serveur lors de la récupération du restaurant:', error);

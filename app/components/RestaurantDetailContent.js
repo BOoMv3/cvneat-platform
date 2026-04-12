@@ -59,6 +59,17 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
    * ce compteur, sinon il annulait le chargement complet (menu + flags) en cours.
    */
   const restaurantFullFetchGenRef = useRef(0);
+  /** >0 pendant au moins un fetchRestaurantDetails actif (plusieurs appels = profondeur). */
+  const restaurantFullFetchDepthRef = useRef(0);
+
+  const restaurantJsonFetchInit = {
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  };
 
   /** Toujours dérivé de `restaurant` : impossible de désynchroniser avec des setState séparés. */
   const { isOpen: isRestaurantOpen, isManuallyClosed } = useMemo(() => {
@@ -71,9 +82,10 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   /** Recharge le JSON restaurant (flags inclus) — l’UI suit via useMemo ci-dessus. */
   const refreshRestaurantFromServer = useCallback(async () => {
     if (!restaurantId) return false;
+    if (restaurantFullFetchDepthRef.current > 0) return false;
     const requestedId = String(restaurantId).trim();
     try {
-      const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, { cache: 'no-store' });
+      const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, restaurantJsonFetchInit);
       if (!r.ok) return false;
       const data = await r.json();
       setRestaurant(data);
@@ -280,10 +292,9 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    const statusInterval = setInterval(() => {
-      refreshRestaurantFromServer().catch(() => {});
-    }, 60000);
-    
+    // Pas de polling périodique du JSON restaurant : ça provoquait des bascules avec le chargement complet
+    // et du cache navigateur/CDN. Rafraîchissement : montage, événement status-changed, retour onglet.
+
     // Subscription Supabase Realtime pour les menus (mise à jour automatique)
     const menuChannel = supabase
       .channel(`restaurant_${restaurantId}_menu`)
@@ -322,7 +333,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     window.addEventListener('restaurant-status-changed', onStatusChanged);
 
     return () => {
-      clearInterval(statusInterval);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('restaurant-status-changed', onStatusChanged);
       supabase.removeChannel(menuChannel);
@@ -445,14 +455,15 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   
   const fetchRestaurantDetails = async () => {
     const gen = ++restaurantFullFetchGenRef.current;
+    restaurantFullFetchDepthRef.current += 1;
     try {
       setLoading(true);
       const rid = String(restaurantId).trim();
       const [restaurantResponse, menuResponse, categoriesResponse, hoursResponse] = await Promise.all([
-        fetch(`/api/restaurants/${rid}?t=${Date.now()}`, { cache: 'no-store' }),
-        fetch(`/api/restaurants/${rid}/menu`, { cache: 'no-store' }),
-        fetch(`/api/restaurants/${rid}/categories`, { cache: 'no-store' }),
-        fetch(`/api/restaurants/${rid}/hours`, { cache: 'no-store' }),
+        fetch(`/api/restaurants/${rid}?t=${Date.now()}`, restaurantJsonFetchInit),
+        fetch(`/api/restaurants/${rid}/menu`, { cache: 'no-store', headers: { Accept: 'application/json' } }),
+        fetch(`/api/restaurants/${rid}/categories`, { cache: 'no-store', headers: { Accept: 'application/json' } }),
+        fetch(`/api/restaurants/${rid}/hours`, { cache: 'no-store', headers: { Accept: 'application/json' } }),
       ]);
       if (!restaurantResponse.ok) throw new Error('Erreur de chargement du restaurant');
       if (!menuResponse.ok) throw new Error('Erreur de chargement du menu');
@@ -514,6 +525,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
       }
     } finally {
+      restaurantFullFetchDepthRef.current = Math.max(0, restaurantFullFetchDepthRef.current - 1);
       if (gen === restaurantFullFetchGenRef.current) {
         setLoading(false);
       }
