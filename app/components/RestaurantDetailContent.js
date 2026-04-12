@@ -14,7 +14,6 @@ import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
 import { getResolvedOpenFlags } from '@/lib/restaurant-open-client';
-import { shouldApplyRestaurantRowUpdate } from '@/lib/restaurant-open-compute';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -55,8 +54,11 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
 
-  /** Incrémenté à chaque chargement / refresh : évite qu’une réponse plus lente écrase un état plus récent (flip ouvert/fermé au rafraîchissement). */
-  const restaurantFetchGenRef = useRef(0);
+  /**
+   * Réservé à fetchRestaurantDetails : un refresh léger (polling / visibilité) ne doit pas partager
+   * ce compteur, sinon il annulait le chargement complet (menu + flags) en cours.
+   */
+  const restaurantFullFetchGenRef = useRef(0);
 
   /** Toujours dérivé de `restaurant` : impossible de désynchroniser avec des setState séparés. */
   const { isOpen: isRestaurantOpen, isManuallyClosed } = useMemo(() => {
@@ -69,15 +71,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   /** Recharge le JSON restaurant (flags inclus) — l’UI suit via useMemo ci-dessus. */
   const refreshRestaurantFromServer = useCallback(async () => {
     if (!restaurantId) return false;
-    const gen = ++restaurantFetchGenRef.current;
     const requestedId = String(restaurantId).trim();
     try {
       const r = await fetch(`/api/restaurants/${requestedId}?t=${Date.now()}`, { cache: 'no-store' });
-      if (gen !== restaurantFetchGenRef.current) return false;
       if (!r.ok) return false;
       const data = await r.json();
-      if (gen !== restaurantFetchGenRef.current) return false;
-      setRestaurant((prev) => (shouldApplyRestaurantRowUpdate(prev, data) ? data : prev));
+      setRestaurant(data);
       return true;
     } catch {
       return false;
@@ -445,7 +444,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   };
   
   const fetchRestaurantDetails = async () => {
-    const gen = ++restaurantFetchGenRef.current;
+    const gen = ++restaurantFullFetchGenRef.current;
     try {
       setLoading(true);
       const rid = String(restaurantId).trim();
@@ -479,11 +478,9 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         console.warn('Erreur récupération horaires:', hoursResponse.status);
       }
 
-      if (gen !== restaurantFetchGenRef.current) return;
+      if (gen !== restaurantFullFetchGenRef.current) return;
 
-      setRestaurant((prev) =>
-        shouldApplyRestaurantRowUpdate(prev, restaurantData) ? restaurantData : prev
-      );
+      setRestaurant(restaurantData);
       setMenu(Array.isArray(menuData) ? menuData : []);
       setMenuCategoryOrder(
         Array.isArray(categoriesData) && categoriesData.length > 0 ? categoriesData : null
@@ -509,15 +506,15 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       }
 
       await loadComboMenus(restaurantData.id || restaurantId);
-      if (gen !== restaurantFetchGenRef.current) return;
+      if (gen !== restaurantFullFetchGenRef.current) return;
     } catch (err) {
-      if (gen === restaurantFetchGenRef.current) {
+      if (gen === restaurantFullFetchGenRef.current) {
         setComboLoading(false);
         setComboMenus([]);
         setError(`Erreur lors du chargement: ${err.message || 'Erreur inconnue'}`);
       }
     } finally {
-      if (gen === restaurantFetchGenRef.current) {
+      if (gen === restaurantFullFetchGenRef.current) {
         setLoading(false);
       }
     }
