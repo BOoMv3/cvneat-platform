@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Applique les migrations du repo sur le projet Supabase distant (équivalent "option A").
 #
-# Prérequis :
-# 1) Token : https://supabase.com/dashboard/account/tokens → "Generate new token"
-# 2) Dans ce terminal :
-#    export SUPABASE_ACCESS_TOKEN='colle_ton_token_ici'
-# 3) Depuis la racine du repo :
-#    ./scripts/supabase-db-push.sh
+# Prérequis (au choix) :
+#  A) npx supabase@latest login   → enregistre ~/.supabase/access-token
+#  B) ou PAT : https://supabase.com/dashboard/account/tokens
+#     puis export SUPABASE_ACCESS_TOKEN='…'
+# Puis : ./scripts/supabase-db-push.sh
 #
 # Note : .env.local est temporairement déplacé pendant la commande, car une valeur
 # mal quotée (ex. FIREBASE_PRIVATE_KEY) empêche le CLI de parser le fichier.
@@ -15,10 +14,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" && -f "${HOME}/.supabase/access-token" ]]; then
+  SUPABASE_ACCESS_TOKEN="$(tr -d '\n\r' <"${HOME}/.supabase/access-token")"
+  export SUPABASE_ACCESS_TOKEN
+fi
+
 if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
-  echo "Manque SUPABASE_ACCESS_TOKEN."
-  echo "Crée un token : https://supabase.com/dashboard/account/tokens"
-  echo "Puis : export SUPABASE_ACCESS_TOKEN='...' && ./scripts/supabase-db-push.sh"
+  echo "Aucun token trouvé."
+  echo "  A) Une fois sur ton Mac : npx supabase@latest login   (ouvre le navigateur)"
+  echo "  B) Ou crée un PAT : https://supabase.com/dashboard/account/tokens"
+  echo "     puis : export SUPABASE_ACCESS_TOKEN='…' && ./scripts/supabase-db-push.sh"
   exit 1
 fi
 
