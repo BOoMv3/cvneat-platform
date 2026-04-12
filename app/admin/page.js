@@ -29,6 +29,9 @@ import {
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 
+/** Incrémente ce libellé après un changement important pour confirmer visuellement que le déploiement a bien pris. */
+const ADMIN_UI_DEPLOY_MARKER = 'admin-ui-2026-04-10-horaires-check';
+
 export default function AdminPage() {
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -55,7 +58,6 @@ export default function AdminPage() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [togglingRestaurantId, setTogglingRestaurantId] = useState(null);
   const [broadcastPrepLoading, setBroadcastPrepLoading] = useState(false);
   const [broadcastPrepResult, setBroadcastPrepResult] = useState(null);
   const router = useRouter();
@@ -98,90 +100,6 @@ export default function AdminPage() {
       router.push('/login');
     } finally {
       setAuthLoading(false);
-    }
-  };
-
-  const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
-    try {
-      setTogglingRestaurantId(restaurant.id);
-      const { data: sessData } = await supabase.auth.getSession();
-      const session = sessData?.session;
-      if (!session?.access_token) throw new Error('Session expirée');
-      if (!session.user?.id) throw new Error('Session invalide (pas d’utilisateur)');
-
-      const payload = {
-        ferme_manuellement: !shouldOpen,
-        ouvert_manuellement: shouldOpen,
-        manual_status_updated_at: new Date().toISOString(),
-        manual_status_updated_by: session.user.id,
-      };
-      const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      const raw = await res.text();
-      let json = {};
-      try {
-        json = raw ? JSON.parse(raw) : {};
-      } catch {
-        json = {
-          error: `Réponse invalide (HTTP ${res.status})`,
-          details: raw?.slice(0, 500) || '(vide)',
-        };
-      }
-      if (!res.ok || json?.success === false) {
-        const det = json?.details;
-        const detStr =
-          det == null ? '' : typeof det === 'string' ? det : JSON.stringify(det);
-        const parts = [
-          json?.error,
-          json?.hint,
-          json?.aide,
-          json?.code,
-          json?.name,
-          detStr,
-          json?.httpStatus != null ? `HTTP ${json.httpStatus}` : null,
-          !json?.error && !detStr ? `HTTP ${res.status}` : null,
-        ].filter(Boolean);
-        throw new Error(parts.join(' — ') || `Erreur HTTP ${res.status}`);
-      }
-      const updatedRestaurant = json?.restaurant || {};
-      const fm = updatedRestaurant?.ferme_manuellement;
-      const manualClosed = fm === true || fm === 'true' || fm === 1 || fm === '1';
-      const om = updatedRestaurant?.ouvert_manuellement;
-      const manualOpen = om === true || om === 'true' || om === 1 || om === '1';
-
-      setStats((prev) => ({
-        ...prev,
-        allRestaurants: (prev.allRestaurants || []).map((r) =>
-          r.id === restaurant.id ? { ...r, ferme_manuellement: manualClosed, ouvert_manuellement: manualOpen } : r
-        )
-      }));
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('restaurant-status-changed'));
-        try {
-          if ('BroadcastChannel' in window) {
-            const bc = new BroadcastChannel('cvneat_restaurant_status');
-            bc.postMessage({
-              type: 'restaurant-status-changed',
-              restaurantId: restaurant.id,
-              at: Date.now(),
-            });
-            bc.close();
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-    } catch (e) {
-      console.error('Erreur ouverture/fermeture restaurant (admin):', e);
-      alert(e?.message || "Erreur lors de l'ouverture/fermeture du restaurant.");
-    } finally {
-      setTogglingRestaurantId(null);
     }
   };
 
@@ -592,10 +510,34 @@ export default function AdminPage() {
     );
   }
 
+  const publicBuildRef = process.env.NEXT_PUBLIC_CVNEAT_BUILD_REF || 'local';
+
   return (
     <div className="min-h-screen bg-gray-50">
       <OpenCloseManualNotice />
       <div className="max-w-full mx-auto px-2 fold:px-2 xs:px-3 sm:px-4 py-2 fold:py-2 xs:py-3 sm:py-8">
+        {/* Bandeau de vérification déploiement : si absent après mise en prod, le navigateur ou le CDN sert encore une ancienne version. */}
+        <div
+          className="mb-3 rounded-xl border-2 border-emerald-600 bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-3 shadow-sm sm:px-4"
+          role="status"
+          data-admin-deploy-check={ADMIN_UI_DEPLOY_MARKER}
+        >
+          <p className="text-sm font-semibold text-emerald-950 sm:text-base">
+            Vérification déploiement
+          </p>
+          <p className="mt-1 text-xs text-emerald-900 sm:text-sm">
+            Si ce bandeau vert est visible, le front chargé inclut bien les dernières modifications de cette branche.
+            Référence UI :{' '}
+            <code className="rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] text-emerald-950 ring-1 ring-emerald-200 sm:text-xs">
+              {ADMIN_UI_DEPLOY_MARKER}
+            </code>
+            {' · '}
+            Build :{' '}
+            <code className="rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] text-emerald-950 ring-1 ring-emerald-200 sm:text-xs">
+              {publicBuildRef}
+            </code>
+          </p>
+        </div>
         {/* Header avec bouton retour et info utilisateur - Optimisé mobile et foldable */}
         <div className="mb-3 fold:mb-3 xs:mb-4 sm:mb-6">
           <div className="flex items-center justify-between w-full gap-2 mb-3">
@@ -705,72 +647,6 @@ export default function AdminPage() {
                 <FaBell className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Test notif</span>
               </button>
-            </div>
-          </div>
-
-          {/* Contrôle manuel des restaurants (ouvrir / fermer) */}
-          <div className="mt-3 sm:mt-4 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
-            <div className="px-3 py-3 sm:px-4 sm:py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Contrôle des restaurants (ouverture / fermeture)
-                </h2>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  Liste complète des restaurants. Tu peux les ouvrir ou les fermer manuellement depuis ici pour éviter les oublis.
-                </p>
-              </div>
-            </div>
-            <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-              {(stats.allRestaurants || []).map((r) => {
-                const isClosed = !!r.ferme_manuellement;
-                return (
-                  <div
-                    key={r.id}
-                    className="px-3 py-2 sm:px-4 sm:py-3 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {r.nom || 'Restaurant sans nom'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {isClosed ? 'Fermé manuellement' : 'Ouvert (suivant les horaires)'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          isClosed
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
-                            : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                        }`}
-                      >
-                        {isClosed ? 'Fermé' : 'Ouvert'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleRestaurantOpen(r, true)}
-                        disabled={!isClosed || togglingRestaurantId === r.id}
-                        className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-green-500 text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Ouvrir
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleRestaurantOpen(r, false)}
-                        disabled={isClosed || togglingRestaurantId === r.id}
-                        className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-red-500 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Fermer
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              {(stats.allRestaurants || []).length === 0 && (
-                <div className="px-3 py-4 sm:px-4 sm:py-5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Aucun restaurant trouvé.
-                </div>
-              )}
             </div>
           </div>
 

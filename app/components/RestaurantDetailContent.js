@@ -14,6 +14,7 @@ import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
 import { getResolvedOpenFlags } from '@/lib/restaurant-open-client';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -72,9 +73,9 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   };
 
   /** Toujours dérivé de `restaurant` : impossible de désynchroniser avec des setState séparés. */
-  const { isOpen: isRestaurantOpen, isManuallyClosed } = useMemo(() => {
+  const { isOpen: isRestaurantOpen } = useMemo(() => {
     if (!restaurant || typeof restaurant !== 'object') {
-      return { isOpen: true, isManuallyClosed: false };
+      return { isOpen: true };
     }
     return getResolvedOpenFlags(restaurant);
   }, [restaurant]);
@@ -339,6 +340,44 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     };
   }, [restaurantId, refreshRestaurantFromServer]);
 
+  // Dès que la ligne change en base (partenaire, admin…), refléter ferme_manuellement / ouvert_manuellement
+  // sans attendre un refresh (nécessite migration realtime sur public.restaurants).
+  useEffect(() => {
+    const rid = restaurantId ? String(restaurantId).trim() : '';
+    if (!rid) return;
+
+    const rowChannel = supabase
+      .channel(`restaurant_row_${rid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'restaurants',
+          filter: `id=eq.${rid}`,
+        },
+        (payload) => {
+          const row = payload?.new;
+          if (!row || typeof row !== 'object') return;
+          setRestaurant((prev) => {
+            const base = prev && typeof prev === 'object' ? prev : {};
+            const merged = { ...base, ...row };
+            const openNorm = normalizeRestaurantOpenFields(merged);
+            return { ...merged, ...openNorm };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try {
+        supabase.removeChannel(rowChannel);
+      } catch {
+        // ignore
+      }
+    };
+  }, [restaurantId]);
+
   useEffect(() => {
     // Sauvegarder le panier a chaque modification
     if (!loading) {
@@ -505,14 +544,14 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
 
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
-      console.log('🔒 isManuallyClosed source:', restaurantData.ferme_manuellement);
+      console.log('🔒 is_open_now (horaires + ouvert_manuellement):', restaurantData?.is_open_now);
       // Debug Deliss King (liste vs détail)
       if (restaurantData?.nom && (restaurantData.nom.toLowerCase().includes('deliss') || restaurantData.nom.toLowerCase().includes("deliss'"))) {
         console.log(`[Restaurants] 🔍 DEBUG Deliss King (DÉTAIL):`, {
           nom: restaurantData.nom,
           id: restaurantData.id,
           isOpen: restaurantData?.is_open_now,
-          isManuallyClosed: restaurantData?.ferme_manuellement
+          is_open_now: restaurantData?.is_open_now
         });
       }
 
@@ -1108,7 +1147,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
               onToggleFavorite={handleToggleFavorite}
               hours={restaurantHours}
               isOpen={isRestaurantOpen}
-              isManuallyClosed={isManuallyClosed}
             />
 
             {!user && (

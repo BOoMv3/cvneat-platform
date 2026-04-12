@@ -44,6 +44,13 @@ import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 import { resolveHomeOpenFromMap } from '@/lib/restaurant-open-client';
+import {
+  coerceHorairesObject,
+  getHeuresJourForDate,
+  getHeuresJourForToday,
+  getParisNow,
+  parseTimeToMinutes,
+} from '@/lib/restaurant-horaires-paris';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -175,12 +182,8 @@ const formatTimeRangeLabel = (start, end) => {
 
 const getTodayHoursLabel = (restaurant = {}) => {
   try {
-    let horaires = restaurant.horaires;
-    if (!horaires) return null;
-    if (typeof horaires === 'string') {
-      try { horaires = JSON.parse(horaires); } catch { return null; }
-    }
-    const heuresJour = getHeuresJourForToday(horaires);
+    if (!restaurant.horaires) return null;
+    const heuresJour = getHeuresJourForToday(restaurant.horaires);
     if (!heuresJour) return null;
 
     if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
@@ -190,7 +193,10 @@ const getTodayHoursLabel = (restaurant = {}) => {
       return ranges.length > 0 ? ranges.join(' / ') : null;
     }
 
-    return formatTimeRangeLabel(heuresJour?.ouverture, heuresJour?.fermeture);
+    return formatTimeRangeLabel(
+      heuresJour?.ouverture || heuresJour?.debut,
+      heuresJour?.fermeture || heuresJour?.fin,
+    );
   } catch {
     return null;
   }
@@ -221,201 +227,68 @@ const getNextOpeningTime = (restaurant = {}) => {
     if (!horaires) return null;
 
     if (typeof horaires === 'string') {
-      try { horaires = JSON.parse(horaires); } catch { return null; }
-    }
-
-    const todayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
-    const now = new Date();
-    const todayName = todayFormatter.format(now).toLowerCase();
-    
-    // Heure Paris robuste (formatToParts évite le bug toLocaleString = date+heure)
-    const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
-    const currentHours = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
-    const currentMinutes = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
-    const currentTime = currentHours * 60 + currentMinutes;
-
-    // Vérifier les 7 prochains jours (index basé sur Paris pour cohérence)
-    const daysOfWeek = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    const daysOfWeekLabels = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    const currentDayIndex = daysOfWeek.indexOf(todayName);
-    if (currentDayIndex < 0) return null;
-
-    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-      const checkDayIndex = (currentDayIndex + dayOffset) % 7;
-      const checkDayName = daysOfWeek[checkDayIndex];
-      const checkDayVariants = [checkDayName, checkDayName.charAt(0).toUpperCase() + checkDayName.slice(1), checkDayName.toUpperCase()];
-      let heuresJour = null;
-      for (const key of checkDayVariants) {
-        if (horaires?.[key]) {
-          heuresJour = horaires[key];
-          break;
-        }
+      try {
+        horaires = JSON.parse(horaires);
+      } catch {
+        return null;
       }
-      if (!heuresJour && horaires[checkDayIndex] !== undefined) heuresJour = horaires[checkDayIndex];
+    }
+    horaires = coerceHorairesObject(horaires);
+    if (!horaires || typeof horaires !== 'object') return null;
 
+    const now = new Date();
+    const { hour: ch, minute: cm } = getParisNow(now);
+    const currentTime = ch * 60 + cm;
+
+    const daysOfWeekLabels = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+    for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
+      const refDate = new Date(now.getTime() + dayOffset * 86400000);
+      const heuresJour = getHeuresJourForDate(horaires, refDate);
       if (!heuresJour || heuresJour.is_closed === true) continue;
 
-      // Vérifier les plages horaires
-      const parseTime = (timeStr) => {
-        if (!timeStr) return null;
-        const [h, m] = timeStr.split(':').map(Number);
-        return h * 60 + m;
-      };
-
+      const { dayIndex } = getParisNow(refDate);
       let nextOpeningTime = null;
 
       if (Array.isArray(heuresJour.plages) && heuresJour.plages.length > 0) {
-        // Nouveau format avec plages multiples (ouverture/fermeture ou debut/fin)
         for (const plage of heuresJour.plages) {
           const openStr = plage.ouverture || plage.debut;
           if (!openStr) continue;
-          const openTime = parseTime(openStr);
+          const openTime = parseTimeToMinutes(openStr);
           if (openTime === null) continue;
-
-          // Si c'est aujourd'hui et que l'heure d'ouverture est dans le futur
           if (dayOffset === 0 && currentTime < openTime) {
             nextOpeningTime = openStr;
             break;
           }
-          // Si c'est un jour futur, retourner la première heure d'ouverture
           if (dayOffset > 0) {
             nextOpeningTime = openStr;
             break;
           }
         }
       } else if ((heuresJour.ouverture || heuresJour.debut) && (heuresJour.fermeture || heuresJour.fin)) {
-        // Ancien format avec une seule plage
         const openStr = heuresJour.ouverture || heuresJour.debut;
-        const openTime = parseTime(openStr);
+        const openTime = parseTimeToMinutes(openStr);
         if (openTime !== null) {
           if (dayOffset === 0 && currentTime < openTime) nextOpeningTime = openStr;
           if (dayOffset > 0) nextOpeningTime = openStr;
         }
       } else if (heuresJour.ouvert === true || heuresJour.ouvert === 'true' || heuresJour.ouvert === 1) {
-        // Si ouvert toute la journée et c'est un jour futur
-        if (dayOffset > 0) {
-          nextOpeningTime = '00:00';
-        }
+        if (dayOffset > 0) nextOpeningTime = '00:00';
       }
 
       if (nextOpeningTime) {
-        // Si c'est un jour futur (pas aujourd'hui), inclure le nom du jour
         if (dayOffset > 0) {
-          const dayLabel = daysOfWeekLabels[checkDayIndex];
-          return { time: nextOpeningTime, day: dayLabel };
-        } else {
-          return { time: nextOpeningTime, day: null };
+          return { time: nextOpeningTime, day: daysOfWeekLabels[dayIndex] };
         }
+        return { time: nextOpeningTime, day: null };
       }
     }
 
-    return null; // Aucune ouverture trouvée
+    return null;
   } catch (e) {
     console.error('[getNextOpeningTime] Erreur:', e);
     return null;
   }
-};
-
-// Parse "HH:MM" ou "HHhMM" en minutes depuis minuit. 00:00 en fermeture = 24h (1440).
-const parseTimeToMinutes = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string') return null;
-  const trimmed = timeStr.trim();
-  const match = trimmed.match(/^(\d{1,2})[h:](\d{2})$/);
-  const h = match ? parseInt(match[1], 10) : parseInt(trimmed.split(':')[0], 10);
-  const m = match ? parseInt(match[2], 10) : parseInt(trimmed.split(':')[1] || '0', 10);
-  if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 24 || m < 0 || m > 59) return null;
-  let tot = h * 60 + m;
-  if (tot === 0 && h === 0 && m === 0) tot = 1440;
-  if (trimmed === '24:00' || trimmed === '24h00') tot = 1440;
-  return tot;
-};
-
-// Tolérant: certaines BDD ont `horaires` en JSON string (voire double-encodé).
-const coerceHorairesObject = (horairesRaw) => {
-  let h = horairesRaw;
-  for (let i = 0; i < 3; i += 1) {
-    if (typeof h !== 'string') break;
-    const s = h.trim();
-    if (!s) break;
-    // Tenter parse JSON; si ça échoue, on stop.
-    try {
-      h = JSON.parse(s);
-    } catch {
-      break;
-    }
-  }
-  // Parfois stocké sous forme { horaires: {...} }
-  if (h && typeof h === 'object' && !Array.isArray(h) && h.horaires && typeof h.horaires === 'object') {
-    return h.horaires;
-  }
-  return h;
-};
-
-// Heure et jour en Europe/Paris (référence unique pour les horaires des restos en France).
-const getParisNow = () => {
-  const now = new Date();
-  const dayNamesFr = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-  try {
-    const formatter = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'long' });
-    const parts = formatter.formatToParts(now);
-    const hour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
-    const minute = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
-    const weekday = (parts.find((p) => p.type === 'weekday')?.value || '').toLowerCase();
-    const dayIndex = dayNamesFr.indexOf(weekday);
-    return { hour, minute, dayIndex: dayIndex >= 0 ? dayIndex : now.getDay(), todayName: weekday || dayNamesFr[now.getDay()], dayNamesFr };
-  } catch (_) {
-    const dayIndex = now.getDay();
-    return { hour: now.getHours(), minute: now.getMinutes(), dayIndex, todayName: dayNamesFr[dayIndex] || 'lundi', dayNamesFr };
-  }
-};
-
-// Récupère les horaires du jour actuel (jour et heure en Europe/Paris pour cohérence).
-const getHeuresJourForToday = (horaires) => {
-  if (!horaires || typeof horaires !== 'object') return null;
-  const { dayIndex, todayName, dayNamesFr } = getParisNow();
-  const dayNamesEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const todayEn = dayNamesEn[dayIndex] || 'monday';
-  // Support: horaires stockés en ARRAY où index 0 = LUNDI
-  if (Array.isArray(horaires) && horaires.length >= 7) {
-    const dayNamesMonday0 = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-    const idxMonday0 = dayNamesMonday0.indexOf(todayName);
-    if (idxMonday0 >= 0 && horaires[idxMonday0] != null) return horaires[idxMonday0];
-  }
-
-  // Variantes possibles des clés (FR/EN + abréviations + index)
-  const candidates = new Set();
-  const add = (v) => { if (v != null && String(v).trim() !== '') candidates.add(String(v)); };
-
-  add(todayName);
-  add(todayName.charAt(0).toUpperCase() + todayName.slice(1));
-  add(todayName.toUpperCase());
-  if (todayEn) {
-    add(todayEn);
-    add(todayEn.charAt(0).toUpperCase() + todayEn.slice(1));
-    add(todayEn.toUpperCase());
-    add(todayEn.slice(0, 3)); // mon, tue...
-    add(todayEn.slice(0, 3).toUpperCase()); // MON...
-  }
-  // Abréviations FR (lun, mar, mer...)
-  add(todayName.slice(0, 3));
-  add(todayName.slice(0, 3).toUpperCase());
-
-  // Index jour (0..6) parfois stocké en clé string
-  add(dayIndex);
-  add(String(dayIndex));
-
-  // 1) Accès direct par candidates
-  for (const key of candidates) {
-    if (horaires[key] != null) return horaires[key];
-  }
-  // 2) Accès direct par index numérique si l'objet est un tableau / pseudo-tableau
-  if (dayIndex >= 0 && horaires[dayIndex] != null) return horaires[dayIndex];
-  // 3) Fallback : comparer les clés en lowercase trim
-  const candidatesLower = new Set(Array.from(candidates).map((k) => String(k).trim().toLowerCase()));
-  for (const k of Object.keys(horaires)) {
-    if (candidatesLower.has(String(k).trim().toLowerCase())) return horaires[k];
-  }
-  return null;
 };
 
 // Runtime edge désactivé pour permettre l'export statique (mobile)
@@ -1199,8 +1072,8 @@ export default function Home() {
     return uniqueRestaurants.sort((a, b) => {
       const statusA = resolveHomeOpenFromMap(a, null);
       const statusB = resolveHomeOpenFromMap(b, null);
-      const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
-      const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
+      const isOpenA = statusA.isOpen === true;
+      const isOpenB = statusB.isOpen === true;
 
       // Calculer le boostOrder pour chaque restaurant
       const boostA = boostOrder(a);
@@ -1672,8 +1545,8 @@ export default function Home() {
 
                 const normalizedName = normalizeName(restaurant.nom);
                 const isReadyRestaurant = READY_RESTAURANTS.has(normalizedName);
-                // Badge Ouvert/Fermé : aligné sur is_open_now (manuel + règle om || !fm), pas sur les seuls horaires.
-                const isClosed = !restaurantStatus.isOpen || restaurantStatus.isManuallyClosed;
+                // Badge Ouvert/Fermé : aligné sur is_open_now (horaires Europe/Paris + ouvert_manuellement).
+                const isClosed = !restaurantStatus.isOpen;
                 // Cartes toujours accessibles (plus de grisage) : le client voit Ouvert/Fermé mais peut toujours ouvrir la page
                 
                 // Vérifier si le restaurant est en vacances ou non opérationnel
@@ -1688,19 +1561,12 @@ export default function Home() {
                 
                 // Calculer le label des horaires
                 let displayHoursLabel;
-                if (restaurantStatus.isManuallyClosed) {
-                  // Si restaurant en vacances ou non opérationnel, afficher le message approprié
-                  if (isEnVacances) {
-                    displayHoursLabel = 'En congés';
-                  } else if (isNonOperationnel) {
-                    displayHoursLabel = 'Bientôt disponible';
-                  } else {
-                    // Si fermé manuellement, ne pas afficher "Ouvre à : [heure]" car nécessite ouverture manuelle
-                    displayHoursLabel = 'Fermé';
-                  }
-                } else {
-                  // Si le restaurant n'est pas ouvert maintenant mais qu'il ouvrira plus tard aujourd'hui
-                  if (!restaurantStatus.isOpen && !restaurantStatus.isManuallyClosed) {
+                if (isEnVacances) {
+                  displayHoursLabel = 'En congés';
+                } else if (isNonOperationnel) {
+                  displayHoursLabel = 'Bientôt disponible';
+                } else if (!restaurantStatus.isOpen) {
+                  // Fermé maintenant (hors plage) : prochaine ouverture ou libellé du jour
                     const nextOpening = getNextOpeningTime(restaurant);
                     if (nextOpening) {
                       if (nextOpening.day) {
@@ -1724,11 +1590,9 @@ export default function Home() {
                         displayHoursLabel = 'Horaires non communiquées';
                       }
                     }
-                  } else {
-                    // Si ouvert (manuel), horaires du jour ou libellé clair
-                    const todayLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant);
-                    displayHoursLabel = todayLabel || (restaurantStatus.isOpen ? 'Selon le partenaire' : 'Horaires non communiquées');
-                  }
+                } else {
+                  const todayLabel = restaurantStatus.hoursLabel || getTodayHoursLabel(restaurant);
+                  displayHoursLabel = todayLabel || (restaurantStatus.isOpen ? 'Horaires du jour' : 'Horaires non communiquées');
                 }
                 
                 return (

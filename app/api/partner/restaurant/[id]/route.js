@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
-import { createClient } from '@supabase/supabase-js';
+
+function withNoStoreHeaders(res) {
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.headers.set('Pragma', 'no-cache');
+  res.headers.set('Expires', '0');
+  res.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+  return res;
+}
 
 const clampInt = (value, { min, max } = {}) => {
   const n = typeof value === 'number' ? value : parseInt(value, 10);
@@ -71,12 +78,14 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     const result = await getAuthedRestaurantOwner(request, id);
-    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+    if (result.error) {
+      return withNoStoreHeaders(NextResponse.json({ error: result.error }, { status: result.status }));
+    }
 
-    return NextResponse.json({ success: true, restaurant: result.restaurant });
+    return withNoStoreHeaders(NextResponse.json({ success: true, restaurant: result.restaurant }));
   } catch (error) {
     console.error('Erreur API lecture restaurant:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return withNoStoreHeaders(NextResponse.json({ error: 'Erreur serveur' }, { status: 500 }));
   }
 }
 
@@ -87,7 +96,9 @@ export async function PUT(request, { params }) {
     const body = await request.json();
 
     const auth = await getAuthedRestaurantOwner(request, id);
-    if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if (auth.error) {
+      return withNoStoreHeaders(NextResponse.json({ error: auth.error }, { status: auth.status }));
+    }
     const { user, token, supabaseUrl, anonKey } = auth;
 
     // Préparer les données à mettre à jour
@@ -95,9 +106,13 @@ export async function PUT(request, { params }) {
       updated_at: new Date().toISOString()
     };
 
-    // Ouvrir/Fermer : ne mettre à jour ferme_manuellement QUE si la requête est explicitement un toggle
-    // (pas si on envoie prep_time_minutes ou autre, pour éviter qu'un autre appel écrase par erreur)
-    const isToggleRequest = body.ferme_manuellement !== undefined && body.prep_time_minutes === undefined;
+    // Ouvrir/Fermer : ne mettre à jour ferme_manuellement QUE si la requête est explicitement un toggle.
+    // prep_time_minutes à null / chaîne vide ne doit pas annuler le toggle (certains clients envoient null).
+    const wantsPrep =
+      body.prep_time_minutes !== undefined &&
+      body.prep_time_minutes !== null &&
+      String(body.prep_time_minutes).trim() !== '';
+    const isToggleRequest = body.ferme_manuellement !== undefined && !wantsPrep;
     if (isToggleRequest) {
       const isManualClose = (
         body.ferme_manuellement === true || body.ferme_manuellement === 'true' ||
@@ -113,12 +128,14 @@ export async function PUT(request, { params }) {
     }
 
     // Temps de préparation déclaré (minutes)
-    if (body.prep_time_minutes !== undefined) {
+    if (wantsPrep) {
       const prep = clampInt(body.prep_time_minutes, { min: 5, max: 120 });
       if (prep === null) {
-        return NextResponse.json(
-          { error: 'prep_time_minutes invalide (doit être un entier entre 5 et 120)' },
-          { status: 400 }
+        return withNoStoreHeaders(
+          NextResponse.json(
+            { error: 'prep_time_minutes invalide (doit être un entier entre 5 et 120)' },
+            { status: 400 }
+          )
         );
       }
       updateData.prep_time_minutes = prep;
@@ -141,13 +158,15 @@ export async function PUT(request, { params }) {
     const updateJson = await updateRes.json().catch(() => null);
     if (!updateRes.ok) {
       console.error('❌ Erreur mise à jour restaurant (REST):', updateRes.status, updateJson);
-      return NextResponse.json(
-        {
-          error: 'Erreur lors de la mise à jour',
-          details: updateJson?.message || updateJson?.error || `HTTP ${updateRes.status}`,
-          supabase: updateJson || null,
-        },
-        { status: 500 }
+      return withNoStoreHeaders(
+        NextResponse.json(
+          {
+            error: 'Erreur lors de la mise à jour',
+            details: updateJson?.message || updateJson?.error || `HTTP ${updateRes.status}`,
+            supabase: updateJson || null,
+          },
+          { status: 500 }
+        )
       );
     }
     const updatedRestaurant = Array.isArray(updateJson) ? updateJson[0] : updateJson;
@@ -159,15 +178,17 @@ export async function PUT(request, { params }) {
       ferme_manuellement: updatedRestaurant.ferme_manuellement
     });
 
-    return NextResponse.json({
-      success: true,
-      restaurant: updatedRestaurant,
-      message: 'Restaurant mis à jour avec succès'
-    });
+    return withNoStoreHeaders(
+      NextResponse.json({
+        success: true,
+        restaurant: updatedRestaurant,
+        message: 'Restaurant mis à jour avec succès',
+      })
+    );
 
   } catch (error) {
     console.error('Erreur API mise à jour restaurant:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return withNoStoreHeaders(NextResponse.json({ error: 'Erreur serveur' }, { status: 500 }));
   }
 }
 

@@ -54,9 +54,9 @@ export default function RestaurantDetail({ params }) {
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
 
-  const { isOpen: isRestaurantOpen, isManuallyClosed } = useMemo(() => {
+  const { isOpen: isRestaurantOpen } = useMemo(() => {
     if (!restaurant || typeof restaurant !== 'object') {
-      return { isOpen: true, isManuallyClosed: false };
+      return { isOpen: true };
     }
     return getResolvedOpenFlags(restaurant);
   }, [restaurant]);
@@ -480,7 +480,6 @@ export default function RestaurantDetail({ params }) {
           nom: restaurantData.nom,
           id: restaurantData.id,
           isOpen: flags.isOpen,
-          isManuallyClosed: flags.isManuallyClosed,
         });
       }
 
@@ -1033,7 +1032,6 @@ export default function RestaurantDetail({ params }) {
               onToggleFavorite={handleToggleFavorite}
               hours={restaurantHours}
               isOpen={isRestaurantOpen}
-              isManuallyClosed={isManuallyClosed}
             />
 
             <div className="space-y-8 sm:space-y-12 pt-12 sm:pt-14 md:pt-16">

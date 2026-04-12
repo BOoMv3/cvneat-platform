@@ -1,7 +1,8 @@
 // Service Worker pour les notifications push et le cache
 const CACHE_NAME = 'cvneat-v1';
 const STATIC_CACHE = 'cvneat-static-v1';
-const DYNAMIC_CACHE = 'cvneat-dynamic-v1';
+// v3 : exclure aussi /api/partner/* (statut ouvert/fermé, prépa — ne jamais servir du SW cache).
+const DYNAMIC_CACHE = 'cvneat-dynamic-v3';
 
 // Fichiers à mettre en cache statique
 const STATIC_FILES = [
@@ -96,9 +97,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stratégie Network First pour les API (sauf /api/restaurants : jamais en cache)
+  // Stratégie Network First pour les API — ne JAMAIS mettre en cache restaurants ni espace partenaire
+  // (sinon réponses JSON obsolètes ~2 min / reconnexion → « ouvert » puis « fermé manuellement »).
   if (url.pathname.startsWith('/api/')) {
-    const pathNoCache = url.pathname === '/api/restaurants';
+    const pathNoCache =
+      url.pathname === '/api/restaurants' ||
+      url.pathname.startsWith('/api/restaurants/') ||
+      url.pathname.startsWith('/api/partner/');
     if (pathNoCache) {
       event.respondWith(fetch(request));
       return;

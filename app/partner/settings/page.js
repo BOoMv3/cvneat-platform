@@ -210,9 +210,13 @@ export default function PartnerSettings() {
 
       const res = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
         method: 'PUT',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
         },
         body: JSON.stringify({ prep_time_minutes: minutes }),
       });

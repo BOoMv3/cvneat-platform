@@ -2,60 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../../lib/supabase';
 import sseBroadcaster from '../../../../../lib/sse-broadcast';
-
-function toMinutes(hhmm) {
-  if (!hhmm || typeof hhmm !== 'string') return null;
-  const [h, m = '0'] = hhmm.split(':');
-  const hh = parseInt(h, 10);
-  const mm = parseInt(m, 10);
-  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
-  let tot = hh * 60 + mm;
-  // Alignement avec la logique du front: 00:00 peut représenter 24:00 (fin de service)
-  if (tot === 0 && hh === 0 && mm === 0) tot = 1440;
-  return tot;
-}
-
-function isOpenNowFromHoraires(horairesRaw, now = new Date()) {
-  if (!horairesRaw) return false;
-  let horaires = horairesRaw;
-  if (typeof horaires === 'string') {
-    try {
-      horaires = JSON.parse(horaires);
-    } catch {
-      return false;
-    }
-  }
-
-  const tz = 'Europe/Paris';
-  const timeParts = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
-  const ch = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
-  const cm = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
-  const current = ch * 60 + cm;
-
-  const dayName = now.toLocaleString('fr-FR', { timeZone: tz, weekday: 'long' }).toLowerCase();
-  const variants = [dayName, dayName.charAt(0).toUpperCase() + dayName.slice(1), dayName.toUpperCase()];
-  const day = variants.map(k => horaires?.[k]).find(Boolean);
-  if (!day) return false;
-
-  if (Array.isArray(day.plages) && day.plages.length > 0) {
-    return day.plages.some((plage) => {
-      const start = toMinutes(plage?.ouverture);
-      const end = toMinutes(plage?.fermeture);
-      if (start === null || end === null) return false;
-      const isMidnightClose = plage?.fermeture === '00:00' || plage?.fermeture === '0:00';
-      if (isMidnightClose) return current >= start;
-      return current >= start && current <= end;
-    });
-  }
-
-  if (day.ouvert === false) return false;
-  const start = toMinutes(day.ouverture);
-  const end = toMinutes(day.fermeture);
-  if (start === null || end === null) return false;
-  const isMidnightClose = day?.fermeture === '00:00' || day?.fermeture === '0:00';
-  if (isMidnightClose) return current >= start;
-  return current >= start && current <= end;
-}
+import { normalizeRestaurantOpenFields } from '../../../../../lib/restaurant-open-compute';
 
 async function getAdminUser(request) {
   const authHeader = request.headers.get('authorization');
@@ -90,11 +37,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Erreur chargement restaurants' }, { status: 500 });
     }
 
-    const openRestaurants = (restaurants || []).filter((r) => {
-      if (!r?.id || !r?.user_id) return false;
-      if (r.ferme_manuellement === true) return false;
-      return isOpenNowFromHoraires(r.horaires, now);
-    });
+    const openRestaurants = (restaurants || []).filter(
+      (r) => r?.id && r?.user_id && normalizeRestaurantOpenFields(r, now).is_open_now === true
+    );
 
     const message =
       "Merci d'indiquer votre temps de préparation (il sera affiché sur votre carte sur la page d'accueil). Vous pouvez le modifier à tout moment pendant le service sur votre dashboard.";

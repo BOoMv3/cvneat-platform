@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaHeart } from 'react-icons/fa';
 import StarRating from './StarRating';
 
-export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false, hours = [], isOpen = true, isManuallyClosed = false }) {
+export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false, hours = [], isOpen = true }) {
   const [currentHours, setCurrentHours] = useState(null);
   
   useEffect(() => {
@@ -227,9 +227,7 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
           <FaClock className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
           <div className="flex-1 min-w-0">
             <div className="text-gray-900 dark:text-gray-100 font-bold mb-2 sm:mb-3 text-base sm:text-lg">
-              {isManuallyClosed ? (
-                <span className="text-red-600 dark:text-red-400">🔴 Fermé manuellement</span>
-              ) : !isOpen ? (
+              {!isOpen ? (
                 <span className="text-orange-600 dark:text-orange-400">🟡 Fermé maintenant</span>
               ) : (
                 <span className="text-green-600 dark:text-green-400">🟢 Ouvert maintenant</span>
