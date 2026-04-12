@@ -318,8 +318,12 @@ export default function RestaurantDetail({ params }) {
       if (!res.ok) throw new Error(json.error || json.details || 'Mise à jour refusée');
       if (json.restaurant && typeof json.restaurant === 'object') {
         setRestaurant((prev) => ({ ...prev, ...json.restaurant }));
-      } else {
-        await fetchRestaurantDetails();
+      }
+      await fetchRestaurantDetails();
+      try {
+        window.dispatchEvent(new CustomEvent('restaurant-status-changed'));
+      } catch {
+        // ignore
       }
     } catch (e) {
       alert(e.message || 'Erreur');

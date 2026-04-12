@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import {
-  coerceManualBool,
-  normalizeRestaurantOpenFields,
-  readManualFlags,
-} from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -60,9 +56,6 @@ export async function GET(request, { params }) {
     };
     const openFields = normalizeRestaurantOpenFields({ ...data, id }, new Date());
     Object.assign(restaurantWithDefaults, openFields);
-    // `normalizeRestaurantOpenFields` masque `ferme_manuellement` à false pour le payload client ;
-    // on recolle la valeur réelle pour les dashboards / partenaire qui relisent cette même route.
-    restaurantWithDefaults.ferme_manuellement = coerceManualBool(readManualFlags(data).ferme_manuellement);
 
     const res = NextResponse.json(restaurantWithDefaults);
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');

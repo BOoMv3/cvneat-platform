@@ -236,8 +236,11 @@ export default function PartnerDashboard() {
       console.log('🔍 DEBUG PARTNER - Rôle attendu: restaurant');
       console.log('🔍 DEBUG PARTNER - Comparaison:', userData?.role === 'restaurant');
       
-      // Autoriser les restaurants, partenaires et admins
-      if (userError || !userData || !['restaurant', 'partner', 'admin'].includes(userData.role)) {
+      // Autoriser les restaurants, partenaires et admins (rôle en base parfois en casse mixte)
+      const roleLc = String(userData?.role ?? '')
+        .trim()
+        .toLowerCase();
+      if (userError || !userData || !['restaurant', 'partner', 'admin'].includes(roleLc)) {
         console.log('❌ ACCÈS REFUSÉ - Redirection vers login');
         console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant, partner ou admin');
         router.push('/login');
@@ -2096,6 +2099,11 @@ export default function PartnerDashboard() {
         return;
       }
       await applyCanonicalRestaurant(restaurant.id);
+      try {
+        window.dispatchEvent(new CustomEvent('restaurant-status-changed'));
+      } catch {
+        // ignore
+      }
     } finally {
       setSavingManualClose(false);
     }
@@ -2896,6 +2904,53 @@ export default function PartnerDashboard() {
         </div>
       )}
 
+      {/* Fermeture manuelle : bandeau sticky (ne pas cacher dans la grille d’icônes) */}
+      {restaurant?.id && (
+        <div className="sticky top-0 z-[70] border-b-2 border-amber-600 bg-amber-100 dark:bg-amber-950 shadow-md">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                Ouverture aux commandes
+              </p>
+              <p className="text-sm text-amber-950 dark:text-amber-50 truncate">
+                {restaurant.nom}
+                {restaurant.ferme_manuellement === true ? (
+                  <span className="ml-2 text-red-700 dark:text-red-300 font-semibold">— Fermé manuellement</span>
+                ) : (
+                  <span className="ml-2 text-green-800 dark:text-green-300 font-semibold">— Ouvert aux commandes (hors fermeture ci-dessous)</span>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {restaurant.ferme_manuellement === true ? (
+                <button
+                  type="button"
+                  disabled={savingManualClose}
+                  onClick={() => void setPartnerManualClosed(false)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50 shadow"
+                >
+                  <FaPlayCircle className="h-5 w-5" />
+                  Réouvrir les commandes
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={savingManualClose}
+                  onClick={() => {
+                    if (!window.confirm('Fermer aux commandes sur CVN’EAT tout de suite ?')) return;
+                    void setPartnerManualClosed(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50 shadow"
+                >
+                  <FaStopCircle className="h-5 w-5" />
+                  Fermer les commandes
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-6 lg:px-8">
@@ -3004,45 +3059,6 @@ export default function PartnerDashboard() {
                   <span className="hidden sm:inline">Voir fiche</span>
                   <span className="sm:hidden">Voir</span>
                 </button>
-              )}
-              {restaurant?.id && (
-                <div className="col-span-3 fold:col-span-3 xs:col-span-3 sm:col-span-4 lg:col-span-7 flex flex-col xs:flex-row flex-wrap items-stretch xs:items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                  <span className="text-[10px] xs:text-xs text-gray-600 dark:text-gray-300 font-medium shrink-0">
-                    Commandes en ligne
-                  </span>
-                  {restaurant.ferme_manuellement === true ? (
-                    <>
-                      <span className="text-[10px] xs:text-xs font-semibold text-red-600 dark:text-red-400">Fermé manuellement</span>
-                      <button
-                        type="button"
-                        disabled={savingManualClose}
-                        onClick={() => void setPartnerManualClosed(false)}
-                        className="inline-flex items-center justify-center gap-1.5 px-2 xs:px-3 py-1.5 rounded-lg bg-green-600 text-white text-[10px] xs:text-xs font-semibold hover:bg-green-700 disabled:opacity-50"
-                      >
-                        <FaPlayCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 shrink-0" />
-                        Réouvrir
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-[10px] xs:text-xs text-emerald-700 dark:text-emerald-300 hidden sm:inline">
-                        Selon horaires (pas de fermeture forcée)
-                      </span>
-                      <button
-                        type="button"
-                        disabled={savingManualClose}
-                        onClick={() => {
-                          if (!window.confirm('Fermer le restaurant aux commandes tout de suite ? Les clients ne pourront plus commander jusqu’à réouverture.')) return;
-                          void setPartnerManualClosed(true);
-                        }}
-                        className="inline-flex items-center justify-center gap-1.5 px-2 xs:px-3 py-1.5 rounded-lg bg-red-600 text-white text-[10px] xs:text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
-                      >
-                        <FaStopCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 shrink-0" />
-                        Fermer les commandes
-                      </button>
-                    </>
-                  )}
-                </div>
               )}
               <div className="flex justify-center">
                 <RealTimeNotifications 

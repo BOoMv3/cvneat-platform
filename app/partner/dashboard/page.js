@@ -1,8 +1,18 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { FaChartLine, FaBoxOpen, FaFileAlt, FaBell, FaUtensils, FaPlus, FaWineGlass } from 'react-icons/fa';
+import {
+  FaChartLine,
+  FaBoxOpen,
+  FaFileAlt,
+  FaBell,
+  FaUtensils,
+  FaPlus,
+  FaWineGlass,
+  FaStopCircle,
+  FaPlayCircle,
+} from 'react-icons/fa';
 import Link from 'next/link';
 import AuthGuard from '../../../components/AuthGuard';
 import Navbar from '../../../components/Navbar';
@@ -13,7 +23,73 @@ export default function PartnerDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [restaurantRow, setRestaurantRow] = useState(null);
+  const [savingManualClose, setSavingManualClose] = useState(false);
   const router = useRouter();
+
+  const loadRestaurantForToggle = useCallback(async (token) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const uid = session?.user?.id;
+    if (!uid) return;
+    const { data: row } = await supabase
+      .from('restaurants')
+      .select('id,nom,ferme_manuellement,ouvert_manuellement')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setRestaurantRow(row || null);
+  }, []);
+
+  const setPartnerManualClosed = useCallback(
+    async (closed) => {
+      if (!restaurantRow?.id) return;
+      setSavingManualClose(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          router.push('/login');
+          return;
+        }
+        const res = await fetch(`/api/partner/restaurant/${restaurantRow.id}`, {
+          method: 'PUT',
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ ferme_manuellement: !!closed }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail =
+            payload.details ||
+            (payload.supabase && (payload.supabase.message || payload.supabase.hint));
+          alert([payload.error || 'Mise à jour impossible', detail].filter(Boolean).join('\n\n'));
+          return;
+        }
+        const updated = payload?.restaurant;
+        if (updated && typeof updated === 'object') {
+          setRestaurantRow((prev) => ({
+            ...(prev || {}),
+            ferme_manuellement: updated.ferme_manuellement,
+            ouvert_manuellement: updated.ouvert_manuellement,
+          }));
+        } else {
+          await loadRestaurantForToggle();
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('restaurant-status-changed'));
+        } catch {
+          // ignore
+        }
+      } finally {
+        setSavingManualClose(false);
+      }
+    },
+    [restaurantRow?.id, router, loadRestaurantForToggle],
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,6 +102,8 @@ export default function PartnerDashboard() {
         }
 
         const token = session.access_token;
+
+        await loadRestaurantForToggle(token);
 
         // Fetch stats
         const statsRes = await fetch('/api/partner/dashboard', {
@@ -51,7 +129,7 @@ export default function PartnerDashboard() {
     };
 
     fetchData();
-  }, [router]);
+  }, [router, loadRestaurantForToggle]);
 
   if (loading) {
     return (
@@ -77,7 +155,7 @@ export default function PartnerDashboard() {
 
 
   return (
-    <AuthGuard allowedRoles={['partner']}>
+    <AuthGuard allowedRoles={['partner', 'restaurant']}>
       <div className="min-h-screen bg-gray-100">
         <Navbar />
         
@@ -86,8 +164,57 @@ export default function PartnerDashboard() {
             <h1 className="text-3xl font-bold text-gray-900">
               Tableau de bord Partenaire
             </h1>
+            <p className="mt-2 text-sm text-gray-600">
+              <Link href="/partner" className="text-orange-600 font-semibold underline">
+                Ouvrir le dashboard commandes &amp; fermeture manuelle →
+              </Link>
+            </p>
           </div>
         </header>
+
+        {restaurantRow?.id && (
+          <div className="sticky top-0 z-[60] border-b-2 border-amber-600 bg-amber-100 shadow-md">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase text-amber-900">Commandes CVN&apos;EAT</p>
+                <p className="text-sm font-medium text-amber-950">
+                  {restaurantRow.nom}
+                  {restaurantRow.ferme_manuellement === true ? (
+                    <span className="text-red-700 ml-2">— Fermé manuellement</span>
+                  ) : (
+                    <span className="text-green-800 ml-2">— Ouvert aux commandes</span>
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {restaurantRow.ferme_manuellement === true ? (
+                  <button
+                    type="button"
+                    disabled={savingManualClose}
+                    onClick={() => void setPartnerManualClosed(false)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+                  >
+                    <FaPlayCircle className="h-4 w-4" />
+                    Réouvrir
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={savingManualClose}
+                    onClick={() => {
+                      if (!window.confirm('Fermer aux commandes sur CVN’EAT ?')) return;
+                      void setPartnerManualClosed(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50"
+                  >
+                    <FaStopCircle className="h-4 w-4" />
+                    Fermer
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           {/* Statistiques */}
