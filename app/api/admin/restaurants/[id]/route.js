@@ -217,15 +217,48 @@ export async function PUT(request, { params }) {
           Prefer: 'return=representation',
         },
       });
-      const rpcRows = Array.isArray(rpcRes.json) ? rpcRes.json : rpcRes.json ? [rpcRes.json] : [];
+      const j = rpcRes.json;
+      const rpcRows = Array.isArray(j) ? j : j && typeof j === 'object' && !j.message && !j.code ? [j] : [];
       const rpcRow = rpcRows[0];
       if (rpcRes.ok && rpcRow) {
         return NextResponse.json({ success: true, restaurant: rpcRow });
       }
+      if (rpcRes.ok && !rpcRow) {
+        return NextResponse.json(
+          {
+            error: 'RPC OK mais aucune ligne retournée (restaurant introuvable ou id invalide).',
+            p_restaurant_id: restaurantId,
+          },
+          { status: 404 }
+        );
+      }
+      const fnMissing =
+        rpcRes.status === 404 ||
+        j?.code === 'PGRST202' ||
+        (typeof j?.message === 'string' &&
+          (j.message.includes('Could not find the function') || j.message.includes('schema cache')));
+      if (!fnMissing) {
+        const msg =
+          (typeof j?.message === 'string' && j.message) ||
+          (typeof j?.hint === 'string' && j.hint) ||
+          `Erreur RPC (HTTP ${rpcRes.status})`;
+        return NextResponse.json(
+          {
+            error: msg,
+            code: j?.code,
+            hint: j?.hint,
+            details: j,
+            httpStatus: rpcRes.status,
+            aide:
+              'Si le message parle des « droits administrateur » : ton compte doit exister dans public.users avec le même id que Supabase Auth et role « admin » (minuscules ou majuscules). Sinon la RPC refuse.',
+          },
+          { status: rpcRes.status >= 400 && rpcRes.status < 600 ? rpcRes.status : 400 }
+        );
+      }
       console.warn(
-        'PUT admin/restaurants: RPC admin_set_restaurant_manual_status indisponible ou erreur, repli PATCH.',
+        'PUT admin/restaurants: RPC admin_set_restaurant_manual_status absente (migration ?), repli PATCH.',
         rpcRes.status,
-        rpcRes.json
+        j
       );
     }
 

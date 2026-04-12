@@ -140,6 +140,7 @@ export default function AdminPage() {
         const parts = [
           json?.error,
           json?.hint,
+          json?.aide,
           json?.code,
           json?.name,
           detStr,
