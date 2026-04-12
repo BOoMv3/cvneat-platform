@@ -81,7 +81,7 @@ export async function GET() {
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
     const res = NextResponse.json(withFermeManuel);
-    res.headers.set('X-Cvneat-Restaurants-Route', 'manual-only-v3');
+    res.headers.set('X-Cvneat-Restaurants-Route', 'manual-only-v4-horaires-strict');
     // Bloquer tout cache (navigateur, CDN Vercel, proxies) pour éviter données périmées
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.headers.set('Pragma', 'no-cache');
