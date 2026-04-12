@@ -25,6 +25,7 @@ export default function RestaurantDetail({ params }) {
   const [siret, setSiret] = useState('');
   const [vatNumber, setVatNumber] = useState('');
   const [savingLegal, setSavingLegal] = useState(false);
+  const [savingManualStatus, setSavingManualStatus] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -287,6 +288,46 @@ export default function RestaurantDetail({ params }) {
     }
   };
 
+  const truthyFlag = (v) =>
+    v === true || v === 1 || v === '1' || (typeof v === 'string' && ['true', 'yes', 'oui', 'on'].includes(v.trim().toLowerCase()));
+
+  const setAdminManualVisibility = async (mode) => {
+    if (!restaurant?.id) return;
+    setSavingManualStatus(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+      const body =
+        mode === 'force_closed'
+          ? { ferme_manuellement: true, ouvert_manuellement: false }
+          : mode === 'force_open'
+            ? { ferme_manuellement: false, ouvert_manuellement: true }
+            : { ferme_manuellement: false, ouvert_manuellement: false };
+      const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || json.details || 'Mise à jour refusée');
+      if (json.restaurant && typeof json.restaurant === 'object') {
+        setRestaurant((prev) => ({ ...prev, ...json.restaurant }));
+      } else {
+        await fetchRestaurantDetails();
+      }
+    } catch (e) {
+      alert(e.message || 'Erreur');
+    } finally {
+      setSavingManualStatus(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -436,6 +477,55 @@ export default function RestaurantDetail({ params }) {
                 )}
               </button>
             )}
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50/90 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-indigo-950 mb-1">Visibilité « ouvert / fermé » pour les clients</h2>
+          <p className="text-xs text-indigo-900/85 mb-3">
+            Indépendant du statut <strong>Actif / Inactif</strong> ci-dessus. <strong>Automatique</strong> = horaires + éventuelle fermeture partenaire.
+            <strong> Fermé manuel</strong> = plus de commandes sur la plateforme. <strong>Ouvert forcé</strong> = affiché ouvert malgré les horaires.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(() => {
+              const fm = truthyFlag(restaurant?.ferme_manuellement);
+              const om = truthyFlag(restaurant?.ouvert_manuellement);
+              const auto = !fm && !om;
+              const btn = (active) =>
+                `px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 ${
+                  active
+                    ? 'bg-indigo-700 text-white ring-2 ring-indigo-400 ring-offset-1'
+                    : 'bg-white text-indigo-900 border border-indigo-200 hover:bg-indigo-100'
+                }`;
+              return (
+                <>
+                  <button
+                    type="button"
+                    disabled={savingManualStatus}
+                    onClick={() => void setAdminManualVisibility('auto')}
+                    className={btn(auto)}
+                  >
+                    Automatique
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingManualStatus}
+                    onClick={() => void setAdminManualVisibility('force_closed')}
+                    className={btn(fm && !om)}
+                  >
+                    Fermé manuellement
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingManualStatus}
+                    onClick={() => void setAdminManualVisibility('force_open')}
+                    className={btn(om && !fm)}
+                  >
+                    Ouvert forcé
+                  </button>
+                </>
+              );
+            })()}
           </div>
         </div>
 

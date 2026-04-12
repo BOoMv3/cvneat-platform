@@ -25,11 +25,13 @@ import {
   FaMotorcycle,
   FaEnvelope,
   FaComments,
-  FaTag
+  FaTag,
+  FaStopCircle,
+  FaPlayCircle
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
-import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
+import { mergeOpenFieldsPreservingManualClose, normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
@@ -104,6 +106,7 @@ export default function PartnerDashboard() {
   const [prepTimeUpdatedAt, setPrepTimeUpdatedAt] = useState(null);
   const [showPrepTimeModal, setShowPrepTimeModal] = useState(false);
   const [savingPrepTime, setSavingPrepTime] = useState(false);
+  const [savingManualClose, setSavingManualClose] = useState(false);
   const [prepPromptAudioEnabled, setPrepPromptAudioEnabled] = useState(true);
   const audioUnlockedRef = useRef(false);
   const authTokenRef = useRef(null);
@@ -139,7 +142,7 @@ export default function PartnerDashboard() {
       const canon = await res.json().catch(() => null);
       if (!canon || typeof canon !== 'object') return null;
       const openNorm = normalizeRestaurantOpenFields(canon);
-      const row = { ...canon, ...openNorm };
+      const row = mergeOpenFieldsPreservingManualClose(canon, openNorm);
       setRestaurant((prev) => ({ ...(prev && typeof prev === 'object' ? prev : {}), ...row }));
       const pm = parseInt(String(canon.prep_time_minutes ?? ''), 10);
       if (Number.isFinite(pm) && pm >= 5 && pm <= 120) setPrepTimeMinutes(pm);
@@ -296,7 +299,7 @@ export default function PartnerDashboard() {
 
       // Affichage rapide depuis Supabase, puis alignement sur la même API que les clients (évite écarts liste / partenaire).
       const openNorm = normalizeRestaurantOpenFields(resto);
-      setRestaurant({ ...resto, ...openNorm });
+      setRestaurant(mergeOpenFieldsPreservingManualClose(resto, openNorm));
       setPrepTimeMinutes(Number.isFinite(parseInt(resto.prep_time_minutes, 10)) ? parseInt(resto.prep_time_minutes, 10) : 25);
       setPrepTimeUpdatedAt(resto.prep_time_updated_at || null);
       await applyCanonicalRestaurant(resto.id);
@@ -542,7 +545,7 @@ export default function PartnerDashboard() {
             const base = prev && typeof prev === 'object' ? prev : {};
             const merged = { ...base, ...row };
             const openNorm = normalizeRestaurantOpenFields(merged);
-            return { ...merged, ...openNorm };
+            return mergeOpenFieldsPreservingManualClose(merged, openNorm);
           });
         }
       )
@@ -2062,6 +2065,36 @@ export default function PartnerDashboard() {
     }
   };
 
+  const setPartnerManualClosed = async (closed) => {
+    if (!restaurant?.id) return;
+    setSavingManualClose(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+      const res = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ ferme_manuellement: !!closed }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(payload.error || payload.details || 'Impossible de mettre à jour le statut.');
+        return;
+      }
+      await applyCanonicalRestaurant(restaurant.id);
+    } finally {
+      setSavingManualClose(false);
+    }
+  };
+
   const createDefaultComboForm = () => ({
     nom: '',
     description: '',
@@ -2965,6 +2998,45 @@ export default function PartnerDashboard() {
                   <span className="hidden sm:inline">Voir fiche</span>
                   <span className="sm:hidden">Voir</span>
                 </button>
+              )}
+              {restaurant?.id && (
+                <div className="col-span-3 fold:col-span-3 xs:col-span-3 sm:col-span-4 lg:col-span-7 flex flex-col xs:flex-row flex-wrap items-stretch xs:items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                  <span className="text-[10px] xs:text-xs text-gray-600 dark:text-gray-300 font-medium shrink-0">
+                    Commandes en ligne
+                  </span>
+                  {restaurant.ferme_manuellement === true ? (
+                    <>
+                      <span className="text-[10px] xs:text-xs font-semibold text-red-600 dark:text-red-400">Fermé manuellement</span>
+                      <button
+                        type="button"
+                        disabled={savingManualClose}
+                        onClick={() => void setPartnerManualClosed(false)}
+                        className="inline-flex items-center justify-center gap-1.5 px-2 xs:px-3 py-1.5 rounded-lg bg-green-600 text-white text-[10px] xs:text-xs font-semibold hover:bg-green-700 disabled:opacity-50"
+                      >
+                        <FaPlayCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 shrink-0" />
+                        Réouvrir
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[10px] xs:text-xs text-emerald-700 dark:text-emerald-300 hidden sm:inline">
+                        Selon horaires (pas de fermeture forcée)
+                      </span>
+                      <button
+                        type="button"
+                        disabled={savingManualClose}
+                        onClick={() => {
+                          if (!window.confirm('Fermer le restaurant aux commandes tout de suite ? Les clients ne pourront plus commander jusqu’à réouverture.')) return;
+                          void setPartnerManualClosed(true);
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 px-2 xs:px-3 py-1.5 rounded-lg bg-red-600 text-white text-[10px] xs:text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
+                      >
+                        <FaStopCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 shrink-0" />
+                        Fermer les commandes
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
               <div className="flex justify-center">
                 <RealTimeNotifications 
