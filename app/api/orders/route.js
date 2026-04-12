@@ -5,6 +5,7 @@ import Stripe from 'stripe';
 import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../lib/commission';
 import { isOrdersClosed } from '@/lib/ordersClosed';
 import { getItemLineTotal } from '@/lib/cartUtils';
+import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
@@ -432,7 +433,7 @@ export async function POST(request) {
 
     console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
-    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo, discountAmount = 0, platformFee = 0, promoCodeId = null, promoCode = null } = body;
+    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo, discountAmount = 0, platformFee = 0, promoCodeId = null, promoCode = null, loyaltyRewardId = null } = body;
 
     // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
     console.log('🔍 Validation simplifiée de la commande...');
@@ -597,9 +598,11 @@ export async function POST(request) {
     // Utiliser le montant total et les frais de livraison envoyes par le frontend
     // IMPORTANT: Arrondir les frais de livraison à 2 décimales pour garantir la cohérence
     const subtotalBeforeDiscount = totalAmount || 0; // correspond au sous-total articles (S)
-    const discount = Math.max(0, parseFloat(discountAmount) || 0);
+    let promoDiscount = Math.max(0, parseFloat(discountAmount) || 0);
+    promoDiscount = Math.min(promoDiscount, subtotalBeforeDiscount);
     const platform_fee = Math.max(0, parseFloat(platformFee) || 0);
     const total = subtotalBeforeDiscount; // on stocke dans 'total' le sous-total articles (hors frais/discount)
+    // Frais reçus = après code promo « livraison offerte », avant récompense fidélité (palier livraison gratuite)
     let fraisLivraison = Math.round(parseFloat(deliveryFee ?? restaurant.frais_livraison ?? 0) * 100) / 100;
     // Garde-fou: si frais entre 0 et 2.50€ (hors livraison offerte), forcer 2.50€ pour éviter blocage create-payment-intent
     if (fraisLivraison > 0 && fraisLivraison < 2.50) {
@@ -639,6 +642,80 @@ export async function POST(request) {
         }
       }
     }
+
+    let loyaltyPointsCost = 0;
+    let loyaltyBenefitEur = 0;
+    let loyaltyArticleNote = null;
+
+    let promoFreeDelivery = false;
+    if (promoCodeId) {
+      const { data: promoRow } = await serviceClient
+        .from('promo_codes')
+        .select('discount_type')
+        .eq('id', promoCodeId)
+        .maybeSingle();
+      promoFreeDelivery = promoRow?.discount_type === 'free_delivery';
+    }
+
+    const rewardId =
+      typeof loyaltyRewardId === 'string' && loyaltyRewardId.trim() ? loyaltyRewardId.trim() : null;
+
+    if (rewardId) {
+      if (!userId) {
+        return json(
+          { error: 'Vous devez être connecté pour utiliser une récompense fidélité' },
+          { status: 401 }
+        );
+      }
+      const reward = getLoyaltyRewardById(rewardId);
+      if (!reward) {
+        return json({ error: 'Récompense fidélité inconnue' }, { status: 400 });
+      }
+      const { data: ptRow, error: ptErr } = await serviceClient
+        .from('users')
+        .select('points_fidelite')
+        .eq('id', userId)
+        .single();
+      if (ptErr) {
+        console.error('❌ Lecture points fidélité:', ptErr);
+        return json({ error: 'Impossible de vérifier vos points fidélité' }, { status: 500 });
+      }
+      const pts = parseInt(ptRow?.points_fidelite ?? 0, 10) || 0;
+      if (pts < reward.cost) {
+        return json({ error: 'Points insuffisants pour cette récompense' }, { status: 400 });
+      }
+
+      const adj = computeLoyaltyAdjustments({
+        rewardId,
+        cartSubtotalEur: subtotalBeforeDiscount,
+        promoDiscountEur: promoDiscount,
+        promoFreeDelivery,
+        deliveryFeeEur: fraisLivraison,
+      });
+
+      fraisLivraison = adj.deliveryFeeEurAfter;
+      promoDiscount = Math.min(
+        subtotalBeforeDiscount,
+        Math.round((promoDiscount + adj.extraDiscountOnSubtotal) * 100) / 100
+      );
+      loyaltyPointsCost = adj.pointsCost;
+      loyaltyBenefitEur = adj.benefitStatementEur;
+      loyaltyArticleNote = adj.articleNote;
+
+      const hasArticleNote = !!loyaltyArticleNote;
+      const hasMonetaryBenefit = loyaltyBenefitEur > 0;
+      if (!hasArticleNote && !hasMonetaryBenefit) {
+        return json(
+          {
+            error:
+              'Cette récompense fidélité ne s’applique pas à votre commande (ex. livraison déjà offerte ou panier trop bas). Retirez-la ou choisissez une autre option.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const discount = promoDiscount;
 
     // Calculs financiers: commission/payout sur le montant RÉELLEMENT payé par le client (après réduction)
     // Sinon fuite: on paierait le restaurant sur le montant avant réduction alors qu'on n'encaisse que l'après-réduction.
@@ -681,6 +758,9 @@ export async function POST(request) {
     if (sanitizedDeliveryInfo.instructions && sanitizedDeliveryInfo.instructions.trim()) {
       adresseComplete += ` (Instructions: ${sanitizedDeliveryInfo.instructions.trim()})`;
     }
+    if (loyaltyArticleNote) {
+      adresseComplete += ` — ${loyaltyArticleNote}`;
+    }
     
     const orderData = {
       restaurant_id: restaurantId,
@@ -694,13 +774,19 @@ export async function POST(request) {
       // Stocker les informations du code promo si présent
       promo_code_id: promoCodeId || null,
       promo_code: promoCode || null,
-      discount_amount: discountAmount || 0,
+      discount_amount: discount,
       // Stocker les informations de commission
       commission_rate: effectiveRatePercent, // En pourcentage (ex: 15.00)
       commission_amount: commissionGross,
       restaurant_payout: restaurantPayout,
       // Stocker la commission CVN'EAT sur la livraison
-      delivery_commission_cvneat: deliveryCommissionCvneat
+      delivery_commission_cvneat: deliveryCommissionCvneat,
+      ...(loyaltyPointsCost > 0
+        ? {
+            loyalty_points_used: loyaltyPointsCost,
+            loyalty_discount_amount: loyaltyBenefitEur,
+          }
+        : {}),
     };
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData

@@ -96,9 +96,9 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
     const cost = reward?.cost ?? 0;
     const label = reward?.name || 'cette récompense';
     alert(
-      `« ${label} » = ${cost} points.\n\n` +
+      `« ${label} » = ${cost} points (palier fixe, pas une conversion en euros).\n\n` +
         `1) Ajoutez vos plats au panier puis ouvrez le paiement (panier → valider).\n` +
-        `2) Dans « Utiliser mes points », choisissez le raccourci « ${label} (${cost} pts) » ou saisissez ${cost} points.\n\n` +
+        `2) Dans « Utiliser mes points », choisissez « ${label} (${cost} pts) ».\n\n` +
         LOYALTY_CHECKOUT_HELP
     );
   };

@@ -110,7 +110,7 @@ export async function POST(request) {
     // Charger la commande (pour calculs + notification + fidélité)
     const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
-      .select('id, order_number, user_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, payment_status')
+      .select('id, order_number, user_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, payment_status, loyalty_points_used, loyalty_discount_amount')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -148,10 +148,13 @@ export async function POST(request) {
           : 0;
     }
 
-    // Points fidélité utilisés (pour informer le partenaire sur le détail de la commande)
-    const pointsUsed = parseInt(paymentIntent?.metadata?.points_used || '0', 10) || 0;
+    // Points fidélité à débiter : valeur déjà enregistrée sur la commande (paliers), repli sur metadata pour anciennes sessions
+    const pointsFromOrder = parseInt(order?.loyalty_points_used ?? '0', 10) || 0;
+    const pointsFromMeta =
+      parseInt(paymentIntent?.metadata?.loyalty_points_cost || paymentIntent?.metadata?.points_used || '0', 10) || 0;
+    const pointsToDebit = pointsFromOrder > 0 ? pointsFromOrder : pointsFromMeta;
 
-    // Mettre à jour la commande: paid + lier le PaymentIntentId (si besoin) + fidélité
+    // Mettre à jour la commande: paid + lier le PaymentIntentId (si besoin)
     const updatePayload = {
       payment_status: 'paid',
       updated_at: new Date().toISOString(),
@@ -161,7 +164,12 @@ export async function POST(request) {
         ? { delivery_commission_cvneat: deliveryCommissionCvneat }
         : {}),
       ...(order.stripe_payment_intent_id ? {} : { stripe_payment_intent_id: paymentIntent.id }),
-      ...(pointsUsed > 0 ? { loyalty_points_used: pointsUsed, loyalty_discount_amount: pointsUsed } : {}),
+      ...(pointsFromOrder === 0 && pointsToDebit > 0
+        ? {
+            loyalty_points_used: pointsToDebit,
+            loyalty_discount_amount: parseFloat(order?.loyalty_discount_amount || 0) || 0,
+          }
+        : {}),
     };
 
     const { data: updated, error: updateError } = await supabaseAdmin
@@ -213,19 +221,19 @@ export async function POST(request) {
       const orderAmountForPoints = Math.round(subtotalForPoints * 100) / 100;
 
       // Déduire les points utilisés (non bloquant)
-      if (orderUserId && pointsUsed > 0) {
+      if (orderUserId && pointsToDebit > 0) {
         (async () => {
           try {
             const { data: u } = await supabaseAdmin.from('users').select('points_fidelite').eq('id', orderUserId).single();
             const current = parseInt(u?.points_fidelite || 0, 10) || 0;
-            if (current >= pointsUsed) {
-              await supabaseAdmin.from('users').update({ points_fidelite: Math.max(0, current - pointsUsed) }).eq('id', orderUserId);
+            if (current >= pointsToDebit) {
+              await supabaseAdmin.from('users').update({ points_fidelite: Math.max(0, current - pointsToDebit) }).eq('id', orderUserId);
               await supabaseAdmin.from('loyalty_history').insert({
                 user_id: orderUserId,
                 order_id: orderId,
-                points_spent: pointsUsed,
+                points_spent: pointsToDebit,
                 reason: 'Commande',
-                description: `Utilisation de ${pointsUsed} pts pour la commande`,
+                description: `Utilisation de ${pointsToDebit} pts (récompense palier)`,
               }).catch(() => {});
             }
           } catch (e) { /* non bloquant */ }

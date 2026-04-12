@@ -92,12 +92,8 @@ export async function POST(request) {
             const subtotalAfterDiscount = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
             const storedDeliveryFee = parseFloat(order.frais_livraison || 0) || 0;
 
+            // Réduction fidélité déjà incluse dans discount_amount / frais_livraison (paliers, pas 1 pt = 1 €)
             let expectedAmount = Math.round((subtotalAfterDiscount + (isFreeDelivery ? 0 : storedDeliveryFee) + PLATFORM_FEE) * 100) / 100;
-            // Déduction des points de fidélité (1 pt = 1€)
-            const pointsUsed = parseInt(metadata?.points_used || '0', 10) || 0;
-            if (pointsUsed > 0) {
-              expectedAmount = Math.max(0.50, Math.round((expectedAmount - pointsUsed) * 100) / 100);
-            }
             const amountDiff = Math.abs(amountNumber - expectedAmount);
 
             // 1. Frais de livraison invalides (0 < x < 2.50€) : corriger en BDD au lieu de bloquer le client
@@ -106,9 +102,6 @@ export async function POST(request) {
               await sb.from('commandes').update({ frais_livraison: 2.50 }).eq('id', orderId);
               // Recalculer expectedAmount avec 2.50€ de frais
               expectedAmount = Math.round((subtotalAfterDiscount + 2.50 + PLATFORM_FEE) * 100) / 100;
-              if (pointsUsed > 0) {
-                expectedAmount = Math.max(0.50, Math.round((expectedAmount - pointsUsed) * 100) / 100);
-              }
               amountNumber = expectedAmount;
             } else if (amountDiff > AMOUNT_TOLERANCE) {
               // 2. Toujours facturer le montant de la commande (source de vérité) — ne jamais bloquer pour écart de montant

@@ -3790,9 +3790,9 @@ export default function PartnerDashboard() {
                                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                     Total client: {(totalAmount + deliveryFee).toFixed(2)} €
                                   </p>
-                                  {(order.loyalty_points_used > 0 || order.loyalty_discount_amount > 0) && (
+                                  {(order.loyalty_points_used > 0 || Number(order.loyalty_discount_amount) > 0) && (
                                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                                      Réduction fidélité: {Number(order.loyalty_discount_amount || order.loyalty_points_used || 0).toFixed(2)} € ({order.loyalty_points_used || 0} pts utilisés par le client)
+                                      Fidélité : {Number(order.loyalty_discount_amount || 0).toFixed(2)} € d’avantage en caisse — {order.loyalty_points_used || 0} pts débités (récompense catalogue, pas 1 pt = 1 €)
                                     </p>
                                   )}
                                 </>

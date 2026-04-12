@@ -26,7 +26,7 @@ import {
   FaGift
 } from 'react-icons/fa';
 import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu } from '@/lib/cartUtils';
-import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP } from '@/lib/loyalty-rewards';
+import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP, computeLoyaltyAdjustments } from '@/lib/loyalty-rewards';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -87,7 +87,8 @@ export default function Checkout() {
     instructions: ''
   });
   const [userPoints, setUserPoints] = useState(0);
-  const [pointsToUse, setPointsToUse] = useState(0); // Points à utiliser (1 pt = 1€)
+  /** Récompense catalogue sélectionnée (coût en points fixe, pas conversion pt → €) */
+  const [selectedLoyaltyRewardId, setSelectedLoyaltyRewardId] = useState(null);
 
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
   // Mettre à true pour fermer les livraisons manuellement
@@ -96,6 +97,47 @@ export default function Checkout() {
 
   // Fermeture globale des commandes (ex: pas de livreur) - contrôlé par API
   const [ordersOpen, setOrdersOpen] = useState(true);
+
+  const loyaltyCheckout = useMemo(() => {
+    const discountAmount = appliedPromoCode?.discountAmount || 0;
+    const maxDiscount = Math.min(discountAmount, cartTotal);
+    const promoFree = appliedPromoCode?.discountType === 'free_delivery';
+    const deliveryBeforeLoyalty = promoFree
+      ? 0
+      : Math.round(parseFloat(fraisLivraison || 0) * 100) / 100;
+    const adj = computeLoyaltyAdjustments({
+      rewardId: selectedLoyaltyRewardId,
+      cartSubtotalEur: cartTotal,
+      promoDiscountEur: maxDiscount,
+      promoFreeDelivery: promoFree,
+      deliveryFeeEur: deliveryBeforeLoyalty,
+    });
+    const PLATFORM_FEE = 0.49;
+    const subAfterPromo = Math.max(0, cartTotal - maxDiscount);
+    const subAfterAll = Math.max(
+      0,
+      Math.round((subAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
+    );
+    const totalToPay = Math.max(
+      0.5,
+      Math.round((subAfterAll + adj.deliveryFeeEurAfter + PLATFORM_FEE) * 100) / 100
+    );
+    const rewardMeta = selectedLoyaltyRewardId
+      ? LOYALTY_REWARDS_CATALOG.find((r) => r.id === selectedLoyaltyRewardId)
+      : null;
+    return {
+      cartTotal,
+      maxDiscount,
+      promoFree,
+      deliveryBeforeLoyalty,
+      adj,
+      PLATFORM_FEE,
+      subAfterPromo,
+      subAfterAll,
+      totalToPay,
+      rewardMeta,
+    };
+  }, [cartTotal, appliedPromoCode, fraisLivraison, selectedLoyaltyRewardId]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -574,26 +616,51 @@ export default function Checkout() {
       }
       const cartTotal = computeCartTotalWithExtras(itemsToUse);
 
-      // Calculer la réduction du code promo
+      // Calculer la réduction du code promo (uniquement le code ; la fidélité est fusionnée côté serveur)
       const discountAmount = appliedPromoCode?.discountAmount || 0;
       
-      // Gérer la livraison gratuite si le code promo le prévoit
+      // Gérer la livraison gratuite si le code promo le prévoit (avant palier fidélité « livraison gratuite »)
       let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
       if (appliedPromoCode?.discountType === 'free_delivery') {
         finalDeliveryFeeForTotal = 0;
       }
       const PLATFORM_FEE = 0.49; // Frais plateforme fixe
 
-      // IMPORTANT: Calculer le montant total avec toutes les validations
-      // 1. Calculer le sous-total après réduction (la réduction ne peut pas dépasser le sous-total)
-      const maxDiscount = Math.min(discountAmount, cartTotal); // La réduction ne peut pas être supérieure au panier
-      const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
-      
-      // 2. Calculer le total final (sous-total + livraison + frais plateforme)
-      const rawTotal = subtotalAfterDiscount + finalDeliveryFeeForTotal + PLATFORM_FEE;
-      // 2b. Déduction des points de fidélité (1 pt = 1€)
-      const pointsDiscountEur = pointsToUse > 0 ? Math.min(pointsToUse, Math.max(0, rawTotal - 0.50)) : 0;
-      const totalAmount = Math.max(0.50, Math.round((rawTotal - pointsDiscountEur) * 100) / 100); // Minimum 0.50€
+      const maxDiscount = Math.min(discountAmount, cartTotal);
+      const promoFree = appliedPromoCode?.discountType === 'free_delivery';
+      const deliveryBeforeLoyalty = promoFree ? 0 : finalDeliveryFeeForTotal;
+
+      const adj = computeLoyaltyAdjustments({
+        rewardId: selectedLoyaltyRewardId,
+        cartSubtotalEur: cartTotal,
+        promoDiscountEur: maxDiscount,
+        promoFreeDelivery: promoFree,
+        deliveryFeeEur: deliveryBeforeLoyalty,
+      });
+
+      const subtotalAfterPromo = Math.max(0, cartTotal - maxDiscount);
+      const subtotalAfterAllDiscounts = Math.max(
+        0,
+        Math.round((subtotalAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
+      );
+      const finalDeliveryFromLoyalty = adj.deliveryFeeEurAfter;
+      const totalAmount = Math.max(
+        0.5,
+        Math.round((subtotalAfterAllDiscounts + finalDeliveryFromLoyalty + PLATFORM_FEE) * 100) / 100
+      );
+
+      if (
+        selectedLoyaltyRewardId &&
+        adj.pointsCost > 0 &&
+        !adj.articleNote &&
+        adj.benefitStatementEur <= 0
+      ) {
+        alert(
+          'Cette récompense ne s’applique pas à votre commande (ex. livraison déjà offerte ou montant insuffisant). Désélectionnez-la ou choisissez une autre option.'
+        );
+        setSubmitting(false);
+        return;
+      }
       
       // 3. Vérification finale de cohérence
       if (isNaN(totalAmount) || totalAmount <= 0) {
@@ -601,10 +668,10 @@ export default function Checkout() {
           cartTotal,
           discountAmount,
           maxDiscount,
-          subtotalAfterDiscount,
-          finalDeliveryFeeForTotal,
+          subtotalAfterPromo,
+          subtotalAfterAllDiscounts,
+          finalDeliveryFromLoyalty,
           PLATFORM_FEE,
-          rawTotal,
           totalAmount
         });
         throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
@@ -614,8 +681,9 @@ export default function Checkout() {
         cartTotal,
         discountAmount,
         maxDiscount,
-        subtotalAfterDiscount,
-        finalDeliveryFeeForTotal,
+        subtotalAfterPromo,
+        subtotalAfterAllDiscounts,
+        finalDeliveryFromLoyalty,
         PLATFORM_FEE,
         totalAmount
       });
@@ -625,8 +693,9 @@ export default function Checkout() {
       console.log('💰 Frais de livraison finaux:', {
         fraisLivraison,
         finalDeliveryFee,
-        finalDeliveryFeeForTotal,
-        'différence': Math.abs(finalDeliveryFeeForTotal - (fraisLivraison || 0))
+        deliveryBeforeLoyalty,
+        finalDeliveryFromLoyalty,
+        'différence': Math.abs(deliveryBeforeLoyalty - (fraisLivraison || 0))
       });
       
       // SIMPLIFICATION: Créer la commande AVANT le paiement (statut "pending_payment")
@@ -663,12 +732,14 @@ export default function Checkout() {
             instructions: orderDetails.instructions?.trim() || ''
           },
           items: itemsToUse,
-          deliveryFee: finalDeliveryFeeForTotal,
+          // Frais après promo uniquement ; le serveur applique le palier « livraison gratuite » fidélité
+          deliveryFee: deliveryBeforeLoyalty,
           totalAmount: cartTotal, // Sous-total articles (avant réduction)
-          discountAmount: maxDiscount, // Réduction réelle appliquée (limitée au panier)
+          discountAmount: maxDiscount, // Réduction code promo seule (fidélité recalculée côté serveur)
           platformFee: PLATFORM_FEE,
           promoCodeId: appliedPromoCode?.promoCodeId || null,
           promoCode: appliedPromoCode?.code || null,
+          loyaltyRewardId: selectedLoyaltyRewardId || null,
           paymentStatus: 'pending', // Statut en attente de paiement (doit correspondre à la contrainte CHECK)
           customerInfo: {
             firstName: customerFirstName,
@@ -702,7 +773,8 @@ export default function Checkout() {
         promoCode: appliedPromoCode,
         cartTotal: cartTotal,
         totalAmount: totalAmount,
-        pointsUsed: pointsToUse || 0
+        paymentTotal: totalAmount,
+        loyaltyPointsCost: adj.pointsCost || 0,
       });
 
       // Créer le PaymentIntent Stripe avec l'ID de commande
@@ -739,7 +811,7 @@ export default function Checkout() {
             user_id: user.id,
             restaurant_id: resolvedRestaurant.id,
             promo_code: appliedPromoCode?.code || null,
-            points_used: (pointsToUse || 0).toString()
+            loyalty_points_cost: String(adj.pointsCost || 0),
           }
         })
       });
@@ -1291,27 +1363,18 @@ export default function Checkout() {
             </div>
 
             {(() => {
-              const PLATFORM_FEE = 0.49;
-              const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0; // 1 pt = 1€
-              let displayedDeliveryFee = fraisLivraison;
-              if (appliedPromoCode?.discountType === 'free_delivery') {
-                displayedDeliveryFee = 0;
-              }
-              const discountAmount = appliedPromoCode?.discountAmount || 0;
-              const maxDiscount = Math.min(discountAmount, cartTotal);
-              const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
-              const beforePoints = subtotalAfterDiscount + displayedDeliveryFee + PLATFORM_FEE;
-              const finalTotalDisplay = Math.max(0.50, Math.round((beforePoints - pointsDiscount) * 100) / 100);
+              const { adj, PLATFORM_FEE, totalToPay, rewardMeta, maxDiscount } = loyaltyCheckout;
+              const displayedDeliveryFee = adj.deliveryFeeEurAfter;
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                 <span>Sous-total</span>
                 <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
               </div>
-              {appliedPromoCode && (
+              {appliedPromoCode && maxDiscount > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400 text-sm sm:text-base">
                   <span>Réduction ({appliedPromoCode.code})</span>
-                  <span className="font-semibold">-{appliedPromoCode.discountAmount.toFixed(2)}€</span>
+                  <span className="font-semibold">-{maxDiscount.toFixed(2)}€</span>
                 </div>
               )}
               <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
@@ -1327,19 +1390,58 @@ export default function Checkout() {
                 <span>Frais plateforme</span>
                 <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>
               </div>
-              {pointsDiscount > 0 && (
-                <div className="flex justify-between text-amber-600 dark:text-amber-400 text-sm sm:text-base">
-                  <span className="flex items-center">
-                    <FaGift className="h-3 w-3 mr-1" />
-                    Points fidélité (-{pointsToUse} pts)
-                  </span>
-                  <span className="font-semibold">-{pointsDiscount.toFixed(2)}€</span>
-                </div>
+              {adj.pointsCost > 0 && rewardMeta && (
+                <>
+                  {rewardMeta.redemption?.type === 'subtotal_discount' && adj.extraDiscountOnSubtotal > 0 && (
+                    <div className="flex justify-between text-amber-600 dark:text-amber-400 text-sm sm:text-base">
+                      <span className="flex items-center">
+                        <FaGift className="h-3 w-3 mr-1" />
+                        Fidélité — {rewardMeta.name} (−{adj.pointsCost} pts)
+                      </span>
+                      <span className="font-semibold">-{adj.extraDiscountOnSubtotal.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  {rewardMeta.redemption?.type === 'free_delivery' &&
+                    loyaltyCheckout.deliveryBeforeLoyalty > 0 &&
+                    displayedDeliveryFee === 0 &&
+                    !loyaltyCheckout.promoFree && (
+                      <div className="flex justify-between text-amber-600 dark:text-amber-400 text-sm sm:text-base">
+                        <span className="flex items-center">
+                          <FaGift className="h-3 w-3 mr-1" />
+                          Fidélité — {rewardMeta.name} (−{adj.pointsCost} pts)
+                        </span>
+                        <span className="font-semibold">Livraison offerte</span>
+                      </div>
+                    )}
+                  {rewardMeta.redemption?.type === 'free_delivery' &&
+                    (loyaltyCheckout.promoFree || loyaltyCheckout.deliveryBeforeLoyalty <= 0) && (
+                      <div className="flex justify-between text-amber-600 dark:text-amber-400 text-xs sm:text-sm">
+                        <span className="flex items-center">
+                          <FaGift className="h-3 w-3 mr-1 shrink-0" />
+                          Fidélité — {rewardMeta.name} (−{adj.pointsCost} pts)
+                        </span>
+                        <span className="font-semibold text-right max-w-[58%]">
+                          Livraison déjà offerte : aucune réduction supplémentaire sur cette commande
+                        </span>
+                      </div>
+                    )}
+                  {rewardMeta.redemption?.type === 'article_note' && (
+                    <div className="flex justify-between text-amber-600 dark:text-amber-400 text-xs sm:text-sm">
+                      <span className="flex items-center">
+                        <FaGift className="h-3 w-3 mr-1 shrink-0" />
+                        Fidélité — {rewardMeta.name} (−{adj.pointsCost} pts)
+                      </span>
+                      <span className="font-semibold text-right max-w-[58%]">
+                        Dessert ou boisson offert (voir note adresse)
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
               <div key={`total-${forceUpdate}`} className="border-t dark:border-gray-700 pt-2 sm:pt-3">
                 <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
                   <span>Total</span>
-                  <span>{finalTotalDisplay.toFixed(2)}€</span>
+                  <span>{totalToPay.toFixed(2)}€</span>
                 </div>
               </div>
             </div>
@@ -1355,14 +1457,16 @@ export default function Checkout() {
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">{LOYALTY_CHECKOUT_HELP}</p>
                 <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2">Récompenses (paliers)</p>
-                <div className="flex gap-2 flex-wrap mb-3">
+                <div className="flex gap-2 flex-wrap mb-1">
                   {LOYALTY_REWARDS_CATALOG.filter((r) => r.available !== false && r.cost <= userPoints).map((r) => (
                     <button
                       key={r.id}
                       type="button"
-                      onClick={() => setPointsToUse((prev) => (prev === r.cost ? 0 : r.cost))}
+                      onClick={() =>
+                        setSelectedLoyaltyRewardId((prev) => (prev === r.id ? null : r.id))
+                      }
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        pointsToUse === r.cost
+                        selectedLoyaltyRewardId === r.id
                           ? 'bg-amber-500 text-white'
                           : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50'
                       }`}
@@ -1370,30 +1474,13 @@ export default function Checkout() {
                       {r.name} ({r.cost} pts)
                     </button>
                   ))}
-                </div>
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Autres montants</p>
-                <div className="flex gap-2 flex-wrap">
-                  {[5, 10, 25, 50, 100].filter((p) => p <= userPoints).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPointsToUse((prev) => (prev === p ? 0 : p))}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        pointsToUse === p
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50'
-                      }`}
-                    >
-                      {p} pts ({p}€)
-                    </button>
-                  ))}
-                  {pointsToUse > 0 && (
+                  {selectedLoyaltyRewardId && (
                     <button
                       type="button"
-                      onClick={() => setPointsToUse(0)}
+                      onClick={() => setSelectedLoyaltyRewardId(null)}
                       className="px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:underline"
                     >
-                      Annuler
+                      Annuler la récompense
                     </button>
                   )}
                 </div>
@@ -1465,18 +1552,7 @@ export default function Checkout() {
                       Préparation...
                     </div>
                   ) : (
-                    (() => {
-                      const PLATFORM_FEE = 0.49;
-                      let finalDeliveryFee = fraisLivraison;
-                      if (appliedPromoCode?.discountType === 'free_delivery') finalDeliveryFee = 0;
-                      const discountAmount = appliedPromoCode?.discountAmount || 0;
-                      const maxDiscount = Math.min(discountAmount, cartTotal);
-                      const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
-                      const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
-                      const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0;
-                      const finalTotalDisplay = Math.max(0.50, Math.round((rawTotal - pointsDiscount) * 100) / 100);
-                      return `Payer ${finalTotalDisplay.toFixed(2)}€`;
-                    })()
+                    `Payer ${loyaltyCheckout.totalToPay.toFixed(2)}€`
                   )}
                 </button>
                 {(submitting || !selectedAddress || deliveryError !== null || deliveryClosed || !ordersOpen) && !submitting && (
@@ -1503,18 +1579,7 @@ export default function Checkout() {
                     <p className="pt-2 border-t border-blue-200 dark:border-blue-800">
                       <span className="text-gray-600 dark:text-gray-400">Total à payer :</span>{' '}
                       <strong className="text-lg text-blue-600 dark:text-blue-400">
-                        {(() => {
-                          const PLATFORM_FEE = 0.49;
-                          let finalDeliveryFee = fraisLivraison ?? 0;
-                          if (appliedPromoCode?.discountType === 'free_delivery') finalDeliveryFee = 0;
-                          const discountAmount = appliedPromoCode?.discountAmount || 0;
-                          const maxDiscount = Math.min(discountAmount, cartTotal);
-                          const subtotalAfterDiscount = Math.max(0, cartTotal - maxDiscount);
-                          const rawTotal = subtotalAfterDiscount + finalDeliveryFee + PLATFORM_FEE;
-                          const pointsDiscount = pointsToUse > 0 ? pointsToUse : 0;
-                          const totalDisplay = Math.max(0.50, Math.round((rawTotal - pointsDiscount) * 100) / 100);
-                          return `${totalDisplay.toFixed(2)}€`;
-                        })()}
+                        {`${(orderData?.paymentTotal ?? loyaltyCheckout.totalToPay).toFixed(2)}€`}
                       </strong>
                     </p>
                   </div>
@@ -1525,10 +1590,7 @@ export default function Checkout() {
                 </h3>
                 {clientSecret && (
                   <PaymentForm
-                    amount={(() => {
-                      const PLATFORM_FEE = 0.49;
-                      return Math.max(0, cartTotal + fraisLivraison + PLATFORM_FEE);
-                    })()}
+                    amount={orderData?.paymentTotal ?? loyaltyCheckout.totalToPay}
                     paymentIntentId={paymentIntentId}
                     clientSecret={clientSecret}
                     onSuccess={handlePaymentSuccess}
@@ -1543,7 +1605,7 @@ export default function Checkout() {
                     setPaymentIntentId(null);
                     setClientSecret(null);
                     setOrderData(null);
-                    setPointsToUse(0);
+                    setSelectedLoyaltyRewardId(null);
                   }}
                   className="w-full mt-4 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 text-sm sm:text-base"
                 >
