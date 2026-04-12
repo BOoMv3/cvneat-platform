@@ -156,6 +156,25 @@ export default function RootLayout({ children }) {
                     // ignore
                   }
 
+                  // Bandeau déploiement /admin : AVANT le return web ci-dessous (sinon jamais exécuté sur cvneat.fr).
+                  try {
+                    var pathAdmin = window.location && window.location.pathname ? window.location.pathname : '';
+                    if (pathAdmin.indexOf('/admin') === 0) {
+                      function cvneatPaintAdminStripe() {
+                        if (document.getElementById('cvneat-admin-inline-stripe')) return;
+                        if (!document.body) return;
+                        var node = document.createElement('div');
+                        node.id = 'cvneat-admin-inline-stripe';
+                        node.setAttribute('data-cvneat-inline-deploy', '2026-04-12-head');
+                        node.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483646;margin:0;padding:12px 14px;background:#047857;color:#fff;font:700 14px system-ui,-apple-system,sans-serif;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.35);';
+                        node.appendChild(document.createTextNode('Admin — build OK (script tête de page).'));
+                        document.body.insertAdjacentElement('afterbegin', node);
+                      }
+                      if (document.body) cvneatPaintAdminStripe();
+                      else document.addEventListener('DOMContentLoaded', cvneatPaintAdminStripe);
+                    }
+                  } catch (eAdminStripe) {}
+
                   // Le reste (intercepteur fetch + link handler) est uniquement pour Capacitor.
                   var isCapacitor = false;
                   try {
@@ -438,29 +457,6 @@ export default function RootLayout({ children }) {
         <meta name="rating" content="General" />
       </head>
       <body className="font-sans transition-colors duration-300">
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-(function(){
-  try {
-    var p = (typeof location !== 'undefined' && location.pathname) || '';
-    if (p.indexOf('/admin') !== 0) return;
-    function paint(){
-      if (document.getElementById('cvneat-admin-inline-stripe')) return;
-      if (!document.body) return;
-      var d = document.createElement('div');
-      d.id = 'cvneat-admin-inline-stripe';
-      d.setAttribute('data-cvneat-inline-deploy','2026-04-12');
-      d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483646;margin:0;padding:12px 14px;background:#047857;color:#fff;font:700 14px system-ui,-apple-system,sans-serif;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.35);';
-      d.appendChild(document.createTextNode('Admin — bandeau inline (avant React).'));
-      document.body.insertAdjacentElement('afterbegin', d);
-    }
-    if (document.body) paint();
-    else document.addEventListener('DOMContentLoaded', paint);
-  } catch (e) {}
-})();`,
-          }}
-        />
         <ThemeProvider>
           <AdminDeployStripeRoot />
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
