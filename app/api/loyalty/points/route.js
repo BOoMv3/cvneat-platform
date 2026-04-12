@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase, supabaseAdmin } from '../../../../lib/supabase';
+
+export const dynamic = 'force-dynamic';
 
 // GET /api/loyalty/points - Récupérer les points et l'historique de fidélité
 export async function GET(request) {
@@ -16,17 +19,16 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Le client `supabase` importé (anon) n’envoie pas le JWT sur PostgREST → la RLS bloque.
-    // Après vérification du token, lecture autorisée avec le service role (ligne utilisateur uniquement).
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Configuration serveur : service role indisponible pour la fidélité' },
-        { status: 500 }
-      );
-    }
+    // Préférence : service role (Vercel avec SUPABASE_SERVICE_ROLE_KEY). Sinon lecture avec le JWT
+    // (createClient + Authorization) pour que la RLS « own row » fonctionne sans service role.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     let userData;
-    {
+    let history = [];
+    let historyError = null;
+
+    if (supabaseAdmin) {
       const r = await supabaseAdmin
         .from('users')
         .select(
@@ -55,14 +57,58 @@ export async function GET(request) {
           { status: 500 }
         );
       }
+      const h = await supabaseAdmin
+        .from('loyalty_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      history = h.data || [];
+      historyError = h.error;
+    } else {
+      if (!supabaseUrl || !supabaseAnonKey) {
+        return NextResponse.json(
+          { error: 'NEXT_PUBLIC_SUPABASE_URL ou ANON_KEY manquante' },
+          { status: 500 }
+        );
+      }
+      const asUser = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const r = await asUser
+        .from('users')
+        .select(
+          'points_fidelite, role, loyalty_level, total_spent, loyalty_points_earned, loyalty_points_spent'
+        )
+        .eq('id', user.id)
+        .maybeSingle();
+      userData = r.data;
+      let userError = r.error;
+      if (
+        userError &&
+        /column|does not exist|schema cache|PGRST204/i.test(String(userError.message || userError.code || ''))
+      ) {
+        const r2 = await asUser.from('users').select('points_fidelite, role').eq('id', user.id).maybeSingle();
+        userData = r2.data;
+        userError = r2.error;
+      }
+      if (userError) {
+        console.error('GET loyalty/points users (JWT):', userError);
+        return NextResponse.json(
+          { error: 'Impossible de lire le profil', details: userError.message },
+          { status: 500 }
+        );
+      }
+      const h = await asUser
+        .from('loyalty_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      history = h.data || [];
+      historyError = h.error;
     }
-
-    const { data: history, error: historyError } = await supabaseAdmin
-      .from('loyalty_history')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
 
     if (historyError) {
       console.error('GET loyalty/points history:', historyError);
@@ -77,7 +123,7 @@ export async function GET(request) {
       totalSpent: userData?.total_spent || 0,
       pointsEarned: userData?.loyalty_points_earned || 0,
       pointsSpent: userData?.loyalty_points_spent || 0,
-      history: historyError ? [] : history || [],
+      history: historyError ? [] : history,
     });
   } catch (error) {
     console.error('Erreur récupération points fidélité:', error);

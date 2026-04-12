@@ -161,6 +161,22 @@ export default function AdminPage() {
           r.id === restaurant.id ? { ...r, ferme_manuellement: manualClosed, ouvert_manuellement: manualOpen } : r
         )
       }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('restaurant-status-changed'));
+        try {
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('cvneat_restaurant_status');
+            bc.postMessage({
+              type: 'restaurant-status-changed',
+              restaurantId: restaurant.id,
+              at: Date.now(),
+            });
+            bc.close();
+          }
+        } catch {
+          /* ignore */
+        }
+      }
     } catch (e) {
       console.error('Erreur ouverture/fermeture restaurant (admin):', e);
       alert(e?.message || "Erreur lors de l'ouverture/fermeture du restaurant.");

@@ -637,7 +637,8 @@ export default function Home() {
             }
           }
           // Vérifier si l'utilisateur a une commande active (pas livrée/annulée)
-          const { data: { session } } = await supabase.auth.getSession();
+          const { data: ordSess } = await supabase.auth.getSession();
+          const session = ordSess?.session;
           if (session?.access_token) {
             const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${session.access_token}` } });
             if (res.ok) {
