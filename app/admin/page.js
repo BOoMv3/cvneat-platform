@@ -106,12 +106,13 @@ export default function AdminPage() {
       setTogglingRestaurantId(restaurant.id);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error('Session expirée');
+      if (!session.user?.id) throw new Error('Session invalide (pas d’utilisateur)');
 
       const payload = {
         ferme_manuellement: !shouldOpen,
         ouvert_manuellement: shouldOpen,
         manual_status_updated_at: new Date().toISOString(),
-        manual_status_updated_by: user?.id || null
+        manual_status_updated_by: session.user.id,
       };
       const res = await fetch(`/api/admin/restaurants/${restaurant.id}`, {
         method: 'PUT',

@@ -22,16 +22,32 @@ const getAdminClient = () => {
   });
 };
 
-/** PostgREST avec le JWT admin : RLS voit auth.uid() + triggers (preuve manuelle) — pas le client anon global. */
-const createSupabaseWithUserJwt = (jwt) => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+/** PostgREST avec le JWT utilisateur (aligné sur /api/partner/restaurant/[id]). */
+async function supabaseRestWithJwt(token, path, { method = 'GET', body = null, extraHeaders = {} } = {}) {
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null;
-  return createClient(url, anonKey, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
+  if (!base || !anonKey) {
+    return { ok: false, status: 500, json: { message: 'Config Supabase manquante' } };
+  }
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+      ...extraHeaders,
+    },
+    body: body != null ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+    cache: 'no-store',
   });
-};
+  const text = await res.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = { message: text?.slice(0, 200) };
+  }
+  return { ok: res.ok, status: res.status, json };
+}
 
 // GET /api/admin/restaurants/[id] - Récupérer un restaurant spécifique
 export async function GET(request, { params }) {
@@ -94,22 +110,16 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    const supabaseAsAdmin = createSupabaseWithUserJwt(token);
-    if (!supabaseAsAdmin) {
+    const rolePath = `/rest/v1/users?id=eq.${encodeURIComponent(user.id)}&select=role`;
+    const roleRes = await supabaseRestWithJwt(token, rolePath);
+    if (!roleRes.ok) {
       return NextResponse.json(
-        { error: 'Configuration Supabase incomplète (URL ou clé anon)' },
-        { status: 500 }
+        { error: 'Vérification du profil impossible', details: roleRes.json },
+        { status: roleRes.status >= 400 && roleRes.status < 600 ? roleRes.status : 500 }
       );
     }
-
-    // Vérifier que l'utilisateur est admin (RLS : auth.uid() doit être le JWT ci-dessus)
-    const { data: adminUser, error: adminError } = await supabaseAsAdmin
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (adminError || adminUser.role !== 'admin') {
+    const roleRows = Array.isArray(roleRes.json) ? roleRes.json : [];
+    if (roleRows[0]?.role !== 'admin') {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
@@ -147,28 +157,49 @@ export async function PUT(request, { params }) {
     if (strategie_boost_reduction_pct !== undefined) updateData.strategie_boost_reduction_pct = strategie_boost_reduction_pct === '' || strategie_boost_reduction_pct === null ? null : Number(strategie_boost_reduction_pct);
     if (ferme_manuellement !== undefined) updateData.ferme_manuellement = !!ferme_manuellement;
     if (ouvert_manuellement !== undefined) updateData.ouvert_manuellement = !!ouvert_manuellement;
-    if (manual_status_updated_at !== undefined) updateData.manual_status_updated_at = manual_status_updated_at;
-    if (manual_status_updated_by !== undefined) updateData.manual_status_updated_by = manual_status_updated_by;
     if (ferme_manuellement !== undefined || ouvert_manuellement !== undefined) {
       updateData.updated_at = new Date().toISOString();
+      // Preuve trigger : toujours depuis le JWT serveur (évite client manual_status_updated_by null + horloge décalée).
+      updateData.manual_status_updated_at = new Date().toISOString();
+      updateData.manual_status_updated_by = user.id;
+    } else {
+      if (manual_status_updated_at !== undefined) updateData.manual_status_updated_at = manual_status_updated_at;
+      if (manual_status_updated_by !== undefined) updateData.manual_status_updated_by = manual_status_updated_by;
     }
 
-    const { data: updatedRestaurant, error } = await supabaseAsAdmin
-      .from('restaurants')
-      .update(updateData)
-      .eq('id', params.id)
-      .select(`
-        *,
-        partner:users(email, nom, prenom)
-      `)
-      .single();
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'Aucun champ à mettre à jour' }, { status: 400 });
+    }
 
-    if (error) {
-      console.error('PUT admin/restaurants update error:', error);
+    const patchPath = `/rest/v1/restaurants?id=eq.${encodeURIComponent(params.id)}&select=*`;
+    const patchRes = await supabaseRestWithJwt(token, patchPath, {
+      method: 'PATCH',
+      body: updateData,
+      extraHeaders: {
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+    });
+
+    if (!patchRes.ok) {
+      console.error('PUT admin/restaurants REST:', patchRes.status, patchRes.json);
+      const j = patchRes.json || {};
+      const msg =
+        j.message ||
+        j.error_description ||
+        (typeof j.error === 'string' ? j.error : j.error?.message) ||
+        j.hint ||
+        'Mise à jour refusée';
       return NextResponse.json(
-        { error: error.message || 'Mise à jour refusée', code: error.code, details: error },
-        { status: 400 }
+        { error: msg, details: j },
+        { status: patchRes.status === 401 || patchRes.status === 403 ? patchRes.status : 400 }
       );
+    }
+
+    const outRows = Array.isArray(patchRes.json) ? patchRes.json : patchRes.json ? [patchRes.json] : [];
+    const updatedRestaurant = outRows[0];
+    if (!updatedRestaurant) {
+      return NextResponse.json({ error: 'Réponse vide après mise à jour' }, { status: 500 });
     }
 
     // Envoyer email de notification au partenaire si le statut change
