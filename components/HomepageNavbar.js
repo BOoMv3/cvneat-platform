@@ -125,11 +125,15 @@ export default function HomepageNavbar({ user, userPoints, cart, showFloatingCar
                 Admin
               </Link>
             )}
-            {/* Points de fidélité - Compact avec icône */}
-            <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[40px]">
+            {/* Points de fidélité — même cible que l’accueil */}
+            <Link
+              href="/profile?tab=loyalty"
+              className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[40px] hover:bg-white/30 transition-colors"
+              title="Voir mes points et comment les utiliser"
+            >
               <FaGift className="text-yellow-400 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="text-white text-xs sm:text-sm font-semibold">{userPoints}</span>
-            </div>
+              <span className="text-white text-xs sm:text-sm font-semibold">{userPoints ?? 0} pts</span>
+            </Link>
             
             {/* Profil - Icône seule */}
             <Link href="/profile" className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center">

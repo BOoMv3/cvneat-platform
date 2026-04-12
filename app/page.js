@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -33,7 +33,8 @@ import {
   FaSignOutAlt,
   FaTruck,
   FaStore,
-  FaImage
+  FaImage,
+  FaArrowRight
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
@@ -552,6 +553,40 @@ export default function Home() {
     router.push('/');
   };
 
+  /** Points fidélité + commande active (même logique que le chargement initial). */
+  const refreshUserFidelityAndOrders = useCallback(async (authUser) => {
+    if (!authUser) {
+      setUserPoints(0);
+      setHasActiveOrder(false);
+      return;
+    }
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role, points_fidelite')
+        .eq('id', authUser.id)
+        .single();
+      if (userData) {
+        setUserPoints(Number(userData.points_fidelite) || 0);
+        if (userData.role) localStorage.setItem('userRole', userData.role);
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${session.access_token}` } });
+        if (res.ok) {
+          const orders = await res.json();
+          const active = Array.isArray(orders) && orders.some((o) => {
+            const s = (o.status || o.statut || '').toLowerCase();
+            return s && s !== 'livree' && s !== 'delivered' && s !== 'annulee' && s !== 'cancelled';
+          });
+          setHasActiveOrder(!!active);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur recuperation points:', error);
+    }
+  }, []);
+
   // Catégories de restaurants avec icônes et couleurs
   const categories = [
     { id: 'all', name: 'Tous', icon: FaUtensils, color: 'from-orange-500 to-amber-600', tagline: 'Tout découvrir' },
@@ -677,43 +712,9 @@ export default function Home() {
   useEffect(() => {
     // Verifier l'authentification
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      if (user) {
-        try {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('role, points_fidelite')
-            .eq('id', user.id)
-            .single();
-          
-          if (userData) {
-            setUserPoints(userData.points_fidelite || 0);
-            // Stocker le rôle pour vérifier l'accès aux pages
-            if (userData.role) {
-              localStorage.setItem('userRole', userData.role);
-            }
-          }
-          // Vérifier si l'utilisateur a une commande active (pas livrée/annulée)
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${session.access_token}` } });
-            if (res.ok) {
-              const orders = await res.json();
-              const active = Array.isArray(orders) && orders.some(o => {
-                const s = (o.status || o.statut || '').toLowerCase();
-                return s && s !== 'livree' && s !== 'delivered' && s !== 'annulee' && s !== 'cancelled';
-              });
-              setHasActiveOrder(!!active);
-            }
-          }
-        } catch (error) {
-          console.error('Erreur recuperation points:', error);
-        }
-      } else {
-        setHasActiveOrder(false);
-      }
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setUser(authUser);
+      await refreshUserFidelityAndOrders(authUser);
     };
 
     checkAuth();
@@ -1125,7 +1126,39 @@ export default function Home() {
       clearInterval(refreshInterval);
       try { bc?.close?.(); } catch { /* ignore */ }
     };
-  }, [pathname]);
+  }, [pathname, refreshUserFidelityAndOrders]);
+
+  // Connexion / déconnexion ailleurs + retour sur l’onglet après paiement : resynchroniser points
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const u = session?.user ?? null;
+      setUser(u);
+      await refreshUserFidelityAndOrders(u);
+    });
+
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      void supabase.auth.getUser().then(({ data: { user: u } }) => {
+        if (u) {
+          supabase
+            .from('users')
+            .select('points_fidelite')
+            .eq('id', u.id)
+            .maybeSingle()
+            .then(({ data }) => {
+              if (data && data.points_fidelite != null) {
+                setUserPoints(Number(data.points_fidelite) || 0);
+              }
+            });
+        }
+      });
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [refreshUserFidelityAndOrders]);
 
   const handleToggleFavorite = (restaurant) => {
     const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
@@ -1570,6 +1603,16 @@ export default function Home() {
                   <FaMotorcycle className="h-4 w-4" />
                   <span>Devenir livreur</span>
                 </Link>
+
+                {user && (
+                  <Link
+                    href="/profile?tab=loyalty"
+                    className="inline-flex items-center justify-center gap-2 bg-amber-500/95 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-amber-600 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                  >
+                    <FaGift className="h-4 w-4" />
+                    <span>Mes points ({userPoints})</span>
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -1693,7 +1736,7 @@ export default function Home() {
         </section>
 
         {/* Section des restaurants avec défilement vertical élégant */}
-        <section className="mb-12">
+        <section id="liste-restaurants" className="mb-12">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent mb-2">Restaurants populaires</h2>
@@ -1708,28 +1751,98 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Bannière points de fidélité - visible pour les clients connectés */}
+          {/* Programme fidélité — invités */}
+          {!user && (
+            <div className="mb-6 rounded-2xl border border-amber-200/90 dark:border-amber-800/60 bg-amber-50/95 dark:bg-amber-950/35 px-4 py-4 sm:px-5 sm:py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200 leading-snug">
+                <span className="font-bold text-gray-900 dark:text-white">Programme fidélité CVN&apos;EAT</span>
+                {' — '}1 point par euro dépensé sur vos commandes. Au paiement,{' '}
+                <span className="font-semibold">1 point = 1&nbsp;€</span> de réduction (dans la limite du total).
+              </p>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-orange-700 transition-colors min-h-[44px]"
+                >
+                  Créer un compte
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center rounded-xl border-2 border-amber-600/70 bg-white/90 dark:bg-gray-900/80 px-4 py-2.5 text-sm font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-100/80 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
+                >
+                  Connexion
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Fidélité : solde + mode d’emploi (connectés) */}
           {user && (
-            <Link
-              href="/profile"
-              className="mb-6 block bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 dark:from-amber-600 dark:via-yellow-600 dark:to-amber-600 rounded-2xl p-4 sm:p-5 shadow-lg border border-amber-200 dark:border-amber-700 hover:shadow-xl hover:scale-[1.01] transition-all duration-200"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/90 dark:bg-gray-900/50 rounded-full flex items-center justify-center">
-                    <FaGift className="text-2xl sm:text-3xl text-amber-600 dark:text-amber-400" />
+            <div className="mb-6 space-y-4">
+              <Link
+                href="/profile?tab=loyalty"
+                className="block bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 dark:from-amber-600 dark:via-yellow-600 dark:to-amber-600 rounded-2xl p-4 sm:p-5 shadow-lg border border-amber-200 dark:border-amber-700 hover:shadow-xl hover:scale-[1.01] transition-all duration-200"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-white/90 dark:bg-gray-900/50 rounded-full flex items-center justify-center">
+                      <FaGift className="text-2xl sm:text-3xl text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg flex flex-wrap items-center gap-2">
+                        Vos points de fidélité
+                        <span className="inline-flex items-center rounded-full bg-black/10 dark:bg-white/10 px-2 py-0.5 text-xs font-semibold">
+                          Voir détail & récompenses
+                        </span>
+                      </h3>
+                      <p className="text-gray-800 dark:text-gray-200 text-sm sm:text-base mt-1">
+                        Vous cumulez <span className="font-semibold">1 point par euro</span> sur vos commandes. Sur la page de paiement, utilisez vos points :{' '}
+                        <span className="font-semibold">1 point = 1&nbsp;€</span> en moins sur le total (panier minimum 0,50&nbsp;€ après réduction).
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg">Points de fidélité actifs</h3>
-                    <p className="text-gray-800 dark:text-gray-200 text-sm sm:text-base">Gagnez 1 point par € et échangez-les contre un article offert, une réduction ou la livraison gratuite !</p>
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3 shrink-0 sm:text-right">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tabular-nums">{userPoints}</span>
+                      <span className="text-sm font-bold text-gray-800 dark:text-gray-200">pts</span>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white">
+                      Mon programme <FaArrowRight className="h-3 w-3" />
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">{userPoints}</span>
-                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">pts</span>
+              </Link>
+
+              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/90 p-4 sm:p-5 shadow-sm">
+                <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">Comment utiliser vos points ?</p>
+                <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700 dark:text-gray-300 mb-4">
+                  <li>Ajoutez vos plats au panier depuis un restaurant.</li>
+                  <li>Ouvrez le <span className="font-semibold">paiement</span> (panier → valider la commande).</li>
+                  <li>Réglez le nombre de points à utiliser dans le récapitulatif avant de payer par carte.</li>
+                </ol>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+                  <Link
+                    href={cart.length > 0 ? '/checkout' : '/panier'}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 transition-colors min-h-[44px]"
+                  >
+                    {cart.length > 0 ? 'Aller au paiement' : 'Voir mon panier'}
+                    <FaArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                  <Link
+                    href="/profile?tab=loyalty"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors min-h-[44px]"
+                  >
+                    Paliers & récompenses
+                  </Link>
+                  <Link
+                    href="#liste-restaurants"
+                    className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium text-orange-700 dark:text-orange-300 hover:underline min-h-[44px]"
+                  >
+                    Commander un restaurant
+                  </Link>
                 </div>
               </div>
-            </Link>
+            </div>
           )}
 
           {/* Filtres et tri - Optimisé mobile */}
