@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '../../../../lib/supabase';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
+/** Colonne optionnelle (migration alcool) : ne pas bloquer création / mise à jour du plat. */
+async function trySetMenuContainsAlcohol(menuId, value) {
+  if (!menuId) return;
+  const boolVal = value === true || value === 'true';
+  const client = supabaseAdmin || supabase;
+  const { error } = await client.from('menus').update({ contains_alcohol: boolVal }).eq('id', menuId);
+  if (error) {
+    console.warn('⚠️ contains_alcohol non enregistré (migration SQL menus.contains_alcohol ?) :', error.message);
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -132,6 +143,8 @@ export async function POST(request) {
     console.log('✅ DEBUG API MENU - Restaurant confirmé comme propriétaire');
 
     // Préparer les données à insérer
+    const wantsAlcoholFlag = contains_alcohol === true || contains_alcohol === 'true';
+
     const menuData = {
       restaurant_id,
       nom: sanitizedData.nom,
@@ -139,7 +152,6 @@ export async function POST(request) {
       prix: parseFloat(prix),
       category: sanitizedData.category,
       disponible: true,
-      contains_alcohol: contains_alcohol === true || contains_alcohol === 'true',
     };
 
     // Ajouter les suppléments si fournis (stocker en JSONB)
@@ -278,9 +290,11 @@ export async function POST(request) {
       );
     }
 
+    await trySetMenuContainsAlcohol(menuItem?.id, wantsAlcoholFlag);
+
     return NextResponse.json({
       success: true,
-      menuItem,
+      menuItem: menuItem ? { ...menuItem, contains_alcohol: wantsAlcoholFlag } : menuItem,
       message: 'Item de menu créé avec succès'
     });
   } catch (error) {
@@ -339,10 +353,6 @@ export async function PUT(request) {
       disponible: disponible !== false,
       category: category || 'Autres',
     };
-
-    if (contains_alcohol !== null && contains_alcohol !== undefined) {
-      updateData.contains_alcohol = contains_alcohol === true || contains_alcohol === 'true';
-    }
 
     // Ajouter l'image si fournie
     if (image_url !== null && image_url !== undefined) {
@@ -500,6 +510,12 @@ export async function PUT(request) {
         );
       }
       throw error;
+    }
+
+    if (contains_alcohol !== null && contains_alcohol !== undefined) {
+      const alc = contains_alcohol === true || contains_alcohol === 'true';
+      await trySetMenuContainsAlcohol(id, alc);
+      return NextResponse.json(data ? { ...data, contains_alcohol: alc } : data);
     }
 
     return NextResponse.json(data);
