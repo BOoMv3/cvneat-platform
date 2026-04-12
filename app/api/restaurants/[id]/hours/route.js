@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
+import {
+  getHeuresJourForDate,
+  isHorairesClosedTruthy,
+  pickRefDateForParisDayIndex,
+} from '@/lib/restaurant-horaires-paris';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -13,24 +18,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Email',
   'Access-Control-Max-Age': '86400',
-};
-
-const coerceHorairesObject = (horairesRaw) => {
-  let h = horairesRaw;
-  for (let i = 0; i < 3; i += 1) {
-    if (typeof h !== 'string') break;
-    const s = h.trim();
-    if (!s) break;
-    try {
-      h = JSON.parse(s);
-    } catch {
-      break;
-    }
-  }
-  if (h && typeof h === 'object' && !Array.isArray(h) && h.horaires && typeof h.horaires === 'object') {
-    return h.horaires;
-  }
-  return h;
 };
 
 function json(body, init) {
@@ -60,37 +47,22 @@ export async function GET(request, { params }) {
       return json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Convertir les horaires JSON en format lisible
-    let horaires = coerceHorairesObject(restaurant.horaires) || {};
-
-    // Si horaires est une chaîne JSON, la parser (fallback)
-    if (typeof horaires === 'string') {
-      try {
-        horaires = JSON.parse(horaires);
-      } catch (e) {
-        console.error('Erreur parsing horaires JSON:', e);
-        horaires = {};
-      }
-    }
+    const anchor = new Date();
 
     const joursSemaine = [
-      { key: 'lundi', label: 'Lundi', dayIndex: 1, variants: ['lundi', 'Lundi', 'LUNDI'] },
-      { key: 'mardi', label: 'Mardi', dayIndex: 2, variants: ['mardi', 'Mardi', 'MARDI'] },
-      { key: 'mercredi', label: 'Mercredi', dayIndex: 3, variants: ['mercredi', 'Mercredi', 'MERCREDI'] },
-      { key: 'jeudi', label: 'Jeudi', dayIndex: 4, variants: ['jeudi', 'Jeudi', 'JEUDI'] },
-      { key: 'vendredi', label: 'Vendredi', dayIndex: 5, variants: ['vendredi', 'Vendredi', 'VENDREDI'] },
-      { key: 'samedi', label: 'Samedi', dayIndex: 6, variants: ['samedi', 'Samedi', 'SAMEDI'] },
-      { key: 'dimanche', label: 'Dimanche', dayIndex: 0, variants: ['dimanche', 'Dimanche', 'DIMANCHE'] }
+      { key: 'lundi', label: 'Lundi', dayIndex: 1 },
+      { key: 'mardi', label: 'Mardi', dayIndex: 2 },
+      { key: 'mercredi', label: 'Mercredi', dayIndex: 3 },
+      { key: 'jeudi', label: 'Jeudi', dayIndex: 4 },
+      { key: 'vendredi', label: 'Vendredi', dayIndex: 5 },
+      { key: 'samedi', label: 'Samedi', dayIndex: 6 },
+      { key: 'dimanche', label: 'Dimanche', dayIndex: 0 },
     ];
 
-    const formattedHours = joursSemaine.map(jour => {
-      let jourHoraire = null;
-      for (const variant of jour.variants) {
-        if (horaires[variant]) {
-          jourHoraire = horaires[variant];
-          break;
-        }
-      }
+    // Même résolution de jour que `isRestaurantOpenNowFromHoraires` (tableau lundi→dimanche, weekly, clés numériques…).
+    const formattedHours = joursSemaine.map((jour) => {
+      const ref = pickRefDateForParisDayIndex(jour.dayIndex, anchor);
+      const jourHoraire = getHeuresJourForDate(restaurant.horaires, ref);
 
       const hasPlages = Array.isArray(jourHoraire?.plages) && jourHoraire.plages.length > 0;
       const hasSingleRange = Boolean(
@@ -98,12 +70,12 @@ export async function GET(request, { params }) {
           (jourHoraire.ouverture || jourHoraire.debut) &&
           (jourHoraire.fermeture || jourHoraire.fin)
       );
-      // Beaucoup de fiches n’ont pas `ouvert: true` mais seulement plages ou une plage ouverture/fermeture.
-      // L’ancien `jourHoraire?.ouvert || false` forçait « fermé » pour tous ces cas → bannière / textes incohérents.
+      const blockedByClosed =
+        isHorairesClosedTruthy(jourHoraire?.is_closed) && !hasPlages && !hasSingleRange;
       const inferredOpen =
         jourHoraire != null &&
-        jourHoraire.ouvert !== false &&
-        (jourHoraire.ouvert === true || hasPlages || hasSingleRange);
+        !blockedByClosed &&
+        (hasPlages || hasSingleRange || jourHoraire.ouvert === true);
       const ouvert = Boolean(inferredOpen);
       const is_closed = jourHoraire == null ? true : !ouvert;
 
@@ -121,10 +93,11 @@ export async function GET(request, { params }) {
 
     console.log('Horaires formatées pour restaurant', id, ':', formattedHours);
 
-    const openFields = normalizeRestaurantOpenFields({ ...restaurant, id }, new Date());
+    const openFields = normalizeRestaurantOpenFields({ ...restaurant, id }, anchor);
     const res = json({
       hours: formattedHours,
       is_manually_closed: openFields.is_manually_closed === true,
+      is_open_now: openFields.is_open_now === true,
     });
     res.headers.set('Cache-Control', 'no-store, max-age=0');
     return res;
