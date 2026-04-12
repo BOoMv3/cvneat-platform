@@ -274,7 +274,21 @@ export default function PartnerMenu() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto p-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Gestion du Menu</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Gestion du Menu</h1>
+
+        <div className="mb-8 rounded-lg border-2 border-amber-400 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-semibold mb-2">Vous cherchez la case « Alcool » sur les plats ?</p>
+          <p className="mb-2">
+            Elle se trouve sur la <strong>console partenaire principale</strong> : connectez-vous puis ouvrez{' '}
+            <a href="/partner#menu" className="font-bold text-amber-900 underline">
+              /partner → onglet « Menu »
+            </a>
+            , cliquez sur <strong>Modifier</strong> (crayon) sur un plat : la case <strong>« Alcool »</strong> apparaît sous « Disponible ».
+          </p>
+          <p className="text-amber-900/90">
+            Cette page « /partner/menu » est une autre interface ; la vente d&apos;alcool et le marquage des plats y sont gérés depuis <strong>/partner</strong>.
+          </p>
+        </div>
 
         {/* 🎯 GESTION DES CATÉGORIES */}
         <div className="bg-white rounded-lg shadow mb-8">

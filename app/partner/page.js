@@ -3178,6 +3178,31 @@ export default function PartnerDashboard() {
         </div>
       </div>
 
+      {/* Alcool / menu : visible sur tous les onglets (beaucoup de partenaires utilisent Dashboard sans ouvrir Menu) */}
+      {restaurant && (
+        <div className="bg-amber-50/90 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-amber-950 dark:text-amber-100 leading-snug">
+              <strong>Ventes d&apos;alcool :</strong> vous pouvez ajouter bières, vins, etc. Ouvrez l&apos;onglet{' '}
+              <strong>Menu</strong>, cliquez sur un plat puis cochez <strong>« Alcool »</strong> pour chaque article concerné
+              (attestation majeur côté client au paiement). La case se trouve dans la fenêtre d&apos;édition du plat, sous « Disponible ».
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('menu');
+                if (typeof window !== 'undefined') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              className="shrink-0 self-start sm:self-center px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold shadow-sm"
+            >
+              Ouvrir l&apos;onglet Menu
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 

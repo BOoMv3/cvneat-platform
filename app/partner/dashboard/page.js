@@ -90,6 +90,20 @@ export default function PartnerDashboard() {
         </header>
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <p className="font-semibold mb-1">Où gérer le menu, l&apos;alcool et les plats ?</p>
+            <p className="mb-2">
+              La gestion utilisée en production est la <strong>console partenaire</strong> sur{' '}
+              <Link href="/partner#menu" className="underline font-medium text-blue-800">
+                /partner → onglet « Menu »
+              </Link>
+              . C&apos;est là que se trouve la case <strong>« Alcool »</strong> sur chaque plat (édition du plat, sous Disponible).
+            </p>
+            <p className="text-blue-800/90">
+              Les liens « Plats » ci-dessous mènent vers une autre page d&apos;exemple ; si vous ne voyez pas la case alcool, utilisez le lien ci-dessus.
+            </p>
+          </div>
+
           {/* Statistiques */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard icon={<FaBoxOpen className="text-blue-500" />} title="Commandes du jour" value={stats?.today_orders || 0} />
