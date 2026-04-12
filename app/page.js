@@ -442,7 +442,6 @@ export default function Home() {
   const [showFloatingCart, setShowFloatingCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
   const [showCartNotification, setShowCartNotification] = useState(false); // Pour la notification d'ajout
-  const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
   const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false); // Commande en cours pour mettre en avant "Ma commande"
 
@@ -730,7 +729,6 @@ export default function Home() {
             console.warn('[Restaurants] Aucun restaurant retourné par Supabase');
             console.warn('[Restaurants] Vérifiez les permissions RLS sur la table restaurants');
             setRestaurants([]);
-            setRestaurantsOpenStatus({});
             setLoading(false);
             return;
           }
@@ -820,7 +818,6 @@ export default function Home() {
         if (data.length === 0) {
           console.warn('[Restaurants] Aucun restaurant trouvé dans la réponse');
           setRestaurants([]);
-          setRestaurantsOpenStatus({});
           setLoading(false);
           return;
         }
@@ -943,27 +940,6 @@ export default function Home() {
         }
         // Statut ouvert/fermé : normalizeRestaurantOpenFields (identique à GET /api/restaurants).
         setRestaurants(normalizedRestaurants);
-
-        setRestaurantsOpenStatus((prev) => {
-          const openStatusMap = {};
-          for (const restaurant of normalizedRestaurants) {
-            const todayHoursLabel =
-              getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
-
-            const resolved = resolveHomeOpenFromMap(restaurant, null);
-
-            const entry = {
-              isOpen: resolved.isOpen === true,
-              isManuallyClosed: resolved.isManuallyClosed === true,
-              hoursLabel: todayHoursLabel || 'Horaires non communiquées',
-            };
-            const rid = restaurant.id;
-            const ridStr = String(rid).trim();
-            openStatusMap[rid] = entry;
-            openStatusMap[ridStr] = entry;
-          }
-          return openStatusMap;
-        });
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
         console.error('[Restaurants] Erreur lors du chargement des restaurants:', error);
@@ -971,7 +947,6 @@ export default function Home() {
         const errorMessage = error.message || error.toString() || 'Erreur inconnue';
         setError(`Erreur lors du chargement des restaurants: ${errorMessage}`);
         setRestaurants([]);
-        setRestaurantsOpenStatus({});
       } finally {
         setLoading(false);
       }
@@ -1215,14 +1190,8 @@ export default function Home() {
     };
 
     return uniqueRestaurants.sort((a, b) => {
-      const statusA = resolveHomeOpenFromMap(
-        a,
-        restaurantsOpenStatus[a.id] ?? restaurantsOpenStatus[String(a.id).trim()]
-      );
-      const statusB = resolveHomeOpenFromMap(
-        b,
-        restaurantsOpenStatus[b.id] ?? restaurantsOpenStatus[String(b.id).trim()]
-      );
+      const statusA = resolveHomeOpenFromMap(a, null);
+      const statusB = resolveHomeOpenFromMap(b, null);
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
@@ -1257,7 +1226,7 @@ export default function Home() {
       // Les restaurants qui partagent le plus passent devant
       return boostA - boostB;
     });
-  }, [finalRestaurants, restaurantsOpenStatus]);
+  }, [finalRestaurants]);
 
   // Détecter si on est sur une route de restaurant AVANT de charger quoi que ce soit
   useEffect(() => {
@@ -1686,11 +1655,8 @@ export default function Home() {
           ) : (
             <div className="space-y-8">
               {displayRestaurants.map((restaurant, index) => {
-                // Statut affiché : urgence ID → ouvert ; sinon map accueil puis getResolvedOpenFlags.
-                const fromMap =
-                  restaurantsOpenStatus?.[restaurant.id] ??
-                  restaurantsOpenStatus?.[String(restaurant.id).trim()];
-                const status = resolveHomeOpenFromMap(restaurant, fromMap);
+                // Statut affiché : uniquement les flags sur l’objet restaurant (même règle que la fiche détail).
+                const status = resolveHomeOpenFromMap(restaurant, null);
                 const restaurantStatus = {
                   isOpen: status.isOpen === true,
                   isManuallyClosed: status.isManuallyClosed === true,

@@ -14,6 +14,7 @@ import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
 import { getResolvedOpenFlags } from '@/lib/restaurant-open-client';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -303,6 +304,26 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       .subscribe((status) => {
         console.log('📡 Statut subscription menu:', status);
       });
+
+    // Ouverture / fermeture manuelle : appliquer tout de suite si le partenaire ou l’admin change la ligne (sans attendre le polling 60s)
+    const statusChannel = supabase
+      .channel(`restaurant_${restaurantId}_status`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'restaurants',
+          filter: `id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          const row = payload?.new;
+          if (!row || typeof row !== 'object') return;
+          const openNorm = normalizeRestaurantOpenFields(row);
+          setRestaurant((prev) => (prev && typeof prev === 'object' ? { ...prev, ...openNorm } : prev));
+        }
+      )
+      .subscribe();
     
     const onVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || !restaurantId) return;
@@ -320,6 +341,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('restaurant-status-changed', onStatusChanged);
       supabase.removeChannel(menuChannel);
+      supabase.removeChannel(statusChannel);
     };
   }, [restaurantId, refreshRestaurantFromServer]);
 
