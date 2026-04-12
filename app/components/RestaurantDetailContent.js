@@ -14,6 +14,7 @@ import StarRating from '@/components/StarRating';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { computeCartTotalWithExtras, getItemLineTotal } from '@/lib/cartUtils';
 import { getResolvedOpenFlags } from '@/lib/restaurant-open-client';
+import { shouldApplyRestaurantRowUpdate } from '@/lib/restaurant-open-compute';
 
 export default function RestaurantDetailContent({ restaurantId: propRestaurantId }) {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       if (!r.ok) return false;
       const data = await r.json();
       if (gen !== restaurantFetchGenRef.current) return false;
-      setRestaurant(data);
+      setRestaurant((prev) => (shouldApplyRestaurantRowUpdate(prev, data) ? data : prev));
       return true;
     } catch {
       return false;
@@ -310,28 +311,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         console.log('📡 Statut subscription menu:', status);
       });
 
-    // UPDATE sur la ligne : ne pas fusionner payload.new (souvent partiel → faux états). Recharger la fiche via l’API (debounce).
-    let statusRefreshTimer = null;
-    const statusChannel = supabase
-      .channel(`restaurant_${restaurantId}_status`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'restaurants',
-          filter: `id=eq.${restaurantId}`,
-        },
-        () => {
-          if (statusRefreshTimer) clearTimeout(statusRefreshTimer);
-          statusRefreshTimer = setTimeout(() => {
-            statusRefreshTimer = null;
-            void refreshRestaurantFromServer();
-          }, 600);
-        }
-      )
-      .subscribe();
-    
     const onVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || !restaurantId) return;
       refreshRestaurantFromServer();
@@ -344,12 +323,10 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     window.addEventListener('restaurant-status-changed', onStatusChanged);
 
     return () => {
-      if (statusRefreshTimer) clearTimeout(statusRefreshTimer);
       clearInterval(statusInterval);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('restaurant-status-changed', onStatusChanged);
       supabase.removeChannel(menuChannel);
-      supabase.removeChannel(statusChannel);
     };
   }, [restaurantId, refreshRestaurantFromServer]);
 
@@ -504,7 +481,9 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
 
       if (gen !== restaurantFetchGenRef.current) return;
 
-      setRestaurant(restaurantData);
+      setRestaurant((prev) =>
+        shouldApplyRestaurantRowUpdate(prev, restaurantData) ? restaurantData : prev
+      );
       setMenu(Array.isArray(menuData) ? menuData : []);
       setMenuCategoryOrder(
         Array.isArray(categoriesData) && categoriesData.length > 0 ? categoriesData : null

@@ -447,6 +447,8 @@ export default function Home() {
 
   const searchInputRef = useRef(null);
   const lastFocusKeyRef = useRef('');
+  /** Évite que deux fetchRestaurants() se chevauchent : la dernière seule met à jour la liste. */
+  const homeListFetchGenRef = useRef(0);
 
   // Focus automatique sur la barre de recherche si on arrive via l'onglet "Rechercher"
   useEffect(() => {
@@ -664,6 +666,7 @@ export default function Home() {
     });
 
     const fetchRestaurants = async () => {
+      const fetchGen = ++homeListFetchGenRef.current;
       try {
         setLoading(true);
         setError(null);
@@ -939,16 +942,20 @@ export default function Home() {
           console.error('[Restaurants] Premier restaurant reçu:', data[0]);
         }
         // Statut ouvert/fermé : normalizeRestaurantOpenFields (identique à GET /api/restaurants).
+        if (fetchGen !== homeListFetchGenRef.current) return;
         setRestaurants(normalizedRestaurants);
         console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
       } catch (error) {
+        if (fetchGen !== homeListFetchGenRef.current) return;
         console.error('[Restaurants] Erreur lors du chargement des restaurants:', error);
         console.error('[Restaurants] Stack trace:', error.stack);
         const errorMessage = error.message || error.toString() || 'Erreur inconnue';
         setError(`Erreur lors du chargement des restaurants: ${errorMessage}`);
         setRestaurants([]);
       } finally {
-        setLoading(false);
+        if (fetchGen === homeListFetchGenRef.current) {
+          setLoading(false);
+        }
       }
     };
 
