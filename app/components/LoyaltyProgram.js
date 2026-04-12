@@ -1,7 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FaGift, FaTrophy, FaStar, FaCrown, FaGem } from 'react-icons/fa';
+import {
+  LOYALTY_REWARDS_CATALOG,
+  LOYALTY_CHECKOUT_HELP,
+  LOYALTY_POINTS_PER_EURO_SPENT,
+} from '@/lib/loyalty-rewards';
 
 const LOYALTY_LEVELS = {
   bronze: {
@@ -55,11 +60,10 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
   const [currentLevel, setCurrentLevel] = useState('bronze');
   const [nextLevel, setNextLevel] = useState('silver');
   const [progressToNext, setProgressToNext] = useState(0);
-  const [rewards, setRewards] = useState([]);
+  const rewards = useMemo(() => LOYALTY_REWARDS_CATALOG, []);
 
   useEffect(() => {
     calculateLevel();
-    fetchRewards();
   }, [userPoints]);
 
   const calculateLevel = () => {
@@ -87,55 +91,15 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
     }
   };
 
-  const fetchRewards = async () => {
-    // Récompenses : coûts doublés (1 pt = 1€ sur les articles) pour ne pas donner les réduc trop vite
-    const rewards = [
-      {
-        id: 'article-offert',
-        name: 'Article offert',
-        description: 'Un dessert ou une boisson au choix offert avec votre prochaine commande',
-        cost: 100,
-        icon: '🎁',
-        available: true,
-        featured: true
-      },
-      {
-        id: 'reduction-5',
-        name: 'Réduction 5€',
-        description: '5€ de réduction sur votre prochaine commande',
-        cost: 200,
-        icon: '🎫',
-        available: true,
-        featured: false
-      },
-      {
-        id: 'livraison-gratuite',
-        name: 'Livraison gratuite',
-        description: 'Livraison gratuite sur votre prochaine commande',
-        cost: 160,
-        icon: '🚚',
-        available: true,
-        featured: false
-      },
-      {
-        id: 'reduction-10',
-        name: 'Réduction 10€',
-        description: '10€ de réduction sur votre prochaine commande',
-        cost: 400,
-        icon: '💳',
-        available: true,
-        featured: false
-      }
-    ];
-    setRewards(rewards);
-  };
-
   const redeemReward = async (rewardId) => {
     const reward = rewards.find((r) => r.id === rewardId);
     const cost = reward?.cost ?? 0;
-    // Les récompenses sont utilisées au moment du paiement : le client choisit combien de points utiliser au checkout.
+    const label = reward?.name || 'cette récompense';
     alert(
-      `Pour utiliser cette récompense (${cost} pts), passez une commande puis au moment de payer (page panier → Valider la commande), choisissez "Utiliser ${cost} points" dans le récapitulatif. Les points seront déduits et la réduction appliquée.`
+      `« ${label} » = ${cost} points.\n\n` +
+        `1) Ajoutez vos plats au panier puis ouvrez le paiement (panier → valider).\n` +
+        `2) Dans « Utiliser mes points », choisissez le raccourci « ${label} (${cost} pts) » ou saisissez ${cost} points.\n\n` +
+        LOYALTY_CHECKOUT_HELP
     );
   };
 
@@ -203,8 +167,10 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
       {/* Récompenses disponibles */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Récompenses disponibles</h4>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Échangez vos points contre des récompenses. Pour en bénéficier, utilisez vos points au moment de payer (panier → Valider la commande → choisir le nombre de points à utiliser).</p>
-        <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">Le partenaire sera informé de la réduction fidélité sur le détail de la commande.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+          Échangez vos points contre les récompenses ci-dessous (paliers fixes). {LOYALTY_CHECKOUT_HELP}
+        </p>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">Le partenaire voit la réduction fidélité sur le détail de la commande.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {rewards.map((reward) => (
             <div 
@@ -252,7 +218,9 @@ export default function LoyaltyProgram({ userPoints = 0, className = '' }) {
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
             <span className="text-gray-700 dark:text-gray-300">À chaque commande livrée</span>
-            <span className="font-medium text-green-600 dark:text-green-400">+1 point par euro dépensé</span>
+            <span className="font-medium text-green-600 dark:text-green-400">
+              +{LOYALTY_POINTS_PER_EURO_SPENT} point{LOYALTY_POINTS_PER_EURO_SPENT > 1 ? 's' : ''} par euro dépensé (articles)
+            </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 pt-2">
             Exemple : une commande de 25€ (articles) = 25 points. Avec 100 points, offrez-vous un dessert ou une boisson !

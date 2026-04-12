@@ -26,6 +26,7 @@ import {
   FaGift
 } from 'react-icons/fa';
 import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu } from '@/lib/cartUtils';
+import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP } from '@/lib/loyalty-rewards';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -1348,17 +1349,35 @@ export default function Checkout() {
             {/* Utiliser mes points de fidélité */}
             {userPoints > 0 && (
               <div className="border-t dark:border-gray-700 pt-4 mt-4">
-                <h3 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center text-sm sm:text-base">
+                <h3 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center text-sm sm:text-base">
                   <FaGift className="h-4 w-4 text-amber-500 dark:text-amber-400 mr-2" />
                   Utiliser mes points ({userPoints} pts)
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">1 point = 1€ de réduction</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">{LOYALTY_CHECKOUT_HELP}</p>
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2">Récompenses (paliers)</p>
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {LOYALTY_REWARDS_CATALOG.filter((r) => r.available !== false && r.cost <= userPoints).map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setPointsToUse((prev) => (prev === r.cost ? 0 : r.cost))}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        pointsToUse === r.cost
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50'
+                      }`}
+                    >
+                      {r.name} ({r.cost} pts)
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Autres montants</p>
                 <div className="flex gap-2 flex-wrap">
-                  {[5, 10, 25, 50, 100].filter(p => p <= userPoints).map((p) => (
+                  {[5, 10, 25, 50, 100].filter((p) => p <= userPoints).map((p) => (
                     <button
                       key={p}
                       type="button"
-                      onClick={() => setPointsToUse(prev => prev === p ? 0 : p)}
+                      onClick={() => setPointsToUse((prev) => (prev === p ? 0 : p))}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         pointsToUse === p
                           ? 'bg-amber-500 text-white'

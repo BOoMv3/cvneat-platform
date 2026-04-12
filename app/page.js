@@ -42,6 +42,11 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
+import {
+  LOYALTY_EARN_SHORT,
+  LOYALTY_CHECKOUT_HELP,
+  getLoyaltyRewardsSummaryLine,
+} from '@/lib/loyalty-rewards';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -1756,8 +1761,9 @@ export default function Home() {
             <div className="mb-6 rounded-2xl border border-amber-200/90 dark:border-amber-800/60 bg-amber-50/95 dark:bg-amber-950/35 px-4 py-4 sm:px-5 sm:py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200 leading-snug">
                 <span className="font-bold text-gray-900 dark:text-white">Programme fidélité CVN&apos;EAT</span>
-                {' — '}1 point par euro dépensé sur vos commandes. Au paiement,{' '}
-                <span className="font-semibold">1 point = 1&nbsp;€</span> de réduction (dans la limite du total).
+                {' — '}
+                {LOYALTY_EARN_SHORT} Récompenses par paliers :{' '}
+                <span className="font-medium">{getLoyaltyRewardsSummaryLine()}</span>.
               </p>
               <div className="flex flex-wrap gap-2 shrink-0">
                 <Link
@@ -1796,8 +1802,12 @@ export default function Home() {
                         </span>
                       </h3>
                       <p className="text-gray-800 dark:text-gray-200 text-sm sm:text-base mt-1">
-                        Vous cumulez <span className="font-semibold">1 point par euro</span> sur vos commandes. Sur la page de paiement, utilisez vos points :{' '}
-                        <span className="font-semibold">1 point = 1&nbsp;€</span> en moins sur le total (panier minimum 0,50&nbsp;€ après réduction).
+                        {LOYALTY_EARN_SHORT}{' '}
+                        <span className="font-semibold">Récompenses :</span>{' '}
+                        {getLoyaltyRewardsSummaryLine()}.
+                      </p>
+                      <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm mt-2 leading-snug">
+                        {LOYALTY_CHECKOUT_HELP}
                       </p>
                     </div>
                   </div>
@@ -1816,9 +1826,12 @@ export default function Home() {
               <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/90 p-4 sm:p-5 shadow-sm">
                 <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">Comment utiliser vos points ?</p>
                 <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700 dark:text-gray-300 mb-4">
-                  <li>Ajoutez vos plats au panier depuis un restaurant.</li>
-                  <li>Ouvrez le <span className="font-semibold">paiement</span> (panier → valider la commande).</li>
-                  <li>Réglez le nombre de points à utiliser dans le récapitulatif avant de payer par carte.</li>
+                  <li>Choisissez une <span className="font-semibold">récompense</span> et son coût en points (ex. livraison offerte = 160 pts).</li>
+                  <li>Ajoutez vos plats au panier, puis ouvrez le <span className="font-semibold">paiement</span> (panier → valider).</li>
+                  <li>
+                    Sous « Utiliser mes points », prenez le <span className="font-semibold">raccourci</span> de la récompense ou le même nombre de
+                    points : la réduction s’applique sur le total (voir encadré ci-dessus).
+                  </li>
                 </ol>
                 <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                   <Link
