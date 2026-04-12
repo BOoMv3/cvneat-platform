@@ -190,6 +190,45 @@ export async function PUT(request, { params }) {
       strategie_boost_reduction_pct
     } = bodyJson;
 
+    // Toggle admin (dashboard) : RPC SECURITY DEFINER (contourne RLS / rôle 'Admin' vs 'admin').
+    // Si la migration 20260410190000 n’est pas appliquée, on retombe sur le PATCH plus bas.
+    const TOGGLE_KEYS = new Set([
+      'ferme_manuellement',
+      'ouvert_manuellement',
+      'manual_status_updated_at',
+      'manual_status_updated_by',
+    ]);
+    const bodyKeys = Object.keys(bodyJson);
+    const isAdminManualToggle =
+      bodyKeys.length > 0 &&
+      bodyKeys.every((k) => TOGGLE_KEYS.has(k)) &&
+      (ferme_manuellement !== undefined || ouvert_manuellement !== undefined);
+
+    if (isAdminManualToggle) {
+      const rpcRes = await supabaseRestWithJwt(token, '/rest/v1/rpc/admin_set_restaurant_manual_status', {
+        method: 'POST',
+        body: {
+          p_restaurant_id: restaurantId,
+          p_ferme_manuellement: !!ferme_manuellement,
+          p_ouvert_manuellement: !!ouvert_manuellement,
+        },
+        extraHeaders: {
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+      });
+      const rpcRows = Array.isArray(rpcRes.json) ? rpcRes.json : rpcRes.json ? [rpcRes.json] : [];
+      const rpcRow = rpcRows[0];
+      if (rpcRes.ok && rpcRow) {
+        return NextResponse.json({ success: true, restaurant: rpcRow });
+      }
+      console.warn(
+        'PUT admin/restaurants: RPC admin_set_restaurant_manual_status indisponible ou erreur, repli PATCH.',
+        rpcRes.status,
+        rpcRes.json
+      );
+    }
+
     const updateData = {};
     if (nom !== undefined) updateData.nom = nom;
     if (adresse !== undefined) updateData.adresse = adresse;

@@ -104,7 +104,8 @@ export default function AdminPage() {
   const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
     try {
       setTogglingRestaurantId(restaurant.id);
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: sessData } = await supabase.auth.getSession();
+      const session = sessData?.session;
       if (!session?.access_token) throw new Error('Session expirée');
       if (!session.user?.id) throw new Error('Session invalide (pas d’utilisateur)');
 
@@ -170,8 +171,8 @@ export default function AdminPage() {
   const fetchPsgom10Usage = async () => {
     try {
       setPsgom10Usage({ loading: true, count: 0, error: null });
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const { data: sessData } = await supabase.auth.getSession();
+      const token = sessData?.session?.access_token;
       if (!token) throw new Error('Session expirée');
 
       const res = await fetch('/api/admin/promo-codes/summary?code=PSGOM10', {
@@ -381,8 +382,8 @@ export default function AdminPage() {
       setBroadcastPrepLoading(true);
       setBroadcastPrepResult(null);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const { data: sessData } = await supabase.auth.getSession();
+      const token = sessData?.session?.access_token;
       if (!token) {
         setBroadcastPrepResult({ error: 'Session expirée. Reconnecte-toi.' });
         return;
