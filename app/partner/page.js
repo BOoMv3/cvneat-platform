@@ -2086,7 +2086,13 @@ export default function PartnerDashboard() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(payload.error || payload.details || 'Impossible de mettre à jour le statut.');
+        const detail =
+          payload.details ||
+          (payload.supabase && (payload.supabase.message || payload.supabase.hint)) ||
+          (typeof payload.supabase === 'string' ? payload.supabase : null);
+        alert(
+          [payload.error || 'Impossible de mettre à jour le statut.', detail].filter(Boolean).join('\n\n')
+        );
         return;
       }
       await applyCanonicalRestaurant(restaurant.id);

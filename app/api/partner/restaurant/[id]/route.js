@@ -31,7 +31,10 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
     .eq('id', user.id)
     .single();
 
-  if (userError || !userData || !['restaurant', 'partner'].includes(userData.role)) {
+  const roleNorm = String(userData?.role ?? '')
+    .trim()
+    .toLowerCase();
+  if (userError || !userData || !['restaurant', 'partner'].includes(roleNorm)) {
     return { error: 'Accès refusé - Rôle restaurant/partenaire requis', status: 403 };
   }
 

@@ -45,7 +45,10 @@ export default function PartnerHours() {
         .single();
 
       // Autoriser les restaurants ET les admins
-      if (userError || !userData || (userData.role !== 'restaurant' && userData.role !== 'admin')) {
+      const roleLc = String(userData?.role ?? '')
+        .trim()
+        .toLowerCase();
+      if (userError || !userData || !['restaurant', 'partner', 'admin'].includes(roleLc)) {
         router.push('/');
         return;
       }
