@@ -54,12 +54,10 @@ export default function RestaurantDetail({ params }) {
   const [comboSelections, setComboSelections] = useState({});
   const [comboQuantity, setComboQuantity] = useState(1);
 
-  const { isOpen: isRestaurantOpen } = useMemo(() => {
-    if (!restaurant || typeof restaurant !== 'object') {
-      return { isOpen: true };
-    }
-    return getResolvedOpenFlags(restaurant);
-  }, [restaurant]);
+  const { isOpen: isRestaurantOpen } = useMemo(
+    () => getResolvedOpenFlags(restaurant),
+    [restaurant],
+  );
 
   const getStepKey = (step, index) => step?.id || `step-${index}`;
 

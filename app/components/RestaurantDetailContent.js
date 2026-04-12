@@ -73,12 +73,10 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   };
 
   /** Toujours dérivé de `restaurant` : impossible de désynchroniser avec des setState séparés. */
-  const { isOpen: isRestaurantOpen } = useMemo(() => {
-    if (!restaurant || typeof restaurant !== 'object') {
-      return { isOpen: true };
-    }
-    return getResolvedOpenFlags(restaurant);
-  }, [restaurant]);
+  const { isOpen: isRestaurantOpen } = useMemo(
+    () => getResolvedOpenFlags(restaurant),
+    [restaurant],
+  );
 
   /** Recharge le JSON restaurant (flags inclus) — l’UI suit via useMemo ci-dessus. */
   const refreshRestaurantFromServer = useCallback(async () => {

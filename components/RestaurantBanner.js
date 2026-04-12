@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaHeart } from 'react-icons/fa';
 import StarRating from './StarRating';
 
-export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false, hours = [], isOpen = true }) {
+export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false, hours = [], isOpen = false }) {
   const [currentHours, setCurrentHours] = useState(null);
   
   useEffect(() => {
