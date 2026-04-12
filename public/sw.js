@@ -1,8 +1,8 @@
 // Service Worker pour les notifications push et le cache
 const CACHE_NAME = 'cvneat-v1';
 const STATIC_CACHE = 'cvneat-static-v1';
-// v3 : exclure aussi /api/partner/* (statut ouvert/fermé, prépa — ne jamais servir du SW cache).
-const DYNAMIC_CACHE = 'cvneat-dynamic-v3';
+// v4 : ne plus servir du cache « document » pour /admin (et zones pro) — ancien HTML masquait le layout Next.
+const DYNAMIC_CACHE = 'cvneat-dynamic-v4';
 
 // Fichiers à mettre en cache statique
 const STATIC_FILES = [
@@ -135,6 +135,27 @@ self.addEventListener('fetch', (event) => {
               );
             });
         })
+    );
+    return;
+  }
+
+  // Tableaux de bord : ne jamais répondre depuis le cache SW pour une navigation document
+  // (cache-first sur le HTML servait d’anciennes coques Next → pas de bandeau / pas de correctifs).
+  const isDashboardDocument =
+    request.method === 'GET' &&
+    request.destination === 'document' &&
+    (url.pathname.startsWith('/admin') ||
+      url.pathname.startsWith('/partner') ||
+      url.pathname.startsWith('/restaurant'));
+
+  if (isDashboardDocument) {
+    event.respondWith(
+      fetch(request).catch(() => {
+        if (request.destination === 'document') {
+          return caches.match('/offline');
+        }
+        return Promise.reject(new Error('Réseau indisponible'));
+      })
     );
     return;
   }

@@ -111,7 +111,19 @@ const nextConfig = {
 
   // Headers CORS pour l'app mobile Capacitor
   async headers() {
+    const noStoreDashboard = [
+      {
+        key: 'Cache-Control',
+        value: 'private, no-store, no-cache, must-revalidate, max-age=0',
+      },
+    ];
     return [
+      { source: '/admin', headers: noStoreDashboard },
+      { source: '/admin/:path*', headers: noStoreDashboard },
+      { source: '/partner', headers: noStoreDashboard },
+      { source: '/partner/:path*', headers: noStoreDashboard },
+      { source: '/restaurant', headers: noStoreDashboard },
+      { source: '/restaurant/:path*', headers: noStoreDashboard },
       {
         source: '/api/:path*',
         headers: [
