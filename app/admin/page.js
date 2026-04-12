@@ -122,12 +122,29 @@ export default function AdminPage() {
         },
         body: JSON.stringify(payload)
       });
-      const json = await res.json().catch(() => ({}));
+      const raw = await res.text();
+      let json = {};
+      try {
+        json = raw ? JSON.parse(raw) : {};
+      } catch {
+        json = {
+          error: `Réponse invalide (HTTP ${res.status})`,
+          details: raw?.slice(0, 500) || '(vide)',
+        };
+      }
       if (!res.ok || json?.success === false) {
         const det = json?.details;
         const detStr =
           det == null ? '' : typeof det === 'string' ? det : JSON.stringify(det);
-        const parts = [json?.error, detStr, json?.httpStatus != null ? `HTTP ${json.httpStatus}` : null].filter(Boolean);
+        const parts = [
+          json?.error,
+          json?.hint,
+          json?.code,
+          json?.name,
+          detStr,
+          json?.httpStatus != null ? `HTTP ${json.httpStatus}` : null,
+          !json?.error && !detStr ? `HTTP ${res.status}` : null,
+        ].filter(Boolean);
         throw new Error(parts.join(' — ') || `Erreur HTTP ${res.status}`);
       }
       const updatedRestaurant = json?.restaurant || {};

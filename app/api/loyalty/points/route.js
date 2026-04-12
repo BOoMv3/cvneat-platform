@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../../../lib/supabase';
 
 // GET /api/loyalty/points - Récupérer les points et l'historique de fidélité
 export async function GET(request) {
@@ -10,42 +10,81 @@ export async function GET(request) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const user = authData?.user;
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Récupérer les informations de fidélité de l'utilisateur
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('points_fidelite, loyalty_level, total_spent, loyalty_points_earned, loyalty_points_spent')
-      .eq('id', user.id)
-      .single();
+    // Le client `supabase` importé (anon) n’envoie pas le JWT sur PostgREST → la RLS bloque.
+    // Après vérification du token, lecture autorisée avec le service role (ligne utilisateur uniquement).
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Configuration serveur : service role indisponible pour la fidélité' },
+        { status: 500 }
+      );
+    }
 
-    if (userError) throw userError;
+    let userData;
+    {
+      const r = await supabaseAdmin
+        .from('users')
+        .select(
+          'points_fidelite, role, loyalty_level, total_spent, loyalty_points_earned, loyalty_points_spent'
+        )
+        .eq('id', user.id)
+        .maybeSingle();
+      userData = r.data;
+      let userError = r.error;
+      if (
+        userError &&
+        /column|does not exist|schema cache|PGRST204/i.test(String(userError.message || userError.code || ''))
+      ) {
+        const r2 = await supabaseAdmin
+          .from('users')
+          .select('points_fidelite, role')
+          .eq('id', user.id)
+          .maybeSingle();
+        userData = r2.data;
+        userError = r2.error;
+      }
+      if (userError) {
+        console.error('GET loyalty/points users:', userError);
+        return NextResponse.json(
+          { error: 'Impossible de lire le profil', details: userError.message },
+          { status: 500 }
+        );
+      }
+    }
 
-    // Récupérer l'historique des points
-    const { data: history, error: historyError } = await supabase
+    const { data: history, error: historyError } = await supabaseAdmin
       .from('loyalty_history')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20);
 
-    if (historyError) throw historyError;
+    if (historyError) {
+      console.error('GET loyalty/points history:', historyError);
+    }
+
+    const points = Math.max(0, parseInt(String(userData?.points_fidelite ?? 0), 10) || 0);
 
     return NextResponse.json({
-      points: userData.points_fidelite || 0,
-      level: userData.loyalty_level || 'Bronze',
-      totalSpent: userData.total_spent || 0,
-      pointsEarned: userData.loyalty_points_earned || 0,
-      pointsSpent: userData.loyalty_points_spent || 0,
-      history: history || []
+      points,
+      role: userData?.role ?? null,
+      level: userData?.loyalty_level || 'Bronze',
+      totalSpent: userData?.total_spent || 0,
+      pointsEarned: userData?.loyalty_points_earned || 0,
+      pointsSpent: userData?.loyalty_points_spent || 0,
+      history: historyError ? [] : history || [],
     });
   } catch (error) {
     console.error('Erreur récupération points fidélité:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }
 
@@ -58,8 +97,8 @@ export async function POST(request) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const user = authData?.user;
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
@@ -121,8 +160,8 @@ export async function PUT(request) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const user = authData?.user;
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }

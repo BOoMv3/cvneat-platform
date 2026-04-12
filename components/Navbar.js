@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
+import { fetchMyLoyaltyFromApi } from '../lib/user-loyalty-client';
 import { safeLocalStorage } from '../lib/localStorage';
 import { 
   FaShoppingCart, 
@@ -29,14 +30,20 @@ export default function Navbar() {
       setUser(session?.user ?? null);
       setUserRole('');
       if (session?.user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role, points_fidelite')
-          .eq('id', session.user.id)
-          .single();
-        if(userData) {
-          setUserPoints(userData.points_fidelite || 0);
-          setUserRole((userData.role || '').toString().trim().toLowerCase());
+        const loyalty = await fetchMyLoyaltyFromApi();
+        if (loyalty.ok) {
+          setUserPoints(loyalty.points);
+          setUserRole((loyalty.role || '').toString().trim().toLowerCase());
+        } else {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('role, points_fidelite')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          if (userData) {
+            setUserPoints(Math.max(0, parseInt(String(userData.points_fidelite ?? 0), 10) || 0));
+            setUserRole((userData.role || '').toString().trim().toLowerCase());
+          }
         }
       }
     };
@@ -54,7 +61,18 @@ export default function Navbar() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
-      if (!session?.user) setUserRole('');
+      if (!session?.user) {
+        setUserRole('');
+        setUserPoints(0);
+        return;
+      }
+      void (async () => {
+        const loyalty = await fetchMyLoyaltyFromApi();
+        if (loyalty.ok) {
+          setUserPoints(loyalty.points);
+          setUserRole((loyalty.role || '').toString().trim().toLowerCase());
+        }
+      })();
     });
 
     checkUser();

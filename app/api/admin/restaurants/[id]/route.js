@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as sharedSupabaseAdmin } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
+function serializeForClient(value) {
+  if (value == null) return null;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (value instanceof Error) return value.message || String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 const getAdminClient = () => {
   if (sharedSupabaseAdmin) {
     return sharedSupabaseAdmin;
@@ -59,8 +72,8 @@ export async function GET(request, { params }) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const user = authData?.user;
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
@@ -72,8 +85,14 @@ export async function GET(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || adminUser?.role !== 'admin') {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const resolvedParams = await Promise.resolve(params);
+    const restaurantId = resolvedParams?.id;
+    if (!restaurantId || typeof restaurantId !== 'string') {
+      return NextResponse.json({ error: 'ID restaurant manquant ou invalide' }, { status: 400 });
     }
 
     const { data: restaurant, error } = await supabase
@@ -84,7 +103,7 @@ export async function GET(request, { params }) {
         orders(count),
         partner:users(email, nom, prenom, telephone)
       `)
-      .eq('id', params.id)
+      .eq('id', restaurantId)
       .single();
 
     if (error) throw error;
@@ -105,15 +124,23 @@ export async function PUT(request, { params }) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const user = authData?.user;
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
     const resolvedParams = await Promise.resolve(params);
-    const restaurantId = resolvedParams?.id;
-    if (!restaurantId || typeof restaurantId !== 'string') {
+    const rawId = resolvedParams?.id;
+    const restaurantId =
+      typeof rawId === 'string'
+        ? rawId.trim()
+        : Array.isArray(rawId)
+          ? String(rawId[0] ?? '').trim()
+          : rawId != null
+            ? String(rawId).trim()
+            : '';
+    if (!restaurantId) {
       return NextResponse.json({ error: 'ID restaurant manquant ou invalide' }, { status: 400 });
     }
 
@@ -139,6 +166,9 @@ export async function PUT(request, { params }) {
       bodyJson = await request.json();
     } catch {
       return NextResponse.json({ error: 'Corps JSON invalide' }, { status: 400 });
+    }
+    if (bodyJson == null || typeof bodyJson !== 'object' || Array.isArray(bodyJson)) {
+      return NextResponse.json({ error: 'Corps attendu : un objet JSON' }, { status: 400 });
     }
 
     const {
@@ -212,6 +242,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Aucun champ à mettre à jour' }, { status: 400 });
     }
 
+    // PostgREST + JWT (aligné sur /api/partner/restaurant/[id]) pour que les triggers voient auth.uid().
     const patchPath = `/rest/v1/restaurants?id=eq.${encodeURIComponent(restaurantId)}&select=*`;
     const patchRes = await supabaseRestWithJwt(token, patchPath, {
       method: 'PATCH',
@@ -224,24 +255,26 @@ export async function PUT(request, { params }) {
 
     const outRows = Array.isArray(patchRes.json) ? patchRes.json : patchRes.json ? [patchRes.json] : [];
     const updatedRestaurant = outRows[0];
-
-    const patchFailed =
-      !patchRes.ok ||
-      patchRes.status === 204 ||
-      !updatedRestaurant;
+    const patchFailed = !patchRes.ok || patchRes.status === 204 || !updatedRestaurant;
 
     if (patchFailed) {
-      console.error('PUT admin/restaurants REST:', patchRes.status, patchRes.json);
       const j = patchRes.json || {};
+      console.error('PUT admin/restaurants REST:', patchRes.status, j);
       const msg =
         j.message ||
         j.error_description ||
         (typeof j.error === 'string' ? j.error : j.error?.message) ||
         j.hint ||
-        (!patchRes.ok ? 'Mise à jour refusée par Supabase' : 'Aucune ligne modifiée (id inconnu ou accès refusé par les politiques de sécurité).');
+        (!patchRes.ok ? `Mise à jour refusée (HTTP ${patchRes.status})` : 'Aucune ligne modifiée (id inconnu ou RLS).');
+      const status =
+        !patchRes.ok && (patchRes.status === 401 || patchRes.status === 403)
+          ? patchRes.status
+          : !patchRes.ok && patchRes.status >= 400 && patchRes.status < 500
+            ? patchRes.status
+            : 400;
       return NextResponse.json(
         { error: msg, details: j, httpStatus: patchRes.status, rowsReturned: outRows.length },
-        { status: !patchRes.ok && (patchRes.status === 401 || patchRes.status === 403) ? patchRes.status : 400 }
+        { status }
       );
     }
 
@@ -273,7 +306,11 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error('Erreur mise à jour restaurant:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error?.message || String(error) },
+      {
+        error: 'Erreur serveur',
+        details: serializeForClient(error),
+        name: error?.name,
+      },
       { status: 500 }
     );
   }
@@ -288,8 +325,8 @@ export async function DELETE(request, { params }) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const user = authData?.user;
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
@@ -301,7 +338,7 @@ export async function DELETE(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || adminUser?.role !== 'admin') {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 

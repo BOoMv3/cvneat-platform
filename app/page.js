@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '../lib/supabase';
+import { fetchMyLoyaltyFromApi } from '../lib/user-loyalty-client';
 import { safeLocalStorage } from '../lib/localStorage';
 import { getItemLineTotal, computeCartTotalWithExtras } from '@/lib/cartUtils';
 import { 
@@ -610,22 +611,29 @@ export default function Home() {
   useEffect(() => {
     // Verifier l'authentification
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: authPayload } = await supabase.auth.getUser();
+      const user = authPayload?.user ?? null;
       setUser(user);
       
       if (user) {
         try {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('role, points_fidelite')
-            .eq('id', user.id)
-            .single();
-          
-          if (userData) {
-            setUserPoints(userData.points_fidelite || 0);
-            // Stocker le rôle pour vérifier l'accès aux pages
-            if (userData.role) {
-              localStorage.setItem('userRole', userData.role);
+          const loyalty = await fetchMyLoyaltyFromApi();
+          if (loyalty.ok) {
+            setUserPoints(loyalty.points);
+            if (loyalty.role) {
+              localStorage.setItem('userRole', loyalty.role);
+            }
+          } else {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('role, points_fidelite')
+              .eq('id', user.id)
+              .maybeSingle();
+            if (userData) {
+              setUserPoints(Math.max(0, parseInt(String(userData.points_fidelite ?? 0), 10) || 0));
+              if (userData.role) {
+                localStorage.setItem('userRole', userData.role);
+              }
             }
           }
           // Vérifier si l'utilisateur a une commande active (pas livrée/annulée)
@@ -645,11 +653,15 @@ export default function Home() {
           console.error('Erreur recuperation points:', error);
         }
       } else {
+        setUserPoints(0);
         setHasActiveOrder(false);
       }
     };
 
     checkAuth();
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      void checkAuth();
+    });
 
     const fetchRestaurants = async () => {
       try {
@@ -1010,6 +1022,7 @@ export default function Home() {
     }, 60000);
     
     return () => {
+      authListener?.subscription?.unsubscribe();
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('focus', onWindowFocus);
