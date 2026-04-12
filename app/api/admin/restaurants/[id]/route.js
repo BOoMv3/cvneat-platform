@@ -177,9 +177,32 @@ export async function PUT(request, { params }) {
     if (ouvert_manuellement !== undefined) updateData.ouvert_manuellement = !!ouvert_manuellement;
     if (ferme_manuellement !== undefined || ouvert_manuellement !== undefined) {
       updateData.updated_at = new Date().toISOString();
-      // Preuve trigger : toujours depuis le JWT serveur (évite client manual_status_updated_by null + horloge décalée).
       updateData.manual_status_updated_at = new Date().toISOString();
-      updateData.manual_status_updated_by = user.id;
+      // Migration 20260319000012 (owner only) exige manual_status_updated_by = restaurants.user_id.
+      // L’admin n’est pas le propriétaire : sans ça, Postgres lève « owner uniquement ».
+      const { data: ownerRow, error: ownerErr } = await supabaseAdmin
+        .from('restaurants')
+        .select('user_id')
+        .eq('id', restaurantId)
+        .maybeSingle();
+      if (ownerErr) {
+        console.error('PUT admin/restaurants owner lookup:', ownerErr);
+        return NextResponse.json(
+          { error: 'Impossible de lire le restaurant', details: ownerErr.message },
+          { status: 500 }
+        );
+      }
+      const ownerId = ownerRow?.user_id != null ? String(ownerRow.user_id).trim() : '';
+      if (!ownerId) {
+        return NextResponse.json(
+          {
+            error:
+              'Ce restaurant n’a pas de propriétaire (user_id). Corrige la fiche en base ou applique la migration owner-or-admin.',
+          },
+          { status: 409 }
+        );
+      }
+      updateData.manual_status_updated_by = ownerId;
     } else {
       if (manual_status_updated_at !== undefined) updateData.manual_status_updated_at = manual_status_updated_at;
       if (manual_status_updated_by !== undefined) updateData.manual_status_updated_by = manual_status_updated_by;
