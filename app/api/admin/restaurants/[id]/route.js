@@ -22,6 +22,17 @@ const getAdminClient = () => {
   });
 };
 
+/** PostgREST avec le JWT admin : RLS voit auth.uid() + triggers (preuve manuelle) — pas le client anon global. */
+const createSupabaseWithUserJwt = (jwt) => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  return createClient(url, anonKey, {
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+};
+
 // GET /api/admin/restaurants/[id] - Récupérer un restaurant spécifique
 export async function GET(request, { params }) {
   try {
@@ -83,8 +94,16 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est admin
-    const { data: adminUser, error: adminError } = await supabase
+    const supabaseAsAdmin = createSupabaseWithUserJwt(token);
+    if (!supabaseAsAdmin) {
+      return NextResponse.json(
+        { error: 'Configuration Supabase incomplète (URL ou clé anon)' },
+        { status: 500 }
+      );
+    }
+
+    // Vérifier que l'utilisateur est admin (RLS : auth.uid() doit être le JWT ci-dessus)
+    const { data: adminUser, error: adminError } = await supabaseAsAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -134,7 +153,7 @@ export async function PUT(request, { params }) {
       updateData.updated_at = new Date().toISOString();
     }
 
-    const { data: updatedRestaurant, error } = await supabase
+    const { data: updatedRestaurant, error } = await supabaseAsAdmin
       .from('restaurants')
       .update(updateData)
       .eq('id', params.id)
@@ -144,7 +163,13 @@ export async function PUT(request, { params }) {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('PUT admin/restaurants update error:', error);
+      return NextResponse.json(
+        { error: error.message || 'Mise à jour refusée', code: error.code, details: error },
+        { status: 400 }
+      );
+    }
 
     // Envoyer email de notification au partenaire si le statut change
     if (is_active !== undefined && is_active !== updatedRestaurant.is_active) {
@@ -173,7 +198,10 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error('Erreur mise à jour restaurant:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }
 
