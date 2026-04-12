@@ -91,11 +91,13 @@ async function run() {
         const slug = slugify(s?.nom || s?.name || '');
         return slug === 'uf' || slug === 'oeuf' || s?.id === 'uf' || s?.id === 'oeuf';
       });
+      const burrata = supps.find((s) => /burrata/i.test(s?.nom || s?.name || ''));
+      const cremeTruffe = supps.find((s) => /crème.*truffe|creme.*truffe/i.test(s?.nom || s?.name || ''));
+      const pesto = supps.find((s) => /pesto/i.test(s?.nom || s?.name || ''));
       const prixSupp = (s) => s?.prix ?? s?.prix_supplementaire ?? s?.price ?? 0;
+      const extras = [jambon && `jambon:${prixSupp(jambon)}€`, oeuf && `œuf:${prixSupp(oeuf)}€`, burrata && `burrata:${prixSupp(burrata)}€`, cremeTruffe && `crème truffe:${prixSupp(cremeTruffe)}€`, pesto && `pesto:${prixSupp(pesto)}€`].filter(Boolean);
       console.log(
-        `  ${item.nom}: ${item.prix}€` +
-          (jambon ? ` | jambon: ${prixSupp(jambon)}€` : '') +
-          (oeuf ? ` | œuf: ${prixSupp(oeuf)}€` : '')
+        `  ${item.nom}: ${item.prix}€` + (extras.length ? ` | ${extras.join(' ')}` : '')
       );
     }
     console.log('');

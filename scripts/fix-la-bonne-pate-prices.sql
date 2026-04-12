@@ -40,13 +40,17 @@ FROM (
 WHERE m.restaurant_id IN (SELECT id FROM restaurants WHERE nom ILIKE '%bonne pâte%' OR nom ILIKE '%bonne pate%')
   AND TRIM(m.nom) = TRIM(v.nom);
 
--- 2b) Suppléments viande (jambon, etc.) = 2€
+-- 2b) Suppléments: viande 2€, Crème truffe 2€, Burrata 4€
 UPDATE menus m
 SET supplements = (
   SELECT jsonb_agg(
     CASE
       WHEN (s->>'nom') IN ('Jambon blanc', 'Jambon cru', 'Jambon blanc truffé', 'Chorizo', 'Viande hachée de boeuf', 'Steak de boeuf 150g', 'Lard fumé', 'Coppa', 'Mortadella')
       THEN jsonb_set(jsonb_set(COALESCE(s, '{}'::jsonb), '{prix}', '2'::jsonb), '{prix_supplementaire}', '2'::jsonb)
+      WHEN (s->>'nom') IN ('Crème truffée', 'Crème de truffe')
+      THEN jsonb_set(jsonb_set(COALESCE(s, '{}'::jsonb), '{prix}', '2'::jsonb), '{prix_supplementaire}', '2'::jsonb)
+      WHEN (s->>'nom') = 'Burrata'
+      THEN jsonb_set(jsonb_set(COALESCE(s, '{}'::jsonb), '{prix}', '4'::jsonb), '{prix_supplementaire}', '4'::jsonb)
       ELSE s
     END
   )

@@ -226,14 +226,14 @@ export default function RestaurantRequest() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      // Vérifier s'il existe déjà une demande avec cet email
-      const { data: existingRequest } = await supabase
-        .from('restaurant_requests')
-        .select('id, email')
-        .eq('email', formData.email)
-        .single();
-      
-      if (existingRequest) {
+      // Doublon email : via RPC (RLS ne permet plus un SELECT public sur toute la table)
+      const { data: emailExists, error: rpcDupErr } = await supabase.rpc('restaurant_request_email_exists', {
+        p_email: formData.email,
+      });
+      if (rpcDupErr) {
+        console.warn('restaurant_request_email_exists:', rpcDupErr.message);
+      }
+      if (emailExists === true) {
         throw new Error('Une demande existe déjà avec cet email. Veuillez contacter contact@cvneat.fr si vous souhaitez modifier votre demande.');
       }
       

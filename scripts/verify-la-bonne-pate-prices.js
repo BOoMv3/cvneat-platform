@@ -1,6 +1,7 @@
 /**
- * Corrige les prix La Bonne Pâte en utilisant EXACTEMENT les prix du script menu (source front)
- * Usage: node scripts/fix-la-bonne-pate-prices.js
+ * Compare les prix SOURCE (add-la-bonne-pate-menu.js) vs BDD
+ * Affiche les écarts et corrige si --fix passé.
+ * Usage: node scripts/verify-la-bonne-pate-prices.js [--fix]
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -9,28 +10,35 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const envPath = join(__dirname, '..', '.env.local');
+const FIX = process.argv.includes('--fix');
 
-// Charger les variables d'environnement
 let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 let SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const envPath = join(__dirname, '..', '.env.local');
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   try {
     const env = readFileSync(envPath, 'utf8');
     env.split('\n').forEach((line) => {
       const t = line.trim();
       if (t && !t.startsWith('#')) {
-        const [k, ...v] = t.split('=');
+        const [k, ...v] = line.split('=');
         const val = v.join('=').trim().replace(/^['"]|['"]$/g, '');
-        if (k === 'NEXT_PUBLIC_SUPABASE_URL') SUPABASE_URL = val;
-        if (k === 'SUPABASE_SERVICE_ROLE_KEY') SUPABASE_KEY = val;
+        if (k?.trim() === 'NEXT_PUBLIC_SUPABASE_URL') SUPABASE_URL = val;
+        if (k?.trim() === 'SUPABASE_SERVICE_ROLE_KEY') SUPABASE_KEY = val;
       }
     });
   } catch (_) {}
 }
 
-// Prix et suppléments EXACTS du script add-la-bonne-pate-menu.js (source du front)
-// Crème truffe 2€, Burrata 4€, Œuf 1€, Pesto 1€
+const slugify = (s) =>
+  String(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+// === SOURCE DE VÉRITÉ : copiée de add-la-bonne-pate-menu.js ===
 const ingredientMeta = [
   { name: 'Base tomate', type: 'other' },
   { name: 'Base crème', type: 'other' },
@@ -68,26 +76,18 @@ const ingredientMeta = [
   { name: 'Cerneaux de noix', type: 'other' }
 ];
 
-const slugify = (s) =>
-  String(s)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+const supplementsRef = Array.from(
+  ingredientMeta.reduce((map, ing) => {
+    const key = slugify(ing.name);
+    if (!map.has(key)) {
+      const prix = ing.prix != null ? ing.prix : (ing.type === 'meat' ? 2 : ing.type === 'cheese' ? 1 : 1);
+      map.set(key, { id: key, nom: ing.name, prix });
+    }
+    return map;
+  }, new Map())
+).map(([, v]) => v);
 
-const supplementsFromFront = ingredientMeta.map((ing) => {
-  const prix = ing.prix != null ? ing.prix : (ing.type === 'meat' ? 2 : ing.type === 'cheese' ? 1 : 1);
-  return {
-    id: slugify(ing.name),
-    nom: ing.name,
-    prix,
-    prix_supplementaire: prix
-  };
-});
-
-// Tous les articles + prix EXACTS de add-la-bonne-pate-menu.js (UNE SEULE SOURCE DE VÉRITÉ)
-const menuItemsFromFront = [
+const menuRef = [
   { nom: 'Margherita', prix: 11 },
   { nom: 'Reine', prix: 13 },
   { nom: 'Paysanne', prix: 13 },
@@ -133,6 +133,21 @@ const menuItemsFromFront = [
   { nom: "Grande Bouteille d'Eau", prix: 2.4 }
 ];
 
+function getRefPrix(nom) {
+  const r = menuRef.find((m) => m.nom.trim().toLowerCase() === nom?.trim().toLowerCase());
+  return r?.prix;
+}
+
+function getRefSupplement(s) {
+  const nom = s?.nom || s?.name || '';
+  const slug = slugify(nom);
+  const isOeuf = slug === 'uf' || slug === 'oeuf';
+  return supplementsRef.find((r) => {
+    const rs = slugify(r.nom);
+    return rs === slug || (isOeuf && (rs === 'uf' || rs === 'oeuf'));
+  }) || (isOeuf ? { prix: 1 } : null);
+}
+
 async function run() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -147,67 +162,68 @@ async function run() {
     process.exit(1);
   }
 
-  console.log('🍕 Correction des prix pour:', resto.nom);
-  console.log('   Source: add-la-bonne-pate-menu.js (prix du front)\n');
+  const { data: menus } = await supabase
+    .from('menus')
+    .select('id, nom, prix, category, supplements')
+    .eq('restaurant_id', resto.id)
+    .eq('disponible', true);
 
-  let updatedPrix = 0;
-  let updatedSupplements = 0;
+  console.log('\n=== VÉRIFICATION PRIX LA BONNE PÂTE ===');
+  console.log('Source: add-la-bonne-pate-menu.js (identique au front attendu)');
+  console.log('BDD: table menus\n');
 
-  for (const item of menuItemsFromFront) {
-    const { data: menus } = await supabase
-      .from('menus')
-      .select('id, nom, prix, supplements')
-      .eq('restaurant_id', resto.id)
-      .ilike('nom', item.nom)
-      .limit(1);
+  let erreursPrix = 0;
+  let erreursSupp = 0;
 
-    if (!menus || menus.length === 0) continue;
+  for (const m of menus || []) {
+    const refPrix = getRefPrix(m.nom);
+    const dbPrix = parseFloat(m.prix);
+    const refVal = refPrix != null ? parseFloat(refPrix) : null;
 
-    const m = menus[0];
-    const updates = {};
-    if (parseFloat(m.prix) !== parseFloat(item.prix)) {
-      updates.prix = item.prix;
-    }
-    if (m.supplements && Array.isArray(m.supplements) && m.supplements.length > 0) {
-      const corrected = m.supplements.map((s) => {
-        const nomRaw = s?.nom || s?.name || '';
-        const slug = slugify(nomRaw);
-        // Œuf: en BDD le nom peut être "Œuf", "œuf", "Oeuf" -> slug "uf" ou "oeuf"
-        const isOeuf = slug === 'uf' || slug === 'oeuf';
-        const ref = isOeuf
-          ? supplementsFromFront.find((r) => slugify(r.nom) === 'uf' || slugify(r.nom) === 'oeuf')
-          : supplementsFromFront.find(
-              (r) => r.nom === nomRaw || slugify(r.nom) === slug
-            );
-        const correctPrix = ref ? ref.prix : (isOeuf ? 1 : (s?.prix ?? s?.prix_supplementaire ?? 0));
-        return {
-          ...s,
-          id: s?.id || (isOeuf ? 'oeuf' : slugify(nomRaw)),
-          nom: s?.nom || s?.name || ref?.nom,
-          prix: correctPrix,
-          prix_supplementaire: correctPrix
-        };
-      });
-      if (JSON.stringify(corrected) !== JSON.stringify(m.supplements)) {
-        updates.supplements = corrected;
+    if (refVal != null && Math.abs(dbPrix - refVal) > 0.001) {
+      erreursPrix++;
+      console.log(`❌ ${m.nom}: BDD=${dbPrix}€ | SOURCE=${refVal}€`);
+      if (FIX) {
+        const { error } = await supabase.from('menus').update({ prix: refVal }).eq('id', m.id);
+        if (!error) console.log(`   → Corrigé ${m.nom} = ${refVal}€`);
+        else console.error(`   → Erreur: ${error.message}`);
       }
     }
-    if (Object.keys(updates).length > 0) {
-      const { error } = await supabase
-        .from('menus')
-        .update(updates)
-        .eq('id', m.id);
-      if (!error) {
-        if (updates.prix) updatedPrix++;
-        if (updates.supplements) updatedSupplements++;
-        console.log(`   ✅ ${m.nom}: prix=${item.prix}€${updates.supplements ? ' + suppléments corrigés' : ''}`);
-      } else {
-        console.error(`   ❌ ${m.nom}:`, error.message);
+
+    const supps = Array.isArray(m.supplements) ? m.supplements : [];
+    let needsSuppFix = false;
+    const correctedSupps = supps.map((s) => {
+      const ref = getRefSupplement(s);
+      const dbP = parseFloat(s?.prix ?? s?.prix_supplementaire ?? s?.price ?? 0);
+      const refP = ref?.prix != null ? parseFloat(ref.prix) : null;
+      if (refP != null && Math.abs(dbP - refP) > 0.001) {
+        erreursSupp++;
+        needsSuppFix = true;
+        console.log(`❌ Supplément [${m.nom}]: ${s?.nom || s?.name} BDD=${dbP}€ | SOURCE=${refP}€`);
+        const prix = refP;
+        return { ...s, prix, prix_supplementaire: prix };
       }
+      return s;
+    });
+    if (FIX && needsSuppFix) {
+      const { error } = await supabase.from('menus').update({ supplements: correctedSupps }).eq('id', m.id);
+      if (!error) console.log(`   → Suppléments corrigés pour ${m.nom}`);
+      else console.error(`   → Erreur: ${error.message}`);
     }
   }
 
-  console.log(`\n✅ Terminé: ${updatedPrix} prix mis à jour, ${updatedSupplements} suppléments corrigés`);
+  console.log('');
+  if (erreursPrix === 0 && erreursSupp === 0) {
+    console.log('✅ Aucun écart trouvé. BDD = source front.');
+  } else {
+    console.log(`📋 Résumé: ${erreursPrix} prix articles incorrects, ${erreursSupp} suppléments incorrects`);
+    if (!FIX) {
+      console.log('\nPour corriger: node scripts/verify-la-bonne-pate-prices.js --fix');
+    } else {
+      console.log('\n✅ Corrections appliquées.');
+    }
+  }
+  console.log('');
 }
 
 run().catch((e) => {

@@ -137,22 +137,31 @@ export async function POST(request) {
 
     const fixedRatePercent = getFixedCommissionRatePercentFromName(restaurant.nom);
     const restRate = restaurant.commission_rate ?? 20;
+
+    const getOrderPayout = (o) => {
+      const ratePercent = getEffectiveCommissionRatePercent({
+        restaurantName: restaurant.nom,
+        orderRatePercent: o.commission_rate,
+        restaurantRatePercent: restRate,
+      });
+      const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
+      const commission =
+        fixedRatePercent !== null
+          ? computed.commission
+          : (o.commission_amount ?? computed.commission);
+      const payout =
+        fixedRatePercent !== null
+          ? computed.payout
+          : (o.restaurant_payout ?? computed.payout);
+      return {
+        commission,
+        payout: round2(payout),
+      };
+    };
+
     const totals = orders.reduce(
       (acc, o) => {
-        const ratePercent = getEffectiveCommissionRatePercent({
-          restaurantName: restaurant.nom,
-          orderRatePercent: o.commission_rate,
-          restaurantRatePercent: restRate,
-        });
-        const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
-        const commission =
-          fixedRatePercent !== null
-            ? computed.commission
-            : (o.commission_amount ?? computed.commission);
-        const payout =
-          fixedRatePercent !== null
-            ? computed.payout
-            : (o.restaurant_payout ?? computed.payout);
+        const { commission, payout } = getOrderPayout(o);
         acc.totalRevenue += Number(o.total || 0);
         acc.totalCommission += commission;
         acc.totalPayoutDue += payout;
@@ -160,6 +169,25 @@ export async function POST(request) {
       },
       { totalRevenue: 0, totalCommission: 0, totalPayoutDue: 0 }
     );
+
+    // IMPORTANT : ne marquer comme payées que les commandes couvertes par le montant
+    // réellement viré (FIFO par date). Sinon une commande arrivée entre le virement
+    // bancaire et le clic sur le dashboard était marquée payée à tort.
+    const amountCents = Math.round(amountNum * 100);
+    let cumPayoutCents = 0;
+    const orderIdsToMark = [];
+    const TOL_CENTS = 2;
+    for (const o of orders) {
+      const { payout } = getOrderPayout(o);
+      const pCents = Math.round(payout * 100);
+      if (pCents <= 0) continue;
+      if (cumPayoutCents + pCents <= amountCents + TOL_CENTS) {
+        orderIdsToMark.push(o.id);
+        cumPayoutCents += pCents;
+      } else {
+        break;
+      }
+    }
 
     // Numéro de facture (si la fonction existe)
     let invoiceNumber = null;
@@ -176,11 +204,23 @@ export async function POST(request) {
       invoiceNumber = `FAC-${year}-${transfer.id.slice(0, 6).toUpperCase()}`;
     }
 
+    const ordersOnInvoice = orders.filter((o) => orderIdsToMark.includes(o.id));
+    const totalsInvoice = ordersOnInvoice.reduce(
+      (acc, o) => {
+        const { commission, payout } = getOrderPayout(o);
+        acc.totalRevenue += Number(o.total || 0);
+        acc.totalCommission += commission;
+        acc.totalPayoutDue += payout;
+        return acc;
+      },
+      { totalRevenue: 0, totalCommission: 0, totalPayoutDue: 0 }
+    );
+
     const invoiceHtml = buildRestaurantTransferInvoiceHtml({
       restaurant,
       transfer,
-      orders,
-      totals,
+      orders: ordersOnInvoice,
+      totals: totalsInvoice,
       invoiceNumber,
     });
 
@@ -201,17 +241,29 @@ export async function POST(request) {
       // ignore
     }
 
-    // Marquer les commandes comme payées (même logique que l'UI actuelle)
+    // Marquer uniquement les commandes couvertes par le montant du virement (FIFO)
+    let markedCount = 0;
     try {
-      const { error: markErr } = await supabaseAdmin
-        .from('commandes')
-        .update({ restaurant_paid_at: new Date().toISOString() })
-        .eq('restaurant_id', restaurant_id)
-        .eq('statut', 'livree')
-        .is('restaurant_paid_at', null);
-      if (markErr) console.warn('Erreur marquage commandes payées:', markErr.message);
-    } catch {
-      // ignore
+      if (orderIdsToMark.length > 0) {
+        const paidAt = new Date().toISOString();
+        const { data: markedRows, error: markErr } = await supabaseAdmin
+          .from('commandes')
+          .update({ restaurant_paid_at: paidAt })
+          .in('id', orderIdsToMark)
+          .select('id');
+        if (markErr) {
+          console.warn('Erreur marquage commandes payées:', markErr.message);
+        } else {
+          markedCount = Array.isArray(markedRows) ? markedRows.length : orderIdsToMark.length;
+        }
+      } else if (orders.length > 0 && amountNum > 0) {
+        console.warn(
+          '[restaurant-transfers] Aucune commande marquée : montant virement trop faible vs première commande FIFO ?',
+          { amountNum, restaurant_id }
+        );
+      }
+    } catch (e) {
+      console.warn('Marquage commandes:', e?.message || e);
     }
 
     return NextResponse.json({
@@ -220,10 +272,18 @@ export async function POST(request) {
       invoice_number: invoiceNumber,
       invoice_html: invoiceHtml,
       totals: {
+        totalRevenue: round2(totalsInvoice.totalRevenue),
+        totalCommission: round2(totalsInvoice.totalCommission),
+        totalPayoutDue: round2(totalsInvoice.totalPayoutDue),
+      },
+      totals_all_pending: {
         totalRevenue: round2(totals.totalRevenue),
         totalCommission: round2(totals.totalCommission),
         totalPayoutDue: round2(totals.totalPayoutDue),
       },
+      payout_marked_eur: round2(cumPayoutCents / 100),
+      orders_marked_count: markedCount,
+      order_ids_marked: orderIdsToMark,
     });
   } catch (error) {
     console.error('Erreur API restaurant transfer create:', error);

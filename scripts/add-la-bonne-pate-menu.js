@@ -1,6 +1,11 @@
 /**
  * Script pour ajouter / mettre à jour le menu du restaurant "La Bonne Pâte"
- * Restaurant ID: 4c31c4b7-799c-4d62-9225-2090bed7cca8
+ *
+ * RÈGLES IMPORTANTES:
+ * - Lors d'une MISE À JOUR: les photos (image_url) ne sont JAMAIS modifiées.
+ * - Usage: node scripts/add-la-bonne-pate-menu.js
+ * - Mode prix seuls: node scripts/add-la-bonne-pate-menu.js --prices-only
+ *   (met à jour uniquement prix/suppléments des articles existants, n'ajoute aucun nouvel article)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -109,11 +114,12 @@ const imageMap = {
   "Grande Bouteille d'Eau": null,
 };
 
+// type: meat=2€, cheese=1€ par défaut, other=1€. prix: override explicite si défini.
 const ingredientMeta = [
   { name: 'Base tomate', type: 'other' },
   { name: 'Base crème', type: 'other' },
-  { name: 'Crème truffée', type: 'other' },
-  { name: 'Crème de truffe', type: 'other' },
+  { name: 'Crème truffée', type: 'other', prix: 2 },
+  { name: 'Crème de truffe', type: 'other', prix: 2 },
   { name: 'Pesto de basilic', type: 'other' },
   { name: 'Roquette', type: 'other' },
   { name: 'Tomates confites', type: 'other' },
@@ -125,7 +131,7 @@ const ingredientMeta = [
   { name: 'Pommes de terre', type: 'other' },
   { name: 'Miel', type: 'other' },
   { name: 'Huile d\'olive', type: 'other' },
-  { name: 'Burrata', type: 'cheese' },
+  { name: 'Burrata', type: 'cheese', prix: 4 },
   { name: 'Mozzarella Fior Di Latte', type: 'cheese' },
   { name: 'Parmigiano', type: 'cheese' },
   { name: 'Taleggio', type: 'cheese' },
@@ -147,15 +153,18 @@ const ingredientMeta = [
   { name: 'Cerneaux de noix', type: 'other' }
 ];
 
-// Supprimer les doublons éventuels
+// Supprimer les doublons éventuels. Prix: override explicite > type (meat=2€, cheese=1€, other=1€)
 const supplements = Array.from(
   ingredientMeta.reduce((map, ingredient) => {
     const key = slugify(ingredient.name);
     if (!map.has(key)) {
+      const prix = ingredient.prix != null
+        ? ingredient.prix
+        : ingredient.type === 'meat' ? 2 : ingredient.type === 'cheese' ? 1 : 1;
       map.set(key, {
         id: key,
         nom: ingredient.name,
-        prix: ingredient.type === 'meat' ? 2 : ingredient.type === 'cheese' ? 1 : 1,
+        prix,
       });
     }
     return map;
@@ -372,21 +381,21 @@ const menuItems = [
   ...pizzasBaseCreme.map((item) => ({ ...item, includeSupplements: true })),
   ...puccias.map((item) => ({ ...item, includeSupplements: true })),
   ...desserts,
-  { nom: 'Coca', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Ice-tea', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Coca Zéro', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Coca Cherry', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Orangina', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Tropico', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Schweppes Agrumes', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Oasis Tropical', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Oasis Pomme Cassis Framboise', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Fanta Orange', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Fanta Citron', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Hawaï', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: '7up', prix: 2.4, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: '7up Mojitos', prix: 2.4, category: 'Boissons', description: 'Soda (sans alcool)', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
-  { nom: 'Perrier', prix: 2.4, category: 'Boissons', description: 'Eau pétillante', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Coca', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Ice-tea', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Coca Zéro', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Coca Cherry', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Orangina', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Tropico', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Schweppes Agrumes', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Oasis Tropical', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Oasis Pomme Cassis Framboise', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Fanta Orange', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Fanta Citron', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Hawaï', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: '7up', prix: 2, category: 'Boissons', description: 'Soda', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: '7up Mojitos', prix: 2, category: 'Boissons', description: 'Soda (sans alcool)', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
+  { nom: 'Perrier', prix: 2, category: 'Boissons', description: 'Eau pétillante', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '33cl' },
   { nom: "Petite Bouteille d'eau", prix: 1.8, category: 'Boissons', description: 'Eau', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '50cl' },
   { nom: 'Saint Pellegrino', prix: 3, category: 'Boissons', description: 'Eau pétillante', baseIngredients: [], includeSupplements: false, isDrink: true },
   { nom: 'Bouteille de Coca', prix: 4.8, category: 'Boissons', description: '', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '1.25L' },
@@ -394,24 +403,13 @@ const menuItems = [
   { nom: "Grande Bouteille d'Eau", prix: 2.4, category: 'Boissons', description: 'Eau', baseIngredients: [], includeSupplements: false, isDrink: true, drinkSize: '1.5L' }
 ];
 
-async function upsertMenuItem(item) {
-  const payload = {
-    restaurant_id: RESTAURANT_ID,
-    nom: item.nom,
-    description: item.description,
-    prix: item.prix,
-    category: item.category,
-    disponible: true,
-    base_ingredients: buildBaseIngredients(item.baseIngredients),
-    supplements: item.includeSupplements ? supplements : item.supplements || [],
-    image_url: imageMap[item.nom] || null,
-    is_drink: item.isDrink ?? false,
-    drink_size: item.drinkSize ?? null,
-  };
+// --prices-only : ne modifie QUE les prix/suppléments des articles existants, ne touche JAMAIS aux photos, n'ajoute AUCUN nouvel article
+const PRICES_ONLY = process.argv.includes('--prices-only');
 
+async function upsertMenuItem(item) {
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from('menus')
-    .select('id')
+    .select('id, image_url')
     .eq('restaurant_id', RESTAURANT_ID)
     .ilike('nom', item.nom)
     .maybeSingle();
@@ -421,19 +419,50 @@ async function upsertMenuItem(item) {
   }
 
   if (existing) {
+    // Mise à jour : NE JAMAIS écraser image_url (garder les photos du restaurateur)
+    const updatePayload = {
+      description: item.description,
+      prix: item.prix,
+      category: item.category,
+      disponible: true,
+      base_ingredients: buildBaseIngredients(item.baseIngredients),
+      supplements: item.includeSupplements ? supplements : item.supplements || [],
+      is_drink: item.isDrink ?? false,
+      drink_size: item.drinkSize ?? null,
+    };
+
     const { error: updateError } = await supabaseAdmin
       .from('menus')
-      .update(payload)
+      .update(updatePayload)
       .eq('id', existing.id);
 
     if (updateError) {
       throw new Error(`Erreur mise à jour ${item.nom}: ${updateError.message}`);
     }
-    console.log(`🔄 ${item.nom} mis à jour`);
+    console.log(`🔄 ${item.nom} mis à jour (prix/suppléments, photos préservées)`);
   } else {
+    if (PRICES_ONLY) {
+      console.log(`⏭️  ${item.nom} ignoré (--prices-only : aucun nouvel article)`);
+      return;
+    }
+    // Insertion : nouvel article, image par défaut du script
+    const insertPayload = {
+      restaurant_id: RESTAURANT_ID,
+      nom: item.nom,
+      description: item.description,
+      prix: item.prix,
+      category: item.category,
+      disponible: true,
+      base_ingredients: buildBaseIngredients(item.baseIngredients),
+      supplements: item.includeSupplements ? supplements : item.supplements || [],
+      image_url: imageMap[item.nom] || null,
+      is_drink: item.isDrink ?? false,
+      drink_size: item.drinkSize ?? null,
+    };
+
     const { error: insertError } = await supabaseAdmin
       .from('menus')
-      .insert([payload]);
+      .insert([insertPayload]);
 
     if (insertError) {
       throw new Error(`Erreur insertion ${item.nom}: ${insertError.message}`);

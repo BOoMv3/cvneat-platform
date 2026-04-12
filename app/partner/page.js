@@ -131,6 +131,7 @@ export default function PartnerDashboard() {
 
   const [showSupplementModal, setShowSupplementModal] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [menuCategoryFilter, setMenuCategoryFilter] = useState(''); // Filtre par catégorie (ex: Boissons)
   
   // États pour les formules
   const [showFormulaModal, setShowFormulaModal] = useState(false);
@@ -4524,8 +4525,25 @@ export default function PartnerDashboard() {
                 {!Array.isArray(menu) || menu.length === 0 ? (
                   <p className="text-gray-500 dark:text-gray-400 text-center">Aucun plat dans le menu</p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-                    {menu.map((item) => (
+                  <>
+                    <div className="mb-4 flex items-center gap-2">
+                      <label className="text-sm text-gray-600 dark:text-gray-400">Filtrer :</label>
+                      <select
+                        value={menuCategoryFilter}
+                        onChange={(e) => setMenuCategoryFilter(e.target.value)}
+                        className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      >
+                        <option value="">Toutes les catégories</option>
+                        {[...new Set((menu || []).map((m) => m.category).filter(Boolean))].sort().map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                    {(menuCategoryFilter
+                      ? menu.filter((item) => (item.category || '') === menuCategoryFilter)
+                      : menu
+                    ).map((item) => (
                       <div key={item.id} className="border dark:border-gray-700 rounded-lg p-2 sm:p-3 bg-white dark:bg-gray-700 shadow-sm hover:shadow-md transition-shadow">
                         {/* Image du plat */}
                         <div className="mb-2">
@@ -4720,6 +4738,7 @@ export default function PartnerDashboard() {
                       </div>
                     ))}
                   </div>
+                  </>
                 )}
               </div>
             </div>
