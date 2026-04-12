@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { normalizeRestaurantOpenFields, applyEmergencyCustomerPayload } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 // Important endpoint for the homepage: keep it fast.
 // We allow short CDN caching to reduce server CPU load.
@@ -69,20 +69,19 @@ export async function GET() {
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
-      return applyEmergencyCustomerPayload({
+      return {
         ...r,
         ...openFields,
         offre_active: offreActiveFinal,
         offre_label: isLaBonnePate(r.nom) ? null : (r.offre_label ?? null),
         offre_description: isLaBonnePate(r.nom) ? null : (r.offre_description ?? null),
-      });
+      };
     });
 
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
     const res = NextResponse.json(withFermeManuel);
-    // Permet de vérifier en prod que ce déploiement exécute bien cette route (curl -I).
-    res.headers.set('X-Cvneat-Restaurants-Route', 'normalize+emergency-v2');
+    res.headers.set('X-Cvneat-Restaurants-Route', 'manual-only-v3');
     // Bloquer tout cache (navigateur, CDN Vercel, proxies) pour éviter données périmées
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.headers.set('Pragma', 'no-cache');

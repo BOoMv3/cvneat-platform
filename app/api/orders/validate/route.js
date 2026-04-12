@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
-import { normalizeRestaurantOpenFields, applyEmergencyCustomerPayload } from '@/lib/restaurant-open-compute';
 
 function dbForRestaurantRead() {
   return supabaseAdmin ?? supabase;
@@ -21,7 +20,7 @@ export async function POST(request) {
     // 1. Vérifier si le restaurant existe et est actif
     const { data: restaurant, error: restaurantError } = await dbForRestaurantRead()
       .from('restaurants')
-      .select('id, nom, is_active, horaires, ferme_manuellement, ouvert_manuellement, commande_min')
+      .select('id, nom, is_active, commande_min')
       .eq('id', restaurantId)
       .single();
 
@@ -43,21 +42,8 @@ export async function POST(request) {
       );
     }
 
-    // 2. Statut ouverture (même normalisation que GET /api/restaurants + override urgence)
-    const openFields = normalizeRestaurantOpenFields(restaurant);
-    const mergedOpen = applyEmergencyCustomerPayload({ ...restaurant, ...openFields });
-    if (!mergedOpen.is_open_now) {
-      const msg = 'Ce restaurant n\'accepte pas de commandes pour le moment.';
-      return NextResponse.json(
-        {
-          error: 'Restaurant fermé',
-          code: 'RESTAURANT_CLOSED',
-          message: msg,
-          nextOpening: null,
-        },
-        { status: 400 }
-      );
-    }
+    // 2. On ne bloque plus sur ferme_manuellement / horaires : le partenaire gère en cuisine ;
+    //    seul is_active empêche les commandes (voir étape 1).
 
     // 3. Vérifier que tous les articles sont disponibles
     const menuItems = await Promise.all(

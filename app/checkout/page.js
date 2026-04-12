@@ -490,23 +490,7 @@ export default function Checkout() {
         return;
       }
 
-      // Vérifier si le restaurant est ouvert (sans cache pour avoir la réponse à jour)
-      const hoursCheckResponse = await fetch(`/api/restaurants/${activeRestaurant.id}/hours`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store'
-      });
-
-      if (hoursCheckResponse.ok) {
-        const hoursData = await hoursCheckResponse.json();
-        const isOpen = hoursData.isOpen === true;
-        if (!isOpen) {
-          alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
-          setSubmitting(false);
-          router.push(`/restaurant-view?id=${encodeURIComponent(activeRestaurant.id)}`);
-          return;
-        }
-      }
+      // Plus de blocage checkout sur horaires / fermeture manuelle : évite les faux « fermés » qui font perdre des commandes.
 
       // IMPORTANT: Recalculer les frais de livraison AVANT le paiement pour garantir l'exactitude
       console.log('🔄 Recalcul des frais de livraison avant paiement...');

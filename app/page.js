@@ -41,7 +41,7 @@ import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
-import { normalizeRestaurantOpenFields, applyEmergencyCustomerPayload } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 import { resolveHomeOpenFromMap } from '@/lib/restaurant-open-client';
 
 const TARGET_OPENING_HOUR = 18;
@@ -866,7 +866,7 @@ export default function Home() {
             }
 
             const openNorm = normalizeRestaurantOpenFields(restaurant);
-            const normalizedRestaurant = applyEmergencyCustomerPayload({
+            const normalizedRestaurant = {
               ...restaurant,
               ...openNorm,
               image_url: primaryImage,
@@ -891,7 +891,7 @@ export default function Home() {
                   offre_description: restaurant.offre_description ?? null
                 };
               })()
-            });
+            };
             
             // Log pour "Le O Saona Tea" spécifiquement
             if (normalized.includes('saona') || normalized.includes('o saona')) {

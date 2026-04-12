@@ -506,12 +506,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   };
 
   const addToCart = (item, supplements = [], size = null, quantityToAdd = 1) => {
-    // Vérifier si le restaurant est ouvert avant d'ajouter au panier
-    if (!isRestaurantOpen) {
-      alert('Le restaurant est actuellement fermé. Vous ne pouvez pas ajouter d\'articles au panier.');
-      return;
-    }
-    
     setCart(prevCart => {
       // Si l'item a déjà une propriété quantity (venant de la modal), l'utiliser
       const finalQuantity = item.quantity || quantityToAdd;
@@ -1010,12 +1004,6 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
       return;
     }
     
-    // Vérifier si le restaurant est ouvert
-    if (!isRestaurantOpen) {
-      alert('Le restaurant est actuellement fermé. Vous ne pouvez pas passer commande.');
-      return;
-    }
-    
     // La sauvegarde se fait via le useEffect, on peut directement aller au checkout
     router.push('/checkout');
   };
@@ -1309,16 +1297,12 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
                     <span className="font-bold">{deliveryFee !== null ? getTotal().toFixed(2) : getSubtotal().toFixed(2)}€</span>
                   </div>
                   <button
+                    type="button"
                     onClick={handleCheckout}
-                    disabled={!isRestaurantOpen}
-                    className={`w-full py-3 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm min-h-[44px] touch-manipulation active:scale-95 ${
-                      !isRestaurantOpen
-                        ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
-                        : 'bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700'
-                    }`}
+                    className="w-full py-3 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm min-h-[44px] touch-manipulation active:scale-95 bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700"
                   >
                     <FaShoppingCart className="h-4 w-4" />
-                    {!isRestaurantOpen ? 'Fermé' : 'Commander'}
+                    Commander
                   </button>
                 </div>
               </div>

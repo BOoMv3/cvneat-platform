@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { normalizeRestaurantOpenFields, applyEmergencyCustomerPayload } from '@/lib/restaurant-open-compute';
+import { normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -162,14 +162,13 @@ export async function POST(request, { params }) {
     }
 
     const openFields = normalizeRestaurantOpenFields({ ...restaurant, id }, checkDate);
-    const patched = applyEmergencyCustomerPayload({ id, ...openFields });
-    const isOpen = patched.is_open_now === true;
+    const isOpen = openFields.is_open_now === true;
 
     const hoursRes = json({
       isOpen,
       message: isOpen ? 'Restaurant ouvert' : 'Restaurant fermé',
       reason: isOpen ? 'open' : 'closed_manual_flag',
-      isManuallyClosed: patched.is_manually_closed === true,
+      isManuallyClosed: openFields.is_manually_closed === true,
       plages: [],
     });
     hoursRes.headers.set('Cache-Control', 'no-store, max-age=0');
