@@ -339,7 +339,8 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
           .select('address, city, postal_code')
           .eq('user_id', user.id)
           .eq('is_default', true)
-          .single();
+          .limit(1)
+          .maybeSingle();
         if (userAddress) {
           setDeliveryAddress(`${userAddress.address}, ${userAddress.postal_code} ${userAddress.city}`);
         }

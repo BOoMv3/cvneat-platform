@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../../../../lib/supabase';
+
+export const dynamic = 'force-dynamic';
+
+// Lecture publique des avis : le client anon côté serveur n’a pas de JWT → RLS peut tout bloquer (500).
+const reviewsClient = () => supabaseAdmin ?? supabase;
 
 // GET - Récupérer les avis d'un restaurant
 export async function GET(request, { params }) {
   try {
-    const { data, error } = await supabase
+    const db = reviewsClient();
+    const { data, error } = await db
       .from('reviews')
       .select(`
         id,
@@ -23,7 +29,15 @@ export async function GET(request, { params }) {
 
     if (error) {
       console.error('Erreur lors de la récupération des avis:', error);
-      return NextResponse.json({ error: 'Erreur lors de la récupération des avis' }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'Erreur lors de la récupération des avis',
+          ...(!supabaseAdmin
+            ? { hint: 'Vérifiez SUPABASE_SERVICE_ROLE_KEY sur Vercel (lecture avis côté serveur).' }
+            : {}),
+        },
+        { status: 500 }
+      );
     }
 
     // Transformer les données pour avoir un format cohérent
@@ -47,6 +61,7 @@ export async function GET(request, { params }) {
 // POST - Ajouter un avis
 export async function POST(request, { params }) {
   try {
+    const db = reviewsClient();
     const { userId, rating, comment } = await request.json();
 
     if (!userId || !rating || rating < 1 || rating > 5) {
@@ -54,7 +69,7 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier que l'utilisateur a une commande livrée pour ce restaurant
-    const { data: orders } = await supabase
+    const { data: orders } = await db
       .from('commandes')
       .select('id, restaurant_id, statut')
       .eq('user_id', userId)
@@ -68,7 +83,7 @@ export async function POST(request, { params }) {
     }
 
     // Vérifier si l'utilisateur a déjà laissé un avis pour ce restaurant
-    const { data: existingReview } = await supabase
+    const { data: existingReview } = await db
       .from('reviews')
       .select('id')
       .eq('user_id', userId)
@@ -79,7 +94,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Vous avez déjà laissé un avis pour ce restaurant' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('reviews')
       .insert([{
         user_id: userId,
@@ -107,7 +122,8 @@ export async function POST(request, { params }) {
 // Fonction pour mettre à jour la note moyenne d'un restaurant
 async function updateRestaurantRating(restaurantId) {
   try {
-    const { data: reviews } = await supabase
+    const db = reviewsClient();
+    const { data: reviews } = await db
       .from('reviews')
       .select('rating')
       .eq('restaurant_id', restaurantId);
@@ -115,7 +131,7 @@ async function updateRestaurantRating(restaurantId) {
     if (reviews && reviews.length > 0) {
       const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
       
-      await supabase
+      await db
         .from('restaurants')
         .update({ 
           rating: Math.round(averageRating * 10) / 10,
