@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -25,13 +25,11 @@ import {
   FaMotorcycle,
   FaEnvelope,
   FaComments,
-  FaTag,
-  FaStopCircle,
-  FaPlayCircle
+  FaTag
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
-import { mergeOpenFieldsPreservingManualClose, normalizeRestaurantOpenFields } from '@/lib/restaurant-open-compute';
+import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
@@ -102,11 +100,12 @@ export default function PartnerDashboard() {
     preparationTime: 15
   });
 
+  const [isManuallyClosed, setIsManuallyClosed] = useState(false);
+  const [togglingManualStatus, setTogglingManualStatus] = useState(false);
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(25);
   const [prepTimeUpdatedAt, setPrepTimeUpdatedAt] = useState(null);
   const [showPrepTimeModal, setShowPrepTimeModal] = useState(false);
   const [savingPrepTime, setSavingPrepTime] = useState(false);
-  const [savingManualClose, setSavingManualClose] = useState(false);
   const [prepPromptAudioEnabled, setPrepPromptAudioEnabled] = useState(true);
   const audioUnlockedRef = useRef(false);
   const authTokenRef = useRef(null);
@@ -124,34 +123,6 @@ export default function PartnerDashboard() {
   const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const router = useRouter();
-
-  /** Identique à l’accueil et à la fiche client : GET /api/restaurants/[id] (admin serveur), pas seulement le client Supabase (RLS / cache client). */
-  const applyCanonicalRestaurant = useCallback(async (rid) => {
-    const id = String(rid ?? '').trim();
-    if (!id) return null;
-    try {
-      const res = await fetch(`/api/restaurants/${id}?t=${Date.now()}`, {
-        cache: 'no-store',
-        headers: {
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache',
-          Pragma: 'no-cache',
-        },
-      });
-      if (!res.ok) return null;
-      const canon = await res.json().catch(() => null);
-      if (!canon || typeof canon !== 'object') return null;
-      const openNorm = normalizeRestaurantOpenFields(canon);
-      const row = mergeOpenFieldsPreservingManualClose(canon, openNorm);
-      setRestaurant((prev) => ({ ...(prev && typeof prev === 'object' ? prev : {}), ...row }));
-      const pm = parseInt(String(canon.prep_time_minutes ?? ''), 10);
-      if (Number.isFinite(pm) && pm >= 5 && pm <= 120) setPrepTimeMinutes(pm);
-      if (canon.prep_time_updated_at != null) setPrepTimeUpdatedAt(canon.prep_time_updated_at);
-      return row;
-    } catch {
-      return null;
-    }
-  }, []);
 
   const [supplementForm, setSupplementForm] = useState({
     nom: '',
@@ -236,7 +207,7 @@ export default function PartnerDashboard() {
       console.log('🔍 DEBUG PARTNER - Rôle attendu: restaurant');
       console.log('🔍 DEBUG PARTNER - Comparaison:', userData?.role === 'restaurant');
       
-      // Autoriser les restaurants, partenaires et admins (rôle en base parfois en casse mixte)
+      // Autoriser les restaurants, partenaires et admins (casse DB variable)
       const roleLc = String(userData?.role ?? '')
         .trim()
         .toLowerCase();
@@ -300,19 +271,27 @@ export default function PartnerDashboard() {
         return;
       }
 
-      // Affichage rapide depuis Supabase, puis alignement sur la même API que les clients (évite écarts liste / partenaire).
-      const openNorm = normalizeRestaurantOpenFields(resto);
-      setRestaurant(mergeOpenFieldsPreservingManualClose(resto, openNorm));
+      setRestaurant(resto);
+      // Temps de préparation (si migration appliquée)
       setPrepTimeMinutes(Number.isFinite(parseInt(resto.prep_time_minutes, 10)) ? parseInt(resto.prep_time_minutes, 10) : 25);
       setPrepTimeUpdatedAt(resto.prep_time_updated_at || null);
-      await applyCanonicalRestaurant(resto.id);
+      // Normaliser ferme_manuellement pour être sûr que c'est un booléen strict
+      let normalizedFermeManuel;
+      if (resto?.ferme_manuellement === true || resto?.ferme_manuellement === 'true' || resto?.ferme_manuellement === 1 || resto?.ferme_manuellement === '1') {
+        normalizedFermeManuel = true;
+      } else if (resto?.ferme_manuellement === false || resto?.ferme_manuellement === 'false' || resto?.ferme_manuellement === 0 || resto?.ferme_manuellement === '0') {
+        normalizedFermeManuel = false;
+      } else {
+        // Valeur invalide ou undefined, utiliser false par défaut (ouvert)
+        normalizedFermeManuel = false;
+      }
+      setIsManuallyClosed(normalizedFermeManuel);
       console.log('📋 Restaurant chargé:', {
         nom: resto?.nom,
         ferme_manuellement_original: resto?.ferme_manuellement,
-        ouvert_manuellement_original: resto?.ouvert_manuellement,
-        ferme_manuellement_affiche: openNorm.ferme_manuellement,
-        ouvert_manuellement_affiche: openNorm.ouvert_manuellement,
-        is_manually_closed: openNorm.is_manually_closed,
+        ferme_manuellement_type: typeof resto?.ferme_manuellement,
+        normalizedFermeManuel,
+        isManuallyClosed: normalizedFermeManuel
       });
       
       if (resto?.id) {
@@ -360,7 +339,7 @@ export default function PartnerDashboard() {
     };
 
     fetchData();
-  }, [router, applyCanonicalRestaurant]);
+  }, [router]);
 
   // SSE: permettre un déclenchement "en direct" d'une popup (ex: demander le temps de préparation)
   useEffect(() => {
@@ -525,54 +504,6 @@ export default function PartnerDashboard() {
       }
     };
   }, [restaurant?.id]);
-
-  // Même source que la base : dès qu’une colonne du restaurant change, mettre à jour l’UI (statut manuel, prépa…).
-  useEffect(() => {
-    const rid = restaurant?.id ? String(restaurant.id).trim() : '';
-    if (!rid) return;
-
-    const rowChannel = supabase
-      .channel(`partner_restaurant_row_${rid}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'restaurants',
-          filter: `id=eq.${rid}`,
-        },
-        (payload) => {
-          const row = payload?.new;
-          if (!row || typeof row !== 'object') return;
-          setRestaurant((prev) => {
-            const base = prev && typeof prev === 'object' ? prev : {};
-            const merged = { ...base, ...row };
-            const openNorm = normalizeRestaurantOpenFields(merged);
-            return mergeOpenFieldsPreservingManualClose(merged, openNorm);
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      try {
-        supabase.removeChannel(rowChannel);
-      } catch {
-        // ignore
-      }
-    };
-  }, [restaurant?.id]);
-
-  // Retour sur l’onglet : même source que l’accueil (évite rester sur un état Supabase client périmé).
-  useEffect(() => {
-    const rid = restaurant?.id ? String(restaurant.id).trim() : '';
-    if (!rid) return;
-    const onVis = () => {
-      if (document.visibilityState === 'visible') void applyCanonicalRestaurant(rid);
-    };
-    document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
-  }, [restaurant?.id, applyCanonicalRestaurant]);
 
   // Fallback ultra-robuste: poll les notifications non lues et ouvre la popup si on reçoit prep_time_prompt
   // (utile si Realtime est désactivé/coupé côté Supabase)
@@ -2015,6 +1946,174 @@ export default function PartnerDashboard() {
     return { commission, restaurantRevenue };
   };
 
+  const toggleRestaurantClosed = async () => {
+    if (togglingManualStatus) return;
+    if (!restaurant?.id) {
+      console.error('❌ toggleRestaurantClosed: restaurant.id manquant');
+      return;
+    }
+    
+    try {
+      setTogglingManualStatus(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('❌ toggleRestaurantClosed: session manquante');
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+      
+      // Lire l'état serveur juste avant le toggle pour éviter les inversions (double-clic / état local périmé)
+      let currentIsManuallyClosed = isManuallyClosed === true;
+      try {
+        const currentRes = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (currentRes.ok) {
+          const currentPayload = await currentRes.json().catch(() => ({}));
+          const fm = currentPayload?.restaurant?.ferme_manuellement;
+          currentIsManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+            (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+        }
+      } catch {
+        // fallback sur l'état local si la lecture serveur échoue
+      }
+      const newStatus = !currentIsManuallyClosed;
+      console.log('🔄 Toggle restaurant fermeture:', {
+        restaurant_id: restaurant.id,
+        isManuallyClosed_original: isManuallyClosed,
+        isManuallyClosed_type: typeof isManuallyClosed,
+        currentIsManuallyClosed,
+        new_status: newStatus,
+        new_status_type: typeof newStatus
+      });
+      
+      // Mode horaires: le bouton sert uniquement à forcer une fermeture manuelle (override).
+      // "Ouvrir" = désactiver la fermeture manuelle.
+      const requestBody = { ferme_manuellement: newStatus };
+      
+      console.log('📤 Envoi requête API:', {
+        url: `/api/partner/restaurant/${restaurant.id}`,
+        method: 'PUT',
+        body: requestBody
+      });
+      
+      const response = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      const responseData = await response.json().catch(() => ({}));
+      
+      if (response.ok) {
+        console.log('✅ Restaurant mis à jour avec succès:', responseData);
+        console.log('✅ Données restaurant retournées par API:', {
+          id: responseData.restaurant?.id,
+          nom: responseData.restaurant?.nom,
+          ferme_manuellement: responseData.restaurant?.ferme_manuellement,
+          ferme_manuellement_type: typeof responseData.restaurant?.ferme_manuellement
+        });
+        
+        // Utiliser la valeur retournée par l'API pour être sûr
+        const finalStatus = responseData.restaurant?.ferme_manuellement !== undefined 
+          ? responseData.restaurant.ferme_manuellement 
+          : newStatus;
+        
+        // Normaliser pour être sûr que c'est un booléen strict
+        let normalizedStatus;
+        if (finalStatus === true || finalStatus === 'true' || finalStatus === 1 || finalStatus === '1') {
+          normalizedStatus = true;
+        } else if (finalStatus === false || finalStatus === 'false' || finalStatus === 0 || finalStatus === '0') {
+          normalizedStatus = false;
+        } else {
+          // Valeur invalide, utiliser newStatus
+          normalizedStatus = newStatus;
+        }
+        
+        console.log('✅ État avant mise à jour:', {
+          isManuallyClosed_actuel: isManuallyClosed,
+          newStatus,
+          finalStatus,
+          finalStatus_type: typeof finalStatus,
+          normalizedStatus,
+          responseData_restaurant: responseData.restaurant
+        });
+        
+        // FORCER la mise à jour de l'état avec la valeur normalisée
+        console.log('🔄 Mise à jour état local...');
+        console.log('   Avant: isManuallyClosed =', isManuallyClosed);
+        console.log('   Après: normalizedStatus =', normalizedStatus);
+        
+        setIsManuallyClosed(normalizedStatus);
+        setRestaurant(prev => {
+          const updated = { 
+            ...prev, 
+            ferme_manuellement: normalizedStatus,
+            updated_at: responseData.restaurant?.updated_at || new Date().toISOString()
+          };
+          console.log('   Restaurant state mis à jour:', {
+            id: updated.id,
+            nom: updated.nom,
+            ferme_manuellement: updated.ferme_manuellement,
+            ferme_manuellement_type: typeof updated.ferme_manuellement
+          });
+          return updated;
+        });
+        
+        // Attendre un tick pour que React mette à jour l'état
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('✅ État local mis à jour:', {
+          isManuallyClosed: normalizedStatus,
+          ferme_manuellement: normalizedStatus,
+          type: typeof normalizedStatus
+        });
+        
+        alert(normalizedStatus ? 'Restaurant fermé manuellement' : 'Fermeture manuelle désactivée (selon vos horaires)');
+        
+        // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('restaurant-status-changed'));
+          try {
+            if ('BroadcastChannel' in window) {
+              const bc = new BroadcastChannel('cvneat_restaurant_status');
+              bc.postMessage({ type: 'restaurant-status-changed', restaurantId: restaurant.id, at: Date.now() });
+              bc.close();
+            }
+          } catch {
+            // ignore
+          }
+        }
+      } else {
+        console.error('❌ Erreur API toggle fermeture:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: responseData
+        });
+        const payloadStr = (() => {
+          try { return JSON.stringify(responseData, null, 2); } catch { return String(responseData); }
+        })();
+        alert(
+          `Erreur API (${response.status} ${response.statusText})\n` +
+          `${responseData?.error || responseData?.details || 'Impossible de mettre à jour le statut'}\n\n` +
+          `Détails:\n${payloadStr}`
+        );
+      }
+    } catch (error) {
+      console.error('❌ Erreur toggle fermeture:', error);
+      alert('Erreur lors de la mise à jour du statut: ' + error.message);
+    } finally {
+      setTogglingManualStatus(false);
+    }
+  };
+
   const savePrepTime = async ({ closeAfter = false } = {}) => {
     if (!restaurant?.id) return;
     setSavingPrepTime(true);
@@ -2033,15 +2132,11 @@ export default function PartnerDashboard() {
 
       const res = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
         method: 'PUT',
-        cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache',
-          Pragma: 'no-cache',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prep_time_minutes: minutes }),
+        body: JSON.stringify({ prep_time_minutes: minutes })
       });
 
       let payload;
@@ -2065,47 +2160,6 @@ export default function PartnerDashboard() {
       if (closeAfter) setShowPrepTimeModal(false);
     } finally {
       setSavingPrepTime(false);
-    }
-  };
-
-  const setPartnerManualClosed = async (closed) => {
-    if (!restaurant?.id) return;
-    setSavingManualClose(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        alert('Session expirée. Veuillez vous reconnecter.');
-        return;
-      }
-      const res = await fetch(`/api/partner/restaurant/${restaurant.id}`, {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ ferme_manuellement: !!closed }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const detail =
-          payload.details ||
-          (payload.supabase && (payload.supabase.message || payload.supabase.hint)) ||
-          (typeof payload.supabase === 'string' ? payload.supabase : null);
-        alert(
-          [payload.error || 'Impossible de mettre à jour le statut.', detail].filter(Boolean).join('\n\n')
-        );
-        return;
-      }
-      await applyCanonicalRestaurant(restaurant.id);
-      try {
-        window.dispatchEvent(new CustomEvent('restaurant-status-changed'));
-      } catch {
-        // ignore
-      }
-    } finally {
-      setSavingManualClose(false);
     }
   };
 
@@ -2791,6 +2845,7 @@ export default function PartnerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <OpenCloseManualNotice />
       {/* Popup quotidien: temps de préparation */}
       {showPrepTimeModal && restaurant?.id && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
@@ -2904,53 +2959,6 @@ export default function PartnerDashboard() {
         </div>
       )}
 
-      {/* Fermeture manuelle : bandeau sticky (ne pas cacher dans la grille d’icônes) */}
-      {restaurant?.id && (
-        <div className="sticky top-0 z-[70] border-b-2 border-amber-600 bg-amber-100 dark:bg-amber-950 shadow-md">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200">
-                Ouverture aux commandes
-              </p>
-              <p className="text-sm text-amber-950 dark:text-amber-50 truncate">
-                {restaurant.nom}
-                {restaurant.ferme_manuellement === true ? (
-                  <span className="ml-2 text-red-700 dark:text-red-300 font-semibold">— Fermé manuellement</span>
-                ) : (
-                  <span className="ml-2 text-green-800 dark:text-green-300 font-semibold">— Ouvert aux commandes (hors fermeture ci-dessous)</span>
-                )}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              {restaurant.ferme_manuellement === true ? (
-                <button
-                  type="button"
-                  disabled={savingManualClose}
-                  onClick={() => void setPartnerManualClosed(false)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50 shadow"
-                >
-                  <FaPlayCircle className="h-5 w-5" />
-                  Réouvrir les commandes
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={savingManualClose}
-                  onClick={() => {
-                    if (!window.confirm('Fermer aux commandes sur CVN’EAT tout de suite ?')) return;
-                    void setPartnerManualClosed(true);
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50 shadow"
-                >
-                  <FaStopCircle className="h-5 w-5" />
-                  Fermer les commandes
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-6 lg:px-8">
@@ -3024,6 +3032,34 @@ export default function PartnerDashboard() {
                 <span className="hidden sm:inline">Offre</span>
                 <span className="sm:hidden">Offre</span>
               </button>
+              <button
+                onClick={toggleRestaurantClosed}
+                disabled={togglingManualStatus}
+                className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium ${
+                  togglingManualStatus
+                    ? 'bg-gray-400 text-white cursor-wait'
+                    : 
+                  isManuallyClosed === true
+                    ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800'
+                    : 'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
+                }`}
+                title={isManuallyClosed === true ? 'Cliquez pour ouvrir le restaurant' : 'Cliquez pour fermer le restaurant'}
+              >
+                {isManuallyClosed === true ? (
+                  <>
+                    <FaCheck className="h-4 w-4 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Ouvrir</span>
+                    <span className="sm:hidden">Ouvrir</span>
+                  </>
+                ) : (
+                  <>
+                    <FaTimes className="h-4 w-4 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Fermer</span>
+                    <span className="sm:hidden">Fermer</span>
+                  </>
+                )}
+              </button>
+
               {/* Temps de préparation (modifiable pendant le service) */}
               <button
                 onClick={() => setShowPrepTimeModal(true)}
