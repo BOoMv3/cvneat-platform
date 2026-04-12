@@ -73,7 +73,7 @@ export async function GET(request) {
     // Ne montrer que quand un livreur a accepté — le restaurant reçoit la commande APRÈS le livreur
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
-      .select('id, created_at, updated_at, accepted_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, preparation_time, preparation_started_at, delivery_time, ready_for_delivery, payment_status, loyalty_points_used, loyalty_discount_amount')
+      .select('id, created_at, updated_at, accepted_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, preparation_time, preparation_started_at, delivery_time, ready_for_delivery, payment_status, loyalty_points_used, loyalty_discount_amount, loyalty_article_subsidy_eur, alcohol_legal_age_declared, alcohol_legal_age_declared_at')
       .eq('restaurant_id', restaurantData.id)
       .in('payment_status', ['paid', 'succeeded'])
       .or('statut.neq.en_attente,livreur_id.not.is.null')

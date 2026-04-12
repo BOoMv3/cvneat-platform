@@ -6,6 +6,25 @@ import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '.
 import { isOrdersClosed } from '@/lib/ordersClosed';
 import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
+
+/** IDs menus référencés dans le panier (lignes, boissons formule, sous-éléments). */
+function collectMenuIdsFromOrderItems(items = []) {
+  const ids = [];
+  const visit = (item) => {
+    if (!item) return;
+    if (item.id) ids.push(item.id);
+    if (item.selected_drink?.id) ids.push(item.selected_drink.id);
+    if (Array.isArray(item.formula_items)) {
+      item.formula_items.forEach((fi) => visit(fi));
+    }
+    const details = item.customizations?.formula_items_details;
+    if (Array.isArray(details)) {
+      details.forEach((fi) => visit(fi));
+    }
+  };
+  (items || []).forEach(visit);
+  return [...new Set(ids.filter(Boolean))];
+}
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../lib/orderCleanup';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
@@ -433,7 +452,22 @@ export async function POST(request) {
 
     console.log('Donnees recues:', JSON.stringify(body, null, 2));
     
-    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, paymentIntentId, paymentStatus, customerInfo, discountAmount = 0, platformFee = 0, promoCodeId = null, promoCode = null, loyaltyRewardId = null } = body;
+    const {
+      restaurantId,
+      deliveryInfo,
+      items,
+      deliveryFee,
+      totalAmount,
+      paymentIntentId,
+      paymentStatus,
+      customerInfo,
+      discountAmount = 0,
+      platformFee = 0,
+      promoCodeId = null,
+      promoCode = null,
+      loyaltyRewardId = null,
+      alcoholLegalAgeDeclared = false,
+    } = body;
 
     // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
     console.log('🔍 Validation simplifiée de la commande...');
@@ -646,6 +680,7 @@ export async function POST(request) {
     let loyaltyPointsCost = 0;
     let loyaltyBenefitEur = 0;
     let loyaltyArticleNote = null;
+    let loyaltyArticleSubsidyEur = 0;
 
     let promoFreeDelivery = false;
     if (promoCodeId) {
@@ -699,8 +734,9 @@ export async function POST(request) {
         Math.round((promoDiscount + adj.extraDiscountOnSubtotal) * 100) / 100
       );
       loyaltyPointsCost = adj.pointsCost;
-      loyaltyBenefitEur = adj.benefitStatementEur;
+      loyaltyBenefitEur = Math.max(0, Number(adj.monetaryBenefitCustomerEur) || 0);
       loyaltyArticleNote = adj.articleNote;
+      loyaltyArticleSubsidyEur = Math.max(0, Number(adj.articleSubsidyEur) || 0);
 
       const hasArticleNote = !!loyaltyArticleNote;
       const hasMonetaryBenefit = loyaltyBenefitEur > 0;
@@ -717,6 +753,37 @@ export async function POST(request) {
 
     const discount = promoDiscount;
 
+    // Alcool : vérification serveur (case à cocher + articles marqués contains_alcohol)
+    const menuIdsInCart = collectMenuIdsFromOrderItems(items);
+    let orderContainsAlcohol = false;
+    if (menuIdsInCart.length > 0) {
+      const { data: alcoholRows, error: alcoholErr } = await serviceClient
+        .from('menus')
+        .select('id, contains_alcohol')
+        .eq('restaurant_id', restaurantId)
+        .in('id', menuIdsInCart);
+      if (!alcoholErr && Array.isArray(alcoholRows)) {
+        orderContainsAlcohol = alcoholRows.some((r) => r.contains_alcohol === true);
+      }
+    }
+    if (orderContainsAlcohol) {
+      const declared =
+        alcoholLegalAgeDeclared === true ||
+        alcoholLegalAgeDeclared === 'true' ||
+        alcoholLegalAgeDeclared === 1 ||
+        alcoholLegalAgeDeclared === '1';
+      if (!declared) {
+        return json(
+          {
+            error:
+              'Votre panier contient des boissons ou plats alcoolisés. Vous devez confirmer être majeur(e) pour finaliser la commande.',
+            code: 'ALCOHOL_ATTESTATION_REQUIRED',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Calculs financiers: commission/payout sur le montant RÉELLEMENT payé par le client (après réduction)
     // Sinon fuite: on paierait le restaurant sur le montant avant réduction alors qu'on n'encaisse que l'après-réduction.
     const totalAfterDiscount = Math.max(0, Math.round((total - discount) * 100) / 100);
@@ -727,7 +794,8 @@ export async function POST(request) {
     });
     const computedCommission = computeCommissionAndPayout(totalAfterDiscount, effectiveRatePercent);
     const commissionGross = computedCommission.commission;
-    const restaurantPayout = computedCommission.payout;
+    const restaurantPayoutBase = computedCommission.payout;
+    const restaurantPayout = Math.round((restaurantPayoutBase + loyaltyArticleSubsidyEur) * 100) / 100;
     const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
     
     // Commission livraison CVN'EAT (Option B):
@@ -787,6 +855,12 @@ export async function POST(request) {
             loyalty_discount_amount: loyaltyBenefitEur,
           }
         : {}),
+      ...(loyaltyArticleSubsidyEur > 0 ? { loyalty_article_subsidy_eur: loyaltyArticleSubsidyEur } : {}),
+      alcohol_legal_age_declared: orderContainsAlcohol ? true : false,
+      alcohol_legal_age_declared_at:
+        orderContainsAlcohol && (alcoholLegalAgeDeclared === true || alcoholLegalAgeDeclared === 'true')
+          ? new Date().toISOString()
+          : null,
     };
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData

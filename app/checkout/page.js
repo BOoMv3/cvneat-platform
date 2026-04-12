@@ -25,7 +25,7 @@ import {
   FaCloudRain,
   FaGift
 } from 'react-icons/fa';
-import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu } from '@/lib/cartUtils';
+import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu, cartHasAlcohol } from '@/lib/cartUtils';
 import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP, computeLoyaltyAdjustments } from '@/lib/loyalty-rewards';
 
 // Réduire les warnings Stripe non critiques en développement
@@ -89,6 +89,9 @@ export default function Checkout() {
   const [userPoints, setUserPoints] = useState(0);
   /** Récompense catalogue sélectionnée (coût en points fixe, pas conversion pt → €) */
   const [selectedLoyaltyRewardId, setSelectedLoyaltyRewardId] = useState(null);
+  /** Menu chargé pour détecter les articles marqués alcool (contains_alcohol) */
+  const [menuCatalogSnapshot, setMenuCatalogSnapshot] = useState([]);
+  const [alcoholAttestationChecked, setAlcoholAttestationChecked] = useState(false);
 
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
   // Mettre à true pour fermer les livraisons manuellement
@@ -138,6 +141,15 @@ export default function Checkout() {
       rewardMeta,
     };
   }, [cartTotal, appliedPromoCode, fraisLivraison, selectedLoyaltyRewardId]);
+
+  const cartContainsAlcohol = useMemo(
+    () => cartHasAlcohol(cart, menuCatalogSnapshot),
+    [cart, menuCatalogSnapshot]
+  );
+
+  useEffect(() => {
+    if (!cartContainsAlcohol) setAlcoholAttestationChecked(false);
+  }, [cartContainsAlcohol]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -217,6 +229,8 @@ export default function Checkout() {
         if (!res.ok || cancelled) return;
         const menuItems = await res.json();
         if (!Array.isArray(menuItems) || cancelled) return;
+
+        if (!cancelled) setMenuCatalogSnapshot(menuItems);
 
         const { items: reconciled, changed } = reconcileCartWithMenu(cart, menuItems);
         if (changed && !cancelled) {
@@ -604,16 +618,31 @@ export default function Checkout() {
 
       // IMPORTANT: Réconcilier le panier avec les prix actuels du menu avant calcul (Dashboard = Paiement)
       let itemsToUse = savedCart.items;
+      let menuItemsLatest = menuCatalogSnapshot;
       try {
         const menuRes = await fetch(`/api/restaurants/${resolvedRestaurant.id}/menu`, { cache: 'no-store' });
         if (menuRes.ok) {
           const menuItems = await menuRes.json();
-          const { items: reconciled } = reconcileCartWithMenu(savedCart.items, menuItems || []);
+          menuItemsLatest = Array.isArray(menuItems) ? menuItems : [];
+          setMenuCatalogSnapshot(menuItemsLatest);
+          const { items: reconciled } = reconcileCartWithMenu(savedCart.items, menuItemsLatest);
           itemsToUse = reconciled;
         }
       } catch (e) {
         console.warn('Réconciliation panier avant paiement:', e);
       }
+      const panierContientAlcool = cartHasAlcohol(
+        itemsToUse,
+        Array.isArray(menuItemsLatest) ? menuItemsLatest : []
+      );
+      if (panierContientAlcool && !alcoholAttestationChecked) {
+        alert(
+          'Votre panier contient au moins un produit alcoolisé. Veuillez cocher la case de confirmation : vous certifiez être majeur(e) (18 ans révolus) conformément à la réglementation.'
+        );
+        setSubmitting(false);
+        return;
+      }
+
       const cartTotal = computeCartTotalWithExtras(itemsToUse);
 
       // Calculer la réduction du code promo (uniquement le code ; la fidélité est fusionnée côté serveur)
@@ -653,7 +682,7 @@ export default function Checkout() {
         selectedLoyaltyRewardId &&
         adj.pointsCost > 0 &&
         !adj.articleNote &&
-        adj.benefitStatementEur <= 0
+        (adj.monetaryBenefitCustomerEur || 0) <= 0
       ) {
         alert(
           'Cette récompense ne s’applique pas à votre commande (ex. livraison déjà offerte ou montant insuffisant). Désélectionnez-la ou choisissez une autre option.'
@@ -740,6 +769,7 @@ export default function Checkout() {
           promoCodeId: appliedPromoCode?.promoCodeId || null,
           promoCode: appliedPromoCode?.code || null,
           loyaltyRewardId: selectedLoyaltyRewardId || null,
+          alcoholLegalAgeDeclared: !panierContientAlcool || alcoholAttestationChecked === true,
           paymentStatus: 'pending', // Statut en attente de paiement (doit correspondre à la contrainte CHECK)
           customerInfo: {
             firstName: customerFirstName,
@@ -1487,6 +1517,33 @@ export default function Checkout() {
               </div>
             )}
 
+            {cartContainsAlcohol && (
+              <div className="border-t dark:border-gray-700 pt-4 mt-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 p-4">
+                <h3 className="font-medium text-amber-900 dark:text-amber-100 mb-2 text-sm sm:text-base">
+                  Vente d&apos;alcool — vérification d&apos;âge
+                </h3>
+                <p className="text-xs text-amber-900/90 dark:text-amber-100/90 mb-3 leading-relaxed">
+                  Votre panier contient au moins un article marqué comme alcoolisé par le restaurant. La vente est réservée aux
+                  personnes majeures. En commandant, vous reconnaissez que la vérification d&apos;identité peut être exigée à la
+                  livraison. CVN&apos;EAT ne contrôle pas l&apos;âge réel : vous déclarez seul(e) être autorisé(e) à acheter ces
+                  produits.
+                </p>
+                <label className="flex items-start gap-2 cursor-pointer text-sm text-amber-950 dark:text-amber-50">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                    checked={alcoholAttestationChecked}
+                    onChange={(e) => setAlcoholAttestationChecked(e.target.checked)}
+                  />
+                  <span>
+                    Je certifie sur l&apos;honneur avoir <strong>18 ans révolus</strong> à la date de la commande et être légalement
+                    autorisé(e) à acheter de l&apos;alcool en France. Je comprends que de fausses déclarations peuvent engager ma
+                    responsabilité.
+                  </span>
+                </label>
+              </div>
+            )}
+
             {/* Code promo */}
             <div className="border-t dark:border-gray-700 pt-4 sm:pt-4 mt-4 sm:mt-4">
               <h3 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-3 flex items-center text-sm sm:text-base">
@@ -1543,7 +1600,14 @@ export default function Checkout() {
               <>
                 <button
                   onClick={submitOrder}
-                  disabled={submitting || !selectedAddress || deliveryError !== null || deliveryClosed || !ordersOpen}
+                  disabled={
+                    submitting ||
+                    !selectedAddress ||
+                    deliveryError !== null ||
+                    deliveryClosed ||
+                    !ordersOpen ||
+                    (cartContainsAlcohol && !alcoholAttestationChecked)
+                  }
                   className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-6 min-h-[44px] touch-manipulation"
                 >
                   {submitting ? (
@@ -1555,12 +1619,25 @@ export default function Checkout() {
                     `Payer ${loyaltyCheckout.totalToPay.toFixed(2)}€`
                   )}
                 </button>
-                {(submitting || !selectedAddress || deliveryError !== null || deliveryClosed || !ordersOpen) && !submitting && (
+                {(submitting ||
+                  !selectedAddress ||
+                  deliveryError !== null ||
+                  deliveryClosed ||
+                  !ordersOpen ||
+                  (cartContainsAlcohol && !alcoholAttestationChecked)) &&
+                  !submitting && (
                   <p className="text-center text-sm text-amber-600 dark:text-amber-400 mt-2">
                     {!selectedAddress && 'Sélectionnez une adresse de livraison pour continuer.'}
                     {selectedAddress && deliveryError !== null && 'Vérifiez l\'adresse de livraison.'}
                     {selectedAddress && deliveryError === null && deliveryClosed && 'Les livraisons sont fermées pour ce créneau.'}
                     {selectedAddress && deliveryError === null && !deliveryClosed && !ordersOpen && 'Le restaurant n\'accepte pas les commandes pour le moment.'}
+                    {selectedAddress &&
+                      deliveryError === null &&
+                      !deliveryClosed &&
+                      ordersOpen &&
+                      cartContainsAlcohol &&
+                      !alcoholAttestationChecked &&
+                      'Cochez la confirmation sur l’âge pour les produits alcoolisés.'}
                   </p>
                 )}
               </>

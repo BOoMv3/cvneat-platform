@@ -65,7 +65,8 @@ export async function POST(request) {
       requires_meat_selection = false,
       requires_sauce_selection = false,
       max_sauces = null,
-      max_meats = null
+      max_meats = null,
+      contains_alcohol = false,
     } = await request.json();
 
     if (!restaurant_id || !nom || !prix || !user_email) {
@@ -137,7 +138,8 @@ export async function POST(request) {
       description: sanitizedData.description,
       prix: parseFloat(prix),
       category: sanitizedData.category,
-      disponible: true
+      disponible: true,
+      contains_alcohol: contains_alcohol === true || contains_alcohol === 'true',
     };
 
     // Ajouter les suppléments si fournis (stocker en JSONB)
@@ -311,7 +313,8 @@ export async function PUT(request) {
       requires_meat_selection = null,
       requires_sauce_selection = null,
       max_sauces = null,
-      max_meats = null
+      max_meats = null,
+      contains_alcohol = null,
     } = body;
 
     if (!id || !nom || prix === undefined) {
@@ -334,8 +337,12 @@ export async function PUT(request) {
       description: description || '',
       prix: prixNum,
       disponible: disponible !== false,
-      category: category || 'Autres'
+      category: category || 'Autres',
     };
+
+    if (contains_alcohol !== null && contains_alcohol !== undefined) {
+      updateData.contains_alcohol = contains_alcohol === true || contains_alcohol === 'true';
+    }
 
     // Ajouter l'image si fournie
     if (image_url !== null && image_url !== undefined) {

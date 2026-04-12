@@ -79,7 +79,8 @@ export default function PartnerDashboard() {
     requires_meat_selection: false,
     requires_sauce_selection: false,
     max_sauces: null, // Limite de sauces (null = illimité)
-    max_meats: null // Limite de viandes (null = illimité)
+    max_meats: null, // Limite de viandes (null = illimité)
+    contains_alcohol: false,
   });
   const [menuForm, setMenuForm] = useState(createDefaultMenuForm());
   const [editingMenu, setEditingMenu] = useState(null);
@@ -1167,6 +1168,7 @@ export default function PartnerDashboard() {
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
             max_sauces: (menuForm.max_sauces !== null && menuForm.max_sauces !== undefined) ? menuForm.max_sauces : null,
             max_meats: (menuForm.max_meats !== null && menuForm.max_meats !== undefined) ? menuForm.max_meats : null,
+            contains_alcohol: !!menuForm.contains_alcohol,
             user_email: userData.email
           }
         : { 
@@ -1187,6 +1189,7 @@ export default function PartnerDashboard() {
             requires_sauce_selection: menuForm.requires_sauce_selection || false,
             max_sauces: (menuForm.max_sauces !== null && menuForm.max_sauces !== undefined) ? menuForm.max_sauces : null,
             max_meats: (menuForm.max_meats !== null && menuForm.max_meats !== undefined) ? menuForm.max_meats : null,
+            contains_alcohol: !!menuForm.contains_alcohol,
             user_email: userData.email
           };
 
@@ -3790,9 +3793,26 @@ export default function PartnerDashboard() {
                                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                     Total client: {(totalAmount + deliveryFee).toFixed(2)} €
                                   </p>
-                                  {(order.loyalty_points_used > 0 || Number(order.loyalty_discount_amount) > 0) && (
+                                  {(order.loyalty_points_used > 0 ||
+                                    Number(order.loyalty_discount_amount) > 0 ||
+                                    Number(order.loyalty_article_subsidy_eur) > 0) && (
                                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                                      Fidélité : {Number(order.loyalty_discount_amount || 0).toFixed(2)} € d’avantage en caisse — {order.loyalty_points_used || 0} pts débités (récompense catalogue, pas 1 pt = 1 €)
+                                      Fidélité : {Number(order.loyalty_discount_amount || 0).toFixed(2)} € d’avantage client en caisse — {order.loyalty_points_used || 0} pts débités
+                                      {Number(order.loyalty_article_subsidy_eur) > 0 && (
+                                        <>
+                                          {' '}
+                                          — subvention CVN&apos;EAT article offert : +{Number(order.loyalty_article_subsidy_eur).toFixed(2)} € sur votre reversement
+                                        </>
+                                      )}
+                                    </p>
+                                  )}
+                                  {order.alcohol_legal_age_declared === true && (
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                      Commande avec alcool : le client a confirmé être majeur au moment du paiement
+                                      {order.alcohol_legal_age_declared_at
+                                        ? ` (${new Date(order.alcohol_legal_age_declared_at).toLocaleString('fr-FR')})`
+                                        : ''}
+                                      .
                                     </p>
                                   )}
                                 </>
@@ -4338,6 +4358,15 @@ export default function PartnerDashboard() {
 
         {activeTab === 'menu' && (
           <div className="space-y-6">
+            <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/40 p-4 text-sm text-blue-900 dark:text-blue-100">
+              <p className="font-semibold mb-1">Boissons alcoolisées autorisées sur CVN&apos;EAT</p>
+              <p className="mb-2">
+                Vous pouvez proposer bières, vins et autres produits alcoolisés dans votre carte, sous votre responsabilité
+                (licences, règlement local). Pour chaque article concerné, cochez <strong>« Alcool »</strong> dans la fiche plat :
+                le client devra alors confirmer être <strong>majeur</strong> avant de payer. Cela limite les risques pour la plateforme
+                tout en vous laissant commercialiser votre carte complète.
+              </p>
+            </div>
             <div className="flex flex-wrap justify-between items-center gap-3">
               <h2 className="text-lg font-semibold">Gestion du menu</h2>
               <div className="flex gap-2">
@@ -4641,6 +4670,7 @@ export default function PartnerDashboard() {
 
                                 setMenuForm({
                                   ...item,
+                                  contains_alcohol: !!item.contains_alcohol,
                                   supplements: parsedSupplements,
                                   boisson_taille: item.drink_size || item.boisson_taille || '',
                                   prix_taille: item.prix_taille || '',
@@ -5000,6 +5030,22 @@ export default function PartnerDashboard() {
                     Disponible
                   </label>
                 </div>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 p-3">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="contains_alcohol"
+                    checked={!!menuForm.contains_alcohol}
+                    onChange={(e) => setMenuForm({ ...menuForm, contains_alcohol: e.target.checked })}
+                    className="h-4 w-4 mt-0.5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-800 dark:text-gray-200">
+                    <strong>Alcool</strong> : cocher si cet article contient de l&apos;alcool (bière, vin, cocktail, etc.).
+                    Le client devra confirmer être <strong>majeur</strong> au paiement. Ne cochez que si la vente est légale pour votre établissement.
+                  </span>
+                </label>
               </div>
 
               {/* Image */}
