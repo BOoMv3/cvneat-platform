@@ -34,6 +34,7 @@ async function supabaseRestWithJwt(token, path, { method = 'GET', body = null, e
     headers: {
       apikey: anonKey,
       Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
       ...extraHeaders,
     },
     body: body != null ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
@@ -110,17 +111,34 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
-    const rolePath = `/rest/v1/users?id=eq.${encodeURIComponent(user.id)}&select=role`;
-    const roleRes = await supabaseRestWithJwt(token, rolePath);
-    if (!roleRes.ok) {
+    const resolvedParams = await Promise.resolve(params);
+    const restaurantId = resolvedParams?.id;
+    if (!restaurantId || typeof restaurantId !== 'string') {
+      return NextResponse.json({ error: 'ID restaurant manquant ou invalide' }, { status: 400 });
+    }
+
+    // Vérifier admin via service role (ne dépend pas de la RLS sur users avec le JWT).
+    const supabaseAdmin = getAdminClient();
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Vérification du profil impossible', details: roleRes.json },
-        { status: roleRes.status >= 400 && roleRes.status < 600 ? roleRes.status : 500 }
+        { error: 'Configuration serveur : SUPABASE_SERVICE_ROLE_KEY manquante' },
+        { status: 500 }
       );
     }
-    const roleRows = Array.isArray(roleRes.json) ? roleRes.json : [];
-    if (roleRows[0]?.role !== 'admin') {
+    const { data: adminRow, error: adminRoleErr } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (adminRoleErr || String(adminRow?.role || '').toLowerCase() !== 'admin') {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    let bodyJson;
+    try {
+      bodyJson = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Corps JSON invalide' }, { status: 400 });
     }
 
     const {
@@ -140,7 +158,7 @@ export async function PUT(request, { params }) {
       siret,
       vat_number,
       strategie_boost_reduction_pct
-    } = await request.json();
+    } = bodyJson;
 
     const updateData = {};
     if (nom !== undefined) updateData.nom = nom;
@@ -171,7 +189,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Aucun champ à mettre à jour' }, { status: 400 });
     }
 
-    const patchPath = `/rest/v1/restaurants?id=eq.${encodeURIComponent(params.id)}&select=*`;
+    const patchPath = `/rest/v1/restaurants?id=eq.${encodeURIComponent(restaurantId)}&select=*`;
     const patchRes = await supabaseRestWithJwt(token, patchPath, {
       method: 'PATCH',
       body: updateData,
@@ -181,7 +199,15 @@ export async function PUT(request, { params }) {
       },
     });
 
-    if (!patchRes.ok) {
+    const outRows = Array.isArray(patchRes.json) ? patchRes.json : patchRes.json ? [patchRes.json] : [];
+    const updatedRestaurant = outRows[0];
+
+    const patchFailed =
+      !patchRes.ok ||
+      patchRes.status === 204 ||
+      !updatedRestaurant;
+
+    if (patchFailed) {
       console.error('PUT admin/restaurants REST:', patchRes.status, patchRes.json);
       const j = patchRes.json || {};
       const msg =
@@ -189,17 +215,11 @@ export async function PUT(request, { params }) {
         j.error_description ||
         (typeof j.error === 'string' ? j.error : j.error?.message) ||
         j.hint ||
-        'Mise à jour refusée';
+        (!patchRes.ok ? 'Mise à jour refusée par Supabase' : 'Aucune ligne modifiée (id inconnu ou accès refusé par les politiques de sécurité).');
       return NextResponse.json(
-        { error: msg, details: j },
-        { status: patchRes.status === 401 || patchRes.status === 403 ? patchRes.status : 400 }
+        { error: msg, details: j, httpStatus: patchRes.status, rowsReturned: outRows.length },
+        { status: !patchRes.ok && (patchRes.status === 401 || patchRes.status === 403) ? patchRes.status : 400 }
       );
-    }
-
-    const outRows = Array.isArray(patchRes.json) ? patchRes.json : patchRes.json ? [patchRes.json] : [];
-    const updatedRestaurant = outRows[0];
-    if (!updatedRestaurant) {
-      return NextResponse.json({ error: 'Réponse vide après mise à jour' }, { status: 500 });
     }
 
     // Envoyer email de notification au partenaire si le statut change

@@ -124,7 +124,11 @@ export default function AdminPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.success === false) {
-        throw new Error(json?.error || json?.details || `Erreur HTTP ${res.status}`);
+        const det = json?.details;
+        const detStr =
+          det == null ? '' : typeof det === 'string' ? det : JSON.stringify(det);
+        const parts = [json?.error, detStr, json?.httpStatus != null ? `HTTP ${json.httpStatus}` : null].filter(Boolean);
+        throw new Error(parts.join(' — ') || `Erreur HTTP ${res.status}`);
       }
       const updatedRestaurant = json?.restaurant || {};
       const fm = updatedRestaurant?.ferme_manuellement;
