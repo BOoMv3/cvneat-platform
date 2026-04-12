@@ -29,9 +29,6 @@ import {
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 
-/** Incrémente ce libellé après un changement important pour confirmer visuellement que le déploiement a bien pris. */
-const ADMIN_UI_DEPLOY_MARKER = 'admin-ui-2026-04-10-horaires-check';
-
 export default function AdminPage() {
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -510,34 +507,10 @@ export default function AdminPage() {
     );
   }
 
-  const publicBuildRef = process.env.NEXT_PUBLIC_CVNEAT_BUILD_REF || 'local';
-
   return (
     <div className="min-h-screen bg-gray-50">
       <OpenCloseManualNotice />
       <div className="max-w-full mx-auto px-2 fold:px-2 xs:px-3 sm:px-4 py-2 fold:py-2 xs:py-3 sm:py-8">
-        {/* Bandeau de vérification déploiement : si absent après mise en prod, le navigateur ou le CDN sert encore une ancienne version. */}
-        <div
-          className="mb-3 rounded-xl border-2 border-emerald-600 bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-3 shadow-sm sm:px-4"
-          role="status"
-          data-admin-deploy-check={ADMIN_UI_DEPLOY_MARKER}
-        >
-          <p className="text-sm font-semibold text-emerald-950 sm:text-base">
-            Vérification déploiement
-          </p>
-          <p className="mt-1 text-xs text-emerald-900 sm:text-sm">
-            Si ce bandeau vert est visible, le front chargé inclut bien les dernières modifications de cette branche.
-            Référence UI :{' '}
-            <code className="rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] text-emerald-950 ring-1 ring-emerald-200 sm:text-xs">
-              {ADMIN_UI_DEPLOY_MARKER}
-            </code>
-            {' · '}
-            Build :{' '}
-            <code className="rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] text-emerald-950 ring-1 ring-emerald-200 sm:text-xs">
-              {publicBuildRef}
-            </code>
-          </p>
-        </div>
         {/* Header avec bouton retour et info utilisateur - Optimisé mobile et foldable */}
         <div className="mb-3 fold:mb-3 xs:mb-4 sm:mb-6">
           <div className="flex items-center justify-between w-full gap-2 mb-3">
