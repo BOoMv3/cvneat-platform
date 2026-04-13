@@ -14,7 +14,8 @@ import {
   FaStore,
   FaEuroSign,
   FaSearch,
-  FaDownload
+  FaDownload,
+  FaTrash
 } from 'react-icons/fa';
 
 export default function TransfersTracking() {
@@ -302,16 +303,11 @@ export default function TransfersTracking() {
           commission = round2(commission);
           restaurantPayout = round2(restaurantPayout);
           
-          // Reste à payer = total part restaurant − virements déjà effectués
-          // 99 SF : on ne compte que les commandes depuis le 06/03, donc on ne soustrait PAS les virements passés (ils couvraient avant le 06/03)
+          // Reste à payer = total part restaurant − virements déjà effectués.
+          // IMPORTANT: toujours soustraire les virements (y compris 99 Street Food).
+          // L'ancienne exception 99 SF empêchait la mise à jour du solde après virement.
           const is99 = is99StreetFood(restaurant.nom);
-          let remainingToPay = is99
-            ? restaurantPayout
-            : Math.max(0, restaurantPayout - totalTransfers);
-          // Pénalité fixe 99 Street Food : -15€ (retiré du reste à payer)
-          if (is99) {
-            remainingToPay = Math.max(0, remainingToPay - 15);
-          }
+          let remainingToPay = Math.max(0, restaurantPayout - totalTransfers);
           // Override manuel : si un montant a été saisi manuellement, on l'utilise à la place
           const hasManualOverride = restaurant.remaining_to_pay_override != null && restaurant.remaining_to_pay_override !== '';
           if (hasManualOverride) {
@@ -563,6 +559,44 @@ export default function TransfersTracking() {
     } catch (err) {
       console.error('Erreur création virement:', err);
       alert('Erreur lors de l\'enregistrement: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelTransfer = async (transfer) => {
+    if (!transfer?.id) return;
+    const labelRestaurant = transfer.restaurant_name || 'ce restaurant';
+    const amount = parseFloat(transfer.amount || 0) || 0;
+    const ok = confirm(
+      `Annuler ce virement de ${amount.toFixed(2)}€ pour ${labelRestaurant} ?\n\n` +
+        `Cette action rétablira le montant dû dans le dashboard.`
+    );
+    if (!ok) return;
+
+    try {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        router.push('/login');
+        return;
+      }
+
+      const res = await fetch(`/api/admin/restaurant-transfers/${transfer.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Impossible d'annuler ce virement");
+
+      alert('✅ Virement annulé. Les montants dus ont été recalculés.');
+      fetchTransfers();
+      fetchRestaurantPayments();
+    } catch (err) {
+      console.error('Erreur annulation virement:', err);
+      alert(`❌ ${err?.message || 'Erreur lors de l’annulation du virement'}`);
     } finally {
       setLoading(false);
     }
@@ -872,36 +906,48 @@ export default function TransfersTracking() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={async () => {
-                          try {
-                            const { data: { session } } = await supabase.auth.getSession();
-                            if (!session?.access_token) {
-                              router.push('/login');
-                              return;
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { data: { session } } = await supabase.auth.getSession();
+                              if (!session?.access_token) {
+                                router.push('/login');
+                                return;
+                              }
+                              const res = await fetch(`/api/admin/restaurant-transfers/${transfer.id}/invoice`, {
+                                headers: { Authorization: `Bearer ${session.access_token}` },
+                              });
+                              // invoice route peut rediriger → on récupère le HTML final
+                              const html = await res.text();
+                              const w = window.open('', '_blank');
+                              if (w) {
+                                w.document.open();
+                                w.document.write(html);
+                                w.document.close();
+                              }
+                            } catch (e) {
+                              console.error(e);
+                              alert(e.message || 'Erreur ouverture document');
                             }
-                            const res = await fetch(`/api/admin/restaurant-transfers/${transfer.id}/invoice`, {
-                              headers: { Authorization: `Bearer ${session.access_token}` },
-                            });
-                            // invoice route peut rediriger → on récupère le HTML final
-                            const html = await res.text();
-                            const w = window.open('', '_blank');
-                            if (w) {
-                              w.document.open();
-                              w.document.write(html);
-                              w.document.close();
-                            }
-                          } catch (e) {
-                            console.error(e);
-                            alert(e.message || 'Erreur ouverture document');
-                          }
-                        }}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-black transition-colors"
-                        title="Ouvrir la facture/relevé associé(e) à ce virement"
-                      >
-                        <FaDownload />
-                        <span>{transfer.invoice_number || 'Facture'}</span>
-                      </button>
+                          }}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-black transition-colors"
+                          title="Ouvrir la facture/relevé associé(e) à ce virement"
+                        >
+                          <FaDownload />
+                          <span>{transfer.invoice_number || 'Facture'}</span>
+                        </button>
+                        {(transfer.status || '').toLowerCase() === 'completed' && (
+                          <button
+                            onClick={() => handleCancelTransfer(transfer)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                            title="Annuler ce virement (corrige un doublon)"
+                          >
+                            <FaTrash />
+                            <span>Annuler</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
