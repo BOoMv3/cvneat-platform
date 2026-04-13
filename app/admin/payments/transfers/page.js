@@ -318,6 +318,10 @@ export default function TransfersTracking() {
           // L'ancienne exception 99 SF empêchait la mise à jour du solde après virement.
           const is99 = is99StreetFood(restaurant.nom);
           let remainingToPay = Math.max(0, restaurantPayout - totalTransfers);
+          // Ajustement métier 99 Street Food : -15€ fixe sur le reste.
+          if (is99) {
+            remainingToPay = Math.max(0, remainingToPay - 15);
+          }
           // Override manuel : si un montant a été saisi manuellement, on l'utilise à la place
           const hasManualOverride = restaurant.remaining_to_pay_override != null && restaurant.remaining_to_pay_override !== '';
           if (hasManualOverride) {
