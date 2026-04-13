@@ -53,32 +53,21 @@ export async function DELETE(request, { params }) {
     if (!existing) {
       return NextResponse.json({ error: 'Virement introuvable' }, { status: 404 });
     }
-    if ((existing.status || '').toLowerCase() !== 'completed') {
-      return NextResponse.json(
-        { error: `Virement non annulable (status=${existing.status || 'inconnu'})` },
-        { status: 400 }
-      );
-    }
-
-    const cancelNote = `[ANNULÉ PAR ADMIN ${new Date().toISOString()}]`;
-    const nextNotes = existing.notes ? `${existing.notes}\n${cancelNote}` : cancelNote;
-
-    const { error: updateErr } = await supabaseAdmin
+    // Suppression réelle pour corriger immédiatement un doublon de saisie:
+    // le calcul du "montant dû" ne comptera plus cette ligne.
+    const { error: deleteErr } = await supabaseAdmin
       .from('restaurant_transfers')
-      .update({
-        status: 'cancelled',
-        notes: nextNotes,
-      })
+      .delete()
       .eq('id', transferId);
 
-    if (updateErr) {
+    if (deleteErr) {
       return NextResponse.json(
-        { error: "Erreur lors de l'annulation du virement", details: updateErr.message },
+        { error: 'Erreur lors de la suppression du virement', details: deleteErr.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, id: transferId, status: 'cancelled' });
+    return NextResponse.json({ success: true, id: transferId, deleted: true });
   } catch (error) {
     return NextResponse.json(
       { error: 'Erreur serveur', details: error?.message || String(error) },
