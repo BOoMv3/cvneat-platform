@@ -234,12 +234,22 @@ export default function TransfersTracking() {
           try {
             const { data: transfers, error: transfersError } = await supabase
               .from('restaurant_transfers')
-              .select('amount, transfer_date, notes')
+              .select('amount, transfer_date, notes, period_start, period_end')
               .eq('restaurant_id', restaurant.id)
               .eq('status', 'completed');
 
             if (!transfersError && transfers) {
-              totalTransfers = transfers.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+              const is99 = is99StreetFood(restaurant.nom);
+              const DEBUT_99SF_DATE = '2026-03-06';
+              // 99 SF: ne déduire que les virements qui concernent la même période
+              // (évite de soustraire des virements historiques d'avant le 06/03).
+              const relevantTransfers = is99
+                ? transfers.filter((t) => {
+                    const d = (t.transfer_date || '').toString().slice(0, 10);
+                    return d >= DEBUT_99SF_DATE;
+                  })
+                : transfers;
+              totalTransfers = relevantTransfers.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
               console.log(`💰 ${restaurant.nom}: ${transfers.length} virement(s) = ${totalTransfers.toFixed(2)}€`);
             } else if (transfersError) {
               console.error(`❌ Erreur récupération virements pour ${restaurant.nom}:`, transfersError);
