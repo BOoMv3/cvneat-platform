@@ -980,19 +980,48 @@ export async function POST(request) {
     console.log('   - statut:', orderData.statut);
     console.log('   - payment_status:', orderData.payment_status);
 
-    let order, orderError;
-    try {
-      // Spécifier explicitement les colonnes à récupérer (SANS code_postal_livraison qui n'existe pas)
-      const result = await serviceClient
-        .from('commandes')
-        .insert([orderData])
-        .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, ville_livraison, security_code, created_at, user_id, customer_email, customer_first_name, customer_last_name, customer_phone, payment_status, stripe_payment_intent_id, promo_code_id, promo_code, discount_amount, commission_rate, commission_amount, restaurant_payout')
-        .single();
-      order = result.data;
-      orderError = result.error;
-    } catch (insertError) {
-      console.error('❌ EXCEPTION lors de l\'insertion:', insertError);
-      orderError = insertError;
+    let order;
+    let orderError;
+    const optionalColumns = new Set([
+      'alcohol_legal_age_declared',
+      'alcohol_legal_age_declared_at',
+      'loyalty_article_subsidy_eur',
+      'loyalty_points_used',
+      'loyalty_discount_amount',
+    ]);
+    const payloadForInsert = { ...orderData };
+
+    // Compatibilité DB: certaines colonnes peuvent manquer si migration non appliquée.
+    // On retire uniquement les colonnes optionnelles absentes et on retente l'insert.
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const result = await serviceClient
+          .from('commandes')
+          .insert([payloadForInsert])
+          .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, ville_livraison, security_code, created_at, user_id, customer_email, customer_first_name, customer_last_name, customer_phone, payment_status, stripe_payment_intent_id, promo_code_id, promo_code, discount_amount, commission_rate, commission_amount, restaurant_payout')
+          .single();
+
+        order = result.data;
+        orderError = result.error;
+      } catch (insertError) {
+        orderError = insertError;
+      }
+
+      if (!orderError) break;
+
+      const rawMsg = String(orderError?.message || '');
+      const m1 = rawMsg.match(/could not find the ['"]([^'"]+)['"] column/i);
+      const m2 = rawMsg.match(/column ['"]?([^'"\s]+)['"]? does not exist/i);
+      const missingCol = (m1?.[1] || m2?.[1] || '').trim();
+
+      if (!missingCol || !optionalColumns.has(missingCol)) {
+        console.error('❌ EXCEPTION lors de l\'insertion:', orderError);
+        break;
+      }
+
+      console.warn(`⚠️ Colonne optionnelle absente dans commandes: ${missingCol} (insert sans cette colonne)`);
+      delete payloadForInsert[missingCol];
+      orderError = null;
     }
 
     if (orderError) {
