@@ -824,8 +824,10 @@ export default function Checkout() {
       console.log('📊 Détails:', {
         cartTotal,
         discountAmount,
-        subtotalAfterDiscount,
-        finalDeliveryFeeForTotal,
+        subtotalAfterPromo,
+        subtotalAfterAllDiscounts,
+        deliveryBeforeLoyalty,
+        finalDeliveryFromLoyalty,
         PLATFORM_FEE,
         totalAmount
       });
@@ -871,8 +873,17 @@ export default function Checkout() {
           cartTotal,
           discountAmount: appliedPromoCode?.discountAmount || 0,
           maxDiscount: typeof maxDiscount !== 'undefined' ? maxDiscount : 'non calculé',
-          subtotalAfterDiscount: typeof subtotalAfterDiscount !== 'undefined' ? subtotalAfterDiscount : 'non calculé',
-          finalDeliveryFeeForTotal
+          subtotalAfterPromo: typeof subtotalAfterPromo !== 'undefined' ? subtotalAfterPromo : 'non calculé',
+          subtotalAfterAllDiscounts:
+            typeof subtotalAfterAllDiscounts !== 'undefined'
+              ? subtotalAfterAllDiscounts
+              : 'non calculé',
+          deliveryBeforeLoyalty:
+            typeof deliveryBeforeLoyalty !== 'undefined' ? deliveryBeforeLoyalty : 'non calculé',
+          finalDeliveryFromLoyalty:
+            typeof finalDeliveryFromLoyalty !== 'undefined'
+              ? finalDeliveryFromLoyalty
+              : 'non calculé',
         });
         
         throw new Error(errorMessage);
