@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { isOrdersClosed } from '@/lib/ordersClosed';
+import { computePlatformPromoDiscount } from '@/lib/platform-promo';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -94,6 +95,11 @@ export async function POST(request) {
 
             // Réduction fidélité déjà incluse dans discount_amount / frais_livraison (paliers, pas 1 pt = 1 €)
             let expectedAmount = Math.round((subtotalAfterDiscount + (isFreeDelivery ? 0 : storedDeliveryFee) + PLATFORM_FEE) * 100) / 100;
+            // Promo plateforme financée par CVN'EAT (ex: -5%), recalculée côté serveur.
+            const platformDiscountAmount = computePlatformPromoDiscount(subtotalAfterDiscount);
+            if (platformDiscountAmount > 0) {
+              expectedAmount = Math.max(0.5, Math.round((expectedAmount - platformDiscountAmount) * 100) / 100);
+            }
             const amountDiff = Math.abs(amountNumber - expectedAmount);
 
             // 1. Frais de livraison invalides (0 < x < 2.50€) : corriger en BDD au lieu de bloquer le client
@@ -102,6 +108,9 @@ export async function POST(request) {
               await sb.from('commandes').update({ frais_livraison: 2.50 }).eq('id', orderId);
               // Recalculer expectedAmount avec 2.50€ de frais
               expectedAmount = Math.round((subtotalAfterDiscount + 2.50 + PLATFORM_FEE) * 100) / 100;
+              if (platformDiscountAmount > 0) {
+                expectedAmount = Math.max(0.5, Math.round((expectedAmount - platformDiscountAmount) * 100) / 100);
+              }
               amountNumber = expectedAmount;
             } else if (amountDiff > AMOUNT_TOLERANCE) {
               // 2. Toujours facturer le montant de la commande (source de vérité) — ne jamais bloquer pour écart de montant

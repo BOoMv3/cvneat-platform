@@ -47,6 +47,7 @@ import {
   LOYALTY_CHECKOUT_HELP,
   getLoyaltyRewardsSummaryLine,
 } from '@/lib/loyalty-rewards';
+import { PLATFORM_PROMO_ACTIVE, PLATFORM_PROMO_LABEL } from '@/lib/platform-promo';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -1426,6 +1427,21 @@ export default function Home() {
     <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
       {/* Bannière Livraison Offerte */}
       <FreeDeliveryBanner />
+      {PLATFORM_PROMO_ACTIVE && (
+        <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-700 text-white border-y border-emerald-300/30 shadow-sm">
+          <div className="overflow-hidden">
+            <div
+              className="inline-block whitespace-nowrap py-2 text-sm font-semibold"
+              style={{ animation: 'promoMarquee 20s linear infinite' }}
+            >
+              <span className="mx-8">🔥 Promo {PLATFORM_PROMO_LABEL} — automatiquement appliquee au checkout</span>
+              <span className="mx-8">🍔 -5% sur vos commandes en ce moment</span>
+              <span className="mx-8">💳 Offre valable en ce moment sur toute commande</span>
+              <span className="mx-8">🔥 Promo {PLATFORM_PROMO_LABEL} — automatiquement appliquee au checkout</span>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Hero Section avec carrousel visuel */}
       <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
@@ -2123,6 +2139,16 @@ export default function Home() {
           <Advertisement position="footer" />
         </div>
       </main>
+      <style jsx>{`
+        @keyframes promoMarquee {
+          0% {
+            transform: translateX(0%);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+      `}</style>
     </div>
   );
 } // Force rebuild Wed Dec 17 12:18:32 CET 2025

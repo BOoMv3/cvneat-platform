@@ -27,6 +27,7 @@ import {
 } from 'react-icons/fa';
 import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu, cartHasAlcohol } from '@/lib/cartUtils';
 import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP, computeLoyaltyAdjustments } from '@/lib/loyalty-rewards';
+import { PLATFORM_PROMO_LABEL, computePlatformPromoDiscount } from '@/lib/platform-promo';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -121,9 +122,10 @@ export default function Checkout() {
       0,
       Math.round((subAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
     );
+    const platformPromoDiscount = computePlatformPromoDiscount(subAfterAll);
     const totalToPay = Math.max(
       0.5,
-      Math.round((subAfterAll + adj.deliveryFeeEurAfter + PLATFORM_FEE) * 100) / 100
+      Math.round((subAfterAll - platformPromoDiscount + adj.deliveryFeeEurAfter + PLATFORM_FEE) * 100) / 100
     );
     const rewardMeta = selectedLoyaltyRewardId
       ? LOYALTY_REWARDS_CATALOG.find((r) => r.id === selectedLoyaltyRewardId)
@@ -137,6 +139,7 @@ export default function Checkout() {
       PLATFORM_FEE,
       subAfterPromo,
       subAfterAll,
+      platformPromoDiscount,
       totalToPay,
       rewardMeta,
     };
@@ -672,10 +675,13 @@ export default function Checkout() {
         0,
         Math.round((subtotalAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
       );
+      const platformPromoDiscount = computePlatformPromoDiscount(subtotalAfterAllDiscounts);
       const finalDeliveryFromLoyalty = adj.deliveryFeeEurAfter;
       const totalAmount = Math.max(
         0.5,
-        Math.round((subtotalAfterAllDiscounts + finalDeliveryFromLoyalty + PLATFORM_FEE) * 100) / 100
+        Math.round(
+          (subtotalAfterAllDiscounts - platformPromoDiscount + finalDeliveryFromLoyalty + PLATFORM_FEE) * 100
+        ) / 100
       );
 
       if (
@@ -699,6 +705,7 @@ export default function Checkout() {
           maxDiscount,
           subtotalAfterPromo,
           subtotalAfterAllDiscounts,
+          platformPromoDiscount,
           finalDeliveryFromLoyalty,
           PLATFORM_FEE,
           totalAmount
@@ -712,6 +719,7 @@ export default function Checkout() {
         maxDiscount,
         subtotalAfterPromo,
         subtotalAfterAllDiscounts,
+        platformPromoDiscount,
         finalDeliveryFromLoyalty,
         PLATFORM_FEE,
         totalAmount
@@ -805,6 +813,7 @@ export default function Checkout() {
         totalAmount: totalAmount,
         paymentTotal: totalAmount,
         loyaltyPointsCost: adj.pointsCost || 0,
+        platformPromoDiscount,
       });
 
       // Créer le PaymentIntent Stripe avec l'ID de commande
@@ -844,6 +853,7 @@ export default function Checkout() {
             restaurant_id: resolvedRestaurant.id,
             promo_code: appliedPromoCode?.code || null,
             loyalty_points_cost: String(adj.pointsCost || 0),
+            platform_discount_amount: String(platformPromoDiscount || 0),
           }
         })
       });
@@ -1404,7 +1414,7 @@ export default function Checkout() {
             </div>
 
             {(() => {
-              const { adj, PLATFORM_FEE, totalToPay, rewardMeta, maxDiscount } = loyaltyCheckout;
+              const { adj, PLATFORM_FEE, totalToPay, rewardMeta, maxDiscount, platformPromoDiscount } = loyaltyCheckout;
               const displayedDeliveryFee = adj.deliveryFeeEurAfter;
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
@@ -1431,6 +1441,15 @@ export default function Checkout() {
                 <span>Frais plateforme</span>
                 <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>
               </div>
+              {platformPromoDiscount > 0 && (
+                <div className="flex justify-between text-blue-600 dark:text-blue-300 text-sm sm:text-base">
+                  <span className="flex items-center">
+                    <FaTag className="h-3 w-3 mr-1" />
+                    Promo {PLATFORM_PROMO_LABEL}
+                  </span>
+                  <span className="font-semibold">-{platformPromoDiscount.toFixed(2)}€</span>
+                </div>
+              )}
               {adj.pointsCost > 0 && rewardMeta && (
                 <>
                   {rewardMeta.redemption?.type === 'subtotal_discount' && adj.extraDiscountOnSubtotal > 0 && (
