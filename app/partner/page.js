@@ -272,16 +272,11 @@ export default function PartnerDashboard() {
       // Temps de préparation (si migration appliquée)
       setPrepTimeMinutes(Number.isFinite(parseInt(resto.prep_time_minutes, 10)) ? parseInt(resto.prep_time_minutes, 10) : 25);
       setPrepTimeUpdatedAt(resto.prep_time_updated_at || null);
-      // Normaliser ferme_manuellement pour être sûr que c'est un booléen strict
-      let normalizedFermeManuel;
-      if (resto?.ferme_manuellement === true || resto?.ferme_manuellement === 'true' || resto?.ferme_manuellement === 1 || resto?.ferme_manuellement === '1') {
-        normalizedFermeManuel = true;
-      } else if (resto?.ferme_manuellement === false || resto?.ferme_manuellement === 'false' || resto?.ferme_manuellement === 0 || resto?.ferme_manuellement === '0') {
-        normalizedFermeManuel = false;
-      } else {
-        // Valeur invalide ou undefined, utiliser false par défaut (ouvert)
-        normalizedFermeManuel = false;
-      }
+      // Normaliser les flags manuels avec priorité: fermé manuel > ouvert manuel > horaires.
+      const toBool = (v) =>
+        v === true || v === 1 || v === 'true' || v === '1' ||
+        (typeof v === 'string' && String(v).trim().toLowerCase() === 'true');
+      const normalizedFermeManuel = toBool(resto?.ferme_manuellement) && !toBool(resto?.ouvert_manuellement);
       setIsManuallyClosed(normalizedFermeManuel);
       console.log('📋 Restaurant chargé:', {
         nom: resto?.nom,
@@ -1974,8 +1969,11 @@ export default function PartnerDashboard() {
         if (currentRes.ok) {
           const currentPayload = await currentRes.json().catch(() => ({}));
           const fm = currentPayload?.restaurant?.ferme_manuellement;
-          currentIsManuallyClosed = fm === true || fm === 'true' || fm === 1 || fm === '1' ||
-            (typeof fm === 'string' && String(fm).toLowerCase().trim() === 'true');
+          const om = currentPayload?.restaurant?.ouvert_manuellement;
+          const toBool = (v) =>
+            v === true || v === 1 || v === 'true' || v === '1' ||
+            (typeof v === 'string' && String(v).toLowerCase().trim() === 'true');
+          currentIsManuallyClosed = toBool(fm) && !toBool(om);
         }
       } catch {
         // fallback sur l'état local si la lecture serveur échoue
@@ -1992,7 +1990,7 @@ export default function PartnerDashboard() {
       
       // Mode horaires: le bouton sert uniquement à forcer une fermeture manuelle (override).
       // "Ouvrir" = désactiver la fermeture manuelle.
-      const requestBody = { ferme_manuellement: newStatus };
+      const requestBody = { ferme_manuellement: newStatus, ouvert_manuellement: !newStatus };
       
       console.log('📤 Envoi requête API:', {
         url: `/api/partner/restaurant/${restaurant.id}`,
@@ -2021,8 +2019,13 @@ export default function PartnerDashboard() {
         });
         
         // Utiliser la valeur retournée par l'API pour être sûr
-        const finalStatus = responseData.restaurant?.ferme_manuellement !== undefined 
-          ? responseData.restaurant.ferme_manuellement 
+        const fmFinal = responseData.restaurant?.ferme_manuellement;
+        const omFinal = responseData.restaurant?.ouvert_manuellement;
+        const toBool = (v) =>
+          v === true || v === 1 || v === 'true' || v === '1' ||
+          (typeof v === 'string' && String(v).trim().toLowerCase() === 'true');
+        const finalStatus = responseData.restaurant?.ferme_manuellement !== undefined
+          ? (toBool(fmFinal) && !toBool(omFinal))
           : newStatus;
         
         // Normaliser pour être sûr que c'est un booléen strict

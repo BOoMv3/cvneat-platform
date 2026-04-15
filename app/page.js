@@ -426,11 +426,16 @@ const getHeuresJourForToday = (horaires) => {
 // Override: si ferme_manuellement = true → fermé.
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
+    const om = restaurant.ouvert_manuellement;
+    const isManuallyOpen =
+      om === true || om === 1 || om === 'true' || om === '1' ||
+      (typeof om === 'string' && String(om).trim().toLowerCase() === 'true');
     const fm = restaurant.ferme_manuellement;
     const isManuallyClosed =
       fm === true || fm === 1 || fm === 'true' || fm === '1' ||
       (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
     if (isManuallyClosed) return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
+    if (isManuallyOpen) return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
 
     // Si l'API fournit déjà is_open_now (calcul serveur), on l'utilise.
     if (restaurant.is_open_now === true || restaurant.is_open_now === 1 || restaurant.is_open_now === 'true') {
