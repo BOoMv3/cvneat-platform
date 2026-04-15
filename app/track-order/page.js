@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
@@ -17,6 +17,7 @@ export default function TrackOrder() {
   const [isTracking, setIsTracking] = useState(false);
   const [lastStatus, setLastStatus] = useState(null);
   const [lastOrder, setLastOrder] = useState(null);
+  const [nowTs, setNowTs] = useState(Date.now());
 
   const canUseBrowserNotifications = () => {
     return (
@@ -320,6 +321,51 @@ export default function TrackOrder() {
     }
   };
 
+  const isOrderCompleted = (orderData) => {
+    const st = orderData?.statut || orderData?.status;
+    return ['livree', 'delivered', 'annulee', 'cancelled', 'refusee', 'rejected'].includes(st);
+  };
+
+  const activeCountdown = useMemo(() => {
+    if (!order || isOrderCompleted(order)) return null;
+
+    const status = order.statut || order.status;
+    const prepMinutes = Math.max(1, parseInt(order.preparation_time || 30, 10) || 30);
+    const deliveryMinutes = 20;
+
+    const toDate = (value) => {
+      if (!value) return null;
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
+    let start = null;
+    let totalSeconds = null;
+    let label = '';
+
+    if (status === 'en_livraison') {
+      start = toDate(order.picked_up_at) || toDate(order.updated_at) || toDate(order.created_at);
+      totalSeconds = deliveryMinutes * 60;
+      label = 'Livraison estimée';
+    } else {
+      start = toDate(order.preparation_started_at) || toDate(order.updated_at) || toDate(order.created_at);
+      totalSeconds = prepMinutes * 60;
+      label = 'Préparation estimée';
+    }
+
+    if (!start || !totalSeconds) return null;
+
+    const elapsedSeconds = Math.max(0, Math.floor((nowTs - start.getTime()) / 1000));
+    const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+    return { remainingSeconds, totalSeconds, label };
+  }, [order, nowTs]);
+
+  useEffect(() => {
+    if (!order || isOrderCompleted(order)) return;
+    const timer = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [order]);
+
   // Polling automatique pour suivre les changements de statut
   useEffect(() => {
     if (!isTracking || !orderId) return;
@@ -589,6 +635,46 @@ export default function TrackOrder() {
           {/* Affichage de la commande */}
           {order && (
             <div className="space-y-4 sm:space-y-6">
+              {/* Bloc principal en haut: statut + code + chrono */}
+              <div className="rounded-xl border-2 border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-4 sm:p-5">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">Commande</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-blue-900 dark:text-blue-100">
+                      #{order.id}
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold ${getStatusColor(order.statut || order.status)}`}>
+                      {getStatusText(order.statut || order.status)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                  <div className="rounded-lg bg-white/90 dark:bg-gray-800 border border-blue-200 dark:border-blue-700 p-3">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Code de sécurité</p>
+                    <p className="text-2xl sm:text-3xl font-mono font-extrabold tracking-wider text-blue-800 dark:text-blue-200">
+                      {order.security_code || '—'}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-white/90 dark:bg-gray-800 border border-blue-200 dark:border-blue-700 p-3">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+                      {activeCountdown?.label || 'Temps estimé'}
+                    </p>
+                    <p className="text-2xl sm:text-3xl font-extrabold text-blue-800 dark:text-blue-200">
+                      {activeCountdown
+                        ? `${String(Math.floor(activeCountdown.remainingSeconds / 60)).padStart(2, '0')}:${String(activeCountdown.remainingSeconds % 60).padStart(2, '0')}`
+                        : '—'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Le chrono reprend sur la vraie progression meme après refresh.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Informations de base */}
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 sm:mb-4 space-y-2 sm:space-y-0">
@@ -642,21 +728,6 @@ export default function TrackOrder() {
                         <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                           Récupéré le {formatDate(order.picked_up_at)}
                         </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Code de sécurité */}
-                {order.security_code && (
-                  <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                      <div>
-                        <h3 className="font-semibold text-blue-800 dark:text-blue-200 text-sm sm:text-base">🔐 Code de sécurité</h3>
-                        <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-300">Donnez ce code au livreur pour récupérer votre commande</p>
-                      </div>
-                      <div className="text-2xl sm:text-3xl font-mono font-bold text-blue-800 dark:text-blue-200 bg-white dark:bg-gray-700 px-3 sm:px-4 py-2 rounded-lg border-2 border-blue-300 dark:border-blue-600 text-center">
-                        {order.security_code}
                       </div>
                     </div>
                   </div>
