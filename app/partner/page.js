@@ -3396,9 +3396,9 @@ export default function PartnerDashboard() {
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-1">🕐 Ouverture/Fermeture</h3>
                       <ul className="list-disc list-inside ml-2 space-y-1">
-                        <li>Utilisez le bouton "Ouvert/Fermé" en haut pour ouvrir ou fermer manuellement</li>
-                        <li>Si vous fermez manuellement, vous resterez fermé jusqu'à ce que vous réouvriez manuellement</li>
-                        <li>Si vous ouvrez manuellement, vous suivrez vos horaires d'ouverture normaux</li>
+                        <li>Le problème d'ouverture/fermeture est résolu ✅</li>
+                        <li>Vous pouvez laisser votre restaurant suivre vos horaires automatiquement</li>
+                        <li>Le bouton "Ouvert/Fermé" reste disponible uniquement si vous voulez forcer une fermeture manuelle exceptionnelle</li>
                       </ul>
                     </div>
                   </div>
