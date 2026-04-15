@@ -32,6 +32,84 @@ function getBearerToken(request) {
   return auth.slice(7).trim();
 }
 
+async function settleLoyaltyForPaidOrder({ supabaseAdmin, orderId, orderRow }) {
+  try {
+    const orderUserId = orderRow?.user_id;
+    if (!orderUserId) return;
+
+    const pointsToDebit = parseInt(orderRow?.loyalty_points_used || 0, 10) || 0;
+    const subtotalForPoints = Math.max(
+      0,
+      (parseFloat(orderRow?.total || 0) || 0) - (parseFloat(orderRow?.discount_amount || 0) || 0)
+    );
+    const pointsEarned = Math.floor(Math.round(subtotalForPoints * 100) / 100);
+
+    const { data: userRow } = await supabaseAdmin
+      .from('users')
+      .select('points_fidelite')
+      .eq('id', orderUserId)
+      .maybeSingle();
+    let currentPoints = parseInt(userRow?.points_fidelite || 0, 10) || 0;
+
+    if (pointsToDebit > 0) {
+      const { data: spentRows } = await supabaseAdmin
+        .from('loyalty_history')
+        .select('id')
+        .eq('order_id', orderId)
+        .gt('points_spent', 0)
+        .limit(1);
+      const spentAlreadyLogged = Array.isArray(spentRows) && spentRows.length > 0;
+
+      if (!spentAlreadyLogged && currentPoints >= pointsToDebit) {
+        currentPoints = Math.max(0, currentPoints - pointsToDebit);
+        await supabaseAdmin
+          .from('users')
+          .update({ points_fidelite: currentPoints })
+          .eq('id', orderUserId);
+        await supabaseAdmin
+          .from('loyalty_history')
+          .insert({
+            user_id: orderUserId,
+            order_id: orderId,
+            points_spent: pointsToDebit,
+            reason: 'Commande',
+            description: `Utilisation de ${pointsToDebit} pts (récompense palier)`,
+          })
+          .catch(() => {});
+      }
+    }
+
+    if (pointsEarned > 0) {
+      const { data: earnedRows } = await supabaseAdmin
+        .from('loyalty_history')
+        .select('id')
+        .eq('order_id', orderId)
+        .gt('points_earned', 0)
+        .limit(1);
+      const earnedAlreadyLogged = Array.isArray(earnedRows) && earnedRows.length > 0;
+
+      if (!earnedAlreadyLogged) {
+        await supabaseAdmin
+          .from('users')
+          .update({ points_fidelite: currentPoints + pointsEarned })
+          .eq('id', orderUserId);
+        await supabaseAdmin
+          .from('loyalty_history')
+          .insert({
+            user_id: orderUserId,
+            order_id: orderId,
+            points_earned: pointsEarned,
+            reason: 'Commande',
+            description: `Commande - ${subtotalForPoints.toFixed(2)}€ (articles)`,
+          })
+          .catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ Settlement fidélité fallback échoué:', e?.message || e);
+  }
+}
+
 export async function GET(request, { params }) {
   try {
     const { id } = params;
@@ -573,7 +651,7 @@ export async function PUT(request, { params }) {
     // Lire la commande avant update (contrôle + transition)
     const { data: before, error: beforeErr } = await supabaseAdmin
       .from('commandes')
-      .select('id, user_id, restaurant_id, total, frais_livraison, payment_status')
+      .select('id, user_id, restaurant_id, total, frais_livraison, discount_amount, loyalty_points_used, payment_status')
       .eq('id', id)
       .single();
     if (beforeErr || !before) {
@@ -648,6 +726,16 @@ export async function PUT(request, { params }) {
       } catch (e) {
         console.warn(`⚠️ [PUT /orders] Push fallback erreur:`, e?.message);
       }
+    }
+
+    // Fallback fidélité: si la commande vient de passer paid via ce endpoint,
+    // créditer/débiter les points (idempotent via loyalty_history).
+    if (nowPaid && wasNotPaid) {
+      await settleLoyaltyForPaidOrder({
+        supabaseAdmin,
+        orderId: id,
+        orderRow: before,
+      });
     }
 
     return json(data);
