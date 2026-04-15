@@ -252,18 +252,23 @@ export default function RestaurantDetail({ params }) {
     setFavorites(favorites);
     setIsFavorite(favorites.includes(restaurantId));
     
-    // Rafraîchir statut: 100 % manuel (ouvert_manuellement uniquement) — ignore ferme_manuellement (bug prod)
+    // Rafraîchir statut avec la même source que l'accueil.
     const statusInterval = setInterval(() => {
       const checkStatus = async () => {
         try {
-          const restRes = await fetch(`/api/restaurants/${restaurantId}`, { cache: 'no-store' });
-          if (!restRes.ok) return;
-          const restData = await restRes.json();
-          const om = restData.ouvert_manuellement;
-          const ouvertManuel = (om === true || om === 'true' || om === 1 || om === '1' ||
-            (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
-          setIsManuallyClosed(false);
-          setIsRestaurantOpen(ouvertManuel);
+          const statusRes = await fetch('/api/restaurants/open-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: [restaurantId] }),
+            cache: 'no-store',
+          });
+          if (!statusRes.ok) return;
+          const statusJson = await statusRes.json().catch(() => ({}));
+          const st = statusJson?.map?.[restaurantId];
+          const isOpen = st?.isOpen === true;
+          const manualClosed = st?.isManuallyClosed === true;
+          setIsManuallyClosed(manualClosed);
+          setIsRestaurantOpen(isOpen && !manualClosed);
         } catch (err) {
           console.error('Erreur rafraîchissement statut:', err);
         }
@@ -434,9 +439,10 @@ export default function RestaurantDetail({ params }) {
         fetch(`/api/restaurants/${restaurantId}/menu`, { cache: 'no-store' }),
         fetch(`/api/restaurants/${restaurantId}/categories`, { cache: 'no-store' }),
         fetch(`/api/restaurants/${restaurantId}/hours`, { cache: 'no-store' }),
-        fetch(`/api/restaurants/${restaurantId}/hours`, {
+        fetch('/api/restaurants/open-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [restaurantId] }),
           cache: 'no-store'
         })
       ]);
@@ -464,17 +470,30 @@ export default function RestaurantDetail({ params }) {
         console.warn('Erreur récupération horaires:', hoursResponse.status);
       }
       
-      let openStatusData = { isOpen: false }; // Par défaut FERMÉ si pas de réponse
+      let openStatusData = { isOpen: false, isManuallyClosed: false }; // Fallback sécurisé
       if (openStatusResponse.ok) {
         try {
-          openStatusData = await openStatusResponse.json();
+          const openStatusJson = await openStatusResponse.json();
+          openStatusData = openStatusJson?.map?.[restaurantId] || { isOpen: false, isManuallyClosed: false };
           console.log('✅ Statut ouvert reçu:', openStatusData);
         } catch (e) {
           console.error('❌ Erreur parsing statut:', e);
-          openStatusData = { isOpen: false };
+          openStatusData = { isOpen: false, isManuallyClosed: false };
         }
       } else {
         console.warn('⚠️ Erreur récupération statut:', openStatusResponse.status, openStatusResponse.statusText);
+      }
+      if (openStatusData?.isOpen !== true && openStatusData?.isManuallyClosed !== true) {
+        const fm = restaurantData?.ferme_manuellement;
+        const manualClosedFallback =
+          fm === true || fm === 'true' || fm === 1 || fm === '1' ||
+          (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
+        const serverOpenFallback =
+          restaurantData?.is_open_now === true || restaurantData?.is_open_now === 1 || restaurantData?.is_open_now === 'true';
+        openStatusData = {
+          isOpen: !manualClosedFallback && serverOpenFallback,
+          isManuallyClosed: manualClosedFallback,
+        };
       }
       
       setRestaurant(restaurantData);
@@ -489,19 +508,17 @@ export default function RestaurantDetail({ params }) {
         FacebookPixelEvents.viewRestaurant(restaurantData);
       }
       
-      // Statut 100 % manuel (ouvert_manuellement uniquement) — ignore ferme_manuellement (bug prod)
-      const om = restaurantData.ouvert_manuellement;
-      const ouvertManuel = (om === true || om === 'true' || om === 1 || om === '1' ||
-        (typeof om === 'string' && String(om).toLowerCase().trim() === 'true'));
-      const isOpen = ouvertManuel;
-      setIsManuallyClosed(false);
-      setIsRestaurantOpen(isOpen);
+      // Statut : même moteur que l'accueil (open-status map)
+      const manualClosed = openStatusData?.isManuallyClosed === true;
+      const isOpen = openStatusData?.isOpen === true;
+      setIsManuallyClosed(manualClosed);
+      setIsRestaurantOpen(isOpen && !manualClosed);
       
       // Debug: afficher les horaires récupérées
       console.log('📅 Horaires récupérées:', hoursData.hours);
       console.log('📊 Statut ouvert reçu:', openStatusData);
       console.log('🔓 isRestaurantOpen sera:', isOpen);
-      console.log('🔒 isManuallyClosed sera:', hoursData.is_manually_closed || restaurantData.ferme_manuellement || false);
+      console.log('🔒 isManuallyClosed sera:', manualClosed);
       // Debug Deliss King (liste vs détail)
       if (restaurantData?.nom && (restaurantData.nom.toLowerCase().includes('deliss') || restaurantData.nom.toLowerCase().includes("deliss'"))) {
         console.log(`[Restaurants] 🔍 DEBUG Deliss King (DÉTAIL):`, {
