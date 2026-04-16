@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { safeLocalStorage } from '../../lib/localStorage';
@@ -23,6 +23,11 @@ import {
 } from 'react-icons/fa';
 import PriceInfoBanner from '@/components/PriceInfoBanner';
 import { getItemLineTotal } from '@/lib/cartUtils';
+import {
+  SECOND_ARTICLE_PROMO_BANNER,
+  computeSecondArticlePromoDiscountFromItems,
+  isSecondArticlePromoActive,
+} from '@/lib/platform-promo';
 
 export default function Panier() {
   const router = useRouter();
@@ -46,6 +51,15 @@ export default function Panier() {
       setIsLoggedIn(false);
     }
   };
+
+  const subtotalBrut = useMemo(
+    () => cart.reduce((total, item) => total + getItemLineTotal(item), 0),
+    [cart]
+  );
+  const secondArticlePromo = useMemo(
+    () => computeSecondArticlePromoDiscountFromItems(cart, { capAt: subtotalBrut }),
+    [cart, subtotalBrut]
+  );
 
   const loadCart = () => {
     try {
@@ -122,10 +136,6 @@ export default function Panier() {
     safeLocalStorage.setJSON('cart', cartData);
   };
 
-  const getSubtotal = () => {
-    return cart.reduce((total, item) => total + getItemLineTotal(item), 0);
-  };
-
   const getDeliveryFee = () => {
     // Recuperer les frais de livraison depuis le panier sauvegarde
     const cartData = safeLocalStorage.getJSON('cart');
@@ -133,7 +143,7 @@ export default function Panier() {
   };
 
   const getTotal = () => {
-    return getSubtotal() + getDeliveryFee();
+    return Math.max(0, Math.round((subtotalBrut - secondArticlePromo) * 100) / 100) + getDeliveryFee();
   };
 
   const getItemCount = () => {
@@ -227,6 +237,12 @@ export default function Panier() {
           </div>
         </div>
       </header>
+
+      {isSecondArticlePromoActive() && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white text-center text-sm sm:text-base font-semibold py-2.5 px-4 shadow-md">
+          {SECOND_ARTICLE_PROMO_BANNER}
+        </div>
+      )}
 
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
@@ -451,8 +467,14 @@ export default function Panier() {
               <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                   <span>Sous-total ({getItemCount()} article{getItemCount() !== 1 ? 's' : ''})</span>
-                  <span>{getSubtotal().toFixed(2)}€</span>
+                  <span>{subtotalBrut.toFixed(2)}€</span>
                 </div>
+                {secondArticlePromo > 0 && (
+                  <div className="flex justify-between text-blue-600 text-sm sm:text-base font-medium">
+                    <span>Promo 2e article -50 %</span>
+                    <span>-{secondArticlePromo.toFixed(2)}€</span>
+                  </div>
+                )}
                 
                 <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                   <span>Frais de livraison</span>

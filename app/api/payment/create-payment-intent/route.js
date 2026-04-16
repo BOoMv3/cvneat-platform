@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { isOrdersClosed } from '@/lib/ordersClosed';
-import { computePlatformPromoDiscount } from '@/lib/platform-promo';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -67,7 +66,7 @@ export async function POST(request) {
         try {
           const { data: order, error: orderErr } = await sb
             .from('commandes')
-            .select('id, discount_amount, promo_code_id, frais_livraison, total')
+            .select('id, discount_amount, promo_code_id, frais_livraison, total, platform_discount_amount')
             .eq('id', orderId)
             .single();
 
@@ -95,8 +94,10 @@ export async function POST(request) {
 
             // Réduction fidélité déjà incluse dans discount_amount / frais_livraison (paliers, pas 1 pt = 1 €)
             let expectedAmount = Math.round((subtotalAfterDiscount + (isFreeDelivery ? 0 : storedDeliveryFee) + PLATFORM_FEE) * 100) / 100;
-            // Promo plateforme financée par CVN'EAT (ex: -5%), recalculée côté serveur.
-            const platformDiscountAmount = computePlatformPromoDiscount(subtotalAfterDiscount);
+            const platformDiscountAmount = Math.min(
+              subtotalAfterDiscount,
+              Math.max(0, parseFloat(order.platform_discount_amount ?? 0) || 0)
+            );
             if (platformDiscountAmount > 0) {
               expectedAmount = Math.max(0.5, Math.round((expectedAmount - platformDiscountAmount) * 100) / 100);
             }

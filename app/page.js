@@ -34,7 +34,8 @@ import {
   FaTruck,
   FaStore,
   FaImage,
-  FaArrowRight
+  FaArrowRight,
+  FaTag
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 import Advertisement from '@/components/Advertisement';
@@ -47,6 +48,11 @@ import {
   LOYALTY_CHECKOUT_HELP,
   getLoyaltyRewardsSummaryLine,
 } from '@/lib/loyalty-rewards';
+import {
+  SECOND_ARTICLE_PROMO_BANNER,
+  computeSecondArticlePromoDiscountFromItems,
+  isSecondArticlePromoActive,
+} from '@/lib/platform-promo';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -554,6 +560,16 @@ export default function Home() {
       minute: '2-digit'
     }).format(nextOpeningDate);
   }, [nextOpeningDate]);
+
+  const homeCartSubtotal = useMemo(() => computeCartTotalWithExtras(cart), [cart]);
+  const homeSecondArticlePromo = useMemo(
+    () => computeSecondArticlePromoDiscountFromItems(cart, { capAt: homeCartSubtotal }),
+    [cart, homeCartSubtotal]
+  );
+  const homeCartNetSubtotal = useMemo(
+    () => Math.max(0, Math.round((homeCartSubtotal - homeSecondArticlePromo) * 100) / 100),
+    [homeCartSubtotal, homeSecondArticlePromo]
+  );
 
   // Fonction de déconnexion
   const handleLogout = async () => {
@@ -1431,7 +1447,24 @@ export default function Home() {
     <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
       {/* Bannière Livraison Offerte */}
       <FreeDeliveryBanner />
-      
+
+      {isSecondArticlePromoActive() && (
+        <div
+          className="sticky top-0 z-40 w-full border-b border-white/25 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-lg"
+          role="banner"
+        >
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-4 text-center">
+            <span className="flex items-center justify-center gap-2 font-bold text-sm sm:text-base leading-snug">
+              <FaTag className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 opacity-95" aria-hidden />
+              {SECOND_ARTICLE_PROMO_BANNER}
+            </span>
+            <span className="text-xs sm:text-sm text-white/95 font-medium max-w-xl">
+              Pour chaque paire d’articles, -50 % sur le moins cher — appliqué automatiquement au panier et au paiement.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section avec carrousel visuel */}
       <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
         {heroSlides.map((slide, index) => (
@@ -1675,11 +1708,21 @@ export default function Home() {
             ))}
           </div>
           
-          <div className="border-t border-gray-200 pt-4">
-            <div className="flex justify-between mb-4">
-              <span className="text-base sm:text-lg font-semibold text-gray-700">Total:</span>
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-2">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
+              <span>Sous-total</span>
+              <span>{homeCartSubtotal.toFixed(2)}€</span>
+            </div>
+            {homeSecondArticlePromo > 0 && (
+              <div className="flex justify-between text-sm text-blue-600 dark:text-blue-300 font-medium">
+                <span>Promo 2e article -50 %</span>
+                <span>-{homeSecondArticlePromo.toFixed(2)}€</span>
+              </div>
+            )}
+            <div className="flex justify-between mb-2 pt-1">
+              <span className="text-base sm:text-lg font-semibold text-gray-700 dark:text-gray-200">Total panier</span>
               <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">
-                {computeCartTotalWithExtras(cart).toFixed(2)}€
+                {homeCartNetSubtotal.toFixed(2)}€
               </span>
             </div>
             <Link

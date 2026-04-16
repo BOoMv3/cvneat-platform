@@ -27,7 +27,10 @@ import {
 } from 'react-icons/fa';
 import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu, cartHasAlcohol } from '@/lib/cartUtils';
 import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP, computeLoyaltyAdjustments } from '@/lib/loyalty-rewards';
-import { PLATFORM_PROMO_LABEL, computePlatformPromoDiscount } from '@/lib/platform-promo';
+import {
+  SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
+  computeSecondArticlePromoDiscountFromItems,
+} from '@/lib/platform-promo';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -122,7 +125,9 @@ export default function Checkout() {
       0,
       Math.round((subAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
     );
-    const platformPromoDiscount = computePlatformPromoDiscount(subAfterAll);
+    const platformPromoDiscount = computeSecondArticlePromoDiscountFromItems(cart, {
+      capAt: subAfterAll,
+    });
     const totalToPay = Math.max(
       0.5,
       Math.round((subAfterAll - platformPromoDiscount + adj.deliveryFeeEurAfter + PLATFORM_FEE) * 100) / 100
@@ -143,7 +148,7 @@ export default function Checkout() {
       totalToPay,
       rewardMeta,
     };
-  }, [cartTotal, appliedPromoCode, fraisLivraison, selectedLoyaltyRewardId]);
+  }, [cart, cartTotal, appliedPromoCode, fraisLivraison, selectedLoyaltyRewardId]);
 
   const cartContainsAlcohol = useMemo(
     () => cartHasAlcohol(cart, menuCatalogSnapshot),
@@ -675,7 +680,9 @@ export default function Checkout() {
         0,
         Math.round((subtotalAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
       );
-      const platformPromoDiscount = computePlatformPromoDiscount(subtotalAfterAllDiscounts);
+      const platformPromoDiscount = computeSecondArticlePromoDiscountFromItems(itemsToUse, {
+        capAt: subtotalAfterAllDiscounts,
+      });
       const finalDeliveryFromLoyalty = adj.deliveryFeeEurAfter;
       const totalAmount = Math.max(
         0.5,
@@ -1428,28 +1435,6 @@ export default function Checkout() {
                   <span className="font-semibold">-{maxDiscount.toFixed(2)}€</span>
                 </div>
               )}
-              <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
-                <span className="flex items-center">
-                  <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  Frais de livraison
-                </span>
-                <span className="font-semibold">
-                  {displayedDeliveryFee.toFixed(2)}€
-                </span>
-              </div>
-              <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
-                <span>Frais plateforme</span>
-                <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>
-              </div>
-              {platformPromoDiscount > 0 && (
-                <div className="flex justify-between text-blue-600 dark:text-blue-300 text-sm sm:text-base">
-                  <span className="flex items-center">
-                    <FaTag className="h-3 w-3 mr-1" />
-                    Promo {PLATFORM_PROMO_LABEL}
-                  </span>
-                  <span className="font-semibold">-{platformPromoDiscount.toFixed(2)}€</span>
-                </div>
-              )}
               {adj.pointsCost > 0 && rewardMeta && (
                 <>
                   {rewardMeta.redemption?.type === 'subtotal_discount' && adj.extraDiscountOnSubtotal > 0 && (
@@ -1498,6 +1483,28 @@ export default function Checkout() {
                   )}
                 </>
               )}
+              {platformPromoDiscount > 0 && (
+                <div className="flex justify-between text-blue-600 dark:text-blue-300 text-sm sm:text-base">
+                  <span className="flex items-center">
+                    <FaTag className="h-3 w-3 mr-1" />
+                    {SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
+                  </span>
+                  <span className="font-semibold">-{platformPromoDiscount.toFixed(2)}€</span>
+                </div>
+              )}
+              <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+                <span className="flex items-center">
+                  <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  Frais de livraison
+                </span>
+                <span className="font-semibold">
+                  {displayedDeliveryFee.toFixed(2)}€
+                </span>
+              </div>
+              <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
+                <span>Frais plateforme</span>
+                <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>
+              </div>
               <div key={`total-${forceUpdate}`} className="border-t dark:border-gray-700 pt-2 sm:pt-3">
                 <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
                   <span>Total</span>

@@ -6,6 +6,7 @@ import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '.
 import { isOrdersClosed } from '@/lib/ordersClosed';
 import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
+import { computeSecondArticlePromoDiscountFromItems } from '@/lib/platform-promo';
 
 /** IDs menus référencés dans le panier (lignes, boissons formule, sous-éléments). */
 function collectMenuIdsFromOrderItems(items = []) {
@@ -787,6 +788,9 @@ export async function POST(request) {
     // Calculs financiers: commission/payout sur le montant RÉELLEMENT payé par le client (après réduction)
     // Sinon fuite: on paierait le restaurant sur le montant avant réduction alors qu'on n'encaisse que l'après-réduction.
     const totalAfterDiscount = Math.max(0, Math.round((total - discount) * 100) / 100);
+    const platform_discount_amount = computeSecondArticlePromoDiscountFromItems(items, {
+      capAt: totalAfterDiscount,
+    });
     // Règles fixes: La Bonne Pâte = 0%, All'ovale = 15%, sinon restaurant.commission_rate ou 20%
     const effectiveRatePercent = getEffectiveCommissionRatePercent({
       restaurantName: restaurant?.nom,
@@ -815,7 +819,8 @@ export async function POST(request) {
       commission_net: commissionNet,
       restaurant_payout: restaurantPayout,
       discount,
-      platform_fee
+      platform_fee,
+      platform_discount_amount,
     });
 
     // Creer la commande dans Supabase
@@ -843,6 +848,7 @@ export async function POST(request) {
       promo_code_id: promoCodeId || null,
       promo_code: promoCode || null,
       discount_amount: discount,
+      platform_discount_amount,
       // Stocker les informations de commission
       commission_rate: effectiveRatePercent, // En pourcentage (ex: 15.00)
       commission_amount: commissionGross,
@@ -988,6 +994,7 @@ export async function POST(request) {
       'loyalty_article_subsidy_eur',
       'loyalty_points_used',
       'loyalty_discount_amount',
+      'platform_discount_amount',
     ]);
     const payloadForInsert = { ...orderData };
 
