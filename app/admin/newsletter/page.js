@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FaEnvelope, FaSpinner, FaCheck, FaTimes, FaUsers } from 'react-icons/fa';
+import { FaEnvelope, FaSpinner, FaCheck, FaTimes, FaUsers, FaDownload } from 'react-icons/fa';
 
 export default function NewsletterPage() {
   const [subject, setSubject] = useState('');
   const [htmlContent, setHtmlContent] = useState('');
   const [textContent, setTextContent] = useState('');
   const [sending, setSending] = useState(false);
+  const [exportingSms, setExportingSms] = useState(false);
+  const [exportingEmails, setExportingEmails] = useState(false);
   const [progress, setProgress] = useState({ sent: 0, total: 0, errors: [] });
   const [preview, setPreview] = useState({ count: 0, emails: [] });
 
@@ -123,6 +125,90 @@ export default function NewsletterPage() {
     }
   };
 
+  const exportSmsContacts = async () => {
+    setExportingSms(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert('Vous devez être connecté pour exporter les contacts SMS.');
+        return;
+      }
+
+      const response = await fetch('/api/admin/newsletter/export-sms', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de l’export SMS');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const disposition = response.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename=\"([^\"]+)\"/);
+      const filename = match?.[1] || `cvneat_sms_contacts_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur export SMS:', error);
+      alert(`❌ Erreur export SMS: ${error.message}`);
+    } finally {
+      setExportingSms(false);
+    }
+  };
+
+  const exportEmailContacts = async () => {
+    setExportingEmails(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert('Vous devez être connecté pour exporter les emails.');
+        return;
+      }
+
+      const response = await fetch('/api/admin/newsletter/export-emails', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de l’export emails');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const disposition = response.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename=\"([^\"]+)\"/);
+      const filename = match?.[1] || `cvneat_email_contacts_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur export emails:', error);
+      alert(`❌ Erreur export emails: ${error.message}`);
+    } finally {
+      setExportingEmails(false);
+    }
+  };
+
   // Charger l'aperçu au montage
   useEffect(() => {
     fetchUsersPreview();
@@ -149,13 +235,39 @@ export default function NewsletterPage() {
                   </p>
                 </div>
               </div>
-            <button
-              onClick={fetchUsersPreview}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"
-            >
-              <FaUsers className="inline mr-2" />
-              Actualiser
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={exportEmailContacts}
+                disabled={exportingEmails}
+                className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                {exportingEmails ? (
+                  <FaSpinner className="inline mr-2 animate-spin" />
+                ) : (
+                  <FaDownload className="inline mr-2" />
+                )}
+                Export Emails (CSV Brevo)
+              </button>
+              <button
+                onClick={exportSmsContacts}
+                disabled={exportingSms}
+                className="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                {exportingSms ? (
+                  <FaSpinner className="inline mr-2 animate-spin" />
+                ) : (
+                  <FaDownload className="inline mr-2" />
+                )}
+                Export SMS (CSV Brevo)
+              </button>
+              <button
+                onClick={fetchUsersPreview}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"
+              >
+                <FaUsers className="inline mr-2" />
+                Actualiser
+              </button>
+            </div>
           </div>
 
           {/* Aperçu du nombre d'utilisateurs */}
