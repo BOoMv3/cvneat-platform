@@ -14,6 +14,33 @@ export default function NewsletterPage() {
   const [progress, setProgress] = useState({ sent: 0, total: 0, errors: [] });
   const [preview, setPreview] = useState({ count: 0, emails: [] });
 
+  const submitDownloadForm = (endpoint, token) => {
+    const iframeName = 'cvneat_download_frame';
+    let iframe = document.querySelector(`iframe[name="${iframeName}"]`);
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = endpoint;
+    form.target = iframeName;
+    form.style.display = 'none';
+
+    const tokenInput = document.createElement('input');
+    tokenInput.type = 'hidden';
+    tokenInput.name = 'access_token';
+    tokenInput.value = token;
+    form.appendChild(tokenInput);
+
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+  };
+
   // Récupérer le nombre d'utilisateurs et un aperçu des emails
   const fetchUsersPreview = async () => {
     try {
@@ -135,30 +162,7 @@ export default function NewsletterPage() {
         return;
       }
 
-      const response = await fetch('/api/admin/newsletter/export-sms', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Erreur lors de l’export SMS');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const disposition = response.headers.get('content-disposition') || '';
-      const match = disposition.match(/filename=\"([^\"]+)\"/);
-      const filename = match?.[1] || `cvneat_sms_contacts_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      submitDownloadForm('/api/admin/newsletter/export-sms', token);
     } catch (error) {
       console.error('Erreur export SMS:', error);
       alert(`❌ Erreur export SMS: ${error.message}`);
@@ -177,30 +181,7 @@ export default function NewsletterPage() {
         return;
       }
 
-      const response = await fetch('/api/admin/newsletter/export-emails', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Erreur lors de l’export emails');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const disposition = response.headers.get('content-disposition') || '';
-      const match = disposition.match(/filename=\"([^\"]+)\"/);
-      const filename = match?.[1] || `cvneat_email_contacts_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      submitDownloadForm('/api/admin/newsletter/export-emails', token);
     } catch (error) {
       console.error('Erreur export emails:', error);
       alert(`❌ Erreur export emails: ${error.message}`);

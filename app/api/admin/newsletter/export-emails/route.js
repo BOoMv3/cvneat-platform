@@ -15,14 +15,29 @@ function toCsvRow(values) {
     .join(',');
 }
 
-export async function GET(request) {
+async function readAccessToken(request) {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+
+  const contentType = request.headers.get('content-type') || '';
+  if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+    const form = await request.formData().catch(() => null);
+    const token = form?.get('access_token');
+    return token ? String(token) : null;
+  }
+
+  return null;
+}
+
+async function handleExport(request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = await readAccessToken(request);
+    if (!token) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
     const {
       data: { user },
       error: authError,
@@ -77,5 +92,13 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
+}
+
+export async function GET(request) {
+  return handleExport(request);
+}
+
+export async function POST(request) {
+  return handleExport(request);
 }
 
