@@ -442,15 +442,8 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
     if (isManuallyClosed) return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
     if (isManuallyOpen) return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
 
-    // Si l'API fournit déjà is_open_now (calcul serveur), on l'utilise.
-    if (restaurant.is_open_now === true || restaurant.is_open_now === 1 || restaurant.is_open_now === 'true') {
-      return { isOpen: true, isManuallyClosed: false, reason: 'horaires_server' };
-    }
-    if (restaurant.is_open_now === false || restaurant.is_open_now === 0 || restaurant.is_open_now === 'false') {
-      return { isOpen: false, isManuallyClosed: false, reason: 'horaires_server' };
-    }
-
-    // Fallback client (Capacitor): calcul Europe/Paris depuis horaires
+    // Ne PAS faire confiance à `is_open_now` stocké en base (peut être périmé).
+    // Source de vérité en fallback: flags manuels + horaires calculés côté client (Paris).
     const horaires = coerceHorairesObject(restaurant.horaires);
     const day = getHeuresJourForToday(horaires);
     if (!day || day.is_closed === true || day.ferme === true) {
