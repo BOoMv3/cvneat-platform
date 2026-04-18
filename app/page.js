@@ -1063,17 +1063,28 @@ export default function Home() {
 
             const st = openStatusFromServer?.[restaurant.id];
             if (!st) {
-              // On ne conserve l'état précédent que si l'appel open-status a réellement échoué.
-              // Sinon, on évite d'afficher un "Ouvert" périmé si l'entrée manque.
+              const fmNow = toBool(restaurant.ferme_manuellement);
+              if (fmNow) {
+                // IMPORTANT: ne jamais conserver un "ouvert" périmé si fermeture manuelle active.
+                openStatusMap[restaurant.id] = {
+                  isOpen: false,
+                  isManuallyClosed: true,
+                  hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+                };
+                continue;
+              }
+
+              // On ne conserve l'état précédent que si open-status a échoué ET qu'aucune fermeture manuelle
+              // n'est active dans les données courantes.
               if (openStatusRequestFailed && prev?.[restaurant.id]) {
                 openStatusMap[restaurant.id] = prev[restaurant.id];
                 continue;
               }
 
-              const fm = toBool(restaurant.ferme_manuellement);
+              const fallback = checkRestaurantOpenStatus(restaurant);
               openStatusMap[restaurant.id] = {
-                isOpen: false,
-                isManuallyClosed: fm,
+                isOpen: fallback.isOpen === true,
+                isManuallyClosed: fallback.isManuallyClosed === true,
                 hoursLabel: todayHoursLabel || 'Horaires non communiquées',
               };
               continue;
