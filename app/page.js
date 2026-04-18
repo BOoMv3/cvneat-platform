@@ -1958,16 +1958,9 @@ export default function Home() {
                 // IMPORTANT: éviter un recalcul local (peut diverger et provoquer des bascules).
                 // On ne rend que la valeur issue de `restaurantsOpenStatus`.
                 const status = restaurantsOpenStatus?.[restaurant.id] || { isOpen: false, isManuallyClosed: false };
-                const rowManualClosed =
-                  restaurant?.ferme_manuellement === true ||
-                  restaurant?.ferme_manuellement === 1 ||
-                  restaurant?.ferme_manuellement === 'true' ||
-                  restaurant?.ferme_manuellement === '1' ||
-                  (typeof restaurant?.ferme_manuellement === 'string' &&
-                    String(restaurant.ferme_manuellement).trim().toLowerCase() === 'true');
                 const restaurantStatus = {
-                  isOpen: rowManualClosed ? false : status.isOpen === true,
-                  isManuallyClosed: rowManualClosed || status.isManuallyClosed === true,
+                  isOpen: status.isOpen === true,
+                  isManuallyClosed: status.isManuallyClosed === true,
                   hoursLabel: getTodayHoursLabel(restaurant) || restaurant.today_hours_label || 'Horaires non communiquées'
                 };
 
