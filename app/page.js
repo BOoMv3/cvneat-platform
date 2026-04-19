@@ -428,30 +428,32 @@ const getHeuresJourForToday = (horaires) => {
 };
 
 // Ouvert/fermé : basé sur les horaires (Europe/Paris).
-// Override: si ferme_manuellement = true → fermé.
+// ferme_manuellement => fermé. ouvert_manuellement => ouvert seulement si pas de plages explicites ; sinon les horaires priment (évite affichage ouvert la nuit si le flag reste actif).
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
     const om = restaurant.ouvert_manuellement;
     const isManuallyOpen =
       om === true || om === 1 || om === 'true' || om === '1' ||
-      (typeof om === 'string' && String(om).trim().toLowerCase() === 'true');
+      (typeof om === 'string' && ['true', 't', 'yes', 'oui', 'on', '1'].includes(String(om).trim().toLowerCase()));
     const fm = restaurant.ferme_manuellement;
     const isManuallyClosed =
       fm === true || fm === 1 || fm === 'true' || fm === '1' ||
       (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
     if (isManuallyClosed) return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
-    if (isManuallyOpen) return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
 
     // Ne PAS faire confiance à `is_open_now` stocké en base (peut être périmé).
-    // Source de vérité en fallback: flags manuels + horaires calculés côté client (Paris).
     const horaires = coerceHorairesObject(restaurant.horaires);
     const day = getHeuresJourForToday(horaires);
-    if (!day || day.is_closed === true || day.ferme === true) {
+    if (!day) {
+      if (isManuallyOpen) return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
+      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
+    }
+    if (day.is_closed === true || day.ferme === true) {
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
 
     const now = getParisNow();
-    const current = now.hours * 60 + now.minutes;
+    const current = (now.hour ?? 0) * 60 + (now.minute ?? 0);
     const toMinutes = (timeStr) => parseTimeToMinutes(timeStr);
     const inRange = (start, end, isMidnightClose) => {
       if (start == null || end == null) return false;
@@ -467,8 +469,9 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
       return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
     }
 
+    let open = false;
     if (hasPlages) {
-      const open = day.plages.some((plage) => {
+      open = day.plages.some((plage) => {
         const openStr = plage?.ouverture || plage?.debut;
         const closeStr = plage?.fermeture || plage?.fin;
         const start = toMinutes(openStr);
@@ -477,16 +480,17 @@ const checkRestaurantOpenStatus = (restaurant = {}) => {
         const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
         return inRange(start, end, isMidnightClose);
       });
-      return { isOpen: open, isManuallyClosed: false, reason: open ? 'open' : 'outside_hours' };
+    } else {
+      const openStr = day.ouverture || day.debut;
+      const closeStr = day.fermeture || day.fin;
+      const start = toMinutes(openStr);
+      const end = toMinutes(closeStr);
+      const closeRaw = String(closeStr || '').trim();
+      const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
+      if (start != null && end != null) open = inRange(start, end, isMidnightClose);
     }
 
-    const openStr = day.ouverture || day.debut;
-    const closeStr = day.fermeture || day.fin;
-    const start = toMinutes(openStr);
-    const end = toMinutes(closeStr);
-    const closeRaw = String(closeStr || '').trim();
-    const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-    const open = inRange(start, end, isMidnightClose);
+    if (isManuallyOpen && !hasExplicitHours) open = true;
     return { isOpen: open, isManuallyClosed: false, reason: open ? 'open' : 'outside_hours' };
   } catch (e) {
     console.error('[checkRestaurantOpenStatus] Erreur:', restaurant?.nom || restaurant?.id, e);

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { hasExplicitScheduleForDay } from '../../../../lib/restaurant-horaires-paris';
 
 const toMinutes = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return null;
@@ -151,15 +152,27 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Erreur chargement restaurants' }, { status: 500 });
     }
 
+    const toBool = (v) =>
+      v === true ||
+      v === 1 ||
+      (typeof v === 'string' && ['true', '1', 't', 'yes', 'oui', 'on'].includes(v.trim().toLowerCase()));
+
     const map = {};
     for (const r of data || []) {
-      const isManuallyClosed = r?.ferme_manuellement === true || r?.ferme_manuellement === 1 || r?.ferme_manuellement === 'true';
-      const isManuallyOpen = r?.ouvert_manuellement === true || r?.ouvert_manuellement === 1 || r?.ouvert_manuellement === 'true';
-      const computed = isManuallyClosed
-        ? { isOpen: false, reason: 'manual', meta: {} }
-        : (isManuallyOpen
-          ? { isOpen: true, reason: 'manual_open', meta: {} }
-          : isOpenNowFromHoraires(r?.horaires, now));
+      const isManuallyClosed = toBool(r?.ferme_manuellement);
+      const isManuallyOpen = toBool(r?.ouvert_manuellement);
+      const fromHours = isOpenNowFromHoraires(r?.horaires, now);
+      const explicit = hasExplicitScheduleForDay(r?.horaires, now);
+      let computed;
+      if (isManuallyClosed) {
+        computed = { isOpen: false, reason: 'manual', meta: {} };
+      } else if (isManuallyOpen) {
+        computed = explicit
+          ? { ...fromHours, reason: fromHours.isOpen ? 'open' : 'outside_hours' }
+          : { isOpen: true, reason: 'manual_open', meta: {} };
+      } else {
+        computed = fromHours;
+      }
       map[r.id] = {
         isOpen: computed?.isOpen === true,
         isManuallyClosed,

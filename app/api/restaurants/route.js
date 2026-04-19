@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { hasExplicitScheduleForDay } from '../../../lib/restaurant-horaires-paris';
 
 // Important endpoint for the homepage: keep it fast.
 // We allow short CDN caching to reduce server CPU load.
@@ -168,11 +169,12 @@ export async function GET() {
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
-      // Priorité statut manuel:
-      // 1) ferme_manuellement=true => fermé
-      // 2) ouvert_manuellement=true => ouvert
-      // 3) sinon on suit les horaires
-      const isOpenNow = fm ? false : (om ? true : isOpenNowParis(r.horaires, new Date()));
+      // 1) fermé manuellement => fermé
+      // 2) ouvert manuellement => ouvert seulement sans plages explicites ; sinon on respecte les horaires (évite « ouvert » la nuit si flag oublié)
+      const now = new Date();
+      const hoursOpen = isOpenNowParis(r.horaires, now);
+      const explicit = hasExplicitScheduleForDay(r.horaires, now);
+      const isOpenNow = fm ? false : om ? (explicit ? hoursOpen : true) : hoursOpen;
       return {
         ...r,
         ferme_manuellement: fm,

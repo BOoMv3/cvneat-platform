@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { hasExplicitScheduleForDay } from '../../../../lib/restaurant-horaires-paris';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -139,11 +140,10 @@ export async function GET(request, { params }) {
     const om = toBool(data.ouvert_manuellement);
     restaurantWithDefaults.ferme_manuellement = fm;
     restaurantWithDefaults.ouvert_manuellement = om;
-    // Priorité unifiée (même logique que l'accueil):
-    // 1) fermé manuellement => fermé
-    // 2) ouvert manuellement => ouvert
-    // 3) sinon selon les horaires
-    restaurantWithDefaults.is_open_now = fm ? false : (om ? true : isOpenNowParis(data.horaires, new Date()));
+    const now = new Date();
+    const hoursOpen = isOpenNowParis(data.horaires, now);
+    const explicit = hasExplicitScheduleForDay(data.horaires, now);
+    restaurantWithDefaults.is_open_now = fm ? false : om ? (explicit ? hoursOpen : true) : hoursOpen;
 
     const res = NextResponse.json(restaurantWithDefaults);
     res.headers.set('Cache-Control', 'no-store, max-age=0');
