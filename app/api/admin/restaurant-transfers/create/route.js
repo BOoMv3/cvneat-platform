@@ -85,6 +85,41 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Restaurant introuvable' }, { status: 404 });
     }
 
+    // Anti double-clic / double soumission:
+    // si le même admin enregistre le même montant, même resto et même date à quelques minutes d'intervalle,
+    // on considère qu'il s'agit probablement d'un doublon involontaire.
+    try {
+      const duplicateWindowIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: recentDuplicates, error: dupErr } = await supabaseAdmin
+        .from('restaurant_transfers')
+        .select('id, created_at, amount, transfer_date')
+        .eq('restaurant_id', restaurant_id)
+        .eq('created_by', auth.user.id)
+        .eq('status', 'completed')
+        .eq('transfer_date', transfer_date)
+        .eq('amount', amountNum)
+        .gte('created_at', duplicateWindowIso)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!dupErr && Array.isArray(recentDuplicates) && recentDuplicates.length > 0) {
+        const duplicate = recentDuplicates[0];
+        return NextResponse.json(
+          {
+            error:
+              "Doublon détecté: un virement identique a déjà été enregistré il y a quelques minutes. Vérifiez l'historique avant de recommencer.",
+            code: 'POSSIBLE_DUPLICATE_TRANSFER',
+            existing_transfer_id: duplicate.id,
+            existing_created_at: duplicate.created_at,
+          },
+          { status: 409 }
+        );
+      }
+    } catch (dupCheckError) {
+      // Ne pas bloquer le virement si la vérification anti-doublon échoue
+      console.warn('Vérification anti-doublon non disponible:', dupCheckError?.message || dupCheckError);
+    }
+
     // Enregistrer le virement
     const { data: transfer, error: transferErr } = await supabaseAdmin
       .from('restaurant_transfers')
