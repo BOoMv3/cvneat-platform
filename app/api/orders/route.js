@@ -7,6 +7,7 @@ import { isOrdersClosed } from '@/lib/ordersClosed';
 import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
 import { computeSecondArticlePromoDiscountFromItems } from '@/lib/platform-promo';
+import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
 
 /** IDs menus référencés dans le panier (lignes, boissons formule, sous-éléments). */
 function collectMenuIdsFromOrderItems(items = []) {
@@ -531,6 +532,17 @@ export async function POST(request) {
       postalCode: sanitizeInput(postalCode),
       instructions: sanitizeInput(deliveryInfo?.instructions || '')
     };
+
+    if (isBlockedDeliveryAddress(sanitizedDeliveryInfo.address, sanitizedDeliveryInfo.city)) {
+      return json(
+        {
+          error:
+            'Cette adresse n’est plus livrable. Merci de renseigner une autre adresse de livraison.',
+          code: 'BLOCKED_DELIVERY_ADDRESS',
+        },
+        { status: 400 }
+      );
+    }
 
     console.log('Validation des donnees OK');
 

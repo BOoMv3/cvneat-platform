@@ -67,6 +67,7 @@ export default function Checkout() {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [deliveryError, setDeliveryError] = useState(null);
+  const [deliveryNotice, setDeliveryNotice] = useState(null);
   const [addressValidationMessage, setAddressValidationMessage] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -465,6 +466,7 @@ export default function Checkout() {
         
         // Afficher le message d'erreur dans un pop-up
         setDeliveryError(message);
+        setDeliveryNotice(null);
         setAddressValidationMessage(message);
         setShowErrorModal(true);
         
@@ -482,6 +484,7 @@ export default function Checkout() {
 
       // SUCCÈS - Réinitialiser les erreurs
       setDeliveryError(null);
+      setDeliveryNotice(data.delivery_notice || null);
       setAddressValidationMessage(null);
       setShowErrorModal(false);
 
@@ -502,6 +505,7 @@ export default function Checkout() {
       });
 
     } catch (error) {
+      setDeliveryNotice(null);
       if (error instanceof SyntaxError) {
         alert('Erreur de communication avec le serveur. Réessayez.');
       } else {
@@ -513,6 +517,7 @@ export default function Checkout() {
   const handleAddressSelect = async (address) => {
     setSelectedAddress(address);
     setDeliveryError(null);
+    setDeliveryNotice(null);
     setAddressValidationMessage(null);
     setShowErrorModal(false);
     await calculateDeliveryFee(address);
@@ -603,6 +608,7 @@ export default function Checkout() {
         setSubmitting(false);
         return;
       }
+      setDeliveryNotice(recalculateData.delivery_notice || null);
 
       // Utiliser les frais recalculés (garantis corrects)
       let finalDeliveryFee = Math.round(parseFloat(recalculateData.frais_livraison || 0) * 100) / 100;
@@ -1178,6 +1184,13 @@ export default function Checkout() {
                 <p className="text-sm opacity-95">Les commandes sont temporairement indisponibles. Merci de réessayer plus tard.</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {deliveryNotice && (
+          <div className="mb-4 sm:mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-900 dark:text-amber-100 rounded-lg">
+            <h2 className="font-semibold mb-1">Information livraison</h2>
+            <p className="text-sm">{deliveryNotice}</p>
           </div>
         )}
 

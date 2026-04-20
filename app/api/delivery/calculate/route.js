@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import {
+  CAZILHAC_TEMP_NOTICE,
+  CAZILHAC_TEMP_SURCHARGE_EUR,
+  isBlockedDeliveryAddress,
+  isCazilhacAddress,
+} from '../../../../lib/delivery-address-rules';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -832,6 +838,19 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
+    if (isBlockedDeliveryAddress(clientAddress)) {
+      return json(
+        {
+          success: false,
+          livrable: false,
+          message:
+            'Cette adresse n’est plus livrable. Merci de renseigner une autre adresse de livraison.',
+          code: 'BLOCKED_DELIVERY_ADDRESS',
+        },
+        { status: 200 }
+      );
+    }
+
     console.log('🚚 === CALCUL LIVRAISON 5.0 ===');
     console.log('Adresse client:', clientAddress);
 
@@ -1058,7 +1077,10 @@ export async function POST(request) {
     }
 
     // 7. Frais fixes par commune : Laroque/Moulès/Cazilhac 5€, Brissac 7,50€, reste 7€
-    const finalDeliveryFee = getFixedDeliveryFeeByTown(clientCoords.city, clientAddress);
+    const baseDeliveryFee = getFixedDeliveryFeeByTown(clientCoords.city, clientAddress);
+    const applyCazilhacSurcharge = isCazilhacAddress(clientAddress, clientCoords.city);
+    const surchargeEur = applyCazilhacSurcharge ? CAZILHAC_TEMP_SURCHARGE_EUR : 0;
+    const finalDeliveryFee = Math.round((baseDeliveryFee + surchargeEur) * 100) / 100;
     console.log(`💰 Frais (tarif commune): ${finalDeliveryFee}€`);
 
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
@@ -1077,7 +1099,13 @@ export async function POST(request) {
       applied_per_km_fee: null,
       order_amount: orderAmountNumeric,
       client_address: clientCoords.display_name,
-      message: `Livraison possible: ${Number(finalDeliveryFee).toFixed(2)}€ (${roundedDistance.toFixed(1)} km)`
+      message: `Livraison possible: ${Number(finalDeliveryFee).toFixed(2)}€ (${roundedDistance.toFixed(1)} km)`,
+      ...(applyCazilhacSurcharge
+        ? {
+            temporary_surcharge: surchargeEur,
+            delivery_notice: CAZILHAC_TEMP_NOTICE,
+          }
+        : {})
     });
 
   } catch (error) {

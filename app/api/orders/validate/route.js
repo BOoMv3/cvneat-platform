@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { isValidId, isValidAmount } from '@/lib/validation';
+import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
 
 // POST /api/orders/validate - Valider une commande avant paiement
 export async function POST(request) {
@@ -105,6 +106,18 @@ export async function POST(request) {
     }
 
     // 5. Vérifier la zone de livraison
+    if (isBlockedDeliveryAddress(deliveryInfo?.address, deliveryInfo?.city)) {
+      return NextResponse.json(
+        {
+          error: 'Adresse de livraison bloquée',
+          code: 'BLOCKED_DELIVERY_ADDRESS',
+          message:
+            'Cette adresse n’est plus livrable. Merci de renseigner une autre adresse de livraison.',
+        },
+        { status: 400 }
+      );
+    }
+
     const deliveryZoneValid = await checkDeliveryZone(restaurantId, deliveryInfo);
     if (!deliveryZoneValid.valid) {
       return NextResponse.json(
