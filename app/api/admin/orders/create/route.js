@@ -108,16 +108,7 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Note: La validation de distance est déjà effectuée par l'API /api/delivery/calculate
-    // qui rejette automatiquement les distances > 8km (≈ 10km de route réelle)
-    // Cette vérification supplémentaire n'est pas nécessaire mais conservée pour sécurité
-    const distance = parseFloat(deliveryValidation.distance || 0);
-    if (distance > 8) {
-      console.error(`❌ Distance trop grande: ${distance.toFixed(1)}km`);
-      return NextResponse.json({ 
-        error: `Livraison impossible: ${distance.toFixed(1)}km (maximum 8km autorisé)` 
-      }, { status: 400 });
-    }
+    // Distance et zone : uniquement /api/delivery/calculate (plafonds 34190/30440, 30170, etc.)
 
     // Utiliser les frais de livraison calculés par l'API au lieu de ceux fournis
     const calculatedDeliveryFee = parseFloat(deliveryValidation.frais_livraison || deliveryFee || 0);

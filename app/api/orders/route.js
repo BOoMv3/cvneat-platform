@@ -8,6 +8,10 @@ import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
 import { computeSecondArticlePromoDiscountFromItems } from '@/lib/platform-promo';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
+import {
+  isVneatPlusActive,
+  vneatPlusAppliesToDelivery,
+} from '@/lib/vneat-plus';
 
 /** IDs menus référencés dans le panier (lignes, boissons formule, sous-éléments). */
 function collectMenuIdsFromOrderItems(items = []) {
@@ -651,7 +655,7 @@ export async function POST(request) {
     const total = subtotalBeforeDiscount; // on stocke dans 'total' le sous-total articles (hors frais/discount)
     // Frais reçus = après code promo « livraison offerte », avant récompense fidélité (palier livraison gratuite)
     let fraisLivraison = Math.round(parseFloat(deliveryFee ?? restaurant.frais_livraison ?? 0) * 100) / 100;
-    // Garde-fou: si frais entre 0 et 2.50€ (hors livraison offerte), forcer 2.50€ pour éviter blocage create-payment-intent
+    // Garde-fou: si frais entre 0 et 2.50€ (hors 0 = livraison déjà offerte côté client), forcer 2.50€
     if (fraisLivraison > 0 && fraisLivraison < 2.50) {
       console.warn('⚠️ Frais livraison anormalement bas, application du minimum 2.50€:', fraisLivraison);
       fraisLivraison = 2.50;
@@ -766,6 +770,32 @@ export async function POST(request) {
 
     const discount = promoDiscount;
 
+    let vneatPlusDeliveryApplied = false;
+    if (userId) {
+      const { data: plusRow } = await serviceClient
+        .from('users')
+        .select('vneat_plus_ends_at')
+        .eq('id', userId)
+        .maybeSingle();
+      const subAfterPromo = Math.max(
+        0,
+        Math.round((subtotalBeforeDiscount - Math.min(promoDiscount, subtotalBeforeDiscount)) * 100) / 100
+      );
+      if (
+        isVneatPlusActive(plusRow?.vneat_plus_ends_at) &&
+        vneatPlusAppliesToDelivery({
+          subtotalAfterPromoEur: subAfterPromo,
+          promoFreeDelivery: !!promoFreeDelivery,
+          loyaltyRewardId: rewardId,
+        }) &&
+        fraisLivraison > 0
+      ) {
+        fraisLivraison = 0;
+        vneatPlusDeliveryApplied = true;
+        console.log("✅ CVN'Plus: frais de livraison offerts (serveur)");
+      }
+    }
+
     // Alcool : vérification serveur (case à cocher + articles marqués contains_alcohol)
     const menuIdsInCart = collectMenuIdsFromOrderItems(items);
     let orderContainsAlcohol = false;
@@ -879,6 +909,7 @@ export async function POST(request) {
         orderContainsAlcohol && (alcoholLegalAgeDeclared === true || alcoholLegalAgeDeclared === 'true')
           ? new Date().toISOString()
           : null,
+      ...(vneatPlusDeliveryApplied ? { vneat_plus_delivery_applied: true } : {}),
     };
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData
@@ -1007,6 +1038,7 @@ export async function POST(request) {
       'loyalty_points_used',
       'loyalty_discount_amount',
       'platform_discount_amount',
+      'vneat_plus_delivery_applied',
     ]);
     const payloadForInsert = { ...orderData };
 

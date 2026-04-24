@@ -31,6 +31,7 @@ import {
   SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
   computeSecondArticlePromoDiscountFromItems,
 } from '@/lib/platform-promo';
+import { VNEAT_PLUS_NAME, VNEAT_PLUS_MIN_ORDER_EUR, vneatPlusAppliesToDelivery } from '@/lib/vneat-plus';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -106,6 +107,30 @@ export default function Checkout() {
   // Fermeture globale des commandes (ex: pas de livreur) - contrôlé par API
   const [ordersOpen, setOrdersOpen] = useState(true);
 
+  /** Derniers frais retournés par l’API livraison (hors marge « CVN'Plus ») */
+  const [deliveryFromApi, setDeliveryFromApi] = useState(null);
+  const [vneatPlus, setVneatPlus] = useState({ active: false, loaded: false });
+
+  const vneatPlusFreeLayer = useMemo(() => {
+    if (!vneatPlus.active) return false;
+    const maxDiscount = Math.min(appliedPromoCode?.discountAmount || 0, cartTotal);
+    const subAfterPromo = Math.max(0, cartTotal - maxDiscount);
+    return vneatPlusAppliesToDelivery({
+      subtotalAfterPromoEur: subAfterPromo,
+      promoFreeDelivery: appliedPromoCode?.discountType === 'free_delivery',
+      loyaltyRewardId: selectedLoyaltyRewardId,
+    });
+  }, [vneatPlus.active, appliedPromoCode, cartTotal, selectedLoyaltyRewardId]);
+
+  const applyVneatToRawDelivery = useCallback(
+    (raw) => {
+      const r = Math.round(parseFloat(raw || 0) * 100) / 100;
+      if (vneatPlusFreeLayer && r > 0) return 0;
+      return r;
+    },
+    [vneatPlusFreeLayer]
+  );
+
   const loyaltyCheckout = useMemo(() => {
     const discountAmount = appliedPromoCode?.discountAmount || 0;
     const maxDiscount = Math.min(discountAmount, cartTotal);
@@ -161,6 +186,12 @@ export default function Checkout() {
   }, [cartContainsAlcohol]);
 
   useEffect(() => {
+    if (deliveryFromApi == null) return;
+    const w = applyVneatToRawDelivery(deliveryFromApi);
+    setFraisLivraison(w);
+  }, [deliveryFromApi, applyVneatToRawDelivery]);
+
+  useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -177,6 +208,27 @@ export default function Checkout() {
         return;
       }
       setUser(user);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (token) {
+        try {
+          const vres = await fetch('/api/vneat-plus/status', {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+          });
+          if (vres.ok) {
+            const vj = await vres.json();
+            setVneatPlus({ active: !!vj.active, loaded: true });
+          } else {
+            setVneatPlus({ active: false, loaded: true });
+          }
+        } catch {
+          setVneatPlus({ active: false, loaded: true });
+        }
+      } else {
+        setVneatPlus({ active: false, loaded: true });
+      }
       
       // Charger les données utilisateur
       const { data: userData } = await supabase
@@ -491,12 +543,14 @@ export default function Checkout() {
       // SUCCÈS - Mettre à jour les frais (calculés par l'API: 2,50€ + 0,50€/km)
       // IMPORTANT: Arrondir à 2 décimales pour garantir la cohérence
       const newFrais = Math.round(parseFloat(data.frais_livraison || 2.50) * 100) / 100;
-      setFraisLivraison(newFrais);
+      setDeliveryFromApi(newFrais);
+      const withVneat = applyVneatToRawDelivery(newFrais);
+      setFraisLivraison(withVneat);
       
       // Recalculer le total du panier avec suppléments, customisations et tailles
       const currentCartTotal = computeCartTotalWithExtras(cart);
       
-      setTotalAvecLivraison(currentCartTotal + newFrais);
+      setTotalAvecLivraison(currentCartTotal + withVneat);
       setForceUpdate(prev => prev + 1);
       safeLocalStorage.setJSON('cart', {
         items: cart,
@@ -613,10 +667,34 @@ export default function Checkout() {
       // Utiliser les frais recalculés (garantis corrects)
       let finalDeliveryFee = Math.round(parseFloat(recalculateData.frais_livraison || 0) * 100) / 100;
       
-      // Vérification de sécurité : les frais doivent être au minimum 2.50€
-      if (finalDeliveryFee < 2.50) {
+      // Vérification de sécurité : minimum 2,50 € seulement si des frais sont facturés
+      if (finalDeliveryFee > 0 && finalDeliveryFee < 2.5) {
         console.warn('⚠️ Frais de livraison anormalement bas, utilisation du minimum');
-        finalDeliveryFee = 2.50;
+        finalDeliveryFee = 2.5;
+      }
+
+      const discountPre = appliedPromoCode?.discountAmount || 0;
+      const maxD = Math.min(discountPre, cartTotal);
+      const subAfterPromoForVneat = Math.max(0, cartTotal - maxD);
+      const { data: sessV } = await supabase.auth.getSession();
+      if (sessV?.session?.access_token) {
+        const vres = await fetch('/api/vneat-plus/status', {
+          headers: { Authorization: `Bearer ${sessV.session.access_token}` },
+          cache: 'no-store',
+        });
+        if (vres.ok) {
+          const vj = await vres.json();
+          if (
+            vj.active &&
+            vneatPlusAppliesToDelivery({
+              subtotalAfterPromoEur: subAfterPromoForVneat,
+              promoFreeDelivery: appliedPromoCode?.discountType === 'free_delivery',
+              loyaltyRewardId: selectedLoyaltyRewardId,
+            })
+          ) {
+            finalDeliveryFee = 0;
+          }
+        }
       }
 
       console.log('✅ Frais de livraison recalculés:', finalDeliveryFee, '€');
@@ -1514,6 +1592,12 @@ export default function Checkout() {
                   {displayedDeliveryFee.toFixed(2)}€
                 </span>
               </div>
+              {vneatPlusFreeLayer && displayedDeliveryFee === 0 && !loyaltyCheckout.promoFree && (
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 -mt-0.5 mb-1">
+                  {VNEAT_PLUS_NAME} : livraison offerte dès {VNEAT_PLUS_MIN_ORDER_EUR}€ d’articles (hors code promo
+                  &quot;livraison offerte&quot;)
+                </p>
+              )}
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
                 <span>Frais plateforme</span>
                 <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>

@@ -66,7 +66,7 @@ export async function POST(request) {
         try {
           const { data: order, error: orderErr } = await sb
             .from('commandes')
-            .select('id, discount_amount, promo_code_id, frais_livraison, total, platform_discount_amount')
+            .select('id, discount_amount, promo_code_id, frais_livraison, total, platform_discount_amount, vneat_plus_delivery_applied')
             .eq('id', orderId)
             .single();
 
@@ -83,6 +83,9 @@ export async function POST(request) {
                 .eq('id', order.promo_code_id)
                 .maybeSingle();
               isFreeDelivery = promo?.discount_type === 'free_delivery';
+            }
+            if (!isFreeDelivery && order.vneat_plus_delivery_applied === true) {
+              isFreeDelivery = true;
             }
 
             // Utiliser les valeurs STOCKÉES dans la commande (source de vérité) - pas de recalcul depuis details_commande

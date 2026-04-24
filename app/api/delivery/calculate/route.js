@@ -45,6 +45,7 @@ const DEFAULT_RESTAURANT = {
 const FEE_GANGES = 3;      // 3€ – Ganges
 const FEE_5_EUR = 5;       // 5€ – Laroque, Moulès, Cazilhac
 const FEE_BRISSAC = 7.5;   // 7,50€ – Brissac (un peu plus loin)
+const FEE_SAINT_HIPPOLYTE = 8.5; // 8,50€ – Saint-Hippolyte-du-Fort (Gard, ~14 km route de Ganges)
 const FEE_REST = 7;        // 7€ – le reste des villages
 const MAX_DISTANCE = 8;           // Max à vol d'oiseau (fallback si pas d'API route)
 const MAX_DISTANCE_ROAD_KM = 10; // Max 10 km par la route (utilisé quand OpenRouteService est dispo)
@@ -54,9 +55,26 @@ const ALTERNATE_PER_KM_FEE = 0.89;
 const MAX_FEE = 7.5;
 
 // Codes postaux autorisés
-const AUTHORIZED_POSTAL_CODES = ['34190', '30440'];
+const AUTHORIZED_POSTAL_CODES = ['34190', '30440', '30170'];
+// Plafond route spécifique (30170 = Saint-Hippolyte-du-Fort, ~14 km de Ganges — au-delà du 13 km zone 34/30)
+const MAX_DISTANCE_ROAD_KM_30170 = 15;
+const MAX_HAVERSINE_KM_30170 = 12; // vol d'oiseau si OpenRoute indispo
 // Villes autorisées (fallback si le code postal n'est pas extrait correctement)
-const AUTHORIZED_CITIES = ['ganges', 'laroque', 'saint-bauzille', 'sumene', 'sumène', 'cazilhac', 'brissac', 'roquedur', 'saint-laurent-le-minier', 'saint-julien-de-la-nef'];
+const AUTHORIZED_CITIES = [
+  'ganges',
+  'laroque',
+  'saint-bauzille',
+  'sumene',
+  'sumène',
+  'cazilhac',
+  'brissac',
+  'roquedur',
+  'saint-laurent-le-minier',
+  'saint-julien-de-la-nef',
+  'saint-hippolyte',
+  'saint-hippolyte-du-fort',
+  'st-hippolyte',
+];
 // Villes EXCLUES (trop loin ou hors zone) – pas de livraison
 const EXCLUDED_CITIES = ['pegairolles', 'saint-bresson', 'montoulieu'];
 
@@ -86,6 +104,7 @@ const COORDINATES_DB = {
   'agones': { lat: 43.9042, lng: 3.7211, name: 'Agonès' },
   'gornies': { lat: 43.8833, lng: 3.6167, name: 'Gorniès' },
   'saint-julien-de-la-nef': { lat: 43.9667, lng: 3.6833, name: 'Saint-Julien-de-la-Nef' },
+  'saint-hippolyte': { lat: 43.9572, lng: 3.8500, name: 'Saint-Hippolyte-du-Fort' },
   'saint-martial': { lat: 43.9833, lng: 3.7333, name: 'Saint-Martial' },
   'saint-roman-de-codieres': { lat: 43.9500, lng: 3.7667, name: 'Saint-Roman-de-Codières' },
   'roquedur': { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
@@ -108,7 +127,8 @@ const SNAP_TOWN_CENTERS = [
   { lat: 43.9833, lng: 3.7333, name: 'Saint-Martial' },
   { lat: 43.9500, lng: 3.7667, name: 'Saint-Roman-de-Codières' },
   { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
-  { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' }
+  { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' },
+  { lat: 43.9572, lng: 3.8500, name: 'Saint-Hippolyte-du-Fort' }
 ];
 const SNAP_RADIUS_KM = 4; // Si le point géocodé est à moins de 4 km d'un centre, on utilise ce centre (frais stables, évite rejets abusifs)
 const MAX_DISTANCE_ROAD_KM_ZONE = 13; // Max 13 km quand CP 34190/30440 (évite rejets à tort, ex. 7 av Jeanne d'Arc Brissac)
@@ -207,12 +227,15 @@ function generateAddressVariants(address) {
   }
   
   // Variante 4 : Juste le code postal (si connu)
-  if (postalCode && ['34190', '30440'].includes(postalCode)) {
+  if (postalCode && ['34190', '30440', '30170'].includes(postalCode)) {
     const cityMap = {
       '34190': 'Ganges',
-      '30440': 'Sumène'
+      '30440': 'Sumène',
+      '30170': 'Saint-Hippolyte-du-Fort',
     };
-    variants.add(`${postalCode} ${cityMap[postalCode]}, France`);
+    if (cityMap[postalCode]) {
+      variants.add(`${postalCode} ${cityMap[postalCode]}, France`);
+    }
   }
   
   // Variante 5 : Adresse sans accents
@@ -426,7 +449,11 @@ function cleanAddressForGeocoding(address) {
       'la vernede': '34190',
       'sumene': '30440',
       'sumène': '30440',
-      'sumen': '30440'
+      'sumen': '30440',
+      'saint-hippolyte': '30170',
+      'saint hippolyte': '30170',
+      'st-hippolyte': '30170',
+      'hippolyte du fort': '30170',
     };
     
     // Normaliser l'adresse pour la recherche (sans accents, minuscules)
@@ -535,7 +562,8 @@ const DELIVERY_ZONE_FEE = {
   gornies: FEE_REST,
   'saint-martial': FEE_REST,
   'saint-roman-de-codieres': FEE_REST,
-  roquedur: FEE_REST
+  roquedur: FEE_REST,
+  'saint-hippolyte': FEE_SAINT_HIPPOLYTE
 };
 
 /**
@@ -559,7 +587,19 @@ function getDeliveryZoneFromAddress(address) {
     { key: 'roquedur', patterns: ['roquedur'] },
     { key: 'saint-laurent-le-minier', patterns: ['saint laurent', 'saint-laurent', 'minier'] },
     { key: 'saint-martial', patterns: ['saint martial'] },
-    { key: 'saint-roman-de-codieres', patterns: ['saint roman', 'saint-roman', 'codieres', 'codières'] }
+    { key: 'saint-roman-de-codieres', patterns: ['saint roman', 'saint-roman', 'codieres', 'codières'] },
+    {
+      key: 'saint-hippolyte',
+      patterns: [
+        'saint-hippolyte',
+        'saint hippolyte',
+        'st-hippolyte',
+        'st hippolyte',
+        'hippolyte du fort',
+        'hippolyte-du-fort',
+        '30170',
+      ],
+    }
   ];
   for (const { key, patterns } of townKeys) {
     if (patterns.some(p => normalized.includes(p))) {
@@ -621,7 +661,19 @@ function getKnownTownCoordsFromAddress(address) {
     { key: 'roquedur', patterns: ['roquedur'] },
     { key: 'saint-laurent-le-minier', patterns: ['saint laurent', 'saint-laurent', 'minier'] },
     { key: 'saint-martial', patterns: ['saint martial'] },
-    { key: 'saint-roman-de-codieres', patterns: ['saint roman', 'saint-roman', 'codieres', 'codières'] }
+    { key: 'saint-roman-de-codieres', patterns: ['saint roman', 'saint-roman', 'codieres', 'codières'] },
+    {
+      key: 'saint-hippolyte',
+      patterns: [
+        'saint-hippolyte',
+        'saint hippolyte',
+        'st-hippolyte',
+        'st hippolyte',
+        'hippolyte du fort',
+        'hippolyte-du-fort',
+        '30170',
+      ],
+    },
   ];
   for (const { key, patterns } of townKeys) {
     if (patterns.some(p => normalized.includes(p))) {
@@ -795,6 +847,17 @@ function getFixedDeliveryFeeByTown(city, address) {
   if (combined.includes('moules') || combined.includes('moulès')) return FEE_5_EUR;
   if (combined.includes('cazilhac')) return FEE_5_EUR;
   if (combined.includes('brissac')) return FEE_BRISSAC;
+  if (
+    combined.includes('saint-hippolyte') ||
+    combined.includes('saint hippolyte') ||
+    combined.includes('st-hippolyte') ||
+    combined.includes('st hippolyte') ||
+    combined.includes('hippolyte du fort') ||
+    combined.includes('hippolyte-du-fort') ||
+    combined.includes('30170')
+  ) {
+    return FEE_SAINT_HIPPOLYTE;
+  }
   return FEE_REST;
 }
 
@@ -1000,9 +1063,14 @@ export async function POST(request) {
     const tempRoundedDistance = roadDistanceKm != null ? roadDistanceKm : Math.round(haversineKm * 10) / 10;
     const clientPostal = extractPostalCode(clientAddress) || (clientCoords.postcode && String(clientCoords.postcode).trim()) || '';
     const isInDeliveryZonePostal = AUTHORIZED_POSTAL_CODES.includes(clientPostal);
-    const maxKm = roadDistanceKm != null
-      ? (isInDeliveryZonePostal ? MAX_DISTANCE_ROAD_KM_ZONE : MAX_DISTANCE_ROAD_KM)
+    const isSaintHippolyte30170 = clientPostal === '30170';
+    const maxRoadKm = isSaintHippolyte30170
+      ? MAX_DISTANCE_ROAD_KM_30170
+      : (isInDeliveryZonePostal ? MAX_DISTANCE_ROAD_KM_ZONE : MAX_DISTANCE_ROAD_KM);
+    const maxHaversineKm = isSaintHippolyte30170
+      ? MAX_HAVERSINE_KM_30170
       : (isInDeliveryZonePostal ? 10 : MAX_DISTANCE);
+    const maxKm = roadDistanceKm != null ? maxRoadKm : maxHaversineKm;
 
     console.log(roadDistanceKm != null
       ? `🔍 Distance route (OpenRouteService): ${tempRoundedDistance.toFixed(1)} km`

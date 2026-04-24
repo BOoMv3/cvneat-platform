@@ -5,6 +5,7 @@ import { supabase as supabasePublic, supabaseAdmin } from '../../../../lib/supab
 import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
 import { notifyDeliverySubscribers } from '../../../../lib/pushNotifications';
 import { sendDeliveryAppPush } from '../../../../lib/sendDeliveryAppPush';
+import { applyVneatPlusFromStripeSubscription } from '@/lib/vneat-plus-sync';
 // SSE resto désactivé dans ce workflow: on notifie le resto uniquement après acceptation livreur.
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -131,6 +132,71 @@ export async function POST(request) {
       case 'refund.updated':
         await handleRefundUpdated(event.data.object, { origin });
         break;
+
+      case 'checkout.session.completed': {
+        const s = event.data.object;
+        if (s?.mode === 'subscription' && s?.subscription) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(
+              typeof s.subscription === 'string' ? s.subscription : s.subscription.id
+            );
+            await applyVneatPlusFromStripeSubscription(sub, supabaseAdmin || supabasePublic);
+            console.log('✅ CVN’Plus: abonnement synchronisé depuis checkout.session');
+          } catch (e) {
+            console.warn('⚠️ CVN’Plus checkout sync:', e?.message || e);
+          }
+        }
+        break;
+      }
+
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const sub = event.data.object;
+        try {
+          const priceId = (process.env.STRIPE_VNEAT_PLUS_PRICE_ID || '').trim();
+          const matchPrice = priceId
+            ? (sub?.items?.data || []).some((i) => i?.price?.id === priceId)
+            : false;
+          const match =
+            sub?.metadata?.product === 'vneat_plus' || (sub?.metadata?.supabase_user_id && matchPrice);
+          if (match && sub?.metadata?.supabase_user_id) {
+            await applyVneatPlusFromStripeSubscription(sub, supabaseAdmin || supabasePublic);
+            console.log('✅ CVN’Plus: subscription', event.type);
+          }
+        } catch (e) {
+          console.warn('⚠️ CVN’Plus subscription event:', e?.message || e);
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object;
+        const userId = sub?.metadata?.supabase_user_id;
+        if (userId && (supabaseAdmin || supabasePublic)) {
+          const db = supabaseAdmin || supabasePublic;
+          await db.from('users').update({ vneat_plus_ends_at: null }).eq('id', userId);
+          console.log('✅ CVN’Plus: abonnement supprimé pour', userId?.slice(0, 8));
+        }
+        break;
+      }
+
+      case 'invoice.paid': {
+        const inv = event.data.object;
+        const subId = inv?.subscription;
+        if (subId && (supabaseAdmin || supabasePublic)) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(
+              typeof subId === 'string' ? subId : subId.id
+            );
+            if (sub?.metadata?.product === 'vneat_plus' || sub?.metadata?.supabase_user_id) {
+              await applyVneatPlusFromStripeSubscription(sub, supabaseAdmin || supabasePublic);
+            }
+          } catch (e) {
+            console.warn('⚠️ CVN’Plus invoice.paid sync:', e?.message || e);
+          }
+        }
+        break;
+      }
 
       default:
         console.log(`ℹ️ Événement Stripe non traité: ${event.type}`);
