@@ -31,7 +31,12 @@ import {
   SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
   computeSecondArticlePromoDiscountFromItems,
 } from '@/lib/platform-promo';
-import { VNEAT_PLUS_NAME, VNEAT_PLUS_MIN_ORDER_EUR, vneatPlusAppliesToDelivery } from '@/lib/vneat-plus';
+import {
+  CVNEAT_PLUS_NAME,
+  CVNEAT_PLUS_MIN_ORDER_EUR,
+  cvneatPlusEligibilityForDeliveryDiscount,
+  applyCvneatPlusHalfOnDelivery,
+} from '@/lib/cvneat-plus';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -109,26 +114,26 @@ export default function Checkout() {
 
   /** Derniers frais retournés par l’API livraison (hors marge « CVN'Plus ») */
   const [deliveryFromApi, setDeliveryFromApi] = useState(null);
-  const [vneatPlus, setVneatPlus] = useState({ active: false, loaded: false });
+  const [cvneatPlus, setCvneatPlus] = useState({ active: false, loaded: false });
 
-  const vneatPlusFreeLayer = useMemo(() => {
-    if (!vneatPlus.active) return false;
+  const cvneatPlusHalfOffLayer = useMemo(() => {
+    if (!cvneatPlus.active) return false;
     const maxDiscount = Math.min(appliedPromoCode?.discountAmount || 0, cartTotal);
     const subAfterPromo = Math.max(0, cartTotal - maxDiscount);
-    return vneatPlusAppliesToDelivery({
+    return cvneatPlusEligibilityForDeliveryDiscount({
       subtotalAfterPromoEur: subAfterPromo,
       promoFreeDelivery: appliedPromoCode?.discountType === 'free_delivery',
       loyaltyRewardId: selectedLoyaltyRewardId,
     });
-  }, [vneatPlus.active, appliedPromoCode, cartTotal, selectedLoyaltyRewardId]);
+  }, [cvneatPlus.active, appliedPromoCode, cartTotal, selectedLoyaltyRewardId]);
 
-  const applyVneatToRawDelivery = useCallback(
+  const applyCvneatToRawDelivery = useCallback(
     (raw) => {
       const r = Math.round(parseFloat(raw || 0) * 100) / 100;
-      if (vneatPlusFreeLayer && r > 0) return 0;
+      if (cvneatPlusHalfOffLayer && r > 0) return applyCvneatPlusHalfOnDelivery(r);
       return r;
     },
-    [vneatPlusFreeLayer]
+    [cvneatPlusHalfOffLayer]
   );
 
   const loyaltyCheckout = useMemo(() => {
@@ -187,9 +192,9 @@ export default function Checkout() {
 
   useEffect(() => {
     if (deliveryFromApi == null) return;
-    const w = applyVneatToRawDelivery(deliveryFromApi);
+    const w = applyCvneatToRawDelivery(deliveryFromApi);
     setFraisLivraison(w);
-  }, [deliveryFromApi, applyVneatToRawDelivery]);
+  }, [deliveryFromApi, applyCvneatToRawDelivery]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -213,21 +218,21 @@ export default function Checkout() {
       const token = sessionData?.session?.access_token;
       if (token) {
         try {
-          const vres = await fetch('/api/vneat-plus/status', {
+          const vres = await fetch('/api/cvneat-plus/status', {
             headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store',
           });
           if (vres.ok) {
             const vj = await vres.json();
-            setVneatPlus({ active: !!vj.active, loaded: true });
+            setCvneatPlus({ active: !!vj.active, loaded: true });
           } else {
-            setVneatPlus({ active: false, loaded: true });
+            setCvneatPlus({ active: false, loaded: true });
           }
         } catch {
-          setVneatPlus({ active: false, loaded: true });
+          setCvneatPlus({ active: false, loaded: true });
         }
       } else {
-        setVneatPlus({ active: false, loaded: true });
+        setCvneatPlus({ active: false, loaded: true });
       }
       
       // Charger les données utilisateur
@@ -544,18 +549,18 @@ export default function Checkout() {
       // IMPORTANT: Arrondir à 2 décimales pour garantir la cohérence
       const newFrais = Math.round(parseFloat(data.frais_livraison || 2.50) * 100) / 100;
       setDeliveryFromApi(newFrais);
-      const withVneat = applyVneatToRawDelivery(newFrais);
-      setFraisLivraison(withVneat);
+      const withCvneat = applyCvneatToRawDelivery(newFrais);
+      setFraisLivraison(withCvneat);
       
       // Recalculer le total du panier avec suppléments, customisations et tailles
       const currentCartTotal = computeCartTotalWithExtras(cart);
       
-      setTotalAvecLivraison(currentCartTotal + withVneat);
+      setTotalAvecLivraison(currentCartTotal + withCvneat);
       setForceUpdate(prev => prev + 1);
       safeLocalStorage.setJSON('cart', {
         items: cart,
         restaurant: restaurantInfo || restaurant || null,
-        frais_livraison: newFrais
+        frais_livraison: withCvneat,
       });
 
     } catch (error) {
@@ -675,10 +680,10 @@ export default function Checkout() {
 
       const discountPre = appliedPromoCode?.discountAmount || 0;
       const maxD = Math.min(discountPre, cartTotal);
-      const subAfterPromoForVneat = Math.max(0, cartTotal - maxD);
+      const subAfterPromoForCvneat = Math.max(0, cartTotal - maxD);
       const { data: sessV } = await supabase.auth.getSession();
       if (sessV?.session?.access_token) {
-        const vres = await fetch('/api/vneat-plus/status', {
+        const vres = await fetch('/api/cvneat-plus/status', {
           headers: { Authorization: `Bearer ${sessV.session.access_token}` },
           cache: 'no-store',
         });
@@ -686,13 +691,13 @@ export default function Checkout() {
           const vj = await vres.json();
           if (
             vj.active &&
-            vneatPlusAppliesToDelivery({
-              subtotalAfterPromoEur: subAfterPromoForVneat,
+            cvneatPlusEligibilityForDeliveryDiscount({
+              subtotalAfterPromoEur: subAfterPromoForCvneat,
               promoFreeDelivery: appliedPromoCode?.discountType === 'free_delivery',
               loyaltyRewardId: selectedLoyaltyRewardId,
             })
           ) {
-            finalDeliveryFee = 0;
+            finalDeliveryFee = applyCvneatPlusHalfOnDelivery(finalDeliveryFee);
           }
         }
       }
@@ -1592,10 +1597,10 @@ export default function Checkout() {
                   {displayedDeliveryFee.toFixed(2)}€
                 </span>
               </div>
-              {vneatPlusFreeLayer && displayedDeliveryFee === 0 && !loyaltyCheckout.promoFree && (
-                <p className="text-xs text-emerald-700 dark:text-emerald-400 -mt-0.5 mb-1">
-                  {VNEAT_PLUS_NAME} : livraison offerte dès {VNEAT_PLUS_MIN_ORDER_EUR}€ d’articles (hors code promo
-                  &quot;livraison offerte&quot;)
+              {cvneatPlusHalfOffLayer && !loyaltyCheckout.promoFree && (
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 -mt-0.5 mb-1">
+                  {CVNEAT_PLUS_NAME} : −50&nbsp;% sur les frais de livraison dès {CVNEAT_PLUS_MIN_ORDER_EUR} € d’articles
+                  (après code promo). Le reliquat couvre la course et le livreur.
                 </p>
               )}
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">

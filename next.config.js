@@ -104,6 +104,13 @@ const nextConfig = {
     },
   }),
 
+  // Compat : ancien chemin API (abonnement) → /api/cvneat-plus
+  async rewrites() {
+    return [
+      { source: '/api/vneat-plus/:path*', destination: '/api/cvneat-plus/:path*' },
+    ];
+  },
+
   // Headers CORS pour l'app mobile Capacitor
   async headers() {
     return [

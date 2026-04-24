@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { VNEAT_PLUS_NAME } from '@/lib/vneat-plus';
+import { CVNEAT_PLUS_NAME } from '@/lib/cvneat-plus';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -17,20 +17,22 @@ function json(body, status = 200) {
   return r;
 }
 
+function cvneatPlusPriceId() {
+  return (process.env.STRIPE_CVNEAT_PLUS_PRICE_ID || process.env.STRIPE_VNEAT_PLUS_PRICE_ID || '').trim();
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
 /**
- * POST /api/vneat-plus/create-checkout
- * Crée une session Stripe Checkout (abonnement mensuel CVN'Plus).
- * Body: { successPath?: string, cancelPath?: string }
+ * POST /api/cvneat-plus/create-checkout
  */
 export async function POST(request) {
-  const priceId = (process.env.STRIPE_VNEAT_PLUS_PRICE_ID || '').trim();
+  const priceId = cvneatPlusPriceId();
   if (!priceId) {
     return json(
-      { error: 'Configuration Stripe incomplète (STRIPE_VNEAT_PLUS_PRICE_ID).' },
+      { error: 'Configuration Stripe incomplète (STRIPE_CVNEAT_PLUS_PRICE_ID ou STRIPE_VNEAT_PLUS_PRICE_ID).' },
       { status: 503 }
     );
   }
@@ -108,13 +110,13 @@ export async function POST(request) {
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}${successPath}?vneat_plus=ok`,
-    cancel_url: `${origin}${cancelPath}?vneat_plus=cancel`,
+    success_url: `${origin}${successPath}?cvneat_plus=ok`,
+    cancel_url: `${origin}${cancelPath}?cvneat_plus=cancel`,
     allow_promotion_codes: true,
     client_reference_id: user.id,
-    metadata: { supabase_user_id: user.id, product: 'vneat_plus' },
+    metadata: { supabase_user_id: user.id, product: 'cvneat_plus' },
     subscription_data: {
-      metadata: { supabase_user_id: user.id, product: 'vneat_plus' },
+      metadata: { supabase_user_id: user.id, product: 'cvneat_plus' },
     },
   });
 
@@ -123,7 +125,7 @@ export async function POST(request) {
   }
 
   return json({
-    name: VNEAT_PLUS_NAME,
+    name: CVNEAT_PLUS_NAME,
     url: session.url,
   });
 }

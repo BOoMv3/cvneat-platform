@@ -5,12 +5,12 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { VNEAT_PLUS_NAME } from '@/lib/vneat-plus';
+import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_MIN_ORDER_EUR } from '@/lib/cvneat-plus';
 import { FaStar, FaTimes, FaTruck } from 'react-icons/fa';
 
-const DISMISS_KEY = 'vneat_plus_banner_dismissed_v1';
+const DISMISS_KEY = 'cvneat_plus_banner_dismissed_v2';
 
-export default function VneatPlusBanner() {
+export default function CvneatPlusBanner() {
   const pathname = usePathname() || '';
   const [dismissed, setDismissed] = useState(true);
   const [active, setActive] = useState(false);
@@ -37,7 +37,7 @@ export default function VneatPlusBanner() {
         setActive(false);
         return;
       }
-      const res = await fetch('/api/vneat-plus/status', {
+      const res = await fetch('/api/cvneat-plus/status', {
         headers: { Authorization: `Bearer ${t}` },
         cache: 'no-store',
       });
@@ -78,8 +78,9 @@ export default function VneatPlusBanner() {
           <p className="flex items-center gap-2 min-w-0">
             <FaTruck className="shrink-0 text-emerald-600" aria-hidden />
             <span>
-              <strong className="font-semibold">{VNEAT_PLUS_NAME} actif</strong> — la livraison est offerte sur les
-              commandes éligibles.
+              <strong className="font-semibold">{CVNEAT_PLUS_NAME} actif</strong> — remise 50 % sur les frais de
+              livraison sur les commandes de {CVNEAT_PLUS_MIN_ORDER_EUR} €+ d’articles (après code promo, zone
+              desservie).
             </span>
           </p>
           <button
@@ -108,10 +109,11 @@ export default function VneatPlusBanner() {
         <p className="flex items-center gap-2 min-w-0">
           <FaStar className="shrink-0 text-amber-500" aria-hidden />
           <span>
-            <strong className="font-semibold">{VNEAT_PLUS_NAME}</strong> : livraison offerte dès 12€ d’articles, à
-            partir d’environ 4,99€/mois.{' '}
+            <strong className="font-semibold">{CVNEAT_PLUS_NAME}</strong> (CVN&apos;EAT) : −50 % sur les frais de
+            livraison, dès {CVNEAT_PLUS_MIN_ORDER_EUR} € d&apos;articles — l&apos;abonnement n&apos;efface pas la course,
+            il aide.{' '}
             <Link href="/abonnement" className="font-semibold underline decoration-2 underline-offset-2">
-              Découvrir
+              Voir l&apos;offre
             </Link>
           </span>
         </p>

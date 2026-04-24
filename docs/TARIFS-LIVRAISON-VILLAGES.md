@@ -26,11 +26,10 @@
 
 ---
 
----
+## Abonnement **CVN'EAT Plus** (remise sur la livraison)
 
-## Abonnement **CVN'Plus** (livraison offerte)
-
-- Sous-total articles (après code promo) **≥ 12 €** et adresse **dans la zone** desservie par l’API (y compris **Saint-Hippolyte-du-Fort** / 30170 si calibré en distance).
-- Montant d’abonnement : variable (Stripe), indicatif dès **4,99 €/mois** (voir page `/abonnement` et produit `STRIPE_VNEAT_PLUS_PRICE_ID`).
+- Sous-total articles (après code promo) **≥ 15 €** et adresse **dans la zone** desservie.
+- Avantage : **−50 % sur les frais de livraison** (le client ne paie que la moitié côté plateforme ; l’abonnement mensuel ne vise pas à offrir 100 % des courses, ce qui pèse sur le livreur / la distance / les villages éloignés).
+- Indicatif d’abonnement : dès **4,99 €/mois** (prix réel = produit Stripe). Variable d’environnement : `STRIPE_CVNEAT_PLUS_PRICE_ID` (l’ancien `STRIPE_VNEAT_PLUS_PRICE_ID` reste pris en charge côté code en secours).
 
 *Dernière mise à jour : avril 2026.*

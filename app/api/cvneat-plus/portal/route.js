@@ -21,8 +21,7 @@ export async function OPTIONS() {
 }
 
 /**
- * POST /api/vneat-plus/portal
- * Lien portail facturation Stripe (gérer / annuler l’abonnement).
+ * POST /api/cvneat-plus/portal
  */
 export async function POST(request) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

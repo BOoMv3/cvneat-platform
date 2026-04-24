@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { VNEAT_PLUS_NAME, VNEAT_PLUS_MIN_ORDER_EUR, VNEAT_PLUS_PITCH, isVneatPlusActive } from '@/lib/vneat-plus';
+import {
+  CVNEAT_PLUS_NAME,
+  CVNEAT_PLUS_MIN_ORDER_EUR,
+  CVNEAT_PLUS_PITCH,
+  isCvneatPlusActive,
+} from '@/lib/cvneat-plus';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,13 +24,18 @@ export async function OPTIONS() {
 }
 
 /**
- * GET /api/vneat-plus/status
- * Indique si l’utilisateur a CVN'Plus actif (Bearer JWT).
+ * GET /api/cvneat-plus/status
  */
 export async function GET(request) {
   const auth = request.headers.get('authorization') || '';
   if (!auth.startsWith('Bearer ')) {
-    return json({ active: false, name: VNEAT_PLUS_NAME, minOrderEur: VNEAT_PLUS_MIN_ORDER_EUR, pitch: VNEAT_PLUS_PITCH });
+    return json({
+      active: false,
+      name: CVNEAT_PLUS_NAME,
+      minOrderEur: CVNEAT_PLUS_MIN_ORDER_EUR,
+      deliveryDiscount: 0.5,
+      pitch: CVNEAT_PLUS_PITCH,
+    });
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,7 +43,13 @@ export async function GET(request) {
   const supabase = createClient(url, anon, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: { user }, error } = await supabase.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
   if (error || !user) {
-    return json({ active: false, name: VNEAT_PLUS_NAME, minOrderEur: VNEAT_PLUS_MIN_ORDER_EUR, pitch: VNEAT_PLUS_PITCH });
+    return json({
+      active: false,
+      name: CVNEAT_PLUS_NAME,
+      minOrderEur: CVNEAT_PLUS_MIN_ORDER_EUR,
+      deliveryDiscount: 0.5,
+      pitch: CVNEAT_PLUS_PITCH,
+    });
   }
 
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -41,25 +57,27 @@ export async function GET(request) {
     : null;
 
   if (!service) {
-    return json({ active: false, name: VNEAT_PLUS_NAME, minOrderEur: VNEAT_PLUS_MIN_ORDER_EUR, error: 'server_config' });
+    return json({ active: false, name: CVNEAT_PLUS_NAME, minOrderEur: CVNEAT_PLUS_MIN_ORDER_EUR, error: 'server_config' });
   }
 
   const { data: row, error: e2 } = await service
     .from('users')
-    .select('vneat_plus_ends_at')
+    .select('cvneat_plus_ends_at')
     .eq('id', user.id)
     .maybeSingle();
 
   if (e2) {
-    return json({ active: false, name: VNEAT_PLUS_NAME, minOrderEur: VNEAT_PLUS_MIN_ORDER_EUR, error: 'read' });
+    return json({ active: false, name: CVNEAT_PLUS_NAME, minOrderEur: CVNEAT_PLUS_MIN_ORDER_EUR, error: 'read' });
   }
 
-  const active = isVneatPlusActive(row?.vneat_plus_ends_at);
+  const endsAt = row?.cvneat_plus_ends_at || null;
+  const active = isCvneatPlusActive(endsAt);
   return json({
     active,
-    name: VNEAT_PLUS_NAME,
-    minOrderEur: VNEAT_PLUS_MIN_ORDER_EUR,
-    endsAt: row?.vneat_plus_ends_at || null,
-    pitch: VNEAT_PLUS_PITCH,
+    name: CVNEAT_PLUS_NAME,
+    minOrderEur: CVNEAT_PLUS_MIN_ORDER_EUR,
+    deliveryDiscount: 0.5,
+    endsAt: endsAt || null,
+    pitch: CVNEAT_PLUS_PITCH,
   });
 }

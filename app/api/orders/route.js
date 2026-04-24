@@ -9,9 +9,10 @@ import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-r
 import { computeSecondArticlePromoDiscountFromItems } from '@/lib/platform-promo';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
 import {
-  isVneatPlusActive,
-  vneatPlusAppliesToDelivery,
-} from '@/lib/vneat-plus';
+  isCvneatPlusActive,
+  cvneatPlusEligibilityForDeliveryDiscount,
+  applyCvneatPlusHalfOnDelivery,
+} from '@/lib/cvneat-plus';
 
 /** IDs menus référencés dans le panier (lignes, boissons formule, sous-éléments). */
 function collectMenuIdsFromOrderItems(items = []) {
@@ -770,11 +771,11 @@ export async function POST(request) {
 
     const discount = promoDiscount;
 
-    let vneatPlusDeliveryApplied = false;
+    let cvneatPlusHalfDelivery = false;
     if (userId) {
       const { data: plusRow } = await serviceClient
         .from('users')
-        .select('vneat_plus_ends_at')
+        .select('cvneat_plus_ends_at')
         .eq('id', userId)
         .maybeSingle();
       const subAfterPromo = Math.max(
@@ -782,17 +783,20 @@ export async function POST(request) {
         Math.round((subtotalBeforeDiscount - Math.min(promoDiscount, subtotalBeforeDiscount)) * 100) / 100
       );
       if (
-        isVneatPlusActive(plusRow?.vneat_plus_ends_at) &&
-        vneatPlusAppliesToDelivery({
+        isCvneatPlusActive(plusRow?.cvneat_plus_ends_at) &&
+        cvneatPlusEligibilityForDeliveryDiscount({
           subtotalAfterPromoEur: subAfterPromo,
           promoFreeDelivery: !!promoFreeDelivery,
           loyaltyRewardId: rewardId,
         }) &&
         fraisLivraison > 0
       ) {
-        fraisLivraison = 0;
-        vneatPlusDeliveryApplied = true;
-        console.log("✅ CVN'Plus: frais de livraison offerts (serveur)");
+        const half = applyCvneatPlusHalfOnDelivery(fraisLivraison);
+        if (half < fraisLivraison) {
+          fraisLivraison = half;
+          cvneatPlusHalfDelivery = true;
+          console.log("✅ CVN'EAT Plus: −50% sur les frais de livraison (serveur)");
+        }
       }
     }
 
@@ -909,7 +913,7 @@ export async function POST(request) {
         orderContainsAlcohol && (alcoholLegalAgeDeclared === true || alcoholLegalAgeDeclared === 'true')
           ? new Date().toISOString()
           : null,
-      ...(vneatPlusDeliveryApplied ? { vneat_plus_delivery_applied: true } : {}),
+      ...(cvneatPlusHalfDelivery ? { cvneat_plus_half_delivery: true } : {}),
     };
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData
@@ -1038,7 +1042,7 @@ export async function POST(request) {
       'loyalty_points_used',
       'loyalty_discount_amount',
       'platform_discount_amount',
-      'vneat_plus_delivery_applied',
+      'cvneat_plus_half_delivery',
     ]);
     const payloadForInsert = { ...orderData };
 

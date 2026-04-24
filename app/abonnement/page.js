@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { VNEAT_PLUS_PITCH, VNEAT_PLUS_NAME, VNEAT_PLUS_MIN_ORDER_EUR } from '@/lib/vneat-plus';
+import { CVNEAT_PLUS_PITCH, CVNEAT_PLUS_NAME, CVNEAT_PLUS_MIN_ORDER_EUR } from '@/lib/cvneat-plus';
 import { FaCheck, FaTruck, FaExternalLinkAlt } from 'react-icons/fa';
 
 export default function AbonnementPage() {
@@ -26,7 +26,7 @@ export default function AbonnementPage() {
       return;
     }
     setSignedIn(true);
-    const res = await fetch('/api/vneat-plus/status', {
+    const res = await fetch('/api/cvneat-plus/status', {
       headers: { Authorization: `Bearer ${t}` },
       cache: 'no-store',
     });
@@ -53,7 +53,7 @@ export default function AbonnementPage() {
         window.location.href = '/login?redirect=abonnement';
         return;
       }
-      const res = await fetch('/api/vneat-plus/create-checkout', {
+      const res = await fetch('/api/cvneat-plus/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ export default function AbonnementPage() {
       const { data: s } = await supabase.auth.getSession();
       const t = s?.session?.access_token;
       if (!t) return;
-      const res = await fetch('/api/vneat-plus/portal', {
+      const res = await fetch('/api/cvneat-plus/portal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ export default function AbonnementPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
-        <h1 className="text-3xl sm:text-4xl font-bold text-orange-600 dark:text-orange-400 mb-2">{VNEAT_PLUS_NAME}</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-orange-600 dark:text-orange-400 mb-2">{CVNEAT_PLUS_NAME}</h1>
         <p className="text-lg text-slate-600 dark:text-slate-300 mb-8">
           Moins de frais, plus de commandes chez les restaurateurs de la vallée — sans passer par les géants nationaux.
         </p>
@@ -117,7 +117,7 @@ export default function AbonnementPage() {
             Ce que vous avez
           </h2>
           <ul className="space-y-2 text-slate-700 dark:text-slate-200">
-            {VNEAT_PLUS_PITCH.benefits.map((b) => (
+            {CVNEAT_PLUS_PITCH.benefits.map((b) => (
               <li key={b} className="flex gap-2">
                 <FaCheck className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                 {b}
@@ -125,7 +125,7 @@ export default function AbonnementPage() {
             ))}
           </ul>
           <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-            {VNEAT_PLUS_PITCH.competitorLabel} Nous, on reste 100 % local (Ganges, vallée, Cazilhac, St-Hippolyte-du-Fort, etc. selon
+            {CVNEAT_PLUS_PITCH.competitorLabel} Nous, on reste 100 % local (Ganges, vallée, Cazilhac, St-Hippolyte-du-Fort, etc. selon
             notre calque de livraison) avec un abonnement adapté.
           </p>
         </div>
@@ -134,14 +134,14 @@ export default function AbonnementPage() {
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-5">
             <p className="text-sm text-slate-500 dark:text-slate-400">Tarif indicatif (Stripe)</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              dès {VNEAT_PLUS_PITCH.monthlyEur.toFixed(2).replace('.', ',')} €/mois
+              dès {CVNEAT_PLUS_PITCH.monthlyEur.toFixed(2).replace('.', ',')} €/mois
             </p>
             <p className="text-xs text-slate-500 mt-1">Offre annuelle possible sur demande côté Stripe (49,99 €/an cible).</p>
           </div>
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-5">
             <p className="text-sm text-slate-500 dark:text-slate-400">Commande éligible</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">≥ {VNEAT_PLUS_MIN_ORDER_EUR} €</p>
-            <p className="text-xs text-slate-500 mt-1">Sous-total articles, après remise code promo. Comme beaucoup d’abonnements livraison.</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">≥ {CVNEAT_PLUS_MIN_ORDER_EUR} €</p>
+            <p className="text-xs text-slate-500 mt-1">Sous-total articles, après remise code promo. La remise côté livraison est 50 % : le reste paie la course.</p>
           </div>
         </div>
 
@@ -189,11 +189,12 @@ export default function AbonnementPage() {
               onClick={startCheckout}
               className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold shadow-md hover:from-amber-600 hover:to-orange-600 disabled:opacity-60"
             >
-              {sessionBusy ? 'Redirection…' : `S’abonner à ${VNEAT_PLUS_NAME}`}
+              {sessionBusy ? 'Redirection…' : `S’abonner à ${CVNEAT_PLUS_NAME}`}
             </button>
             <p className="text-xs text-slate-500">
               Si le bouton échoue, créez d’abord le produit + prix récurrent (mensuel) dans le tableau de bord Stripe
-              et renseignez la variable d’environnement <code className="bg-slate-100 dark:bg-slate-800 px-1">STRIPE_VNEAT_PLUS_PRICE_ID</code> sur
+              et renseignez <code className="bg-slate-100 dark:bg-slate-800 px-1">STRIPE_CVNEAT_PLUS_PRICE_ID</code> (ou
+              l’ancien <code className="bg-slate-100 dark:bg-slate-800 px-1">STRIPE_VNEAT_PLUS_PRICE_ID</code>) sur
               l’hébergement.
             </p>
           </div>
