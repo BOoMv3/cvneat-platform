@@ -1717,11 +1717,7 @@ export default function Home() {
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 animate-pulse" />
             <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 px-3 py-1 text-xs font-extrabold tracking-wide text-white shadow-lg shadow-orange-500/40 animate-pulse">
-                  <FaGift className="h-3.5 w-3.5" />
-                  CVN&apos;EAT PLUS VIP
-                </div>
-                <p className="mt-2 text-lg sm:text-xl font-extrabold text-orange-900 dark:text-orange-100">
+                <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 bg-clip-text text-transparent drop-shadow-sm animate-pulse">
                   {CVNEAT_PLUS_NAME}
                 </p>
                 <ul className="mt-2 space-y-1.5 text-sm text-orange-900/95 dark:text-orange-100/95">
