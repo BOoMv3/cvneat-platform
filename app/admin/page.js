@@ -42,6 +42,7 @@ export default function AdminPage() {
     totalRestaurants: 0,
     pendingPartners: 0,
     totalUsers: 0,
+    activeCvneatPlusSubscribers: 0,
     recentOrders: [],
     recentRestaurants: [],
     allRestaurants: [],
@@ -205,6 +206,17 @@ export default function AdminPage() {
         console.error('Erreur récupération utilisateurs:', usersError);
       }
 
+      // Récupérer le nombre d'abonnés CVN'EAT Plus actifs
+      const nowIso = new Date().toISOString();
+      const { count: activeCvneatPlusSubscribers, error: subscribersError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .gt('cvneat_plus_ends_at', nowIso);
+
+      if (subscribersError) {
+        console.error('Erreur récupération abonnés CVN\'EAT Plus:', subscribersError);
+      }
+
       // Calculer les statistiques
       const totalOrders = orders?.length || 0;
       const pendingOrders = orders?.filter(o => o.statut === 'en_attente').length || 0;
@@ -338,6 +350,7 @@ export default function AdminPage() {
         totalRestaurants,
         pendingPartners,
         totalUsers: totalUsers || 0,
+        activeCvneatPlusSubscribers: activeCvneatPlusSubscribers || 0,
         recentOrders: recentOrders,
         recentRestaurants: recentRestaurants,
         allRestaurants: restaurants || [],
@@ -760,7 +773,7 @@ export default function AdminPage() {
         </div>
 
         {/* Statistiques principales - Optimisées mobile et foldable */}
-        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 fold:gap-2 xs:gap-2 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
+        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 gap-2 fold:gap-2 xs:gap-2 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
           <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
@@ -833,6 +846,25 @@ export default function AdminPage() {
                     Rafraîchir
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6 border border-orange-200">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-orange-100 text-orange-600 flex-shrink-0">
+                <FaGift className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Abonnés CVN&apos;EAT Plus</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-orange-700">{stats.activeCvneatPlusSubscribers || 0}</p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/admin/users')}
+                  className="text-[10px] text-orange-700 hover:text-orange-900 underline mt-0.5"
+                >
+                  Voir la liste
+                </button>
               </div>
             </div>
           </div>
@@ -1020,6 +1052,12 @@ export default function AdminPage() {
                   className="p-3 sm:p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   👥 Gérer les Utilisateurs
+                </button>
+                <button
+                  onClick={() => router.push('/admin/users')}
+                  className="p-3 sm:p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
+                >
+                  ⭐ Voir les abonnés CVN&apos;EAT Plus ({stats.activeCvneatPlusSubscribers || 0})
                 </button>
                 <button 
                   onClick={() => router.push('/admin/partnerships')}
