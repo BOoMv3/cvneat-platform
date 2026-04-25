@@ -655,7 +655,7 @@ export async function POST(request) {
     let promoDiscount = Math.max(0, parseFloat(discountAmount) || 0);
     promoDiscount = Math.min(promoDiscount, subtotalBeforeDiscount);
     const tonightPromo = getTonightAutoPromo(subtotalBeforeDiscount);
-    if (!promoCodeId && tonightPromo.eligible) {
+    if (tonightPromo.eligible) {
       promoDiscount = Math.min(
         subtotalBeforeDiscount,
         Math.round((promoDiscount + tonightPromo.discountEur) * 100) / 100
