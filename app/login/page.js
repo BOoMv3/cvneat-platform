@@ -31,6 +31,7 @@ export default function LoginPage() {
     setError('');
     setSuccess('');
 
+    let didNavigate = false;
     try {
       // Normaliser l'email en minuscules (Supabase stocke en lowercase)
       const normalizedEmail = String(email).trim().toLowerCase();
@@ -53,6 +54,7 @@ export default function LoginPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: normalizedEmail }),
+            signal: AbortSignal.timeout(8000),
           });
           const confirmData = await confirmRes.json().catch(() => ({}));
           if (confirmData?.success && confirmData?.updated) {
@@ -106,7 +108,9 @@ export default function LoginPage() {
           const accessToken = sessionData?.session?.access_token;
 
           if (!accessToken) {
+            setLoading(false);
             router.push('/');
+            didNavigate = true;
             return;
           }
 
@@ -114,6 +118,7 @@ export default function LoginPage() {
             headers: {
               Authorization: `Bearer ${accessToken}`,
             },
+            signal: AbortSignal.timeout(8000),
           });
 
           const meData = await meResponse.json().catch(() => ({}));
@@ -211,24 +216,36 @@ export default function LoginPage() {
           const redirectAfterLogin = typeof window !== 'undefined' ? localStorage.getItem('redirectAfterLogin') : null;
           if (redirectAfterLogin) {
             localStorage.removeItem('redirectAfterLogin');
+            setLoading(false);
             router.push(redirectAfterLogin);
+            didNavigate = true;
             return;
           }
 
           if (role === 'admin') {
+            setLoading(false);
             router.push('/admin');
+            didNavigate = true;
           } else if (role === 'delivery') {
+            setLoading(false);
             router.push('/delivery/dashboard');
+            didNavigate = true;
           } else if (role === 'restaurant' || role === 'partner') {
+            setLoading(false);
             router.push('/partner');
+            didNavigate = true;
           } else {
             // Pour les clients, rediriger vers la page d'accueil
+            setLoading(false);
             router.push('/');
+            didNavigate = true;
           }
         } catch (userError) {
           console.error('❌ Erreur récupération utilisateur:', userError);
           // Rediriger vers la page d'accueil en cas d'erreur
+          setLoading(false);
           router.push('/');
+          didNavigate = true;
         }
       } else {
         setError('Erreur: Aucune donnée utilisateur reçue');
@@ -246,6 +263,11 @@ export default function LoginPage() {
       
       setError(errorMessage);
       setLoading(false);
+    } finally {
+      // Garde-fou anti "Connexion..." bloquée si un appel réseau ne répond pas comme prévu.
+      if (!didNavigate) {
+        setLoading(false);
+      }
     }
   };
 

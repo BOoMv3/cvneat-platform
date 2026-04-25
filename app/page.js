@@ -1725,48 +1725,8 @@ export default function Home() {
             </button>
           </div>
 
-          {/* CVN'EAT Plus + fidélité compacte (accueil) */}
+          {/* Fidélité compacte (accueil) */}
           <div className="mb-6 space-y-3">
-            <div className="relative overflow-hidden rounded-3xl border border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/40 dark:via-teal-950/35 dark:to-cyan-950/30 px-4 py-4 sm:px-6 sm:py-5 shadow-lg">
-              <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-300/30 blur-2xl" />
-              <div className="pointer-events-none absolute -left-8 -bottom-8 h-24 w-24 rounded-full bg-cyan-300/25 blur-2xl" />
-              <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="inline-flex items-center gap-2 rounded-full bg-emerald-600/10 dark:bg-emerald-400/10 px-3 py-1 text-xs font-bold tracking-wide text-emerald-900 dark:text-emerald-200">
-                    <FaGift className="h-3.5 w-3.5" />
-                    OFFRE PREMIUM ABONNÉS
-                  </p>
-                  <p className="mt-2 text-lg sm:text-xl font-extrabold text-emerald-900 dark:text-emerald-100">
-                    {CVNEAT_PLUS_NAME}
-                  </p>
-                  <ul className="mt-2 space-y-1.5 text-sm text-emerald-900/95 dark:text-emerald-100/95">
-                    {CVNEAT_PLUS_PITCH.benefits.map((benefit) => (
-                      <li key={benefit} className="leading-snug flex items-start gap-2">
-                        <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-300" />
-                        <span>{benefit}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="flex flex-wrap gap-2 shrink-0">
-                  <Link
-                    href="/abonnement"
-                    className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 transition-colors min-h-[44px]"
-                  >
-                    S&apos;abonner
-                  </Link>
-                  {!user && (
-                    <Link
-                      href="/login?redirect=abonnement"
-                      className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-600/70 bg-white/90 dark:bg-gray-900/80 px-4 py-2.5 text-sm font-semibold text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100/80 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
-                    >
-                      Se connecter
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {user ? (
               <Link
                 href="/profile?tab=loyalty"
@@ -2055,6 +2015,50 @@ export default function Home() {
               })}
             </div>
           )}
+        </section>
+
+        {/* CVN'EAT Plus (déplacé plus bas dans l'accueil) */}
+        <section className="mb-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-3xl border border-orange-200/80 dark:border-orange-800/60 bg-gradient-to-r from-orange-50 via-amber-50 to-red-50 dark:from-orange-950/40 dark:via-amber-950/35 dark:to-red-950/30 px-4 py-4 sm:px-6 sm:py-5 shadow-lg ring-1 ring-orange-300/40 dark:ring-orange-700/40">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-orange-300/30 blur-2xl" />
+            <div className="pointer-events-none absolute -left-8 -bottom-8 h-24 w-24 rounded-full bg-red-300/25 blur-2xl" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 animate-pulse" />
+            <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 px-3 py-1 text-xs font-extrabold tracking-wide text-white shadow-lg shadow-orange-500/40 animate-pulse">
+                  <FaGift className="h-3.5 w-3.5" />
+                  CVN&apos;EAT PLUS VIP
+                </div>
+                <p className="mt-2 text-lg sm:text-xl font-extrabold text-orange-900 dark:text-orange-100">
+                  {CVNEAT_PLUS_NAME}
+                </p>
+                <ul className="mt-2 space-y-1.5 text-sm text-orange-900/95 dark:text-orange-100/95">
+                  {CVNEAT_PLUS_PITCH.benefits.map((benefit) => (
+                    <li key={benefit} className="leading-snug flex items-start gap-2">
+                      <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-orange-600 dark:bg-orange-300" />
+                      <span>{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <Link
+                  href="/abonnement"
+                  className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-orange-700 transition-colors min-h-[44px]"
+                >
+                  S&apos;abonner
+                </Link>
+                {!user && (
+                  <Link
+                    href="/login?redirect=abonnement"
+                    className="inline-flex items-center justify-center rounded-xl border-2 border-orange-600/70 bg-white/90 dark:bg-gray-900/80 px-4 py-2.5 text-sm font-semibold text-orange-900 dark:text-orange-200 hover:bg-orange-100/80 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
+                  >
+                    Se connecter
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Publicité footer */}
