@@ -759,7 +759,7 @@ export default function Checkout() {
         return;
       }
 
-      const cartTotal = computeCartTotalWithExtras(itemsToUse);
+      const cartSubtotal = computeCartTotalWithExtras(itemsToUse);
 
       // Calculer la réduction du code promo (la promo automatique "ce soir" est appliquée côté serveur)
       const discountAmount = appliedPromoCode?.discountAmount || 0;
@@ -771,19 +771,19 @@ export default function Checkout() {
       }
       const PLATFORM_FEE = cvneatPlusPlatformFeeFreeLayer ? 0 : 0.49; // Offert pour abonnés éligibles CVN'EAT Plus
 
-      const maxDiscount = Math.min(discountAmount, cartTotal);
+      const maxDiscount = Math.min(discountAmount, cartSubtotal);
       const promoFree = appliedPromoCode?.discountType === 'free_delivery';
       const deliveryBeforeLoyalty = promoFree ? 0 : finalDeliveryFeeForTotal;
 
       const adj = computeLoyaltyAdjustments({
         rewardId: selectedLoyaltyRewardId,
-        cartSubtotalEur: cartTotal,
+        cartSubtotalEur: cartSubtotal,
         promoDiscountEur: maxDiscount,
         promoFreeDelivery: promoFree,
         deliveryFeeEur: deliveryBeforeLoyalty,
       });
 
-      const subtotalAfterPromo = Math.max(0, cartTotal - maxDiscount);
+      const subtotalAfterPromo = Math.max(0, cartSubtotal - maxDiscount);
       const subtotalAfterAllDiscounts = Math.max(
         0,
         Math.round((subtotalAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
@@ -815,7 +815,7 @@ export default function Checkout() {
       // 3. Vérification finale de cohérence
       if (isNaN(totalAmount) || totalAmount <= 0) {
         console.error('❌ ERREUR: Montant total invalide calculé:', {
-          cartTotal,
+          cartSubtotal,
           discountAmount,
           maxDiscount,
           subtotalAfterPromo,
@@ -829,7 +829,7 @@ export default function Checkout() {
       }
       
       console.log('💰 Calcul montant final:', {
-        cartTotal,
+        cartSubtotal,
         discountAmount,
         maxDiscount,
         subtotalAfterPromo,
@@ -886,7 +886,7 @@ export default function Checkout() {
           items: itemsToUse,
           // Frais après promo uniquement ; le serveur applique le palier « livraison gratuite » fidélité
           deliveryFee: deliveryBeforeLoyalty,
-          totalAmount: cartTotal, // Sous-total articles (avant réduction)
+          totalAmount: cartSubtotal, // Sous-total articles (avant réduction)
           // Réduction code promo seulement (la promo auto "ce soir" est recalculée côté serveur).
           discountAmount: maxDiscount,
           platformFee: PLATFORM_FEE,
@@ -925,7 +925,7 @@ export default function Checkout() {
         securityCode: securityCode,
         restaurant_id: resolvedRestaurant.id,
         promoCode: appliedPromoCode,
-        cartTotal: cartTotal,
+        cartTotal: cartSubtotal,
         totalAmount: totalAmount,
         paymentTotal: totalAmount,
         loyaltyPointsCost: adj.pointsCost || 0,
