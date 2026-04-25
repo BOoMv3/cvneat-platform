@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { CVNEAT_PLUS_PITCH, CVNEAT_PLUS_NAME, CVNEAT_PLUS_MIN_ORDER_EUR } from '@/lib/cvneat-plus';
-import { FaCheck, FaTruck, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaCheck, FaTruck, FaExternalLinkAlt, FaArrowLeft } from 'react-icons/fa';
 
 export default function AbonnementPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
   const [active, setActive] = useState(false);
@@ -106,6 +108,14 @@ export default function AbonnementPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-2 mb-4 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          <FaArrowLeft className="h-3.5 w-3.5" />
+          Retour
+        </button>
         <h1 className="text-3xl sm:text-4xl font-bold text-orange-600 dark:text-orange-400 mb-2">{CVNEAT_PLUS_NAME}</h1>
         <p className="text-lg text-slate-600 dark:text-slate-300 mb-8">
           Moins de frais, plus de commandes chez les restaurateurs locaux — sans passer par les géants nationaux.

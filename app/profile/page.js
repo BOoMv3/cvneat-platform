@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import PageHeader from '@/components/PageHeader';
 import DarkModeToggle from '@/components/DarkModeToggle';
 import NotificationToggle from '@/components/NotificationToggle';
+import { CVNEAT_PLUS_NAME } from '@/lib/cvneat-plus';
 
 // Éviter de charger des composants lourds tant qu'ils ne sont pas visibles
 const LoyaltyProgram = dynamic(() => import('../components/LoyaltyProgram'), { ssr: false });
@@ -34,6 +35,7 @@ export default function Profile() {
   const [authChecked, setAuthChecked] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
+  const [cvneatPlus, setCvneatPlus] = useState({ active: false, endsAt: null });
 
   useEffect(() => {
     checkAuth();
@@ -170,6 +172,25 @@ export default function Profile() {
         prenom: userData.prenom || '',
         phone: userData.phone || ''
       });
+
+      try {
+        const plusRes = await fetchWithTimeout(
+          '/api/cvneat-plus/status',
+          { headers: { Authorization: `Bearer ${token}` } },
+          9000
+        );
+        if (plusRes.ok) {
+          const plusData = await plusRes.json().catch(() => ({}));
+          setCvneatPlus({
+            active: plusData?.active === true,
+            endsAt: plusData?.endsAt || null,
+          });
+        } else {
+          setCvneatPlus({ active: false, endsAt: null });
+        }
+      } catch {
+        setCvneatPlus({ active: false, endsAt: null });
+      }
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -386,7 +407,19 @@ export default function Profile() {
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">Mon profil</h1>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">Mon profil</h1>
+              {cvneatPlus.active && (
+                <span className="inline-flex items-center rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1 text-xs sm:text-sm font-extrabold text-white shadow-md shadow-orange-500/40 animate-pulse">
+                  Abonne {CVNEAT_PLUS_NAME}
+                </span>
+              )}
+            </div>
+            {cvneatPlus.active && cvneatPlus.endsAt && (
+              <p className="mt-2 text-xs sm:text-sm text-orange-700 dark:text-orange-300">
+                Avantages actifs jusqu&apos;au {new Date(cvneatPlus.endsAt).toLocaleDateString('fr-FR')}.
+              </p>
+            )}
           </div>
 
           {/* Formulaire de modification des infos utilisateur */}

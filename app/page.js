@@ -522,6 +522,7 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
+  const [cvneatPlusActive, setCvneatPlusActive] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showFloatingCart, setShowFloatingCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
@@ -585,6 +586,7 @@ export default function Home() {
     if (!authUser) {
       setUserPoints(0);
       setHasActiveOrder(false);
+      setCvneatPlusActive(false);
       return;
     }
     try {
@@ -599,6 +601,20 @@ export default function Home() {
       }
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
+        try {
+          const plusRes = await fetch('/api/cvneat-plus/status', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: 'no-store',
+          });
+          if (plusRes.ok) {
+            const plusData = await plusRes.json().catch(() => ({}));
+            setCvneatPlusActive(plusData?.active === true);
+          } else {
+            setCvneatPlusActive(false);
+          }
+        } catch {
+          setCvneatPlusActive(false);
+        }
         const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${session.access_token}` } });
         if (res.ok) {
           const orders = await res.json();
@@ -1474,6 +1490,15 @@ export default function Home() {
                 <FaGift className="text-yellow-400 h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                 <span className="text-white text-[10px] sm:text-xs md:text-sm font-semibold">{userPoints}</span>
               </Link>
+              {cvneatPlusActive && (
+                <Link
+                  href="/abonnement"
+                  className="hidden sm:inline-flex items-center rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-extrabold text-white shadow-lg shadow-orange-500/40 animate-pulse"
+                  title="Abonné CVN'EAT Plus"
+                >
+                  {CVNEAT_PLUS_NAME}
+                </Link>
+              )}
               
               {/* Profil - Icône seule */}
               <Link href="/profile" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation">
@@ -1575,6 +1600,15 @@ export default function Home() {
                   >
                     <FaGift className="h-4 w-4" />
                     <span>Mes points ({userPoints})</span>
+                  </Link>
+                )}
+                {user && cvneatPlusActive && (
+                  <Link
+                    href="/abonnement"
+                    className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:from-orange-600 hover:to-red-600 transition-all duration-200 text-sm font-extrabold shadow-lg shadow-orange-500/40 min-h-[44px] touch-manipulation animate-pulse"
+                  >
+                    <FaGift className="h-4 w-4" />
+                    <span>{CVNEAT_PLUS_NAME}</span>
                   </Link>
                 )}
               </div>

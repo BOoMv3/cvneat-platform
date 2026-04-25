@@ -21,6 +21,7 @@ export default function AdminUsers() {
   });
   const [resettingPassword, setResettingPassword] = useState(null);
   const [resetPasswordResult, setResetPasswordResult] = useState(null);
+  const activeSubscribersCount = users.filter((u) => u.cvneat_plus_active === true).length;
 
   useEffect(() => {
     const checkUserAndFetchUsers = async () => {
@@ -114,7 +115,7 @@ export default function AdminUsers() {
         // Récupérer tous les utilisateurs
         const { data: users, error: fetchError } = await supabaseClient
           .from('users')
-          .select('id, nom, prenom, email, telephone, role, created_at')
+          .select('id, nom, prenom, email, telephone, role, created_at, cvneat_plus_ends_at')
           .order('created_at', { ascending: false });
 
         if (fetchError) {
@@ -123,14 +124,20 @@ export default function AdminUsers() {
         }
 
         // Formater les données comme l'API
-        usersList = (users || []).map(user => ({
-          id: user.id,
-          name: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
-          email: user.email,
-          phone: user.telephone || '',
-          role: user.role || 'user',
-          created_at: user.created_at
-        }));
+        usersList = (users || []).map((user) => {
+          const endsAt = user.cvneat_plus_ends_at || null;
+          const cvneatPlusActive = !!endsAt && new Date(endsAt).getTime() > Date.now();
+          return {
+            id: user.id,
+            name: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
+            email: user.email,
+            phone: user.telephone || '',
+            role: user.role || 'user',
+            created_at: user.created_at,
+            cvneat_plus_ends_at: endsAt,
+            cvneat_plus_active: cvneatPlusActive,
+          };
+        });
 
         console.log('[Admin Users] Utilisateurs récupérés via Supabase:', usersList.length);
       } else {
@@ -286,7 +293,12 @@ export default function AdminUsers() {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des utilisateurs</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des utilisateurs</h1>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                Abonnes CVN&apos;EAT Plus actifs: <span className="font-extrabold text-orange-600 dark:text-orange-400">{activeSubscribersCount}</span>
+              </p>
+            </div>
             <button
               onClick={() => router.push('/admin')}
               className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
@@ -421,6 +433,9 @@ export default function AdminUsers() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Rôle
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Abonnement
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -449,6 +464,15 @@ export default function AdminUsers() {
                          user.role === 'delivery' ? 'Livreur' :
                          'Utilisateur'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.cvneat_plus_active ? (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                          CVN&apos;EAT Plus actif
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500">Aucun</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button

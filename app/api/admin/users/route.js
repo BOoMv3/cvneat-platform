@@ -34,7 +34,7 @@ export async function GET(request) {
     // Récupérer tous les utilisateurs
     const { data: users, error } = await supabaseAdmin
       .from('users')
-      .select('id, nom, prenom, email, telephone, role, created_at')
+      .select('id, nom, prenom, email, telephone, role, created_at, cvneat_plus_ends_at')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -43,14 +43,20 @@ export async function GET(request) {
     }
 
     // Formater les données pour le frontend
-    const formattedUsers = (users || []).map(user => ({
-      id: user.id,
-      name: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
-      email: user.email,
-      phone: user.telephone || '',
-      role: user.role || 'user',
-      created_at: user.created_at
-    }));
+    const formattedUsers = (users || []).map((user) => {
+      const endsAt = user.cvneat_plus_ends_at || null;
+      const cvneatPlusActive = !!endsAt && new Date(endsAt).getTime() > Date.now();
+      return {
+        id: user.id,
+        name: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
+        email: user.email,
+        phone: user.telephone || '',
+        role: user.role || 'user',
+        created_at: user.created_at,
+        cvneat_plus_ends_at: endsAt,
+        cvneat_plus_active: cvneatPlusActive,
+      };
+    });
 
     return NextResponse.json(formattedUsers);
 
