@@ -38,6 +38,7 @@ import {
   applyCvneatPlusHalfOnDelivery,
   cvneatPlusAppliesToPlatformFeeWaiver,
 } from '@/lib/cvneat-plus';
+import { getTonightAutoPromo } from '@/lib/tonight-promo';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -149,7 +150,11 @@ export default function Checkout() {
   );
 
   const loyaltyCheckout = useMemo(() => {
-    const discountAmount = appliedPromoCode?.discountAmount || 0;
+    const tonightPromo = getTonightAutoPromo(cartTotal);
+    const hasManualPromo = !!appliedPromoCode?.promoCodeId;
+    const codeDiscountAmount = appliedPromoCode?.discountAmount || 0;
+    const autoDiscountAmount = !hasManualPromo && tonightPromo.eligible ? tonightPromo.discountEur : 0;
+    const discountAmount = codeDiscountAmount + autoDiscountAmount;
     const maxDiscount = Math.min(discountAmount, cartTotal);
     const promoFree = appliedPromoCode?.discountType === 'free_delivery';
     const deliveryBeforeLoyalty = promoFree
@@ -180,6 +185,7 @@ export default function Checkout() {
       : null;
     return {
       cartTotal,
+      autoDiscountAmount,
       maxDiscount,
       promoFree,
       deliveryBeforeLoyalty,
@@ -761,8 +767,12 @@ export default function Checkout() {
 
       const cartTotal = computeCartTotalWithExtras(itemsToUse);
 
-      // Calculer la réduction du code promo (uniquement le code ; la fidélité est fusionnée côté serveur)
-      const discountAmount = appliedPromoCode?.discountAmount || 0;
+      // Calculer la réduction (code promo éventuel + promo automatique ce soir)
+      const tonightPromo = getTonightAutoPromo(cartTotal);
+      const hasManualPromo = !!appliedPromoCode?.promoCodeId;
+      const codeDiscountAmount = appliedPromoCode?.discountAmount || 0;
+      const autoDiscountAmount = !hasManualPromo && tonightPromo.eligible ? tonightPromo.discountEur : 0;
+      const discountAmount = codeDiscountAmount + autoDiscountAmount;
       
       // Gérer la livraison gratuite si le code promo le prévoit (avant palier fidélité « livraison gratuite »)
       let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
@@ -772,6 +782,7 @@ export default function Checkout() {
       const PLATFORM_FEE = cvneatPlusPlatformFeeFreeLayer ? 0 : 0.49; // Offert pour abonnés éligibles CVN'EAT Plus
 
       const maxDiscount = Math.min(discountAmount, cartTotal);
+      const maxCodeDiscount = Math.min(codeDiscountAmount, cartTotal);
       const promoFree = appliedPromoCode?.discountType === 'free_delivery';
       const deliveryBeforeLoyalty = promoFree ? 0 : finalDeliveryFeeForTotal;
 
@@ -830,6 +841,8 @@ export default function Checkout() {
       
       console.log('💰 Calcul montant final:', {
         cartTotal,
+        codeDiscountAmount,
+        autoDiscountAmount,
         discountAmount,
         maxDiscount,
         subtotalAfterPromo,
@@ -887,7 +900,8 @@ export default function Checkout() {
           // Frais après promo uniquement ; le serveur applique le palier « livraison gratuite » fidélité
           deliveryFee: deliveryBeforeLoyalty,
           totalAmount: cartTotal, // Sous-total articles (avant réduction)
-          discountAmount: maxDiscount, // Réduction code promo seule (fidélité recalculée côté serveur)
+          // Réduction code promo seulement (la promo auto "ce soir" est recalculée côté serveur).
+          discountAmount: maxCodeDiscount,
           platformFee: PLATFORM_FEE,
           promoCodeId: appliedPromoCode?.promoCodeId || null,
           promoCode: appliedPromoCode?.code || null,
@@ -1718,6 +1732,13 @@ export default function Checkout() {
 
             {/* Code promo */}
             <div className="border-t dark:border-gray-700 pt-4 sm:pt-4 mt-4 sm:mt-4">
+              {loyaltyCheckout.autoDiscountAmount > 0 && (
+                <div className="mb-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                    🔥 Promo ce soir appliquée automatiquement : -{loyaltyCheckout.autoDiscountAmount.toFixed(2)}EUR dès 30EUR d&apos;achat.
+                  </p>
+                </div>
+              )}
               <h3 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-3 flex items-center text-sm sm:text-base">
                 <FaTag className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
                 Code promo
