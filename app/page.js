@@ -53,6 +53,10 @@ import {
   computeSecondArticlePromoDiscountFromItems,
   isSecondArticlePromoActive,
 } from '@/lib/platform-promo';
+import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
+
+/** Logs verbeux = coût en WebView (iOS/Android) ; uniquement en dev. */
+const DBG = process.env.NODE_ENV === 'development';
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -666,9 +670,9 @@ export default function Home() {
       
       if (restaurantMatch && restaurantMatch[1]) {
         const restaurantId = restaurantMatch[1];
-        console.log('[Home] 🔍 Route restaurant détectée:', restaurantId);
-        console.log('[Home] ⚠️ Cette page ne devrait pas être chargée pour /restaurants/[id]');
-        console.log('[Home] 💡 Le script de routage devrait charger RestaurantDetail');
+        if (DBG) {
+          console.log('[Home] Route restaurant détectée:', restaurantId);
+        }
         // Ne pas charger la page d'accueil, mais laisser le script de routage gérer
         // Le script dans le HTML devrait charger le composant RestaurantDetail
       }
@@ -701,8 +705,7 @@ export default function Home() {
             return;
           }
         } catch (error) {
-          console.error('Erreur vérification auth:', error);
-          // Ne pas rediriger en cas d'erreur pour ne pas bloquer la navigation
+          if (DBG) console.error('Erreur vérification auth (mobile):', error);
         }
       }
     };
@@ -747,119 +750,39 @@ export default function Home() {
         setLoading(true);
         setError(null);
         
-        // Détecter Capacitor
-        const isCapacitorApp = typeof window !== 'undefined' && 
-          (window.location?.protocol === 'capacitor:' || 
-           window.location?.href?.startsWith('capacitor://') ||
-           window.Capacitor !== undefined);
-        
-        console.log('[Restaurants] Détection Capacitor:', {
-          protocol: typeof window !== 'undefined' ? window.location?.protocol : 'N/A',
-          href: typeof window !== 'undefined' ? window.location?.href : 'N/A',
-          hasCapacitor: typeof window !== 'undefined' ? !!window.Capacitor : 'N/A',
-          isCapacitorApp
-        });
-        
+        const isCapacitorApp = typeof window !== 'undefined' &&
+          (window.location?.protocol === 'capacitor:' ||
+            window.location?.href?.startsWith('capacitor://') ||
+            window.Capacitor !== undefined);
+
+        if (DBG) {
+          console.log('[Restaurants] Capacitor / Web:', { isCapacitorApp, protocol: window?.location?.protocol });
+        }
+
+        // Même source que le site (GET /api/restaurants). Capacitor : layout.js → https://www.cvneat.fr.
         let data;
-        
-        // Dans Capacitor, utiliser Supabase directement pour éviter les problèmes CORS
-        if (isCapacitorApp) {
-          console.log('[Restaurants] Mode Capacitor - Utilisation de Supabase directement');
-          console.log('[Restaurants] URL Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-          console.log('[Restaurants] Supabase client (import):', !!supabase);
-          console.log('[Restaurants] Supabase client (window):', !!(typeof window !== 'undefined' && window.supabase));
-          
-          // Utiliser window.supabase si disponible (initialisé dans layout.js), sinon utiliser l'import
-          const supabaseClient = (typeof window !== 'undefined' && window.supabase) || supabase;
-          
-          // Vérifier que Supabase est bien initialisé
-          if (!supabaseClient) {
-            console.error('[Restaurants] Supabase client non disponible');
-            throw new Error('Supabase client non initialisé');
+        {
+          if (DBG) {
+            console.log('[Restaurants] GET /api/restaurants', isCapacitorApp ? '(Capacitor → prod)' : '');
           }
-          
-          console.log('[Restaurants] Utilisation du client Supabase:', supabaseClient ? 'OK' : 'ERREUR');
-          
-          // Récupérer les restaurants depuis Supabase
-          console.log('[Restaurants] Début requête Supabase...');
-          const { data: restaurants, error: supabaseError } = await supabaseClient
-            .from('restaurants')
-            // IMPORTANT: `horaires` est requis pour calculer ouvert/fermé correctement.
-            .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires');
-          
-          console.log('[Restaurants] Requête Supabase terminée');
-          console.log('[Restaurants] Résultat Supabase:', {
-            hasData: !!restaurants,
-            dataLength: restaurants?.length || 0,
-            hasError: !!supabaseError,
-            error: supabaseError
-          });
-          
-          if (supabaseError) {
-            console.error('[Restaurants] Erreur Supabase complète:', supabaseError);
-            console.error('[Restaurants] Code erreur:', supabaseError.code);
-            console.error('[Restaurants] Message erreur:', supabaseError.message);
-            console.error('[Restaurants] Détails erreur:', supabaseError.details);
-            console.error('[Restaurants] Hint erreur:', supabaseError.hint);
-            throw new Error(`Erreur Supabase: ${supabaseError.message || 'Erreur inconnue'}`);
-          }
-          
-          if (!restaurants || restaurants.length === 0) {
-            console.warn('[Restaurants] Aucun restaurant retourné par Supabase');
-            console.warn('[Restaurants] Vérifiez les permissions RLS sur la table restaurants');
-            setRestaurants([]);
-            setRestaurantsOpenStatus({});
-            setLoading(false);
-            return;
-          }
-          
-          console.log('[Restaurants] Restaurants récupérés:', restaurants.length);
-          
-          // Calculer les notes depuis les avis pour chaque restaurant
-          const restaurantsWithRatings = await Promise.all((restaurants || []).map(async (restaurant) => {
-            const { data: reviews } = await supabaseClient
-              .from('reviews')
-              .select('rating')
-              .eq('restaurant_id', restaurant.id);
-            
-            let calculatedRating = 0;
-            let reviewsCount = 0;
-            if (reviews && reviews.length > 0) {
-              const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
-              calculatedRating = Math.round((totalRating / reviews.length) * 10) / 10;
-              reviewsCount = reviews.length;
+
+          const response = await fetch(
+            `/api/restaurants?t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`,
+            {
+              cache: 'no-store',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'Cache-Control': 'no-cache',
+                Pragma: 'no-cache',
+              },
             }
-            
-            return {
-              ...restaurant,
-              rating: calculatedRating || restaurant.rating || 0,
-              reviews_count: reviewsCount || restaurant.reviews_count || 0
-            };
-          }));
-          
-          data = restaurantsWithRatings;
-          console.log('[Restaurants] Restaurants récupérés depuis Supabase:', data.length);
-        } else {
-          // Sur le web, utiliser l'API Next.js
-          console.log('[Restaurants] Mode Web - Utilisation de l\'API Next.js');
-          
-          const response = await fetch(`/api/restaurants?t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`, {
-            cache: 'no-store',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
-            }
-          });
-          
-          console.log('[Restaurants] Réponse reçue:', {
-            ok: response.ok,
-            status: response.status,
-            statusText: response.statusText,
-            url: response.url
-          });
-          
+          );
+
+          if (DBG) {
+            console.log('[Restaurants] HTTP', response.status, response.url);
+          }
+
           if (!response.ok) {
             let errorData;
             try {
@@ -871,32 +794,26 @@ export default function Home() {
             console.error('[Restaurants] Erreur API:', errorMessage, errorData);
             throw new Error(errorMessage);
           }
-          
-          // Parser le JSON avec gestion d'erreur
+
           try {
-            const text = await response.text();
-            console.log('[Restaurants] Réponse texte (premiers 200 caractères):', text.substring(0, 200));
-            data = JSON.parse(text);
+            data = await response.json();
           } catch (parseError) {
             console.error('[Restaurants] Erreur parsing JSON:', parseError);
             throw new Error(`Erreur lors du parsing de la réponse JSON: ${parseError.message}`);
           }
         }
-        
-        console.log('[Restaurants] Données parsées:', {
-          type: Array.isArray(data) ? 'array' : typeof data,
-          length: Array.isArray(data) ? data.length : 'N/A'
-        });
-        
+
+        if (DBG) {
+          console.log('[Restaurants] reçu:', Array.isArray(data) ? data.length : typeof data);
+        }
+
         if (!Array.isArray(data)) {
           console.error('[Restaurants] Format de données invalide:', typeof data, data);
           throw new Error('Format de données invalide: la réponse n\'est pas un tableau');
         }
-        
-        console.log('[Restaurants] Nombre de restaurants reçus:', data.length);
-        
+
         if (data.length === 0) {
-          console.warn('[Restaurants] Aucun restaurant trouvé dans la réponse');
+          if (DBG) console.warn('[Restaurants] Aucun restaurant');
           setRestaurants([]);
           setRestaurantsOpenStatus({});
           setLoading(false);
@@ -905,22 +822,22 @@ export default function Home() {
         
         // Normaliser les restaurants avec gestion d'erreur pour chaque restaurant
         const normalizedRestaurants = [];
-        console.log('[Restaurants] Début normalisation de', data.length, 'restaurants');
+        if (DBG) console.log('[Restaurants] normalisation', data.length, 'lignes');
         for (const restaurant of data) {
           try {
             // Vérifier que le restaurant a au moins un nom
             if (!restaurant || !restaurant.nom) {
-              console.warn('[Restaurants] Restaurant ignoré (pas de nom):', restaurant?.id);
+              if (DBG) console.warn('[Restaurants] ignoré (pas de nom):', restaurant?.id);
               continue;
             }
             
             const normalized = normalizeName(restaurant.nom);
             if (!normalized || normalized === '.') {
-              console.warn('[Restaurants] Restaurant ignoré (nom invalide):', restaurant.nom);
+              if (DBG) console.warn('[Restaurants] ignoré (nom invalide):', restaurant.nom);
               continue;
             }
             
-            console.log('[Restaurants] Normalisation OK pour:', restaurant.nom);
+            if (DBG) console.log('[Restaurants] ok:', restaurant.nom);
             
             const primaryImage =
               restaurant.profile_image ||
@@ -947,13 +864,13 @@ export default function Home() {
             try {
               categoryTokens = getCategoryTokensForRestaurant(restaurant);
             } catch (e) {
-              console.warn('[Restaurants] Erreur getCategoryTokensForRestaurant:', e);
+              if (DBG) console.warn('[Restaurants] getCategoryTokensForRestaurant:', e);
             }
             
             try {
               todayHoursLabel = getTodayHoursLabel(restaurant);
             } catch (e) {
-              console.warn('[Restaurants] Erreur getTodayHoursLabel:', e);
+              if (DBG) console.warn('[Restaurants] getTodayHoursLabel:', e);
             }
 
             // S'assurer que ferme_manuellement, ouvert_manuellement et offre (promo) sont bien préservés
@@ -985,29 +902,19 @@ export default function Home() {
               })()
             };
             
-            // Log pour "Le O Saona Tea" spécifiquement
-            if (normalized.includes('saona') || normalized.includes('o saona')) {
-              console.log(`[Restaurants] ${restaurant.nom} - Données normalisées:`, {
-                ferme_manuellement: normalizedRestaurant.ferme_manuellement,
-                ferme_manuellement_type: typeof normalizedRestaurant.ferme_manuellement,
-                ferme_manuellement_strict_false: normalizedRestaurant.ferme_manuellement === false,
-                original_ferme_manuellement: restaurant.ferme_manuellement
-              });
+            if (DBG) {
+              if (normalized.includes('saona') || normalized.includes('o saona')) {
+                console.log(`[Restaurants] ${restaurant.nom}`, { ferme: normalizedRestaurant.ferme_manuellement });
+              }
+              if (
+                restaurant.nom &&
+                (restaurant.nom.toLowerCase().includes('bonne pâte') ||
+                  restaurant.nom.toLowerCase().includes('bonne pate'))
+              ) {
+                console.log('[Restaurants] La Bonne Pâte', { ferme: normalizedRestaurant.ferme_manuellement });
+              }
             }
-            
-            // Log spécial pour "La Bonne Pâte" pour debug
-            if (restaurant.nom && (restaurant.nom.toLowerCase().includes('bonne pâte') || restaurant.nom.toLowerCase().includes('bonne pate'))) {
-              console.log(`[Restaurants] 🔍 DEBUG SPÉCIAL "La Bonne Pâte" - Normalisation:`, {
-                nom: restaurant.nom,
-                original_ferme_manuellement: restaurant.ferme_manuellement,
-                original_type: typeof restaurant.ferme_manuellement,
-                normalized_ferme_manuellement: normalizedRestaurant.ferme_manuellement,
-                normalized_type: typeof normalizedRestaurant.ferme_manuellement,
-                strict_true: normalizedRestaurant.ferme_manuellement === true,
-                strict_false: normalizedRestaurant.ferme_manuellement === false
-              });
-            }
-            
+
             normalizedRestaurants.push(normalizedRestaurant);
           } catch (restaurantError) {
             console.error('[Restaurants] Erreur normalisation restaurant:', restaurantError, restaurant);
@@ -1015,10 +922,12 @@ export default function Home() {
           }
         }
 
-        console.log('[Restaurants] Restaurants normalisés:', normalizedRestaurants.length, 'sur', data.length, 'reçus');
+        if (DBG) {
+          console.log('[Restaurants] normalisés', normalizedRestaurants.length, '/', data.length);
+        }
         if (normalizedRestaurants.length === 0 && data.length > 0) {
-          console.error('[Restaurants] ⚠️ PROBLÈME: Aucun restaurant normalisé alors que', data.length, 'ont été reçus !');
-          console.error('[Restaurants] Premier restaurant reçu:', data[0]);
+          console.error('[Restaurants] Aucun resto normalisé pour', data.length, 'entrées');
+          if (DBG) console.error('[Restaurants] premier', data[0]);
         }
         // Statut ouvert/fermé: calcul unique côté serveur (plus stable que plein de fetch détails).
         const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
@@ -1044,10 +953,10 @@ export default function Home() {
             openStatusFromServer = mapIsObject ? map : {};
             openStatusRequestFailed = !mapIsObject;
           } else {
-            console.warn('[Restaurants] open-status HTTP non OK:', statusRes.status);
+            if (DBG) console.warn('[Restaurants] open-status HTTP', statusRes.status);
           }
         } catch (e) {
-          console.warn('[Restaurants] open-status indisponible, fallback sécurité:', e);
+          if (DBG) console.warn('[Restaurants] open-status:', e);
         }
 
         setRestaurants(normalizedRestaurants);
@@ -1056,7 +965,7 @@ export default function Home() {
           const openStatusMap = {};
           for (const restaurant of normalizedRestaurants) {
             const todayHoursLabel =
-              getTodayHoursLabel(restaurant) || restaurant.today_hours_label || null;
+              restaurant.today_hours_label || getTodayHoursLabel(restaurant) || null;
 
             const st = openStatusFromServer?.[restaurant.id];
             if (!st) {
@@ -1095,10 +1004,10 @@ export default function Home() {
           }
           return openStatusMap;
         });
-        console.log('[Restaurants] Chargement terminé avec succès:', normalizedRestaurants.length, 'restaurants');
+        if (DBG) console.log('[Restaurants] terminé', normalizedRestaurants.length);
       } catch (error) {
         console.error('[Restaurants] Erreur lors du chargement des restaurants:', error);
-        console.error('[Restaurants] Stack trace:', error.stack);
+        if (DBG) console.error(error.stack);
         const errorMessage = error.message || error.toString() || 'Erreur inconnue';
         setError(`Erreur lors du chargement des restaurants: ${errorMessage}`);
         setRestaurants([]);
@@ -1112,7 +1021,7 @@ export default function Home() {
     
     // Écouter l'événement de changement de statut restaurant pour rafraîchir les données
     const handleRestaurantStatusChange = () => {
-      console.log('[Restaurants] Événement restaurant-status-changed détecté, rafraîchissement des restaurants...');
+      if (DBG) console.log('[Restaurants] event restaurant-status-changed');
       fetchRestaurants();
     };
     
@@ -1125,7 +1034,7 @@ export default function Home() {
         bc = new BroadcastChannel('cvneat_restaurant_status');
         bc.onmessage = (ev) => {
           if (ev?.data?.type === 'restaurant-status-changed') {
-            console.log('[Restaurants] BroadcastChannel status change, rafraîchissement...');
+            if (DBG) console.log('[Restaurants] BroadcastChannel status');
             fetchRestaurants();
           }
         };
@@ -1146,12 +1055,17 @@ export default function Home() {
       if (pathname === '/') fetchRestaurants();
     };
     window.addEventListener('focus', onWindowFocus);
-    
+
+    const isCapacitorForInterval =
+      typeof window !== 'undefined' &&
+      (window.location?.protocol === 'capacitor:' ||
+        (window.location?.href && window.location.href.startsWith('capacitor://')) ||
+        !!window.Capacitor);
     const refreshInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchRestaurants();
       }
-    }, 60000);
+    }, isCapacitorForInterval ? 120000 : 60000);
     
     return () => {
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
@@ -1209,8 +1123,7 @@ export default function Home() {
     // Mettre à jour localStorage et l'état local
     localStorage.setItem('favorites', JSON.stringify(newFavorites));
     setFavorites(newFavorites);
-    
-    console.log('Favoris mis à jour:', newFavorites);
+    if (DBG) console.log('Favoris', newFavorites);
   };
 
   const handleAddToCart = (restaurant) => {
@@ -1812,107 +1725,77 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Programme fidélité — invités */}
-          {!user && (
-            <div className="mb-6 rounded-2xl border border-amber-200/90 dark:border-amber-800/60 bg-amber-50/95 dark:bg-amber-950/35 px-4 py-4 sm:px-5 sm:py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200 leading-snug">
-                <span className="font-bold text-gray-900 dark:text-white">Programme fidélité CVN&apos;EAT</span>
-                {' — '}
-                {LOYALTY_EARN_SHORT} Récompenses par paliers :{' '}
-                <span className="font-medium">{getLoyaltyRewardsSummaryLine()}</span>.
-              </p>
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-orange-700 transition-colors min-h-[44px]"
-                >
-                  Créer un compte
-                </Link>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center rounded-xl border-2 border-amber-600/70 bg-white/90 dark:bg-gray-900/80 px-4 py-2.5 text-sm font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-100/80 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
-                >
-                  Connexion
-                </Link>
+          {/* CVN'EAT Plus + fidélité compacte (accueil) */}
+          <div className="mb-6 space-y-3">
+            <div className="relative overflow-hidden rounded-3xl border border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/40 dark:via-teal-950/35 dark:to-cyan-950/30 px-4 py-4 sm:px-6 sm:py-5 shadow-lg">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-300/30 blur-2xl" />
+              <div className="pointer-events-none absolute -left-8 -bottom-8 h-24 w-24 rounded-full bg-cyan-300/25 blur-2xl" />
+              <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="inline-flex items-center gap-2 rounded-full bg-emerald-600/10 dark:bg-emerald-400/10 px-3 py-1 text-xs font-bold tracking-wide text-emerald-900 dark:text-emerald-200">
+                    <FaGift className="h-3.5 w-3.5" />
+                    OFFRE PREMIUM ABONNÉS
+                  </p>
+                  <p className="mt-2 text-lg sm:text-xl font-extrabold text-emerald-900 dark:text-emerald-100">
+                    {CVNEAT_PLUS_NAME}
+                  </p>
+                  <ul className="mt-2 space-y-1.5 text-sm text-emerald-900/95 dark:text-emerald-100/95">
+                    {CVNEAT_PLUS_PITCH.benefits.map((benefit) => (
+                      <li key={benefit} className="leading-snug flex items-start gap-2">
+                        <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-300" />
+                        <span>{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <Link
+                    href="/abonnement"
+                    className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 transition-colors min-h-[44px]"
+                  >
+                    S&apos;abonner
+                  </Link>
+                  {!user && (
+                    <Link
+                      href="/login?redirect=abonnement"
+                      className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-600/70 bg-white/90 dark:bg-gray-900/80 px-4 py-2.5 text-sm font-semibold text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100/80 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
+                    >
+                      Se connecter
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Fidélité : solde + mode d’emploi (connectés) */}
-          {user && (
-            <div className="mb-6 space-y-4">
+            {user ? (
               <Link
                 href="/profile?tab=loyalty"
-                className="block bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 dark:from-amber-600 dark:via-yellow-600 dark:to-amber-600 rounded-2xl p-4 sm:p-5 shadow-lg border border-amber-200 dark:border-amber-700 hover:shadow-xl hover:scale-[1.01] transition-all duration-200"
+                className="block rounded-2xl border border-amber-200 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/20 p-3 sm:p-4 hover:shadow transition-shadow"
+                title="Voir mes points de fidélité"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-white/90 dark:bg-gray-900/50 rounded-full flex items-center justify-center">
-                      <FaGift className="text-2xl sm:text-3xl text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg flex flex-wrap items-center gap-2">
-                        Vos points de fidélité
-                        <span className="inline-flex items-center rounded-full bg-black/10 dark:bg-white/10 px-2 py-0.5 text-xs font-semibold">
-                          Voir détail & récompenses
-                        </span>
-                      </h3>
-                      <p className="text-gray-800 dark:text-gray-200 text-sm sm:text-base mt-1">
-                        {LOYALTY_EARN_SHORT}{' '}
-                        <span className="font-semibold">Récompenses :</span>{' '}
-                        {getLoyaltyRewardsSummaryLine()}.
-                      </p>
-                      <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm mt-2 leading-snug">
-                        {LOYALTY_CHECKOUT_HELP}
-                      </p>
-                    </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                      Fidélité CVN&apos;EAT
+                    </p>
+                    <p className="text-xs text-amber-900/90 dark:text-amber-100/90 mt-1 truncate">
+                      {LOYALTY_EARN_SHORT} Récompenses : {getLoyaltyRewardsSummaryLine()}.
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3 shrink-0 sm:text-right">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tabular-nums">{userPoints}</span>
-                      <span className="text-sm font-bold text-gray-800 dark:text-gray-200">pts</span>
-                    </div>
-                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white">
-                      Mon programme <FaArrowRight className="h-3 w-3" />
+                  <div className="shrink-0 text-right">
+                    <span className="text-xl sm:text-2xl font-black text-amber-900 dark:text-amber-100 tabular-nums">
+                      {userPoints}
                     </span>
+                    <span className="ml-1 text-xs font-bold text-amber-900/80 dark:text-amber-100/80">pts</span>
                   </div>
                 </div>
               </Link>
-
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/90 p-4 sm:p-5 shadow-sm">
-                <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">Comment utiliser vos points ?</p>
-                <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700 dark:text-gray-300 mb-4">
-                  <li>Choisissez une <span className="font-semibold">récompense</span> et son coût en points (ex. livraison offerte = 160 pts).</li>
-                  <li>Ajoutez vos plats au panier, puis ouvrez le <span className="font-semibold">paiement</span> (panier → valider).</li>
-                  <li>
-                    Sous « Utiliser mes points », prenez le <span className="font-semibold">raccourci</span> de la récompense ou le même nombre de
-                    points : la réduction s’applique sur le total (voir encadré ci-dessus).
-                  </li>
-                </ol>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                  <Link
-                    href={cart.length > 0 ? '/checkout' : '/panier'}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 transition-colors min-h-[44px]"
-                  >
-                    {cart.length > 0 ? 'Aller au paiement' : 'Voir mon panier'}
-                    <FaArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                  <Link
-                    href="/profile?tab=loyalty"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors min-h-[44px]"
-                  >
-                    Paliers & récompenses
-                  </Link>
-                  <Link
-                    href="#liste-restaurants"
-                    className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium text-orange-700 dark:text-orange-300 hover:underline min-h-[44px]"
-                  >
-                    Commander un restaurant
-                  </Link>
-                </div>
+            ) : (
+              <div className="rounded-2xl border border-amber-200/90 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/25 px-4 py-3 text-sm text-amber-900/95 dark:text-amber-100/90">
+                <span className="font-semibold">Programme fidélité :</span> {LOYALTY_EARN_SHORT}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Filtres et tri - Optimisé mobile */}
           {showFilters && (

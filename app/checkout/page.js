@@ -36,6 +36,7 @@ import {
   CVNEAT_PLUS_MIN_ORDER_EUR,
   cvneatPlusEligibilityForDeliveryDiscount,
   applyCvneatPlusHalfOnDelivery,
+  cvneatPlusAppliesToPlatformFeeWaiver,
 } from '@/lib/cvneat-plus';
 
 // Réduire les warnings Stripe non critiques en développement
@@ -127,6 +128,17 @@ export default function Checkout() {
     });
   }, [cvneatPlus.active, appliedPromoCode, cartTotal, selectedLoyaltyRewardId]);
 
+  const cvneatPlusPlatformFeeFreeLayer = useMemo(() => {
+    if (!cvneatPlus.active) return false;
+    const maxDiscount = Math.min(appliedPromoCode?.discountAmount || 0, cartTotal);
+    const subAfterPromo = Math.max(0, cartTotal - maxDiscount);
+    return cvneatPlusAppliesToPlatformFeeWaiver({
+      subtotalAfterPromoEur: subAfterPromo,
+      promoFreeDelivery: appliedPromoCode?.discountType === 'free_delivery',
+      loyaltyRewardId: selectedLoyaltyRewardId,
+    });
+  }, [cvneatPlus.active, appliedPromoCode, cartTotal, selectedLoyaltyRewardId]);
+
   const applyCvneatToRawDelivery = useCallback(
     (raw) => {
       const r = Math.round(parseFloat(raw || 0) * 100) / 100;
@@ -150,7 +162,7 @@ export default function Checkout() {
       promoFreeDelivery: promoFree,
       deliveryFeeEur: deliveryBeforeLoyalty,
     });
-    const PLATFORM_FEE = 0.49;
+    const PLATFORM_FEE = cvneatPlusPlatformFeeFreeLayer ? 0 : 0.49;
     const subAfterPromo = Math.max(0, cartTotal - maxDiscount);
     const subAfterAll = Math.max(
       0,
@@ -179,7 +191,14 @@ export default function Checkout() {
       totalToPay,
       rewardMeta,
     };
-  }, [cart, cartTotal, appliedPromoCode, fraisLivraison, selectedLoyaltyRewardId]);
+  }, [
+    cart,
+    cartTotal,
+    appliedPromoCode,
+    fraisLivraison,
+    selectedLoyaltyRewardId,
+    cvneatPlusPlatformFeeFreeLayer,
+  ]);
 
   const cartContainsAlcohol = useMemo(
     () => cartHasAlcohol(cart, menuCatalogSnapshot),
@@ -750,7 +769,7 @@ export default function Checkout() {
       if (appliedPromoCode?.discountType === 'free_delivery') {
         finalDeliveryFeeForTotal = 0;
       }
-      const PLATFORM_FEE = 0.49; // Frais plateforme fixe
+      const PLATFORM_FEE = cvneatPlusPlatformFeeFreeLayer ? 0 : 0.49; // Offert pour abonnés éligibles CVN'EAT Plus
 
       const maxDiscount = Math.min(discountAmount, cartTotal);
       const promoFree = appliedPromoCode?.discountType === 'free_delivery';
@@ -1597,12 +1616,6 @@ export default function Checkout() {
                   {displayedDeliveryFee.toFixed(2)}€
                 </span>
               </div>
-              {cvneatPlusHalfOffLayer && !loyaltyCheckout.promoFree && (
-                <p className="text-xs text-emerald-800 dark:text-emerald-300 -mt-0.5 mb-1">
-                  {CVNEAT_PLUS_NAME} : −50&nbsp;% sur les frais de livraison dès {CVNEAT_PLUS_MIN_ORDER_EUR} € d’articles
-                  (après code promo). Le reliquat couvre la course et le livreur.
-                </p>
-              )}
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
                 <span>Frais plateforme</span>
                 <span className="font-semibold">{PLATFORM_FEE.toFixed(2)}€</span>
@@ -1616,6 +1629,26 @@ export default function Checkout() {
             </div>
               );
             })()}
+
+            {/* Bloc CVN'EAT Plus (déplacé ici pour ne pas casser la home) */}
+            <div className="border-t dark:border-gray-700 pt-4 mt-4 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/70 dark:bg-emerald-950/20 p-3">
+              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                {CVNEAT_PLUS_NAME}
+              </p>
+              <p className="text-xs text-emerald-800/90 dark:text-emerald-200/90 mt-1 leading-relaxed">
+                -50% sur la livraison + frais plateforme offerts dès {CVNEAT_PLUS_MIN_ORDER_EUR}€ d’articles.
+              </p>
+              {cvneatPlus.active && (
+                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+                  Avantage actif sur cette commande.
+                </p>
+              )}
+              {!cvneatPlus.active && (
+                <a href="/abonnement" className="inline-block mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline">
+                  Voir l’abonnement
+                </a>
+              )}
+            </div>
 
             {/* Utiliser mes points de fidélité */}
             {userPoints > 0 && (

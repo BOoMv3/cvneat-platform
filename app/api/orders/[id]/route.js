@@ -42,7 +42,13 @@ async function settleLoyaltyForPaidOrder({ supabaseAdmin, orderId, orderRow }) {
       0,
       (parseFloat(orderRow?.total || 0) || 0) - (parseFloat(orderRow?.discount_amount || 0) || 0)
     );
-    const pointsEarned = Math.floor(Math.round(subtotalForPoints * 100) / 100);
+    const basePointsEarned = Math.floor(Math.round(subtotalForPoints * 100) / 100);
+    // Avantage abonné CVN'EAT Plus: bonus modéré sur la fidélité.
+    // Compatibilité: garde le fallback sur l'ancien nom de colonne vneat_plus_delivery_applied.
+    const hasCvneatPlusBenefit =
+      orderRow?.cvneat_plus_half_delivery === true || orderRow?.vneat_plus_delivery_applied === true;
+    const bonusPoints = hasCvneatPlusBenefit ? Math.max(1, Math.floor(basePointsEarned * 0.2)) : 0;
+    const pointsEarned = basePointsEarned + bonusPoints;
 
     const { data: userRow } = await supabaseAdmin
       .from('users')
@@ -100,7 +106,9 @@ async function settleLoyaltyForPaidOrder({ supabaseAdmin, orderId, orderRow }) {
             order_id: orderId,
             points_earned: pointsEarned,
             reason: 'Commande',
-            description: `Commande - ${subtotalForPoints.toFixed(2)}€ (articles)`,
+            description: hasCvneatPlusBenefit
+              ? `Commande - ${subtotalForPoints.toFixed(2)}€ (articles) + bonus CVN'EAT Plus (${bonusPoints} pts)`
+              : `Commande - ${subtotalForPoints.toFixed(2)}€ (articles)`,
           })
           .catch(() => {});
       }

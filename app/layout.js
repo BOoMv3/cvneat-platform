@@ -7,7 +7,6 @@ import PushNotificationBootstrap from './components/PushNotificationBootstrap';
 import AppAutoRedirect from './components/AppAutoRedirect';
 import AppSplashOverlay from './components/AppSplashOverlay';
 import RoleAwareChrome from './components/RoleAwareChrome';
-import CvneatPlusBanner from './components/CvneatPlusBanner';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
 // IMPORTANT: Charger APRÈS Supabase pour éviter les conflits
@@ -447,7 +446,6 @@ export default function RootLayout({ children }) {
           <AppAutoRedirect />
           <div className="min-h-screen flex flex-col">
             <main className="flex-grow">
-              <CvneatPlusBanner />
               {children}
             </main>
             <RoleAwareChrome />

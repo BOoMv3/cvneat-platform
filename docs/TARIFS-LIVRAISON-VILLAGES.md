@@ -28,7 +28,7 @@
 
 ## Abonnement **CVN'EAT Plus** (remise sur la livraison)
 
-- Sous-total articles (après code promo) **≥ 15 €** et adresse **dans la zone** desservie.
+- Sous-total articles (après code promo) **≥ 20 €** et adresse **dans la zone** desservie.
 - Avantage : **−50 % sur les frais de livraison** (le client ne paie que la moitié côté plateforme ; l’abonnement mensuel ne vise pas à offrir 100 % des courses, ce qui pèse sur le livreur / la distance / les villages éloignés).
 - Indicatif d’abonnement : dès **4,99 €/mois** (prix réel = produit Stripe). Variable d’environnement : `STRIPE_CVNEAT_PLUS_PRICE_ID` (l’ancien `STRIPE_VNEAT_PLUS_PRICE_ID` reste pris en charge côté code en secours).
 

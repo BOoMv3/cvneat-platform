@@ -12,6 +12,7 @@ import {
   isCvneatPlusActive,
   cvneatPlusEligibilityForDeliveryDiscount,
   applyCvneatPlusHalfOnDelivery,
+  cvneatPlusAppliesToPlatformFeeWaiver,
 } from '@/lib/cvneat-plus';
 
 /** IDs menus référencés dans le panier (lignes, boissons formule, sous-éléments). */
@@ -771,6 +772,7 @@ export async function POST(request) {
 
     const discount = promoDiscount;
 
+    let cvneatPlusEligible = false;
     let cvneatPlusHalfDelivery = false;
     if (userId) {
       const { data: plusRow } = await serviceClient
@@ -782,15 +784,14 @@ export async function POST(request) {
         0,
         Math.round((subtotalBeforeDiscount - Math.min(promoDiscount, subtotalBeforeDiscount)) * 100) / 100
       );
-      if (
+      cvneatPlusEligible =
         isCvneatPlusActive(plusRow?.cvneat_plus_ends_at) &&
         cvneatPlusEligibilityForDeliveryDiscount({
           subtotalAfterPromoEur: subAfterPromo,
           promoFreeDelivery: !!promoFreeDelivery,
           loyaltyRewardId: rewardId,
-        }) &&
-        fraisLivraison > 0
-      ) {
+        });
+      if (cvneatPlusEligible && fraisLivraison > 0) {
         const half = applyCvneatPlusHalfOnDelivery(fraisLivraison);
         if (half < fraisLivraison) {
           fraisLivraison = half;
@@ -834,9 +835,25 @@ export async function POST(request) {
     // Calculs financiers: commission/payout sur le montant RÉELLEMENT payé par le client (après réduction)
     // Sinon fuite: on paierait le restaurant sur le montant avant réduction alors qu'on n'encaisse que l'après-réduction.
     const totalAfterDiscount = Math.max(0, Math.round((total - discount) * 100) / 100);
-    const platform_discount_amount = computeSecondArticlePromoDiscountFromItems(items, {
+    const basePlatformDiscountAmount = computeSecondArticlePromoDiscountFromItems(items, {
       capAt: totalAfterDiscount,
     });
+    let platform_discount_amount = basePlatformDiscountAmount;
+    let effectivePlatformFee = platform_fee;
+    let cvneatPlusPlatformFeeWaived = false;
+    if (
+      cvneatPlusEligible &&
+      cvneatPlusAppliesToPlatformFeeWaiver({
+        subtotalAfterPromoEur: totalAfterDiscount,
+        promoFreeDelivery: !!promoFreeDelivery,
+        loyaltyRewardId: rewardId,
+      })
+    ) {
+      effectivePlatformFee = 0;
+      cvneatPlusPlatformFeeWaived = true;
+      // create-payment-intent soustrait platform_discount_amount: on y ajoute 0,49€.
+      platform_discount_amount = Math.round((platform_discount_amount + 0.49) * 100) / 100;
+    }
     // Règles fixes: La Bonne Pâte = 0%, All'ovale = 15%, sinon restaurant.commission_rate ou 20%
     const effectiveRatePercent = getEffectiveCommissionRatePercent({
       restaurantName: restaurant?.nom,
@@ -846,7 +863,7 @@ export async function POST(request) {
     const commissionGross = computedCommission.commission;
     const restaurantPayoutBase = computedCommission.payout;
     const restaurantPayout = Math.round((restaurantPayoutBase + loyaltyArticleSubsidyEur) * 100) / 100;
-    const commissionNet = commissionGross + platform_fee; // Commission + frais plateforme
+    const commissionNet = commissionGross + effectivePlatformFee; // Commission + frais plateforme
     
     // Commission livraison CVN'EAT (Option B):
     // Si frais_livraison <= 2.50€ → commission = 0€
@@ -865,8 +882,9 @@ export async function POST(request) {
       commission_net: commissionNet,
       restaurant_payout: restaurantPayout,
       discount,
-      platform_fee,
+      platform_fee: effectivePlatformFee,
       platform_discount_amount,
+      cvneat_plus_platform_fee_waived: cvneatPlusPlatformFeeWaived,
     });
 
     // Creer la commande dans Supabase

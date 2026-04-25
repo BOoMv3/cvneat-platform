@@ -79,8 +79,8 @@ export default function CvneatPlusBanner() {
             <FaTruck className="shrink-0 text-emerald-600" aria-hidden />
             <span>
               <strong className="font-semibold">{CVNEAT_PLUS_NAME} actif</strong> — remise 50 % sur les frais de
-              livraison sur les commandes de {CVNEAT_PLUS_MIN_ORDER_EUR} €+ d’articles (après code promo, zone
-              desservie).
+              livraison + frais plateforme offerts sur les commandes de {CVNEAT_PLUS_MIN_ORDER_EUR} €+ d’articles
+              (après code promo, zone desservie).
             </span>
           </p>
           <button
@@ -110,8 +110,7 @@ export default function CvneatPlusBanner() {
           <FaStar className="shrink-0 text-amber-500" aria-hidden />
           <span>
             <strong className="font-semibold">{CVNEAT_PLUS_NAME}</strong> (CVN&apos;EAT) : −50 % sur les frais de
-            livraison, dès {CVNEAT_PLUS_MIN_ORDER_EUR} € d&apos;articles — l&apos;abonnement n&apos;efface pas la course,
-            il aide.{' '}
+            livraison + frais plateforme offerts, dès {CVNEAT_PLUS_MIN_ORDER_EUR} € d&apos;articles.{' '}
             <Link href="/abonnement" className="font-semibold underline decoration-2 underline-offset-2">
               Voir l&apos;offre
             </Link>

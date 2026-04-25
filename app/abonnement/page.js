@@ -108,7 +108,7 @@ export default function AbonnementPage() {
       <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
         <h1 className="text-3xl sm:text-4xl font-bold text-orange-600 dark:text-orange-400 mb-2">{CVNEAT_PLUS_NAME}</h1>
         <p className="text-lg text-slate-600 dark:text-slate-300 mb-8">
-          Moins de frais, plus de commandes chez les restaurateurs de la vallée — sans passer par les géants nationaux.
+          Moins de frais, plus de commandes chez les restaurateurs locaux — sans passer par les géants nationaux.
         </p>
 
         <div className="rounded-2xl border border-amber-200/80 dark:border-amber-800/40 bg-white dark:bg-slate-900/60 p-6 sm:p-8 shadow-sm mb-8">
@@ -125,7 +125,7 @@ export default function AbonnementPage() {
             ))}
           </ul>
           <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-            {CVNEAT_PLUS_PITCH.competitorLabel} Nous, on reste 100 % local (Ganges, vallée, Cazilhac, St-Hippolyte-du-Fort, etc. selon
+            {CVNEAT_PLUS_PITCH.competitorLabel} Nous, on reste 100 % local (Ganges, Cazilhac, St-Hippolyte-du-Fort, etc. selon
             notre calque de livraison) avec un abonnement adapté.
           </p>
         </div>
@@ -191,12 +191,6 @@ export default function AbonnementPage() {
             >
               {sessionBusy ? 'Redirection…' : `S’abonner à ${CVNEAT_PLUS_NAME}`}
             </button>
-            <p className="text-xs text-slate-500">
-              Si le bouton échoue, créez d’abord le produit + prix récurrent (mensuel) dans le tableau de bord Stripe
-              et renseignez <code className="bg-slate-100 dark:bg-slate-800 px-1">STRIPE_CVNEAT_PLUS_PRICE_ID</code> (ou
-              l’ancien <code className="bg-slate-100 dark:bg-slate-800 px-1">STRIPE_VNEAT_PLUS_PRICE_ID</code>) sur
-              l’hébergement.
-            </p>
           </div>
         )}
 
