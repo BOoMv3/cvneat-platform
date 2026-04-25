@@ -38,6 +38,7 @@ import {
   applyCvneatPlusHalfOnDelivery,
   cvneatPlusAppliesToPlatformFeeWaiver,
 } from '@/lib/cvneat-plus';
+import { getTonightAutoPromo } from '@/lib/tonight-promo';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -149,7 +150,9 @@ export default function Checkout() {
   );
 
   const loyaltyCheckout = useMemo(() => {
-    const discountAmount = appliedPromoCode?.discountAmount || 0;
+    const tonightPromo = getTonightAutoPromo(cartTotal);
+    const autoPromoDiscount = tonightPromo.eligible ? tonightPromo.discountEur : 0;
+    const discountAmount = (appliedPromoCode?.discountAmount || 0) + autoPromoDiscount;
     const maxDiscount = Math.min(discountAmount, cartTotal);
     const promoFree = appliedPromoCode?.discountType === 'free_delivery';
     const deliveryBeforeLoyalty = promoFree
@@ -180,6 +183,8 @@ export default function Checkout() {
       : null;
     return {
       cartTotal,
+      autoPromoDiscount,
+      tonightPromoEligible: tonightPromo.eligible,
       maxDiscount,
       promoFree,
       deliveryBeforeLoyalty,
@@ -761,8 +766,11 @@ export default function Checkout() {
 
       const cartSubtotal = computeCartTotalWithExtras(itemsToUse);
 
-      // Calculer la réduction du code promo (la promo automatique "ce soir" est appliquée côté serveur)
-      const discountAmount = appliedPromoCode?.discountAmount || 0;
+      // Calculer la réduction (code promo + promo automatique ce soir)
+      const tonightPromo = getTonightAutoPromo(cartSubtotal);
+      const autoPromoDiscount = tonightPromo.eligible ? tonightPromo.discountEur : 0;
+      const manualPromoDiscount = appliedPromoCode?.discountAmount || 0;
+      const discountAmount = manualPromoDiscount + autoPromoDiscount;
       
       // Gérer la livraison gratuite si le code promo le prévoit (avant palier fidélité « livraison gratuite »)
       let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
@@ -772,6 +780,7 @@ export default function Checkout() {
       const PLATFORM_FEE = cvneatPlusPlatformFeeFreeLayer ? 0 : 0.49; // Offert pour abonnés éligibles CVN'EAT Plus
 
       const maxDiscount = Math.min(discountAmount, cartSubtotal);
+      const maxServerDiscount = Math.min(manualPromoDiscount, cartSubtotal);
       const promoFree = appliedPromoCode?.discountType === 'free_delivery';
       const deliveryBeforeLoyalty = promoFree ? 0 : finalDeliveryFeeForTotal;
 
@@ -887,8 +896,8 @@ export default function Checkout() {
           // Frais après promo uniquement ; le serveur applique le palier « livraison gratuite » fidélité
           deliveryFee: deliveryBeforeLoyalty,
           totalAmount: cartSubtotal, // Sous-total articles (avant réduction)
-          // Réduction code promo seulement (la promo auto "ce soir" est recalculée côté serveur).
-          discountAmount: maxDiscount,
+          // On envoie la part "code promo"; la promo auto est appliquée côté serveur.
+          discountAmount: maxServerDiscount,
           platformFee: PLATFORM_FEE,
           promoCodeId: appliedPromoCode?.promoCodeId || null,
           promoCode: appliedPromoCode?.code || null,
@@ -1723,6 +1732,13 @@ export default function Checkout() {
                 <FaTag className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
                 Code promo
               </h3>
+              {loyaltyCheckout.tonightPromoEligible && (
+                <div className="mb-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                    🔥 Promo ce soir appliquée automatiquement: -{loyaltyCheckout.autoPromoDiscount.toFixed(2)}EUR dès 30EUR d&apos;achat.
+                  </p>
+                </div>
+              )}
               <PromoCodeInput
                 onCodeApplied={(codeData) => {
                   setAppliedPromoCode(codeData);
