@@ -775,57 +775,60 @@ export default function Home() {
           console.log('[Restaurants] Capacitor / Web:', { isCapacitorApp, protocol: window?.location?.protocol });
         }
 
-        // Même source que le site (GET /api/restaurants). Capacitor : layout.js → https://www.cvneat.fr.
+        // Même source que le site (GET /api/restaurants). En app iOS, fallback absolu prod si l'intercepteur fetch n'est pas actif.
         let data;
         {
-          if (DBG) {
-            console.log('[Restaurants] GET /api/restaurants', isCapacitorApp ? '(Capacitor → prod)' : '');
-          }
+          const qs = `t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`;
+          const candidates = [
+            `/api/restaurants?${qs}`,
+            ...(isCapacitorApp
+              ? [`https://www.cvneat.fr/api/restaurants?${qs}`, `https://cvneat.fr/api/restaurants?${qs}`]
+              : []),
+          ];
+          let lastError = null;
 
-          const response = await fetch(
-            `/api/restaurants?t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`,
-            {
-              cache: 'no-store',
-              headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'Cache-Control': 'no-cache',
-                Pragma: 'no-cache',
-              },
-            }
-          );
-
-          if (DBG) {
-            console.log('[Restaurants] HTTP', response.status, response.url);
-          }
-
-          if (!response.ok) {
-            let errorData;
+          for (const url of candidates) {
             try {
-              errorData = await response.json();
+              if (DBG) console.log('[Restaurants] GET', url);
+              const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Accept: 'application/json',
+                  'Cache-Control': 'no-cache',
+                  Pragma: 'no-cache',
+                },
+              });
+              if (DBG) console.log('[Restaurants] HTTP', response.status, response.url);
+              if (!response.ok) {
+                let errorData;
+                try {
+                  errorData = await response.json();
+                } catch (e) {
+                  errorData = { message: `Erreur ${response.status}: ${response.statusText}` };
+                }
+                throw new Error(errorData.message || errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+              }
+              const parsed = await response.json();
+              if (!Array.isArray(parsed)) {
+                throw new Error('Format de données invalide: la réponse n\'est pas un tableau');
+              }
+              data = parsed;
+              lastError = null;
+              break;
             } catch (e) {
-              errorData = { message: `Erreur ${response.status}: ${response.statusText}` };
+              lastError = e;
+              console.warn('[Restaurants] Tentative échouée:', url, e?.message || e);
             }
-            const errorMessage = errorData.message || errorData.error || `Erreur ${response.status}: ${response.statusText}`;
-            console.error('[Restaurants] Erreur API:', errorMessage, errorData);
-            throw new Error(errorMessage);
           }
 
-          try {
-            data = await response.json();
-          } catch (parseError) {
-            console.error('[Restaurants] Erreur parsing JSON:', parseError);
-            throw new Error(`Erreur lors du parsing de la réponse JSON: ${parseError.message}`);
+          if (lastError) {
+            throw lastError;
           }
         }
 
         if (DBG) {
           console.log('[Restaurants] reçu:', Array.isArray(data) ? data.length : typeof data);
-        }
-
-        if (!Array.isArray(data)) {
-          console.error('[Restaurants] Format de données invalide:', typeof data, data);
-          throw new Error('Format de données invalide: la réponse n\'est pas un tableau');
         }
 
         if (data.length === 0) {
