@@ -781,9 +781,10 @@ export default function Home() {
           const qs = `t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`;
           const candidates = [
             `/api/restaurants?${qs}`,
-            ...(isCapacitorApp
-              ? [`https://www.cvneat.fr/api/restaurants?${qs}`, `https://cvneat.fr/api/restaurants?${qs}`]
-              : []),
+            // Toujours tenter les URLs absolues de prod:
+            // sur certaines versions iOS, la détection Capacitor peut être absente/incomplète.
+            `https://www.cvneat.fr/api/restaurants?${qs}`,
+            `https://cvneat.fr/api/restaurants?${qs}`,
           ];
           let lastError = null;
 
@@ -956,24 +957,39 @@ export default function Home() {
           v === 1 ||
           (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
+        const fetchOpenStatusWithFallback = async (payload) => {
+          const urls = [
+            '/api/restaurants/open-status',
+            'https://www.cvneat.fr/api/restaurants/open-status',
+            'https://cvneat.fr/api/restaurants/open-status',
+          ];
+          for (const url of urls) {
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                cache: 'no-store',
+              });
+              if (!res.ok) continue;
+              const json = await res.json().catch(() => ({}));
+              const map = json?.map;
+              if (map && typeof map === 'object' && !Array.isArray(map)) {
+                return { ok: true, map };
+              }
+            } catch (e) {
+              if (DBG) console.warn('[Restaurants] open-status tentative échouée:', url, e);
+            }
+          }
+          return { ok: false, map: {} };
+        };
+
         let openStatusFromServer = {};
         let openStatusRequestFailed = true;
         try {
-          const statusRes = await fetch('/api/restaurants/open-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids }),
-            cache: 'no-store',
-          });
-          if (statusRes.ok) {
-            const json = await statusRes.json().catch(() => ({}));
-            const map = json?.map;
-            const mapIsObject = map && typeof map === 'object' && !Array.isArray(map);
-            openStatusFromServer = mapIsObject ? map : {};
-            openStatusRequestFailed = !mapIsObject;
-          } else {
-            if (DBG) console.warn('[Restaurants] open-status HTTP', statusRes.status);
-          }
+          const statusResult = await fetchOpenStatusWithFallback({ ids });
+          openStatusFromServer = statusResult.map;
+          openStatusRequestFailed = !statusResult.ok;
         } catch (e) {
           if (DBG) console.warn('[Restaurants] open-status:', e);
         }
