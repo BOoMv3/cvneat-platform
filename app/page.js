@@ -765,6 +765,14 @@ export default function Home() {
       try {
         setLoading(true);
         setError(null);
+        const fetchRestaurantsFromSupabaseFallback = async () => {
+          const { data: rows, error: sbError } = await supabase
+            .from('restaurants')
+            .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description')
+            .neq('status', 'inactive');
+          if (sbError) throw sbError;
+          return Array.isArray(rows) ? rows : [];
+        };
         
         const isCapacitorApp = typeof window !== 'undefined' &&
           (window.location?.protocol === 'capacitor:' ||
@@ -824,7 +832,8 @@ export default function Home() {
           }
 
           if (lastError) {
-            throw lastError;
+            console.warn('[Restaurants] API indisponible, fallback Supabase direct');
+            data = await fetchRestaurantsFromSupabaseFallback();
           }
         }
 
@@ -833,7 +842,12 @@ export default function Home() {
         }
 
         if (data.length === 0) {
-          if (DBG) console.warn('[Restaurants] Aucun restaurant');
+          console.warn('[Restaurants] API vide, fallback Supabase direct');
+          data = await fetchRestaurantsFromSupabaseFallback();
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          if (DBG) console.warn('[Restaurants] Aucun restaurant après fallback');
           setRestaurants([]);
           setRestaurantsOpenStatus({});
           setLoading(false);
