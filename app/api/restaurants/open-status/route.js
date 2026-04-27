@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { hasExplicitScheduleForDay } from '../../../../lib/restaurant-horaires-paris';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 const toMinutes = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return null;
   const trimmed = timeStr.trim();
@@ -134,7 +140,9 @@ export async function POST(request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: 'Configuration Supabase manquante' }, { status: 500 });
+      const res = NextResponse.json({ error: 'Configuration Supabase manquante' }, { status: 500 });
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
+      return res;
     }
     const sb = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 
@@ -149,7 +157,9 @@ export async function POST(request) {
     const { data, error } = await query;
     if (error) {
       console.error('❌ open-status restaurants error:', error);
-      return NextResponse.json({ error: 'Erreur chargement restaurants' }, { status: 500 });
+      const res = NextResponse.json({ error: 'Erreur chargement restaurants' }, { status: 500 });
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
+      return res;
     }
 
     const toBool = (v) =>
@@ -182,10 +192,20 @@ export async function POST(request) {
 
     const res = NextResponse.json({ map });
     res.headers.set('Cache-Control', 'no-store, max-age=0');
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
     return res;
   } catch (e) {
     console.error('❌ open-status error:', e);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    const res = NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
+    return res;
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
 }
 

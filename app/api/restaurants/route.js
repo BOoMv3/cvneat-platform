@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { hasExplicitScheduleForDay } from '../../../lib/restaurant-horaires-paris';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 // Important endpoint for the homepage: keep it fast.
 // We allow short CDN caching to reduce server CPU load.
 export const dynamic = 'force-dynamic';
@@ -24,6 +30,13 @@ try {
   }
 } catch (error) {
   console.error('❌ Erreur initialisation Supabase Admin:', error);
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
 }
 
 export async function GET() {
@@ -50,6 +63,7 @@ export async function GET() {
       const res = NextResponse.json([]);
       // Pas de cache pour garder ferme_manuellement à jour (éviter liste "ouvert" vs détail "fermé manuellement")
       res.headers.set('Cache-Control', 'no-store, max-age=0');
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
       return res;
     }
 
@@ -194,12 +208,15 @@ export async function GET() {
     res.headers.set('Pragma', 'no-cache');
     res.headers.set('Expires', '0');
     res.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
     return res;
   } catch (error) {
     console.error('❌ Erreur serveur lors de la récupération des restaurants:', error);
-    return NextResponse.json(
+    const res = NextResponse.json(
       { message: "Erreur serveur lors de la récupération des restaurants", error: error.message },
       { status: 500 }
     );
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
+    return res;
   }
 }
