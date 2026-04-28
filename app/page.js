@@ -1435,19 +1435,6 @@ export default function Home() {
         </div>
       )}
 
-      <div className="w-full overflow-hidden border-b border-red-200/70 bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white">
-        <div className="cvneat-marquee-track py-2">
-          <span className="mx-6 inline-flex items-center gap-3 text-sm sm:text-base font-extrabold">
-            🔥 CE SOIR SUR CVN&apos;EAT 🔥 💥 -10EUR des 30EUR d&apos;achat 🍕 (automatique)
-            🚨 LANCEMENT CVN&apos;EAT PLUS 👉 -50% sur la livraison 👉 0EUR frais de plateforme 👉 +20% de fidélité 💸 4,99EUR/mois 👉 cvneat.fr
-          </span>
-          <span className="mx-6 inline-flex items-center gap-3 text-sm sm:text-base font-extrabold">
-            🔥 CE SOIR SUR CVN&apos;EAT 🔥 💥 -10EUR des 30EUR d&apos;achat 🍕 (automatique)
-            🚨 LANCEMENT CVN&apos;EAT PLUS 👉 -50% sur la livraison 👉 0EUR frais de plateforme 👉 +20% de fidélité 💸 4,99EUR/mois 👉 cvneat.fr
-          </span>
-        </div>
-      </div>
-
       {/* Hero Section avec carrousel visuel */}
       <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
         {heroSlides.map((slide, index) => (
@@ -2140,22 +2127,6 @@ export default function Home() {
           <Advertisement position="footer" />
         </div>
       </main>
-      <style jsx>{`
-        .cvneat-marquee-track {
-          display: inline-flex;
-          min-width: 200%;
-          white-space: nowrap;
-          animation: cvneatMarquee 28s linear infinite;
-        }
-        @keyframes cvneatMarquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-      `}</style>
     </div>
   );
 } // Force rebuild Wed Dec 17 12:18:32 CET 2025
