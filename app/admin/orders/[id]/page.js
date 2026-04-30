@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
+import { apiFetch } from '../../../../lib/api-client-mobile';
 import { FaArrowLeft, FaSpinner, FaEdit } from 'react-icons/fa';
 
 export default function AdminOrderDetail() {
@@ -21,59 +22,26 @@ export default function AdminOrderDetail() {
 
   const fetchOrder = async () => {
     try {
-      // D'abord récupérer la commande avec les relations
-      const { data, error } = await supabase
-        .from('commandes')
-        .select(`
-          *,
-          restaurants (
-            id,
-            nom
-          ),
-          details_commande (
-            id,
-            quantite,
-            prix_unitaire,
-            supplements,
-            customizations,
-            menus (
-              nom,
-              prix
-            )
-          )
-        `)
-        .eq('id', params.id)
-        .single();
-
-      if (error) throw error;
-      
-      // Ensuite, récupérer les infos utilisateur séparément si user_id existe
-      let userData = null;
-      if (data.user_id) {
-        try {
-          const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('id, nom, prenom, telephone, email')
-            .eq('id', data.user_id)
-            .single();
-          
-          if (!userError && user) {
-            userData = user;
-          }
-        } catch (userErr) {
-          console.warn('Erreur récupération utilisateur:', userErr);
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Session expirée, reconnecte-toi.');
       }
-      
-      // Ajouter les données utilisateur à l'objet data
-      if (userData) {
-        data.users = userData;
+      const response = await apiFetch(`/api/admin/orders/${params.id}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error(data?.error || 'Commande introuvable');
       }
       
       // Formater les données pour l'affichage
       if (data) {
         // Récupérer les informations client depuis users (jointure) ou depuis les colonnes directes
-        const user = data.users || {};
+        const user = data.user || {};
         
         // Priorité: colonnes directes dans commandes, sinon jointure avec users
         const customerName = data.customer_name 
@@ -121,7 +89,7 @@ export default function AdminOrderDetail() {
           delivery_postal_code: data.code_postal || '',
           delivery_city: data.ville || '',
           items: items,
-          restaurant_name: data.restaurants?.nom || 'Restaurant inconnu'
+          restaurant_name: data.restaurant?.nom || 'Restaurant inconnu'
         });
       } else {
         setOrder(null);
@@ -147,13 +115,23 @@ export default function AdminOrderDetail() {
       };
       
       const frenchStatus = statusMap[newStatus] || newStatus;
-      
-      const { error } = await supabase
-        .from('commandes')
-        .update({ statut: frenchStatus })
-        .eq('id', params.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Session expirée, reconnecte-toi.');
+      }
 
-      if (error) throw error;
+      const response = await apiFetch(`/api/admin/orders/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: frenchStatus }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Erreur de mise à jour');
+      }
       
       // Rafraîchir les données
       await fetchOrder();

@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const authClient = createClient(supabaseUrl, supabaseAnonKey);
+const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
 // GET /api/admin/orders/[id] - Récupérer une commande spécifique
 export async function GET(request, { params }) {
@@ -10,14 +17,14 @@ export async function GET(request, { params }) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
     // Vérifier que l'utilisateur est admin
-    const { data: adminUser, error: adminError } = await supabase
+    const { data: adminUser, error: adminError } = await adminClient
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -27,7 +34,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    const { data: order, error } = await supabase
+    const { data: order, error } = await adminClient
       .from('commandes')
       .select(`
         *,
@@ -60,14 +67,14 @@ export async function PUT(request, { params }) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
     // Vérifier que l'utilisateur est admin
-    const { data: adminUser, error: adminError } = await supabase
+    const { data: adminUser, error: adminError } = await adminClient
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -77,14 +84,26 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    const { status, delivery_id, notes } = await request.json();
+    const { status, delivery_id } = await request.json();
 
     const updateData = {};
-    if (status !== undefined) updateData.statut = status;
+    if (status !== undefined) {
+      updateData.statut = status;
+      const nowIso = new Date().toISOString();
+      if (status === 'acceptee') {
+        updateData.accepted_at = nowIso;
+      } else if (status === 'refusee') {
+        updateData.rejected_at = nowIso;
+      } else if (status === 'pret_a_livrer') {
+        updateData.ready_at = nowIso;
+        updateData.ready_for_delivery = true;
+      } else if (status === 'livree') {
+        updateData.picked_up_at = updateData.picked_up_at || nowIso;
+      }
+    }
     if (delivery_id !== undefined) updateData.livreur_id = delivery_id;
-    if (notes !== undefined) updateData.notes = notes;
 
-    const { data: updatedOrder, error } = await supabase
+    const { data: updatedOrder, error } = await adminClient
       .from('commandes')
       .update(updateData)
       .eq('id', params.id)
@@ -99,7 +118,7 @@ export async function PUT(request, { params }) {
     if (error) throw error;
 
     // Envoyer email de notification au client
-    if (status && status !== updatedOrder.statut) {
+    if (status) {
       try {
         await fetch('/api/notifications/send', {
           method: 'POST',
@@ -161,14 +180,14 @@ export async function DELETE(request, { params }) {
     }
     
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
     }
 
     // Vérifier que l'utilisateur est admin
-    const { data: adminUser, error: adminError } = await supabase
+    const { data: adminUser, error: adminError } = await adminClient
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -179,7 +198,7 @@ export async function DELETE(request, { params }) {
     }
 
     // Récupérer les infos de la commande avant annulation
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await adminClient
       .from('commandes')
       .select(`
         *,
@@ -192,7 +211,7 @@ export async function DELETE(request, { params }) {
     if (orderError) throw orderError;
 
     // Annuler la commande
-    const { data: cancelledOrder, error } = await supabase
+    const { data: cancelledOrder, error } = await adminClient
       .from('commandes')
       .update({ statut: 'annulee' })
       .eq('id', params.id)

@@ -28,6 +28,7 @@
     "apk:debug": "cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor/app": "^7.1.2",
     "@capacitor/core": "^7.4.4",
     "@capacitor/push-notifications": "^7.0.3",
     "@json2csv/transforms": "^6.1.0",

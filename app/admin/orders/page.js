@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
+import { apiFetch } from '../../../lib/api-client-mobile';
 import { FaEye, FaSpinner } from 'react-icons/fa';
 
 export default function AdminOrders() {
@@ -70,12 +71,24 @@ export default function AdminOrders() {
       };
       const frenchStatus = statusMap[newStatus] || newStatus;
 
-      const { error } = await supabase
-        .from('commandes')
-        .update({ statut: frenchStatus })
-        .eq('id', orderId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Session expirée, reconnecte-toi pour gérer les commandes.');
+      }
 
-      if (error) throw error;
+      const response = await apiFetch(`/api/admin/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: frenchStatus }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Impossible de mettre à jour la commande');
+      }
       await fetchOrders();
     } catch (err) {
       setError(err.message || 'Erreur mise à jour commande');
