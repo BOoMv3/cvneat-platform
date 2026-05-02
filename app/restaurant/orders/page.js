@@ -666,6 +666,17 @@ export default function RestaurantOrders() {
                         }</p>
                         <p><span className="font-medium">Total :</span> {order.total?.toFixed(2) || order.total_amount?.toFixed(2) || '0.00'}€</p>
                         <p><span className="font-medium">Articles :</span> {order.items?.length || order.order_items?.length || order.details_commande?.length || 0}</p>
+                        {order.statut === 'livree' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePrintOrder(order);
+                            }}
+                            className="mt-2 inline-flex items-center bg-gray-900 text-white px-3 py-1 rounded-md hover:bg-black text-sm"
+                          >
+                            🖨️ Imprimer ticket (test livree)
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
