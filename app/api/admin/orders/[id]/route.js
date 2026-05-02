@@ -38,13 +38,13 @@ export async function GET(request, { params }) {
       .from('commandes')
       .select(`
         *,
-        user:users(email, nom, telephone),
+        user:users(email, nom, prenom, telephone),
         restaurant:restaurants(nom, adresse, telephone),
         details_commande(
           *,
-          menu:menus(nom, description, prix)
+          menus(nom, description, prix)
         ),
-        delivery:users!livreur_id(email, nom, telephone)
+        delivery:users!livreur_id(email, nom, prenom, telephone)
       `)
       .eq('id', params.id)
       .single();
