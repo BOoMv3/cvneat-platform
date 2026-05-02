@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { apiFetch } from '../../../lib/api-client-mobile';
 import { FaEye, FaSpinner } from 'react-icons/fa';
+import { buildOrderReceiptText, printWithRawBt } from '../../../lib/rawbt-print';
 
 export default function AdminOrders() {
   const router = useRouter();
@@ -132,6 +133,25 @@ export default function AdminOrders() {
         return 'Livrée';
       default:
         return status;
+    }
+  };
+
+  const handlePrintDeliveredOrder = async (order) => {
+    try {
+      const subtotal = Number(order?.total || 0) - Number(order?.frais_livraison || 0);
+      const ticket = buildOrderReceiptText(order, {
+        items: [],
+        subtotal: Math.max(0, subtotal),
+        deliveryFee: Number(order?.frais_livraison || 0),
+        total: Number(order?.total || 0),
+      });
+      const launched = await printWithRawBt(ticket);
+      if (!launched) {
+        throw new Error("Impossible d'ouvrir RawBT");
+      }
+    } catch (err) {
+      setError("Impression impossible. Installez/ouvrez RawBT puis reessayez.");
+      console.error('Erreur impression admin:', err);
     }
   };
 
@@ -337,6 +357,15 @@ export default function AdminOrders() {
                       >
                         <FaEye />
                       </button>
+                      {order.statut === 'livree' && (
+                        <button
+                          onClick={() => handlePrintDeliveredOrder(order)}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-gray-900 text-white hover:bg-black"
+                          title="Imprimer ticket test (livree)"
+                        >
+                          🖨️ Imprimer
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
