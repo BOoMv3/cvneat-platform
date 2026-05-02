@@ -113,10 +113,19 @@ export default function PartnerDashboard() {
           </div>
 
           {/* Actions rapides */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
              <ActionCard title="Gérer le Menu" description="Ajoutez, modifiez ou supprimez des plats et catégories." link="/restaurant/menu/edit" icon={<FaUtensils />} />
              <ActionCard title="Voir les Commandes" description="Consultez l'historique et le statut de vos commandes." link="/partner/orders" icon={<FaBoxOpen />} />
              <ActionCard title="Gérer les Horaires" description="Mettez à jour vos heures d'ouverture et de fermeture." link="/partner/hours" icon={<FaPlus />} />
+             <ActionCard title="Tester impression ticket" description="Ouvrir les commandes et cliquer sur « Imprimer »." link="/partner/orders" icon={<FaFileAlt />} />
+          </div>
+
+          <div className="mb-6 rounded-lg border border-gray-300 bg-white p-4 text-sm text-gray-800">
+            <p className="font-semibold mb-1">Impression ticket Android (RawBT)</p>
+            <p className="mb-2">Le bouton 🖨️ est disponible sur la page <strong>Commandes partenaire</strong>, y compris pour les commandes livrées.</p>
+            <Link href="/partner/orders" className="inline-flex items-center rounded-md bg-gray-900 px-3 py-2 text-white hover:bg-black">
+              Ouvrir les commandes pour imprimer
+            </Link>
           </div>
 
           {/* Gestion du menu */}
