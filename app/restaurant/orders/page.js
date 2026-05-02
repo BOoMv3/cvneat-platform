@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
+import { buildOrderReceiptText, printWithRawBt } from '../../../lib/rawbt-print';
 
 export default function RestaurantOrders() {
   const router = useRouter();
@@ -459,6 +460,52 @@ export default function RestaurantOrders() {
     return new Date(dateString).toLocaleString('fr-FR');
   };
 
+  const getOrderItemsForPrint = (order) => {
+    if (!order) return [];
+    if (Array.isArray(order.details_commande) && order.details_commande.length > 0) {
+      return order.details_commande.map((item) => ({
+        name: item?.menus?.nom || item?.name || 'Article',
+        quantity: Number(item?.quantite || item?.quantity || 1),
+        price: Number(item?.prix_unitaire || item?.prix || item?.menus?.prix || 0),
+      }));
+    }
+    if (Array.isArray(order.items) && order.items.length > 0) {
+      return order.items.map((item) => ({
+        name: item?.name || item?.nom || 'Article',
+        quantity: Number(item?.quantity || item?.quantite || 1),
+        price: Number(item?.price || item?.prix || 0),
+      }));
+    }
+    return [];
+  };
+
+  const getOrderSubtotalForPrint = (order) => {
+    const items = getOrderItemsForPrint(order);
+    return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  };
+
+  const handlePrintOrder = async (order) => {
+    try {
+      const items = getOrderItemsForPrint(order);
+      const subtotal = getOrderSubtotalForPrint(order);
+      const deliveryFee = Number(order?.frais_livraison || 0);
+      const total = subtotal + deliveryFee;
+      const ticket = buildOrderReceiptText(order, {
+        items,
+        subtotal,
+        deliveryFee,
+        total,
+      });
+      const launched = await printWithRawBt(ticket);
+      if (!launched) {
+        throw new Error("Impossible d'ouvrir RawBT");
+      }
+    } catch (err) {
+      setError("Impression impossible. Installez/ouvrez RawBT puis reessayez.");
+      console.error('Erreur impression ticket:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -632,6 +679,12 @@ export default function RestaurantOrders() {
             {selectedOrder ? (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-xl font-semibold mb-4">Détails de la commande #{selectedOrder.id}</h2>
+                <button
+                  onClick={() => handlePrintOrder(selectedOrder)}
+                  className="mb-4 w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-black transition-colors"
+                >
+                  🖨️ Imprimer ticket (RawBT Android)
+                </button>
                 
                 <div className="space-y-4 mb-6">
                   <div>

@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase';
 import { FaClock, FaCheck, FaTimes, FaEye, FaMotorcycle, FaUtensils } from 'react-icons/fa';
 import AuthGuard from '../../../components/AuthGuard';
 import Navbar from '../../../components/Navbar';
+import { buildOrderReceiptText, printWithRawBt } from '../../../lib/rawbt-print';
 
 export default function PartnerOrders() {
   const [orders, setOrders] = useState([]);
@@ -252,6 +253,28 @@ export default function PartnerOrders() {
     setTimeEstimation(prev => ({ ...prev, estimatedTotalTime: total }));
   };
 
+  const handlePrintOrder = async (order) => {
+    try {
+      const items = getOrderItems(order);
+      const subtotal = getSubtotal(order);
+      const deliveryFee = getDeliveryFee(order);
+      const total = getTotalAmount(order);
+      const ticket = buildOrderReceiptText(order, {
+        items,
+        subtotal,
+        deliveryFee,
+        total,
+      });
+      const launched = await printWithRawBt(ticket);
+      if (!launched) {
+        throw new Error("Impossible d'ouvrir RawBT");
+      }
+    } catch (err) {
+      setError("Impression impossible. Installez/ouvrez RawBT puis reessayez.");
+      console.error('Erreur impression ticket:', err);
+    }
+  };
+
   useEffect(() => {
     updateTotalTime();
   }, [timeEstimation.preparationTime, timeEstimation.deliveryTime]);
@@ -384,6 +407,12 @@ export default function PartnerOrders() {
                       Total: {getTotalAmount(order).toFixed(2)}€
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => handlePrintOrder(order)}
+                        className="px-4 py-2 rounded-lg flex items-center gap-2 bg-gray-900 text-white hover:bg-black"
+                      >
+                        🖨️ Imprimer
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedOrder(order);
