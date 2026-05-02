@@ -30,6 +30,7 @@ import {
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
+import { buildOrderReceiptText, printWithRawBt } from '../../lib/rawbt-print';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
@@ -1699,6 +1700,26 @@ export default function PartnerDashboard() {
   const getTotalAmount = (order) => {
     if (typeof order?.total_amount === 'number') return order.total_amount;
     return getSubtotal(order) + getDeliveryFee(order);
+  };
+
+  const handlePrintOrder = async (order) => {
+    try {
+      const items = getOrderItems(order);
+      const subtotal = getSubtotal(order);
+      const deliveryFee = getDeliveryFee(order);
+      const total = getTotalAmount(order);
+      const ticket = buildOrderReceiptText(order, {
+        items,
+        subtotal,
+        deliveryFee,
+        total,
+      });
+      const launched = await printWithRawBt(ticket);
+      if (!launched) throw new Error("Impossible d'ouvrir RawBT");
+    } catch (error) {
+      console.error('Erreur impression ticket partenaire:', error);
+      alert("Impression impossible. Installez/ouvrez RawBT puis reessayez.");
+    }
   };
 
   const addSupplement = () => {
@@ -4200,6 +4221,13 @@ export default function PartnerDashboard() {
                               </div>
                               
                               <div className="flex flex-wrap gap-2 justify-end">
+                                <button
+                                  onClick={() => handlePrintOrder(order)}
+                                  className="bg-gray-900 text-white px-3 py-2 rounded text-sm hover:bg-black transition-colors"
+                                  title="Imprimer ticket RawBT"
+                                >
+                                  🖨️ Imprimer
+                                </button>
                                 {order.statut === 'en_attente' && (
                                   <>
                                     <button
