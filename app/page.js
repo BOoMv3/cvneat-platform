@@ -569,13 +569,20 @@ export default function Home() {
   }, [nextOpeningDate]);
 
   const homeCartSubtotal = useMemo(() => computeCartTotalWithExtras(cart), [cart]);
+  const homeCartRestaurantName =
+    cartRestaurant?.nom ||
+    cartRestaurant?.name ||
+    cartRestaurant?.restaurant_name ||
+    cart?.[0]?.restaurant_name ||
+    cart?.[0]?.restaurant_nom ||
+    '';
   const homeSecondArticlePromo = useMemo(
     () =>
       computeCheckoutPlatformDiscountEur(cart, {
         capAt: homeCartSubtotal,
-        restaurantName: cartRestaurant?.nom,
+        restaurantName: homeCartRestaurantName,
       }),
-    [cart, homeCartSubtotal, cartRestaurant]
+    [cart, homeCartSubtotal, homeCartRestaurantName]
   );
   const homeCartNetSubtotal = useMemo(
     () => Math.max(0, Math.round((homeCartSubtotal - homeSecondArticlePromo) * 100) / 100),
@@ -1712,7 +1719,7 @@ export default function Home() {
             {homeSecondArticlePromo > 0 && (
               <div className="flex justify-between text-sm text-blue-600 dark:text-blue-300 font-medium">
                 <span>
-                  {isLaBonnePateRestaurantName(cartRestaurant?.nom)
+                  {isLaBonnePateRestaurantName(homeCartRestaurantName)
                     ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
                     : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
                 </span>

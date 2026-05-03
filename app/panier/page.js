@@ -61,13 +61,20 @@ export default function Panier() {
     () => cart.reduce((total, item) => total + getItemLineTotal(item), 0),
     [cart]
   );
+  const panierRestaurantName =
+    restaurant?.nom ||
+    restaurant?.name ||
+    restaurant?.restaurant_name ||
+    cart?.[0]?.restaurant_name ||
+    cart?.[0]?.restaurant_nom ||
+    '';
   const secondArticlePromo = useMemo(
     () =>
       computeCheckoutPlatformDiscountEur(cart, {
         capAt: subtotalBrut,
-        restaurantName: restaurant?.nom,
+        restaurantName: panierRestaurantName,
       }),
-    [cart, subtotalBrut, restaurant]
+    [cart, subtotalBrut, panierRestaurantName]
   );
 
   const loadCart = () => {
@@ -252,7 +259,7 @@ export default function Panier() {
           {SECOND_ARTICLE_PROMO_BANNER}
         </div>
       )}
-      {isLaBonnePateStockPromoEffective() && isLaBonnePateRestaurantName(restaurant?.nom) && (
+      {isLaBonnePateStockPromoEffective() && isLaBonnePateRestaurantName(panierRestaurantName) && (
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-center text-sm sm:text-base font-semibold py-2.5 px-4 shadow-md">
           {LA_BONNE_PATE_STOCK_PROMO_BANNER}
         </div>
@@ -486,7 +493,7 @@ export default function Panier() {
                 {secondArticlePromo > 0 && (
                   <div className="flex justify-between text-blue-600 text-sm sm:text-base font-medium">
                     <span>
-                      {isLaBonnePateRestaurantName(restaurant?.nom)
+                      {isLaBonnePateRestaurantName(panierRestaurantName)
                         ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
                         : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
                     </span>

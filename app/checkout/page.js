@@ -150,6 +150,14 @@ export default function Checkout() {
     [cvneatPlusHalfOffLayer]
   );
 
+  const checkoutRestaurantName =
+    restaurant?.nom ||
+    restaurant?.name ||
+    restaurant?.restaurant_name ||
+    cart?.[0]?.restaurant_name ||
+    cart?.[0]?.restaurant_nom ||
+    '';
+
   const loyaltyCheckout = useMemo(() => {
     const discountAmount = appliedPromoCode?.discountAmount || 0;
     const maxDiscount = Math.min(discountAmount, cartTotal);
@@ -179,7 +187,7 @@ export default function Checkout() {
     );
     const platformPromoDiscount = computeCheckoutPlatformDiscountEur(cart, {
       capAt: subAfterAll,
-      restaurantName: restaurant?.nom,
+      restaurantName: checkoutRestaurantName,
     });
     const totalToPay = Math.max(
       0.5,
@@ -205,6 +213,7 @@ export default function Checkout() {
     cart,
     cartTotal,
     restaurant,
+    checkoutRestaurantName,
     appliedPromoCode,
     fraisLivraison,
     selectedLoyaltyRewardId,
@@ -1643,7 +1652,7 @@ export default function Checkout() {
                 <div className="flex justify-between text-blue-600 dark:text-blue-300 text-sm sm:text-base">
                   <span className="flex items-center">
                     <FaTag className="h-3 w-3 mr-1" />
-                    {isLaBonnePateRestaurantName(restaurant?.nom)
+                    {isLaBonnePateRestaurantName(checkoutRestaurantName)
                       ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
                       : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
                   </span>
