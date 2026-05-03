@@ -39,19 +39,32 @@ export default function AdminTestPushPage() {
     }
   };
 
-  const sendTestPush = async () => {
+  const sendTestPush = async (target) => {
     setLoading(true);
     setResult(null);
     try {
+      const payload = {
+        title: "Test CVN'EAT 🔔",
+        body: 'Si tu vois cette notif, les pushes fonctionnent !',
+        data: { type: 'admin_test', target },
+      };
+
+      if (target === 'me') {
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth?.user?.id;
+        if (!uid) {
+          setResult({ ok: false, error: 'Session introuvable' });
+          return;
+        }
+        payload.userId = uid;
+      } else {
+        payload.role = target === 'restaurant' ? 'restaurant' : 'delivery';
+      }
+
       const res = await fetch('/api/notifications/send-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: 'delivery',
-          title: 'Test CVN\'EAT 🔔',
-          body: 'Si tu vois cette notif, les pushes fonctionnent !',
-          data: { type: 'admin_test' },
-        }),
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -85,27 +98,65 @@ export default function AdminTestPushPage() {
         </Link>
 
         <h1 className="text-xl font-bold text-gray-900 mb-2">Test notifications push</h1>
-        <p className="text-sm text-gray-600 mb-6">
-          Envoie une notification de test à tous les livreurs ayant l&apos;app ouverte (tokens enregistrés).
+        <p className="text-sm text-gray-600 mb-3">
+          Les envois ciblent les comptes qui ont un <strong>token enregistré</strong> dans{' '}
+          <code className="text-xs bg-gray-100 px-1 rounded">device_tokens</code> (app native connectée, notifications
+          acceptées).
         </p>
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <strong>Astuce :</strong> l&apos;ancien bouton « livreurs seulement » expliquait souvent « je ne reçois rien
+          sur mon iPhone » si ton compte est <strong>admin</strong> ou <strong>restaurant</strong>. Utilise « Mon
+          compte » pour tester <em>ton</em> téléphone, ou le bouton partenaires pour les restaurateurs.
+        </div>
 
-        <button
-          onClick={sendTestPush}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
-        >
-          {loading ? (
-            <>
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => sendTestPush('me')}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 font-medium"
+          >
+            {loading ? (
               <FaSpinner className="h-5 w-5 animate-spin" />
-              Envoi…
-            </>
-          ) : (
-            <>
+            ) : (
               <FaBell className="h-5 w-5" />
-              Envoyer test aux livreurs
-            </>
-          )}
-        </button>
+            )}
+            Test sur mon compte (mon iPhone / mon app)
+          </button>
+          <button
+            type="button"
+            onClick={() => sendTestPush('delivery')}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
+          >
+            {loading ? (
+              <FaSpinner className="h-5 w-5 animate-spin" />
+            ) : (
+              <FaBell className="h-5 w-5" />
+            )}
+            Envoyer test à tous les livreurs
+          </button>
+          <button
+            type="button"
+            onClick={() => sendTestPush('restaurant')}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 font-medium"
+          >
+            {loading ? (
+              <FaSpinner className="h-5 w-5 animate-spin" />
+            ) : (
+              <FaBell className="h-5 w-5" />
+            )}
+            Envoyer test à tous les restaurants (partenaires)
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-4">
+          Diagnostic détaillé par utilisateur : page{' '}
+          <Link href="/push-test" className="text-indigo-600 underline">
+            /push-test
+          </Link>{' '}
+          (connecté, Bearer) — vérifie le nombre de tokens puis envoie un self-test.
+        </p>
 
         {result && (
           <div
