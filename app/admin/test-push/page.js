@@ -57,6 +57,8 @@ export default function AdminTestPushPage() {
           return;
         }
         payload.userId = uid;
+      } else if (target === 'admin') {
+        payload.role = 'admin';
       } else {
         payload.role = target === 'restaurant' ? 'restaurant' : 'delivery';
       }
@@ -99,14 +101,15 @@ export default function AdminTestPushPage() {
 
         <h1 className="text-xl font-bold text-gray-900 mb-2">Test notifications push</h1>
         <p className="text-sm text-gray-600 mb-3">
-          Les envois ciblent les comptes qui ont un <strong>token enregistré</strong> dans{' '}
-          <code className="text-xs bg-gray-100 px-1 rounded">device_tokens</code> (app native connectée, notifications
-          acceptées).
+          Chaque bouton envoie <strong>uniquement</strong> aux utilisateurs de ce groupe qui ont un token dans{' '}
+          <code className="text-xs bg-gray-100 px-1 rounded">device_tokens</code>. Un « 7 / 7 » sur{' '}
+          <strong>livreurs</strong> = 7 livreurs ont reçu — pas ton iPhone si tu es connecté en <strong>admin</strong>{' '}
+          sur le web.
         </p>
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <strong>Astuce :</strong> l&apos;ancien bouton « livreurs seulement » expliquait souvent « je ne reçois rien
-          sur mon iPhone » si ton compte est <strong>admin</strong> ou <strong>restaurant</strong>. Utilise « Mon
-          compte » pour tester <em>ton</em> téléphone, ou le bouton partenaires pour les restaurateurs.
+          <strong>Pour ton iPhone admin :</strong> bouton vert « Mon compte » (push à ton user uniquement), ou « Tous
+          les admins » si plusieurs comptes admin ont l&apos;app. Sinon ouvre l&apos;app avec un compte{' '}
+          <strong>livreur</strong> pour recevoir le test livreurs.
         </div>
 
         <div className="space-y-3">
@@ -121,7 +124,20 @@ export default function AdminTestPushPage() {
             ) : (
               <FaBell className="h-5 w-5" />
             )}
-            Test sur mon compte (mon iPhone / mon app)
+            1 — Mon compte uniquement (ton iPhone avec ta session admin)
+          </button>
+          <button
+            type="button"
+            onClick={() => sendTestPush('admin')}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 font-medium"
+          >
+            {loading ? (
+              <FaSpinner className="h-5 w-5 animate-spin" />
+            ) : (
+              <FaBell className="h-5 w-5" />
+            )}
+            2 — Tous les comptes admin (tokens enregistrés)
           </button>
           <button
             type="button"
@@ -134,7 +150,7 @@ export default function AdminTestPushPage() {
             ) : (
               <FaBell className="h-5 w-5" />
             )}
-            Envoyer test à tous les livreurs
+            3 — Tous les livreurs
           </button>
           <button
             type="button"
@@ -147,7 +163,7 @@ export default function AdminTestPushPage() {
             ) : (
               <FaBell className="h-5 w-5" />
             )}
-            Envoyer test à tous les restaurants (partenaires)
+            4 — Tous les restaurants (partenaires)
           </button>
         </div>
         <p className="text-xs text-gray-500 mt-4">
