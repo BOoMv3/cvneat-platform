@@ -74,7 +74,7 @@ export async function POST(request) {
     if (!Number.isFinite(discountValue) || discountValue <= 0) {
       return NextResponse.json({ error: 'discount_value invalide' }, { status: 400, headers: corsHeaders });
     }
-    if (!['percentage', 'fixed', 'free_delivery'].includes(discountType)) {
+    if (!['percentage', 'fixed', 'free_delivery', 'delivery_percent'].includes(discountType)) {
       return NextResponse.json({ error: 'discount_type invalide' }, { status: 400, headers: corsHeaders });
     }
 

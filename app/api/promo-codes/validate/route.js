@@ -25,7 +25,7 @@ export async function OPTIONS() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { code, userId, orderAmount, restaurantId, isFirstOrder = false } = body;
+    const { code, userId, orderAmount, restaurantId, isFirstOrder = false, deliveryFeeEur } = body;
 
     if (!code) {
       return NextResponse.json(
@@ -142,6 +142,34 @@ export async function POST(request) {
             discountAmount = Math.min(parseFloat(promoCode.discount_value), orderAmount);
           } else if (promoCode.discount_type === 'free_delivery') {
             discountAmount = 0; // Sera géré séparément
+          } else if (promoCode.discount_type === 'delivery_percent') {
+            const pct = Math.min(100, Math.max(0, parseFloat(promoCode.discount_value) || 0));
+            const dFee = Math.max(0, parseFloat(deliveryFeeEur));
+            if (!Number.isFinite(dFee) || dFee <= 0) {
+              return NextResponse.json(
+                {
+                  valid: false,
+                  message:
+                    'Calcule d’abord les frais de livraison (adresse), puis réapplique le code.',
+                  discountAmount: 0,
+                },
+                { status: 200, headers: corsHeaders }
+              );
+            }
+            const deliveryDiscountEur = Math.round(dFee * (pct / 100) * 100) / 100;
+            return NextResponse.json(
+              {
+                valid: true,
+                discountAmount: 0,
+                discountType: 'delivery_percent',
+                deliveryPercent: pct,
+                deliveryDiscountEur,
+                message: `−${pct}% sur la livraison (−${deliveryDiscountEur.toFixed(2)}€)`,
+                description: promoCode.description || wheelWin.description || '',
+                promoCodeId: promoCode.id,
+              },
+              { headers: corsHeaders }
+            );
           }
 
           console.log('✅ Code ROULETTE valide:', {
@@ -224,17 +252,49 @@ export async function POST(request) {
     // Récupérer les détails du code promo pour le type de réduction
     const { data: promoCode, error: promoError } = await supabaseAdmin
       .from('promo_codes')
-      .select('discount_type, description')
+      .select('discount_type, discount_value, description')
       .eq('id', result.promo_code_id)
       .single();
+
+    const discountType = promoCode?.discount_type || 'fixed';
+
+    if (discountType === 'delivery_percent') {
+      const pct = Math.min(100, Math.max(0, parseFloat(promoCode?.discount_value) || 0));
+      const dFee = Math.max(0, parseFloat(deliveryFeeEur));
+      if (!Number.isFinite(dFee) || dFee <= 0) {
+        return NextResponse.json(
+          {
+            valid: false,
+            message:
+              'Calcule d’abord les frais de livraison (adresse), puis réapplique le code, ou ouvre le checkout depuis le panier.',
+            discountAmount: 0,
+          },
+          { status: 200, headers: corsHeaders }
+        );
+      }
+      const deliveryDiscountEur = Math.round(dFee * (pct / 100) * 100) / 100;
+      return NextResponse.json(
+        {
+          valid: true,
+          discountAmount: 0,
+          discountType: 'delivery_percent',
+          deliveryPercent: pct,
+          deliveryDiscountEur,
+          message: `−${pct}% sur la livraison (−${deliveryDiscountEur.toFixed(2)}€)`,
+          description: promoCode?.description || '',
+          promoCodeId: result.promo_code_id,
+        },
+        { headers: corsHeaders }
+      );
+    }
 
     return NextResponse.json({
       valid: true,
       discountAmount: parseFloat(result.discount_amount),
-      discountType: promoCode?.discount_type || 'fixed',
+      discountType,
       message: result.message,
       description: promoCode?.description || '',
-      promoCodeId: result.promo_code_id
+      promoCodeId: result.promo_code_id,
     }, { headers: corsHeaders });
 
   } catch (error) {

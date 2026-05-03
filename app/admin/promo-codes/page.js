@@ -9,6 +9,7 @@ function formatDiscount(p) {
   if (p.discount_type === 'percentage') return `-${p.discount_value}%`;
   if (p.discount_type === 'fixed') return `-${Number(p.discount_value).toFixed(2)}€`;
   if (p.discount_type === 'free_delivery') return 'Livraison offerte';
+  if (p.discount_type === 'delivery_percent') return `−${p.discount_value}% sur la livraison`;
   return `${p.discount_type} ${p.discount_value}`;
 }
 
@@ -306,6 +307,7 @@ export default function AdminPromoCodesPage() {
                       <option value="percentage">%</option>
                       <option value="fixed">€</option>
                       <option value="free_delivery">Livraison offerte</option>
+                      <option value="delivery_percent">% sur la livraison</option>
                     </select>
                     <input
                       value={form.discount_value}

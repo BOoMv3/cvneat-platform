@@ -16,6 +16,8 @@ export default function PromoCodeInput({
   onCodeApplied, 
   appliedCode, 
   cartTotal, 
+  /** Frais de livraison actuels (€) — requis pour les codes « % sur la livraison ». */
+  deliveryFeeEur = null,
   restaurantId, 
   userId,
   isFirstOrder = false 
@@ -42,12 +44,14 @@ export default function PromoCodeInput({
     setValidating(true);
     setValidationResult(null);
 
+    const dFee = deliveryFeeEur != null ? Number(deliveryFeeEur) : null;
     const requestBody = {
       code: code.trim(),
       userId: userId,
       orderAmount: orderAmount,
       restaurantId: restaurantId,
       isFirstOrder: isFirstOrder,
+      ...(Number.isFinite(dFee) && dFee > 0 ? { deliveryFeeEur: dFee } : {}),
     };
 
     const doValidate = async (url) => {
@@ -109,7 +113,13 @@ export default function PromoCodeInput({
             discountAmount: data.discountAmount,
             discountType: data.discountType,
             promoCodeId: data.promoCodeId,
-            description: data.description
+            description: data.description,
+            ...(data.discountType === 'delivery_percent'
+              ? {
+                  deliveryPercent: data.deliveryPercent,
+                  deliveryDiscountEur: data.deliveryDiscountEur,
+                }
+              : {}),
           });
         }
       } else {
@@ -179,7 +189,14 @@ export default function PromoCodeInput({
                 </p>
               )}
               <p className="text-sm font-bold text-green-700 dark:text-green-300">
-                -{appliedCode.discountAmount.toFixed(2)}€
+                {appliedCode.discountType === 'delivery_percent' ? (
+                  <>
+                    −{(appliedCode.deliveryDiscountEur ?? 0).toFixed(2)}€ sur la livraison
+                    {appliedCode.deliveryPercent != null ? ` (${appliedCode.deliveryPercent}%)` : ''}
+                  </>
+                ) : (
+                  <>−{Number(appliedCode.discountAmount || 0).toFixed(2)}€</>
+                )}
               </p>
             </div>
           </div>

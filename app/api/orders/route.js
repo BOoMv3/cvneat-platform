@@ -655,10 +655,26 @@ export async function POST(request) {
     promoDiscount = Math.min(promoDiscount, subtotalBeforeDiscount);
     const platform_fee = Math.max(0, parseFloat(platformFee) || 0);
     const total = subtotalBeforeDiscount; // on stocke dans 'total' le sous-total articles (hors frais/discount)
+
+    let promoFreeDelivery = false;
+    let promoDeliveryPercent = null;
+    if (promoCodeId) {
+      const { data: promoRowEarly } = await serviceClient
+        .from('promo_codes')
+        .select('discount_type, discount_value')
+        .eq('id', promoCodeId)
+        .maybeSingle();
+      promoFreeDelivery = promoRowEarly?.discount_type === 'free_delivery';
+      if (promoRowEarly?.discount_type === 'delivery_percent') {
+        promoDeliveryPercent = Math.min(100, Math.max(0, parseFloat(promoRowEarly.discount_value) || 0));
+      }
+    }
+
     // Frais reçus = après code promo « livraison offerte », avant récompense fidélité (palier livraison gratuite)
     let fraisLivraison = Math.round(parseFloat(deliveryFee ?? restaurant.frais_livraison ?? 0) * 100) / 100;
     // Garde-fou: si frais entre 0 et 2.50€ (hors 0 = livraison déjà offerte côté client), forcer 2.50€
-    if (fraisLivraison > 0 && fraisLivraison < 2.50) {
+    // Sauf promo « % sur la livraison » où les frais peuvent légitimement être sous 2,50€ après réduction.
+    if (fraisLivraison > 0 && fraisLivraison < 2.50 && !promoDeliveryPercent) {
       console.warn('⚠️ Frais livraison anormalement bas, application du minimum 2.50€:', fraisLivraison);
       fraisLivraison = 2.50;
     }
@@ -700,16 +716,6 @@ export async function POST(request) {
     let loyaltyBenefitEur = 0;
     let loyaltyArticleNote = null;
     let loyaltyArticleSubsidyEur = 0;
-
-    let promoFreeDelivery = false;
-    if (promoCodeId) {
-      const { data: promoRow } = await serviceClient
-        .from('promo_codes')
-        .select('discount_type')
-        .eq('id', promoCodeId)
-        .maybeSingle();
-      promoFreeDelivery = promoRow?.discount_type === 'free_delivery';
-    }
 
     const rewardId =
       typeof loyaltyRewardId === 'string' && loyaltyRewardId.trim() ? loyaltyRewardId.trim() : null;

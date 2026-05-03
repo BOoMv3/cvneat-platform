@@ -154,9 +154,16 @@ export default function Checkout() {
     const discountAmount = appliedPromoCode?.discountAmount || 0;
     const maxDiscount = Math.min(discountAmount, cartTotal);
     const promoFree = appliedPromoCode?.discountType === 'free_delivery';
+    const grossDel = Math.round(parseFloat(fraisLivraison || 0) * 100) / 100;
+    const deliveryPct =
+      appliedPromoCode?.discountType === 'delivery_percent'
+        ? Math.min(100, Math.max(0, Number(appliedPromoCode?.deliveryPercent) || 0))
+        : 0;
     const deliveryBeforeLoyalty = promoFree
       ? 0
-      : Math.round(parseFloat(fraisLivraison || 0) * 100) / 100;
+      : deliveryPct > 0
+        ? Math.max(0, Math.round(grossDel * (1 - deliveryPct / 100) * 100) / 100)
+        : grossDel;
     const adj = computeLoyaltyAdjustments({
       rewardId: selectedLoyaltyRewardId,
       cartSubtotalEur: cartTotal,
@@ -772,6 +779,14 @@ export default function Checkout() {
       let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
       if (appliedPromoCode?.discountType === 'free_delivery') {
         finalDeliveryFeeForTotal = 0;
+      } else if (appliedPromoCode?.discountType === 'delivery_percent') {
+        const dpp = Math.min(100, Math.max(0, Number(appliedPromoCode?.deliveryPercent) || 0));
+        if (dpp > 0) {
+          finalDeliveryFeeForTotal = Math.max(
+            0,
+            Math.round(finalDeliveryFeeForTotal * (1 - dpp / 100) * 100) / 100
+          );
+        }
       }
       const PLATFORM_FEE = cvneatPlusPlatformFeeFreeLayer ? 0 : 0.49; // Offert pour abonnés éligibles CVN'EAT Plus
 
@@ -1557,6 +1572,25 @@ export default function Checkout() {
                   <span className="font-semibold">-{maxDiscount.toFixed(2)}€</span>
                 </div>
               )}
+              {appliedPromoCode?.discountType === 'delivery_percent' &&
+                (appliedPromoCode?.deliveryPercent ?? 0) > 0 && (
+                  <div className="flex justify-between text-green-600 dark:text-green-400 text-sm sm:text-base">
+                    <span>
+                      Réduction livraison ({appliedPromoCode.code}, −{appliedPromoCode.deliveryPercent}%)
+                    </span>
+                    <span className="font-semibold">
+                      −
+                      {(
+                        Math.round(
+                          (Number(fraisLivraison) || 0) *
+                            (Math.min(100, Math.max(0, Number(appliedPromoCode.deliveryPercent) || 0)) / 100) *
+                            100
+                        ) / 100
+                      ).toFixed(2)}
+                      €
+                    </span>
+                  </div>
+                )}
               {adj.pointsCost > 0 && rewardMeta && (
                 <>
                   {rewardMeta.redemption?.type === 'subtotal_discount' && adj.extraDiscountOnSubtotal > 0 && (
@@ -1737,6 +1771,7 @@ export default function Checkout() {
                 }}
                 appliedCode={appliedPromoCode}
                 cartTotal={cartTotal}
+                deliveryFeeEur={fraisLivraison}
                 restaurantId={restaurant?.id || restaurant?.restaurant_id || null}
                 userId={user?.id}
                 isFirstOrder={false}
