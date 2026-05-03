@@ -411,27 +411,40 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
               total: notificationTotal,
               data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
             });
-            console.log('✅ Notification push livreurs (app):', pushResult.sent, '/', pushResult.total);
+            console.log('✅ Notification push livreurs+admins (app):', pushResult.sent, '/', pushResult.total);
             if (pushResult.sent === 0 && pushResult.total === 0) {
-              console.warn('⚠️ Aucun token livreur: vérifier user_details.role=delivery et device_tokens.');
+              console.warn('⚠️ Aucun token: vérifier roles delivery/livreur/admin et device_tokens.');
             }
           } catch (pushErr) {
             console.warn('⚠️ Erreur push direct, tentative fallback HTTP:', pushErr?.message);
             try {
               const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
-              const pushRes = await fetch(`${base}/api/notifications/send-push`, {
+              const bodyBase = {
+                title: 'Nouvelle commande disponible 🚚',
+                body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' },
+              };
+              const pushResDel = await fetch(`${base}/api/notifications/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: 'delivery', ...bodyBase }),
+              });
+              if (pushResDel.ok) {
+                const fallback = await pushResDel.json().catch(() => ({}));
+                console.log('✅ Fallback HTTP push livreurs:', fallback.sent, '/', fallback.total);
+              }
+              const pushResAdm = await fetch(`${base}/api/notifications/send-push`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  role: 'delivery',
-                  title: 'Nouvelle commande disponible 🚚',
-                  body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
-                  data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
-                })
+                  role: 'admin',
+                  ...bodyBase,
+                  data: { ...bodyBase.data, url: '/admin/orders' },
+                }),
               });
-              if (pushRes.ok) {
-                const fallback = await pushRes.json().catch(() => ({}));
-                console.log('✅ Fallback HTTP push:', fallback.sent, '/', fallback.total);
+              if (pushResAdm.ok) {
+                const fb2 = await pushResAdm.json().catch(() => ({}));
+                console.log('✅ Fallback HTTP push admins:', fb2.sent, '/', fb2.total);
               }
             } catch (_) {}
           }

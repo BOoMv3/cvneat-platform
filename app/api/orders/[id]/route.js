@@ -730,7 +730,7 @@ export async function PUT(request, { params }) {
           total: total.toFixed(2),
           data: { type: 'new_order_available', orderId: id, url: '/delivery/dashboard' },
         });
-        console.log(`✅ [PUT /orders] Push livreurs (fallback):`, pushResult.sent, '/', pushResult.total);
+        console.log(`✅ [PUT /orders] Push livreurs+admins (fallback):`, pushResult.sent, '/', pushResult.total);
       } catch (e) {
         console.warn(`⚠️ [PUT /orders] Push fallback erreur:`, e?.message);
       }

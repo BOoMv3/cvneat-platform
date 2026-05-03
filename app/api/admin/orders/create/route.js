@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../../lib/commission';
 import { supabase } from '../../../../../lib/supabase';
 import { getItemLineTotal } from '../../../../../lib/cartUtils';
+import { sendDeliveryAppPush } from '../../../../../lib/sendDeliveryAppPush';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -345,27 +346,21 @@ export async function POST(request) {
         console.warn('⚠️ Restaurant sans user_id: push restaurant ignoré (admin)');
       }
 
-      // 2) Push aux livreurs (commande disponible)
-      const pushDelivery = await fetch(`${baseUrl}/api/notifications/send-push`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: 'delivery',
-          title: 'Nouvelle commande disponible 🚚',
-          body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+      // 2) Push livreurs + admins (même logique que webhook Stripe / paiement)
+      try {
+        const pushResult = await sendDeliveryAppPush({
+          orderId: order.id,
+          total: notificationTotal,
           data: {
             type: 'new_order_available',
             orderId: order.id,
             url: '/delivery/dashboard',
             source: 'admin',
           },
-        }),
-      });
-      if (pushDelivery.ok) {
-        const result = await pushDelivery.json().catch(() => ({}));
-        console.log('✅ Push livreurs (admin):', result.sent, '/', result.total);
-      } else {
-        console.warn('⚠️ Push livreurs (admin) HTTP:', pushDelivery.status);
+        });
+        console.log('✅ Push livreurs+admins (admin create):', pushResult.sent, '/', pushResult.total);
+      } catch (pushDelErr) {
+        console.warn('⚠️ Push livreurs+admins (admin create):', pushDelErr?.message || pushDelErr);
       }
     } catch (pushErr) {
       console.warn('⚠️ Erreur envoi push (admin create order):', pushErr?.message || pushErr);

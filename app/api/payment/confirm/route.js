@@ -329,7 +329,7 @@ export async function POST(request) {
               total: notificationTotal,
               data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
             });
-            console.log('✅ [payment/confirm] Push livreurs:', pushResult.sent, '/', pushResult.total);
+            console.log('✅ [payment/confirm] Push livreurs+admins:', pushResult.sent, '/', pushResult.total);
           } catch (e) {
             console.warn('⚠️ [payment/confirm] send-push erreur:', e?.message || e);
           }
