@@ -29,7 +29,9 @@ import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu, ca
 import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP, computeLoyaltyAdjustments } from '@/lib/loyalty-rewards';
 import {
   SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
-  computeSecondArticlePromoDiscountFromItems,
+  LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE,
+  computeCheckoutPlatformDiscountEur,
+  isLaBonnePateRestaurantName,
 } from '@/lib/platform-promo';
 import {
   CVNEAT_PLUS_NAME,
@@ -38,7 +40,6 @@ import {
   applyCvneatPlusHalfOnDelivery,
   cvneatPlusAppliesToPlatformFeeWaiver,
 } from '@/lib/cvneat-plus';
-import { getTonightAutoPromo } from '@/lib/tonight-promo';
 
 // Réduire les warnings Stripe non critiques en développement
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -150,9 +151,7 @@ export default function Checkout() {
   );
 
   const loyaltyCheckout = useMemo(() => {
-    const tonightPromo = getTonightAutoPromo(cartTotal);
-    const autoPromoDiscount = tonightPromo.eligible ? tonightPromo.discountEur : 0;
-    const discountAmount = (appliedPromoCode?.discountAmount || 0) + autoPromoDiscount;
+    const discountAmount = appliedPromoCode?.discountAmount || 0;
     const maxDiscount = Math.min(discountAmount, cartTotal);
     const promoFree = appliedPromoCode?.discountType === 'free_delivery';
     const deliveryBeforeLoyalty = promoFree
@@ -171,8 +170,9 @@ export default function Checkout() {
       0,
       Math.round((subAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
     );
-    const platformPromoDiscount = computeSecondArticlePromoDiscountFromItems(cart, {
+    const platformPromoDiscount = computeCheckoutPlatformDiscountEur(cart, {
       capAt: subAfterAll,
+      restaurantName: restaurant?.nom,
     });
     const totalToPay = Math.max(
       0.5,
@@ -183,8 +183,6 @@ export default function Checkout() {
       : null;
     return {
       cartTotal,
-      autoPromoDiscount,
-      tonightPromoEligible: tonightPromo.eligible,
       maxDiscount,
       promoFree,
       deliveryBeforeLoyalty,
@@ -199,6 +197,7 @@ export default function Checkout() {
   }, [
     cart,
     cartTotal,
+    restaurant,
     appliedPromoCode,
     fraisLivraison,
     selectedLoyaltyRewardId,
@@ -766,11 +765,8 @@ export default function Checkout() {
 
       const cartSubtotal = computeCartTotalWithExtras(itemsToUse);
 
-      // Calculer la réduction (code promo + promo automatique ce soir)
-      const tonightPromo = getTonightAutoPromo(cartSubtotal);
-      const autoPromoDiscount = tonightPromo.eligible ? tonightPromo.discountEur : 0;
       const manualPromoDiscount = appliedPromoCode?.discountAmount || 0;
-      const discountAmount = manualPromoDiscount + autoPromoDiscount;
+      const discountAmount = manualPromoDiscount;
       
       // Gérer la livraison gratuite si le code promo le prévoit (avant palier fidélité « livraison gratuite »)
       let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
@@ -797,8 +793,9 @@ export default function Checkout() {
         0,
         Math.round((subtotalAfterPromo - adj.extraDiscountOnSubtotal) * 100) / 100
       );
-      const platformPromoDiscount = computeSecondArticlePromoDiscountFromItems(itemsToUse, {
+      const platformPromoDiscount = computeCheckoutPlatformDiscountEur(itemsToUse, {
         capAt: subtotalAfterAllDiscounts,
+        restaurantName: resolvedRestaurant?.nom,
       });
       const finalDeliveryFromLoyalty = adj.deliveryFeeEurAfter;
       const totalAmount = Math.max(
@@ -1612,7 +1609,9 @@ export default function Checkout() {
                 <div className="flex justify-between text-blue-600 dark:text-blue-300 text-sm sm:text-base">
                   <span className="flex items-center">
                     <FaTag className="h-3 w-3 mr-1" />
-                    {SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
+                    {isLaBonnePateRestaurantName(restaurant?.nom)
+                      ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
+                      : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
                   </span>
                   <span className="font-semibold">-{platformPromoDiscount.toFixed(2)}€</span>
                 </div>
@@ -1732,13 +1731,6 @@ export default function Checkout() {
                 <FaTag className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
                 Code promo
               </h3>
-              {loyaltyCheckout.tonightPromoEligible && (
-                <div className="mb-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2">
-                  <p className="text-sm font-semibold text-red-700 dark:text-red-300">
-                    🔥 Promo ce soir appliquée automatiquement: -{loyaltyCheckout.autoPromoDiscount.toFixed(2)}EUR dès 30EUR d&apos;achat.
-                  </p>
-                </div>
-              )}
               <PromoCodeInput
                 onCodeApplied={(codeData) => {
                   setAppliedPromoCode(codeData);

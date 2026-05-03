@@ -6,9 +6,8 @@ import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '.
 import { isOrdersClosed } from '@/lib/ordersClosed';
 import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
-import { computeSecondArticlePromoDiscountFromItems } from '@/lib/platform-promo';
+import { computeCheckoutPlatformDiscountEur } from '@/lib/platform-promo';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
-import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import {
   isCvneatPlusActive,
   cvneatPlusEligibilityForDeliveryDiscount,
@@ -654,17 +653,6 @@ export async function POST(request) {
     const subtotalBeforeDiscount = totalAmount || 0; // correspond au sous-total articles (S)
     let promoDiscount = Math.max(0, parseFloat(discountAmount) || 0);
     promoDiscount = Math.min(promoDiscount, subtotalBeforeDiscount);
-    const tonightPromo = getTonightAutoPromo(subtotalBeforeDiscount);
-    if (tonightPromo.eligible) {
-      promoDiscount = Math.min(
-        subtotalBeforeDiscount,
-        Math.round((promoDiscount + tonightPromo.discountEur) * 100) / 100
-      );
-      console.log('✅ Promo auto soir appliquee:', {
-        subtotalBeforeDiscount,
-        autoDiscount: tonightPromo.discountEur,
-      });
-    }
     const platform_fee = Math.max(0, parseFloat(platformFee) || 0);
     const total = subtotalBeforeDiscount; // on stocke dans 'total' le sous-total articles (hors frais/discount)
     // Frais reçus = après code promo « livraison offerte », avant récompense fidélité (palier livraison gratuite)
@@ -847,8 +835,9 @@ export async function POST(request) {
     // Calculs financiers: commission/payout sur le montant RÉELLEMENT payé par le client (après réduction)
     // Sinon fuite: on paierait le restaurant sur le montant avant réduction alors qu'on n'encaisse que l'après-réduction.
     const totalAfterDiscount = Math.max(0, Math.round((total - discount) * 100) / 100);
-    const basePlatformDiscountAmount = computeSecondArticlePromoDiscountFromItems(items, {
+    const basePlatformDiscountAmount = computeCheckoutPlatformDiscountEur(items, {
       capAt: totalAfterDiscount,
+      restaurantName: restaurant?.nom,
     });
     let platform_discount_amount = basePlatformDiscountAmount;
     let effectivePlatformFee = platform_fee;

@@ -25,8 +25,13 @@ import PriceInfoBanner from '@/components/PriceInfoBanner';
 import { getItemLineTotal } from '@/lib/cartUtils';
 import {
   SECOND_ARTICLE_PROMO_BANNER,
-  computeSecondArticlePromoDiscountFromItems,
+  LA_BONNE_PATE_STOCK_PROMO_BANNER,
+  isLaBonnePateStockPromoEffective,
+  LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE,
+  SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
+  computeCheckoutPlatformDiscountEur,
   isSecondArticlePromoActive,
+  isLaBonnePateRestaurantName,
 } from '@/lib/platform-promo';
 
 export default function Panier() {
@@ -57,8 +62,12 @@ export default function Panier() {
     [cart]
   );
   const secondArticlePromo = useMemo(
-    () => computeSecondArticlePromoDiscountFromItems(cart, { capAt: subtotalBrut }),
-    [cart, subtotalBrut]
+    () =>
+      computeCheckoutPlatformDiscountEur(cart, {
+        capAt: subtotalBrut,
+        restaurantName: restaurant?.nom,
+      }),
+    [cart, subtotalBrut, restaurant]
   );
 
   const loadCart = () => {
@@ -241,6 +250,11 @@ export default function Panier() {
       {isSecondArticlePromoActive() && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white text-center text-sm sm:text-base font-semibold py-2.5 px-4 shadow-md">
           {SECOND_ARTICLE_PROMO_BANNER}
+        </div>
+      )}
+      {isLaBonnePateStockPromoEffective() && isLaBonnePateRestaurantName(restaurant?.nom) && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-center text-sm sm:text-base font-semibold py-2.5 px-4 shadow-md">
+          {LA_BONNE_PATE_STOCK_PROMO_BANNER}
         </div>
       )}
 
@@ -471,7 +485,11 @@ export default function Panier() {
                 </div>
                 {secondArticlePromo > 0 && (
                   <div className="flex justify-between text-blue-600 text-sm sm:text-base font-medium">
-                    <span>Promo 2e article -50 %</span>
+                    <span>
+                      {isLaBonnePateRestaurantName(restaurant?.nom)
+                        ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
+                        : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
+                    </span>
                     <span>-{secondArticlePromo.toFixed(2)}€</span>
                   </div>
                 )}

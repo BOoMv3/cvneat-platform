@@ -50,8 +50,11 @@ import {
 } from '@/lib/loyalty-rewards';
 import {
   SECOND_ARTICLE_PROMO_BANNER,
-  computeSecondArticlePromoDiscountFromItems,
+  LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE,
+  SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
+  computeCheckoutPlatformDiscountEur,
   isSecondArticlePromoActive,
+  isLaBonnePateRestaurantName,
 } from '@/lib/platform-promo';
 import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
 
@@ -514,6 +517,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [cart, setCart] = useState([]);
+  /** Restaurant du panier (localStorage) — nécessaire pour la promo La Bonne Pâte sur l’accueil. */
+  const [cartRestaurant, setCartRestaurant] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [lastTrackedSearch, setLastTrackedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -565,8 +570,12 @@ export default function Home() {
 
   const homeCartSubtotal = useMemo(() => computeCartTotalWithExtras(cart), [cart]);
   const homeSecondArticlePromo = useMemo(
-    () => computeSecondArticlePromoDiscountFromItems(cart, { capAt: homeCartSubtotal }),
-    [cart, homeCartSubtotal]
+    () =>
+      computeCheckoutPlatformDiscountEur(cart, {
+        capAt: homeCartSubtotal,
+        restaurantName: cartRestaurant?.nom,
+      }),
+    [cart, homeCartSubtotal, cartRestaurant]
   );
   const homeCartNetSubtotal = useMemo(
     () => Math.max(0, Math.round((homeCartSubtotal - homeSecondArticlePromo) * 100) / 100),
@@ -672,6 +681,7 @@ export default function Home() {
       const saved = safeLocalStorage.getJSON('cart');
       if (saved && Array.isArray(saved.items) && saved.items.length > 0) {
         setCart(saved.items);
+        setCartRestaurant(saved.restaurant || null);
       }
     } catch (_) {}
   }, []);
@@ -1701,7 +1711,11 @@ export default function Home() {
             </div>
             {homeSecondArticlePromo > 0 && (
               <div className="flex justify-between text-sm text-blue-600 dark:text-blue-300 font-medium">
-                <span>Promo 2e article -50 %</span>
+                <span>
+                  {isLaBonnePateRestaurantName(cartRestaurant?.nom)
+                    ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
+                    : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
+                </span>
                 <span>-{homeSecondArticlePromo.toFixed(2)}€</span>
               </div>
             )}
