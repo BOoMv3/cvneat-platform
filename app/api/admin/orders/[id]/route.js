@@ -36,22 +36,50 @@ export async function GET(request, { params }) {
 
     const { data: order, error } = await adminClient
       .from('commandes')
-      .select(`
-        *,
-        user:users(email, nom, prenom, telephone),
-        restaurant:restaurants(nom, adresse, telephone),
-        details_commande(
-          *,
-          menus(nom, description, prix)
-        ),
-        delivery:users!livreur_id(email, nom, prenom, telephone)
-      `)
+      .select('*')
       .eq('id', params.id)
       .single();
 
-    if (error) throw error;
+    if (error || !order) throw error || new Error('Commande non trouvée');
 
-    return NextResponse.json(order);
+    const [userRes, restaurantRes, detailsRes, deliveryRes] = await Promise.all([
+      order.user_id
+        ? adminClient
+            .from('users')
+            .select('email, nom, prenom, telephone')
+            .eq('id', order.user_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      order.restaurant_id
+        ? adminClient
+            .from('restaurants')
+            .select('nom, adresse, telephone')
+            .eq('id', order.restaurant_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      adminClient
+        .from('details_commande')
+        .select(`
+          *,
+          menus(nom, description, prix)
+        `)
+        .eq('commande_id', order.id),
+      order.livreur_id
+        ? adminClient
+            .from('users')
+            .select('email, nom, prenom, telephone')
+            .eq('id', order.livreur_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    return NextResponse.json({
+      ...order,
+      user: userRes?.data || null,
+      restaurant: restaurantRes?.data || null,
+      details_commande: detailsRes?.data || [],
+      delivery: deliveryRes?.data || null,
+    });
   } catch (error) {
     console.error('Erreur récupération commande:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
@@ -107,15 +135,37 @@ export async function PUT(request, { params }) {
       .from('commandes')
       .update(updateData)
       .eq('id', params.id)
-      .select(`
-        *,
-        user:users(email, nom),
-        restaurant:restaurants(nom),
-        delivery:users!livreur_id(email, nom)
-      `)
+      .select('*')
       .single();
 
     if (error) throw error;
+
+    const [userRes, restaurantRes, deliveryRes] = await Promise.all([
+      updatedOrder.user_id
+        ? adminClient
+            .from('users')
+            .select('email, nom, prenom, full_name')
+            .eq('id', updatedOrder.user_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      updatedOrder.restaurant_id
+        ? adminClient
+            .from('restaurants')
+            .select('nom')
+            .eq('id', updatedOrder.restaurant_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      updatedOrder.livreur_id
+        ? adminClient
+            .from('users')
+            .select('email, nom, prenom, full_name')
+            .eq('id', updatedOrder.livreur_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    const userDetails = userRes?.data || null;
+    const restaurantDetails = restaurantRes?.data || null;
+    const deliveryDetails = deliveryRes?.data || null;
 
     // Envoyer email de notification au client
     if (status) {
@@ -127,11 +177,11 @@ export async function PUT(request, { params }) {
             type: 'orderStatusUpdate',
             data: {
               id: updatedOrder.id,
-              customerName: updatedOrder.user?.full_name || updatedOrder.user?.email,
-              restaurantName: updatedOrder.restaurant?.nom || 'Restaurant',
+              customerName: userDetails?.full_name || userDetails?.email,
+              restaurantName: restaurantDetails?.nom || 'Restaurant',
               status
             },
-            recipientEmail: updatedOrder.user?.email
+            recipientEmail: userDetails?.email
           })
         });
       } catch (emailError) {
@@ -149,11 +199,11 @@ export async function PUT(request, { params }) {
             type: 'deliveryAssigned',
             data: {
               orderId: updatedOrder.id,
-              deliveryName: updatedOrder.delivery?.full_name,
-              restaurantName: updatedOrder.restaurant?.nom,
+              deliveryName: deliveryDetails?.full_name,
+              restaurantName: restaurantDetails?.nom,
               deliveryAddress: updatedOrder.delivery_address
             },
-            recipientEmail: updatedOrder.delivery?.email
+            recipientEmail: deliveryDetails?.email
           })
         });
       } catch (emailError) {

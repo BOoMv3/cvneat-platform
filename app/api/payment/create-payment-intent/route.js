@@ -54,9 +54,9 @@ export async function POST(request) {
       );
     }
 
-    // Sécurité/fiabilité: empêcher de facturer une livraison < 2.50€ (sauf promo "free_delivery")
-    // On ne fait PAS confiance au montant client; on vérifie la cohérence à partir de la commande.
-    // Si incohérence, on bloque plutôt que de facturer un mauvais montant.
+    // Sécurité/fiabilité: on ne fait PAS confiance au montant client.
+    // On recalcule le montant attendu depuis la commande (source de vérité),
+    // puis on force ce montant en cas d'écart.
     const orderId = metadata?.order_id;
     if (orderId) {
       const sb = getServiceClient();
@@ -103,18 +103,10 @@ export async function POST(request) {
             }
             const amountDiff = Math.abs(amountNumber - expectedAmount);
 
-            // 1. Frais de livraison invalides (0 < x < 2.50€) : corriger en BDD au lieu de bloquer le client
-            if (!isFreeDelivery && storedDeliveryFee > 0 && storedDeliveryFee < 2.50) {
-              console.warn('⚠️ Frais de livraison corrigés (0 < x < 2.50€) → 2.50€ pour commande:', orderId);
-              await sb.from('commandes').update({ frais_livraison: 2.50 }).eq('id', orderId);
-              // Recalculer expectedAmount avec 2.50€ de frais
-              expectedAmount = Math.round((subtotalAfterDiscount + 2.50 + PLATFORM_FEE) * 100) / 100;
-              if (platformDiscountAmount > 0) {
-                expectedAmount = Math.max(0.5, Math.round((expectedAmount - platformDiscountAmount) * 100) / 100);
-              }
-              amountNumber = expectedAmount;
-            } else if (amountDiff > AMOUNT_TOLERANCE) {
-              // 2. Toujours facturer le montant de la commande (source de vérité) — ne jamais bloquer pour écart de montant
+            // Toujours facturer le montant de la commande (source de vérité) — ne jamais
+            // forcer un minimum livraison ici, sinon on casse les remises légitimes
+            // (CVN'EAT Plus, promo %, fidélité, etc.).
+            if (amountDiff > AMOUNT_TOLERANCE) {
               console.warn('⚠️ Montant frontend diffère de la commande, utilisation du montant commande:', {
                 orderId,
                 amountNumber,

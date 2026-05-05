@@ -19,6 +19,7 @@ import {
 } from 'react-icons/fa';
 
 export default function TransfersTracking() {
+  const OVERRIDE_STORAGE_KEY = 'restaurant_remaining_override_v1';
   const router = useRouter();
   const [transfers, setTransfers] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
@@ -43,6 +44,48 @@ export default function TransfersTracking() {
     remainingToPay: 0
   });
   const [paymentLoadError, setPaymentLoadError] = useState(null);
+
+  const readLocalOverrides = () => {
+    try {
+      if (typeof window === 'undefined') return {};
+      const raw = localStorage.getItem(OVERRIDE_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const writeLocalOverrides = (map) => {
+    try {
+      if (typeof window === 'undefined') return;
+      localStorage.setItem(OVERRIDE_STORAGE_KEY, JSON.stringify(map || {}));
+    } catch {
+      // no-op
+    }
+  };
+
+  const getLocalOverride = (restaurantId) => {
+    const map = readLocalOverrides();
+    if (!(restaurantId in map)) return null;
+    const n = parseFloat(map[restaurantId]);
+    return Number.isFinite(n) ? Math.max(0, n) : null;
+  };
+
+  const setLocalOverride = (restaurantId, amountOrNull) => {
+    const map = readLocalOverrides();
+    if (amountOrNull == null) {
+      delete map[restaurantId];
+    } else {
+      map[restaurantId] = amountOrNull;
+    }
+    writeLocalOverrides(map);
+  };
+
+  const isMissingOverrideColumnError = (err) => {
+    const msg = (err?.message || '').toString().toLowerCase();
+    return msg.includes('remaining_to_pay_override') && msg.includes('schema cache');
+  };
   
   // Formulaire nouveau virement
   const [formData, setFormData] = useState({
@@ -323,9 +366,12 @@ export default function TransfersTracking() {
             remainingToPay = Math.max(0, remainingToPay - 15);
           }
           // Override manuel : si un montant a été saisi manuellement, on l'utilise à la place
-          const hasManualOverride = restaurant.remaining_to_pay_override != null && restaurant.remaining_to_pay_override !== '';
+          const dbOverrideRaw = restaurant.remaining_to_pay_override;
+          const localOverrideRaw = getLocalOverride(restaurant.id);
+          const effectiveOverrideRaw = dbOverrideRaw != null ? dbOverrideRaw : localOverrideRaw;
+          const hasManualOverride = effectiveOverrideRaw != null && effectiveOverrideRaw !== '';
           if (hasManualOverride) {
-            const override = parseFloat(restaurant.remaining_to_pay_override);
+            const override = parseFloat(effectiveOverrideRaw);
             remainingToPay = Number.isFinite(override) ? Math.max(0, override) : remainingToPay;
           }
 
@@ -339,7 +385,8 @@ export default function TransfersTracking() {
             orderCount: paidOrders.length,
             commissionRate: fixedRate !== null ? fixedRate : (defaultRestaurantRatePercent ?? 20),
             is99StreetFood: is99StreetFood(restaurant.nom),
-            hasManualOverride
+            hasManualOverride,
+            remaining_to_pay_override: effectiveOverrideRaw
           };
         })
       );
@@ -413,7 +460,16 @@ export default function TransfersTracking() {
         .from('restaurants')
         .update({ remaining_to_pay_override: amount })
         .eq('id', restaurantForOverride.id);
-      if (error) throw error;
+      if (error) {
+        if (isMissingOverrideColumnError(error)) {
+          setLocalOverride(restaurantForOverride.id, amount);
+          alert("Colonne DB manquante pour l'override manuel. Montant enregistré localement sur cet appareil.");
+        } else {
+          throw error;
+        }
+      } else {
+        setLocalOverride(restaurantForOverride.id, amount);
+      }
       setShowOverrideModal(false);
       setRestaurantForOverride(null);
       fetchRestaurantPayments();
@@ -430,7 +486,16 @@ export default function TransfersTracking() {
         .from('restaurants')
         .update({ remaining_to_pay_override: null })
         .eq('id', restaurant.id);
-      if (error) throw error;
+      if (error) {
+        if (isMissingOverrideColumnError(error)) {
+          setLocalOverride(restaurant.id, null);
+          alert('Montant manuel local supprimé (colonne DB manquante).');
+        } else {
+          throw error;
+        }
+      } else {
+        setLocalOverride(restaurant.id, null);
+      }
       fetchRestaurantPayments();
     } catch (err) {
       console.error(err);
