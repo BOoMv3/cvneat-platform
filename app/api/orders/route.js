@@ -780,6 +780,8 @@ export async function POST(request) {
 
     let cvneatPlusEligible = false;
     let cvneatPlusHalfDelivery = false;
+    /** Tarif course pour livreur / commission (identique au tarif client sauf si −50% CVNeat Plus). */
+    let fraisLivraisonCoursePourLivreur = fraisLivraison;
     if (userId) {
       const { data: plusRow } = await serviceClient
         .from('users')
@@ -798,8 +800,10 @@ export async function POST(request) {
           loyaltyRewardId: rewardId,
         });
       if (cvneatPlusEligible && fraisLivraison > 0) {
-        const half = applyCvneatPlusHalfOnDelivery(fraisLivraison);
-        if (half < fraisLivraison) {
+        const avantAbonnement = fraisLivraison;
+        const half = applyCvneatPlusHalfOnDelivery(avantAbonnement);
+        if (half < avantAbonnement) {
+          fraisLivraisonCoursePourLivreur = avantAbonnement;
           fraisLivraison = half;
           cvneatPlusHalfDelivery = true;
           console.log("✅ CVN'EAT Plus: −50% sur les frais de livraison (serveur)");
@@ -878,10 +882,11 @@ export async function POST(request) {
     const DELIVERY_COMMISSION_RATE = 0.10; // 10% de commission sur la course (si > 2.50€)
     const DELIVERY_BASE_FEE = 2.50; // Seuil déclencheur
     let deliveryCommissionCvneat = 0.00;
-    if (fraisLivraison > DELIVERY_BASE_FEE) {
-      deliveryCommissionCvneat = Math.round(fraisLivraison * DELIVERY_COMMISSION_RATE * 100) / 100;
+    if (fraisLivraisonCoursePourLivreur > DELIVERY_BASE_FEE) {
+      deliveryCommissionCvneat =
+        Math.round(fraisLivraisonCoursePourLivreur * DELIVERY_COMMISSION_RATE * 100) / 100;
     }
-    // Le livreur recevra: fraisLivraison - deliveryCommissionCvneat
+    // Le livreur recevra: fraisLivraisonCoursePourLivreur - deliveryCommissionCvneat
     
     console.log('Finance computation:', {
       commission_rate: effectiveRatePercent,
@@ -912,6 +917,7 @@ export async function POST(request) {
       ville_livraison: sanitizedDeliveryInfo.city || null,
       total: total, // sous-total articles
       frais_livraison: fraisLivraison,
+      frais_livraison_course: fraisLivraisonCoursePourLivreur,
       statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation
       security_code: securityCode, // Code de sécurité pour la livraison
       delivery_requested_at: new Date().toISOString(), // Timestamp pour l'expiration automatique si aucun livreur n'accepte
@@ -1068,6 +1074,7 @@ export async function POST(request) {
       'loyalty_discount_amount',
       'platform_discount_amount',
       'cvneat_plus_half_delivery',
+      'frais_livraison_course',
     ]);
     const payloadForInsert = { ...orderData };
 

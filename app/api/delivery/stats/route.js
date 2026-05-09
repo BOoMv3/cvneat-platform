@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { livreurEarningNetEur } from '../../../../lib/livreur-delivery-earnings';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -66,14 +67,10 @@ export async function GET(request) {
     }
 
     // Calculer les statistiques
-    // IMPORTANT: Utiliser frais_livraison - delivery_commission_cvneat pour calculer les gains réels du livreur
+    // Gain livreur sur la base course (non réduite par CVNeat Plus côté client).
     const totalDeliveries = orders?.length || 0;
-    const totalEarnings = orders?.reduce((sum, order) => {
-      const fraisLivraison = parseFloat(order.frais_livraison || 0);
-      const commission = parseFloat(order.delivery_commission_cvneat || 0);
-      const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
-      return sum + livreurEarning;
-    }, 0) || 0;
+    const totalEarnings =
+      orders?.reduce((sum, order) => sum + livreurEarningNetEur(order), 0) || 0;
     
     // Commandes d'aujourd'hui
     const todayOrders = orders?.filter(order => {
@@ -101,15 +98,14 @@ export async function GET(request) {
     // Récupérer aussi le total historique (toutes les livrées, payées ou non) pour cohérence affichage
     const { data: allDelivered } = await supabaseAdmin
       .from('commandes')
-      .select('frais_livraison, delivery_commission_cvneat')
+      .select('frais_livraison, frais_livraison_course, delivery_commission_cvneat')
       .eq('statut', 'livree')
       .eq('livreur_id', user.id);
 
-    const totalEarningsAll = (allDelivered || []).reduce((sum, o) => {
-      const f = parseFloat(o.frais_livraison || 0);
-      const c = parseFloat(o.delivery_commission_cvneat || 0);
-      return sum + (f - c);
-    }, 0);
+    const totalEarningsAll = (allDelivered || []).reduce(
+      (sum, o) => sum + livreurEarningNetEur(o),
+      0
+    );
     const totalDeliveriesAll = allDelivered?.length || 0;
 
     const stats = {

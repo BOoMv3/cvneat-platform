@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
+import { livreurEarningNetEur } from '../../../../lib/livreur-delivery-earnings';
 import { 
   FaArrowLeft, 
   FaPlus, 
@@ -156,7 +157,7 @@ export default function DeliveryTransfersTracking() {
           // Commandes livrées par ce livreur et pas encore payées au livreur
           const { data: ordersRaw, error: ordersError } = await supabase
             .from('commandes')
-            .select('id, frais_livraison, delivery_commission_cvneat, created_at, statut, payment_status')
+            .select('id, frais_livraison, frais_livraison_course, delivery_commission_cvneat, created_at, statut, payment_status')
             .eq('livreur_id', driver.id)
             .eq('statut', 'livree')
             .is('livreur_paid_at', null);
@@ -177,13 +178,11 @@ export default function DeliveryTransfersTracking() {
             (o) => !['failed', 'cancelled', 'refunded'].includes((o.payment_status || '').toString().trim().toLowerCase())
           );
 
-          // Gains dus = somme (frais_livraison - commission) pour ces livraisons non encore payées au livreur
-          const totalEarnings = orders.reduce((sum, order) => {
-            const fraisLivraison = parseFloat(order.frais_livraison || 0);
-            const commission = parseFloat(order.delivery_commission_cvneat || 0);
-            const livreurEarning = fraisLivraison - commission;
-            return sum + livreurEarning;
-          }, 0);
+          // Gains dus (base course, non réduite par CVNeat Plus côté client)
+          const totalEarnings = orders.reduce(
+            (sum, order) => sum + livreurEarningNetEur(order),
+            0
+          );
 
           // Virements déjà effectués (affichage info)
           let totalTransfers = 0;

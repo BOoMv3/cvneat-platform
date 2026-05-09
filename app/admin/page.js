@@ -28,6 +28,7 @@ import {
   FaBell
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
+import { livreurEarningNetEur } from '../../lib/livreur-delivery-earnings';
 
 export default function AdminPage() {
   const [stats, setStats] = useState({
@@ -278,7 +279,7 @@ export default function AdminPage() {
 
         cvneatRevenue += cvneatTotalRevenue + deliveryCommission;
         
-        const livreurEarning = deliveryFee - deliveryCommission;
+        const livreurEarning = livreurEarningNetEur(order);
         livreurRevenue += livreurEarning;
 
         restaurantRevenue += restaurantShare;

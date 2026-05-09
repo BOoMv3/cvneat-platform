@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import json2csv from 'json2csv';
+import { livreurEarningNetEur } from '../../../../lib/livreur-delivery-earnings';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,7 @@ export async function GET(request) {
         id,
         montant_total,
         frais_livraison,
+        frais_livraison_course,
         delivery_commission_cvneat,
         statut,
         created_at,
@@ -46,13 +48,8 @@ export async function GET(request) {
       );
     }
 
-    // Calculer les totaux (utiliser le gain réel du livreur = frais_livraison - commission)
-    const totalEarnings = orders?.reduce((sum, order) => {
-      const fraisLivraison = parseFloat(order.frais_livraison || 0);
-      const commission = parseFloat(order.delivery_commission_cvneat || 0);
-      const livreurEarning = fraisLivraison - commission; // Gain réel du livreur
-      return sum + livreurEarning;
-    }, 0) || 0;
+    const totalEarnings =
+      orders?.reduce((sum, order) => sum + livreurEarningNetEur(order), 0) || 0;
     const totalDeliveries = orders?.length || 0;
     const averageEarning = totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0;
 

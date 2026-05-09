@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  livreurDeliveryBaseEur,
+  livreurEarningNetEur,
+} from '../../../../../../lib/livreur-delivery-earnings';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -48,8 +52,6 @@ function buildDeliveryInvoiceHtml({
         : null;
   const countDisplay = effectiveCount != null ? effectiveCount : '—';
 
-  const netLivreur = (o) =>
-    parseFloat(o.frais_livraison || 0) - parseFloat(o.delivery_commission_cvneat || 0);
   const rowsHtml = hasOrders
     ? ordersDetail
         .map(
@@ -57,9 +59,9 @@ function buildDeliveryInvoiceHtml({
         <tr>
           <td>${formatDateTimeFR(o.created_at)}</td>
           <td>${(o.id || '').slice(0, 8).toUpperCase()}</td>
-          <td class="right">${formatEUR(o.frais_livraison)}</td>
+          <td class="right">${formatEUR(livreurDeliveryBaseEur(o))}</td>
           <td class="right">${formatEUR(o.delivery_commission_cvneat)}</td>
-          <td class="right">${formatEUR(netLivreur(o))}</td>
+          <td class="right">${formatEUR(livreurEarningNetEur(o))}</td>
         </tr>
       `
         )
@@ -67,18 +69,13 @@ function buildDeliveryInvoiceHtml({
     : '';
 
   const totalFrais = hasOrders
-    ? ordersDetail.reduce((s, o) => s + parseFloat(o.frais_livraison || 0), 0)
+    ? ordersDetail.reduce((s, o) => s + livreurDeliveryBaseEur(o), 0)
     : 0;
   const totalCommission = hasOrders
     ? ordersDetail.reduce((s, o) => s + parseFloat(o.delivery_commission_cvneat || 0), 0)
     : 0;
   const totalNet = hasOrders
-    ? ordersDetail.reduce(
-        (s, o) =>
-          s +
-          (parseFloat(o.frais_livraison || 0) - parseFloat(o.delivery_commission_cvneat || 0)),
-        0
-      )
+    ? ordersDetail.reduce((s, o) => s + livreurEarningNetEur(o), 0)
     : parseFloat(transfer.amount || 0);
 
   return `<!doctype html>
@@ -169,7 +166,7 @@ function buildDeliveryInvoiceHtml({
             <tr>
               <th>Date / heure</th>
               <th>Réf. commande</th>
-              <th class="right">Frais livraison</th>
+              <th class="right">Base course</th>
               <th class="right">Commission CVN'EAT</th>
               <th class="right">Net livreur</th>
             </tr>
@@ -284,7 +281,7 @@ export async function GET(request, { params }) {
   if (orderIds.length > 0) {
     const { data: orders } = await supabaseAdmin
       .from('commandes')
-      .select('id, created_at, frais_livraison, delivery_commission_cvneat')
+      .select('id, created_at, frais_livraison, frais_livraison_course, delivery_commission_cvneat')
       .in('id', orderIds)
       .order('created_at', { ascending: true });
     ordersDetail = orders || [];

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { livreurEarningNetEur } from '../../../../../lib/livreur-delivery-earnings';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -111,7 +112,7 @@ export async function POST(request) {
     // Calculer quelles commandes seront payées (pour orders_count + order_ids sur la facture)
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
-      .select('id, frais_livraison, delivery_commission_cvneat, created_at')
+      .select('id, frais_livraison, frais_livraison_course, delivery_commission_cvneat, created_at')
       .eq('livreur_id', delivery_id)
       .eq('statut', 'livree')
       .is('livreur_paid_at', null)
@@ -119,9 +120,7 @@ export async function POST(request) {
 
     if (!ordersError && orders && orders.length > 0) {
       for (const order of orders) {
-        const fraisLivraison = parseFloat(order.frais_livraison || 0);
-        const commission = parseFloat(order.delivery_commission_cvneat || 0);
-        const livreurEarning = fraisLivraison - commission;
+        const livreurEarning = livreurEarningNetEur(order);
         if (totalMarque + livreurEarning <= montantCible) {
           ordersToMark.push(order.id);
           totalMarque += livreurEarning;
