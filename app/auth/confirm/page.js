@@ -4,18 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
-
-const parseHashParams = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  // Supabase peut utiliser hash (#...) ou query (?...) selon le flux
-  const hash = window.location.hash;
-  const search = window.location.search;
-  const hashParams = hash && hash.length > 1 ? new URLSearchParams(hash.substring(1)) : null;
-  const searchParams = search && search.length > 1 ? new URLSearchParams(search.substring(1)) : null;
-  return hashParams ?? searchParams;
-};
+import { establishSessionFromAuthUrl } from '../../../lib/auth-session-from-url';
 
 const ALLOWED_TYPES = new Set(['signup', 'email_change', 'magiclink']);
 
@@ -30,57 +19,56 @@ export default function ConfirmEmailPage() {
 
     const initialiseConfirmation = async () => {
       try {
-        const hashParams = parseHashParams();
+        const searchParams =
+          typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search)
+            : null;
+        const hashParams =
+          typeof window !== 'undefined' && window.location.hash?.length > 1
+            ? new URLSearchParams(window.location.hash.substring(1))
+            : null;
+        const typeHint = hashParams?.get('type') || searchParams?.get('type');
 
-        if (hashParams && hashParams.has('type')) {
-          const type = hashParams.get('type');
-
-          if (type === 'recovery') {
-            router.replace(`/auth/update-password${window.location.hash}`);
-            return;
-          }
-
-          if (!ALLOWED_TYPES.has(type ?? '')) {
-            setError("Ce lien n'est plus valide. Si vous venez de créer votre compte, essayez de vous connecter — l'inscription a peut-être déjà réussi.");
-            setLoading(false);
-            return;
-          }
+        if (typeHint === 'recovery') {
+          const suffix =
+            window.location.hash ||
+            (searchParams?.get('code') ? `?code=${searchParams.get('code')}` : '');
+          router.replace(`/auth/update-password${suffix}`);
+          return;
         }
 
-        if (hashParams && hashParams.has('access_token') && hashParams.has('refresh_token')) {
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
+        const sessionResult = await establishSessionFromAuthUrl(supabase);
 
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (sessionError) {
-            setError('Impossible de valider le lien. Veuillez redemander un email de confirmation.');
-            setLoading(false);
-            return;
-          }
-
-          if (typeof window !== 'undefined') {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
+        if (sessionResult.type === 'recovery') {
+          router.replace('/auth/update-password');
+          return;
         }
 
-        const {
-          data: { session },
-          error: getSessionError,
-        } = await supabase.auth.getSession();
-
-        if (getSessionError) {
-          setError('Erreur lors de la validation de l’utilisateur. Veuillez redemander un email de confirmation.');
+        if (!sessionResult.ok) {
+          setError(
+            sessionResult.error ||
+              "Ce lien a peut-être déjà été utilisé ou a expiré. Essayez de vous connecter ou redemandez un email."
+          );
           setLoading(false);
           return;
         }
 
+        if (sessionResult.type && !ALLOWED_TYPES.has(sessionResult.type)) {
+          setError(
+            "Ce lien n'est plus valide. Si vous venez de créer votre compte, essayez de vous connecter."
+          );
+          setLoading(false);
+          return;
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (!session) {
-          // Pas de session : lien expiré OU compte déjà confirmé (auto-confirm). Message bienveillant.
-          setError("Ce lien a peut-être déjà été utilisé ou a expiré. Si vous venez de créer votre compte, essayez de vous connecter — votre inscription a peut-être déjà réussi.");
+          setError(
+            "Ce lien a peut-être déjà été utilisé ou a expiré. Si vous venez de créer votre compte, essayez de vous connecter."
+          );
           setLoading(false);
           return;
         }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import Head from 'next/head';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -17,6 +17,15 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('reset') === 'success') {
+      setSuccess('Mot de passe mis à jour. Vous pouvez vous connecter avec votre nouveau mot de passe.');
+    } else if (searchParams.get('confirm') === 'success') {
+      setSuccess('Compte confirmé. Connectez-vous avec votre email et mot de passe.');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

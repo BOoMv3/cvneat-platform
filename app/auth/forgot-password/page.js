@@ -2,23 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-
-function getRedirectBase() {
-  // Toujours utiliser l'URL du site en prod pour que Supabase accepte le redirect
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cvneat.fr';
-  return base.replace(/\/$/, '');
-}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !email.trim()) {
+    if (!email?.trim()) {
       setError('Veuillez entrer votre adresse email');
       return;
     }
@@ -28,31 +22,28 @@ export default function ForgotPasswordPage() {
     setSuccess(false);
 
     try {
-      const normalizedEmail = String(email).trim().toLowerCase();
-      const redirectTo = `${getRedirectBase()}/auth/update-password`;
-
-      const { error: err } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo,
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
-      if (err) {
-        // Pour des raisons de sécurité, Supabase ne révèle pas si l'email existe ou non
-        // On affiche un message générique en cas d'erreur
-        if (err.message?.includes('rate limit') || err.message?.includes('Too many')) {
-          setError('Trop de tentatives. Réessayez dans quelques minutes.');
-        } else if (err.message?.includes('Invalid') || err.message?.includes('invalid')) {
-          setError('Adresse email invalide. Vérifiez et réessayez.');
-        } else {
-          setError(err.message || 'Une erreur est survenue. Réessayez plus tard.');
-        }
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.error || 'Une erreur est survenue. Réessayez plus tard.');
         setLoading(false);
         return;
       }
 
+      setSuccessMessage(
+        data.message ||
+          'Si un compte existe avec cette adresse, vous recevrez un email avec un lien pour choisir un nouveau mot de passe.'
+      );
       setSuccess(true);
     } catch (err) {
       console.error('Erreur reset password:', err);
-      setError('Une erreur inattendue est survenue. Réessayez plus tard.');
+      setError('Connexion impossible. Vérifiez votre réseau et réessayez.');
     } finally {
       setLoading(false);
     }
@@ -65,7 +56,8 @@ export default function ForgotPasswordPage() {
           Mot de passe oublié
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          Entrez votre adresse email pour recevoir un lien de réinitialisation.
+          Entrez l&apos;email de votre compte CVN&apos;Eat. Nous vous enverrons un lien sécurisé
+          (depuis <strong>contact@cvneat.fr</strong>).
         </p>
       </div>
 
@@ -74,9 +66,23 @@ export default function ForgotPasswordPage() {
           {success ? (
             <div className="space-y-4">
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded">
-                Un email vous a été envoyé. Cliquez sur le lien pour réinitialiser votre mot de passe.
-                Pensez à vérifier vos spams si vous ne le voyez pas.
+                {successMessage}
               </div>
+              <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc pl-5 space-y-1">
+                <li>Vérifiez votre boîte de réception et les <strong>spams / courriers indésirables</strong>.</li>
+                <li>Le lien expire après environ 1 heure.</li>
+                <li>Utilisez la même adresse email que lors de l&apos;inscription.</li>
+              </ul>
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccess(false);
+                  setEmail('');
+                }}
+                className="w-full text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Renvoyer un email
+              </button>
               <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
                 <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
                   Retour à la connexion
@@ -105,7 +111,7 @@ export default function ForgotPasswordPage() {
               </div>
 
               {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded text-sm">
                   {error}
                 </div>
               )}
@@ -115,15 +121,21 @@ export default function ForgotPasswordPage() {
                 disabled={loading || !email?.trim()}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Envoi en cours...' : 'Envoyer le lien'}
+                {loading ? 'Envoi en cours...' : 'Recevoir le lien par email'}
               </button>
             </form>
           )}
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-2">
             <Link href="/login" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
               Retour à la connexion
             </Link>
+            <p className="text-xs text-gray-500">
+              Problème persistant ?{' '}
+              <a href="mailto:contact@cvneat.fr" className="text-blue-600 underline">
+                contact@cvneat.fr
+              </a>
+            </p>
           </div>
         </div>
       </div>
