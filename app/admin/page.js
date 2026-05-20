@@ -25,7 +25,8 @@ import {
   FaGift,
   FaTruck,
   FaComments,
-  FaBell
+  FaBell,
+  FaSearch
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 import { livreurEarningNetEur } from '../../lib/livreur-delivery-earnings';
@@ -646,6 +647,14 @@ export default function AdminPage() {
               >
                 <FaComments className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Messagerie</span>
+              </button>
+              <button
+                onClick={() => router.push('/admin/customer-search')}
+                className="flex items-center justify-center px-3 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Rechercher un client (nom, email, téléphone)"
+              >
+                <FaSearch className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Recherche client</span>
               </button>
               <button
                 onClick={() => router.push('/admin/delivery-leaderboard')}

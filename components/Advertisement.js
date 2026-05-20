@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { FaExternalLinkAlt, FaTimes } from 'react-icons/fa';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/lib/supabase';
 
 // Cache en mémoire pour les publicités (durée de vie: 10 minutes)
@@ -30,10 +31,24 @@ export default function Advertisement({ position, className = '' }) {
   const [loading, setLoading] = useState(true);
   const [showPopup, setShowPopup] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  /** App native iOS : pas de publicités (WKWebView / politique produit). */
+  const [hideAdsIos, setHideAdsIos] = useState(false);
+
+  useLayoutEffect(() => {
+    try {
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios') {
+        setHideAdsIos(true);
+        setLoading(false);
+      }
+    } catch (_) {
+      // Capacitor indisponible (navigateur) : ne rien faire
+    }
+  }, []);
 
   useEffect(() => {
+    if (hideAdsIos) return;
     fetchAd();
-  }, [position]);
+  }, [position, hideAdsIos]);
 
   const fetchAd = async () => {
     try {
@@ -42,8 +57,7 @@ export default function Advertisement({ position, className = '' }) {
       if (cachedAd) {
         setAd(cachedAd);
         setLoading(false);
-        // Ne pas return: on revalide en arrière-plan pour afficher immédiatement une nouvelle pub
-        // (ex: admin vient de changer l'image/le statut).
+        return;
       }
 
       // Récupérer les publicités actives
@@ -172,6 +186,10 @@ export default function Advertisement({ position, className = '' }) {
       handleImpression();
     }
   }, [ad]);
+
+  if (hideAdsIos) {
+    return null;
+  }
 
   if (loading) {
     return (

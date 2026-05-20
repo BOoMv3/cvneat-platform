@@ -274,7 +274,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         }
       };
       checkStatus();
-    }, 60000);
+    }, 180000);
     
     // Subscription Supabase Realtime pour les menus (mise à jour automatique)
     const menuChannel = supabase
@@ -332,10 +332,11 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     }
   }, [user]);
 
-  // Calcul dynamique des frais de livraison
+  // Calcul dynamique des frais de livraison (debounce pour éviter un appel API à chaque clic panier)
   useEffect(() => {
-    const fetchDeliveryFee = async () => {
-      if (!restaurant || !deliveryAddress) return;
+    if (!restaurant || !deliveryAddress) return;
+
+    const timer = setTimeout(async () => {
       setDeliveryInfoLoading(true);
       try {
         const restaurantAddressString = (() => {
@@ -352,11 +353,20 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
             restaurantId: restaurant.id,
             restaurantAddress: restaurantAddressString,
             deliveryAddress: deliveryAddress,
-            orderAmount: getSubtotal(), // On envoie le montant du panier
-            perKmRate: restaurant.frais_livraison_km ?? restaurant.frais_livraison_par_km ?? restaurant.delivery_fee_per_km ?? restaurant.tarif_kilometre ?? restaurant.per_km_fee,
-            baseFee: restaurant.frais_livraison_base ?? restaurant.frais_livraison_minimum ?? restaurant.frais_livraison,
-            freeDeliveryThreshold: restaurant.livraison_gratuite_seuil ?? restaurant.free_delivery_threshold
-          })
+            orderAmount: getSubtotal(),
+            perKmRate:
+              restaurant.frais_livraison_km ??
+              restaurant.frais_livraison_par_km ??
+              restaurant.delivery_fee_per_km ??
+              restaurant.tarif_kilometre ??
+              restaurant.per_km_fee,
+            baseFee:
+              restaurant.frais_livraison_base ??
+              restaurant.frais_livraison_minimum ??
+              restaurant.frais_livraison,
+            freeDeliveryThreshold:
+              restaurant.livraison_gratuite_seuil ?? restaurant.free_delivery_threshold,
+          }),
         });
         if (response.ok) {
           const data = await response.json();
@@ -368,14 +378,14 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
         } else {
           setDeliveryFee(null);
         }
-      } catch (e) {
+      } catch {
         setDeliveryFee(null);
       } finally {
         setDeliveryInfoLoading(false);
       }
-    };
-    fetchDeliveryFee();
-    // On déclenche le calcul à chaque changement du restaurant, de l'adresse ou du panier
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [restaurant, deliveryAddress, cart]);
 
   const handleToggleFavorite = () => {

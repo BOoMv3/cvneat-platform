@@ -51,7 +51,9 @@ export async function GET() {
     
     const { data, error } = await supabaseAdmin
       .from('restaurants')
-      .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description');
+      .select(
+        'id, nom, description, cuisine_type, type_cuisine, category, categorie, type, tags, keywords, specialites, status, rating, reviews_count, adresse, ville, code_postal, frais_livraison, frais_livraison_km, frais_livraison_base, frais_livraison_minimum, livraison_gratuite_seuil, profile_image, image_url, logo_image, banner_image, cover_image, banniere_image, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description'
+      );
       // .eq('status', 'active'); // Temporairement désactivé pour debug
 
     if (error) {
@@ -203,11 +205,9 @@ export async function GET() {
     // Performance: do not query `reviews` per restaurant (N+1 queries).
     // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
     const res = NextResponse.json(withFermeManuel);
-    // Bloquer tout cache (navigateur, CDN Vercel, proxies) pour éviter données périmées
-    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    res.headers.set('Pragma', 'no-cache');
-    res.headers.set('Expires', '0');
-    res.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+    // Cache court : moins de charge serveur, rafraîchissement auto côté client toutes les 3 min
+    res.headers.set('Cache-Control', 'public, s-maxage=45, stale-while-revalidate=120');
+    res.headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=45, stale-while-revalidate=120');
     Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
     return res;
   } catch (error) {

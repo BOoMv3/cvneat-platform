@@ -380,18 +380,17 @@ export default function Checkout() {
 
   useEffect(() => {
     const total = computeCartTotalWithExtras(cart);
-    console.log('Recalcul total - cart total:', total, 'frais livraison:', fraisLivraison, 'total avec livraison:', total + (parseFloat(fraisLivraison) || 0), 'forceUpdate:', forceUpdate);
     setCartTotal(total);
     setTotalAvecLivraison(total + (parseFloat(fraisLivraison) || 0));
   }, [cart, fraisLivraison, forceUpdate]);
 
-  // Recalcul automatique des frais de livraison à chaque changement d'adresse ou de panier
+  // Recalcul livraison debouncé (évite rafales d'appels pendant modification du panier)
   useEffect(() => {
-    console.log('useEffect déclenché - selectedAddress:', selectedAddress, 'cart.length:', cart.length);
-    if (selectedAddress && cart.length > 0) {
-      console.log('Appel calculateDeliveryFee depuis useEffect');
+    if (!selectedAddress || cart.length === 0) return;
+    const timer = setTimeout(() => {
       calculateDeliveryFee(selectedAddress);
-    }
+    }, 500);
+    return () => clearTimeout(timer);
   }, [selectedAddress, cart]);
 
   const buildDeliveryPayload = useCallback((fullAddress) => {

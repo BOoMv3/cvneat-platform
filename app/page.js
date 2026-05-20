@@ -538,6 +538,8 @@ export default function Home() {
 
   const searchInputRef = useRef(null);
   const lastFocusKeyRef = useRef('');
+  const lastRestaurantsFetchAtRef = useRef(0);
+  const RESTAURANTS_FETCH_MIN_MS = 50000;
 
   // Focus automatique sur la barre de recherche si on arrive via l'onglet "Rechercher"
   useEffect(() => {
@@ -631,14 +633,13 @@ export default function Home() {
         } catch {
           setCvneatPlusActive(false);
         }
-        const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const res = await fetch('/api/orders/active', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: 'no-store',
+        });
         if (res.ok) {
-          const orders = await res.json();
-          const active = Array.isArray(orders) && orders.some((o) => {
-            const s = (o.status || o.statut || '').toLowerCase();
-            return s && s !== 'livree' && s !== 'delivered' && s !== 'annulee' && s !== 'cancelled';
-          });
-          setHasActiveOrder(!!active);
+          const data = await res.json().catch(() => ({}));
+          setHasActiveOrder(data?.hasActive === true);
         }
       }
     } catch (error) {
@@ -769,6 +770,12 @@ export default function Home() {
   }, [searchTerm, lastTrackedSearch]);
 
   useEffect(() => {
+    // Fiche restaurant : ne pas charger toute la liste d'accueil (gros gain perf)
+    if (pathname && /^\/restaurants\/[^/]+/.test(pathname)) {
+      setLoading(false);
+      return;
+    }
+
     // Verifier l'authentification
     const checkAuth = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -778,7 +785,13 @@ export default function Home() {
 
     checkAuth();
 
-    const fetchRestaurants = async () => {
+    const fetchRestaurants = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastRestaurantsFetchAtRef.current < RESTAURANTS_FETCH_MIN_MS) {
+        return;
+      }
+      lastRestaurantsFetchAtRef.current = now;
+
       try {
         setLoading(true);
         setError(null);
@@ -804,26 +817,39 @@ export default function Home() {
         let data;
         {
           const qs = `t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`;
-          const candidates = [
-            `/api/restaurants?${qs}`,
-            // Toujours tenter les URLs absolues de prod:
-            // sur certaines versions iOS, la détection Capacitor peut être absente/incomplète.
-            `https://www.cvneat.fr/api/restaurants?${qs}`,
-            `https://cvneat.fr/api/restaurants?${qs}`,
-          ];
+          const candidates = isCapacitorApp
+            ? [
+                `/api/restaurants?${qs}`,
+                `https://www.cvneat.fr/api/restaurants?${qs}`,
+                `https://cvneat.fr/api/restaurants?${qs}`,
+              ]
+            : [
+                '/api/restaurants',
+                'https://www.cvneat.fr/api/restaurants',
+                'https://cvneat.fr/api/restaurants',
+              ];
           let lastError = null;
 
           for (const url of candidates) {
             try {
               if (DBG) console.log('[Restaurants] GET', url);
               const response = await fetch(url, {
-                cache: 'no-store',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Accept: 'application/json',
-                  'Cache-Control': 'no-cache',
-                  Pragma: 'no-cache',
-                },
+                ...(isCapacitorApp
+                  ? {
+                      cache: 'no-store',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'Cache-Control': 'no-cache',
+                        Pragma: 'no-cache',
+                      },
+                    }
+                  : {
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                      },
+                    }),
               });
               if (DBG) console.log('[Restaurants] HTTP', response.status, response.url);
               if (!response.ok) {
@@ -980,49 +1006,55 @@ export default function Home() {
           console.error('[Restaurants] Aucun resto normalisé pour', data.length, 'entrées');
           if (DBG) console.error('[Restaurants] premier', data[0]);
         }
-        // Statut ouvert/fermé: calcul unique côté serveur (plus stable que plein de fetch détails).
-        const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
-
         const toBool = (v) =>
           v === true ||
           v === 1 ||
           (typeof v === 'string' && v.trim().toLowerCase() === 'true');
 
-        const fetchOpenStatusWithFallback = async (payload) => {
-          const urls = [
-            '/api/restaurants/open-status',
-            'https://www.cvneat.fr/api/restaurants/open-status',
-            'https://cvneat.fr/api/restaurants/open-status',
-          ];
-          for (const url of urls) {
-            try {
-              const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                cache: 'no-store',
-              });
-              if (!res.ok) continue;
-              const json = await res.json().catch(() => ({}));
-              const map = json?.map;
-              if (map && typeof map === 'object' && !Array.isArray(map)) {
-                return { ok: true, map };
-              }
-            } catch (e) {
-              if (DBG) console.warn('[Restaurants] open-status tentative échouée:', url, e);
-            }
-          }
-          return { ok: false, map: {} };
-        };
+        // Statut ouvert : déjà calculé par GET /api/restaurants (is_open_now) → évite un 2e POST lourd
+        const serverHasOpenFlags = normalizedRestaurants.every(
+          (r) => typeof r.is_open_now === 'boolean'
+        );
 
         let openStatusFromServer = {};
-        let openStatusRequestFailed = true;
-        try {
-          const statusResult = await fetchOpenStatusWithFallback({ ids });
-          openStatusFromServer = statusResult.map;
-          openStatusRequestFailed = !statusResult.ok;
-        } catch (e) {
-          if (DBG) console.warn('[Restaurants] open-status:', e);
+        let openStatusRequestFailed = false;
+
+        if (!serverHasOpenFlags) {
+          const ids = normalizedRestaurants.map((r) => r.id).filter(Boolean);
+          const fetchOpenStatusWithFallback = async (payload) => {
+            const urls = [
+              '/api/restaurants/open-status',
+              'https://www.cvneat.fr/api/restaurants/open-status',
+              'https://cvneat.fr/api/restaurants/open-status',
+            ];
+            for (const url of urls) {
+              try {
+                const res = await fetch(url, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                  cache: 'no-store',
+                });
+                if (!res.ok) continue;
+                const json = await res.json().catch(() => ({}));
+                const map = json?.map;
+                if (map && typeof map === 'object' && !Array.isArray(map)) {
+                  return { ok: true, map };
+                }
+              } catch (e) {
+                if (DBG) console.warn('[Restaurants] open-status tentative échouée:', url, e);
+              }
+            }
+            return { ok: false, map: {} };
+          };
+          try {
+            const statusResult = await fetchOpenStatusWithFallback({ ids });
+            openStatusFromServer = statusResult.map;
+            openStatusRequestFailed = !statusResult.ok;
+          } catch (e) {
+            if (DBG) console.warn('[Restaurants] open-status:', e);
+            openStatusRequestFailed = true;
+          }
         }
 
         setRestaurants(normalizedRestaurants);
@@ -1034,6 +1066,15 @@ export default function Home() {
               restaurant.today_hours_label || getTodayHoursLabel(restaurant) || null;
 
             const st = openStatusFromServer?.[restaurant.id];
+            if (serverHasOpenFlags) {
+              const fmNow = toBool(restaurant.ferme_manuellement);
+              openStatusMap[restaurant.id] = {
+                isOpen: fmNow ? false : restaurant.is_open_now === true,
+                isManuallyClosed: fmNow,
+                hoursLabel: todayHoursLabel || 'Horaires non communiquées',
+              };
+              continue;
+            }
             if (!st) {
               const fmNow = toBool(restaurant.ferme_manuellement);
               if (fmNow) {
@@ -1088,7 +1129,7 @@ export default function Home() {
     // Écouter l'événement de changement de statut restaurant pour rafraîchir les données
     const handleRestaurantStatusChange = () => {
       if (DBG) console.log('[Restaurants] event restaurant-status-changed');
-      fetchRestaurants();
+      fetchRestaurants(true);
     };
     
     window.addEventListener('restaurant-status-changed', handleRestaurantStatusChange);
@@ -1101,7 +1142,7 @@ export default function Home() {
         bc.onmessage = (ev) => {
           if (ev?.data?.type === 'restaurant-status-changed') {
             if (DBG) console.log('[Restaurants] BroadcastChannel status');
-            fetchRestaurants();
+            fetchRestaurants(true);
           }
         };
       }
@@ -1131,7 +1172,7 @@ export default function Home() {
       if (document.visibilityState === 'visible') {
         fetchRestaurants();
       }
-    }, isCapacitorForInterval ? 120000 : 60000);
+    }, isCapacitorForInterval ? 300000 : 180000);
     
     return () => {
       window.removeEventListener('restaurant-status-changed', handleRestaurantStatusChange);
@@ -1466,7 +1507,6 @@ export default function Home() {
                 fill
                 className="object-cover"
                 priority={index === 0}
-                unoptimized
                 sizes="100vw"
               />
             ) : (
