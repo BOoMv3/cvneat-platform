@@ -56,6 +56,7 @@ import {
   isSecondArticlePromoActive,
   isLaBonnePateRestaurantName,
 } from '@/lib/platform-promo';
+import { getTonightAutoPromo, TONIGHT_PROMO_BANNER } from '@/lib/tonight-promo';
 import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
 
 /** Logs verbeux = coût en WebView (iOS/Android) ; uniquement en dev. */
@@ -570,7 +571,9 @@ export default function Home() {
     }).format(nextOpeningDate);
   }, [nextOpeningDate]);
 
+  const tonightPromoWindowActive = useMemo(() => getTonightAutoPromo(0).active, []);
   const homeCartSubtotal = useMemo(() => computeCartTotalWithExtras(cart), [cart]);
+  const homeTonightPromo = useMemo(() => getTonightAutoPromo(homeCartSubtotal), [homeCartSubtotal]);
   const homeCartRestaurantName =
     cartRestaurant?.nom ||
     cartRestaurant?.name ||
@@ -578,17 +581,22 @@ export default function Home() {
     cart?.[0]?.restaurant_name ||
     cart?.[0]?.restaurant_nom ||
     '';
+  const homeTonightDiscount = homeTonightPromo.eligible ? homeTonightPromo.discountEur : 0;
+  const homeSubtotalAfterTonight = useMemo(
+    () => Math.max(0, Math.round((homeCartSubtotal - homeTonightDiscount) * 100) / 100),
+    [homeCartSubtotal, homeTonightDiscount]
+  );
   const homeSecondArticlePromo = useMemo(
     () =>
       computeCheckoutPlatformDiscountEur(cart, {
-        capAt: homeCartSubtotal,
+        capAt: homeSubtotalAfterTonight,
         restaurantName: homeCartRestaurantName,
       }),
-    [cart, homeCartSubtotal, homeCartRestaurantName]
+    [cart, homeSubtotalAfterTonight, homeCartRestaurantName]
   );
   const homeCartNetSubtotal = useMemo(
-    () => Math.max(0, Math.round((homeCartSubtotal - homeSecondArticlePromo) * 100) / 100),
-    [homeCartSubtotal, homeSecondArticlePromo]
+    () => Math.max(0, Math.round((homeSubtotalAfterTonight - homeSecondArticlePromo) * 100) / 100),
+    [homeSubtotalAfterTonight, homeSecondArticlePromo]
   );
 
   // Fonction de déconnexion
@@ -1476,6 +1484,19 @@ export default function Home() {
       {/* Bannière Livraison Offerte */}
       <FreeDeliveryBanner />
 
+      {tonightPromoWindowActive && (
+        <div className="w-full overflow-hidden border-b border-red-200/70 bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white">
+          <div className="cvneat-marquee-track py-2">
+            <span className="mx-6 inline-flex items-center gap-3 text-sm sm:text-base font-extrabold">
+              {TONIGHT_PROMO_BANNER}
+            </span>
+            <span className="mx-6 inline-flex items-center gap-3 text-sm sm:text-base font-extrabold">
+              {TONIGHT_PROMO_BANNER}
+            </span>
+          </div>
+        </div>
+      )}
+
       {isSecondArticlePromoActive() && (
         <div
           className="sticky top-0 z-40 w-full border-b border-white/25 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-lg"
@@ -1756,6 +1777,12 @@ export default function Home() {
               <span>Sous-total</span>
               <span>{homeCartSubtotal.toFixed(2)}€</span>
             </div>
+            {homeTonightPromo.eligible && homeTonightPromo.discountEur > 0 && (
+              <div className="flex justify-between text-sm text-red-600 dark:text-red-400 font-medium">
+                <span>Promo ce soir (−10€ dès 30€)</span>
+                <span>-{homeTonightPromo.discountEur.toFixed(2)}€</span>
+              </div>
+            )}
             {homeSecondArticlePromo > 0 && (
               <div className="flex justify-between text-sm text-blue-600 dark:text-blue-300 font-medium">
                 <span>
@@ -2188,6 +2215,22 @@ export default function Home() {
           <Advertisement position="footer" />
         </div>
       </main>
+      <style jsx>{`
+        .cvneat-marquee-track {
+          display: inline-flex;
+          min-width: 200%;
+          white-space: nowrap;
+          animation: cvneatMarquee 28s linear infinite;
+        }
+        @keyframes cvneatMarquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+      `}</style>
     </div>
   );
 } // Force rebuild Wed Dec 17 12:18:32 CET 2025

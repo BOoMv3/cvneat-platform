@@ -33,6 +33,7 @@ import {
   computeCheckoutPlatformDiscountEur,
   isLaBonnePateRestaurantName,
 } from '@/lib/platform-promo';
+import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import {
   CVNEAT_PLUS_NAME,
   CVNEAT_PLUS_MIN_ORDER_EUR,
@@ -159,7 +160,10 @@ export default function Checkout() {
     '';
 
   const loyaltyCheckout = useMemo(() => {
-    const discountAmount = appliedPromoCode?.discountAmount || 0;
+    const tonightPromo = getTonightAutoPromo(cartTotal);
+    const autoPromoDiscount = tonightPromo.eligible ? tonightPromo.discountEur : 0;
+    const manualPromoDiscount = appliedPromoCode?.discountAmount || 0;
+    const discountAmount = manualPromoDiscount + autoPromoDiscount;
     const maxDiscount = Math.min(discountAmount, cartTotal);
     const promoFree = appliedPromoCode?.discountType === 'free_delivery';
     const grossDel = Math.round(parseFloat(fraisLivraison || 0) * 100) / 100;
@@ -198,6 +202,9 @@ export default function Checkout() {
       : null;
     return {
       cartTotal,
+      autoPromoDiscount,
+      tonightPromoEligible: tonightPromo.eligible,
+      manualPromoDiscount,
       maxDiscount,
       promoFree,
       deliveryBeforeLoyalty,
@@ -780,8 +787,10 @@ export default function Checkout() {
 
       const cartSubtotal = computeCartTotalWithExtras(itemsToUse);
 
+      const tonightPromo = getTonightAutoPromo(cartSubtotal);
+      const autoPromoDiscount = tonightPromo.eligible ? tonightPromo.discountEur : 0;
       const manualPromoDiscount = appliedPromoCode?.discountAmount || 0;
-      const discountAmount = manualPromoDiscount;
+      const discountAmount = manualPromoDiscount + autoPromoDiscount;
       
       // Gérer la livraison gratuite si le code promo le prévoit (avant palier fidélité « livraison gratuite »)
       let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
@@ -1574,10 +1583,19 @@ export default function Checkout() {
                 <span>Sous-total</span>
                 <span className="font-semibold">{cartTotal.toFixed(2)}€</span>
               </div>
-              {appliedPromoCode && maxDiscount > 0 && (
+              {appliedPromoCode && (loyaltyCheckout.manualPromoDiscount || 0) > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400 text-sm sm:text-base">
                   <span>Réduction ({appliedPromoCode.code})</span>
-                  <span className="font-semibold">-{maxDiscount.toFixed(2)}€</span>
+                  <span className="font-semibold">-{(loyaltyCheckout.manualPromoDiscount || 0).toFixed(2)}€</span>
+                </div>
+              )}
+              {loyaltyCheckout.tonightPromoEligible && (loyaltyCheckout.autoPromoDiscount || 0) > 0 && (
+                <div className="flex justify-between text-red-600 dark:text-red-400 text-sm sm:text-base">
+                  <span className="flex items-center">
+                    <FaTag className="h-3 w-3 mr-1" />
+                    Promo ce soir (−10€ dès 30€)
+                  </span>
+                  <span className="font-semibold">-{(loyaltyCheckout.autoPromoDiscount || 0).toFixed(2)}€</span>
                 </div>
               )}
               {appliedPromoCode?.discountType === 'delivery_percent' &&
@@ -1773,6 +1791,13 @@ export default function Checkout() {
                 <FaTag className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
                 Code promo
               </h3>
+              {loyaltyCheckout.tonightPromoEligible && (
+                <div className="mb-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                    🔥 Promo ce soir appliquée automatiquement : −{(loyaltyCheckout.autoPromoDiscount || 0).toFixed(2)}€ dès 30€ d&apos;achat (articles).
+                  </p>
+                </div>
+              )}
               <PromoCodeInput
                 onCodeApplied={(codeData) => {
                   setAppliedPromoCode(codeData);

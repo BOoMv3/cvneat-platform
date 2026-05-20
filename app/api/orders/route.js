@@ -7,6 +7,7 @@ import { isOrdersClosed } from '@/lib/ordersClosed';
 import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
 import { computeCheckoutPlatformDiscountEur } from '@/lib/platform-promo';
+import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
 import {
   isCvneatPlusActive,
@@ -653,6 +654,17 @@ export async function POST(request) {
     const subtotalBeforeDiscount = totalAmount || 0; // correspond au sous-total articles (S)
     let promoDiscount = Math.max(0, parseFloat(discountAmount) || 0);
     promoDiscount = Math.min(promoDiscount, subtotalBeforeDiscount);
+    const tonightPromo = getTonightAutoPromo(subtotalBeforeDiscount);
+    if (tonightPromo.eligible) {
+      promoDiscount = Math.min(
+        subtotalBeforeDiscount,
+        Math.round((promoDiscount + tonightPromo.discountEur) * 100) / 100
+      );
+      console.log('✅ Promo auto ce soir appliquée:', {
+        subtotalBeforeDiscount,
+        autoDiscount: tonightPromo.discountEur,
+      });
+    }
     const platform_fee = Math.max(0, parseFloat(platformFee) || 0);
     const total = subtotalBeforeDiscount; // on stocke dans 'total' le sous-total articles (hors frais/discount)
 
