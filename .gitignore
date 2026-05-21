@@ -59,6 +59,27 @@ next-env.d.ts
 /ios
 .capacitor
 
+# Mobile build artifacts (local only)
+app-debug.apk
+app-release.aab
+*.apk
+*.aab
+
+# Android signing secrets (local only)
+*.jks
+keystore.properties
+
+# Temporary duplicate routes/folders with spaces (macOS Finder copies — never used by Next.js)
+app/api/orders 2/
+app/api/orders/\[id\] 2/
+app/api/orders 3/
+app/api/partner 2/
+app/api/restaurants 2/
+**/* 2.js
+**/* 2.jsx
+**/* 2.ts
+**/* 2.tsx
+
 # IDE
 .vscode
 .idea
