@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { safeLocalStorage } from '@/lib/localStorage';
+import { getEffectiveDeliverySlot } from '@/lib/delivery-slots';
 import { 
   FaCheck, 
   FaClock, 
@@ -487,6 +488,34 @@ export default function OrderConfirmation() {
                 {getStatusIcon()}
                 <span>{getStatusText()}</span>
               </div>
+
+              {(() => {
+                const slot = getEffectiveDeliverySlot(orderData);
+                if (!slot || (slot.type === 'asap' && slot.status === 'confirmed')) return null;
+                const isPending = slot.status === 'pending';
+                const isAlt = slot.status === 'alternative';
+                return (
+                  <div
+                    className={`mt-6 mx-auto max-w-md rounded-xl border p-4 text-left ${
+                      isPending ? 'bg-amber-50 border-amber-200' : isAlt ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      <FaClock className="text-orange-600 shrink-0" />
+                      Créneau de livraison : {slot.label}
+                    </p>
+                    <p className="text-xs text-gray-700 mt-2">
+                      {isPending
+                        ? 'Le restaurant doit confirmer ce créneau. Vous recevrez un email dès qu’il est validé ou modifié.'
+                        : isAlt
+                          ? 'Un nouvel horaire vous a été proposé — en général confirmé automatiquement ; vérifiez vos emails.'
+                          : slot.status === 'fallback_asap'
+                            ? 'Le restaurant livrera au plus tôt. Vous serez prévenu par email si l’horaire change.'
+                            : 'Créneau confirmé. Les changements vous sont envoyés par email — pas besoin d’ouvrir le suivi en priorité.'}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Suivi en temps réel */}

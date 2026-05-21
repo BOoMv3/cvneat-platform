@@ -30,6 +30,7 @@ import {
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
+import PartnerOrderDeliverySlotPanel from '@/components/PartnerOrderDeliverySlotPanel';
 import { buildOrderReceiptText, printWithRawBt } from '../../lib/rawbt-print';
 
 const CATEGORY_OPTIONS = [
@@ -1563,6 +1564,22 @@ export default function PartnerDashboard() {
         'acceptee',
         Number(timeEstimation.preparationTime) || 15
       );
+      if (
+        selectedOrder.delivery_slot_type === 'window' &&
+        selectedOrder.delivery_slot_status === 'pending'
+      ) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await fetch(`/api/orders/${selectedOrder.id}/delivery-slot`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ action: 'confirm' }),
+          });
+        }
+      }
       setShowAcceptModal(false);
       setSelectedOrder(null);
     } catch (error) {
@@ -3543,6 +3560,12 @@ export default function PartnerDashboard() {
                 <p className="text-sm text-gray-600 mt-1">
                   Indiquez le temps de préparation estimé pour cette commande.
                 </p>
+                {selectedOrder.delivery_slot_type === 'window' &&
+                  selectedOrder.delivery_slot_status === 'pending' && (
+                    <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                      Le client a demandé un créneau de livraison. En acceptant, vous confirmez ce créneau (vous pourrez le modifier avant).
+                    </p>
+                  )}
               </div>
 
               <div className="space-y-4">
@@ -4133,6 +4156,11 @@ export default function PartnerDashboard() {
                             </div>
                           )}
                           
+                          <PartnerOrderDeliverySlotPanel
+                            order={order}
+                            onUpdated={() => fetchOrders(restaurant?.id)}
+                          />
+
                           {/* Informations du livreur */}
                           {order.delivery_driver && order.delivery_driver.full_name && (
                             <div className="mt-4 p-3 bg-green-50 dark:bg-green-900 rounded border border-green-200 dark:border-green-700">

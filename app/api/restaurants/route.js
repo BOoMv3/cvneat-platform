@@ -69,9 +69,9 @@ export async function GET() {
       return res;
     }
 
-    // Exclure les restaurants retirés (Molokai, O Toasty, etc.)
+    // Exclure les restaurants retirés (ex. Molokai)
     const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    const masquesContient = ['molokai', 'otoasty'];
+    const masquesContient = ['molokai'];
     const filtered = data.filter((r) => {
       const n = normalize(r.nom);
       return !masquesContient.some((mot) => n.includes(mot));

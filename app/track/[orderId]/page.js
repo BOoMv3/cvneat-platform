@@ -11,6 +11,8 @@ import {
   FaArrowLeft,
   FaCheckCircle
 } from 'react-icons/fa';
+import { supabase } from '@/lib/supabase';
+import { formatSlotRangeParis } from '@/lib/delivery-slots';
 
 export default function TrackOrder() {
   const { orderId } = useParams();
@@ -18,7 +20,31 @@ export default function TrackOrder() {
   const [trackingData, setTrackingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [slotActionLoading, setSlotActionLoading] = useState(false);
   const mapIframeRef = useRef(null);
+
+  const acceptProposedSlot = async () => {
+    setSlotActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch(`/api/orders/${orderId}/delivery-slot`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ action: 'accept_alternative' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Erreur');
+      await fetchTracking();
+    } catch (e) {
+      alert(e.message || 'Impossible de valider le créneau');
+    } finally {
+      setSlotActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!orderId) return;
@@ -213,6 +239,48 @@ export default function TrackOrder() {
               />
             </div>
           </div>
+
+          {trackingData.deliverySlot && trackingData.deliverySlot.type === 'window' && (
+            <div
+              className={`mt-4 p-4 rounded-lg border ${
+                trackingData.deliverySlot.status === 'pending'
+                  ? 'bg-amber-50 border-amber-200'
+                  : trackingData.deliverySlot.status === 'alternative'
+                    ? 'bg-blue-50 border-blue-200'
+                    : 'bg-emerald-50 border-emerald-200'
+              }`}
+            >
+              <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <FaClock className="text-orange-600" />
+                Créneau de livraison
+              </p>
+              <p className="text-sm text-gray-800 mt-1">
+                {trackingData.deliverySlot.label}
+                {trackingData.deliverySlot.status === 'pending' && ' — en attente de confirmation'}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">{trackingData.deliverySlot.statusLabel}</p>
+              {trackingData.deliverySlotRaw?.partnerNote && (
+                <p className="text-xs text-gray-700 mt-2 italic">{trackingData.deliverySlotRaw.partnerNote}</p>
+              )}
+              {trackingData.deliverySlot.status === 'alternative' &&
+                trackingData.deliverySlot.start && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-gray-700">
+                      Un nouveau créneau vous a été proposé. Il est confirmé automatiquement sous ~30 s ; si ce bouton
+                      s’affiche encore, vous pouvez valider ici.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={slotActionLoading}
+                      onClick={acceptProposedSlot}
+                      className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Valider {formatSlotRangeParis(trackingData.deliverySlot.start, trackingData.deliverySlot.end)}
+                    </button>
+                  </div>
+                )}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

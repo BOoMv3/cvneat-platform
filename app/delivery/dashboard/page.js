@@ -1,4 +1,6 @@
 'use client';
+
+import { getDeliverySlotSummaryLine } from '@/lib/delivery-slots';
 import { useState, useEffect, useRef } from 'react';
 import DeliveryNavbar from '../../components/DeliveryNavbar';
 import AuthGuard from '@/components/AuthGuard';
@@ -1187,6 +1189,11 @@ export default function DeliveryDashboard() {
                           <span>📍 {(order.adresse_livraison || order.user_addresses?.address || order.delivery_address || 'Adresse')?.slice(0, 30)}...</span>
                           <span className={isExpanded ? 'transform rotate-180' : ''}>▼</span>
                         </div>
+                        {getDeliverySlotSummaryLine(order) && (
+                          <p className="mt-1 text-xs font-semibold text-orange-700">
+                            🕐 {getDeliverySlotSummaryLine(order)}
+                          </p>
+                        )}
                       </div>
                       
                       {/* Détails développés */}
@@ -1532,6 +1539,11 @@ export default function DeliveryDashboard() {
                               <span>Gain: {getOrderGain(order).toFixed(2)}€</span>
                               <span>Est. {order.preparation_time || 'N/A'} min</span>
                             </div>
+                            {getDeliverySlotSummaryLine(order) && (
+                              <p className="mt-2 text-sm font-semibold text-orange-800 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                                🕐 Créneau client : {getDeliverySlotSummaryLine(order)}
+                              </p>
+                            )}
                           
                           {/* Décompte en temps réel - affiché pour toutes les commandes avec temps de préparation */}
                           {order.preparation_time && (order.statut === 'en_preparation' || order.statut === 'pret_a_livrer' || order.statut === 'en_livraison') && (

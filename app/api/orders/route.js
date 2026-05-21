@@ -10,6 +10,10 @@ import { computeCheckoutPlatformDiscountEur } from '@/lib/platform-promo';
 import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
 import {
+  buildOrderDeliverySlotColumns,
+  parseClientDeliverySlot,
+} from '@/lib/delivery-slots';
+import {
   isCvneatPlusActive,
   cvneatPlusEligibilityForDeliveryDiscount,
   applyCvneatPlusHalfOnDelivery,
@@ -476,6 +480,7 @@ export async function POST(request) {
       promoCode = null,
       loyaltyRewardId = null,
       alcoholLegalAgeDeclared = false,
+      deliverySlot = null,
     } = body;
 
     // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
@@ -550,6 +555,12 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    const parsedSlot = parseClientDeliverySlot(deliverySlot);
+    if (!parsedSlot.ok) {
+      return json({ error: parsedSlot.error }, { status: 400 });
+    }
+    const deliverySlotColumns = buildOrderDeliverySlotColumns(parsedSlot);
 
     console.log('Validation des donnees OK');
 
@@ -957,6 +968,7 @@ export async function POST(request) {
           ? new Date().toISOString()
           : null,
       ...(cvneatPlusHalfDelivery ? { cvneat_plus_half_delivery: true } : {}),
+      ...deliverySlotColumns,
     };
 
     // Prioriser les informations depuis customerInfo, sinon utiliser userData

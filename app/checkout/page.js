@@ -7,6 +7,8 @@ import { safeLocalStorage } from '@/lib/localStorage';
 import PaymentForm from '@/components/PaymentForm';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import PromoCodeInput from '@/components/PromoCodeInput';
+import DeliverySlotPicker from '@/components/DeliverySlotPicker';
+import { formatSlotRangeParis } from '@/lib/delivery-slots';
 import SupportContactBlock from '@/components/SupportContactBlock';
 // PROMO TERMINÉE : Plus besoin du composant FreeDeliveryBanner
 // import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
@@ -107,6 +109,12 @@ export default function Checkout() {
   /** Menu chargé pour détecter les articles marqués alcool (contains_alcohol) */
   const [menuCatalogSnapshot, setMenuCatalogSnapshot] = useState([]);
   const [alcoholAttestationChecked, setAlcoholAttestationChecked] = useState(false);
+  const [deliverySlot, setDeliverySlot] = useState({
+    id: 'asap',
+    type: 'asap',
+    start: null,
+    end: null,
+  });
 
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
   // Mettre à true pour fermer les livraisons manuellement
@@ -932,6 +940,7 @@ export default function Checkout() {
           promoCode: appliedPromoCode?.code || null,
           loyaltyRewardId: selectedLoyaltyRewardId || null,
           alcoholLegalAgeDeclared: !panierContientAlcool || alcoholAttestationChecked === true,
+          deliverySlot,
           paymentStatus: 'pending', // Statut en attente de paiement (doit correspondre à la contrainte CHECK)
           customerInfo: {
             firstName: customerFirstName,
@@ -1497,6 +1506,14 @@ export default function Checkout() {
                 />
               </div>
             </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <DeliverySlotPicker
+                value={deliverySlot}
+                onChange={setDeliverySlot}
+                disabled={submitting || !ordersOpen}
+              />
+            </div>
           </div>
 
           {/* Résumé de la commande */}
@@ -1505,6 +1522,11 @@ export default function Checkout() {
               <FaShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mr-2" />
               Résumé de la commande
             </h2>
+            {deliverySlot?.type === 'window' && deliverySlot?.start && deliverySlot?.end && (
+              <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mb-4">
+                Livraison souhaitée : <strong>{formatSlotRangeParis(deliverySlot.start, deliverySlot.end)}</strong> — confirmation par le restaurant après commande.
+              </p>
+            )}
 
             <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
               {cart.map((item, index) => (
