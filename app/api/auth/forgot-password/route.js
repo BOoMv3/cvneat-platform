@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import emailService from '@/lib/emailService';
-import { generateAuthActionLink, getAuthRedirectBase } from '@/lib/auth-email';
+import { generatePasswordRecoveryUrl } from '@/lib/auth-email';
 const { isValidEmail } = require('@/lib/validation');
 
 export const dynamic = 'force-dynamic';
@@ -36,10 +36,9 @@ export async function POST(request) {
       );
     }
 
-    const redirectTo = `${getAuthRedirectBase()}/auth/confirm`;
     let resetUrl;
     try {
-      resetUrl = await generateAuthActionLink('recovery', email, redirectTo);
+      resetUrl = await generatePasswordRecoveryUrl(email);
     } catch (linkErr) {
       const msg = (linkErr.message || '').toLowerCase();
       if (
