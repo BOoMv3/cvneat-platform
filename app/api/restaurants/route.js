@@ -52,7 +52,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('restaurants')
       .select(
-        'id, nom, description, cuisine_type, type_cuisine, category, categorie, type, tags, keywords, specialites, status, rating, reviews_count, adresse, ville, code_postal, frais_livraison, frais_livraison_km, frais_livraison_base, frais_livraison_minimum, livraison_gratuite_seuil, profile_image, image_url, logo_image, banner_image, cover_image, banniere_image, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description'
+        'id, nom, description, type_cuisine, status, adresse, ville, code_postal, frais_livraison, profile_image, image_url, logo_image, banner_image, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description, categories, category_order'
       );
       // .eq('status', 'active'); // Temporairement désactivé pour debug
 
@@ -193,9 +193,12 @@ export async function GET() {
       const isOpenNow = fm ? false : om ? (explicit ? hoursOpen : true) : hoursOpen;
       return {
         ...r,
+        cuisine_type: r.type_cuisine ?? null,
         ferme_manuellement: fm,
         ouvert_manuellement: om,
         is_open_now: isOpenNow,
+        rating: 0,
+        reviews_count: 0,
         offre_active: offreActiveFinal,
         offre_label: isLaBonnePate(r.nom) ? null : (r.offre_label ?? null),
         offre_description: isLaBonnePate(r.nom) ? null : (r.offre_description ?? null)
