@@ -701,6 +701,8 @@ export async function POST(request) {
       console.warn('⚠️ Frais livraison anormalement bas, application du minimum 2.50€:', fraisLivraison);
       fraisLivraison = 2.50;
     }
+    // Base course livreur: doit rester positive même si la livraison client est offerte (fidélité/promo).
+    const fraisLivraisonBaseCourse = fraisLivraison;
 
     console.log('Total utilise:', total);
     console.log('Frais de livraison utilises (arrondis):', fraisLivraison);
@@ -803,8 +805,12 @@ export async function POST(request) {
 
     let cvneatPlusEligible = false;
     let cvneatPlusHalfDelivery = false;
-    /** Tarif course pour livreur / commission (identique au tarif client sauf si −50% CVNeat Plus). */
-    let fraisLivraisonCoursePourLivreur = fraisLivraison;
+    /**
+     * Tarif course livreur:
+     * - ne doit pas tomber à 0 quand la livraison client est offerte (fidélité/promo)
+     * - peut être > tarif client en cas d'avantage CVN'EAT Plus (−50% côté client)
+     */
+    let fraisLivraisonCoursePourLivreur = Math.max(fraisLivraison, fraisLivraisonBaseCourse);
     if (userId) {
       const { data: plusRow } = await serviceClient
         .from('users')
