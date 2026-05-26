@@ -1,6 +1,7 @@
 'use client';
 
 import { getDeliverySlotSummaryLine } from '@/lib/delivery-slots';
+import { livreurEarningNetEur } from '@/lib/livreur-delivery-earnings';
 import { useState, useEffect, useRef } from 'react';
 import DeliveryNavbar from '../../components/DeliveryNavbar';
 import AuthGuard from '@/components/AuthGuard';
@@ -126,12 +127,8 @@ export default function DeliveryDashboard() {
 
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-  // Gain net du livreur (frais - commission CVNeat), sans mention de la commission
-  const getOrderGain = (order) => {
-    const frais = parseFloat(order?.frais_livraison || 0);
-    const commission = parseFloat(order?.delivery_commission_cvneat || 0);
-    return Math.max(0, frais - commission);
-  };
+  // Gain net livreur (base course, pas le tarif client si livraison offerte fidélité)
+  const getOrderGain = (order) => livreurEarningNetEur(order);
 
   // Fonction pour calculer la distance entre deux points (formule de Haversine)
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
