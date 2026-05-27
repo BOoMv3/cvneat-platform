@@ -292,11 +292,30 @@ export default function OrderDetail({ params }) {
               </div>
 
               <div>
-                <h2 className="text-lg font-medium mb-4 dark:text-gray-100">Adresse de livraison</h2>
-                <p className="text-gray-600 dark:text-gray-300">
-                  {order.deliveryAddress || ''}, {order.deliveryCity || ''} {order.deliveryPostalCode || ''}
-                </p>
-                <p className="text-gray-600 dark:text-gray-300">Tél: {order.deliveryPhone || 'Non renseigné'}</p>
+                <h2 className="text-lg font-medium mb-4 dark:text-gray-100">
+                  {String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup'
+                    ? 'Retrait sur place'
+                    : 'Adresse de livraison'}
+                </h2>
+                {String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup' ? (
+                  <>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      Votre commande est à récupérer directement au restaurant.
+                    </p>
+                    {order.preparation_time ? (
+                      <p className="text-gray-600 dark:text-gray-300 mt-1">
+                        Temps de préparation estimé: <strong>{order.preparation_time} min</strong>
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      {order.deliveryAddress || ''}, {order.deliveryCity || ''} {order.deliveryPostalCode || ''}
+                    </p>
+                    <p className="text-gray-600 dark:text-gray-300">Tél: {order.deliveryPhone || 'Non renseigné'}</p>
+                  </>
+                )}
               </div>
             </div>
 

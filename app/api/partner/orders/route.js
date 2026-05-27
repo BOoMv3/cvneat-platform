@@ -70,13 +70,14 @@ export async function GET(request) {
     const limit = Math.max(1, Math.min(100, parseInt(limitRaw || '50', 10) || 50));
 
     // 1) Commandes (liste) — payées uniquement
-    // Ne montrer que quand un livreur a accepté — le restaurant reçoit la commande APRÈS le livreur
+    // - Livraison: visible quand un livreur a accepté
+    // - Retrait sur place: visible immédiatement (pas de livreur)
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('commandes')
-      .select('id, created_at, updated_at, accepted_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, preparation_time, preparation_started_at, delivery_time, ready_for_delivery, payment_status, loyalty_points_used, loyalty_discount_amount, loyalty_article_subsidy_eur, alcohol_legal_age_declared, alcohol_legal_age_declared_at, delivery_slot_type, delivery_slot_status, delivery_slot_requested_start, delivery_slot_requested_end, delivery_slot_confirmed_start, delivery_slot_confirmed_end, delivery_slot_proposed_start, delivery_slot_proposed_end, delivery_slot_partner_note')
+      .select('id, created_at, updated_at, accepted_at, statut, total, frais_livraison, restaurant_id, user_id, livreur_id, adresse_livraison, preparation_time, preparation_started_at, delivery_time, ready_for_delivery, payment_status, loyalty_points_used, loyalty_discount_amount, loyalty_article_subsidy_eur, alcohol_legal_age_declared, alcohol_legal_age_declared_at, delivery_slot_type, delivery_slot_status, delivery_slot_requested_start, delivery_slot_requested_end, delivery_slot_confirmed_start, delivery_slot_confirmed_end, delivery_slot_proposed_start, delivery_slot_proposed_end, delivery_slot_partner_note, order_fulfillment, commission_rate, commission_amount, restaurant_payout')
       .eq('restaurant_id', restaurantData.id)
       .in('payment_status', ['paid', 'succeeded'])
-      .or('statut.neq.en_attente,livreur_id.not.is.null')
+      .or('statut.neq.en_attente,livreur_id.not.is.null,order_fulfillment.eq.pickup')
       .order('created_at', { ascending: false })
       .limit(limit);
 

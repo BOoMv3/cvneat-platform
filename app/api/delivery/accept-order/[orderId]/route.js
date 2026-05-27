@@ -76,9 +76,17 @@ export async function POST(request, { params }) {
       statut: order.statut,
       livreur_id: order.livreur_id,
       restaurant_id: order.restaurant_id,
+      order_fulfillment: order.order_fulfillment,
       ready_for_delivery: order.ready_for_delivery,
       payment_status: order.payment_status
     });
+
+    if (String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup') {
+      return NextResponse.json(
+        { error: 'Cette commande est en retrait sur place et ne nécessite pas de livreur.' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     // VÉRIFICATION CRITIQUE: Bloquer si la commande est déjà annulée ou remboursée
     if (order.statut === 'annulee' || order.payment_status === 'refunded') {

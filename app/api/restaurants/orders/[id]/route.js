@@ -463,6 +463,7 @@ export async function PUT(request, { params }) {
           total: updatedOrder.total || 0,
           frais_livraison: updatedOrder.frais_livraison || 0,
           adresse_livraison: updatedOrder.adresse_livraison || '',
+          order_fulfillment: updatedOrder.order_fulfillment || 'delivery',
           security_code: updatedOrder.security_code || null,
           preparationTime: preparation_time || null,
           customerName: `${clientInfo.prenom || ''} ${clientInfo.nom || ''}`.trim() || clientInfo.email
@@ -512,7 +513,13 @@ export async function PUT(request, { params }) {
           }
           
           const statusMessages = {
-            'acceptee': { title: 'Commande acceptée ! 🎉', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été acceptée et sera préparée bientôt.` },
+            'acceptee': {
+              title: 'Commande acceptée ! 🎉',
+              body:
+                String(updatedOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup'
+                  ? `Votre commande #${updatedOrder.id?.slice(0, 8)} est acceptée. Retrait sur place dans environ ${preparation_time || updatedOrder.preparation_time || 15} min.`
+                  : `Votre commande #${updatedOrder.id?.slice(0, 8)} a été acceptée et sera préparée bientôt.`
+            },
             'en_preparation': { title: 'En préparation 👨‍🍳', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est en cours de préparation.` },
             'pret_a_livrer': { title: 'Commande prête ! 📦', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est prête et sera livrée bientôt.` },
             'en_livraison': { title: 'En livraison 🚚', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est en route vers vous !` },

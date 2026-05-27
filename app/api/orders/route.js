@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as supabaseAdminClient } from '../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../lib/commission';
+import {
+  getEffectiveCommissionRatePercent,
+  computeCommissionAndPayout,
+  getPickupCommissionRatePercent,
+} from '../../../lib/commission';
 import { isOrdersClosed } from '@/lib/ordersClosed';
 import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
@@ -166,6 +170,7 @@ export async function GET(request) {
         restaurant_id,
         user_id,
         stripe_payment_intent_id,
+        order_fulfillment,
         refund_amount,
         refunded_at,
         stripe_refund_id,
@@ -422,7 +427,8 @@ export async function GET(request) {
         refund_amount: order.refund_amount ? parseFloat(order.refund_amount) : null,
         refunded_at: order.refunded_at || null,
         payment_status: order.payment_status || 'pending',
-        discount_amount: order.discount_amount != null ? parseFloat(order.discount_amount) : 0
+        discount_amount: order.discount_amount != null ? parseFloat(order.discount_amount) : 0,
+        orderFulfillment: order.order_fulfillment || 'delivery',
       };
     }));
 
@@ -481,7 +487,11 @@ export async function POST(request) {
       loyaltyRewardId = null,
       alcoholLegalAgeDeclared = false,
       deliverySlot = null,
+      orderFulfillment = 'delivery',
     } = body;
+    const normalizedOrderFulfillment =
+      String(orderFulfillment || 'delivery').toLowerCase() === 'pickup' ? 'pickup' : 'delivery';
+    const isPickupOrder = normalizedOrderFulfillment === 'pickup';
 
     // 1. VALIDATION SIMPLIFIÉE - SEULEMENT LES BASES
     console.log('🔍 Validation simplifiée de la commande...');
@@ -526,41 +536,62 @@ export async function POST(request) {
       );
     }
 
-    // Sanitisation des informations de livraison
-    // IMPORTANT: Vérifier que le code postal est présent (peut être postalCode ou postal_code)
+    // Sanitisation des informations de livraison / retrait
+    // Retrait sur place: adresse client non requise, pas de validation de blocage.
     const postalCode = deliveryInfo?.postalCode || deliveryInfo?.postal_code || '';
-    
-    if (!postalCode || postalCode.trim() === '') {
-      console.error('❌ Validation échouée: code postal manquant dans deliveryInfo');
-      return json(
-        { error: 'Le code postal est obligatoire pour la livraison' },
-        { status: 400 }
-      );
-    }
 
-    const sanitizedDeliveryInfo = {
+    let sanitizedDeliveryInfo = {
       address: sanitizeInput(deliveryInfo?.address || ''),
       city: sanitizeInput(deliveryInfo?.city || ''),
       postalCode: sanitizeInput(postalCode),
-      instructions: sanitizeInput(deliveryInfo?.instructions || '')
+      instructions: sanitizeInput(deliveryInfo?.instructions || ''),
     };
 
-    if (isBlockedDeliveryAddress(sanitizedDeliveryInfo.address, sanitizedDeliveryInfo.city)) {
-      return json(
-        {
-          error:
-            'Cette adresse n’est plus livrable. Merci de renseigner une autre adresse de livraison.',
-          code: 'BLOCKED_DELIVERY_ADDRESS',
-        },
-        { status: 400 }
-      );
+    if (!isPickupOrder) {
+      if (!postalCode || postalCode.trim() === '') {
+        console.error('❌ Validation échouée: code postal manquant dans deliveryInfo');
+        return json(
+          { error: 'Le code postal est obligatoire pour la livraison' },
+          { status: 400 }
+        );
+      }
+
+      if (isBlockedDeliveryAddress(sanitizedDeliveryInfo.address, sanitizedDeliveryInfo.city)) {
+        return json(
+          {
+            error:
+              'Cette adresse n’est plus livrable. Merci de renseigner une autre adresse de livraison.',
+            code: 'BLOCKED_DELIVERY_ADDRESS',
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      sanitizedDeliveryInfo = {
+        address: sanitizeInput('Retrait sur place'),
+        city: sanitizeInput(deliveryInfo?.city || ''),
+        postalCode: sanitizeInput(deliveryInfo?.postalCode || deliveryInfo?.postal_code || ''),
+        instructions: sanitizeInput(deliveryInfo?.instructions || ''),
+      };
     }
 
-    const parsedSlot = parseClientDeliverySlot(deliverySlot);
+    const parsedSlot = isPickupOrder ? { ok: true, slot: null } : parseClientDeliverySlot(deliverySlot);
     if (!parsedSlot.ok) {
       return json({ error: parsedSlot.error }, { status: 400 });
     }
-    const deliverySlotColumns = buildOrderDeliverySlotColumns(parsedSlot);
+    const deliverySlotColumns = isPickupOrder
+      ? {
+          delivery_slot_type: 'asap',
+          delivery_slot_status: null,
+          delivery_slot_requested_start: null,
+          delivery_slot_requested_end: null,
+          delivery_slot_confirmed_start: null,
+          delivery_slot_confirmed_end: null,
+          delivery_slot_proposed_start: null,
+          delivery_slot_proposed_end: null,
+          delivery_slot_partner_note: null,
+        }
+      : buildOrderDeliverySlotColumns(parsedSlot);
 
     console.log('Validation des donnees OK');
 
@@ -694,7 +725,9 @@ export async function POST(request) {
     }
 
     // Frais reçus = après code promo « livraison offerte », avant récompense fidélité (palier livraison gratuite)
-    let fraisLivraison = Math.round(parseFloat(deliveryFee ?? restaurant.frais_livraison ?? 0) * 100) / 100;
+    let fraisLivraison = isPickupOrder
+      ? 0
+      : Math.round(parseFloat(deliveryFee ?? restaurant.frais_livraison ?? 0) * 100) / 100;
     // Garde-fou: si frais entre 0 et 2.50€ (hors 0 = livraison déjà offerte côté client), forcer 2.50€
     // Sauf promo « % sur la livraison » où les frais peuvent légitimement être sous 2,50€ après réduction.
     if (fraisLivraison > 0 && fraisLivraison < 2.50 && !promoDeliveryPercent) {
@@ -702,7 +735,7 @@ export async function POST(request) {
       fraisLivraison = 2.50;
     }
     // Base course livreur: doit rester positive même si la livraison client est offerte (fidélité/promo).
-    const fraisLivraisonBaseCourse = fraisLivraison;
+    const fraisLivraisonBaseCourse = isPickupOrder ? 0 : fraisLivraison;
 
     console.log('Total utilise:', total);
     console.log('Frais de livraison utilises (arrondis):', fraisLivraison);
@@ -810,7 +843,9 @@ export async function POST(request) {
      * - ne doit pas tomber à 0 quand la livraison client est offerte (fidélité/promo)
      * - peut être > tarif client en cas d'avantage CVN'EAT Plus (−50% côté client)
      */
-    let fraisLivraisonCoursePourLivreur = Math.max(fraisLivraison, fraisLivraisonBaseCourse);
+    let fraisLivraisonCoursePourLivreur = isPickupOrder
+      ? 0
+      : Math.max(fraisLivraison, fraisLivraisonBaseCourse);
     if (userId) {
       const { data: plusRow } = await serviceClient
         .from('users')
@@ -896,10 +931,12 @@ export async function POST(request) {
       platform_discount_amount = Math.round((platform_discount_amount + 0.49) * 100) / 100;
     }
     // Règles fixes: La Bonne Pâte = 0%, All'ovale = 15%, sinon restaurant.commission_rate ou 20%
-    const effectiveRatePercent = getEffectiveCommissionRatePercent({
-      restaurantName: restaurant?.nom,
-      restaurantRatePercent: restaurant?.commission_rate,
-    });
+    const effectiveRatePercent = isPickupOrder
+      ? getPickupCommissionRatePercent({ restaurantName: restaurant?.nom })
+      : getEffectiveCommissionRatePercent({
+          restaurantName: restaurant?.nom,
+          restaurantRatePercent: restaurant?.commission_rate,
+        });
     const computedCommission = computeCommissionAndPayout(totalAfterDiscount, effectiveRatePercent);
     const commissionGross = computedCommission.commission;
     const restaurantPayoutBase = computedCommission.payout;
@@ -912,7 +949,7 @@ export async function POST(request) {
     const DELIVERY_COMMISSION_RATE = 0.10; // 10% de commission sur la course (si > 2.50€)
     const DELIVERY_BASE_FEE = 2.50; // Seuil déclencheur
     let deliveryCommissionCvneat = 0.00;
-    if (fraisLivraisonCoursePourLivreur > DELIVERY_BASE_FEE) {
+    if (!isPickupOrder && fraisLivraisonCoursePourLivreur > DELIVERY_BASE_FEE) {
       deliveryCommissionCvneat =
         Math.round(fraisLivraisonCoursePourLivreur * DELIVERY_COMMISSION_RATE * 100) / 100;
     }
@@ -933,7 +970,9 @@ export async function POST(request) {
     console.log('Tentative de creation de la commande...');
     // IMPORTANT: Le code postal et les instructions sont inclus dans adresse_livraison, pas besoin de colonnes séparées
     // Si des instructions existent, on peut les ajouter à l'adresse ou les stocker ailleurs
-    let adresseComplete = `${sanitizedDeliveryInfo.address}, ${sanitizedDeliveryInfo.city} ${sanitizedDeliveryInfo.postalCode}`;
+    let adresseComplete = isPickupOrder
+      ? `Retrait sur place - ${restaurant?.nom || ''}`.trim()
+      : `${sanitizedDeliveryInfo.address}, ${sanitizedDeliveryInfo.city} ${sanitizedDeliveryInfo.postalCode}`;
     if (sanitizedDeliveryInfo.instructions && sanitizedDeliveryInfo.instructions.trim()) {
       adresseComplete += ` (Instructions: ${sanitizedDeliveryInfo.instructions.trim()})`;
     }
@@ -951,6 +990,7 @@ export async function POST(request) {
       statut: paymentStatus === 'pending_payment' ? 'en_attente' : 'en_attente', // En attente de paiement ou d'acceptation
       security_code: securityCode, // Code de sécurité pour la livraison
       delivery_requested_at: new Date().toISOString(), // Timestamp pour l'expiration automatique si aucun livreur n'accepte
+      order_fulfillment: normalizedOrderFulfillment,
       // Stocker les informations du code promo si présent
       promo_code_id: promoCodeId || null,
       promo_code: promoCode || null,
@@ -1106,6 +1146,7 @@ export async function POST(request) {
       'platform_discount_amount',
       'cvneat_plus_half_delivery',
       'frais_livraison_course',
+      'order_fulfillment',
     ]);
     const payloadForInsert = { ...orderData };
 

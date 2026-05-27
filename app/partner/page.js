@@ -1757,7 +1757,7 @@ export default function PartnerDashboard() {
     }
   };
 
-  const calculateCommission = (totalAmount) => {
+  const calculateCommission = (totalAmount, order = null) => {
     // S'assurer que totalAmount est un nombre valide
     const amount = parseFloat(totalAmount || 0) || 0;
     if (isNaN(amount) || amount < 0) {
@@ -1772,11 +1772,13 @@ export default function PartnerDashboard() {
       .toLowerCase();
     const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
     
+    const fulfillment = String(order?.order_fulfillment || 'delivery').toLowerCase();
+    const defaultRate = fulfillment === 'pickup' ? 0.15 : 0.20;
     // Pas de commission pour "La Bonne Pâte"
-    const commissionRate = isInternalRestaurant ? 0 : 0.20; // 20% pour CVN'EAT
+    const commissionRate = isInternalRestaurant ? 0 : defaultRate;
     const commission = amount * commissionRate;
     const restaurantRevenue = amount - commission;
-    return { commission, restaurantRevenue };
+    return { commission, restaurantRevenue, commissionRatePercent: commissionRate * 100 };
   };
 
   const toggleRestaurantClosed = async () => {
@@ -3050,73 +3052,6 @@ export default function PartnerDashboard() {
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* Message partenaires — commission, promos, CM, app native, tablettes */}
-            {restaurant && (
-              <div className="bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-gray-800 dark:via-gray-800 dark:to-orange-950/30 rounded-xl border-2 border-orange-400 dark:border-orange-600 p-5 sm:p-6 shadow-md">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <FaChartLine className="text-orange-600 dark:text-orange-400 shrink-0" />
-                  Infos importantes pour nos partenaires
-                </h2>
-
-                <div className="space-y-4 text-sm text-gray-800 dark:text-gray-200">
-                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Commission & concurrence</h3>
-                    <p>
-                      Certains d&apos;entre vous ont signé avec un concurrent qui prélève environ{' '}
-                      <strong>36&nbsp;% TTC</strong>. Nous vous rappelons que chez CVN&apos;EAT, la commission est de{' '}
-                      <strong>20&nbsp;%</strong> sur vos ventes.
-                    </p>
-                    <p className="mt-2">
-                      Concernant les promos : pour le moment, celles proposées par la concurrence sont à leur charge.
-                      Les prochaines promos chez eux seront très probablement <strong>à votre charge</strong>.
-                      Chez nous, <strong>toutes les promos sont à la charge de CVN&apos;EAT</strong> — pas la vôtre.
-                    </p>
-                  </div>
-
-                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                      <FaInstagram className="text-pink-600 shrink-0" />
-                      Réseaux sociaux & visibilité
-                    </h3>
-                    <p>
-                      Nous avons recruté une <strong>community manager</strong> qui passera dans chaque restaurant
-                      partenaire pour réaliser des photos et vidéos, et alimenter vos réseaux (Instagram, Facebook, etc.).
-                      Objectif : plus de visibilité locale et plus de commandes pour vous.
-                    </p>
-                  </div>
-
-                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Application 100&nbsp;% native</h3>
-                    <p>
-                      Une <strong>application native</strong> (iOS / Android) est en cours de développement. Elle
-                      remplacera progressivement l&apos;usage navigateur sur tablette et améliorera la réactivité, les
-                      notifications et la stabilité au quotidien.
-                    </p>
-                  </div>
-
-                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-amber-300 dark:border-amber-700">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Tablettes fournies</h3>
-                    <p>
-                      Les tablettes mises à disposition étaient <strong>neuves</strong> et sont destinées à
-                      l&apos;utilisation de <strong>CVN&apos;EAT uniquement</strong> (prise de commandes partenaire).
-                    </p>
-                    <p className="mt-2">
-                      Nous constatons que certaines sont aussi utilisées pour Facebook, Leboncoin, YouTube, etc. —
-                      ce qui peut faire <strong>ramer</strong> l&apos;appareil et ralentir CVN&apos;EAT. Merci de réserver
-                      la tablette à la gestion des commandes.
-                    </p>
-                    <p className="mt-2 text-amber-900 dark:text-amber-200 font-medium">
-                      L&apos;application native résoudra une grande partie des soucis de latence. En attendant, nous
-                      faisons de notre mieux pour vous accompagner. Une question ?{' '}
-                      <a href="tel:0786014171" className="underline">07&nbsp;86&nbsp;01&nbsp;41&nbsp;71</a>
-                      {' · '}
-                      <a href="mailto:contact@cvneat.fr" className="underline">contact@cvneat.fr</a>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Section d'aide */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
               <div className="flex items-start justify-between">
@@ -3276,6 +3211,11 @@ export default function PartnerDashboard() {
                 <p className="text-sm text-gray-600 mt-1">
                   Indiquez le temps de préparation estimé pour cette commande.
                 </p>
+                {String(selectedOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup' && (
+                  <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-2">
+                    Retrait sur place: le client sera notifié immédiatement du temps estimé avant de venir récupérer sa commande.
+                  </p>
+                )}
                 {selectedOrder.delivery_slot_type === 'window' &&
                   selectedOrder.delivery_slot_status === 'pending' && (
                     <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
@@ -3510,7 +3450,7 @@ export default function PartnerDashboard() {
                         })));
                       }
                       
-                      const { commission, restaurantRevenue } = calculateCommission(totalAmount);
+                      const { commission, restaurantRevenue, commissionRatePercent } = calculateCommission(totalAmount, order);
                       
                       return (
                         <div key={order.id} className="border dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50 dark:bg-gray-800">
@@ -3552,6 +3492,12 @@ export default function PartnerDashboard() {
                                   </a>
                                 </p>
                               )}
+                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                <span className="font-medium">Mode:</span>{' '}
+                                {String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup'
+                                  ? 'Retrait sur place'
+                                  : 'Livraison'}
+                              </p>
                               {/* Afficher les frais de livraison séparément (pour info, mais pas dans le total) */}
                               {deliveryFee > 0 && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -3578,7 +3524,7 @@ export default function PartnerDashboard() {
                                     {totalAmount.toFixed(2)} €
                                   </p>
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Commission CVN'EAT (20%): {commission.toFixed(2)} €
+                                    Commission CVN'EAT ({commissionRatePercent.toFixed(0)}%): {commission.toFixed(2)} €
                                   </p>
                                   <p className="text-sm font-medium text-green-600 dark:text-green-400">
                                     Votre gain (80%): {restaurantRevenue.toFixed(2)} €
@@ -3913,7 +3859,9 @@ export default function PartnerDashboard() {
                                   <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
                                     ⏱️ Temps de préparation estimé : {order.preparation_time} min
                                   </p>
-                                  {order.livreur_id && !order.ready_for_delivery && (
+                                  {String(order.order_fulfillment || 'delivery').toLowerCase() !== 'pickup' &&
+                                    order.livreur_id &&
+                                    !order.ready_for_delivery && (
                                     <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
                                       Un livreur a déjà accepté la course – marquez la commande comme prête dès qu'elle l'est.
                                     </p>
@@ -3995,7 +3943,9 @@ export default function PartnerDashboard() {
                                 )}
                                 {/* Permettre de marquer comme prête même si un livreur a accepté */}
                                 {/* Afficher le bouton "Marquer comme prête" si la commande est en préparation et pas encore prête */}
-                                {(order.statut === 'en_preparation' || order.statut === 'en_attente') && !order.ready_for_delivery && (
+                                {(order.statut === 'en_preparation' || order.statut === 'en_attente') &&
+                                  !order.ready_for_delivery &&
+                                  String(order.order_fulfillment || 'delivery').toLowerCase() !== 'pickup' && (
                                   <button
                                     onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
                                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
@@ -4007,7 +3957,10 @@ export default function PartnerDashboard() {
                                 )}
                                 
                                 {/* Afficher "Prête" et bouton "Remise au livreur" si la commande est prête mais pas encore en livraison */}
-                                {order.ready_for_delivery && order.statut !== 'en_livraison' && order.statut !== 'livree' && (
+                                {order.ready_for_delivery &&
+                                  order.statut !== 'en_livraison' &&
+                                  order.statut !== 'livree' &&
+                                  String(order.order_fulfillment || 'delivery').toLowerCase() !== 'pickup' && (
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm text-green-600 dark:text-green-400 px-3 py-2 font-medium">
                                       ✓ Prête pour livraison

@@ -553,6 +553,7 @@ export async function GET(request, { params }) {
       adresse_livraison: order.adresse_livraison,
       preparation_time: order.preparation_time,
       livreur_id: order.livreur_id,
+      order_fulfillment: order.order_fulfillment || 'delivery',
       delivery_driver: deliveryDriver,
       customer_name: customerName,
       customer_phone: customerPhone,

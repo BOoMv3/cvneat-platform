@@ -22,6 +22,7 @@ import {
   FaEnvelope,
   FaShoppingCart,
   FaMotorcycle,
+  FaStore,
   FaCheck,
   FaTag,
   FaCloudRain,
@@ -115,6 +116,7 @@ export default function Checkout() {
     start: null,
     end: null,
   });
+  const [orderFulfillment, setOrderFulfillment] = useState('delivery');
 
   // Fermeture des livraisons pour ce soir (météo) - DÉSACTIVÉ pour Noël
   // Mettre à true pour fermer les livraisons manuellement
@@ -173,8 +175,12 @@ export default function Checkout() {
     const manualPromoDiscount = appliedPromoCode?.discountAmount || 0;
     const discountAmount = manualPromoDiscount + autoPromoDiscount;
     const maxDiscount = Math.min(discountAmount, cartTotal);
-    const promoFree = appliedPromoCode?.discountType === 'free_delivery';
-    const grossDel = Math.round(parseFloat(fraisLivraison || 0) * 100) / 100;
+    const promoFree =
+      orderFulfillment === 'pickup' || appliedPromoCode?.discountType === 'free_delivery';
+    const grossDel =
+      orderFulfillment === 'pickup'
+        ? 0
+        : Math.round(parseFloat(fraisLivraison || 0) * 100) / 100;
     const deliveryPct =
       appliedPromoCode?.discountType === 'delivery_percent'
         ? Math.min(100, Math.max(0, Number(appliedPromoCode?.deliveryPercent) || 0))
@@ -234,6 +240,7 @@ export default function Checkout() {
     fraisLivraison,
     selectedLoyaltyRewardId,
     cvneatPlusPlatformFeeFreeLayer,
+    orderFulfillment,
   ]);
 
   const cartContainsAlcohol = useMemo(
@@ -250,6 +257,18 @@ export default function Checkout() {
     const w = applyCvneatToRawDelivery(deliveryFromApi);
     setFraisLivraison(w);
   }, [deliveryFromApi, applyCvneatToRawDelivery]);
+
+  useEffect(() => {
+    if (orderFulfillment === 'pickup') {
+      setDeliveryError(null);
+      setDeliveryNotice(null);
+      setAddressValidationMessage(null);
+      setShowErrorModal(false);
+      setFraisLivraison(0);
+    } else if (selectedAddress) {
+      calculateDeliveryFee(selectedAddress);
+    }
+  }, [orderFulfillment]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -397,17 +416,19 @@ export default function Checkout() {
   useEffect(() => {
     const total = computeCartTotalWithExtras(cart);
     setCartTotal(total);
-    setTotalAvecLivraison(total + (parseFloat(fraisLivraison) || 0));
-  }, [cart, fraisLivraison, forceUpdate]);
+    const effectiveDeliveryFee = orderFulfillment === 'pickup' ? 0 : (parseFloat(fraisLivraison) || 0);
+    setTotalAvecLivraison(total + effectiveDeliveryFee);
+  }, [cart, fraisLivraison, forceUpdate, orderFulfillment]);
 
   // Recalcul livraison debouncé (évite rafales d'appels pendant modification du panier)
   useEffect(() => {
+    if (orderFulfillment !== 'delivery') return;
     if (!selectedAddress || cart.length === 0) return;
     const timer = setTimeout(() => {
       calculateDeliveryFee(selectedAddress);
     }, 500);
     return () => clearTimeout(timer);
-  }, [selectedAddress, cart]);
+  }, [selectedAddress, cart, orderFulfillment]);
 
   const buildDeliveryPayload = useCallback((fullAddress) => {
     const savedCart = safeLocalStorage.getJSON('cart');
@@ -644,13 +665,13 @@ export default function Checkout() {
       return;
     }
     // Vérifier si les livraisons sont fermées (manuel)
-    if (deliveryClosed) {
+    if (orderFulfillment === 'delivery' && deliveryClosed) {
       alert(deliveryClosedMessage);
       return;
     }
 
     // Validation minimale
-    if (!selectedAddress) {
+    if (orderFulfillment === 'delivery' && !selectedAddress) {
       alert('Veuillez sélectionner une adresse de livraison');
       return;
     }
@@ -692,44 +713,50 @@ export default function Checkout() {
         }
       }
 
-      // IMPORTANT: Recalculer les frais de livraison AVANT le paiement pour garantir l'exactitude
-      console.log('🔄 Recalcul des frais de livraison avant paiement...');
-      const fullAddress = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
-      
-      // Recalculer les frais de livraison
-      const recalculateResponse = await fetch('/api/delivery/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: fullAddress,
-          deliveryAddress: fullAddress,
-          restaurantId: activeRestaurant.id
-        })
-      });
+      let finalDeliveryFee = 0;
+      let fullAddress = '';
+      if (orderFulfillment === 'delivery') {
+        // IMPORTANT: Recalculer les frais de livraison AVANT le paiement pour garantir l'exactitude
+        console.log('🔄 Recalcul des frais de livraison avant paiement...');
+        fullAddress = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
 
-      if (!recalculateResponse.ok) {
-        const errorData = await recalculateResponse.json();
-        alert(`Erreur de calcul des frais de livraison: ${errorData.message || 'Adresse non livrable'}`);
-        setSubmitting(false);
-        return;
-      }
+        const recalculateResponse = await fetch('/api/delivery/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: fullAddress,
+            deliveryAddress: fullAddress,
+            restaurantId: activeRestaurant.id
+          })
+        });
 
-      const recalculateData = await recalculateResponse.json();
-      
-      if (!recalculateData.success || !recalculateData.livrable) {
-        alert(`Livraison impossible: ${recalculateData.message || 'Adresse trop éloignée'}`);
-        setSubmitting(false);
-        return;
-      }
-      setDeliveryNotice(recalculateData.delivery_notice || null);
+        if (!recalculateResponse.ok) {
+          const errorData = await recalculateResponse.json();
+          alert(`Erreur de calcul des frais de livraison: ${errorData.message || 'Adresse non livrable'}`);
+          setSubmitting(false);
+          return;
+        }
 
-      // Utiliser les frais recalculés (garantis corrects)
-      let finalDeliveryFee = Math.round(parseFloat(recalculateData.frais_livraison || 0) * 100) / 100;
-      
-      // Vérification de sécurité : minimum 2,50 € seulement si des frais sont facturés
-      if (finalDeliveryFee > 0 && finalDeliveryFee < 2.5) {
-        console.warn('⚠️ Frais de livraison anormalement bas, utilisation du minimum');
-        finalDeliveryFee = 2.5;
+        const recalculateData = await recalculateResponse.json();
+
+        if (!recalculateData.success || !recalculateData.livrable) {
+          alert(`Livraison impossible: ${recalculateData.message || 'Adresse trop éloignée'}`);
+          setSubmitting(false);
+          return;
+        }
+        setDeliveryNotice(recalculateData.delivery_notice || null);
+
+        // Utiliser les frais recalculés (garantis corrects)
+        finalDeliveryFee = Math.round(parseFloat(recalculateData.frais_livraison || 0) * 100) / 100;
+
+        // Vérification de sécurité : minimum 2,50 € seulement si des frais sont facturés
+        if (finalDeliveryFee > 0 && finalDeliveryFee < 2.5) {
+          console.warn('⚠️ Frais de livraison anormalement bas, utilisation du minimum');
+          finalDeliveryFee = 2.5;
+        }
+      } else {
+        finalDeliveryFee = 0;
+        setDeliveryNotice(null);
       }
 
       const discountPre = appliedPromoCode?.discountAmount || 0;
@@ -758,8 +785,7 @@ export default function Checkout() {
 
       console.log('✅ Frais de livraison recalculés:', finalDeliveryFee, '€');
 
-      const { payload: finalPayload, restaurantInfo: payloadRestaurantInfo } = buildDeliveryPayload(fullAddress);
-      const resolvedRestaurant = activeRestaurant || payloadRestaurantInfo || null;
+      const resolvedRestaurant = activeRestaurant || null;
       
       if (!resolvedRestaurant) {
         alert('Impossible de déterminer le restaurant pour cette commande.');
@@ -818,8 +844,9 @@ export default function Checkout() {
 
       const maxDiscount = Math.min(discountAmount, cartSubtotal);
       const maxServerDiscount = Math.min(manualPromoDiscount, cartSubtotal);
-      const promoFree = appliedPromoCode?.discountType === 'free_delivery';
-      const deliveryBeforeLoyalty = promoFree ? 0 : finalDeliveryFeeForTotal;
+      const promoFree = orderFulfillment === 'pickup' ? true : appliedPromoCode?.discountType === 'free_delivery';
+      const deliveryBeforeLoyalty =
+        orderFulfillment === 'pickup' ? 0 : (promoFree ? 0 : finalDeliveryFeeForTotal);
 
       const adj = computeLoyaltyAdjustments({
         rewardId: selectedLoyaltyRewardId,
@@ -910,7 +937,7 @@ export default function Checkout() {
       const token = session?.access_token;
 
       // Validation du code postal avant de créer la commande
-      if (!selectedAddress.postal_code || selectedAddress.postal_code.trim() === '') {
+      if (orderFulfillment === 'delivery' && (!selectedAddress.postal_code || selectedAddress.postal_code.trim() === '')) {
         alert('Erreur: Le code postal est manquant. Veuillez vérifier votre adresse de livraison.');
         setSubmitting(false);
         return;
@@ -926,9 +953,15 @@ export default function Checkout() {
         body: JSON.stringify({
           restaurantId: resolvedRestaurant.id,
           deliveryInfo: {
-            address: selectedAddress.address || '',
-            city: selectedAddress.city || '',
-            postalCode: selectedAddress.postal_code || selectedAddress.postalCode || '',
+            address: orderFulfillment === 'delivery' ? (selectedAddress.address || '') : 'Retrait sur place',
+            city:
+              orderFulfillment === 'delivery'
+                ? (selectedAddress.city || '')
+                : (resolvedRestaurant.ville || resolvedRestaurant.city || ''),
+            postalCode:
+              orderFulfillment === 'delivery'
+                ? (selectedAddress.postal_code || selectedAddress.postalCode || '')
+                : (resolvedRestaurant.code_postal || resolvedRestaurant.postal_code || ''),
             instructions: orderDetails.instructions?.trim() || ''
           },
           items: itemsToUse,
@@ -942,7 +975,8 @@ export default function Checkout() {
           promoCode: appliedPromoCode?.code || null,
           loyaltyRewardId: selectedLoyaltyRewardId || null,
           alcoholLegalAgeDeclared: !panierContientAlcool || alcoholAttestationChecked === true,
-          deliverySlot,
+          deliverySlot: orderFulfillment === 'delivery' ? deliverySlot : null,
+          orderFulfillment,
           paymentStatus: 'pending', // Statut en attente de paiement (doit correspondre à la contrainte CHECK)
           customerInfo: {
             firstName: customerFirstName,
@@ -1349,7 +1383,7 @@ export default function Checkout() {
         )}
 
         {/* Bannière de fermeture des livraisons - Météo (manuel) */}
-        {deliveryClosed && (
+        {orderFulfillment === 'delivery' && deliveryClosed && (
           <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg shadow-lg">
             <div className="flex items-center gap-3">
               <FaCloudRain className="h-6 w-6 flex-shrink-0" />
@@ -1364,13 +1398,51 @@ export default function Checkout() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 fold:gap-2 xs:gap-4 sm:gap-6 lg:gap-8">
           {/* Informations de livraison */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
+            <div className="mb-4">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                Mode de commande
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderFulfillment('delivery')}
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                    orderFulfillment === 'delivery'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+                      : 'border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200'
+                  }`}
+                >
+                  <FaMotorcycle className="inline mr-2" />
+                  Livraison
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderFulfillment('pickup')}
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                    orderFulfillment === 'pickup'
+                      ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200'
+                      : 'border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200'
+                  }`}
+                >
+                  <FaStore className="inline mr-2" />
+                  Retrait sur place
+                </button>
+              </div>
+            </div>
+
             <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 flex items-center text-gray-900 dark:text-white">
               <FaMapMarkerAlt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mr-2" />
-              Adresse de livraison
+              {orderFulfillment === 'delivery' ? 'Adresse de livraison' : 'Retrait sur place'}
             </h2>
 
+            {orderFulfillment === 'pickup' && (
+              <div className="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
+                Aucuns frais de livraison pour le retrait sur place. Le restaurant est automatiquement informé.
+              </div>
+            )}
+
             {/* Adresses existantes */}
-            {userAddresses.length > 0 && (
+            {orderFulfillment === 'delivery' && userAddresses.length > 0 && (
               <div className="mb-4 sm:mb-6">
                 <h3 className="font-medium text-gray-900 dark:text-white mb-3 text-sm sm:text-base">Adresses enregistrées</h3>
                 <div className="space-y-2 sm:space-y-3">
@@ -1401,7 +1473,7 @@ export default function Checkout() {
 
 
             {/* Formulaire nouvelle adresse */}
-            {showAddressForm && (
+            {orderFulfillment === 'delivery' && showAddressForm && (
               <div className="border-t dark:border-gray-700 pt-4 sm:pt-6">
                 <h3 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Nouvelle adresse</h3>
                 <div className="space-y-3 sm:space-y-4">
@@ -1454,7 +1526,7 @@ export default function Checkout() {
               </div>
             )}
 
-            {!showAddressForm && (
+            {orderFulfillment === 'delivery' && !showAddressForm && (
               <button
                 onClick={() => setShowAddressForm(true)}
                 className="flex items-center text-blue-600 hover:text-blue-700 min-h-[44px] touch-manipulation text-sm sm:text-base"
@@ -1511,6 +1583,7 @@ export default function Checkout() {
               </div>
             </div>
 
+            {orderFulfillment === 'delivery' && (
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <DeliverySlotPicker
                 value={deliverySlot}
@@ -1518,6 +1591,7 @@ export default function Checkout() {
                 disabled={submitting || !ordersOpen}
               />
             </div>
+            )}
           </div>
 
           {/* Résumé de la commande */}
@@ -1526,7 +1600,7 @@ export default function Checkout() {
               <FaShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mr-2" />
               Résumé de la commande
             </h2>
-            {deliverySlot?.type === 'window' && deliverySlot?.start && deliverySlot?.end && (
+            {orderFulfillment === 'delivery' && deliverySlot?.type === 'window' && deliverySlot?.start && deliverySlot?.end && (
               <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mb-4">
                 Livraison souhaitée : <strong>{formatSlotRangeParis(deliverySlot.start, deliverySlot.end)}</strong> — confirmation par le restaurant après commande.
               </p>
@@ -1602,7 +1676,7 @@ export default function Checkout() {
 
             {(() => {
               const { adj, PLATFORM_FEE, totalToPay, rewardMeta, maxDiscount, platformPromoDiscount } = loyaltyCheckout;
-              const displayedDeliveryFee = adj.deliveryFeeEurAfter;
+              const displayedDeliveryFee = orderFulfillment === 'pickup' ? 0 : adj.deliveryFeeEurAfter;
               return (
             <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
@@ -1703,10 +1777,10 @@ export default function Checkout() {
               <div key={`frais-${forceUpdate}`} className="flex justify-between text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                 <span className="flex items-center">
                   <FaMotorcycle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  Frais de livraison
+                  {orderFulfillment === 'pickup' ? 'Retrait sur place' : 'Frais de livraison'}
                 </span>
                 <span className="font-semibold">
-                  {displayedDeliveryFee.toFixed(2)}€
+                  {orderFulfillment === 'pickup' ? '0.00€' : `${displayedDeliveryFee.toFixed(2)}€`}
                 </span>
               </div>
               <div className="flex justify-between text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
@@ -1875,9 +1949,9 @@ export default function Checkout() {
                   onClick={submitOrder}
                   disabled={
                     submitting ||
-                    !selectedAddress ||
-                    deliveryError !== null ||
-                    deliveryClosed ||
+                    (orderFulfillment === 'delivery' && !selectedAddress) ||
+                    (orderFulfillment === 'delivery' && deliveryError !== null) ||
+                    (orderFulfillment === 'delivery' && deliveryClosed) ||
                     !ordersOpen ||
                     (cartContainsAlcohol && !alcoholAttestationChecked)
                   }
@@ -1893,20 +1967,20 @@ export default function Checkout() {
                   )}
                 </button>
                 {(submitting ||
-                  !selectedAddress ||
-                  deliveryError !== null ||
-                  deliveryClosed ||
+                  (orderFulfillment === 'delivery' && !selectedAddress) ||
+                  (orderFulfillment === 'delivery' && deliveryError !== null) ||
+                  (orderFulfillment === 'delivery' && deliveryClosed) ||
                   !ordersOpen ||
                   (cartContainsAlcohol && !alcoholAttestationChecked)) &&
                   !submitting && (
                   <p className="text-center text-sm text-amber-600 dark:text-amber-400 mt-2">
-                    {!selectedAddress && 'Sélectionnez une adresse de livraison pour continuer.'}
-                    {selectedAddress && deliveryError !== null && 'Vérifiez l\'adresse de livraison.'}
-                    {selectedAddress && deliveryError === null && deliveryClosed && 'Les livraisons sont fermées pour ce créneau.'}
-                    {selectedAddress && deliveryError === null && !deliveryClosed && !ordersOpen && 'Le restaurant n\'accepte pas les commandes pour le moment.'}
-                    {selectedAddress &&
+                    {orderFulfillment === 'delivery' && !selectedAddress && 'Sélectionnez une adresse de livraison pour continuer.'}
+                    {orderFulfillment === 'delivery' && selectedAddress && deliveryError !== null && 'Vérifiez l\'adresse de livraison.'}
+                    {orderFulfillment === 'delivery' && selectedAddress && deliveryError === null && deliveryClosed && 'Les livraisons sont fermées pour ce créneau.'}
+                    {(orderFulfillment === 'pickup' || (selectedAddress && deliveryError === null && !deliveryClosed)) && !ordersOpen && 'Le restaurant n\'accepte pas les commandes pour le moment.'}
+                    {(orderFulfillment === 'pickup' || (selectedAddress &&
                       deliveryError === null &&
-                      !deliveryClosed &&
+                      !deliveryClosed)) &&
                       ordersOpen &&
                       cartContainsAlcohol &&
                       !alcoholAttestationChecked &&
@@ -1925,7 +1999,18 @@ export default function Checkout() {
                   <div className="space-y-2 text-sm">
                     <p><span className="text-gray-600 dark:text-gray-400">Restaurant :</span> <strong>{restaurant?.nom || '—'}</strong></p>
                     <p><span className="text-gray-600 dark:text-gray-400">Articles :</span> {cart.length} article{cart.length > 1 ? 's' : ''}</p>
-                    <p><span className="text-gray-600 dark:text-gray-400">Adresse :</span> {selectedAddress ? `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}` : '—'}</p>
+                    <p>
+                      <span className="text-gray-600 dark:text-gray-400">Mode :</span>{' '}
+                      {orderFulfillment === 'pickup' ? 'Retrait sur place' : 'Livraison'}
+                    </p>
+                    <p>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {orderFulfillment === 'pickup' ? 'Retrait :' : 'Adresse :'}
+                      </span>{' '}
+                      {orderFulfillment === 'pickup'
+                        ? (restaurant?.nom || 'Restaurant')
+                        : (selectedAddress ? `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}` : '—')}
+                    </p>
                     <p className="pt-2 border-t border-blue-200 dark:border-blue-800">
                       <span className="text-gray-600 dark:text-gray-400">Total à payer :</span>{' '}
                       <strong className="text-lg text-blue-600 dark:text-blue-400">

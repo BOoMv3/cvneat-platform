@@ -66,6 +66,7 @@ export async function GET(request) {
       `)
       .eq('statut', 'en_attente') // Commandes en attente (pas encore acceptées par le restaurant)
       .is('livreur_id', null) // Pas encore assignées à un livreur
+      .neq('order_fulfillment', 'pickup') // Exclure les retraits sur place
       .neq('statut', 'annulee') // Exclure les commandes annulées
       .in('payment_status', ['paid', 'succeeded']) // Paiement validé
       .order('created_at', { ascending: true });
