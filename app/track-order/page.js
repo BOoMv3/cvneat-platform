@@ -129,6 +129,7 @@ export default function TrackOrder() {
 
   const generateNotifications = (orderData) => {
     try {
+      const pickup = isPickupOrder(orderData);
       const notifs = [];
       const now = new Date();
       
@@ -188,52 +189,85 @@ export default function TrackOrder() {
         });
       }
 
-      // Notification prête
-      if (['pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
-        notifs.push({
-          id: 4,
-          title: 'Commande prête',
-          message: 'Votre commande est prête ! Un livreur va bientôt la récupérer',
-          time: safeDate(orderData.updated_at || orderData.updatedAt),
-          status: 'completed',
-          icon: '📦'
-        });
-      }
+      if (pickup) {
+        if (['pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
+          notifs.push({
+            id: 4,
+            title: 'Commande prête au retrait',
+            message: 'Votre commande est prête. Rendez-vous au restaurant pour la récupérer.',
+            time: safeDate(orderData.updated_at || orderData.updatedAt),
+            status: 'completed',
+            icon: '🛍️'
+          });
+        } else if (status === 'en_preparation' || status === 'preparing') {
+          notifs.push({
+            id: 4,
+            title: 'Préparation en cours',
+            message: 'Le restaurant prépare votre commande pour un retrait sur place.',
+            time: safeDate(orderData.preparation_started_at || orderData.updated_at || orderData.updatedAt),
+            status: 'active',
+            icon: '👨‍🍳'
+          });
+        }
 
-      // Notification en cours de livraison
-      if ((status === 'en_livraison' || status === 'livree' || status === 'delivered') && (orderData.livreur_id || orderData.delivery_id)) {
-        notifs.push({
-          id: 5,
-          title: 'En cours de livraison',
-          message: 'Votre commande est en cours de livraison',
-          time: safeDate(orderData.updated_at || orderData.updatedAt),
-          status: 'completed',
-          icon: '🚚'
-        });
-      }
+        if (status === 'livree' || status === 'delivered') {
+          notifs.push({
+            id: 6,
+            title: 'Commande récupérée',
+            message: 'Votre commande a bien été remise. Bon appétit !',
+            time: safeDate(orderData.updated_at || orderData.updatedAt),
+            status: 'completed',
+            icon: '🎉'
+          });
+        }
+      } else {
+        // Notification prête
+        if (['pret_a_livrer', 'ready', 'livree', 'delivered'].includes(status)) {
+          notifs.push({
+            id: 4,
+            title: 'Commande prête',
+            message: 'Votre commande est prête ! Un livreur va bientôt la récupérer',
+            time: safeDate(orderData.updated_at || orderData.updatedAt),
+            status: 'completed',
+            icon: '📦'
+          });
+        }
 
-      // Notification livreur a récupéré la commande
-      if (orderData.picked_up_at) {
-        notifs.push({
-          id: 7,
-          title: 'Livreur en route',
-          message: 'Le livreur a récupéré votre commande et est en route vers vous !',
-          time: safeDate(orderData.picked_up_at),
-          status: 'completed',
-          icon: '📦'
-        });
-      }
+        // Notification en cours de livraison
+        if ((status === 'en_livraison' || status === 'livree' || status === 'delivered') && (orderData.livreur_id || orderData.delivery_id)) {
+          notifs.push({
+            id: 5,
+            title: 'En cours de livraison',
+            message: 'Votre commande est en cours de livraison',
+            time: safeDate(orderData.updated_at || orderData.updatedAt),
+            status: 'completed',
+            icon: '🚚'
+          });
+        }
 
-      // Notification livrée
-      if (status === 'livree' || status === 'delivered') {
-        notifs.push({
-          id: 6,
-          title: 'Commande livrée',
-          message: 'Votre commande a été livrée avec succès ! Bon appétit !',
-          time: safeDate(orderData.updated_at || orderData.updatedAt),
-          status: 'completed',
-          icon: '🎉'
-        });
+        // Notification livreur a récupéré la commande
+        if (orderData.picked_up_at) {
+          notifs.push({
+            id: 7,
+            title: 'Livreur en route',
+            message: 'Le livreur a récupéré votre commande et est en route vers vous !',
+            time: safeDate(orderData.picked_up_at),
+            status: 'completed',
+            icon: '📦'
+          });
+        }
+
+        // Notification livrée
+        if (status === 'livree' || status === 'delivered') {
+          notifs.push({
+            id: 6,
+            title: 'Commande livrée',
+            message: 'Votre commande a été livrée avec succès ! Bon appétit !',
+            time: safeDate(orderData.updated_at || orderData.updatedAt),
+            status: 'completed',
+            icon: '🎉'
+          });
+        }
       }
 
       setNotifications(notifs);
@@ -251,8 +285,9 @@ export default function TrackOrder() {
     }
   };
 
-  const getStatusText = (statut) => {
-    const status = statut || order?.statut || order?.status;
+  const getStatusText = (statut, orderData = order) => {
+    const status = statut || orderData?.statut || orderData?.status;
+    const pickup = isPickupOrder(orderData);
     switch (status) {
       case 'en_attente':
       case 'pending':
@@ -268,12 +303,12 @@ export default function TrackOrder() {
         return 'En préparation';
       case 'pret_a_livrer':
       case 'ready':
-        return 'Prête';
+        return pickup ? 'Prête au retrait' : 'Prête';
       case 'en_livraison':
         return 'En livraison';
       case 'livree':
       case 'delivered':
-        return 'Livrée';
+        return pickup ? 'Récupérée' : 'Livrée';
       case 'annulee':
       case 'cancelled':
         return 'Annulée';
@@ -326,10 +361,14 @@ export default function TrackOrder() {
     return ['livree', 'delivered', 'annulee', 'cancelled', 'refusee', 'rejected'].includes(st);
   };
 
+  const isPickupOrder = (orderData) =>
+    String(orderData?.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
+
   const activeCountdown = useMemo(() => {
     if (!order || isOrderCompleted(order)) return null;
 
     const status = order.statut || order.status;
+    const pickup = isPickupOrder(order);
     const prepMinutes = Math.max(1, parseInt(order.preparation_time || 30, 10) || 30);
     const deliveryMinutes = 20;
 
@@ -343,14 +382,14 @@ export default function TrackOrder() {
     let totalSeconds = null;
     let label = '';
 
-    if (status === 'en_livraison') {
+    if (!pickup && status === 'en_livraison') {
       start = toDate(order.picked_up_at) || toDate(order.updated_at) || toDate(order.created_at);
       totalSeconds = deliveryMinutes * 60;
       label = 'Livraison estimée';
     } else {
       start = toDate(order.preparation_started_at) || toDate(order.updated_at) || toDate(order.created_at);
       totalSeconds = prepMinutes * 60;
-      label = 'Préparation estimée';
+      label = pickup ? 'Préparation avant retrait' : 'Préparation estimée';
     }
 
     if (!start || !totalSeconds) return null;
@@ -401,7 +440,7 @@ export default function TrackOrder() {
             if (hasStatusChanged) {
               console.log(`🔄 [Track Order Polling] Statut changé: ${lastStatus} → ${currentStatus}`);
             }
-            if (hasPickedUpChanged) {
+            if (hasPickedUpChanged && !isPickupOrder(data)) {
               console.log(`📦 [Track Order Polling] Commande récupérée par le livreur`);
             }
             setOrder(data);
@@ -411,15 +450,24 @@ export default function TrackOrder() {
             // Afficher une notification du navigateur
             if (canUseBrowserNotifications() && Notification.permission === 'granted') {
               try {
+                const pickup = isPickupOrder(data);
                 const statusMessages = {
                   acceptee: 'Votre commande a été acceptée !',
                   accepted: 'Votre commande a été acceptée !',
-                  en_preparation: 'Votre commande est en cours de préparation',
-                  preparing: 'Votre commande est en cours de préparation',
-                  pret_a_livrer: 'Votre commande est prête !',
-                  ready: 'Votre commande est prête !',
-                  livree: 'Votre commande a été livrée !',
-                  delivered: 'Votre commande a été livrée !',
+                  en_preparation: pickup
+                    ? 'Votre commande est en préparation — retrait au restaurant'
+                    : 'Votre commande est en cours de préparation',
+                  preparing: pickup
+                    ? 'Votre commande est en préparation — retrait au restaurant'
+                    : 'Votre commande est en cours de préparation',
+                  pret_a_livrer: pickup
+                    ? 'Votre commande est prête à récupérer au restaurant !'
+                    : 'Votre commande est prête !',
+                  ready: pickup
+                    ? 'Votre commande est prête à récupérer au restaurant !'
+                    : 'Votre commande est prête !',
+                  livree: pickup ? 'Votre commande a été récupérée !' : 'Votre commande a été livrée !',
+                  delivered: pickup ? 'Votre commande a été récupérée !' : 'Votre commande a été livrée !',
                   refusee:
                     data.rejection_reason || data.rejectionReason
                       ? `Votre commande a été refusée ❌\nRaison: ${data.rejection_reason || data.rejectionReason}`
@@ -711,8 +759,17 @@ export default function TrackOrder() {
                   </div>
                 )}
 
+                {isPickupOrder(order) && (
+                  <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">🛍️ Retrait sur place</p>
+                    <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-200 mt-1">
+                      Rendez-vous au restaurant pour récupérer votre commande. Aucun livreur n&apos;intervient.
+                    </p>
+                  </div>
+                )}
+
                 {/* Notification livreur a récupéré la commande */}
-                {order.picked_up_at && (
+                {order.picked_up_at && !isPickupOrder(order) && (
                   <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
                     <div className="flex items-center space-x-3">
                       <div className="flex-shrink-0">
@@ -788,7 +845,11 @@ export default function TrackOrder() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                     <div>
                       <h3 className="font-semibold text-green-800 dark:text-green-200 text-sm sm:text-base">💬 Chat</h3>
-                      <p className="text-xs sm:text-sm text-green-600 dark:text-green-300">Communiquez avec le restaurant/livreur</p>
+                      <p className="text-xs sm:text-sm text-green-600 dark:text-green-300">
+                        {isPickupOrder(order)
+                          ? 'Communiquez avec le restaurant pour votre retrait'
+                          : 'Communiquez avec le restaurant/livreur'}
+                      </p>
                     </div>
                     <a
                       href={`/chat/${order.id}`}
@@ -811,9 +872,16 @@ export default function TrackOrder() {
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold mb-2 text-sm sm:text-base text-gray-900 dark:text-white">Adresse de livraison</h3>
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base text-gray-900 dark:text-white">
+                      {isPickupOrder(order) ? 'Retrait au restaurant' : 'Adresse de livraison'}
+                    </h3>
                     <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                      {order.deliveryAddress || order.adresse_livraison || 'Non renseignée'}
+                      {isPickupOrder(order)
+                        ? ([
+                            order.restaurants?.adresse,
+                            [order.restaurants?.code_postal, order.restaurants?.ville].filter(Boolean).join(' ')
+                          ].filter(Boolean).join(', ') || order.deliveryAddress || order.adresse_livraison || 'Adresse du restaurant')
+                        : (order.deliveryAddress || order.adresse_livraison || 'Non renseignée')}
                     </p>
                     {(order.deliveryCity || order.deliveryPostalCode) && (
                       <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
@@ -924,100 +992,164 @@ export default function TrackOrder() {
                   {/* Ligne de connexion */}
                   <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
                   
-                  {/* Étape 4: Prête */}
-                  <div className="flex items-start space-x-4">
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      ['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
-                        ? 'bg-purple-500'
-                        : 'bg-gray-300'
-                    }`}>
-                      <span className="text-white font-bold">4</span>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className={`font-semibold ${
-                        ['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
-                          ? 'text-purple-600 dark:text-purple-400'
-                          : 'text-gray-400'
-                      }`}>
-                        {['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
-                          ? '📦 Commande prête'
-                          : '⏳ En attente'
-                        }
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Votre commande est prête, un livreur va bientôt la récupérer
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Ligne de connexion */}
-                  <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
-                  
-                  {/* Étape 5: Livreur en route */}
-                  <div className="flex items-start space-x-4">
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      ['en_livraison', 'livree'].includes(order.statut || order.status)
-                        ? 'bg-orange-500'
-                        : 'bg-gray-300'
-                    }`}>
-                      <span className="text-white font-bold">5</span>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className={`font-semibold ${
-                        ['en_livraison', 'livree'].includes(order.statut || order.status)
-                          ? 'text-orange-600 dark:text-orange-400'
-                          : 'text-gray-400'
-                      }`}>
-                        {['en_livraison', 'livree'].includes(order.statut || order.status)
-                          ? '🚚 Livreur en route'
-                          : '⏳ En attente du livreur'
-                        }
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {['en_livraison', 'livree'].includes(order.statut || order.status)
-                          ? 'Un livreur est en route vers vous avec votre commande'
-                          : 'Un livreur va bientôt récupérer votre commande'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Ligne de connexion */}
-                  <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
-                  
-                  {/* Étape 6: Livrée */}
-                  <div className="flex items-start space-x-4">
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      order.statut === 'livree' || order.status === 'delivered'
-                        ? 'bg-green-500'
-                        : 'bg-gray-300'
-                    }`}>
-                      <span className="text-white font-bold">6</span>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className={`font-semibold ${
-                        order.statut === 'livree' || order.status === 'delivered'
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-gray-400'
-                      }`}>
-                        {order.statut === 'livree' || order.status === 'delivered'
-                          ? '🎉 Commande livrée'
-                          : '⏳ En attente de livraison'
-                        }
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {order.statut === 'livree' || order.status === 'delivered'
-                          ? 'Votre commande a été livrée avec succès ! Bon appétit !'
-                          : 'Votre commande sera bientôt livrée'
-                        }
-                      </p>
-                      {order.updated_at && (order.statut === 'livree' || order.status === 'delivered') && (
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          {formatDate(order.updated_at)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  {isPickupOrder(order) ? (
+                    <>
+                      {/* Étape 4 pickup: Prête à récupérer */}
+                      <div className="flex items-start space-x-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                          ['pret_a_livrer', 'en_preparation', 'livree', 'delivered'].includes(order.statut || order.status)
+                            ? 'bg-purple-500'
+                            : 'bg-gray-300'
+                        }`}>
+                          <span className="text-white font-bold">4</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={`font-semibold ${
+                            ['pret_a_livrer', 'en_preparation', 'livree', 'delivered'].includes(order.statut || order.status)
+                              ? 'text-purple-600 dark:text-purple-400'
+                              : 'text-gray-400'
+                          }`}>
+                            {['pret_a_livrer', 'livree', 'delivered'].includes(order.statut || order.status)
+                              ? '🛍️ Prête à récupérer'
+                              : (order.statut === 'en_preparation' || order.status === 'preparing')
+                                ? '⏳ Préparation en cours'
+                                : '⏳ En attente'}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {order.statut === 'livree' || order.status === 'delivered'
+                              ? 'Vous avez récupéré votre commande au restaurant'
+                              : (order.statut === 'pret_a_livrer' || order.status === 'ready')
+                                ? 'Votre commande vous attend au restaurant — présentez votre code de sécurité'
+                                : 'Le restaurant vous remettra la commande une fois prête — aucun livreur'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+
+                      {/* Étape 5 pickup: Récupérée */}
+                      <div className="flex items-start space-x-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                          order.statut === 'livree' || order.status === 'delivered'
+                            ? 'bg-green-500'
+                            : 'bg-gray-300'
+                        }`}>
+                          <span className="text-white font-bold">5</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={`font-semibold ${
+                            order.statut === 'livree' || order.status === 'delivered'
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-gray-400'
+                          }`}>
+                            {order.statut === 'livree' || order.status === 'delivered'
+                              ? '🎉 Commande récupérée'
+                              : '⏳ En attente de retrait'}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {order.statut === 'livree' || order.status === 'delivered'
+                              ? 'Votre commande a bien été remise. Bon appétit !'
+                              : 'Présentez-vous au restaurant pour finaliser votre retrait'}
+                          </p>
+                          {order.updated_at && (order.statut === 'livree' || order.status === 'delivered') && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              {formatDate(order.updated_at)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Étape 4: Prête */}
+                      <div className="flex items-start space-x-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                          ['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                            ? 'bg-purple-500'
+                            : 'bg-gray-300'
+                        }`}>
+                          <span className="text-white font-bold">4</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={`font-semibold ${
+                            ['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                              ? 'text-purple-600 dark:text-purple-400'
+                              : 'text-gray-400'
+                          }`}>
+                            {['pret_a_livrer', 'en_livraison', 'livree'].includes(order.statut || order.status)
+                              ? '📦 Commande prête'
+                              : '⏳ En attente'}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Votre commande est prête, un livreur va bientôt la récupérer
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+
+                      {/* Étape 5: Livreur en route */}
+                      <div className="flex items-start space-x-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                          ['en_livraison', 'livree'].includes(order.statut || order.status)
+                            ? 'bg-orange-500'
+                            : 'bg-gray-300'
+                        }`}>
+                          <span className="text-white font-bold">5</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={`font-semibold ${
+                            ['en_livraison', 'livree'].includes(order.statut || order.status)
+                              ? 'text-orange-600 dark:text-orange-400'
+                              : 'text-gray-400'
+                          }`}>
+                            {['en_livraison', 'livree'].includes(order.statut || order.status)
+                              ? '🚚 Livreur en route'
+                              : '⏳ En attente du livreur'}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {['en_livraison', 'livree'].includes(order.statut || order.status)
+                              ? 'Un livreur est en route vers vous avec votre commande'
+                              : 'Un livreur va bientôt récupérer votre commande'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="ml-5 w-0.5 h-6 bg-gray-300 dark:bg-gray-600"></div>
+
+                      {/* Étape 6: Livrée */}
+                      <div className="flex items-start space-x-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                          order.statut === 'livree' || order.status === 'delivered'
+                            ? 'bg-green-500'
+                            : 'bg-gray-300'
+                        }`}>
+                          <span className="text-white font-bold">6</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={`font-semibold ${
+                            order.statut === 'livree' || order.status === 'delivered'
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-gray-400'
+                          }`}>
+                            {order.statut === 'livree' || order.status === 'delivered'
+                              ? '🎉 Commande livrée'
+                              : '⏳ En attente de livraison'}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {order.statut === 'livree' || order.status === 'delivered'
+                              ? 'Votre commande a été livrée avec succès ! Bon appétit !'
+                              : 'Votre commande sera bientôt livrée'}
+                          </p>
+                          {order.updated_at && (order.statut === 'livree' || order.status === 'delivered') && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              {formatDate(order.updated_at)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
