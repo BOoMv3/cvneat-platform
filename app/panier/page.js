@@ -27,11 +27,12 @@ import {
   SECOND_ARTICLE_PROMO_BANNER,
   LA_BONNE_PATE_STOCK_PROMO_BANNER,
   isLaBonnePateStockPromoEffective,
-  LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE,
-  SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
-  computeCheckoutPlatformDiscountEur,
-  isSecondArticlePromoActive,
   isLaBonnePateRestaurantName,
+  computeCheckoutPlatformDiscountEur,
+  getPlatformPromoCheckoutLine,
+  isSecondArticlePromoActive,
+  isWeekHalfOffPromoActive,
+  WEEK_HALF_OFF_PROMO_BANNER,
 } from '@/lib/platform-promo';
 
 export default function Panier() {
@@ -72,6 +73,7 @@ export default function Panier() {
     () =>
       computeCheckoutPlatformDiscountEur(cart, {
         capAt: subtotalBrut,
+        cartSubtotalEur: subtotalBrut,
         restaurantName: panierRestaurantName,
       }),
     [cart, subtotalBrut, panierRestaurantName]
@@ -254,6 +256,11 @@ export default function Panier() {
         </div>
       </header>
 
+      {isWeekHalfOffPromoActive() && (
+        <div className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-500 text-white text-center text-sm sm:text-base font-semibold py-2.5 px-4 shadow-md">
+          {WEEK_HALF_OFF_PROMO_BANNER}
+        </div>
+      )}
       {isSecondArticlePromoActive() && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white text-center text-sm sm:text-base font-semibold py-2.5 px-4 shadow-md">
           {SECOND_ARTICLE_PROMO_BANNER}
@@ -492,11 +499,7 @@ export default function Panier() {
                 </div>
                 {secondArticlePromo > 0 && (
                   <div className="flex justify-between text-blue-600 text-sm sm:text-base font-medium">
-                    <span>
-                      {isLaBonnePateRestaurantName(panierRestaurantName)
-                        ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
-                        : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
-                    </span>
+                    <span>{getPlatformPromoCheckoutLine(panierRestaurantName)}</span>
                     <span>-{secondArticlePromo.toFixed(2)}€</span>
                   </div>
                 )}

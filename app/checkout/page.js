@@ -30,10 +30,10 @@ import {
 import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu, cartHasAlcohol } from '@/lib/cartUtils';
 import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP, computeLoyaltyAdjustments } from '@/lib/loyalty-rewards';
 import {
-  SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
-  LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE,
   computeCheckoutPlatformDiscountEur,
-  isLaBonnePateRestaurantName,
+  getPlatformPromoCheckoutLine,
+  isWeekHalfOffPromoActive,
+  WEEK_HALF_OFF_PROMO_BANNER,
 } from '@/lib/platform-promo';
 import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import {
@@ -199,6 +199,7 @@ export default function Checkout() {
     );
     const platformPromoDiscount = computeCheckoutPlatformDiscountEur(cart, {
       capAt: subAfterAll,
+      cartSubtotalEur: cartTotal,
       restaurantName: checkoutRestaurantName,
     });
     const totalToPay = Math.max(
@@ -835,6 +836,7 @@ export default function Checkout() {
       );
       const platformPromoDiscount = computeCheckoutPlatformDiscountEur(itemsToUse, {
         capAt: subtotalAfterAllDiscounts,
+        cartSubtotalEur: cartSubtotal,
         restaurantName: resolvedRestaurant?.nom,
       });
       const finalDeliveryFromLoyalty = adj.deliveryFeeEurAfter;
@@ -1295,10 +1297,12 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Bannière Livraison Offerte */}
-      {/* PROMO TERMINÉE : Bannière de livraison gratuite retirée */}
-      {/* <FreeDeliveryBanner /> */}
-      
+      {isWeekHalfOffPromoActive() && (
+        <div className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-500 text-white text-center text-sm sm:text-base font-semibold py-2.5 px-4 shadow-md">
+          {WEEK_HALF_OFF_PROMO_BANNER}
+        </div>
+      )}
+
       <div className="py-2 fold:py-2 xs:py-4 sm:py-8">
         <div className="max-w-4xl mx-auto px-2 fold:px-2 xs:px-3 sm:px-4">
           {/* Bouton retour */}
@@ -1691,9 +1695,7 @@ export default function Checkout() {
                 <div className="flex justify-between text-blue-600 dark:text-blue-300 text-sm sm:text-base">
                   <span className="flex items-center">
                     <FaTag className="h-3 w-3 mr-1" />
-                    {isLaBonnePateRestaurantName(checkoutRestaurantName)
-                      ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
-                      : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
+                    {getPlatformPromoCheckoutLine(checkoutRestaurantName)}
                   </span>
                   <span className="font-semibold">-{platformPromoDiscount.toFixed(2)}€</span>
                 </div>

@@ -50,11 +50,11 @@ import {
 } from '@/lib/loyalty-rewards';
 import {
   SECOND_ARTICLE_PROMO_BANNER,
-  LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE,
-  SECOND_ARTICLE_PROMO_CHECKOUT_LINE,
   computeCheckoutPlatformDiscountEur,
+  getPlatformPromoCheckoutLine,
   isSecondArticlePromoActive,
-  isLaBonnePateRestaurantName,
+  isWeekHalfOffPromoActive,
+  WEEK_HALF_OFF_PROMO_BANNER,
 } from '@/lib/platform-promo';
 import { getTonightAutoPromo, TONIGHT_PROMO_BANNER } from '@/lib/tonight-promo';
 import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
@@ -587,9 +587,10 @@ export default function Home() {
     () =>
       computeCheckoutPlatformDiscountEur(cart, {
         capAt: homeSubtotalAfterTonight,
+        cartSubtotalEur: homeCartSubtotal,
         restaurantName: homeCartRestaurantName,
       }),
-    [cart, homeSubtotalAfterTonight, homeCartRestaurantName]
+    [cart, homeSubtotalAfterTonight, homeCartSubtotal, homeCartRestaurantName]
   );
   const homeCartNetSubtotal = useMemo(
     () => Math.max(0, Math.round((homeSubtotalAfterTonight - homeSecondArticlePromo) * 100) / 100),
@@ -1494,6 +1495,20 @@ export default function Home() {
         </div>
       )}
 
+      {isWeekHalfOffPromoActive() && (
+        <div
+          className="sticky top-0 z-40 w-full border-b border-white/25 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-500 text-white shadow-lg"
+          role="banner"
+        >
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-4 text-center">
+            <span className="flex items-center justify-center gap-2 font-bold text-sm sm:text-base leading-snug">
+              <FaTag className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 opacity-95" aria-hidden />
+              {WEEK_HALF_OFF_PROMO_BANNER}
+            </span>
+          </div>
+        </div>
+      )}
+
       {isSecondArticlePromoActive() && (
         <div
           className="sticky top-0 z-40 w-full border-b border-white/25 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-lg"
@@ -1782,11 +1797,7 @@ export default function Home() {
             )}
             {homeSecondArticlePromo > 0 && (
               <div className="flex justify-between text-sm text-blue-600 dark:text-blue-300 font-medium">
-                <span>
-                  {isLaBonnePateRestaurantName(homeCartRestaurantName)
-                    ? LA_BONNE_PATE_STOCK_PROMO_CHECKOUT_LINE
-                    : SECOND_ARTICLE_PROMO_CHECKOUT_LINE}
-                </span>
+                <span>{getPlatformPromoCheckoutLine(homeCartRestaurantName)}</span>
                 <span>-{homeSecondArticlePromo.toFixed(2)}€</span>
               </div>
             )}

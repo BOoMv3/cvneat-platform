@@ -876,6 +876,7 @@ export async function POST(request) {
     const totalAfterDiscount = Math.max(0, Math.round((total - discount) * 100) / 100);
     const basePlatformDiscountAmount = computeCheckoutPlatformDiscountEur(items, {
       capAt: totalAfterDiscount,
+      cartSubtotalEur: subtotalBeforeDiscount,
       restaurantName: restaurant?.nom,
     });
     let platform_discount_amount = basePlatformDiscountAmount;
