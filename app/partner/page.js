@@ -31,6 +31,7 @@ import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 import PartnerOrderDeliverySlotPanel from '@/components/PartnerOrderDeliverySlotPanel';
+import { getDeliverySlotSummaryLine } from '@/lib/delivery-slots';
 import { buildOrderReceiptText, printWithRawBt } from '../../lib/rawbt-print';
 
 const CATEGORY_OPTIONS = [
@@ -61,7 +62,7 @@ export default function PartnerDashboard() {
   const [menuSections, setMenuSections] = useState([]); // Sections affichées côté client (Entrées, Plats, ...)
   const [formulas, setFormulas] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Toujours ouvrir sur le dashboard à l'allumage / rafraîchissement (priorité au message stratégie)
+  // Toujours ouvrir sur le dashboard à l'allumage / rafraîchissement
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMenuModal, setShowMenuModal] = useState(false);
   const createDefaultMenuForm = () => ({
@@ -113,14 +114,6 @@ export default function PartnerDashboard() {
   const audioUnlockedRef = useRef(false);
   const authTokenRef = useRef(null);
   const [notifsRealtimeOk, setNotifsRealtimeOk] = useState(false);
-  const [strategyStatus, setStrategyStatus] = useState({ loading: true, accepted: false, acceptedAt: null, reductionPct: null });
-  const [strategyAccepting, setStrategyAccepting] = useState(false);
-  const [bulkAdjusting, setBulkAdjusting] = useState(false);
-  const [priceNotifySending, setPriceNotifySending] = useState(false);
-  const [priceNotifySent, setPriceNotifySent] = useState(false);
-  const [prixBoutiqueInputs, setPrixBoutiqueInputs] = useState({});
-  const [prixBoutiqueSaving, setPrixBoutiqueSaving] = useState(false);
-  const [applyPlus5Loading, setApplyPlus5Loading] = useState(false);
   const [partnerMessages, setPartnerMessages] = useState([]);
   const [partnerMessagesUnread, setPartnerMessagesUnread] = useState(0);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
@@ -173,17 +166,6 @@ export default function PartnerDashboard() {
       }
     }
   }, [activeTab]);
-
-  // Pré-remplir les champs prix boutique quand le menu est chargé (partenaires ayant accepté)
-  useEffect(() => {
-    if (strategyStatus.accepted && Array.isArray(menu) && menu.length > 0) {
-      const initial = {};
-      menu.filter((m) => m.nom && (m.prix != null || m.prix === 0)).forEach((item) => {
-        initial[item.id] = String(parseFloat(item.prix) || 0);
-      });
-      setPrixBoutiqueInputs((prev) => (Object.keys(prev).length === 0 ? initial : prev));
-    }
-  }, [strategyStatus.accepted, menu]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -296,23 +278,6 @@ export default function PartnerDashboard() {
         await fetchFormulas();
         await fetchCombos(resto.id);
         fetchPartnerMessages();
-      }
-
-      // Statut stratégie "Boost ventes"
-      try {
-        const token = session?.access_token;
-        const res = await fetch('/api/partner/strategy-accept', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json().catch(() => ({}));
-        setStrategyStatus({
-          loading: false,
-          accepted: !!data?.accepted,
-          acceptedAt: data?.acceptedAt || null,
-          reductionPct: data?.reductionPct ?? null,
-        });
-      } catch {
-        setStrategyStatus({ loading: false, accepted: false, acceptedAt: null, reductionPct: null });
       }
 
       // Prompt quotidien directement sur le dashboard (timezone France)
@@ -802,32 +767,6 @@ export default function PartnerDashboard() {
     }
   };
 
-  const acceptStrategyBoost = async () => {
-    setStrategyAccepting(true);
-    try {
-      const { data: auth } = await supabase.auth.getSession();
-      const token = auth?.session?.access_token;
-      const res = await fetch('/api/partner/strategy-accept', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erreur');
-      setStrategyStatus((prev) => ({
-        ...prev,
-        loading: false,
-        accepted: true,
-        acceptedAt: data?.acceptedAt || new Date().toISOString(),
-        reductionPct: data?.reductionPct ?? prev.reductionPct,
-      }));
-      alert('Merci ! L\'admin configurera votre réduction. Si elle est déjà prête, vous pouvez l\'appliquer ci-dessous.');
-    } catch (e) {
-      alert(e?.message || 'Erreur lors de l\'envoi');
-    } finally {
-      setStrategyAccepting(false);
-    }
-  };
-
   const fetchPartnerMessages = async () => {
     setMessagesLoading(true);
     try {
@@ -876,144 +815,6 @@ export default function PartnerDashboard() {
       if (wasUnread) setPartnerMessagesUnread((n) => Math.max(0, n - 1));
     } catch {
       // ignore
-    }
-  };
-
-  const runBulkPriceAdjust = async () => {
-    if (!restaurant?.id) return;
-    setBulkAdjusting(true);
-    try {
-      const { data: auth } = await supabase.auth.getSession();
-      const token = auth?.session?.access_token;
-      const res = await fetch('/api/partner/menu/bulk-adjust', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ restaurantId: restaurant.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erreur');
-      await fetchMenu(restaurant.id);
-      const pct = strategyStatus.reductionPct ?? 0;
-      if (pct === 0) {
-        alert('✅ Aucune modification effectuée. Vos prix sont déjà au bon niveau.');
-      } else {
-        alert(`✅ ${data.updated || 0} plat(s) mis à jour. Vos prix ont été réduits de ${Math.abs(pct)}%.`);
-      }
-    } catch (e) {
-      alert(e?.message || 'Erreur lors de l\'ajustement');
-    } finally {
-      setBulkAdjusting(false);
-    }
-  };
-
-  const parsePrixInput = (v) => {
-    if (v == null || v === '') return NaN;
-    const s = String(v).trim().replace(',', '.');
-    return parseFloat(s);
-  };
-
-  const savePrixBoutique = async () => {
-    if (!restaurant?.id || !menu?.length) return;
-    const updates = Object.entries(prixBoutiqueInputs)
-      .filter(([, v]) => v !== '' && Number.isFinite(parsePrixInput(v)))
-      .map(([id, v]) => ({ id, prix: parsePrixInput(v) }));
-    if (updates.length === 0) {
-      alert('Remplissez au moins un prix.');
-      return;
-    }
-    setPrixBoutiqueSaving(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/partner/menu/bulk-set-prices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
-        body: JSON.stringify({ restaurantId: restaurant.id, updates }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erreur');
-      await fetchMenu(restaurant.id);
-      alert(`✅ ${data.updated || 0} prix enregistrés.`);
-    } catch (e) {
-      alert(e?.message || 'Erreur');
-    } finally {
-      setPrixBoutiqueSaving(false);
-    }
-  };
-
-  const saveAndApplyPlus5 = async () => {
-    if (!restaurant?.id || !menu?.length) return;
-    const updates = Object.entries(prixBoutiqueInputs)
-      .filter(([, v]) => v !== '' && Number.isFinite(parsePrixInput(v)))
-      .map(([id, v]) => ({ id, prix: parsePrixInput(v) }));
-    if (updates.length === 0) {
-      alert('Remplissez au moins un prix.');
-      return;
-    }
-    setPrixBoutiqueSaving(true);
-    setApplyPlus5Loading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) };
-      let res = await fetch('/api/partner/menu/bulk-set-prices', {
-        method: 'POST', headers, body: JSON.stringify({ restaurantId: restaurant.id, updates }),
-      });
-      let data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erreur enregistrement');
-      res = await fetch('/api/partner/menu/apply-plus-5', {
-        method: 'POST', headers, body: JSON.stringify({ restaurantId: restaurant.id }),
-      });
-      data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erreur application');
-      await fetchMenu(restaurant.id);
-      alert(`C'est fait. ${data.updated ?? updates.length} article(s) mis à jour.`);
-    } catch (e) {
-      alert(e?.message || 'Erreur');
-    } finally {
-      setPrixBoutiqueSaving(false);
-      setApplyPlus5Loading(false);
-    }
-  };
-
-  const applyPlus5 = async () => {
-    if (!restaurant?.id) return;
-    setApplyPlus5Loading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/partner/menu/apply-plus-5', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
-        body: JSON.stringify({ restaurantId: restaurant.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erreur');
-      await fetchMenu(restaurant.id);
-      alert(`✅ +5% appliqué à ${data.updated || 0} article(s).`);
-    } catch (e) {
-      alert(e?.message || 'Erreur');
-    } finally {
-      setApplyPlus5Loading(false);
-    }
-  };
-
-  const notifyPriceChangesDone = async () => {
-    setPriceNotifySending(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/partner/notify-price-changes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erreur');
-      setPriceNotifySent(true);
-    } catch (e) {
-      alert(e?.message || 'Erreur lors de la notification');
-    } finally {
-      setPriceNotifySending(false);
     }
   };
 
@@ -3249,163 +3050,73 @@ export default function PartnerDashboard() {
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* Message stratégie "Boost ventes" - Prix boutique / Commission réduite */}
-            {!strategyStatus.loading && !strategyStatus.accepted && restaurant && (
-              <div className="strategy-message-blink bg-gradient-to-r from-red-50 to-rose-100 dark:from-red-950/50 dark:to-red-900/40 rounded-xl border-2 border-red-500 dark:border-red-500 p-6 shadow-md">
-                <h2 className="text-xl font-bold text-red-900 dark:text-red-100 mb-4 flex items-center gap-2">
-                  <FaChartLine className="text-red-600 dark:text-red-400" />
-                  Nouvelle stratégie : booster les ventes pour tout le monde
+            {/* Message partenaires — commission, promos, CM, app native, tablettes */}
+            {restaurant && (
+              <div className="bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-gray-800 dark:via-gray-800 dark:to-orange-950/30 rounded-xl border-2 border-orange-400 dark:border-orange-600 p-5 sm:p-6 shadow-md">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <FaChartLine className="text-orange-600 dark:text-orange-400 shrink-0" />
+                  Infos importantes pour nos partenaires
                 </h2>
+
                 <div className="space-y-4 text-sm text-gray-800 dark:text-gray-200">
-                  <p>
-                    Après plus de <strong>3 mois d&apos;activité</strong>, nous avons une base de clients solide et CVN&apos;EAT fonctionne bien.
-                    Nous améliorons la plateforme en continu et cherchons la <strong>satisfaction de tous</strong> — partenaires, clients et livreurs.
-                  </p>
-                  <p>
-                    <strong>Le constat :</strong> certains clients ont le ressenti que les prix sont élevés — une hausse d&apos;environ 25% sur les articles pour compenser la commission, auxquels s&apos;ajoutent les frais de livraison (qui reviennent entièrement au livreur). Pour eux, la note peut vite monter. Nous voulons inverser cette tendance avec une stratégie gagnant-gagnant.
-                  </p>
-                  <p>
-                    <strong>Notre proposition :</strong>
-                  </p>
-                  <ul className="list-disc list-inside ml-2 space-y-1">
-                    <li>CVN&apos;EAT baisse sa commission à <strong>15%</strong> (au lieu de 20%)</li>
-                    <li>En échange : <strong>prix comme en boutique</strong> ou augmentation max de <strong>5 à 7%</strong></li>
-                    <li>Objectif : <strong>faire exploser le volume</strong> — plus de commandes pour vous, pour les livreurs et pour CVN&apos;EAT</li>
-                    <li>La perte par commande sera <strong>vraiment minime</strong>, mais le gain en volume compensera largement</li>
-                    <li>Les clients commanderont plus facilement avec des prix attractifs</li>
-                  </ul>
-                  <div className="bg-white dark:bg-red-950/30 rounded-lg p-4 border border-red-200 dark:border-red-800">
-                    <p className="font-semibold text-red-900 dark:text-red-100 mb-2">Exemple concret (tacos 10€ en boutique) :</p>
-                    <p className="mb-1">Aujourd&apos;hui : affiché 12,50€ (25% en plus pour compenser la commission 20%). CVN&apos;EAT prend 2,50€, vous gardez 10€. + frais de livraison au client.</p>
-                    <p className="mb-1">Nouvelle stratégie : affichez 10€ (prix boutique) ou max 10,50€ (+5%). Commission 15% : à 10€ → 1,50€ pour CVN&apos;EAT, vous gardez 8,50€ ; à 10,50€ → 1,58€ pour CVN&apos;EAT, vous gardez 8,93€.</p>
-                    <p className="text-green-700 dark:text-green-300 font-medium">→ Moins par commande, mais avec 2x ou 3x plus de volume, le total sera meilleur.</p>
+                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Commission & concurrence</h3>
+                    <p>
+                      Certains d&apos;entre vous ont signé avec un concurrent qui prélève environ{' '}
+                      <strong>36&nbsp;% TTC</strong>. Nous vous rappelons que chez CVN&apos;EAT, la commission est de{' '}
+                      <strong>20&nbsp;%</strong> sur vos ventes.
+                    </p>
+                    <p className="mt-2">
+                      Concernant les promos : pour le moment, celles proposées par la concurrence sont à leur charge.
+                      Les prochaines promos chez eux seront très probablement <strong>à votre charge</strong>.
+                      Chez nous, <strong>toutes les promos sont à la charge de CVN&apos;EAT</strong> — pas la vôtre.
+                    </p>
                   </div>
-                  <p className="text-red-900 dark:text-red-100 font-medium">
-                    En acceptant, vous vous engagez à remettre vos prix normaux (boutique ou +5% max). Un outil ci-dessous vous permettra d&apos;ajuster tous vos prix en une seule fois.
-                  </p>
-                  <p className="text-red-800 dark:text-red-200 text-sm">
-                    <strong>Si vous acceptez plus tard :</strong> le paiement de ce qui vous est dû sera effectué avant le passage à 15%. Même processus que les premiers : virement puis commission à 15%.
-                  </p>
-                  <p>
-                    Vous êtes intéressé(e) ? Cliquez pour accepter. Vous pouvez aussi nous joindre au <a href="tel:0786014171" className="underline font-medium">07 86 01 41 71</a>.
-                  </p>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={acceptStrategyBoost}
-                    disabled={strategyAccepting}
-                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow disabled:opacity-50"
-                  >
-                    {strategyAccepting ? 'Envoi...' : "J'accepte ce compromis"}
-                  </button>
+
+                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                      <FaInstagram className="text-pink-600 shrink-0" />
+                      Réseaux sociaux & visibilité
+                    </h3>
+                    <p>
+                      Nous avons recruté une <strong>community manager</strong> qui passera dans chaque restaurant
+                      partenaire pour réaliser des photos et vidéos, et alimenter vos réseaux (Instagram, Facebook, etc.).
+                      Objectif : plus de visibilité locale et plus de commandes pour vous.
+                    </p>
+                  </div>
+
+                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Application 100&nbsp;% native</h3>
+                    <p>
+                      Une <strong>application native</strong> (iOS / Android) est en cours de développement. Elle
+                      remplacera progressivement l&apos;usage navigateur sur tablette et améliorera la réactivité, les
+                      notifications et la stabilité au quotidien.
+                    </p>
+                  </div>
+
+                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-amber-300 dark:border-amber-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Tablettes fournies</h3>
+                    <p>
+                      Les tablettes mises à disposition étaient <strong>neuves</strong> et sont destinées à
+                      l&apos;utilisation de <strong>CVN&apos;EAT uniquement</strong> (prise de commandes partenaire).
+                    </p>
+                    <p className="mt-2">
+                      Nous constatons que certaines sont aussi utilisées pour Facebook, Leboncoin, YouTube, etc. —
+                      ce qui peut faire <strong>ramer</strong> l&apos;appareil et ralentir CVN&apos;EAT. Merci de réserver
+                      la tablette à la gestion des commandes.
+                    </p>
+                    <p className="mt-2 text-amber-900 dark:text-amber-200 font-medium">
+                      L&apos;application native résoudra une grande partie des soucis de latence. En attendant, nous
+                      faisons de notre mieux pour vous accompagner. Une question ?{' '}
+                      <a href="tel:0786014171" className="underline">07&nbsp;86&nbsp;01&nbsp;41&nbsp;71</a>
+                      {' · '}
+                      <a href="mailto:contact@cvneat.fr" className="underline">contact@cvneat.fr</a>
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
-            {!strategyStatus.loading && strategyStatus.accepted && restaurant && (
-              <div className="space-y-4">
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-300 dark:border-green-700 p-4">
-                  <p className="text-green-800 dark:text-green-200 font-medium flex items-center gap-2">
-                    <FaCheck className="text-green-600 shrink-0" />
-                    Merci ! Vous avez accepté la stratégie &quot;Prix boutique&quot;. L&apos;admin a configuré votre réduction. Si elle est prête, cliquez pour appliquer.
-                  </p>
-                </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-300 dark:border-blue-700 p-4">
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Prochaines étapes</h3>
-                  <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
-                    <li><strong>Prix :</strong> Mettez les mêmes prix qu&apos;en boutique, ou max +5%</li>
-                    <li><strong>Vous avez accepté :</strong> Virement demain, puis passage en commission 15%</li>
-                  </ul>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-green-300 dark:border-green-600 p-6 shadow">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Mes prix</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    <strong>1.</strong> Mettez vos prix comme en boutique. <strong>2.</strong> Cliquez sur le bouton vert. C&apos;est tout.
-                  </p>
-                  {Array.isArray(menu) && menu.filter((m) => m.nom && (m.prix != null || m.prix === 0)).length > 0 ? (
-                    <>
-                      <div className="max-h-64 overflow-y-auto border dark:border-gray-600 rounded-lg mb-4">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
-                            <tr>
-                              <th className="text-left py-2 px-2 font-medium">Plat</th>
-                              <th className="text-left py-2 px-2 font-medium w-24">Prix (€)</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {menu.filter((m) => m.nom && (m.prix != null || m.prix === 0)).map((item) => (
-                              <tr key={item.id} className="border-t dark:border-gray-600">
-                                <td className="py-2 px-2 truncate max-w-[220px]" title={item.nom}>{item.nom}</td>
-                                <td className="py-2 px-2">
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="0"
-                                    value={prixBoutiqueInputs[item.id] ?? ''}
-                                    onChange={(e) => setPrixBoutiqueInputs((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                    className="w-16 px-2 py-1.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-base"
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={saveAndApplyPlus5}
-                        disabled={prixBoutiqueSaving || applyPlus5Loading}
-                        className="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl text-lg disabled:opacity-50"
-                      >
-                        {prixBoutiqueSaving || applyPlus5Loading ? 'Enregistrement...' : 'Valider mes prix (+ 5% ajouté automatiquement)'}
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-sm text-gray-500">Aucun plat. Allez dans l&apos;onglet Menu pour en ajouter.</p>
-                  )}
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-amber-300 dark:border-amber-600 p-6 shadow">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Ajuster tous les prix en une fois</h3>
-                  {strategyStatus.reductionPct === null || strategyStatus.reductionPct === undefined ? (
-                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
-                      Réduction non configurée. Deux options : envoyez-nous vos prix boutique au <a href="tel:0786014171" className="underline font-semibold">07 86 01 41 71</a> et nous les rentrerons, ou modifiez vos prix vous-même dans l&apos;onglet Menu.
-                    </p>
-                  ) : strategyStatus.reductionPct === 0 ? (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Vos prix sont déjà au bon niveau (0%). Aucune action nécessaire.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        Réduction prévue : <strong>-{Math.abs(strategyStatus.reductionPct)}%</strong>. Tous les plats, suppléments et tailles seront mis à jour.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={runBulkPriceAdjust}
-                        disabled={bulkAdjusting}
-                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg disabled:opacity-50"
-                      >
-                        {bulkAdjusting ? 'Application...' : 'Appliquer à tout le menu'}
-                      </button>
-                    </>
-                  )}
-                </div>
-                <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-700">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    Une fois vos prix mis à jour (bouton ci-dessus ou manuellement), notifiez l&apos;admin :
-                  </p>
-                  <button
-                    type="button"
-                    onClick={notifyPriceChangesDone}
-                    disabled={priceNotifySending || priceNotifySent}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {priceNotifySent ? '✓ Notifié' : priceNotifySending ? 'Envoi...' : "J'ai fait les changements de prix — Notifier l'admin"}
-                  </button>
-                </div>
-              </div>
-            )}
+
             {/* Section d'aide */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
               <div className="flex items-start justify-between">
@@ -3505,6 +3216,11 @@ export default function PartnerDashboard() {
                           <p className="text-sm text-gray-600 dark:text-gray-300">
                             {getSubtotal(order).toFixed(2)} €
                           </p>
+                          {getDeliverySlotSummaryLine(order) && (
+                            <p className="text-xs font-semibold text-orange-700 dark:text-orange-300 mt-1">
+                              🕐 {getDeliverySlotSummaryLine(order)}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={`px-2 py-1 rounded-full text-xs ${
@@ -3847,6 +3563,11 @@ export default function PartnerDashboard() {
                                 <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-2">
                                   <FaMotorcycle className="inline mr-1" />
                                   Temps de livraison: {order.delivery_time} min
+                                </p>
+                              )}
+                              {getDeliverySlotSummaryLine(order) && (
+                                <p className="text-sm font-semibold text-orange-700 dark:text-orange-300 mt-2">
+                                  🕐 Créneau client: {getDeliverySlotSummaryLine(order)}
                                 </p>
                               )}
                             </div>
