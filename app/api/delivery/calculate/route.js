@@ -44,7 +44,9 @@ const FEE_GANGES = 3;      // 3€ – Ganges
 const FEE_5_EUR = 5;       // 5€ – Laroque, Moulès, Cazilhac
 const FEE_BRISSAC = 7.5;   // 7,50€ – Brissac (un peu plus loin)
 const FEE_SAINT_HIPPOLYTE = 8.5; // 8,50€ – Saint-Hippolyte-du-Fort (Gard, ~14 km route de Ganges)
+const FEE_LE_VIGAN = 10; // 10€ – Le Vigan (zone spéciale)
 const FEE_REST = 7;        // 7€ – le reste des villages
+const MIN_ORDER_LE_VIGAN = 20; // Minimum obligatoire pour Le Vigan
 const MAX_DISTANCE = 8;           // Max à vol d'oiseau (fallback si pas d'API route)
 const MAX_DISTANCE_ROAD_KM = 10; // Max 10 km par la route (utilisé quand OpenRouteService est dispo)
 const DEFAULT_BASE_FEE = 3;
@@ -53,7 +55,7 @@ const ALTERNATE_PER_KM_FEE = 0.89;
 const MAX_FEE = 7.5;
 
 // Codes postaux autorisés
-const AUTHORIZED_POSTAL_CODES = ['34190', '30440', '30170'];
+const AUTHORIZED_POSTAL_CODES = ['34190', '30440', '30170', '30120'];
 // Plafond route spécifique (30170 = Saint-Hippolyte-du-Fort, ~14 km de Ganges — au-delà du 13 km zone 34/30)
 const MAX_DISTANCE_ROAD_KM_30170 = 15;
 const MAX_HAVERSINE_KM_30170 = 12; // vol d'oiseau si OpenRoute indispo
@@ -72,6 +74,8 @@ const AUTHORIZED_CITIES = [
   'saint-hippolyte',
   'saint-hippolyte-du-fort',
   'st-hippolyte',
+  'le vigan',
+  'vigan',
 ];
 // Villes EXCLUES (trop loin ou hors zone) – pas de livraison
 const EXCLUDED_CITIES = ['pegairolles', 'saint-bresson', 'montoulieu'];
@@ -564,7 +568,8 @@ const DELIVERY_ZONE_FEE = {
   'saint-martial': FEE_REST,
   'saint-roman-de-codieres': FEE_REST,
   roquedur: FEE_REST,
-  'saint-hippolyte': FEE_SAINT_HIPPOLYTE
+  'saint-hippolyte': FEE_SAINT_HIPPOLYTE,
+  'le-vigan': FEE_LE_VIGAN,
 };
 
 /**
@@ -859,7 +864,21 @@ function getFixedDeliveryFeeByTown(city, address) {
   ) {
     return FEE_SAINT_HIPPOLYTE;
   }
+  if (combined.includes('le vigan') || combined.includes('levigan') || combined.includes('30120')) {
+    return FEE_LE_VIGAN;
+  }
   return FEE_REST;
+}
+
+function isLeViganZone({ address = '', city = '', postalCode = '' } = {}) {
+  const combined = normalizeForTown(`${address} ${city}` || '');
+  const postal = String(postalCode || '').trim();
+  return (
+    postal === '30120' ||
+    combined.includes(' le vigan') ||
+    combined.startsWith('le vigan') ||
+    combined.includes(' levigan')
+  );
 }
 
 export async function POST(request) {
@@ -1063,6 +1082,43 @@ export async function POST(request) {
     const haversineKm = calculateDistance(tempRestaurantLat, tempRestaurantLng, tempClientLat, tempClientLng);
     const tempRoundedDistance = roadDistanceKm != null ? roadDistanceKm : Math.round(haversineKm * 10) / 10;
     const clientPostal = extractPostalCode(clientAddress) || (clientCoords.postcode && String(clientCoords.postcode).trim()) || '';
+    const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
+    const leViganZone = isLeViganZone({
+      address: clientAddress,
+      city: clientCoords.city,
+      postalCode: clientPostal,
+    });
+
+    if (leViganZone) {
+      if (orderAmountNumeric < MIN_ORDER_LE_VIGAN) {
+        return json({
+          success: false,
+          livrable: false,
+          distance: tempRoundedDistance,
+          distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
+          minimum_order_amount: MIN_ORDER_LE_VIGAN,
+          required_delivery_fee: FEE_LE_VIGAN,
+          message: `Le Vigan: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire pour la livraison.`,
+          code: 'LE_VIGAN_MIN_ORDER',
+        }, { status: 200 });
+      }
+
+      return json({
+        success: true,
+        livrable: true,
+        distance: tempRoundedDistance,
+        distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
+        frais_livraison: FEE_LE_VIGAN,
+        minimum_order_amount: MIN_ORDER_LE_VIGAN,
+        restaurant: restaurantName,
+        restaurant_coordinates: restaurantCoords,
+        client_coordinates: clientCoords,
+        order_amount: orderAmountNumeric,
+        client_address: clientCoords.display_name,
+        message: `Le Vigan: livraison possible à ${FEE_LE_VIGAN.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande).`
+      });
+    }
+
     const isInDeliveryZonePostal = AUTHORIZED_POSTAL_CODES.includes(clientPostal);
     const isSaintHippolyte30170 = clientPostal === '30170';
     const maxRoadKm = isSaintHippolyte30170
@@ -1148,8 +1204,6 @@ export async function POST(request) {
     // 7. Frais fixes par commune : Laroque/Moulès/Cazilhac 5€, Brissac 7,50€, reste 7€
     const finalDeliveryFee = getFixedDeliveryFeeByTown(clientCoords.city, clientAddress);
     console.log(`💰 Frais (tarif commune): ${finalDeliveryFee}€`);
-
-    const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
 
     return json({
       success: true,
