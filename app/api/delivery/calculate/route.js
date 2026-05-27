@@ -44,9 +44,10 @@ const FEE_GANGES = 3;      // 3€ – Ganges
 const FEE_5_EUR = 5;       // 5€ – Laroque, Moulès, Cazilhac
 const FEE_BRISSAC = 7.5;   // 7,50€ – Brissac (un peu plus loin)
 const FEE_SAINT_HIPPOLYTE = 8.5; // 8,50€ – Saint-Hippolyte-du-Fort (Gard, ~14 km route de Ganges)
-const FEE_LE_VIGAN = 10; // 10€ – Pays viganais (30120 : Le Vigan, Avèze, etc.)
+const FEE_LE_VIGAN = 10; // 10€ – Le Vigan
+const FEE_AVEZE = 11; // 11€ – Avèze (un peu plus loin)
 const FEE_REST = 7;        // 7€ – le reste des villages
-const MIN_ORDER_LE_VIGAN = 20; // Minimum obligatoire zone 30120
+const MIN_ORDER_LE_VIGAN = 25; // Minimum obligatoire zone 30120
 const LE_VIGAN_POSTAL_CODE = '30120';
 // Communes du 30120 livrées au même tarif que Le Vigan (CP partagé)
 const LE_VIGAN_AREA_TOWN_KEYS = [
@@ -901,6 +902,9 @@ function getFixedDeliveryFeeByTown(city, address) {
   ) {
     return FEE_SAINT_HIPPOLYTE;
   }
+  if (isAvezeZone({ address, city })) {
+    return FEE_AVEZE;
+  }
   if (isLeViganZone({ address, city })) {
     return FEE_LE_VIGAN;
   }
@@ -924,6 +928,11 @@ function isLeViganZone({ address = '', city = '', postalCode = '' } = {}) {
   const postal = String(postalCode || '').trim();
   if (postal === LE_VIGAN_POSTAL_CODE) return true;
   return LE_VIGAN_AREA_TOWN_KEYS.some((town) => townMatchesLeViganArea(combined, town));
+}
+
+function isAvezeZone({ address = '', city = '' } = {}) {
+  const combined = normalizeForTown(`${address} ${city}` || '');
+  return townMatchesLeViganArea(combined, 'aveze');
 }
 
 export async function POST(request) {
@@ -1143,6 +1152,12 @@ export async function POST(request) {
     });
 
     if (leViganZone) {
+      const isAveze = isAvezeZone({
+        address: clientAddress,
+        city: clientCoords.city,
+      });
+      const zoneDeliveryFee = isAveze ? FEE_AVEZE : FEE_LE_VIGAN;
+      const zoneLabel = isAveze ? 'Avèze (30120)' : LE_VIGAN_ZONE_LABEL;
       if (minimumOrderReferenceAmount < MIN_ORDER_LE_VIGAN) {
         return json({
           success: false,
@@ -1151,8 +1166,8 @@ export async function POST(request) {
           distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
           minimum_order_amount: MIN_ORDER_LE_VIGAN,
           order_amount_for_minimum: minimumOrderReferenceAmount,
-          required_delivery_fee: FEE_LE_VIGAN,
-          message: `${LE_VIGAN_ZONE_LABEL}: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire pour la livraison (Le Vigan, Avèze, etc.).`,
+          required_delivery_fee: zoneDeliveryFee,
+          message: `${zoneLabel}: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire pour la livraison.`,
           code: 'LE_VIGAN_MIN_ORDER',
         }, { status: 200 });
       }
@@ -1162,7 +1177,7 @@ export async function POST(request) {
         livrable: true,
         distance: tempRoundedDistance,
         distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
-        frais_livraison: FEE_LE_VIGAN,
+        frais_livraison: zoneDeliveryFee,
         minimum_order_amount: MIN_ORDER_LE_VIGAN,
         restaurant: restaurantName,
         restaurant_coordinates: restaurantCoords,
@@ -1170,7 +1185,7 @@ export async function POST(request) {
         order_amount: orderAmountNumeric,
         order_amount_for_minimum: minimumOrderReferenceAmount,
         client_address: clientCoords.display_name,
-        message: `${LE_VIGAN_ZONE_LABEL}: livraison possible à ${FEE_LE_VIGAN.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande, ex. Le Vigan et Avèze).`
+        message: `${zoneLabel}: livraison possible à ${zoneDeliveryFee.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande).`
       });
     }
 
