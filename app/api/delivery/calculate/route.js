@@ -905,6 +905,9 @@ export async function POST(request) {
       restaurantAddress: restaurantAddressOverride,
       restaurantId,
       orderAmount,
+      subtotalBeforeDiscount,
+      cartSubtotal,
+      orderSubtotal,
       perKmRate,
       baseFee: baseFeeOverride,
       freeDeliveryThreshold
@@ -1083,6 +1086,11 @@ export async function POST(request) {
     const tempRoundedDistance = roadDistanceKm != null ? roadDistanceKm : Math.round(haversineKm * 10) / 10;
     const clientPostal = extractPostalCode(clientAddress) || (clientCoords.postcode && String(clientCoords.postcode).trim()) || '';
     const orderAmountNumeric = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
+    const minimumOrderReferenceAmount = pickNumeric(
+      [subtotalBeforeDiscount, cartSubtotal, orderSubtotal, orderAmount],
+      0,
+      { min: 0 }
+    ) || 0;
     const leViganZone = isLeViganZone({
       address: clientAddress,
       city: clientCoords.city,
@@ -1090,13 +1098,14 @@ export async function POST(request) {
     });
 
     if (leViganZone) {
-      if (orderAmountNumeric < MIN_ORDER_LE_VIGAN) {
+      if (minimumOrderReferenceAmount < MIN_ORDER_LE_VIGAN) {
         return json({
           success: false,
           livrable: false,
           distance: tempRoundedDistance,
           distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
           minimum_order_amount: MIN_ORDER_LE_VIGAN,
+          order_amount_for_minimum: minimumOrderReferenceAmount,
           required_delivery_fee: FEE_LE_VIGAN,
           message: `Le Vigan: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire pour la livraison.`,
           code: 'LE_VIGAN_MIN_ORDER',
@@ -1114,6 +1123,7 @@ export async function POST(request) {
         restaurant_coordinates: restaurantCoords,
         client_coordinates: clientCoords,
         order_amount: orderAmountNumeric,
+        order_amount_for_minimum: minimumOrderReferenceAmount,
         client_address: clientCoords.display_name,
         message: `Le Vigan: livraison possible à ${FEE_LE_VIGAN.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande).`
       });

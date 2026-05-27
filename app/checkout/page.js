@@ -437,7 +437,8 @@ export default function Checkout() {
 
     const payload = {
       deliveryAddress: fullAddress,
-      orderAmount: Math.round(subtotal * 100) / 100
+      orderAmount: Math.round(subtotal * 100) / 100,
+      subtotalBeforeDiscount: Math.round(subtotal * 100) / 100
     };
 
     const restaurantId = restaurantInfo?.id ?? restaurantInfo?.restaurant_id ?? restaurantInfo?.uuid ?? null;
@@ -720,13 +721,16 @@ export default function Checkout() {
         console.log('🔄 Recalcul des frais de livraison avant paiement...');
         fullAddress = `${selectedAddress.address}, ${selectedAddress.postal_code} ${selectedAddress.city}, France`;
 
+        const cartSubtotalBeforeDiscount = Math.round(computeCartTotalWithExtras(cart) * 100) / 100;
         const recalculateResponse = await fetch('/api/delivery/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             address: fullAddress,
             deliveryAddress: fullAddress,
-            restaurantId: activeRestaurant.id
+            restaurantId: activeRestaurant.id,
+            orderAmount: cartSubtotalBeforeDiscount,
+            subtotalBeforeDiscount: cartSubtotalBeforeDiscount
           })
         });
 
