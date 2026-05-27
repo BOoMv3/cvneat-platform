@@ -3962,6 +3962,22 @@ export default function PartnerDashboard() {
                                     Marquer comme prête
                                   </button>
                                 )}
+
+                                {/* Pour le retrait sur place: le restaurant confirme la remise au client */}
+                                {(String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup') &&
+                                  (order.statut === 'en_preparation' || order.statut === 'en_attente') && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm('Confirmer que le client a bien récupéré sa commande ?')) {
+                                        updateOrderStatus(order.id, 'livree');
+                                      }
+                                    }}
+                                    className="bg-emerald-600 text-white px-3 py-2 rounded text-sm hover:bg-emerald-700 transition-colors"
+                                    title="Marquer la commande comme remise au client"
+                                  >
+                                    Client récupéré (terminer)
+                                  </button>
+                                )}
                                 
                                 {/* Afficher "Prête" et bouton "Remise au livreur" si la commande est prête mais pas encore en livraison */}
                                 {order.ready_for_delivery &&
