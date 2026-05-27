@@ -44,9 +44,31 @@ const FEE_GANGES = 3;      // 3€ – Ganges
 const FEE_5_EUR = 5;       // 5€ – Laroque, Moulès, Cazilhac
 const FEE_BRISSAC = 7.5;   // 7,50€ – Brissac (un peu plus loin)
 const FEE_SAINT_HIPPOLYTE = 8.5; // 8,50€ – Saint-Hippolyte-du-Fort (Gard, ~14 km route de Ganges)
-const FEE_LE_VIGAN = 10; // 10€ – Le Vigan (zone spéciale)
+const FEE_LE_VIGAN = 10; // 10€ – Pays viganais (30120 : Le Vigan, Avèze, etc.)
 const FEE_REST = 7;        // 7€ – le reste des villages
-const MIN_ORDER_LE_VIGAN = 20; // Minimum obligatoire pour Le Vigan
+const MIN_ORDER_LE_VIGAN = 20; // Minimum obligatoire zone 30120
+const LE_VIGAN_POSTAL_CODE = '30120';
+// Communes du 30120 livrées au même tarif que Le Vigan (CP partagé)
+const LE_VIGAN_AREA_TOWN_KEYS = [
+  'le vigan',
+  'vigan',
+  'aveze',
+  'molieres-cavaillac',
+  'moules et baucels',
+  'moules',
+  'pommiers',
+  'breau-et-salagosse',
+  'breau',
+  'salagosse',
+  'aulas',
+  'montdardier',
+  'arphy',
+  'bez-et-esparon',
+  'bez et esparon',
+  'mandagout',
+  'arre',
+];
+const LE_VIGAN_ZONE_LABEL = 'Zone Le Vigan (30120)';
 const MAX_DISTANCE = 8;           // Max à vol d'oiseau (fallback si pas d'API route)
 const MAX_DISTANCE_ROAD_KM = 10; // Max 10 km par la route (utilisé quand OpenRouteService est dispo)
 const DEFAULT_BASE_FEE = 3;
@@ -76,6 +98,9 @@ const AUTHORIZED_CITIES = [
   'st-hippolyte',
   'le vigan',
   'vigan',
+  'aveze',
+  'molieres-cavaillac',
+  'pommiers',
 ];
 // Villes EXCLUES (trop loin ou hors zone) – pas de livraison
 const EXCLUDED_CITIES = ['pegairolles', 'saint-bresson', 'montoulieu'];
@@ -110,7 +135,9 @@ const COORDINATES_DB = {
   'saint-martial': { lat: 43.9833, lng: 3.7333, name: 'Saint-Martial' },
   'saint-roman-de-codieres': { lat: 43.9500, lng: 3.7667, name: 'Saint-Roman-de-Codières' },
   'roquedur': { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
-  'saint-laurent-le-minier': { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' }
+  'saint-laurent-le-minier': { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' },
+  'le-vigan': { lat: 43.9917, lng: 3.6070, name: 'Le Vigan' },
+  aveze: { lat: 43.9709, lng: 3.6008, name: 'Avèze' },
 };
 
 // Centres des communes pour le "snap" (une entrée par commune, pour frais stables)
@@ -231,11 +258,12 @@ function generateAddressVariants(address) {
   }
   
   // Variante 4 : Juste le code postal (si connu)
-  if (postalCode && ['34190', '30440', '30170'].includes(postalCode)) {
+  if (postalCode && ['34190', '30440', '30170', '30120'].includes(postalCode)) {
     const cityMap = {
       '34190': 'Ganges',
       '30440': 'Sumène',
       '30170': 'Saint-Hippolyte-du-Fort',
+      '30120': 'Le Vigan',
     };
     if (cityMap[postalCode]) {
       variants.add(`${postalCode} ${cityMap[postalCode]}, France`);
@@ -459,6 +487,13 @@ function cleanAddressForGeocoding(address) {
       'saint hippolyte': '30170',
       'st-hippolyte': '30170',
       'hippolyte du fort': '30170',
+      'le vigan': '30120',
+      vigan: '30120',
+      aveze: '30120',
+      'molieres-cavaillac': '30120',
+      'moules et baucels': '30120',
+      moules: '30120',
+      pommiers: '30120',
     };
     
     // Normaliser l'adresse pour la recherche (sans accents, minuscules)
@@ -680,6 +715,8 @@ function getKnownTownCoordsFromAddress(address) {
         '30170',
       ],
     },
+    { key: 'le-vigan', patterns: ['le vigan', 'vigan', '30120'] },
+    { key: 'aveze', patterns: ['aveze', 'avèze'] },
   ];
   for (const { key, patterns } of townKeys) {
     if (patterns.some(p => normalized.includes(p))) {
@@ -864,21 +901,29 @@ function getFixedDeliveryFeeByTown(city, address) {
   ) {
     return FEE_SAINT_HIPPOLYTE;
   }
-  if (combined.includes('le vigan') || combined.includes('levigan') || combined.includes('30120')) {
+  if (isLeViganZone({ address, city })) {
     return FEE_LE_VIGAN;
   }
   return FEE_REST;
 }
 
+function townMatchesLeViganArea(combinedNormalized, townKey) {
+  const key = normalizeForTown(townKey);
+  if (!key) return false;
+  if (key.includes(' ')) return combinedNormalized.includes(key);
+  return (
+    combinedNormalized.includes(` ${key}`) ||
+    combinedNormalized.startsWith(key) ||
+    combinedNormalized.endsWith(` ${key}`) ||
+    combinedNormalized === key
+  );
+}
+
 function isLeViganZone({ address = '', city = '', postalCode = '' } = {}) {
   const combined = normalizeForTown(`${address} ${city}` || '');
   const postal = String(postalCode || '').trim();
-  return (
-    postal === '30120' ||
-    combined.includes(' le vigan') ||
-    combined.startsWith('le vigan') ||
-    combined.includes(' levigan')
-  );
+  if (postal === LE_VIGAN_POSTAL_CODE) return true;
+  return LE_VIGAN_AREA_TOWN_KEYS.some((town) => townMatchesLeViganArea(combined, town));
 }
 
 export async function POST(request) {
@@ -1107,7 +1152,7 @@ export async function POST(request) {
           minimum_order_amount: MIN_ORDER_LE_VIGAN,
           order_amount_for_minimum: minimumOrderReferenceAmount,
           required_delivery_fee: FEE_LE_VIGAN,
-          message: `Le Vigan: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire pour la livraison.`,
+          message: `${LE_VIGAN_ZONE_LABEL}: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire pour la livraison (Le Vigan, Avèze, etc.).`,
           code: 'LE_VIGAN_MIN_ORDER',
         }, { status: 200 });
       }
@@ -1125,7 +1170,7 @@ export async function POST(request) {
         order_amount: orderAmountNumeric,
         order_amount_for_minimum: minimumOrderReferenceAmount,
         client_address: clientCoords.display_name,
-        message: `Le Vigan: livraison possible à ${FEE_LE_VIGAN.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande).`
+        message: `${LE_VIGAN_ZONE_LABEL}: livraison possible à ${FEE_LE_VIGAN.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande, ex. Le Vigan et Avèze).`
       });
     }
 
