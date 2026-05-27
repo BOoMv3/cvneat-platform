@@ -51,6 +51,7 @@ export default function PartnerDashboard() {
   const [userData, setUserData] = useState(null); // Ajout de userData
   const [restaurant, setRestaurant] = useState(null);
   const [stats, setStats] = useState({
+    totalOrders: 0,
     todayOrders: 0,
     pendingOrders: 0,
     totalRevenue: 0,
@@ -1635,11 +1636,14 @@ export default function PartnerDashboard() {
       }
       
       const data = await response.json();
+      const totalCountHeader = parseInt(response.headers.get('x-total-count') || '0', 10);
+      const totalOrdersCount = Number.isFinite(totalCountHeader) ? totalCountHeader : 0;
       // S'assurer que data est un tableau
       if (!Array.isArray(data)) {
         console.warn('⚠️ Données API invalides (pas un tableau):', data);
         setOrders([]);
         setStats({
+          totalOrders: 0,
           todayOrders: 0,
           pendingOrders: 0,
           totalRevenue: 0,
@@ -1741,6 +1745,7 @@ export default function PartnerDashboard() {
       });
       
       setStats({
+        totalOrders: totalOrdersCount || 0,
         todayOrders: todayOrders.length || 0,
         pendingOrders: pendingOrders.length || 0,
         totalRevenue: todayRevenue || 0,
@@ -3370,7 +3375,9 @@ export default function PartnerDashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total commandes</p>
-                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">{Array.isArray(orders) ? orders.length : 0}</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+                      {Number(stats?.totalOrders || 0)}
+                    </p>
                   </div>
                 </div>
               </div>
