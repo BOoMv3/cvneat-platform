@@ -70,7 +70,8 @@ export default function ForgotPasswordPage() {
               </div>
               <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc pl-5 space-y-1">
                 <li>Vérifiez votre boîte de réception et les <strong>spams / courriers indésirables</strong>.</li>
-                <li>Le lien expire après environ 1 heure — <strong>un seul clic</strong> (ne pas prévisualiser le lien dans l&apos;app mail).</li>
+                <li>Le lien expire après environ 1 heure — <strong>un seul clic</strong>, puis remplissez le formulaire sur la page (ne pas seulement prévisualiser le mail).</li>
+                <li>Mot de passe : 8 caractères min., une majuscule, une minuscule, un chiffre et un symbole (! @ # …).</li>
                 <li>Utilisez la même adresse email que lors de l&apos;inscription.</li>
                 <li>Ouvrez le lien dans <strong>Safari ou Chrome</strong>, pas uniquement dans la fenêtre intégrée Facebook/Instagram si possible.</li>
               </ul>

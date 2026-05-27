@@ -21,6 +21,15 @@ export default function UpdatePasswordPage() {
 
     const initialiseSession = async () => {
       try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const tokenHash = searchParams.get('token_hash');
+        if (tokenHash) {
+          router.replace(
+            `/auth/reset-link?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
+          );
+          return;
+        }
+
         const result = await establishSessionFromAuthUrl(supabase);
 
         if (!result.ok) {
@@ -57,7 +66,7 @@ export default function UpdatePasswordPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

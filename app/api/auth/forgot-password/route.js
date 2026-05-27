@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import emailService from '@/lib/emailService';
 import { generatePasswordRecoveryUrl } from '@/lib/auth-email';
+import { findAuthUserByEmail } from '@/lib/auth-recovery';
+import { supabaseAdmin } from '@/lib/supabase';
 const { isValidEmail } = require('@/lib/validation');
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +36,29 @@ export async function POST(request) {
         },
         { status: 503 }
       );
+    }
+
+    if (supabaseAdmin) {
+      try {
+        const authUser = await findAuthUserByEmail(email);
+        if (!authUser) {
+          const { data: profileRow } = await supabaseAdmin
+            .from('users')
+            .select('id, email')
+            .eq('email', email)
+            .maybeSingle();
+          if (profileRow?.id) {
+            console.warn(
+              `⚠️ forgot-password: profil users sans compte Auth pour ${email} — email non envoyé`
+            );
+          } else {
+            console.log(`ℹ️ forgot-password: aucun compte pour ${email}`);
+          }
+          return NextResponse.json(GENERIC_OK);
+        }
+      } catch (lookupErr) {
+        console.warn('⚠️ forgot-password lookup:', lookupErr?.message || lookupErr);
+      }
     }
 
     let resetUrl;

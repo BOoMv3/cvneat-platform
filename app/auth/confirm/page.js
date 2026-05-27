@@ -30,6 +30,14 @@ export default function ConfirmEmailPage() {
         const typeHint = hashParams?.get('type') || searchParams?.get('type');
 
         if (typeHint === 'recovery') {
+          const tokenHash =
+            searchParams?.get('token_hash') || hashParams?.get('token_hash');
+          if (tokenHash) {
+            router.replace(
+              `/auth/reset-link?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
+            );
+            return;
+          }
           const suffix =
             window.location.hash ||
             (searchParams?.get('code') ? `?code=${searchParams.get('code')}` : '');
