@@ -1,11 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FaClock } from 'react-icons/fa';
 import { generateDeliverySlotOptions } from '@/lib/delivery-slots';
 
-export default function DeliverySlotPicker({ value, onChange, disabled = false }) {
+export default function DeliverySlotPicker({ value, onChange, disabled = false, mode = 'delivery' }) {
   const [slots, setSlots] = useState(() => generateDeliverySlotOptions());
+  const isPickup = mode === 'pickup';
+
+  const uiText = useMemo(
+    () =>
+      isPickup
+        ? {
+            title: 'Créneau de retrait souhaité',
+            description:
+              'Choisissez une fourchette de 30 minutes. Le restaurant confirmera si c’est possible (sinon retrait au plus tôt).',
+          }
+        : {
+            title: 'Créneau de livraison souhaité',
+            description:
+              'Choisissez une fourchette de 30 minutes. Le restaurant confirmera si c&apos;est possible (sinon livraison au plus tôt).',
+          },
+    [isPickup]
+  );
 
   useEffect(() => {
     setSlots(generateDeliverySlotOptions());
@@ -19,10 +36,10 @@ export default function DeliverySlotPicker({ value, onChange, disabled = false }
     <div className="space-y-3">
       <h3 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base flex items-center gap-2">
         <FaClock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        Créneau de livraison souhaité
+        {uiText.title}
       </h3>
       <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-        Choisissez une fourchette de 30 minutes. Le restaurant confirmera si c&apos;est possible (sinon livraison au plus tôt).
+        {uiText.description}
       </p>
       <div className="space-y-2">
         {slots.map((slot) => (

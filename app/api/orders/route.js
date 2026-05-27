@@ -575,23 +575,11 @@ export async function POST(request) {
       };
     }
 
-    const parsedSlot = isPickupOrder ? { ok: true, slot: null } : parseClientDeliverySlot(deliverySlot);
+    const parsedSlot = parseClientDeliverySlot(deliverySlot);
     if (!parsedSlot.ok) {
       return json({ error: parsedSlot.error }, { status: 400 });
     }
-    const deliverySlotColumns = isPickupOrder
-      ? {
-          delivery_slot_type: 'asap',
-          delivery_slot_status: null,
-          delivery_slot_requested_start: null,
-          delivery_slot_requested_end: null,
-          delivery_slot_confirmed_start: null,
-          delivery_slot_confirmed_end: null,
-          delivery_slot_proposed_start: null,
-          delivery_slot_proposed_end: null,
-          delivery_slot_partner_note: null,
-        }
-      : buildOrderDeliverySlotColumns(parsedSlot);
+    const deliverySlotColumns = buildOrderDeliverySlotColumns(parsedSlot);
 
     console.log('Validation des donnees OK');
 

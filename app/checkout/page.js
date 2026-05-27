@@ -975,7 +975,7 @@ export default function Checkout() {
           promoCode: appliedPromoCode?.code || null,
           loyaltyRewardId: selectedLoyaltyRewardId || null,
           alcoholLegalAgeDeclared: !panierContientAlcool || alcoholAttestationChecked === true,
-          deliverySlot: orderFulfillment === 'delivery' ? deliverySlot : null,
+          deliverySlot,
           orderFulfillment,
           paymentStatus: 'pending', // Statut en attente de paiement (doit correspondre à la contrainte CHECK)
           customerInfo: {
@@ -1583,15 +1583,14 @@ export default function Checkout() {
               </div>
             </div>
 
-            {orderFulfillment === 'delivery' && (
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <DeliverySlotPicker
                 value={deliverySlot}
                 onChange={setDeliverySlot}
                 disabled={submitting || !ordersOpen}
+                mode={orderFulfillment}
               />
             </div>
-            )}
           </div>
 
           {/* Résumé de la commande */}
@@ -1600,9 +1599,11 @@ export default function Checkout() {
               <FaShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mr-2" />
               Résumé de la commande
             </h2>
-            {orderFulfillment === 'delivery' && deliverySlot?.type === 'window' && deliverySlot?.start && deliverySlot?.end && (
+            {deliverySlot?.type === 'window' && deliverySlot?.start && deliverySlot?.end && (
               <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mb-4">
-                Livraison souhaitée : <strong>{formatSlotRangeParis(deliverySlot.start, deliverySlot.end)}</strong> — confirmation par le restaurant après commande.
+                {orderFulfillment === 'pickup' ? 'Retrait souhaité' : 'Livraison souhaitée'} :{' '}
+                <strong>{formatSlotRangeParis(deliverySlot.start, deliverySlot.end)}</strong> — confirmation par le
+                restaurant après commande.
               </p>
             )}
 
