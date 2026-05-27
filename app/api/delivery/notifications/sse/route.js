@@ -36,6 +36,8 @@ export async function GET(request) {
             .select('*')
             .eq('statut', 'en_preparation')
             .is('livreur_id', null)
+            // Exclure les retraits sur place des notifications live livreur.
+            .or('order_fulfillment.is.null,order_fulfillment.eq.delivery')
             .gte('created_at', new Date(Date.now() - 20000).toISOString());
 
           if (availableOrders && availableOrders.length > 0) {

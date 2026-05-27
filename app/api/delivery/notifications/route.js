@@ -53,6 +53,8 @@ export async function GET(request) {
       `)
       .in('statut', ['pret_a_livrer', 'en_preparation'])
       .is('livreur_id', null)
+      // Exclure les retraits sur place: seuls les commandes livraison doivent notifier les livreurs.
+      .or('order_fulfillment.is.null,order_fulfillment.eq.delivery')
       .order('created_at', { ascending: true });
 
     if (error) {
