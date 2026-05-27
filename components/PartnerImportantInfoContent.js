@@ -19,6 +19,11 @@ export default function PartnerImportantInfoContent({ compact = false }) {
           <strong>36&nbsp;% TTC</strong>. Chez CVN&apos;EAT, la commission est de <strong>20&nbsp;%</strong>.
         </p>
         <p className="mt-2">
+          <strong className="text-emerald-700 dark:text-emerald-300">
+            Nouveau: en retrait sur place, la commission baisse à 15&nbsp;%.
+          </strong>
+        </p>
+        <p className="mt-2">
           Les promos du concurrent sont pour l&apos;instant à leur charge ; les prochaines seront souvent{' '}
           <strong>à votre charge</strong>. Chez nous, <strong>toutes les promos sont à la charge de CVN&apos;EAT</strong>.
         </p>
@@ -30,8 +35,8 @@ export default function PartnerImportantInfoContent({ compact = false }) {
           Réseaux sociaux
         </h3>
         <p>
-          Une <strong>community manager</strong> passe dans chaque restaurant partenaire (photos, vidéos, réseaux
-          sociaux) pour booster votre visibilité locale.
+          Nous avons pris une <strong>community manager</strong> qui va passer bientôt dans chaque restaurant
+          partenaire (photos, vidéos, réseaux sociaux) pour booster votre visibilité locale.
         </p>
       </div>
 
@@ -57,10 +62,11 @@ export default function PartnerImportantInfoContent({ compact = false }) {
       </div>
 
       <div className={`${sectionClass} border-emerald-300 dark:border-emerald-700`}>
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Nouveau: retrait sur place</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Nouveau: retrait sur place (mis en avant)</h3>
         <p>
           Le client peut maintenant choisir <strong>livraison</strong> ou <strong>retrait sur place</strong> au checkout.
-          Pour un retrait sur place, il n&apos;y a pas de frais de livraison.
+          En retrait sur place: <strong>0&nbsp;€ de frais de livraison pour le client</strong> et{' '}
+          <strong>commission réduite à 15&nbsp;%</strong> pour le restaurant.
         </p>
       </div>
     </div>

@@ -64,12 +64,14 @@ export default function PartnerImportantInfoOverlay({ children }) {
           >
             {acknowledged ? (
               <>
-                Rappel CVN&apos;EAT : commission <strong>20&nbsp;%</strong> · promos à notre charge · app native en
-                cours · tablette = usage CVN&apos;EAT uniquement
+                Rappel CVN&apos;EAT : commission <strong>20&nbsp;%</strong> (et <strong>15&nbsp;% en retrait sur place</strong>)
+                · promos à notre charge · community manager en visite prochainement · tablette = usage CVN&apos;EAT
+                uniquement
               </>
             ) : (
               <>
-                ⚠️ MESSAGE IMPORTANT — vous devez le lire avant de continuer (commission, promos, tablettes)
+                ⚠️ MESSAGE IMPORTANT — vous devez le lire avant de continuer (retrait sur place, commission, promos,
+                tablettes)
               </>
             )}
           </p>
