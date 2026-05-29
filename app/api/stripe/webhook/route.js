@@ -6,7 +6,7 @@ import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
 import { notifyDeliverySubscribers } from '../../../../lib/pushNotifications';
 import { sendDeliveryAppPush } from '../../../../lib/sendDeliveryAppPush';
 import { applyCvneatPlusFromStripeSubscription } from '@/lib/cvneat-plus-sync';
-// SSE resto désactivé dans ce workflow: on notifie le resto uniquement après acceptation livreur.
+import { isPickupOrder, notifyPartnerNewOrder } from '../../../../lib/notify-partner-new-order';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -247,7 +247,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
 
     const byPi = await db
       .from('commandes')
-      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id')
+      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, order_fulfillment, statut')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .maybeSingle();
     order = byPi.data || null;
@@ -259,7 +259,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
         console.log('🔎 Webhook: fallback lookup commande via metadata.order_id:', metaOrderId);
         const byMeta = await db
           .from('commandes')
-          .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id')
+          .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, order_fulfillment, statut')
           .eq('id', metaOrderId)
           .maybeSingle();
         order = byMeta.data || null;
@@ -398,73 +398,80 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
         console.warn('⚠️ Impossible de récupérer les frais Stripe (non bloquant):', e?.message || e);
       }
       
-      // IMPORTANT: Envoyer la notification SSE uniquement après confirmation du paiement via webhook
-      if (order.restaurant_id) {
+      // Retrait sur place : notifier le restaurant dès le paiement. Livraison : livreurs d'abord.
+      if (order.restaurant_id && !wasPaidBefore) {
         try {
+          const { data: paidOrder } = await db
+            .from('commandes')
+            .select('id, restaurant_id, total, frais_livraison, statut, order_fulfillment, payment_status')
+            .eq('id', order.id)
+            .maybeSingle();
+
           const notificationTotal = (parseFloat(order.total || 0) + parseFloat(order.frais_livraison || 0)).toFixed(2);
-          
-          // NOUVEAU WORKFLOW: d'abord notifier les livreurs uniquement.
-          // Appel direct (pas de fetch HTTP) pour éviter timeout / cold start
-          try {
-            const pushResult = await sendDeliveryAppPush({
-              orderId: order.id,
-              total: notificationTotal,
-              data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
-            });
-            console.log('✅ Notification push livreurs+admins (app):', pushResult.sent, '/', pushResult.total);
-            if (pushResult.sent === 0 && pushResult.total === 0) {
-              console.warn('⚠️ Aucun token: vérifier roles delivery/livreur/admin et device_tokens.');
-            }
-          } catch (pushErr) {
-            console.warn('⚠️ Erreur push direct, tentative fallback HTTP:', pushErr?.message);
+
+          if (paidOrder && isPickupOrder(paidOrder)) {
+            await notifyPartnerNewOrder(paidOrder, { supabaseAdmin: db, origin });
+            console.log('✅ Notification partenaire (retrait sur place):', order.id);
+          } else {
+            // Livraison : notifier les livreurs uniquement
             try {
-              const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
-              const bodyBase = {
-                title: 'Nouvelle commande disponible 🚚',
-                body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
-                data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' },
-              };
-              const pushResDel = await fetch(`${base}/api/notifications/send-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role: 'delivery', ...bodyBase }),
-              });
-              if (pushResDel.ok) {
-                const fallback = await pushResDel.json().catch(() => ({}));
-                console.log('✅ Fallback HTTP push livreurs:', fallback.sent, '/', fallback.total);
-              }
-              const pushResAdm = await fetch(`${base}/api/notifications/send-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  role: 'admin',
-                  ...bodyBase,
-                  data: { ...bodyBase.data, url: '/admin/orders' },
-                }),
-              });
-              if (pushResAdm.ok) {
-                const fb2 = await pushResAdm.json().catch(() => ({}));
-                console.log('✅ Fallback HTTP push admins:', fb2.sent, '/', fb2.total);
-              }
-            } catch (_) {}
-          }
-          // Web Push (livreurs dashboard web) — en plus de device_tokens (app mobile)
-          try {
-            const db = supabaseAdmin || supabasePublic;
-            if (db) {
-              await notifyDeliverySubscribers(db, {
-                title: 'Nouvelle commande disponible 🚚',
-                body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+              const pushResult = await sendDeliveryAppPush({
+                orderId: order.id,
+                total: notificationTotal,
                 data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
               });
+              console.log('✅ Notification push livreurs+admins (app):', pushResult.sent, '/', pushResult.total);
+              if (pushResult.sent === 0 && pushResult.total === 0) {
+                console.warn('⚠️ Aucun token: vérifier roles delivery/livreur/admin et device_tokens.');
+              }
+            } catch (pushErr) {
+              console.warn('⚠️ Erreur push direct, tentative fallback HTTP:', pushErr?.message);
+              try {
+                const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
+                const bodyBase = {
+                  title: 'Nouvelle commande disponible 🚚',
+                  body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                  data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' },
+                };
+                const pushResDel = await fetch(`${base}/api/notifications/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ role: 'delivery', ...bodyBase }),
+                });
+                if (pushResDel.ok) {
+                  const fallback = await pushResDel.json().catch(() => ({}));
+                  console.log('✅ Fallback HTTP push livreurs:', fallback.sent, '/', fallback.total);
+                }
+                const pushResAdm = await fetch(`${base}/api/notifications/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    role: 'admin',
+                    ...bodyBase,
+                    data: { ...bodyBase.data, url: '/admin/orders' },
+                  }),
+                });
+                if (pushResAdm.ok) {
+                  const fb2 = await pushResAdm.json().catch(() => ({}));
+                  console.log('✅ Fallback HTTP push admins:', fb2.sent, '/', fb2.total);
+                }
+              } catch (_) {}
             }
-          } catch (webPushErr) {
-            console.warn('⚠️ Erreur Web Push livreurs:', webPushErr?.message || webPushErr);
+            try {
+              if (db) {
+                await notifyDeliverySubscribers(db, {
+                  title: 'Nouvelle commande disponible 🚚',
+                  body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                  data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
+                });
+              }
+            } catch (webPushErr) {
+              console.warn('⚠️ Erreur Web Push livreurs:', webPushErr?.message || webPushErr);
+            }
           }
           console.log('💰 Montant notification (avec frais):', notificationTotal, '€');
         } catch (broadcastError) {
           console.warn('⚠️ Erreur broadcasting SSE:', broadcastError);
-          // Ne pas faire échouer le traitement du webhook si le broadcast échoue
         }
       }
     }

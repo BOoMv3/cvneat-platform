@@ -284,11 +284,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Cette commande ne peut plus être modifiée' }, { status: 400 });
     }
 
-    // WORKFLOW: Le livreur doit accepter AVANT — le restaurant ne peut accepter qu'une fois le livreur assigné
-    if (!order.livreur_id) {
-      return NextResponse.json({ 
-        error: 'Aucun livreur disponible', 
-        details: 'Un livreur doit d\'abord accepter la commande. Veuillez patienter.' 
+    const isPickup = String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
+    // Livraison : le livreur doit accepter avant le restaurant. Retrait : pas de livreur.
+    if (!isPickup && !order.livreur_id) {
+      return NextResponse.json({
+        error: 'Aucun livreur disponible',
+        details: 'Un livreur doit d\'abord accepter la commande. Veuillez patienter.',
       }, { status: 400 });
     }
 

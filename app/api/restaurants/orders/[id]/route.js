@@ -186,6 +186,8 @@ export async function PUT(request, { params }) {
       // Si on passe en livraison, la commande doit être prête
       // Si elle n'était pas prête, on la marque comme prête aussi
       readyForDelivery = true;
+    } else if (status === 'livree' && String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup') {
+      readyForDelivery = true;
     }
     
     console.log('📋 Statuts autorisés par CHECK: en_attente, en_preparation, en_livraison, livree, annulee');
@@ -236,7 +238,11 @@ export async function PUT(request, { params }) {
         updateData.preparation_started_at = new Date().toISOString();
         console.log('🔄 preparation_started_at défini/réinitialisé pour preparation_time:', preparation_time, 'min');
       }
-    } else if (shouldUpdateStatus && (status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
+    } else if (shouldUpdateStatus && status === 'acceptee') {
+      updateData.accepted_at = new Date().toISOString();
+    }
+
+    if (shouldUpdateStatus && (status === 'acceptee' || status === 'pret_a_livrer') && !order.preparation_started_at) {
       // Si on accepte la commande SANS définir de preparation_time explicite,
       // définir preparation_started_at seulement si il n'existe pas déjà
       updateData.preparation_started_at = new Date().toISOString();
@@ -521,9 +527,23 @@ export async function PUT(request, { params }) {
                   : `Votre commande #${updatedOrder.id?.slice(0, 8)} a été acceptée et sera préparée bientôt.`
             },
             'en_preparation': { title: 'En préparation 👨‍🍳', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est en cours de préparation.` },
-            'pret_a_livrer': { title: 'Commande prête ! 📦', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est prête et sera livrée bientôt.` },
+            'pret_a_livrer': {
+              title: String(updatedOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup'
+                ? 'Prête au retrait ! 🛍️'
+                : 'Commande prête ! 📦',
+              body: String(updatedOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup'
+                ? `Votre commande #${updatedOrder.id?.slice(0, 8)} vous attend au restaurant.`
+                : `Votre commande #${updatedOrder.id?.slice(0, 8)} est prête et sera livrée bientôt.`,
+            },
             'en_livraison': { title: 'En livraison 🚚', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} est en route vers vous !` },
-            'livree': { title: 'Commande livrée ! ✅', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été livrée. Bon appétit !` },
+            'livree': {
+              title: String(updatedOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup'
+                ? 'Commande récupérée ! ✅'
+                : 'Commande livrée ! ✅',
+              body: String(updatedOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup'
+                ? `Votre commande #${updatedOrder.id?.slice(0, 8)} a bien été remise. Bon appétit !`
+                : `Votre commande #${updatedOrder.id?.slice(0, 8)} a été livrée. Bon appétit !`,
+            },
             'refusee': { title: 'Commande refusée ❌', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été refusée.` },
             'annulee': { title: 'Commande annulée ❌', body: `Votre commande #${updatedOrder.id?.slice(0, 8)} a été annulée.` }
           };

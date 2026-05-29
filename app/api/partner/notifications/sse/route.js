@@ -151,14 +151,25 @@ export async function GET(request) {
                   return; // Ne pas envoyer de notification pour les commandes non payées
                 }
                 
-                // CRITIQUE: Ne notifier QUE si un livreur vient d'être assigné (passage de null à non-null)
+                // Retrait sur place : notifier dès paiement. Livraison : quand livreur assigné.
+                const isPickup = String(payload.new.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
                 const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
                 const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
-                
-                // Si un livreur vient JUSTE d'être assigné ET statut = 'en_attente'
-                if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
+                const paymentJustPaid =
+                  (payload.old?.payment_status !== 'paid' && payload.old?.payment_status !== 'succeeded') &&
+                  (payload.new.payment_status === 'paid' || payload.new.payment_status === 'succeeded');
+
+                if (isPickup && paymentJustPaid && payload.new.statut === 'en_attente') {
+                  console.log('✅ Nouvelle commande retrait payée, notification envoyée:', payload.new.id);
+                  const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
+                  sendNotification({
+                    type: 'new_order',
+                    message: `Nouvelle commande retrait #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
+                    order: payload.new,
+                    timestamp: new Date().toISOString()
+                  });
+                } else if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
                   console.log('✅ Nouvelle commande avec livreur assigné, notification envoyée:', payload.new.id);
-                  // IMPORTANT: Calculer le montant total avec les frais de livraison
                   const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
                   sendNotification({
                     type: 'new_order',
@@ -167,7 +178,7 @@ export async function GET(request) {
                     timestamp: new Date().toISOString()
                   });
                 } else {
-                  console.log('⚠️ Commande ignorée (pas de nouveau livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
+                  console.log('⚠️ Commande ignorée (pas retrait payé ni nouveau livreur):', payload.new.id, 'fulfillment:', payload.new.order_fulfillment, 'statut:', payload.new.statut);
                 }
               }
             )

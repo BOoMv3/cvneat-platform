@@ -165,17 +165,22 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
             return; // Ne pas traiter les commandes non payées
           }
           
-          // CRITIQUE: Ne notifier QUE si un livreur vient d'être assigné (passage de null à non-null)
+          // Retrait sur place : notifier dès paiement. Livraison : quand livreur assigné.
+          const isPickup = String(payload.new.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
           const oldHasDelivery = payload.old?.livreur_id === null || payload.old?.livreur_id === undefined;
           const newHasDelivery = payload.new.livreur_id !== null && payload.new.livreur_id !== undefined;
-          
-          // Si un livreur vient JUSTE d'être assigné ET statut = 'en_attente'
-          if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
+          const paymentJustPaid =
+            (payload.old?.payment_status !== 'paid' && payload.old?.payment_status !== 'succeeded') &&
+            (payload.new.payment_status === 'paid' || payload.new.payment_status === 'succeeded');
+
+          if (isPickup && paymentJustPaid && payload.new.statut === 'en_attente') {
+            console.log('✅ Nouvelle commande retrait payée, notification envoyée:', payload.new.id);
+            triggerNewOrderAlert(payload.new);
+          } else if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
             console.log('✅ Nouvelle commande avec livreur assigné, notification envoyée:', payload.new.id);
-            // Déclencher l'alerte pour nouvelle commande avec livreur
             triggerNewOrderAlert(payload.new);
           } else {
-            console.log('⚠️ Commande ignorée (pas de nouveau livreur ou statut incorrect):', payload.new.id, 'livreur_id:', payload.new.livreur_id, 'statut:', payload.new.statut);
+            console.log('⚠️ Commande ignorée (pas retrait payé ni nouveau livreur):', payload.new.id);
             return;
           }
           
@@ -183,8 +188,10 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
           
           // Afficher une notification du navigateur
-          showBrowserNotification('Nouvelle commande (Livreur assigné) !', {
-            body: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
+          showBrowserNotification(isPickup ? 'Nouvelle commande à emporter !' : 'Nouvelle commande (Livreur assigné) !', {
+            body: isPickup
+              ? `Retrait #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`
+              : `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
             icon: '/icon-192x192.png',
             tag: 'new-order',
             requireInteraction: false
@@ -194,7 +201,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
           const newNotification = {
             id: Date.now(),
             type: 'new_order',
-            message: `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€ (Livreur assigné)`,
+            message: isPickup
+              ? `Retrait #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`
+              : `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€ (Livreur assigné)`,
             data: payload.new,
             timestamp: new Date().toISOString(),
             isNew: true
@@ -251,14 +260,14 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session || !restaurantId) return;
 
-        // Récupérer la dernière commande (seulement les commandes payées ET acceptées par un livreur)
+        // Commandes payées en attente : livraison (livreur assigné) ou retrait sur place
         const { data: orders, error } = await supabase
           .from('commandes')
-          .select('id, created_at, statut, restaurant_id, payment_status, livreur_id')
+          .select('id, created_at, statut, restaurant_id, payment_status, livreur_id, order_fulfillment')
           .eq('restaurant_id', restaurantId)
           .eq('statut', 'en_attente')
-          .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
-          .not('livreur_id', 'is', null) // NOUVEAU WORKFLOW: Attendre qu'un livreur accepte
+          .eq('payment_status', 'paid')
+          .or('livreur_id.not.is.null,order_fulfillment.eq.pickup')
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -281,12 +290,15 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
               .eq('id', latestOrderId)
               .single();
 
-            if (!orderError && fullOrder && fullOrder.statut === 'en_attente' && fullOrder.payment_status === 'paid' && fullOrder.livreur_id) {
-              triggerNewOrderAlert(fullOrder);
-              lastOrderCheckRef.current = latestOrderId;
+            if (!orderError && fullOrder && fullOrder.statut === 'en_attente' && fullOrder.payment_status === 'paid') {
+              const isPickup = String(fullOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
+              if (isPickup || fullOrder.livreur_id) {
+                triggerNewOrderAlert(fullOrder);
+                lastOrderCheckRef.current = latestOrderId;
+              }
             } else if (fullOrder && fullOrder.payment_status !== 'paid') {
               console.log('⚠️ Commande non payée ignorée dans polling:', latestOrderId, 'payment_status:', fullOrder.payment_status);
-            } else if (fullOrder && !fullOrder.livreur_id) {
+            } else if (fullOrder && !fullOrder.livreur_id && String(fullOrder.order_fulfillment || 'delivery').toLowerCase() !== 'pickup') {
               console.log('⚠️ Commande sans livreur ignorée dans polling:', latestOrderId, '(le livreur doit accepter d\'abord)');
             }
               } else if (latestOrderId === pendingOrderId && latestOrder.statut !== 'en_attente') {

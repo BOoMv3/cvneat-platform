@@ -77,55 +77,53 @@ export default function RestaurantOrderAlert() {
       // Stocker le restaurant pour l'utiliser dans le calcul de commission
       setRestaurant(restaurant);
 
-      // Récupérer les commandes en attente pour ce restaurant
-      // NOUVEAU WORKFLOW: Seulement les commandes avec livreur_id assigné (livreur a accepté)
-      // IMPORTANT: Inclure total_amount, delivery_fee, et tous les champs nécessaires
-      // IMPORTANT: Seulement les commandes payées (payment_status = 'paid') ET avec livreur
-      const { data, error } = await supabase
-        .from('commandes')
-        .select(`
+    // Récupérer les commandes en attente : livraison (livreur assigné) ou retrait sur place
+    const { data, error } = await supabase
+      .from('commandes')
+      .select(`
+        id,
+        created_at,
+        updated_at,
+        statut,
+        total_amount,
+        total,
+        delivery_fee,
+        frais_livraison,
+        restaurant_id,
+        user_id,
+        livreur_id,
+        order_fulfillment,
+        customer_name,
+        customer_phone,
+        customer_email,
+        delivery_address,
+        delivery_city,
+        delivery_postal_code,
+        delivery_instructions,
+        adresse_livraison,
+        instructions,
+        items,
+        details_commande (
           id,
-          created_at,
-          updated_at,
-          statut,
-          total_amount,
-          total,
-          delivery_fee,
-          frais_livraison,
-          restaurant_id,
-          user_id,
-          livreur_id,
-          customer_name,
-          customer_phone,
-          customer_email,
-          delivery_address,
-          delivery_city,
-          delivery_postal_code,
-          delivery_instructions,
-          adresse_livraison,
-          instructions,
-          items,
-          details_commande (
-            id,
-            plat_id,
-            quantite,
-            prix_unitaire,
-            menus (
-              nom,
-              prix
-            )
-          ),
-          users (
+          plat_id,
+          quantite,
+          prix_unitaire,
+          menus (
             nom,
-            prenom,
-            telephone
+            prix
           )
-        `)
-        .eq('statut', 'en_attente')
-        .eq('payment_status', 'paid') // IMPORTANT: Seulement les commandes payées
-        .eq('restaurant_id', restaurant.id)
-        .not('livreur_id', 'is', null) // NOUVEAU WORKFLOW: Seulement si un livreur a accepté
-        .order('created_at', { ascending: false });
+        ),
+        users (
+          nom,
+          prenom,
+          telephone
+        )
+      `)
+      .eq('statut', 'en_attente')
+      .eq('payment_status', 'paid')
+      .eq('restaurant_id', restaurant.id)
+      .or('livreur_id.not.is.null,order_fulfillment.eq.pickup')
+      .order('created_at', { ascending: false });
 
       if (error) throw error;
       

@@ -49,14 +49,10 @@ import {
   getLoyaltyRewardsSummaryLine,
 } from '@/lib/loyalty-rewards';
 import {
-  SECOND_ARTICLE_PROMO_BANNER,
   computeCheckoutPlatformDiscountEur,
   getPlatformPromoCheckoutLine,
-  isSecondArticlePromoActive,
-  isWeekHalfOffPromoActive,
-  WEEK_HALF_OFF_PROMO_BANNER,
 } from '@/lib/platform-promo';
-import { getTonightAutoPromo, TONIGHT_PROMO_BANNER } from '@/lib/tonight-promo';
+import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
 
 /** Logs verbeux = coût en WebView (iOS/Android) ; uniquement en dev. */
@@ -86,7 +82,7 @@ const RESTAURANTS_MASQUES = new Set([
   'le molokai',
 ]);
 // Mots-clés : si le nom normalisé contient l’un d’eux, le restaurant est masqué
-const RESTAURANTS_MASQUES_CONTIENT = ['molokai'];
+const RESTAURANTS_MASQUES_CONTIENT = ['molokai', 'cinq pizza'];
 
 const normalizeName = (value = '') =>
   value
@@ -568,7 +564,6 @@ export default function Home() {
     }).format(nextOpeningDate);
   }, [nextOpeningDate]);
 
-  const tonightPromoWindowActive = useMemo(() => getTonightAutoPromo(0).active, []);
   const homeCartSubtotal = useMemo(() => computeCartTotalWithExtras(cart), [cart]);
   const homeTonightPromo = useMemo(() => getTonightAutoPromo(homeCartSubtotal), [homeCartSubtotal]);
   const homeCartRestaurantName =
@@ -1388,9 +1383,8 @@ export default function Home() {
       // Restaurants prioritaires (partagent activement CVN'EAT)
       if (normalized.includes('la bonne pate') || normalized.includes('la bonne pâte')) return 0; // 1er
       if (normalized.includes('99 street food') || normalized.includes('99street')) return 1; // 2ème
-      if (normalized.includes('cinq pizza') || normalized.includes('le cinq pizza')) return 2; // 3ème
-      if (normalized.includes('assiette des saison') || normalized.includes('assiette des saisons')) return 3;
-      if (normalized.includes('smaash')) return 4;
+      if (normalized.includes('assiette des saison') || normalized.includes('assiette des saisons')) return 2;
+      if (normalized.includes('smaash')) return 3;
       
       // Restaurants pénalisés (ne partagent jamais CVN'EAT)
       if (normalized.includes('all\'ovale') || normalized.includes('all ovale') || normalized.includes('allovale')) return 997; // Toujours en bas
@@ -1481,50 +1475,6 @@ export default function Home() {
     <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
       {/* Bannière Livraison Offerte */}
       <FreeDeliveryBanner />
-
-      {tonightPromoWindowActive && (
-        <div className="w-full overflow-hidden border-b border-red-200/70 bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white">
-          <div className="cvneat-marquee-track py-2">
-            <span className="mx-6 inline-flex items-center gap-3 text-sm sm:text-base font-extrabold">
-              {TONIGHT_PROMO_BANNER}
-            </span>
-            <span className="mx-6 inline-flex items-center gap-3 text-sm sm:text-base font-extrabold">
-              {TONIGHT_PROMO_BANNER}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {isWeekHalfOffPromoActive() && (
-        <div
-          className="sticky top-0 z-40 w-full border-b border-white/25 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-500 text-white shadow-lg"
-          role="banner"
-        >
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-4 text-center">
-            <span className="flex items-center justify-center gap-2 font-bold text-sm sm:text-base leading-snug">
-              <FaTag className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 opacity-95" aria-hidden />
-              {WEEK_HALF_OFF_PROMO_BANNER}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {isSecondArticlePromoActive() && (
-        <div
-          className="sticky top-0 z-40 w-full border-b border-white/25 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-lg"
-          role="banner"
-        >
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-4 text-center">
-            <span className="flex items-center justify-center gap-2 font-bold text-sm sm:text-base leading-snug">
-              <FaTag className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 opacity-95" aria-hidden />
-              {SECOND_ARTICLE_PROMO_BANNER}
-            </span>
-            <span className="text-xs sm:text-sm text-white/95 font-medium max-w-xl">
-              Pour chaque paire d’articles, -50 % sur le moins cher — appliqué automatiquement au panier et au paiement.
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Hero Section avec carrousel visuel */}
       <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">

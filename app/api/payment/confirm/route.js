@@ -322,22 +322,34 @@ export async function POST(request) {
             // non bloquant
           }
 
-          // Appel direct (même logique que webhook) pour fiabilité
-          try {
-            const pushResult = await sendDeliveryAppPush({
-              orderId: updated.id,
-              total: notificationTotal,
+          const { data: paidOrder } = await supabaseAdmin
+            .from('commandes')
+            .select('id, restaurant_id, total, frais_livraison, statut, order_fulfillment, payment_status')
+            .eq('id', updated.id)
+            .maybeSingle();
+
+          if (paidOrder && String(paidOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup') {
+            const { notifyPartnerNewOrder } = await import('../../../../lib/notify-partner-new-order');
+            await notifyPartnerNewOrder(paidOrder, { supabaseAdmin, origin });
+            console.log('✅ [payment/confirm] Notification partenaire retrait:', updated.id);
+          } else {
+            // Appel direct (même logique que webhook) pour fiabilité — livraison uniquement
+            try {
+              const pushResult = await sendDeliveryAppPush({
+                orderId: updated.id,
+                total: notificationTotal,
+                data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
+              });
+              console.log('✅ [payment/confirm] Push livreurs+admins:', pushResult.sent, '/', pushResult.total);
+            } catch (e) {
+              console.warn('⚠️ [payment/confirm] send-push erreur:', e?.message || e);
+            }
+            await notifyDeliverySubscribers(supabaseAdmin, {
+              title: 'Nouvelle commande disponible 🚚',
+              body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
               data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
-            });
-            console.log('✅ [payment/confirm] Push livreurs+admins:', pushResult.sent, '/', pushResult.total);
-          } catch (e) {
-            console.warn('⚠️ [payment/confirm] send-push erreur:', e?.message || e);
+            }).catch(() => {});
           }
-          await notifyDeliverySubscribers(supabaseAdmin, {
-            title: 'Nouvelle commande disponible 🚚',
-            body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
-            data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
-          }).catch(() => {});
         }
       } catch {
         // non bloquant

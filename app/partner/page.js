@@ -3892,6 +3892,7 @@ export default function PartnerDashboard() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 {(() => {
+                                  const pickup = String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
                                   const isAwaiting = order.statut === 'en_attente';
                                   const isPreparing = (order.statut === 'en_preparation') || (order.statut === 'en_livraison' && !order.ready_for_delivery);
                                   const isReady = (order.statut === 'en_preparation' || order.statut === 'en_livraison') && order.ready_for_delivery;
@@ -3908,11 +3909,11 @@ export default function PartnerDashboard() {
                                   else if (isCancelled) badgeClass = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
 
                                   let label = 'Inconnu';
-                                  if (isAwaiting) label = 'En attente';
-                                  else if (isPreparing) label = 'En préparation';
-                                  else if (isReady && !isDelivering) label = 'Prête';
+                                  if (isAwaiting) label = pickup ? 'En attente (retrait)' : 'En attente';
+                                  else if (isPreparing) label = pickup ? 'En préparation (retrait)' : 'En préparation';
+                                  else if (isReady && !isDelivering) label = pickup ? 'Prête au retrait' : 'Prête';
                                   else if (isDelivering) label = 'En livraison';
-                                  else if (isDelivered) label = 'Livrée';
+                                  else if (isDelivered) label = pickup ? 'Récupérée' : 'Livrée';
                                   else if (isCancelled) label = 'Annulée';
                                   else if (order.statut) label = order.statut;
 
@@ -3963,9 +3964,22 @@ export default function PartnerDashboard() {
                                   </button>
                                 )}
 
-                                {/* Pour le retrait sur place: le restaurant confirme la remise au client */}
+                                {(order.statut === 'en_preparation' || order.statut === 'en_attente') &&
+                                  !order.ready_for_delivery &&
+                                  String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup' && (
+                                  <button
+                                    onClick={() => updateOrderStatus(order.id, 'pret_a_livrer')}
+                                    className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
+                                    title="Marquer la commande comme prête à récupérer"
+                                  >
+                                    Prête au retrait
+                                  </button>
+                                )}
+
                                 {(String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup') &&
-                                  (order.statut === 'en_preparation' || order.statut === 'en_attente') && (
+                                  order.statut !== 'livree' &&
+                                  order.statut !== 'annulee' &&
+                                  (order.statut === 'en_preparation' || order.statut === 'en_attente' || order.ready_for_delivery) && (
                                   <button
                                     onClick={() => {
                                       if (confirm('Confirmer que le client a bien récupéré sa commande ?')) {
@@ -3977,6 +3991,14 @@ export default function PartnerDashboard() {
                                   >
                                     Client récupéré (terminer)
                                   </button>
+                                )}
+
+                                {order.ready_for_delivery &&
+                                  String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup' &&
+                                  order.statut !== 'livree' && (
+                                  <span className="text-sm text-green-600 dark:text-green-400 px-3 py-2 font-medium">
+                                    ✓ Prête — en attente du client
+                                  </span>
                                 )}
                                 
                                 {/* Afficher "Prête" et bouton "Remise au livreur" si la commande est prête mais pas encore en livraison */}
