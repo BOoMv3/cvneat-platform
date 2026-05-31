@@ -15,6 +15,9 @@
 | **Cazilhac** | **5,00 €** *(plus de surcharge travaux pont)* |
 | **Brissac** | **7,50 €** |
 | **Saint-Hippolyte-du-Fort** (30170) | **8,50 €** |
+| **Le Vigan** (30120) | **10,00 €** *(min. 25 €)* |
+| **Avèze** (30120) | **11,00 €** *(min. 25 €)* |
+| **Bréau-et-Salagosse** (30120) | **14,00 €** *(min. 25 €)* |
 | **Autres villages** (voir liste ci-dessous) | **7,00 €** |
 
 ### Villages livrés à 7,00 €
@@ -25,7 +28,7 @@ Saint-Bauzille-de-Putois, Sumène, Agonès, Gorniès, Saint-Julien-de-la-Nef, Sa
 
 ## Villes livrées / non livrées
 
-- **Livrées :** communes dans la zone (codes postaux **34190**, **30440**, **30170** pour Saint-Hippolyte-du-Fort, et adresses géolocalisées dans les plafonds de distance appliqués par l’API).
+- **Livrées :** communes dans la zone (codes postaux **34190**, **30440**, **30170**, **30120** pour Le Vigan / Avèze / Bréau-et-Salagosse, et adresses géolocalisées dans les plafonds de distance appliqués par l’API).
 - **Non livrées :** Pégairolles-de-Buèges, Saint-Bresson, Montoulieu, et toute adresse hors plafond de distance (souvent 10–13 km route ; 15 km pour 30170).
 - **Adresse bloquée :** Mas de Lamalou (Brissac).
 

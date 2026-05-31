@@ -46,9 +46,12 @@ const FEE_BRISSAC = 7.5;   // 7,50€ – Brissac (un peu plus loin)
 const FEE_SAINT_HIPPOLYTE = 8.5; // 8,50€ – Saint-Hippolyte-du-Fort (Gard, ~14 km route de Ganges)
 const FEE_LE_VIGAN = 10; // 10€ – Le Vigan
 const FEE_AVEZE = 11; // 11€ – Avèze (un peu plus loin)
+const FEE_BREAU = 14; // 14€ – Bréau-et-Salagosse
 const FEE_REST = 7;        // 7€ – le reste des villages
 const MIN_ORDER_LE_VIGAN = 25; // Minimum obligatoire zone 30120
+const MIN_ORDER_BREAU = 25;
 const LE_VIGAN_POSTAL_CODE = '30120';
+const BREAU_ZONE_LABEL = 'Bréau-et-Salagosse (30120)';
 // Communes du 30120 livrées au même tarif que Le Vigan (CP partagé)
 const LE_VIGAN_AREA_TOWN_KEYS = [
   'le vigan',
@@ -58,9 +61,6 @@ const LE_VIGAN_AREA_TOWN_KEYS = [
   'moules et baucels',
   'moules',
   'pommiers',
-  'breau-et-salagosse',
-  'breau',
-  'salagosse',
   'aulas',
   'montdardier',
   'arphy',
@@ -68,6 +68,14 @@ const LE_VIGAN_AREA_TOWN_KEYS = [
   'bez et esparon',
   'mandagout',
   'arre',
+];
+const BREAU_AREA_TOWN_KEYS = [
+  'breau-et-salagosse',
+  'breau et salagosse',
+  'breau-mars',
+  'breau mars',
+  'salagosse',
+  'breau',
 ];
 const LE_VIGAN_ZONE_LABEL = 'Zone Le Vigan (30120)';
 const MAX_DISTANCE = 8;           // Max à vol d'oiseau (fallback si pas d'API route)
@@ -100,6 +108,10 @@ const AUTHORIZED_CITIES = [
   'le vigan',
   'vigan',
   'aveze',
+  'breau-et-salagosse',
+  'breau et salagosse',
+  'breau',
+  'salagosse',
   'molieres-cavaillac',
   'pommiers',
 ];
@@ -139,6 +151,7 @@ const COORDINATES_DB = {
   'saint-laurent-le-minier': { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' },
   'le-vigan': { lat: 43.9917, lng: 3.6070, name: 'Le Vigan' },
   aveze: { lat: 43.9709, lng: 3.6008, name: 'Avèze' },
+  'breau-et-salagosse': { lat: 44.0221, lng: 3.5244, name: 'Bréau-et-Salagosse' },
 };
 
 // Centres des communes pour le "snap" (une entrée par commune, pour frais stables)
@@ -158,7 +171,8 @@ const SNAP_TOWN_CENTERS = [
   { lat: 43.9500, lng: 3.7667, name: 'Saint-Roman-de-Codières' },
   { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
   { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' },
-  { lat: 43.9572, lng: 3.8500, name: 'Saint-Hippolyte-du-Fort' }
+  { lat: 43.9572, lng: 3.8500, name: 'Saint-Hippolyte-du-Fort' },
+  { lat: 44.0221, lng: 3.5244, name: 'Bréau-et-Salagosse' },
 ];
 const SNAP_RADIUS_KM = 4; // Si le point géocodé est à moins de 4 km d'un centre, on utilise ce centre (frais stables, évite rejets abusifs)
 const MAX_DISTANCE_ROAD_KM_ZONE = 13; // Max 13 km quand CP 34190/30440 (évite rejets à tort, ex. 7 av Jeanne d'Arc Brissac)
@@ -268,6 +282,10 @@ function generateAddressVariants(address) {
     };
     if (cityMap[postalCode]) {
       variants.add(`${postalCode} ${cityMap[postalCode]}, France`);
+    }
+    if (postalCode === '30120') {
+      variants.add(`${postalCode} Bréau-et-Salagosse, France`);
+      variants.add(`Bréau-et-Salagosse, ${postalCode}, France`);
     }
   }
   
@@ -495,6 +513,10 @@ function cleanAddressForGeocoding(address) {
       'moules et baucels': '30120',
       moules: '30120',
       pommiers: '30120',
+      'breau-et-salagosse': '30120',
+      'breau et salagosse': '30120',
+      breau: '30120',
+      salagosse: '30120',
     };
     
     // Normaliser l'adresse pour la recherche (sans accents, minuscules)
@@ -606,6 +628,7 @@ const DELIVERY_ZONE_FEE = {
   roquedur: FEE_REST,
   'saint-hippolyte': FEE_SAINT_HIPPOLYTE,
   'le-vigan': FEE_LE_VIGAN,
+  'breau-et-salagosse': FEE_BREAU,
 };
 
 /**
@@ -641,7 +664,20 @@ function getDeliveryZoneFromAddress(address) {
         'hippolyte-du-fort',
         '30170',
       ],
-    }
+    },
+    {
+      key: 'breau-et-salagosse',
+      patterns: [
+        'breau-et-salagosse',
+        'breau et salagosse',
+        'breau-mars',
+        'breau mars',
+        'salagosse',
+        'breau',
+      ],
+    },
+    { key: 'le-vigan', patterns: ['le vigan', 'vigan'] },
+    { key: 'aveze', patterns: ['aveze', 'avèze'] },
   ];
   for (const { key, patterns } of townKeys) {
     if (patterns.some(p => normalized.includes(p))) {
@@ -716,8 +752,19 @@ function getKnownTownCoordsFromAddress(address) {
         '30170',
       ],
     },
-    { key: 'le-vigan', patterns: ['le vigan', 'vigan', '30120'] },
+    { key: 'le-vigan', patterns: ['le vigan', 'vigan'] },
     { key: 'aveze', patterns: ['aveze', 'avèze'] },
+    {
+      key: 'breau-et-salagosse',
+      patterns: [
+        'breau-et-salagosse',
+        'breau et salagosse',
+        'breau-mars',
+        'breau mars',
+        'salagosse',
+        'breau',
+      ],
+    },
   ];
   for (const { key, patterns } of townKeys) {
     if (patterns.some(p => normalized.includes(p))) {
@@ -799,7 +846,15 @@ async function getCoordinatesWithCache(address, { prefix = 'addr' } = {}) {
     // Continuer avec le géocodage si le cache échoue
   }
 
-  // 3. Géocoder avec Nominatim
+  // 3. Coordonnées connues (communes fixes) avant Nominatim
+  const knownTown = getKnownTownCoordsFromAddress(address);
+  if (knownTown) {
+    cache.set(cacheKey, knownTown);
+    console.log(`📍 Coordonnées depuis la base locale (${prefix}):`, knownTown);
+    return knownTown;
+  }
+
+  // 4. Géocoder avec Nominatim
   const coords = await geocodeAddress(address);
   console.log(`📍 Coordonnées depuis Nominatim (${prefix}):`, coords);
 
@@ -905,6 +960,9 @@ function getFixedDeliveryFeeByTown(city, address) {
   if (isAvezeZone({ address, city })) {
     return FEE_AVEZE;
   }
+  if (isBreauZone({ address, city })) {
+    return FEE_BREAU;
+  }
   if (isLeViganZone({ address, city })) {
     return FEE_LE_VIGAN;
   }
@@ -923,7 +981,20 @@ function townMatchesLeViganArea(combinedNormalized, townKey) {
   );
 }
 
+function isBreauZone({ address = '', city = '', postalCode = '' } = {}) {
+  const combined = normalizeForTown(`${address} ${city}` || '');
+  const postal = String(postalCode || '').trim();
+  if (BREAU_AREA_TOWN_KEYS.some((town) => townMatchesLeViganArea(combined, town))) {
+    return true;
+  }
+  if (postal === LE_VIGAN_POSTAL_CODE && combined.includes('breau')) {
+    return true;
+  }
+  return false;
+}
+
 function isLeViganZone({ address = '', city = '', postalCode = '' } = {}) {
+  if (isBreauZone({ address, city, postalCode })) return false;
   const combined = normalizeForTown(`${address} ${city}` || '');
   const postal = String(postalCode || '').trim();
   if (postal === LE_VIGAN_POSTAL_CODE) return true;
@@ -1027,6 +1098,40 @@ export async function POST(request) {
 
     const restaurantAddress = restaurantAddressCandidates[0] || null;
     const restaurantName = restaurantData?.nom || DEFAULT_RESTAURANT.name;
+
+    const clientPostalEarly = extractPostalCode(clientAddress);
+    const orderAmountNumericEarly = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
+    const minimumOrderReferenceAmountEarly = pickNumeric(
+      [subtotalBeforeDiscount, cartSubtotal, orderSubtotal, orderAmount],
+      0,
+      { min: 0 }
+    ) || 0;
+
+    if (isBreauZone({ address: clientAddress, postalCode: clientPostalEarly })) {
+      if (minimumOrderReferenceAmountEarly < MIN_ORDER_BREAU) {
+        return json({
+          success: false,
+          livrable: false,
+          minimum_order_amount: MIN_ORDER_BREAU,
+          order_amount_for_minimum: minimumOrderReferenceAmountEarly,
+          required_delivery_fee: FEE_BREAU,
+          message: `${BREAU_ZONE_LABEL}: minimum de commande ${MIN_ORDER_BREAU}€ obligatoire pour la livraison.`,
+          code: 'BREAU_MIN_ORDER',
+        }, { status: 200 });
+      }
+
+      return json({
+        success: true,
+        livrable: true,
+        frais_livraison: FEE_BREAU,
+        minimum_order_amount: MIN_ORDER_BREAU,
+        restaurant: restaurantName,
+        order_amount: orderAmountNumericEarly,
+        order_amount_for_minimum: minimumOrderReferenceAmountEarly,
+        client_address: clientAddress,
+        message: `${BREAU_ZONE_LABEL}: livraison possible à ${FEE_BREAU.toFixed(2)}€ (minimum ${MIN_ORDER_BREAU}€ de commande).`
+      });
+    }
 
     // 3. Géocoder avec cache pour éviter les variations
     console.log('🌐 Géocodage avec cache pour les adresses...');
@@ -1150,6 +1255,43 @@ export async function POST(request) {
       city: clientCoords.city,
       postalCode: clientPostal,
     });
+    const breauZone = isBreauZone({
+      address: clientAddress,
+      city: clientCoords.city,
+      postalCode: clientPostal,
+    });
+
+    if (breauZone) {
+      if (minimumOrderReferenceAmount < MIN_ORDER_BREAU) {
+        return json({
+          success: false,
+          livrable: false,
+          distance: tempRoundedDistance,
+          distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
+          minimum_order_amount: MIN_ORDER_BREAU,
+          order_amount_for_minimum: minimumOrderReferenceAmount,
+          required_delivery_fee: FEE_BREAU,
+          message: `${BREAU_ZONE_LABEL}: minimum de commande ${MIN_ORDER_BREAU}€ obligatoire pour la livraison.`,
+          code: 'BREAU_MIN_ORDER',
+        }, { status: 200 });
+      }
+
+      return json({
+        success: true,
+        livrable: true,
+        distance: tempRoundedDistance,
+        distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
+        frais_livraison: FEE_BREAU,
+        minimum_order_amount: MIN_ORDER_BREAU,
+        restaurant: restaurantName,
+        restaurant_coordinates: restaurantCoords,
+        client_coordinates: clientCoords,
+        order_amount: orderAmountNumeric,
+        order_amount_for_minimum: minimumOrderReferenceAmount,
+        client_address: clientCoords.display_name,
+        message: `${BREAU_ZONE_LABEL}: livraison possible à ${FEE_BREAU.toFixed(2)}€ (minimum ${MIN_ORDER_BREAU}€ de commande).`
+      });
+    }
 
     if (leViganZone) {
       const isAveze = isAvezeZone({
