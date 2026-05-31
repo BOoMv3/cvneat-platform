@@ -80,6 +80,7 @@ export default function Checkout() {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [deliveryError, setDeliveryError] = useState(null);
+  const [deliveryErrorCode, setDeliveryErrorCode] = useState(null);
   const [deliveryNotice, setDeliveryNotice] = useState(null);
   const [addressValidationMessage, setAddressValidationMessage] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -602,6 +603,7 @@ export default function Checkout() {
         
         // Afficher le message d'erreur dans un pop-up
         setDeliveryError(message);
+        setDeliveryErrorCode(data.code || null);
         setDeliveryNotice(null);
         setAddressValidationMessage(message);
         setShowErrorModal(true);
@@ -620,6 +622,7 @@ export default function Checkout() {
 
       // SUCCÈS - Réinitialiser les erreurs
       setDeliveryError(null);
+      setDeliveryErrorCode(null);
       setDeliveryNotice(data.delivery_notice || null);
       setAddressValidationMessage(null);
       setShowErrorModal(false);
@@ -2071,13 +2074,17 @@ export default function Checkout() {
               </div>
               <div className="ml-3 flex-1">
                 <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">
-                  ⚠️ Adresse non livrable
+                  {deliveryErrorCode === 'BREAU_MIN_ORDER' || deliveryErrorCode === 'LE_VIGAN_MIN_ORDER'
+                    ? '⚠️ Minimum de commande non atteint'
+                    : '⚠️ Adresse non livrable'}
                 </h3>
                 <p className="text-red-700 dark:text-red-400 text-sm sm:text-base mb-3">
                   {deliveryError}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Veuillez sélectionner une autre adresse dans la zone de livraison.
+                  {deliveryErrorCode === 'BREAU_MIN_ORDER' || deliveryErrorCode === 'LE_VIGAN_MIN_ORDER'
+                    ? 'Ajoutez des articles à votre panier pour atteindre le minimum, ou choisissez le retrait sur place si le restaurant le propose.'
+                    : 'Veuillez sélectionner une autre adresse dans la zone de livraison.'}
                 </p>
               </div>
             </div>
@@ -2085,6 +2092,7 @@ export default function Checkout() {
               onClick={() => {
                 setShowErrorModal(false);
                 setDeliveryError(null);
+                setDeliveryErrorCode(null);
               }}
               className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors font-medium"
             >

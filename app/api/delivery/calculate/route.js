@@ -1366,7 +1366,7 @@ export async function POST(request) {
           minimum_order_amount: MIN_ORDER_LE_VIGAN,
           order_amount_for_minimum: minimumOrderReferenceAmount,
           required_delivery_fee: zoneDeliveryFee,
-          message: `${zoneLabel}: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire pour la livraison.`,
+          message: `${zoneLabel}: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire (articles, avant promo). Il vous manque ${(MIN_ORDER_LE_VIGAN - minimumOrderReferenceAmount).toFixed(2)}€.`,
           code: 'LE_VIGAN_MIN_ORDER',
         }, { status: 200 });
       }
