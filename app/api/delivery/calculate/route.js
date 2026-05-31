@@ -985,6 +985,13 @@ function townMatchesLeViganArea(combinedNormalized, townKey) {
   );
 }
 
+function isExplicitOther30120Commune({ address = '', city = '', postalCode = '' } = {}) {
+  const combined = normalizeForTown(`${address} ${city}` || '');
+  if (isBreauZone({ address, city, postalCode })) return false;
+  if (isAvezeZone({ address, city })) return true;
+  return LE_VIGAN_AREA_TOWN_KEYS.some((town) => townMatchesLeViganArea(combined, town));
+}
+
 function isNearBreauCenter(lat, lng, radiusKm = BREAU_SNAP_RADIUS_KM) {
   if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return false;
   return calculateDistance(lat, lng, BREAU_CENTER.lat, BREAU_CENTER.lng) <= radiusKm;
@@ -1317,15 +1324,12 @@ export async function POST(request) {
       postalCode: clientPostal,
       geoLabel: clientCoords.display_name || '',
     });
-    const explicitlyLeVigan = isLeViganZone({
+    const other30120Commune = isExplicitOther30120Commune({
       address: clientAddress,
       city: clientCoords.city || extractCity(clientAddress),
       postalCode: clientPostal,
-    }) && !breauByText;
-    const breauZone = breauByText || (breauByCoords && !explicitlyLeVigan && !isAvezeZone({
-      address: clientAddress,
-      city: clientCoords.city,
-    }));
+    });
+    const breauZone = breauByText || (breauByCoords && !other30120Commune);
 
     if (breauZone) {
       return buildBreauZoneResponse({
