@@ -52,6 +52,8 @@ const MIN_ORDER_LE_VIGAN = 25; // Minimum obligatoire zone 30120
 const MIN_ORDER_BREAU = 25;
 const LE_VIGAN_POSTAL_CODE = '30120';
 const BREAU_ZONE_LABEL = 'Bréau-et-Salagosse (30120)';
+const BREAU_CENTER = { lat: 44.0221, lng: 3.5244, name: 'Bréau-et-Salagosse' };
+const BREAU_SNAP_RADIUS_KM = 6.5;
 // Communes du 30120 livrées au même tarif que Le Vigan (CP partagé)
 const LE_VIGAN_AREA_TOWN_KEYS = [
   'le vigan',
@@ -75,7 +77,9 @@ const BREAU_AREA_TOWN_KEYS = [
   'breau-mars',
   'breau mars',
   'salagosse',
-  'breau',
+  'breau mars',
+  'moulinier',
+  'moulinieres',
 ];
 const LE_VIGAN_ZONE_LABEL = 'Zone Le Vigan (30120)';
 const MAX_DISTANCE = 8;           // Max à vol d'oiseau (fallback si pas d'API route)
@@ -981,15 +985,68 @@ function townMatchesLeViganArea(combinedNormalized, townKey) {
   );
 }
 
-function isBreauZone({ address = '', city = '', postalCode = '' } = {}) {
-  const combined = normalizeForTown(`${address} ${city}` || '');
-  const postal = String(postalCode || '').trim();
+function isNearBreauCenter(lat, lng, radiusKm = BREAU_SNAP_RADIUS_KM) {
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return false;
+  return calculateDistance(lat, lng, BREAU_CENTER.lat, BREAU_CENTER.lng) <= radiusKm;
+}
+
+function buildBreauZoneResponse({
+  minimumOrderReferenceAmount,
+  orderAmountNumeric,
+  restaurantName,
+  restaurantCoords = null,
+  clientCoords = null,
+  clientAddress,
+  distance = null,
+  distanceSource = null,
+}) {
+  if (minimumOrderReferenceAmount < MIN_ORDER_BREAU) {
+    return json({
+      success: false,
+      livrable: false,
+      ...(distance != null ? { distance, distance_source: distanceSource } : {}),
+      minimum_order_amount: MIN_ORDER_BREAU,
+      order_amount_for_minimum: minimumOrderReferenceAmount,
+      required_delivery_fee: FEE_BREAU,
+      message: `${BREAU_ZONE_LABEL}: minimum de commande ${MIN_ORDER_BREAU}€ obligatoire (articles, avant promo). Il vous manque ${(MIN_ORDER_BREAU - minimumOrderReferenceAmount).toFixed(2)}€.`,
+      code: 'BREAU_MIN_ORDER',
+    }, { status: 200 });
+  }
+
+  return json({
+    success: true,
+    livrable: true,
+    ...(distance != null ? { distance, distance_source: distanceSource } : {}),
+    frais_livraison: FEE_BREAU,
+    minimum_order_amount: MIN_ORDER_BREAU,
+    restaurant: restaurantName,
+    ...(restaurantCoords ? { restaurant_coordinates: restaurantCoords } : {}),
+    ...(clientCoords ? { client_coordinates: clientCoords } : {}),
+    order_amount: orderAmountNumeric,
+    order_amount_for_minimum: minimumOrderReferenceAmount,
+    client_address: clientAddress,
+    message: `${BREAU_ZONE_LABEL}: livraison possible à ${FEE_BREAU.toFixed(2)}€ (minimum ${MIN_ORDER_BREAU}€ de commande).`,
+  });
+}
+
+function isBreauZone({ address = '', city = '', postalCode = '', geoLabel = '' } = {}) {
+  const combined = normalizeForTown(`${address} ${city} ${geoLabel}` || '');
+  const postal = String(postalCode || extractPostalCode(`${address} ${city}`) || '').trim();
+
   if (BREAU_AREA_TOWN_KEYS.some((town) => townMatchesLeViganArea(combined, town))) {
     return true;
   }
-  if (postal === LE_VIGAN_POSTAL_CODE && combined.includes('breau')) {
+
+  if (/\bbreau\b/.test(combined) || /\bsalagosse\b/.test(combined)) {
     return true;
   }
+
+  if (postal === LE_VIGAN_POSTAL_CODE) {
+    if (combined.includes('breau') || combined.includes('salagosse') || combined.includes('moulinier')) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -1108,28 +1165,11 @@ export async function POST(request) {
     ) || 0;
 
     if (isBreauZone({ address: clientAddress, postalCode: clientPostalEarly })) {
-      if (minimumOrderReferenceAmountEarly < MIN_ORDER_BREAU) {
-        return json({
-          success: false,
-          livrable: false,
-          minimum_order_amount: MIN_ORDER_BREAU,
-          order_amount_for_minimum: minimumOrderReferenceAmountEarly,
-          required_delivery_fee: FEE_BREAU,
-          message: `${BREAU_ZONE_LABEL}: minimum de commande ${MIN_ORDER_BREAU}€ obligatoire pour la livraison.`,
-          code: 'BREAU_MIN_ORDER',
-        }, { status: 200 });
-      }
-
-      return json({
-        success: true,
-        livrable: true,
-        frais_livraison: FEE_BREAU,
-        minimum_order_amount: MIN_ORDER_BREAU,
-        restaurant: restaurantName,
-        order_amount: orderAmountNumericEarly,
-        order_amount_for_minimum: minimumOrderReferenceAmountEarly,
-        client_address: clientAddress,
-        message: `${BREAU_ZONE_LABEL}: livraison possible à ${FEE_BREAU.toFixed(2)}€ (minimum ${MIN_ORDER_BREAU}€ de commande).`
+      return buildBreauZoneResponse({
+        minimumOrderReferenceAmount: minimumOrderReferenceAmountEarly,
+        orderAmountNumeric: orderAmountNumericEarly,
+        restaurantName,
+        clientAddress,
       });
     }
 
@@ -1144,8 +1184,28 @@ export async function POST(request) {
       clientCoordsForDistance = { lat: clientCoords.lat, lng: clientCoords.lng };
     } catch (error) {
       console.error('❌ Géocodage échoué pour l\'adresse client:', error.message);
-      
-      // Message d'erreur simple
+
+      const fallbackCity = extractCity(clientAddress);
+      const fallbackPostal = extractPostalCode(clientAddress);
+      if (isBreauZone({
+        address: clientAddress,
+        city: fallbackCity,
+        postalCode: fallbackPostal,
+      })) {
+        const orderAmountNumericFallback = pickNumeric([orderAmount], 0, { min: 0 }) || 0;
+        const minimumOrderReferenceAmountFallback = pickNumeric(
+          [subtotalBeforeDiscount, cartSubtotal, orderSubtotal, orderAmount],
+          0,
+          { min: 0 }
+        ) || 0;
+        return buildBreauZoneResponse({
+          minimumOrderReferenceAmount: minimumOrderReferenceAmountFallback,
+          orderAmountNumeric: orderAmountNumericFallback,
+          restaurantName,
+          clientAddress,
+        });
+      }
+
       let errorMessage = 'Adresse introuvable. ';
       let suggestions = [];
       
@@ -1250,48 +1310,41 @@ export async function POST(request) {
       0,
       { min: 0 }
     ) || 0;
+    const breauByCoords = isNearBreauCenter(tempClientLat, tempClientLng);
+    const breauByText = isBreauZone({
+      address: clientAddress,
+      city: clientCoords.city || extractCity(clientAddress),
+      postalCode: clientPostal,
+      geoLabel: clientCoords.display_name || '',
+    });
+    const explicitlyLeVigan = isLeViganZone({
+      address: clientAddress,
+      city: clientCoords.city || extractCity(clientAddress),
+      postalCode: clientPostal,
+    }) && !breauByText;
+    const breauZone = breauByText || (breauByCoords && !explicitlyLeVigan && !isAvezeZone({
+      address: clientAddress,
+      city: clientCoords.city,
+    }));
+
+    if (breauZone) {
+      return buildBreauZoneResponse({
+        minimumOrderReferenceAmount,
+        orderAmountNumeric,
+        restaurantName,
+        restaurantCoords,
+        clientCoords,
+        clientAddress: clientCoords.display_name || clientAddress,
+        distance: tempRoundedDistance,
+        distanceSource: roadDistanceKm != null ? 'route' : 'vol_oiseau',
+      });
+    }
+
     const leViganZone = isLeViganZone({
       address: clientAddress,
       city: clientCoords.city,
       postalCode: clientPostal,
     });
-    const breauZone = isBreauZone({
-      address: clientAddress,
-      city: clientCoords.city,
-      postalCode: clientPostal,
-    });
-
-    if (breauZone) {
-      if (minimumOrderReferenceAmount < MIN_ORDER_BREAU) {
-        return json({
-          success: false,
-          livrable: false,
-          distance: tempRoundedDistance,
-          distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
-          minimum_order_amount: MIN_ORDER_BREAU,
-          order_amount_for_minimum: minimumOrderReferenceAmount,
-          required_delivery_fee: FEE_BREAU,
-          message: `${BREAU_ZONE_LABEL}: minimum de commande ${MIN_ORDER_BREAU}€ obligatoire pour la livraison.`,
-          code: 'BREAU_MIN_ORDER',
-        }, { status: 200 });
-      }
-
-      return json({
-        success: true,
-        livrable: true,
-        distance: tempRoundedDistance,
-        distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
-        frais_livraison: FEE_BREAU,
-        minimum_order_amount: MIN_ORDER_BREAU,
-        restaurant: restaurantName,
-        restaurant_coordinates: restaurantCoords,
-        client_coordinates: clientCoords,
-        order_amount: orderAmountNumeric,
-        order_amount_for_minimum: minimumOrderReferenceAmount,
-        client_address: clientCoords.display_name,
-        message: `${BREAU_ZONE_LABEL}: livraison possible à ${FEE_BREAU.toFixed(2)}€ (minimum ${MIN_ORDER_BREAU}€ de commande).`
-      });
-    }
 
     if (leViganZone) {
       const isAveze = isAvezeZone({

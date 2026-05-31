@@ -593,7 +593,10 @@ export default function Checkout() {
       // VALIDATION STRICTE: Vérifier que la livraison est possible
       // Vérifier explicitement que success est true ET livrable est true
       if (data.success !== true || data.livrable !== true) {
-        const message = data.message || 'Livraison non disponible à cette adresse';
+        let message = data.message || 'Livraison non disponible à cette adresse';
+        if (data.code === 'BREAU_MIN_ORDER' || data.code === 'LE_VIGAN_MIN_ORDER') {
+          message = `${message} Ajoutez des articles pour atteindre le minimum, ou choisissez le retrait sur place si disponible.`;
+        }
         console.error('❌ Livraison refusée - success:', data.success, 'livrable:', data.livrable, 'message:', message);
         console.error('❌ Données complètes:', data);
         
