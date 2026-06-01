@@ -5,6 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
+import {
+  getOrderActiveCountdown,
+  formatCountdownMmSs,
+  isOrderCompleted as isOrderCompletedForTimer,
+} from '@/lib/order-preparation-timer';
 
 export default function TrackOrder() {
   const router = useRouter();
@@ -365,42 +370,12 @@ export default function TrackOrder() {
     String(orderData?.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
 
   const activeCountdown = useMemo(() => {
-    if (!order || isOrderCompleted(order)) return null;
-
-    const status = order.statut || order.status;
-    const pickup = isPickupOrder(order);
-    const prepMinutes = Math.max(1, parseInt(order.preparation_time || 30, 10) || 30);
-    const deliveryMinutes = 20;
-
-    const toDate = (value) => {
-      if (!value) return null;
-      const d = new Date(value);
-      return Number.isNaN(d.getTime()) ? null : d;
-    };
-
-    let start = null;
-    let totalSeconds = null;
-    let label = '';
-
-    if (!pickup && status === 'en_livraison') {
-      start = toDate(order.picked_up_at) || toDate(order.updated_at) || toDate(order.created_at);
-      totalSeconds = deliveryMinutes * 60;
-      label = 'Livraison estimée';
-    } else {
-      start = toDate(order.preparation_started_at) || toDate(order.updated_at) || toDate(order.created_at);
-      totalSeconds = prepMinutes * 60;
-      label = pickup ? 'Préparation avant retrait' : 'Préparation estimée';
-    }
-
-    if (!start || !totalSeconds) return null;
-
-    const elapsedSeconds = Math.max(0, Math.floor((nowTs - start.getTime()) / 1000));
-    const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
-    return { remainingSeconds, totalSeconds, label };
+    if (!order || isOrderCompletedForTimer(order)) return null;
+    return getOrderActiveCountdown(order, nowTs);
   }, [order, nowTs]);
 
   useEffect(() => {
-    if (!order || isOrderCompleted(order)) return;
+    if (!order || isOrderCompletedForTimer(order)) return;
     const timer = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [order]);
@@ -713,7 +688,7 @@ export default function TrackOrder() {
                     </p>
                     <p className="text-2xl sm:text-3xl font-extrabold text-blue-800 dark:text-blue-200">
                       {activeCountdown
-                        ? `${String(Math.floor(activeCountdown.remainingSeconds / 60)).padStart(2, '0')}:${String(activeCountdown.remainingSeconds % 60).padStart(2, '0')}`
+                        ? formatCountdownMmSs(activeCountdown.remainingSeconds)
                         : '—'}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

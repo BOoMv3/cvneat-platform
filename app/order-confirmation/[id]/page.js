@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
 import { safeLocalStorage } from '@/lib/localStorage';
 import { getEffectiveDeliverySlot } from '@/lib/delivery-slots';
+import {
+  getOrderActiveCountdown,
+  formatCountdownMmSs,
+  getPreparationStartDate,
+} from '@/lib/order-preparation-timer';
 import { 
   FaCheck, 
   FaClock, 
@@ -33,7 +38,7 @@ export default function OrderConfirmation() {
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
@@ -186,19 +191,27 @@ export default function OrderConfirmation() {
       }
     };
 
-    setTimeElapsed(0);
     loadOrder();
     const fetchInterval = setInterval(loadOrder, 15000);
-    const timerInterval = setInterval(() => {
-      setTimeElapsed(prev => prev + 1);
-    }, 1000);
+    const clockInterval = setInterval(() => setNowTs(Date.now()), 1000);
 
     return () => {
       isMounted = false;
       clearInterval(fetchInterval);
-      clearInterval(timerInterval);
+      clearInterval(clockInterval);
     };
   }, [id, authToken, securityCode, userId]); // Ajouter userId aux dépendances
+
+  const activeCountdown = useMemo(() => {
+    if (!orderData) return null;
+    return getOrderActiveCountdown(orderData, nowTs);
+  }, [orderData, nowTs]);
+
+  const elapsedSinceOrderSeconds = useMemo(() => {
+    const start = getPreparationStartDate(orderData) || (orderData?.created_at ? new Date(orderData.created_at) : null);
+    if (!start || Number.isNaN(start.getTime())) return 0;
+    return Math.max(0, Math.floor((nowTs - start.getTime()) / 1000));
+  }, [orderData, nowTs]);
 
   // Helper pour obtenir le statut (normaliser statut/status)
   const getStatus = () => {
@@ -528,17 +541,26 @@ export default function OrderConfirmation() {
                   <div className="flex items-center space-x-3">
                     <FaClock className="h-5 w-5 text-blue-600" />
                     <div>
-                      <p className="font-medium text-blue-900">Temps écoulé</p>
-                      <p className="text-sm text-blue-700">{formatTime(timeElapsed)}</p>
+                      <p className="font-medium text-blue-900">
+                        {activeCountdown ? activeCountdown.label : 'Temps écoulé'}
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        {activeCountdown
+                          ? formatCountdownMmSs(activeCountdown.remainingSeconds)
+                          : formatTime(elapsedSinceOrderSeconds)}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-blue-900">Temps estimé</p>
+                    <p className="font-medium text-blue-900">
+                      {activeCountdown ? 'Durée prévue' : 'Temps estimé'}
+                    </p>
                     <p className="text-sm text-blue-700">
-                      {orderData.delivery_time 
-                        ? `${orderData.delivery_time} min (défini par le livreur)`
-                        : `${getEstimatedTime()} min`
-                      }
+                      {activeCountdown
+                        ? `${Math.ceil(activeCountdown.totalSeconds / 60)} min`
+                        : orderData.delivery_time
+                          ? `${orderData.delivery_time} min (défini par le livreur)`
+                          : `${getEstimatedTime()} min`}
                     </p>
                     {orderData.delivery_time && (
                       <p className="text-xs text-blue-600 mt-1">

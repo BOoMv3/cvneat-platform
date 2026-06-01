@@ -30,6 +30,7 @@ import {
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 import { livreurEarningNetEur } from '../../lib/livreur-delivery-earnings';
+import { computeCvneatNetRevenueEur } from '../../lib/cvneat-order-revenue';
 
 export default function AdminPage() {
   const [stats, setStats] = useState({
@@ -224,12 +225,8 @@ export default function AdminPage() {
       const pendingOrders = orders?.filter(o => o.statut === 'en_attente').length || 0;
       const validatedOrders = orders?.filter(o => ['acceptee', 'en_preparation', 'pret_a_livrer', 'livree'].includes(o.statut)).length || 0;
       
-      // Calculer les différents chiffres d'affaires
-      const COMMISSION_RATE = 0.20; // 20% de commission sur les commandes
-      
       // CA total = montant total des commandes livrées (articles + frais de livraison)
-      // CA CVN'EAT = commission (20% du montant des articles) + frais de plateforme (0,49€ par commande)
-      // CA Livreur = somme des frais de livraison
+      // Gain CVN'EAT = commission + 0,49€ + commission livraison − promos plateforme − subvention fidélité
       
       let totalRevenue = 0; // CA total
       let cvneatRevenue = 0; // CA CVN'EAT (20%)
@@ -268,17 +265,13 @@ export default function AdminPage() {
         const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
         
         const restaurantShare = storedPayout != null ? storedPayout : (orderAmount - (orderAmount * commissionRate));
-        const cvneatCommission = storedCommission != null ? storedCommission : (orderAmount * commissionRate);
-        const PLATFORM_FEE = 0.49;
-        const cvneatTotalRevenue = cvneatCommission + PLATFORM_FEE;
+        const cvneatBreakdown = computeCvneatNetRevenueEur(order, { commissionRate });
 
         // CA total = articles (après réduction) + frais de livraison
         totalRevenue += orderAmount + deliveryFee;
-        
-        const deliveryCommission = parseFloat(order.delivery_commission_cvneat || 0);
-        cvneatDeliveryRevenue += deliveryCommission;
 
-        cvneatRevenue += cvneatTotalRevenue + deliveryCommission;
+        cvneatDeliveryRevenue += cvneatBreakdown.deliveryCommission;
+        cvneatRevenue += cvneatBreakdown.net;
         
         const livreurEarning = livreurEarningNetEur(order);
         livreurRevenue += livreurEarning;
@@ -290,8 +283,7 @@ export default function AdminPage() {
         const orderDate = new Date(order.created_at);
         const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
         const currentMonthAmount = monthlyRevenueMap.get(monthKey) || 0;
-        // Réutiliser deliveryCommission défini plus haut
-        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatTotalRevenue + deliveryCommission);
+        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatBreakdown.net);
       });
 
       // Convertir la map en tableau trié (du plus récent au plus ancien)
