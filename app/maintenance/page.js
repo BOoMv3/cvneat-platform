@@ -1,123 +1,67 @@
 'use client';
 
 import Link from 'next/link';
-import { FaUtensils, FaClock, FaLock } from 'react-icons/fa';
-import { useEffect, useMemo, useState } from 'react';
+import { FaUtensils, FaTools, FaLock } from 'react-icons/fa';
+import { useEffect, useState } from 'react';
 
-const TARGET_HOUR = 19;
-
-const createCountdown = () => {
-  const now = new Date();
-  const target = new Date();
-  target.setHours(TARGET_HOUR, 0, 0, 0);
-
-  // Si on a dépassé 17h, viser le lendemain à 17h
-  if (now > target) {
-    target.setDate(target.getDate() + 1);
-  }
-
-  const diff = target.getTime() - now.getTime();
-
-  if (diff <= 0) {
-    return { hours: '00', minutes: '00', seconds: '00' };
-  }
-
-  const totalSeconds = Math.floor(diff / 1000);
-  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-  const seconds = String(totalSeconds % 60).padStart(2, '0');
-
-  return { hours, minutes, seconds };
-};
+const FALLBACK_MESSAGE =
+  "Le service de commande est temporairement suspendu. Nous nous excusons pour la gêne occasionnée. Réouverture dès que possible.";
 
 export default function Maintenance() {
-  const [countdown, setCountdown] = useState(createCountdown);
+  const [message, setMessage] = useState(FALLBACK_MESSAGE);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdown(createCountdown());
-    }, 1000);
-
-    return () => clearInterval(interval);
+    fetch('/api/site-status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.message) setMessage(data.message);
+      })
+      .catch(() => {});
   }, []);
-
-  const targetLabel = useMemo(() => {
-    const target = new Date();
-    target.setHours(TARGET_HOUR, 0, 0, 0);
-    if (new Date() > target) {
-      target.setDate(target.getDate() + 1);
-    }
-    return target.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }, [countdown.hours]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800">
       <div className="max-w-2xl mx-auto px-4 text-center text-white">
         <div className="mb-8">
-          <FaUtensils className="w-24 h-24 mx-auto mb-6 animate-pulse" />
-          <h1 className="text-5xl font-bold mb-4">CVN'EAT</h1>
-          <h2 className="text-3xl font-semibold mb-6">Site en construction</h2>
+          <FaUtensils className="w-20 h-20 mx-auto mb-6 opacity-90" />
+          <h1 className="text-5xl font-bold mb-4">CVN&apos;EAT</h1>
+          <h2 className="text-3xl font-semibold mb-2">Service temporairement fermé</h2>
+          <p className="text-purple-200 text-lg">Maintenance en cours</p>
         </div>
-        
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8">
-          <p className="text-xl mb-4">
-            Nous travaillons dur pour vous offrir la meilleure expérience de livraison de repas.
-          </p>
-          <p className="text-lg text-purple-100">
-            CVN'EAT sera bientôt disponible !
-          </p>
-          <div className="mt-6">
-            <p className="text-sm uppercase tracking-widest text-purple-200 mb-3">Réouverture prévue aujourd'hui à 19h</p>
-            <div className="flex items-center justify-center gap-3 sm:gap-4">
-              {['Heures', 'Minutes', 'Secondes'].map((label, index) => {
-                const value = index === 0 ? countdown.hours : index === 1 ? countdown.minutes : countdown.seconds;
-                return (
-                  <div key={label} className="bg-white/15 rounded-xl px-4 sm:px-6 py-3 shadow-lg border border-white/10">
-                    <div className="text-3xl sm:text-4xl font-bold text-white tabular-nums">{value}</div>
-                    <div className="text-xs uppercase tracking-wide text-purple-200 mt-1">{label}</div>
-                  </div>
-                );
-              })}
+
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 text-left">
+          <div className="flex items-start gap-4">
+            <FaTools className="w-8 h-8 shrink-0 mt-1 text-purple-200" />
+            <div>
+              <p className="text-xl leading-relaxed">{message}</p>
+              <p className="text-purple-200 mt-4 text-sm">
+                Les nouvelles commandes sont désactivées. Si vous avez déjà commandé, vous pouvez
+                suivre votre commande via le lien reçu par e-mail.
+              </p>
             </div>
-            <p className="text-xs text-purple-200 mt-4 italic">(Prochaine ouverture : {targetLabel})</p>
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-4 text-sm text-purple-200">
-          <FaClock className="w-5 h-5" />
-          <span>Ouverture prévue très prochainement</span>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href="/track-order"
+            className="inline-flex items-center justify-center gap-2 bg-white text-purple-700 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors"
+          >
+            Suivre une commande
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-600 transition-colors"
+          >
+            <FaLock className="w-4 h-4" />
+            Connexion Admin / Partenaire / Livreur
+          </Link>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-white/20">
-          <p className="text-sm text-purple-200 mb-4">
-            Vous êtes restaurateur et souhaitez rejoindre CVN'EAT ?
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/restaurant-request"
-              className="inline-flex items-center gap-2 bg-white text-purple-700 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors"
-            >
-              <FaUtensils className="w-4 h-4" />
-              Devenir Partenaire
-            </Link>
-            <Link 
-              href="/login"
-              className="inline-flex items-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-600 transition-colors"
-            >
-              <FaLock className="w-4 h-4" />
-              Connexion Partenaire / Admin
-            </Link>
-          </div>
-          <p className="text-xs text-purple-300 mt-4">
-            Les inscriptions clients sont temporairement fermées. Le site ouvrira bientôt !
-          </p>
-        </div>
+        <p className="text-xs text-purple-300 mt-8">
+          Merci de votre compréhension — l&apos;équipe CVN&apos;EAT
+        </p>
       </div>
     </div>
   );
 }
-
