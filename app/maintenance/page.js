@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { FaUtensils, FaTools, FaLock } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 
-const FALLBACK_MESSAGE =
-  "Le service de commande est temporairement suspendu. Nous nous excusons pour la gêne occasionnée. Réouverture dès que possible.";
+const FALLBACK_MESSAGE = 'Maintenance en cours. Nous revenons dès que possible.';
 
 export default function Maintenance() {
   const [message, setMessage] = useState(FALLBACK_MESSAGE);
@@ -25,20 +24,13 @@ export default function Maintenance() {
         <div className="mb-8">
           <FaUtensils className="w-20 h-20 mx-auto mb-6 opacity-90" />
           <h1 className="text-5xl font-bold mb-4">CVN&apos;EAT</h1>
-          <h2 className="text-3xl font-semibold mb-2">Service temporairement fermé</h2>
-          <p className="text-purple-200 text-lg">Maintenance en cours</p>
+          <h2 className="text-3xl font-semibold mb-2">Maintenance en cours</h2>
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 text-left">
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4 justify-center">
             <FaTools className="w-8 h-8 shrink-0 mt-1 text-purple-200" />
-            <div>
-              <p className="text-xl leading-relaxed">{message}</p>
-              <p className="text-purple-200 mt-4 text-sm">
-                Les nouvelles commandes sont désactivées. Si vous avez déjà commandé, vous pouvez
-                suivre votre commande via le lien reçu par e-mail.
-              </p>
-            </div>
+            <p className="text-xl leading-relaxed text-center">{message}</p>
           </div>
         </div>
 
