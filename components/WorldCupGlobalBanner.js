@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { FaTrophy, FaArrowRight } from 'react-icons/fa';
-import { WORLD_CUP_BALL_SRC } from '@/lib/world-cup-campaign';
-import WorldCupPrizeImage from './WorldCupPrizeImage';
+import { FaFutbol } from 'react-icons/fa';
 
 export default function WorldCupGlobalBanner() {
   return (
@@ -16,12 +15,8 @@ export default function WorldCupGlobalBanner() {
 
       <div className="relative z-10 flex items-center justify-between gap-3 px-3 sm:px-5 py-2.5 sm:py-3 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <div className="wc-global-banner__ball shrink-0 hidden xs:block sm:block">
-            <WorldCupPrizeImage
-              src={WORLD_CUP_BALL_SRC}
-              alt=""
-              className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
-            />
+          <div className="wc-global-banner__ball shrink-0 hidden sm:flex items-center justify-center w-9 h-9 text-amber-300 text-2xl">
+            <FaFutbol aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-amber-200/90">

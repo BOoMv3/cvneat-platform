@@ -967,9 +967,19 @@ html.wc-mode.dark body {
   position: absolute;
   bottom: -60px;
   opacity: 0.35;
+  overflow: visible;
+  background: transparent;
   animation-name: wc-ball-float;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+
+.wc-floating-ball__icon {
+  width: 1em;
+  height: 1em;
+  color: #ffffff;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  display: block;
 }
 
 @keyframes wc-ball-float {

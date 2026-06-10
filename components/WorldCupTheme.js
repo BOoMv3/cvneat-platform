@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { WORLD_CUP_BALL_SRC } from '@/lib/world-cup-campaign';
-import WorldCupPrizeImage from './WorldCupPrizeImage';
+import { FaFutbol } from 'react-icons/fa';
+
 /**
  * Skin Coupe du Monde — effets globaux (ballons, confettis, lumières stade)
  */
@@ -39,13 +39,9 @@ export default function WorldCupTheme() {
 
   return (
     <>
-      {/* Bandeau stade en haut */}
       <div className="wc-stadium-lights" aria-hidden="true" />
-
-      {/* Ligne terrain */}
       <div className="wc-pitch-line" aria-hidden="true" />
 
-      {/* Ballons flottants */}
       <div className="wc-floating-layer" aria-hidden="true">
         {balls.map((ball) => (
           <div
@@ -55,21 +51,17 @@ export default function WorldCupTheme() {
               left: `${ball.left}%`,
               width: ball.size,
               height: ball.size,
+              fontSize: ball.size * 0.92,
               animationDuration: `${ball.duration}s`,
               animationDelay: `${ball.delay}s`,
               '--wc-drift': `${ball.drift}px`,
             }}
           >
-            <WorldCupPrizeImage
-              src={WORLD_CUP_BALL_SRC}
-              alt=""
-              className="w-full h-full object-contain drop-shadow-lg"
-            />
+            <FaFutbol className="wc-floating-ball__icon" aria-hidden="true" />
           </div>
         ))}
       </div>
 
-      {/* Confettis */}
       <div className="wc-confetti-layer" aria-hidden="true">
         {confetti.map((c) => (
           <span
@@ -87,7 +79,6 @@ export default function WorldCupTheme() {
         ))}
       </div>
 
-      {/* Trophées coins */}
       <div className="wc-corner-trophy wc-corner-trophy--left" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/world-cup/world-cup-trophy.png" alt="" width={72} height={72} className="wc-png-nobg" draggable={false} />
