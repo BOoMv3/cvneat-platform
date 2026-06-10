@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { FaTrophy, FaFutbol } from 'react-icons/fa';
 import { WORLD_CUP_PRIZES } from '@/lib/world-cup-campaign';
 import CvneatLogo from './CvneatLogo';
+import WorldCupPrizeImage from './WorldCupPrizeImage';
 
 export default function WorldCupHomeHero() {
   return (
@@ -56,12 +57,10 @@ export default function WorldCupHomeHero() {
               {WORLD_CUP_PRIZES.slice(0, 4).map((prize) => (
                 <div key={prize.id} className="wc-prize-card">
                   <div className="h-16 sm:h-20 mb-2 flex items-center justify-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <WorldCupPrizeImage
                       src={prize.image}
                       alt={prize.title}
-                      className="max-h-full max-w-full object-contain"
-                      draggable={false}
+                      className="max-h-full max-w-full object-contain rounded-lg"
                     />
                   </div>
                   <p className="font-black text-white text-sm sm:text-base leading-tight">

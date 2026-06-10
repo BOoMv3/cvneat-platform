@@ -19,6 +19,7 @@ import {
   WORLD_CUP_START,
   WORLD_CUP_END,
 } from '@/lib/world-cup-campaign';
+import WorldCupPrizeImage from '@/components/WorldCupPrizeImage';
 
 const formatDate = (d) =>
   d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -114,12 +115,10 @@ export default function CoupeDuMondePage() {
                 <div
                   className={`shrink-0 flex items-center justify-center bg-white/5 rounded-2xl p-3 ${isGrand ? 'w-full sm:w-52 h-44 sm:h-48' : 'w-28 h-28 sm:w-32 sm:h-32'}`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <WorldCupPrizeImage
                     src={prize.image}
                     alt={prize.title}
-                    className="w-full h-full object-contain"
-                    draggable={false}
+                    className="w-full h-full object-contain rounded-xl"
                   />
                 </div>
                 <div className={`text-center sm:text-left ${isGrand ? 'flex-1' : ''}`}>
@@ -147,15 +146,11 @@ export default function CoupeDuMondePage() {
         </div>
 
         <div className="flex justify-center mb-16">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <WorldCupPrizeImage
             src={WORLD_CUP_BALL_SRC}
             alt="Ballon officiel"
-            width={160}
-            height={160}
-            className="w-32 sm:w-40 h-auto animate-spin wc-png-nobg"
+            className="w-32 sm:w-40 h-auto animate-spin mx-auto"
             style={{ animationDuration: '8s' }}
-            draggable={false}
           />
         </div>
       </section>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { WORLD_CUP_BALL_SRC } from '@/lib/world-cup-campaign';
+import WorldCupPrizeImage from './WorldCupPrizeImage';
 /**
  * Skin Coupe du Monde — effets globaux (ballons, confettis, lumières stade)
  */
@@ -59,14 +60,10 @@ export default function WorldCupTheme() {
               '--wc-drift': `${ball.drift}px`,
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <WorldCupPrizeImage
               src={WORLD_CUP_BALL_SRC}
               alt=""
-              width={ball.size}
-              height={ball.size}
-              className="w-full h-full object-contain drop-shadow-lg wc-png-nobg"
-              draggable={false}
+              className="w-full h-full object-contain drop-shadow-lg"
             />
           </div>
         ))}

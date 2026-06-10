@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FaTrophy, FaArrowRight } from 'react-icons/fa';
 import { WORLD_CUP_BALL_SRC } from '@/lib/world-cup-campaign';
+import WorldCupPrizeImage from './WorldCupPrizeImage';
 
 export default function WorldCupGlobalBanner() {
   return (
@@ -16,14 +17,10 @@ export default function WorldCupGlobalBanner() {
       <div className="relative z-10 flex items-center justify-between gap-3 px-3 sm:px-5 py-2.5 sm:py-3 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <div className="wc-global-banner__ball shrink-0 hidden xs:block sm:block">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <WorldCupPrizeImage
               src={WORLD_CUP_BALL_SRC}
               alt=""
-              width={36}
-              height={36}
-              className="w-8 h-8 sm:w-9 sm:h-9 object-contain wc-png-nobg"
-              draggable={false}
+              className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
             />
           </div>
           <div className="min-w-0">
