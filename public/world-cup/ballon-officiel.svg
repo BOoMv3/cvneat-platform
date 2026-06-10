@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ballon de foot">
+  <defs>
+    <radialGradient id="ballShine" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </radialGradient>
+    <filter id="ballShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <circle cx="256" cy="256" r="230" fill="url(#ballShine)" filter="url(#ballShadow)"/>
+  <!-- Motif ballon classique -->
+  <g fill="#1e293b">
+    <polygon points="256,56 296,128 256,200 216,128"/>
+    <polygon points="256,312 296,384 256,456 216,384"/>
+    <polygon points="96,184 136,256 96,328 56,256"/>
+    <polygon points="416,184 456,256 416,328 376,256"/>
+    <polygon points="176,96 256,116 336,96 296,56 216,56"/>
+    <polygon points="176,416 256,396 336,416 296,456 216,456"/>
+  </g>
+  <g fill="none" stroke="#334155" stroke-width="3" stroke-linejoin="round">
+    <polygon points="256,56 296,128 256,200 216,128"/>
+    <polygon points="256,312 296,384 256,456 216,384"/>
+    <polygon points="96,184 136,256 96,328 56,256"/>
+    <polygon points="416,184 456,256 416,328 376,256"/>
+  </g>
+  <!-- Accents CDM -->
+  <path d="M256 56 L296 128 L256 200 L216 128 Z" fill="#16a34a" opacity="0.85"/>
+  <path d="M416 184 L456 256 L416 328 L376 256 Z" fill="#fbbf24" opacity="0.75"/>
+  <ellipse cx="190" cy="175" rx="55" ry="35" fill="#fff" opacity="0.25" transform="rotate(-25 190 175)"/>
+</svg>

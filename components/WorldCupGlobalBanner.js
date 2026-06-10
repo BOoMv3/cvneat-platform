@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FaTrophy, FaArrowRight } from 'react-icons/fa';
+import { WORLD_CUP_BALL_SRC } from '@/lib/world-cup-campaign';
 
 export default function WorldCupGlobalBanner() {
   return (
@@ -17,7 +18,7 @@ export default function WorldCupGlobalBanner() {
           <div className="wc-global-banner__ball shrink-0 hidden xs:block sm:block">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/world-cup/world-cup-ball.png"
+              src={WORLD_CUP_BALL_SRC}
               alt=""
               width={36}
               height={36}

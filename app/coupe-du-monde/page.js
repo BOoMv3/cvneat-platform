@@ -12,7 +12,13 @@ import {
   FaTicketAlt,
   FaCalendarAlt,
 } from 'react-icons/fa';
-import { WORLD_CUP_PRIZES, WORLD_CUP_RULES, WORLD_CUP_START, WORLD_CUP_END } from '@/lib/world-cup-campaign';
+import {
+  WORLD_CUP_BALL_SRC,
+  WORLD_CUP_PRIZES,
+  WORLD_CUP_RULES,
+  WORLD_CUP_START,
+  WORLD_CUP_END,
+} from '@/lib/world-cup-campaign';
 
 const formatDate = (d) =>
   d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -106,25 +112,15 @@ export default function CoupeDuMondePage() {
                 className={`${isGrand ? 'sm:col-span-2 wc-grand-prize' : 'wc-prize-card'} flex flex-col sm:flex-row items-center gap-5 p-6 sm:p-8`}
               >
                 <div
-                  className={`shrink-0 ${isGrand ? 'w-full sm:w-48 h-40 sm:h-48 relative rounded-2xl overflow-hidden' : 'w-24 h-24 relative'} ${prize.id === 'tv' ? 'bg-emerald-900/30 rounded-2xl overflow-hidden' : ''}`}
+                  className={`shrink-0 flex items-center justify-center bg-white/5 rounded-2xl p-3 ${isGrand ? 'w-full sm:w-52 h-44 sm:h-48' : 'w-28 h-28 sm:w-32 sm:h-32'}`}
                 >
-                  {prize.id === 'tv' ? (
-                    <Image
-                      src={prize.image}
-                      alt={prize.title}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={prize.image}
-                      alt={prize.title}
-                      className="w-full h-full object-contain wc-png-nobg"
-                      draggable={false}
-                    />
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={prize.image}
+                    alt={prize.title}
+                    className="w-full h-full object-contain"
+                    draggable={false}
+                  />
                 </div>
                 <div className={`text-center sm:text-left ${isGrand ? 'flex-1' : ''}`}>
                   <div className="text-amber-400 text-2xl mb-2">
@@ -153,7 +149,7 @@ export default function CoupeDuMondePage() {
         <div className="flex justify-center mb-16">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/world-cup/world-cup-ball.png"
+            src={WORLD_CUP_BALL_SRC}
             alt="Ballon officiel"
             width={160}
             height={160}
