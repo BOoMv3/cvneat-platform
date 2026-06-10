@@ -22,7 +22,7 @@ export default function WorldCupTicketBadge({ code, compact = false, className =
   if (compact) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-green-700 text-amber-100 text-xs font-black px-2.5 py-1 rounded-full border border-amber-400/40 ${className}`}
+        className={`inline-flex items-center gap-1.5 bg-emerald-700 text-amber-100 text-xs font-bold px-2.5 py-1 rounded-full ${className}`}
         onClick={copy}
         role="button"
         tabIndex={0}
@@ -35,7 +35,7 @@ export default function WorldCupTicketBadge({ code, compact = false, className =
 
   return (
     <div
-      className={`rounded-xl border-2 border-amber-400/50 bg-gradient-to-br from-emerald-800 via-green-900 to-emerald-950 p-4 shadow-lg ${className}`}
+      className={`rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-4 shadow-md ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2 text-amber-300 text-xs font-bold uppercase tracking-wider mb-2">

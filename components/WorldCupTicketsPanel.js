@@ -37,7 +37,7 @@ export default function WorldCupTicketsPanel() {
   if (!enabled) return null;
 
   return (
-    <div className="mb-6 rounded-2xl overflow-hidden border-2 border-amber-400/40 shadow-xl">
+    <div className="mb-6 rounded-2xl overflow-hidden shadow-lg">
       <div className="bg-gradient-to-r from-emerald-800 via-green-800 to-emerald-900 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -69,7 +69,7 @@ export default function WorldCupTicketsPanel() {
           {tickets.map((t) => (
             <div
               key={t.id}
-              className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-2.5 border border-white/10"
+              className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-2.5"
             >
               <WorldCupTicketBadge code={t.code} compact />
               <span className="text-[10px] text-emerald-300/70 shrink-0">

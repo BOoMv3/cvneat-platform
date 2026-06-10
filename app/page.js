@@ -56,6 +56,7 @@ import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
 
 const WorldCupHomeHero = dynamic(() => import('@/components/WorldCupHomeHero'), { ssr: false });
+const CvneatLogo = dynamic(() => import('@/components/CvneatLogo'), { ssr: false });
 
 /** Logs verbeux = coût en WebView (iOS/Android) ; uniquement en dev. */
 const DBG = process.env.NODE_ENV === 'development';
@@ -1515,25 +1516,9 @@ export default function Home() {
           </div>
         ))}
         
-        {/* Logo CVN'EAT en haut à gauche - Optimisé mobile */}
+        {/* Logo CVN'EAT */}
         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 z-20">
-          <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
-            <div className="relative">
-              <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-2xl transform rotate-3 hover:rotate-0 hover:scale-110 transition-all duration-300 hover:shadow-orange-500/50">
-                <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 bg-white rounded-lg flex items-center justify-center">
-                  <FaUtensils className="h-2.5 w-2.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-orange-600" />
-                </div>
-              </div>
-              <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 md:-top-1 md:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-5 md:h-5 bg-green-500 rounded-full border-2 border-white shadow-md animate-pulse"></div>
-              <div className="absolute -bottom-0.5 -left-0.5 sm:-bottom-1 sm:-left-1 md:-bottom-1 md:-left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border-1.5 sm:border-2 border-white"></div>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-base sm:text-xl md:text-2xl font-black bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent tracking-tight leading-tight drop-shadow-lg animate-pulse">
-                CVN'EAT
-              </span>
-              <span className="text-[10px] sm:text-xs text-gray-300 -mt-0.5 sm:-mt-1 font-medium hidden sm:block">Excellence culinaire</span>
-            </div>
-          </div>
+          <CvneatLogo size="lg" />
         </div>
         
           {/* Actions utilisateur en haut à droite - Design compact avec icônes - Optimisé mobile */}

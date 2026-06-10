@@ -1,40 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { FaTrophy, FaFutbol, FaTv, FaTshirt } from 'react-icons/fa';
 import { WORLD_CUP_PRIZES } from '@/lib/world-cup-campaign';
+import CvneatLogo from './CvneatLogo';
 
 export default function WorldCupHomeHero() {
   return (
     <section className="wc-home-hero relative overflow-hidden">
-      <Image
-        src="/world-cup/world-cup-hero.png"
-        alt="Coupe du Monde 2026"
-        fill
-        className="object-cover"
-        priority
-        sizes="100vw"
-      />
-      <div className="wc-home-hero__overlay absolute inset-0" />
+      <div className="wc-home-hero__bg" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-10 sm:py-14 md:py-20">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-6 sm:py-10 md:py-14">
+        <div className="flex items-center justify-between gap-3 mb-8 sm:mb-10">
+          <CvneatLogo size="lg" />
+          <Link
+            href="/coupe-du-monde"
+            className="wc-cta-primary text-sm sm:text-base !py-2.5 !px-4 sm:!px-5"
+          >
+            <FaTrophy />
+            Concours
+          </Link>
+        </div>
+
         <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
           <div className="flex-1 text-center lg:text-left">
             <span className="wc-badge inline-flex items-center gap-2 mb-4">
               <FaFutbol className="text-amber-300" />
-              Coupe du Monde 2026 — CVN&apos;EAT
+              Mode Coupe du Monde
             </span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-4 drop-shadow-2xl">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight mb-4">
               Commandez.
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400">
-                Gagnez le gros lot.
-              </span>
+              <span className="text-amber-300">Gagnez le gros lot.</span>
             </h2>
             <p className="text-base sm:text-lg text-emerald-100/90 max-w-xl mx-auto lg:mx-0 mb-6">
-              TV 55&quot;, maillot officiel, ballon de la Coupe du Monde… Chaque commande = 1
-              ticket. Le site est en mode fête du foot !
+              TV 55&quot;, maillot officiel, ballon de la Coupe du Monde… Chaque commande validée
+              = 1 ticket unique.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
               <Link href="/coupe-du-monde" className="wc-cta-primary">
@@ -57,22 +58,12 @@ export default function WorldCupHomeHero() {
                     {prize.id === 'ballon' && <FaFutbol />}
                     {prize.id === 'bons' && <span className="text-2xl">{prize.emoji}</span>}
                   </div>
-                  <p className="font-black text-white text-sm sm:text-base leading-tight">
+                  <p className="font-bold text-white text-sm sm:text-base leading-tight">
                     {prize.title}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-emerald-200/80 mt-0.5">{prize.subtitle}</p>
+                  <p className="text-[10px] sm:text-xs text-emerald-200/70 mt-0.5">{prize.subtitle}</p>
                 </div>
               ))}
-            </div>
-            <div className="wc-trophy-float mt-4 flex justify-center">
-              <Image
-                src="/world-cup/world-cup-trophy.png"
-                alt="Trophée"
-                width={120}
-                height={120}
-                className="w-24 sm:w-28 h-auto drop-shadow-2xl"
-                unoptimized
-              />
             </div>
           </div>
         </div>
