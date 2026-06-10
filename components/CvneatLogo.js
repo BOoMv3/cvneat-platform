@@ -5,9 +5,11 @@ import Link from 'next/link';
 
 export default function CvneatLogo({ size = 'md', href = '/', className = '' }) {
   const sizes = {
-    sm: { img: 36, cls: 'h-9 w-9' },
-    md: { img: 48, cls: 'h-12 w-12' },
-    lg: { img: 64, cls: 'h-16 w-16' },
+    sm: { img: 56, cls: 'h-14 w-14' },
+    md: { img: 80, cls: 'h-20 w-20' },
+    lg: { img: 112, cls: 'h-28 w-28' },
+    xl: { img: 180, cls: 'h-40 w-40 sm:h-44 sm:w-44' },
+    xxl: { img: 220, cls: 'h-48 w-48 sm:h-56 sm:w-56 md:h-64 md:w-64' },
   };
   const s = sizes[size] || sizes.md;
 

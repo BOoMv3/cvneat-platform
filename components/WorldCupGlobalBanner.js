@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { FaTrophy, FaArrowRight } from 'react-icons/fa';
 
 export default function WorldCupGlobalBanner() {
@@ -16,13 +15,14 @@ export default function WorldCupGlobalBanner() {
       <div className="relative z-10 flex items-center justify-between gap-3 px-3 sm:px-5 py-2.5 sm:py-3 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <div className="wc-global-banner__ball shrink-0 hidden xs:block sm:block">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/world-cup/world-cup-ball.png"
               alt=""
               width={36}
               height={36}
               className="w-8 h-8 sm:w-9 sm:h-9 object-contain wc-png-nobg"
-              unoptimized
+              draggable={false}
             />
           </div>
           <div className="min-w-0">

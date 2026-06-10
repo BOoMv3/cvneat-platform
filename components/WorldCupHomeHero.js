@@ -21,7 +21,7 @@ export default function WorldCupHomeHero() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-6 sm:py-10 md:py-14">
         <div className="mb-6 sm:mb-8">
-          <CvneatLogo size="lg" />
+          <CvneatLogo size="xxl" />
         </div>
         <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
           <div className="flex-1 text-center lg:text-left">
@@ -69,13 +69,14 @@ export default function WorldCupHomeHero() {
               ))}
             </div>
             <div className="wc-trophy-float mt-4 flex justify-center">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/world-cup/world-cup-trophy.png"
                 alt="Trophée"
                 width={120}
                 height={120}
                 className="w-24 sm:w-28 h-auto drop-shadow-2xl wc-png-nobg"
-                unoptimized
+                draggable={false}
               />
             </div>
           </div>

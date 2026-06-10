@@ -73,14 +73,14 @@ export default function CoupeDuMondePage() {
 
             <div className="shrink-0 relative">
               <div className="absolute inset-0 bg-amber-400/20 blur-3xl rounded-full scale-150" />
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/world-cup/world-cup-trophy.png"
                 alt="Trophée Coupe du Monde"
                 width={280}
                 height={280}
                 className="relative w-48 sm:w-64 md:w-72 h-auto drop-shadow-2xl wc-trophy-float wc-png-nobg"
-                unoptimized
-                priority
+                draggable={false}
               />
             </div>
           </div>
@@ -106,17 +106,25 @@ export default function CoupeDuMondePage() {
                 className={`${isGrand ? 'sm:col-span-2 wc-grand-prize' : 'wc-prize-card'} flex flex-col sm:flex-row items-center gap-5 p-6 sm:p-8`}
               >
                 <div
-                  className={`shrink-0 rounded-2xl overflow-hidden ${isGrand ? 'w-full sm:w-48 h-40 sm:h-48' : 'w-24 h-24'} relative bg-emerald-900/50`}
+                  className={`shrink-0 ${isGrand ? 'w-full sm:w-48 h-40 sm:h-48 relative rounded-2xl overflow-hidden' : 'w-24 h-24 relative'} ${prize.id === 'tv' ? 'bg-emerald-900/30 rounded-2xl overflow-hidden' : ''}`}
                 >
-                  <Image
-                    src={prize.image}
-                    alt={prize.title}
-                    fill={isGrand}
-                    width={isGrand ? undefined : 96}
-                    height={isGrand ? undefined : 96}
-                    className={isGrand ? 'object-cover' : 'object-contain p-2'}
-                    unoptimized
-                  />
+                  {prize.id === 'tv' ? (
+                    <Image
+                      src={prize.image}
+                      alt={prize.title}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={prize.image}
+                      alt={prize.title}
+                      className="w-full h-full object-contain wc-png-nobg"
+                      draggable={false}
+                    />
+                  )}
                 </div>
                 <div className={`text-center sm:text-left ${isGrand ? 'flex-1' : ''}`}>
                   <div className="text-amber-400 text-2xl mb-2">
@@ -143,14 +151,15 @@ export default function CoupeDuMondePage() {
         </div>
 
         <div className="flex justify-center mb-16">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/world-cup/world-cup-ball.png"
             alt="Ballon officiel"
             width={160}
             height={160}
             className="w-32 sm:w-40 h-auto animate-spin wc-png-nobg"
             style={{ animationDuration: '8s' }}
-            unoptimized
+            draggable={false}
           />
         </div>
       </section>

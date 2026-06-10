@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
-
 /**
  * Skin Coupe du Monde — effets globaux (ballons, confettis, lumières stade)
  */
@@ -60,13 +58,14 @@ export default function WorldCupTheme() {
               '--wc-drift': `${ball.drift}px`,
             }}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/world-cup/world-cup-ball.png"
               alt=""
               width={ball.size}
               height={ball.size}
               className="w-full h-full object-contain drop-shadow-lg wc-png-nobg"
-              unoptimized
+              draggable={false}
             />
           </div>
         ))}
@@ -92,10 +91,12 @@ export default function WorldCupTheme() {
 
       {/* Trophées coins */}
       <div className="wc-corner-trophy wc-corner-trophy--left" aria-hidden="true">
-        <Image src="/world-cup/world-cup-trophy.png" alt="" width={72} height={72} className="wc-png-nobg" unoptimized />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/world-cup/world-cup-trophy.png" alt="" width={72} height={72} className="wc-png-nobg" draggable={false} />
       </div>
       <div className="wc-corner-trophy wc-corner-trophy--right" aria-hidden="true">
-        <Image src="/world-cup/world-cup-trophy.png" alt="" width={72} height={72} className="wc-png-nobg" unoptimized />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/world-cup/world-cup-trophy.png" alt="" width={72} height={72} className="wc-png-nobg" draggable={false} />
       </div>
     </>
   );

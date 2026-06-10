@@ -1024,9 +1024,16 @@ html.wc-mode.dark body {
   .wc-corner-trophy { display: none; }
 }
 
-/* PNG ballon / trophée : pas de halo blanc (fond retiré à la source) */
-.wc-png-nobg {
+/* PNG ballon / trophée : fond transparent, pas de cadre */
+.wc-png-nobg,
+.wc-floating-ball img,
+.wc-corner-trophy img,
+.wc-global-banner__ball img {
   background: transparent !important;
+  border: none !important;
+  box-shadow: none;
+  display: block;
+  max-width: 100%;
 }
 
 /* Hero accueil */

@@ -1518,7 +1518,7 @@ export default function Home() {
         
         {/* Logo CVN'EAT */}
         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 z-20">
-          <CvneatLogo size="lg" />
+          <CvneatLogo size="xl" />
         </div>
         
           {/* Actions utilisateur en haut à droite - Design compact avec icônes - Optimisé mobile */}
