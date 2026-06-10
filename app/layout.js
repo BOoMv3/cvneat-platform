@@ -7,6 +7,8 @@ import PushNotificationBootstrap from './components/PushNotificationBootstrap';
 import AppAutoRedirect from './components/AppAutoRedirect';
 import AppSplashOverlay from './components/AppSplashOverlay';
 import RoleAwareChrome from './components/RoleAwareChrome';
+import WorldCupProvider from '@/components/WorldCupProvider';
+import { isWorldCupModeEnabled } from '@/lib/world-cup-campaign';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
 // IMPORTANT: Charger APRÈS Supabase pour éviter les conflits
@@ -96,6 +98,8 @@ export default function RootLayout({ children }) {
   if (typeof window !== 'undefined') {
     window.supabase = supabase;
   }
+
+  const worldCupEnabled = isWorldCupModeEnabled();
 
   return (
     <html lang="fr" className="scroll-smooth">
@@ -438,6 +442,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="font-sans transition-colors duration-300">
         <ThemeProvider>
+          <WorldCupProvider enabled={worldCupEnabled} />
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
           <PushNotificationBootstrap />
           {/* Splash overlay (logo + animation) pendant le chargement */}

@@ -15,6 +15,8 @@ const LoyaltyProgram = dynamic(() => import('../components/LoyaltyProgram'), { s
 const OrderCardSkeleton = dynamic(() => import('@/components/OrderCardSkeleton'), { ssr: false });
 const PushNotificationService = dynamic(() => import('../components/PushNotificationService'), { ssr: false });
 const TestComponent = dynamic(() => import('../components/TestComponent'), { ssr: false });
+const WorldCupTicketsPanel = dynamic(() => import('@/components/WorldCupTicketsPanel'), { ssr: false });
+const WorldCupTicketBadge = dynamic(() => import('@/components/WorldCupTicketBadge'), { ssr: false });
 
 export default function Profile() {
   const router = useRouter();
@@ -629,6 +631,7 @@ export default function Profile() {
           {/* Contenu des onglets */}
           {activeTab === 'orders' && (
             <div className="space-y-4 sm:space-y-6">
+              <WorldCupTicketsPanel />
               {loading ? (
                 <>
                   {[...Array(3)].map((_, i) => (
@@ -677,6 +680,12 @@ export default function Profile() {
                         </p>
                       )}
                     </div>
+
+                    {order.worldCupTicketCode && (
+                      <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                        <WorldCupTicketBadge code={order.worldCupTicketCode} compact />
+                      </div>
+                    )}
 
                     <div className="border-t pt-3 sm:pt-4">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">

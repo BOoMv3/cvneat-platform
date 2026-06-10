@@ -327,6 +327,15 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
     } else {
       console.log('✅ Statut de commande mis à jour:', order.order_number);
 
+      if (!wasPaidBefore) {
+        try {
+          const { assignWorldCupTicketIfEligible } = await import('@/lib/world-cup-ticket');
+          await assignWorldCupTicketIfEligible(db, order.id);
+        } catch (wcErr) {
+          console.warn('⚠️ Ticket CDM non attribué (non bloquant):', wcErr?.message || wcErr);
+        }
+      }
+
       // Enqueue receipt print job for the restaurant (only on first transition to paid)
       if (!wasPaidBefore && order.restaurant_id) {
         try {

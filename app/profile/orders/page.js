@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
+import dynamic from 'next/dynamic';
+
+const WorldCupTicketBadge = dynamic(() => import('@/components/WorldCupTicketBadge'), { ssr: false });
 import { supabase } from '../../../lib/supabase';
 
 export default function UserOrders() {
@@ -128,6 +131,12 @@ export default function UserOrders() {
                 onClick={() => router.push(`/profile/orders/${order.id}`)}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow"
               >
+                {order.worldCupTicketCode && (
+                  <div className="mb-4" onClick={(e) => e.stopPropagation()}>
+                    <WorldCupTicketBadge code={order.worldCupTicketCode} />
+                  </div>
+                )}
+
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white">Commande #{order.id}</h3>

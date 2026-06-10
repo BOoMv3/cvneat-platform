@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../../../../lib/supabase';
 import { formatReceiptText } from '../../../../lib/receipt/formatReceiptText';
 import { notifyDeliverySubscribers } from '../../../../lib/pushNotifications';
 import { sendDeliveryAppPush } from '../../../../lib/sendDeliveryAppPush';
+import { assignWorldCupTicketIfEligible } from '@/lib/world-cup-ticket';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -212,7 +213,9 @@ export async function POST(request) {
     // Si elle était déjà "paid" (ex: /api/orders/[id]), ne pas renvoyer de push (évite doublons).
     const isPaidNow = (updated.payment_status || '').toString().trim().toLowerCase() === 'paid';
     const transitionedToPaid = isPaidNow && !wasPaidBefore;
+    let worldCupTicketCode = null;
     if (transitionedToPaid) {
+      worldCupTicketCode = await assignWorldCupTicketIfEligible(supabaseAdmin, order.id);
       const orderUserId = order?.user_id;
 
       // Montant servant à calculer les points = sous-total articles uniquement (hors livraison, hors 0,49€)
@@ -356,7 +359,10 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ success: true, orderId: order.id }, { headers: corsHeaders });
+    return NextResponse.json(
+      { success: true, orderId: order.id, worldCupTicketCode },
+      { headers: corsHeaders }
+    );
   } catch (e) {
     return NextResponse.json(
       { error: 'Erreur serveur', details: e?.message },

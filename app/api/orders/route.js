@@ -12,6 +12,7 @@ import { getItemLineTotal } from '@/lib/cartUtils';
 import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-rewards';
 import { computeCheckoutPlatformDiscountEur } from '@/lib/platform-promo';
 import { getTonightAutoPromo } from '@/lib/tonight-promo';
+import { assignWorldCupTicketIfEligible } from '@/lib/world-cup-ticket';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
 import {
   buildOrderDeliverySlotColumns,
@@ -175,6 +176,7 @@ export async function GET(request) {
         refunded_at,
         stripe_refund_id,
         payment_status,
+        world_cup_ticket_code,
         restaurant:restaurants(id, nom, adresse, ville)
       `)
       .order('created_at', { ascending: false });
@@ -429,6 +431,7 @@ export async function GET(request) {
         payment_status: order.payment_status || 'pending',
         discount_amount: order.discount_amount != null ? parseFloat(order.discount_amount) : 0,
         orderFulfillment: order.order_fulfillment || 'delivery',
+        worldCupTicketCode: order.world_cup_ticket_code || null,
       };
     }));
 
@@ -1135,6 +1138,7 @@ export async function POST(request) {
       'cvneat_plus_half_delivery',
       'frais_livraison_course',
       'order_fulfillment',
+      'world_cup_ticket_code',
     ]);
     const payloadForInsert = { ...orderData };
 
@@ -1827,6 +1831,11 @@ export async function POST(request) {
     }
 
     console.log('🎯 RETOUR DE LA RÉPONSE - Commande créée avec statut:', order.statut);
+
+    let worldCupTicketCode = null;
+    if ((orderData.payment_status || order.payment_status) === 'paid') {
+      worldCupTicketCode = await assignWorldCupTicketIfEligible(serviceClient, order.id);
+    }
     
     // DÉSACTIVÉ: Nettoyage automatique des commandes expirées (remboursements automatiques désactivés)
     // Ne pas nettoyer la commande qui vient d'être créée
@@ -1842,6 +1851,7 @@ export async function POST(request) {
       message: 'Commande créée avec succès',
       orderId: order.id,
       securityCode: order.security_code,
+      worldCupTicketCode,
       subtotal: subtotalValue,
       deliveryFee: deliveryFeeValue,
       total: totalWithDelivery,

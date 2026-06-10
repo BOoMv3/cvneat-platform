@@ -28,6 +28,9 @@ import {
   FaUser,
   FaCreditCard
 } from 'react-icons/fa';
+import dynamic from 'next/dynamic';
+
+const WorldCupTicketBadge = dynamic(() => import('@/components/WorldCupTicketBadge'), { ssr: false });
 
 export default function OrderConfirmation() {
   const { id } = useParams();
@@ -832,6 +835,14 @@ export default function OrderConfirmation() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {(orderData?.world_cup_ticket_code || orderData?.worldCupTicketCode) && (
+                <div className="mb-6">
+                  <WorldCupTicketBadge
+                    code={orderData.world_cup_ticket_code || orderData.worldCupTicketCode}
+                  />
                 </div>
               )}
 
