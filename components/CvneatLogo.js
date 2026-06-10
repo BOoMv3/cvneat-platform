@@ -17,14 +17,15 @@ export default function CvneatLogo({ size = 'md', href = '/', className = '' }) 
       alt="CVN'EAT — La livraison locale qui vous régale"
       width={s.img}
       height={s.img}
-      className={`${s.cls} object-contain ${className}`}
+      className={`${s.cls} object-contain bg-transparent ${className}`}
       priority
+      unoptimized
     />
   );
 
   if (!href) return img;
   return (
-    <Link href={href} className="inline-flex shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600/50">
+    <Link href={href} className="inline-flex shrink-0 focus:outline-none">
       {img}
     </Link>
   );

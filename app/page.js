@@ -1488,8 +1488,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
-      {/* Bannière Livraison Offerte */}
-      <FreeDeliveryBanner />
+      {/* Bannière livraison masquée en mode CDM (évite 2 bandeaux coupés) */}
+      {!worldCupMode && <FreeDeliveryBanner />}
 
       {worldCupMode && <WorldCupHomeHero />}
 

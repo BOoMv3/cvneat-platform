@@ -853,7 +853,7 @@ html.wc-mode body {
 
 html.wc-mode footer,
 html.wc-mode .mobile-tab-bar {
-  border-top-color: rgba(22, 163, 74, 0.2) !important;
+  border-top-color: rgba(251, 191, 36, 0.35) !important;
 }
 
 html.wc-mode .bg-stone-50 {
@@ -871,63 +871,185 @@ html.wc-mode.dark body {
 }
 
 .wc-global-banner {
-  background: linear-gradient(90deg, #14532d 0%, #166534 50%, #14532d 100%);
-  box-shadow: 0 2px 12px rgba(5, 46, 22, 0.2);
+  background: linear-gradient(90deg, #052e16 0%, #14532d 35%, #166534 65%, #052e16 100%);
+  border-bottom: 2px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 4px 24px rgba(5, 46, 22, 0.45);
 }
 
-.wc-global-banner__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fde68a;
-  font-size: 0.9rem;
+.wc-global-banner__bg {
+  position: absolute;
+  inset: 0;
+  background: url('/world-cup/world-cup-hero.png') center / cover;
+  opacity: 0.18;
 }
 
-.wc-accent-bar {
+.wc-global-banner__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(251, 191, 36, 0.15) 45%,
+    transparent 60%
+  );
+  animation: wc-shine 4s ease-in-out infinite;
+}
+
+@keyframes wc-shine {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+
+.wc-global-banner__ball {
+  animation: wc-ball-spin 3s linear infinite;
+}
+
+@keyframes wc-ball-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.wc-stadium-lights {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 6px;
   z-index: 10040;
   pointer-events: none;
-  background: linear-gradient(90deg, #16a34a, #fbbf24, #16a34a);
-  opacity: 0.9;
+  background: linear-gradient(
+    90deg,
+    #fbbf24 0%,
+    #22c55e 20%,
+    #3b82f6 40%,
+    #ffffff 50%,
+    #ef4444 60%,
+    #22c55e 80%,
+    #fbbf24 100%
+  );
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+  animation: wc-lights-pulse 2s ease-in-out infinite alternate;
 }
 
-.wc-soft-glow {
+@keyframes wc-lights-pulse {
+  from { opacity: 0.85; filter: brightness(1); }
+  to { opacity: 1; filter: brightness(1.3); }
+}
+
+.wc-pitch-line {
   position: fixed;
-  top: -120px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(900px, 100vw);
-  height: 240px;
-  z-index: 9985;
+  top: 6px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 10039;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.12) 0%, transparent 70%);
+  background: repeating-linear-gradient(
+    90deg,
+    #fff 0px,
+    #fff 40px,
+    transparent 40px,
+    transparent 80px
+  );
+  opacity: 0.35;
+}
+
+.wc-floating-layer,
+.wc-confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9990;
+  overflow: hidden;
+}
+
+.wc-floating-ball {
+  position: absolute;
+  bottom: -60px;
+  opacity: 0.35;
+  animation-name: wc-ball-float;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes wc-ball-float {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  8% { opacity: 0.35; }
+  50% { transform: translateY(-55vh) translateX(var(--wc-drift, 30px)) rotate(180deg); }
+  92% { opacity: 0.2; }
+  100% {
+    transform: translateY(-110vh) translateX(0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.wc-confetti {
+  position: absolute;
+  top: -10px;
+  border-radius: 1px;
+  opacity: 0.7;
+  animation-name: wc-confetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes wc-confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.8; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.wc-corner-trophy {
+  position: fixed;
+  bottom: 88px;
+  z-index: 9988;
+  pointer-events: none;
+  opacity: 0.55;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35));
+  animation: wc-trophy-bounce 5s ease-in-out infinite;
+}
+
+.wc-corner-trophy--left { left: 8px; }
+.wc-corner-trophy--right { right: 8px; animation-delay: -2.5s; }
+
+@keyframes wc-trophy-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.05); }
+}
+
+@media (max-width: 640px) {
+  .wc-corner-trophy { display: none; }
+}
+
+/* PNG ballon / trophée : pas de halo blanc (fond retiré à la source) */
+.wc-png-nobg {
+  background: transparent !important;
 }
 
 /* Hero accueil */
 .wc-home-hero {
-  min-height: 320px;
+  min-height: 380px;
 }
 
-.wc-home-hero__bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(145deg, #14532d 0%, #166534 45%, #15803d 100%);
+.wc-home-hero__overlay {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 46, 22, 0.88) 0%,
+    rgba(20, 83, 45, 0.75) 40%,
+    rgba(5, 46, 22, 0.9) 100%
+  );
 }
 
 .wc-badge {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.5);
   color: #fde68a;
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.4rem 0.9rem;
   border-radius: 9999px;
@@ -957,7 +1079,8 @@ html.wc-mode.dark body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.35);
   color: white;
   font-weight: 700;
   padding: 0.85rem 1.5rem;
@@ -971,23 +1094,28 @@ html.wc-mode.dark body {
 }
 
 .wc-prize-card {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  backdrop-filter: blur(12px);
   border-radius: 1rem;
   padding: 0.85rem;
   text-align: center;
-  transition: transform 0.2s, background 0.2s;
+  transition: transform 0.2s, border-color 0.2s;
 }
 
 .wc-prize-card:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-3px);
+  border-color: rgba(251, 191, 36, 0.7);
 }
 
 .wc-prize-card__icon {
   font-size: 1.5rem;
   color: #fbbf24;
   margin-bottom: 0.35rem;
+}
+
+.wc-trophy-float {
+  animation: wc-trophy-bounce 4s ease-in-out infinite;
 }
 
 /* Page concours */
@@ -1016,10 +1144,11 @@ html.wc-mode.dark body {
 }
 
 .wc-grand-prize {
-  background: linear-gradient(145deg, rgba(251, 191, 36, 0.15), rgba(20, 83, 45, 0.5));
+  background: linear-gradient(145deg, rgba(251, 191, 36, 0.25), rgba(20, 83, 45, 0.6));
+  border: 2px solid rgba(251, 191, 36, 0.6);
   border-radius: 1.5rem;
   padding: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 40px rgba(251, 191, 36, 0.2);
 }
 
 html.wc-mode .bg-orange-600,
