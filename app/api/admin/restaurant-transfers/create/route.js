@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getFixedCommissionRatePercentFromName, getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../../lib/commission';
 import { buildRestaurantTransferInvoiceHtml } from '../../../../../lib/restaurant-invoice';
+import {
+  computeTransferOrderTotals,
+  periodFromOrders,
+  selectOrdersForTransferAmount,
+} from '../../../../../lib/restaurant-transfer-orders';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -142,59 +146,51 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Erreur création virement' }, { status: 500 });
     }
 
-    // Récupérer les commandes à payer: livrées, payées, non marquées restaurant_paid_at
-    let ordersQuery = supabaseAdmin
+    // Commandes éligibles : livrées, payées, pas encore rattachées à un virement
+    const { data: ordersAll, error: ordersErr } = await supabaseAdmin
       .from('commandes')
-      .select('id, created_at, total, payment_status, commission_rate, commission_amount, restaurant_payout')
+      .select(
+        'id, created_at, total, discount_amount, payment_status, commission_rate, commission_amount, restaurant_payout, loyalty_article_subsidy_eur'
+      )
       .eq('restaurant_id', restaurant_id)
       .eq('statut', 'livree')
       .is('restaurant_paid_at', null)
       .order('created_at', { ascending: true });
-
-    if (transfer.period_start) {
-      ordersQuery = ordersQuery.gte('created_at', new Date(transfer.period_start).toISOString());
-    }
-    if (transfer.period_end) {
-      const end = new Date(transfer.period_end);
-      end.setHours(23, 59, 59, 999);
-      ordersQuery = ordersQuery.lte('created_at', end.toISOString());
-    }
-
-    const { data: ordersAll, error: ordersErr } = await ordersQuery;
     if (ordersErr) {
       console.error('Erreur récupération commandes pour facture:', ordersErr);
     }
 
-    const orders = (ordersAll || []).filter((o) => {
-      const s = (o.payment_status || '').toString().trim().toLowerCase();
-      return !['failed', 'cancelled', 'refunded'].includes(s);
-    });
+    const unpaidPaid = (ordersAll || [])
+      .filter((o) => {
+        const s = (o.payment_status || '').toString().trim().toLowerCase();
+        return !['failed', 'cancelled', 'refunded'].includes(s);
+      })
+      .map((o) => ({ ...o, _restaurant: restaurant }));
 
-    const fixedRatePercent = getFixedCommissionRatePercentFromName(restaurant.nom);
-    const restRate = restaurant.commission_rate ?? 20;
-    const totals = orders.reduce(
-      (acc, o) => {
-        const ratePercent = getEffectiveCommissionRatePercent({
-          restaurantName: restaurant.nom,
-          orderRatePercent: o.commission_rate,
-          restaurantRatePercent: restRate,
-        });
-        const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
-        const commission =
-          fixedRatePercent !== null
-            ? computed.commission
-            : (o.commission_amount ?? computed.commission);
-        const payout =
-          fixedRatePercent !== null
-            ? computed.payout
-            : (o.restaurant_payout ?? computed.payout);
-        acc.totalRevenue += Number(o.total || 0);
-        acc.totalCommission += commission;
-        acc.totalPayoutDue += payout;
-        return acc;
-      },
-      { totalRevenue: 0, totalCommission: 0, totalPayoutDue: 0 }
+    const { orders, nextIdx: _nextIdx, sum: _selectedSum } = selectOrdersForTransferAmount(
+      unpaidPaid,
+      0,
+      amountNum
     );
+
+    const period =
+      period_start && period_end
+        ? { period_start, period_end }
+        : periodFromOrders(orders);
+
+    if (period.period_start || period.period_end) {
+      await supabaseAdmin
+        .from('restaurant_transfers')
+        .update({
+          period_start: period.period_start,
+          period_end: period.period_end,
+        })
+        .eq('id', transfer.id);
+      transfer.period_start = period.period_start;
+      transfer.period_end = period.period_end;
+    }
+
+    const totals = computeTransferOrderTotals(orders, restaurant);
 
     // Numéro de facture (si la fonction existe)
     let invoiceNumber = null;
@@ -236,15 +232,16 @@ export async function POST(request) {
       // ignore
     }
 
-    // Marquer les commandes comme payées (même logique que l'UI actuelle)
+    // Marquer uniquement les commandes de CE virement
     try {
-      const { error: markErr } = await supabaseAdmin
-        .from('commandes')
-        .update({ restaurant_paid_at: new Date().toISOString() })
-        .eq('restaurant_id', restaurant_id)
-        .eq('statut', 'livree')
-        .is('restaurant_paid_at', null);
-      if (markErr) console.warn('Erreur marquage commandes payées:', markErr.message);
+      const orderIds = orders.map((o) => o.id).filter(Boolean);
+      if (orderIds.length > 0) {
+        const { error: markErr } = await supabaseAdmin
+          .from('commandes')
+          .update({ restaurant_paid_at: new Date().toISOString() })
+          .in('id', orderIds);
+        if (markErr) console.warn('Erreur marquage commandes payées:', markErr.message);
+      }
     } catch {
       // ignore
     }

@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
 import { getFixedCommissionRatePercentFromName } from '../../../../lib/commission';
+import {
+  computeOrderCommissionEur,
+  computeOrderRestaurantPayoutEur,
+} from '../../../../lib/restaurant-order-payout';
 import { 
   FaArrowLeft, 
   FaPlus, 
@@ -21,6 +25,30 @@ import {
 export default function TransfersTracking() {
   const OVERRIDE_STORAGE_KEY = 'restaurant_remaining_override_v1';
   const router = useRouter();
+
+  const downloadTransferInvoice = async (transferId, invoiceNumber) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      router.push('/login');
+      return;
+    }
+    const res = await fetch(`/api/admin/restaurant-transfers/${transferId}/invoice?format=pdf`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Erreur HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `facture-${(invoiceNumber || transferId.slice(0, 8)).replace(/[^a-zA-Z0-9-_]/g, '-')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
   const [transfers, setTransfers] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -224,7 +252,7 @@ export default function TransfersTracking() {
         (allRestaurants || []).map(async (restaurant) => {
           const { data: orders, error: ordersError } = await supabase
             .from('commandes')
-            .select('id, total, created_at, statut, payment_status, user_id, restaurant_paid_at, commission_rate, commission_amount, restaurant_payout')
+            .select('id, total, discount_amount, created_at, statut, payment_status, user_id, restaurant_paid_at, commission_rate, commission_amount, restaurant_payout, loyalty_article_subsidy_eur')
             .eq('restaurant_id', restaurant.id)
             .eq('statut', 'livree');
 
@@ -313,9 +341,6 @@ export default function TransfersTracking() {
           // - All'ovale = 15%
           // - Tous les autres = commission_rate DB si présent, sinon 20%
           const fixedRate = getFixedCommissionRatePercentFromName(restaurant.nom);
-          const isBonnePate = fixedRate === 0;
-          const isAllovale = fixedRate === 15;
-
           const defaultRestaurantRatePercent =
             restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
               ? parseRatePercent(restaurant.commission_rate)
@@ -326,30 +351,8 @@ export default function TransfersTracking() {
           let restaurantPayout = 0;
 
           paidOrders.forEach((o) => {
-            const orderTotal = parseFloat(o.total || 0) || 0;
-
-            // La Bonne Pâte: 0% quoi qu'il arrive (même si des valeurs stockées sont incohérentes)
-            if (isBonnePate) {
-              commission += 0;
-              restaurantPayout += orderTotal;
-              return;
-            }
-
-            const orderRatePercent = parseRatePercent(o.commission_rate);
-            const effectiveRatePercent =
-              orderRatePercent ??
-              defaultRestaurantRatePercent ??
-              (isAllovale ? 15 : 20);
-
-            const orderCommission =
-              o.commission_amount !== null && o.commission_amount !== undefined
-                ? round2(o.commission_amount)
-                : round2((orderTotal * effectiveRatePercent) / 100);
-            const orderPayout =
-              o.restaurant_payout !== null && o.restaurant_payout !== undefined
-                ? round2(o.restaurant_payout)
-                : round2(orderTotal - orderCommission);
-
+            const orderCommission = computeOrderCommissionEur(o, restaurant);
+            const orderPayout = computeOrderRestaurantPayoutEur(o, restaurant);
             commission += orderCommission;
             restaurantPayout += orderPayout;
           });
@@ -546,13 +549,11 @@ export default function TransfersTracking() {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload.error || 'Erreur création virement');
 
-      // Ouvrir la facture/relevé en nouvelle fenêtre (PDF via impression)
-      if (payload.invoice_html) {
-        const w = window.open('', '_blank');
-        if (w) {
-          w.document.open();
-          w.document.write(payload.invoice_html);
-          w.document.close();
+      if (payload?.transfer?.id) {
+        try {
+          await downloadTransferInvoice(payload.transfer.id, payload.invoice_number);
+        } catch (invoiceErr) {
+          console.error('Téléchargement facture PDF:', invoiceErr);
         }
       }
 
@@ -609,13 +610,11 @@ export default function TransfersTracking() {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload.error || 'Erreur création virement');
 
-      // Ouvrir la facture/relevé en nouvelle fenêtre (PDF via impression)
-      if (payload.invoice_html) {
-        const w = window.open('', '_blank');
-        if (w) {
-          w.document.open();
-          w.document.write(payload.invoice_html);
-          w.document.close();
+      if (payload?.transfer?.id) {
+        try {
+          await downloadTransferInvoice(payload.transfer.id, payload.invoice_number);
+        } catch (invoiceErr) {
+          console.error('Téléchargement facture PDF:', invoiceErr);
         }
       }
 
@@ -989,29 +988,14 @@ export default function TransfersTracking() {
                         <button
                           onClick={async () => {
                             try {
-                              const { data: { session } } = await supabase.auth.getSession();
-                              if (!session?.access_token) {
-                                router.push('/login');
-                                return;
-                              }
-                              const res = await fetch(`/api/admin/restaurant-transfers/${transfer.id}/invoice`, {
-                                headers: { Authorization: `Bearer ${session.access_token}` },
-                              });
-                              // invoice route peut rediriger → on récupère le HTML final
-                              const html = await res.text();
-                              const w = window.open('', '_blank');
-                              if (w) {
-                                w.document.open();
-                                w.document.write(html);
-                                w.document.close();
-                              }
+                              await downloadTransferInvoice(transfer.id, transfer.invoice_number);
                             } catch (e) {
                               console.error(e);
-                              alert(e.message || 'Erreur ouverture document');
+                              alert(e.message || 'Erreur téléchargement PDF');
                             }
                           }}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-black transition-colors"
-                          title="Ouvrir la facture/relevé associé(e) à ce virement"
+                          title="Télécharger la facture PDF de ce virement"
                         >
                           <FaDownload />
                           <span>{transfer.invoice_number || 'Facture'}</span>
