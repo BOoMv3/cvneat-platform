@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['google-auth-library'],
+    serverComponentsExternalPackages: ['google-auth-library', 'pdfkit'],
   },
 
   images: {

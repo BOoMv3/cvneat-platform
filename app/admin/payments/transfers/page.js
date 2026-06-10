@@ -37,7 +37,8 @@ export default function TransfersTracking() {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Erreur HTTP ${res.status}`);
+      const details = err?.details ? ` (${err.details})` : '';
+      throw new Error((err.error || `Erreur HTTP ${res.status}`) + details);
     }
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);

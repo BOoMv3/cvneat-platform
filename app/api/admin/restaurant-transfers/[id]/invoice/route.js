@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { loadRestaurantTransferInvoiceData } from '../../../../../../lib/restaurant-transfer-invoice-data.js';
+import { loadRestaurantTransferInvoiceData } from '../../../../../../lib/restaurant-transfer-invoice-data';
 import {
   buildRestaurantTransferInvoicePdfBuffer,
   invoicePdfFilename,
-} from '../../../../../../lib/restaurant-invoice-pdf.js';
+} from '../../../../../../lib/restaurant-invoice-pdf';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -37,46 +40,54 @@ async function requireAdminUser(request) {
 }
 
 export async function GET(request, { params }) {
-  const auth = await requireAdminUser(request);
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  try {
+    const auth = await requireAdminUser(request);
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const id = params?.id;
-  if (!id) return NextResponse.json({ error: 'id requis' }, { status: 400 });
+    const id = params?.id;
+    if (!id) return NextResponse.json({ error: 'id requis' }, { status: 400 });
 
-  const { searchParams } = new URL(request.url);
-  const format = (searchParams.get('format') || 'pdf').toLowerCase();
+    const { searchParams } = new URL(request.url);
+    const format = (searchParams.get('format') || 'pdf').toLowerCase();
 
-  const data = await loadRestaurantTransferInvoiceData(supabaseAdmin, id);
-  if (data.error) {
-    return NextResponse.json({ error: data.error }, { status: data.status || 500 });
-  }
+    const data = await loadRestaurantTransferInvoiceData(supabaseAdmin, id);
+    if (data.error) {
+      return NextResponse.json({ error: data.error }, { status: data.status || 500 });
+    }
 
-  if (format === 'html') {
-    return new NextResponse(data.html, {
+    if (format === 'html') {
+      return new NextResponse(data.html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
+    }
+
+    const pdfBuffer = await buildRestaurantTransferInvoicePdfBuffer({
+      restaurant: data.restaurant,
+      transfer: data.transfer,
+      orders: data.orders,
+      totals: data.totals,
+      invoiceNumber: data.invoiceNumber,
+    });
+
+    const filename = invoicePdfFilename(data.invoiceNumber);
+
+    return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
-        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-store, max-age=0',
       },
     });
+  } catch (error) {
+    console.error('Erreur génération facture PDF:', error);
+    return NextResponse.json(
+      { error: 'Erreur génération facture PDF', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
-
-  const pdfBuffer = await buildRestaurantTransferInvoicePdfBuffer({
-    restaurant: data.restaurant,
-    transfer: data.transfer,
-    orders: data.orders,
-    totals: data.totals,
-    invoiceNumber: data.invoiceNumber,
-  });
-
-  const filename = invoicePdfFilename(data.invoiceNumber);
-
-  return new NextResponse(pdfBuffer, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': 'no-store, max-age=0',
-    },
-  });
 }
