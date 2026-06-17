@@ -15,6 +15,13 @@ export default function AdminOrders() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPayment, setFilterPayment] = useState('paid'); // 'paid' = payées uniquement, 'all' = toutes
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState(null);
+
+  const canCancelOrder = (order) => {
+    if (!order || order.statut === 'annulee') return false;
+    const payment = (order.payment_status || '').toString().trim().toLowerCase();
+    return !['refunded', 'cancelled'].includes(payment);
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -55,6 +62,42 @@ export default function AdminOrders() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cancelOrder = async (orderId) => {
+    if (!window.confirm('Annuler cette commande et rembourser le client si le paiement a été reçu ?')) {
+      return;
+    }
+
+    try {
+      setCancellingOrderId(orderId);
+      setError(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Session expirée, reconnecte-toi pour gérer les commandes.');
+      }
+
+      const response = await apiFetch(`/api/admin/orders/cancel/${orderId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || payload?.details || 'Impossible d\'annuler la commande');
+      }
+
+      alert(payload?.message || 'Commande annulée.');
+      await fetchOrders();
+    } catch (err) {
+      setError(err.message || 'Erreur annulation commande');
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -112,6 +155,8 @@ export default function AdminOrders() {
         return 'bg-purple-100 text-purple-800';
       case 'livree':
         return 'bg-gray-100 text-gray-800';
+      case 'annulee':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -131,6 +176,8 @@ export default function AdminOrders() {
         return 'Prête';
       case 'livree':
         return 'Livrée';
+      case 'annulee':
+        return 'Annulée';
       default:
         return status;
     }
@@ -349,6 +396,16 @@ export default function AdminOrders() {
                             {updatingOrderId === order.id ? '...' : 'Refuser'}
                           </button>
                         </>
+                      )}
+                      {canCancelOrder(order) && (
+                        <button
+                          onClick={() => cancelOrder(order.id)}
+                          disabled={cancellingOrderId === order.id || updatingOrderId === order.id}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+                          title="Annuler et rembourser le client"
+                        >
+                          {cancellingOrderId === order.id ? '...' : 'Annuler'}
+                        </button>
                       )}
                       <button
                         onClick={() => router.push(`/admin/orders/${order.id}`)}

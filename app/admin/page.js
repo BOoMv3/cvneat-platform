@@ -30,7 +30,15 @@ import {
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 import { livreurEarningNetEur } from '../../lib/livreur-delivery-earnings';
-import { computeCvneatNetRevenueEur } from '../../lib/cvneat-order-revenue';
+import {
+  aggregateCvneatRevenue,
+  getOrderArticlesSubtotalEur,
+  getOrderCommissionRateDecimal,
+} from '../../lib/cvneat-order-revenue';
+import {
+  isWeekHalfOffPromoActive,
+  WEEK_HALF_OFF_PROMO_BANNER,
+} from '../../lib/week-half-off-promo';
 
 export default function AdminPage() {
   const [stats, setStats] = useState({
@@ -38,7 +46,12 @@ export default function AdminPage() {
     pendingOrders: 0,
     validatedOrders: 0,
     totalRevenue: 0, // CA total (articles + livraison)
-    cvneatRevenue: 0, // CA CVN'EAT (20%)
+    cvneatRevenue: 0, // Gain net CVN'EAT (après promos plateforme)
+    cvneatGrossRevenue: 0, // Avant déduction promos plateforme
+    cvneatPlatformPromoCost: 0,
+    cvneatCommissionTotal: 0,
+    cvneatPlatformFeesTotal: 0,
+    cvneatLoyaltySubsidyTotal: 0,
     cvneatDeliveryRevenue: 0, // Commission CVN'EAT sur la livraison
     livreurRevenue: 0, // CA Livreur (frais de livraison)
     restaurantRevenue: 0, // Part restaurant (articles - commission)
@@ -62,6 +75,7 @@ export default function AdminPage() {
   const [togglingRestaurantId, setTogglingRestaurantId] = useState(null);
   const [broadcastPrepLoading, setBroadcastPrepLoading] = useState(false);
   const [broadcastPrepResult, setBroadcastPrepResult] = useState(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -229,71 +243,29 @@ export default function AdminPage() {
       // Gain CVN'EAT = commission + 0,49€ + commission livraison − promos plateforme − subvention fidélité
       
       let totalRevenue = 0; // CA total
-      let cvneatRevenue = 0; // CA CVN'EAT (20%)
-      let cvneatDeliveryRevenue = 0; // Commission CVN'EAT sur livraison
       let livreurRevenue = 0; // CA Livreur
       let restaurantRevenue = 0; // CA Restaurant (total - commission)
-      
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
-      // Calculer le CA mensuel
-      const monthlyRevenueMap = new Map(); // Map<"YYYY-MM", amount>
-      
-      orders?.filter(o => o.statut === 'livree').forEach(order => {
-        // Montant articles après réduction = ce que le client a réellement payé pour les articles
-        const totalArticles = parseFloat(order.total || 0);
-        const discount = parseFloat(order.discount_amount || 0) || 0;
-        const orderAmount = Math.max(0, totalArticles - discount);
-        const deliveryFee = parseFloat(order.frais_livraison || 0); // Frais de livraison
-        
-        // Utiliser les montants stockés en BDD (cohérents avec les virements) si présents
-        const storedCommission = order.commission_amount != null ? parseFloat(order.commission_amount) : null;
-        const storedPayout = order.restaurant_payout != null ? parseFloat(order.restaurant_payout) : null;
-        
-        const orderRestaurant = restaurants?.find(r => r.id === order.restaurant_id);
-        const normalizedRestaurantName = (orderRestaurant?.nom || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase();
-        const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-        
-        const restaurantCommissionRate = orderRestaurant?.commission_rate 
-          ? parseFloat(orderRestaurant.commission_rate) / 100 
-          : 0.20;
-        const commissionRate = isInternalRestaurant ? 0 : restaurantCommissionRate;
-        
-        const restaurantShare = storedPayout != null ? storedPayout : (orderAmount - (orderAmount * commissionRate));
-        const cvneatBreakdown = computeCvneatNetRevenueEur(order, { commissionRate });
+      const deliveredOrders = orders?.filter((o) => o.statut === 'livree') || [];
+      const { totals: cvneatTotals, monthlyRevenue } = aggregateCvneatRevenue(
+        deliveredOrders,
+        restaurants || []
+      );
 
-        // CA total = articles (après réduction) + frais de livraison
+      deliveredOrders.forEach((order) => {
+        const { orderAmount } = getOrderArticlesSubtotalEur(order);
+        const deliveryFee = parseFloat(order.frais_livraison || 0) || 0;
+        const storedPayout =
+          order.restaurant_payout != null ? parseFloat(order.restaurant_payout) : null;
+        const orderRestaurant = restaurants?.find((r) => r.id === order.restaurant_id);
+        const rate = getOrderCommissionRateDecimal(order, orderRestaurant);
+        const restaurantShare =
+          storedPayout != null ? storedPayout : Math.round(orderAmount * (1 - rate) * 100) / 100;
+
         totalRevenue += orderAmount + deliveryFee;
-
-        cvneatDeliveryRevenue += cvneatBreakdown.deliveryCommission;
-        cvneatRevenue += cvneatBreakdown.net;
-        
-        const livreurEarning = livreurEarningNetEur(order);
-        livreurRevenue += livreurEarning;
-
+        livreurRevenue += livreurEarningNetEur(order);
         restaurantRevenue += restaurantShare;
-
-        // Calculer le mois de la commande pour le CA mensuel
-        // Inclure la commission sur livraison dans le CA mensuel
-        const orderDate = new Date(order.created_at);
-        const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
-        const currentMonthAmount = monthlyRevenueMap.get(monthKey) || 0;
-        monthlyRevenueMap.set(monthKey, currentMonthAmount + cvneatBreakdown.net);
       });
-
-      // Convertir la map en tableau trié (du plus récent au plus ancien)
-      const monthlyRevenue = Array.from(monthlyRevenueMap.entries())
-        .map(([month, amount]) => ({
-          month,
-          amount: Math.round(amount * 100) / 100,
-          label: new Date(month + '-01').toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })
-        }))
-        .sort((a, b) => b.month.localeCompare(a.month)); // Trier du plus récent au plus ancien
       
       const totalRestaurants = restaurants?.length || 0;
       const pendingPartners = partnershipRequests?.filter(r => r.status === 'pending').length || 0;
@@ -337,8 +309,15 @@ export default function AdminPage() {
         pendingOrders,
         validatedOrders,
         totalRevenue,
-        cvneatRevenue,
-        cvneatDeliveryRevenue,
+        cvneatRevenue: cvneatTotals.net,
+        cvneatGrossRevenue: cvneatTotals.gross,
+        cvneatPlatformPromoCost: cvneatTotals.platformPromoCost,
+        cvneatCommissionTotal: cvneatTotals.commission,
+        cvneatPlatformFeesTotal: cvneatTotals.platformFees,
+        cvneatLoyaltySubsidyTotal: cvneatTotals.loyaltySubsidy,
+        cvneatDeliveredOrders: cvneatTotals.deliveredOrders,
+        cvneatOrdersWithEstimatedPromo: cvneatTotals.ordersWithEstimatedPromo,
+        cvneatDeliveryRevenue: cvneatTotals.deliveryCommission,
         livreurRevenue,
         restaurantRevenue,
         totalRestaurants,
@@ -412,7 +391,49 @@ export default function AdminPage() {
       case 'preparing': return 'En préparation';
       case 'ready': return 'Prête';
       case 'delivered': return 'Livrée';
+      case 'en_attente': return 'En attente';
+      case 'acceptee': return 'Acceptée';
+      case 'refusee': return 'Refusée';
+      case 'en_preparation': return 'En préparation';
+      case 'pret_a_livrer': return 'Prête';
+      case 'livree': return 'Livrée';
+      case 'annulee': return 'Annulée';
       default: return status;
+    }
+  };
+
+  const canCancelOrder = (order) => {
+    if (!order || order.statut === 'annulee') return false;
+    const payment = (order.payment_status || '').toString().trim().toLowerCase();
+    return !['refunded', 'cancelled'].includes(payment);
+  };
+
+  const cancelOrder = async (orderId) => {
+    if (!window.confirm('Annuler cette commande et rembourser le client si le paiement a été reçu ?')) {
+      return;
+    }
+
+    try {
+      setCancellingOrderId(orderId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Session expirée');
+
+      const res = await fetch(`/api/admin/orders/cancel/${orderId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || json?.details || 'Impossible d\'annuler la commande');
+      }
+
+      alert(json?.message || 'Commande annulée.');
+      await fetchDashboardStats();
+    } catch (e) {
+      alert(e?.message || 'Erreur annulation commande');
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -911,6 +932,16 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {isWeekHalfOffPromoActive() && (
+          <div className="mb-4 fold:mb-4 xs:mb-6 sm:mb-8 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Promo plateforme en cours</p>
+            <p className="mt-1">{WEEK_HALF_OFF_PROMO_BANNER}</p>
+            <p className="mt-2 text-xs text-amber-800">
+              Les gains CVN&apos;EAT ci-dessous intègrent le coût de cette promo (montant déduit par commande).
+            </p>
+          </div>
+        )}
+
         {/* Chiffres d'affaires détaillés */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 fold:gap-2 xs:gap-4 sm:gap-6 mb-4 fold:mb-4 xs:mb-6 sm:mb-8">
           <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6">
@@ -928,21 +959,70 @@ export default function AdminPage() {
             <p className="text-xs text-gray-500">Part reversée aux restaurants (80% des articles)</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-4 sm:p-6 lg:col-span-2">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-blue-100 text-blue-600">
                   <FaEuroSign className="text-xl" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">CA CVN'EAT (brut)</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatPrice(stats.cvneatRevenue)}</p>
+                  <p className="text-sm font-medium text-gray-600">Gain net CVN&apos;EAT</p>
+                  <p
+                    className={`text-2xl font-bold ${
+                      stats.cvneatRevenue < 0 ? 'text-red-600' : 'text-gray-900'
+                    }`}
+                  >
+                    {formatPrice(stats.cvneatRevenue)}
+                  </p>
                 </div>
               </div>
+              <div className="text-xs text-gray-600 space-y-1 sm:text-right">
+                <p>
+                  Avant promos plateforme :{' '}
+                  <span className="font-semibold text-gray-900">
+                    {formatPrice(stats.cvneatGrossRevenue)}
+                  </span>
+                </p>
+                <p>
+                  − Promos plateforme :{' '}
+                  <span className="font-semibold text-red-600">
+                    {formatPrice(stats.cvneatPlatformPromoCost)}
+                  </span>
+                </p>
+                {stats.cvneatLoyaltySubsidyTotal > 0 && (
+                  <p>
+                    − Subventions fidélité :{' '}
+                    <span className="font-semibold text-red-600">
+                      {formatPrice(stats.cvneatLoyaltySubsidyTotal)}
+                    </span>
+                  </p>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-gray-500">
-              Commission articles + frais plateforme + commission livraison
-              {stats.cvneatDeliveryRevenue ? ` (livraison: ${formatPrice(stats.cvneatDeliveryRevenue)})` : ''}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-gray-600 border-t border-gray-100 pt-3">
+              <div>
+                <p className="text-gray-500">Commissions articles</p>
+                <p className="font-semibold text-gray-900">{formatPrice(stats.cvneatCommissionTotal)}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Frais plateforme (0,49 €)</p>
+                <p className="font-semibold text-gray-900">{formatPrice(stats.cvneatPlatformFeesTotal)}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Commission livraison</p>
+                <p className="font-semibold text-gray-900">{formatPrice(stats.cvneatDeliveryRevenue)}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Commandes livrées</p>
+                <p className="font-semibold text-gray-900">{stats.cvneatDeliveredOrders || 0}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">
+              Sans promo : gain ≈ commissions + 0,49 € + livraison. Avec promo (−50 %, etc.) : le coût est
+              déduit automatiquement (montant enregistré sur chaque commande).
+              {stats.cvneatOrdersWithEstimatedPromo > 0
+                ? ` ${stats.cvneatOrdersWithEstimatedPromo} commande(s) estimée(s) (promo non enregistrée en base).`
+                : ''}
             </p>
           </div>
 
@@ -977,35 +1057,55 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* CA CVN'EAT par mois */}
+        {/* Gain CVN'EAT par mois */}
         <div className="bg-white rounded-lg shadow mb-4 fold:mb-4 xs:mb-6 sm:mb-8">
           <div className="p-4 sm:p-6 border-b border-gray-200">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">CA CVN'EAT par mois</h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">Chiffre d'affaires CVN'EAT (commissions) par mois</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Gain net CVN&apos;EAT par mois</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Commissions + frais plateforme + livraison, moins promos plateforme et subventions fidélité
+            </p>
           </div>
           <div className="p-4 sm:p-6">
             {stats.monthlyRevenue && stats.monthlyRevenue.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[32rem]">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Mois</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">CA CVN'EAT</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-gray-700">Mois</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-gray-700">Avant promos</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-gray-700">Promos plateforme</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-gray-700">Gain net</th>
                     </tr>
                   </thead>
                   <tbody>
                     {stats.monthlyRevenue.map((item, index) => (
                       <tr key={item.month} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                        <td className="py-3 px-4 text-sm text-gray-900 capitalize">{item.label}</td>
-                        <td className="py-3 px-4 text-sm font-semibold text-gray-900 text-right">{formatPrice(item.amount)}</td>
+                        <td className="py-3 px-3 text-sm text-gray-900 capitalize">{item.label}</td>
+                        <td className="py-3 px-3 text-sm text-gray-700 text-right">{formatPrice(item.gross)}</td>
+                        <td className="py-3 px-3 text-sm text-red-600 text-right">
+                          −{formatPrice(item.platformPromoCost)}
+                        </td>
+                        <td
+                          className={`py-3 px-3 text-sm font-semibold text-right ${
+                            item.net < 0 ? 'text-red-600' : 'text-gray-900'
+                          }`}
+                        >
+                          {formatPrice(item.net)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="border-t-2 border-gray-300">
                     <tr>
-                      <td className="py-3 px-4 text-sm font-bold text-gray-900">Total</td>
-                      <td className="py-3 px-4 text-sm font-bold text-gray-900 text-right">
-                        {formatPrice(stats.monthlyRevenue.reduce((sum, item) => sum + item.amount, 0))}
+                      <td className="py-3 px-3 text-sm font-bold text-gray-900">Total</td>
+                      <td className="py-3 px-3 text-sm font-bold text-gray-900 text-right">
+                        {formatPrice(stats.monthlyRevenue.reduce((sum, item) => sum + item.gross, 0))}
+                      </td>
+                      <td className="py-3 px-3 text-sm font-bold text-red-600 text-right">
+                        −{formatPrice(stats.monthlyRevenue.reduce((sum, item) => sum + item.platformPromoCost, 0))}
+                      </td>
+                      <td className="py-3 px-3 text-sm font-bold text-gray-900 text-right">
+                        {formatPrice(stats.monthlyRevenue.reduce((sum, item) => sum + item.net, 0))}
                       </td>
                     </tr>
                   </tfoot>
@@ -1160,13 +1260,25 @@ export default function AdminPage() {
                           {formatDate(order.created_at)}
                         </td>
                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                          <button
-                            onClick={() => router.push(`/admin/orders/${order.id}`)}
-                            className="text-blue-600 hover:text-blue-900 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                            title="Voir les détails"
-                          >
-                            <FaEye className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            {canCancelOrder(order) && (
+                              <button
+                                onClick={() => cancelOrder(order.id)}
+                                disabled={cancellingOrderId === order.id}
+                                className="text-orange-600 hover:text-orange-900 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50"
+                                title="Annuler et rembourser"
+                              >
+                                {cancellingOrderId === order.id ? '...' : 'Annuler'}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => router.push(`/admin/orders/${order.id}`)}
+                              className="text-blue-600 hover:text-blue-900 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                              title="Voir les détails"
+                            >
+                              <FaEye className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

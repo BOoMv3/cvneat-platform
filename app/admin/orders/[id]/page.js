@@ -13,6 +13,13 @@ export default function AdminOrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  const canCancelOrder = (currentOrder) => {
+    if (!currentOrder || currentOrder.statut === 'annulee') return false;
+    const payment = (currentOrder.payment_status || '').toString().trim().toLowerCase();
+    return !['refunded', 'cancelled'].includes(payment);
+  };
 
   useEffect(() => {
     if (params.id) {
@@ -101,6 +108,39 @@ export default function AdminOrderDetail() {
     }
   };
 
+  const cancelOrder = async () => {
+    if (!window.confirm('Annuler cette commande et rembourser le client si le paiement a été reçu ?')) {
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Session expirée, reconnecte-toi.');
+      }
+
+      const response = await apiFetch(`/api/admin/orders/cancel/${params.id}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || payload?.details || 'Impossible d\'annuler la commande');
+      }
+
+      alert(payload?.message || 'Commande annulée.');
+      await fetchOrder();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const updateOrderStatus = async (newStatus) => {
     setUpdating(true);
     try {
@@ -144,25 +184,55 @@ export default function AdminOrderDetail() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'accepted': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'preparing': return 'bg-blue-100 text-blue-800';
-      case 'ready': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending':
+      case 'en_attente':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'accepted':
+      case 'acceptee':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+      case 'refusee':
+        return 'bg-red-100 text-red-800';
+      case 'preparing':
+      case 'en_preparation':
+        return 'bg-blue-100 text-blue-800';
+      case 'ready':
+      case 'pret_a_livrer':
+        return 'bg-purple-100 text-purple-800';
+      case 'delivered':
+      case 'livree':
+        return 'bg-gray-100 text-gray-800';
+      case 'annulee':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending': return 'En attente';
-      case 'accepted': return 'Acceptée';
-      case 'rejected': return 'Refusée';
-      case 'preparing': return 'En préparation';
-      case 'ready': return 'Prête';
-      case 'delivered': return 'Livrée';
-      default: return status;
+      case 'pending':
+      case 'en_attente':
+        return 'En attente';
+      case 'accepted':
+      case 'acceptee':
+        return 'Acceptée';
+      case 'rejected':
+      case 'refusee':
+        return 'Refusée';
+      case 'preparing':
+      case 'en_preparation':
+        return 'En préparation';
+      case 'ready':
+      case 'pret_a_livrer':
+        return 'Prête';
+      case 'delivered':
+      case 'livree':
+        return 'Livrée';
+      case 'annulee':
+        return 'Annulée';
+      default:
+        return status;
     }
   };
 
@@ -473,6 +543,15 @@ export default function AdminOrderDetail() {
         <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold mb-4">Actions</h2>
           <div className="flex flex-wrap gap-3">
+            {canCancelOrder(order) && (
+              <button
+                onClick={cancelOrder}
+                disabled={cancelling || updating}
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+              >
+                {cancelling ? <FaSpinner className="animate-spin" /> : 'Annuler + rembourser'}
+              </button>
+            )}
             {(order.status === 'pending' || order.statut === 'en_attente') && (
               <>
                 <button
