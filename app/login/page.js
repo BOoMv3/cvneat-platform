@@ -235,6 +235,10 @@ export default function LoginPage() {
             setLoading(false);
             router.push('/admin');
             didNavigate = true;
+          } else if (role === 'comptable') {
+            setLoading(false);
+            router.push('/comptable');
+            didNavigate = true;
           } else if (role === 'delivery') {
             setLoading(false);
             router.push('/delivery/dashboard');

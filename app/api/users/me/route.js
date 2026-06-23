@@ -67,9 +67,12 @@ export async function GET(request) {
 
     // Si absent: créer un profil minimal (évite "Utilisateur non trouvé" partout)
     if (!finalUser) {
-      const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery']);
+      const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery', 'comptable']);
 
       let inferredRole = allowedRoles.has(user.user_metadata?.role) ? user.user_metadata.role : null;
+      if (!inferredRole && (user.email || '').toLowerCase() === 'comptable@cvneat.fr') {
+        inferredRole = 'comptable';
+      }
 
       // Heuristique: si un restaurant existe pour ce user_id, c'est un partenaire restaurant
       if (!inferredRole) {
@@ -117,7 +120,19 @@ export async function GET(request) {
       } else {
         finalUser = insertedUser;
       }
-    } else if (!finalUser.role) {
+    } else {
+      const metaRole = (user.user_metadata?.role || '').toString().trim().toLowerCase();
+      const email = (finalUser.email || user.email || '').toLowerCase();
+      if (
+        (metaRole === 'comptable' || email === 'comptable@cvneat.fr') &&
+        finalUser.role !== 'comptable' &&
+        finalUser.role !== 'admin'
+      ) {
+        finalUser = { ...finalUser, role: 'comptable' };
+      }
+    }
+
+    if (finalUser && !finalUser.role) {
       // Si le profil existe mais sans role, le fixer au minimum
       await supabaseAdmin.from('users').update({ role: 'user' }).eq('id', user.id).catch(() => {});
       finalUser = { ...finalUser, role: 'user' };

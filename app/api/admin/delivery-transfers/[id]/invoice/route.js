@@ -4,6 +4,7 @@ import {
   livreurDeliveryBaseEur,
   livreurEarningNetEur,
 } from '../../../../../../lib/livreur-delivery-earnings';
+import { requireFinanceAccess } from '../../../../../../lib/require-finance-access';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -202,28 +203,7 @@ function buildDeliveryInvoiceHtml({
 }
 
 async function requireAdminUser(request) {
-  const authHeader = request.headers.get('authorization');
-  const token =
-    authHeader && authHeader.toLowerCase().startsWith('bearer ')
-      ? authHeader.slice(7).trim()
-      : null;
-
-  if (!token) return { ok: false, status: 401, error: 'Token requis' };
-
-  const { data: userRes, error: userErr } = await supabaseAdmin.auth.getUser(token);
-  const user = userRes?.user;
-  if (userErr || !user) return { ok: false, status: 401, error: 'Token invalide' };
-
-  const { data: userData, error: roleErr } = await supabaseAdmin
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (roleErr || !userData || userData.role !== 'admin') {
-    return { ok: false, status: 403, error: 'Accès admin requis' };
-  }
-
-  return { ok: true, user };
+  return requireFinanceAccess(request, supabaseAdmin);
 }
 
 export async function GET(request, { params }) {

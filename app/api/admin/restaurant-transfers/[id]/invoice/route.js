@@ -5,6 +5,7 @@ import {
   buildRestaurantTransferInvoicePdfBuffer,
   invoicePdfFilename,
 } from '../../../../../../lib/restaurant-invoice-pdf';
+import { requireFinanceAccess } from '../../../../../../lib/require-finance-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,34 +15,9 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function requireAdminUser(request) {
-  const authHeader = request.headers.get('authorization');
-  const token =
-    authHeader && authHeader.toLowerCase().startsWith('bearer ')
-      ? authHeader.slice(7).trim()
-      : null;
-
-  if (!token) return { ok: false, status: 401, error: 'Token requis' };
-
-  const { data: userRes, error: userErr } = await supabaseAdmin.auth.getUser(token);
-  const user = userRes?.user;
-  if (userErr || !user) return { ok: false, status: 401, error: 'Token invalide' };
-
-  const { data: userData, error: roleErr } = await supabaseAdmin
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (roleErr || !userData || userData.role !== 'admin') {
-    return { ok: false, status: 403, error: 'Accès admin requis' };
-  }
-
-  return { ok: true, user };
-}
-
 export async function GET(request, { params }) {
   try {
-    const auth = await requireAdminUser(request);
+    const auth = await requireFinanceAccess(request, supabaseAdmin);
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const id = params?.id;
