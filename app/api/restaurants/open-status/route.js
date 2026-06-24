@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { hasExplicitScheduleForDay } from '../../../../lib/restaurant-horaires-paris';
+import { normalizeRestaurantOpenFields } from '../../../../lib/restaurant-open-compute';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -151,7 +151,7 @@ export async function POST(request) {
     const now = new Date();
     const debug = body?.debug === true;
 
-    let query = sb.from('restaurants').select('id, horaires, ferme_manuellement, ouvert_manuellement');
+    let query = sb.from('restaurants').select('id, horaires, ferme_manuellement, ouvert_manuellement, daily_open_confirmed_at, daily_open_declined_date');
     if (ids.length > 0) query = query.in('id', ids);
 
     const { data, error } = await query;
@@ -162,31 +162,14 @@ export async function POST(request) {
       return res;
     }
 
-    const toBool = (v) =>
-      v === true ||
-      v === 1 ||
-      (typeof v === 'string' && ['true', '1', 't', 'yes', 'oui', 'on'].includes(v.trim().toLowerCase()));
-
     const map = {};
     for (const r of data || []) {
-      const isManuallyClosed = toBool(r?.ferme_manuellement);
-      const isManuallyOpen = toBool(r?.ouvert_manuellement);
-      const fromHours = isOpenNowFromHoraires(r?.horaires, now);
-      const explicit = hasExplicitScheduleForDay(r?.horaires, now);
-      let computed;
-      if (isManuallyClosed) {
-        computed = { isOpen: false, reason: 'manual', meta: {} };
-      } else if (isManuallyOpen) {
-        computed = explicit
-          ? { ...fromHours, reason: fromHours.isOpen ? 'open' : 'outside_hours' }
-          : { isOpen: true, reason: 'manual_open', meta: {} };
-      } else {
-        computed = fromHours;
-      }
+      const openFields = normalizeRestaurantOpenFields(r, now);
       map[r.id] = {
-        isOpen: computed?.isOpen === true,
-        isManuallyClosed,
-        ...(debug ? { reason: computed?.reason, meta: computed?.meta } : {}),
+        isOpen: openFields.is_open_now === true,
+        isManuallyClosed: openFields.is_manually_closed === true,
+        dailyOpenConfirmed: openFields.daily_open_confirmed === true,
+        ...(debug ? { needsDailyOpenConfirmation: openFields.needs_daily_open_confirmation } : {}),
       };
     }
 

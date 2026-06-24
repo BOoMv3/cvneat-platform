@@ -38,6 +38,7 @@ import {
   FaTag
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
+import { getResolvedOpenFlags } from '../lib/restaurant-open-client';
 import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
@@ -442,71 +443,15 @@ const getHeuresJourForToday = (horaires) => {
   return null;
 };
 
-// Ouvert/fermé : basé sur les horaires (Europe/Paris).
-// ferme_manuellement => fermé. ouvert_manuellement => ouvert seulement si pas de plages explicites ; sinon les horaires priment (évite affichage ouvert la nuit si le flag reste actif).
+// Ouvert/fermé : même moteur que l’API (horaires + confirmation quotidienne partenaire).
 const checkRestaurantOpenStatus = (restaurant = {}) => {
   try {
-    const om = restaurant.ouvert_manuellement;
-    const isManuallyOpen =
-      om === true || om === 1 || om === 'true' || om === '1' ||
-      (typeof om === 'string' && ['true', 't', 'yes', 'oui', 'on', '1'].includes(String(om).trim().toLowerCase()));
-    const fm = restaurant.ferme_manuellement;
-    const isManuallyClosed =
-      fm === true || fm === 1 || fm === 'true' || fm === '1' ||
-      (typeof fm === 'string' && String(fm).trim().toLowerCase() === 'true');
-    if (isManuallyClosed) return { isOpen: false, isManuallyClosed: true, reason: 'manual' };
-
-    // Ne PAS faire confiance à `is_open_now` stocké en base (peut être périmé).
-    const horaires = coerceHorairesObject(restaurant.horaires);
-    const day = getHeuresJourForToday(horaires);
-    if (!day) {
-      if (isManuallyOpen) return { isOpen: true, isManuallyClosed: false, reason: 'manual_open' };
-      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    }
-    if (day.is_closed === true || day.ferme === true) {
-      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    }
-
-    const now = getParisNow();
-    const current = (now.hour ?? 0) * 60 + (now.minute ?? 0);
-    const toMinutes = (timeStr) => parseTimeToMinutes(timeStr);
-    const inRange = (start, end, isMidnightClose) => {
-      if (start == null || end == null) return false;
-      if (isMidnightClose) return current >= start;
-      const spansMidnight = end < start;
-      return spansMidnight ? (current >= start || current <= end) : (current >= start && current <= end);
+    const { isOpen, isManuallyClosed } = getResolvedOpenFlags(restaurant);
+    return {
+      isOpen,
+      isManuallyClosed,
+      reason: isOpen ? 'open' : isManuallyClosed ? 'manual' : 'closed',
     };
-
-    const hasPlages = Array.isArray(day.plages) && day.plages.length > 0;
-    const hasSingleRange = Boolean((day.ouverture || day.debut) && (day.fermeture || day.fin));
-    const hasExplicitHours = hasPlages || hasSingleRange;
-    if (!hasExplicitHours && day.ouvert === false) {
-      return { isOpen: false, isManuallyClosed: false, reason: 'closed_today' };
-    }
-
-    let open = false;
-    if (hasPlages) {
-      open = day.plages.some((plage) => {
-        const openStr = plage?.ouverture || plage?.debut;
-        const closeStr = plage?.fermeture || plage?.fin;
-        const start = toMinutes(openStr);
-        const end = toMinutes(closeStr);
-        const closeRaw = String(closeStr || '').trim();
-        const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-        return inRange(start, end, isMidnightClose);
-      });
-    } else {
-      const openStr = day.ouverture || day.debut;
-      const closeStr = day.fermeture || day.fin;
-      const start = toMinutes(openStr);
-      const end = toMinutes(closeStr);
-      const closeRaw = String(closeStr || '').trim();
-      const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
-      if (start != null && end != null) open = inRange(start, end, isMidnightClose);
-    }
-
-    if (isManuallyOpen && !hasExplicitHours) open = true;
-    return { isOpen: open, isManuallyClosed: false, reason: open ? 'open' : 'outside_hours' };
   } catch (e) {
     console.error('[checkRestaurantOpenStatus] Erreur:', restaurant?.nom || restaurant?.id, e);
     return { isOpen: false, isManuallyClosed: false, reason: 'error' };

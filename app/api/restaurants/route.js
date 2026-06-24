@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { hasExplicitScheduleForDay } from '../../../lib/restaurant-horaires-paris';
+import { normalizeRestaurantOpenFields } from '../../../lib/restaurant-open-compute';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -52,7 +53,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('restaurants')
       .select(
-        'id, nom, description, type_cuisine, status, adresse, ville, code_postal, frais_livraison, profile_image, image_url, logo_image, banner_image, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description, categories, category_order'
+        'id, nom, description, type_cuisine, status, adresse, ville, code_postal, frais_livraison, profile_image, image_url, logo_image, banner_image, ferme_manuellement, ouvert_manuellement, daily_open_confirmed_at, daily_open_declined_date, horaires, offre_active, offre_label, offre_description, categories, category_order'
       );
       // .eq('status', 'active'); // Temporairement désactivé pour debug
 
@@ -180,23 +181,21 @@ export async function GET() {
       return inRange(start, end, isMidnightClose);
     };
       const withFermeManuel = filtered.map((r) => {
-      const fm = toBool(r.ferme_manuellement);
-      const om = toBool(r.ouvert_manuellement);
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
       if (isLaBonnePate(r.nom)) { offreActiveFinal = false; }
-      // 1) fermé manuellement => fermé
-      // 2) ouvert manuellement => ouvert seulement sans plages explicites ; sinon on respecte les horaires (évite « ouvert » la nuit si flag oublié)
       const now = new Date();
-      const hoursOpen = isOpenNowParis(r.horaires, now);
-      const explicit = hasExplicitScheduleForDay(r.horaires, now);
-      const isOpenNow = fm ? false : om ? (explicit ? hoursOpen : true) : hoursOpen;
+      const openFields = normalizeRestaurantOpenFields(r, now);
+      const isOpenNow = openFields.is_open_now;
+      const fm = openFields.ferme_manuellement;
       return {
         ...r,
         cuisine_type: r.type_cuisine ?? null,
         ferme_manuellement: fm,
-        ouvert_manuellement: om,
+        ouvert_manuellement: false,
         is_open_now: isOpenNow,
+        daily_open_confirmed: openFields.daily_open_confirmed,
+        needs_daily_open_confirmation: openFields.needs_daily_open_confirmation,
         rating: 0,
         reviews_count: 0,
         offre_active: offreActiveFinal,

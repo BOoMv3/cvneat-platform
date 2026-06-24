@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { hasExplicitScheduleForDay } from '../../../../lib/restaurant-horaires-paris';
+import { normalizeRestaurantOpenFields } from '../../../../lib/restaurant-open-compute';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -136,14 +136,14 @@ export async function GET(request, { params }) {
       mise_en_avant: data.mise_en_avant || false,
       mise_en_avant_fin: data.mise_en_avant_fin || null
     };
-    const fm = toBool(data.ferme_manuellement);
-    const om = toBool(data.ouvert_manuellement);
-    restaurantWithDefaults.ferme_manuellement = fm;
-    restaurantWithDefaults.ouvert_manuellement = om;
     const now = new Date();
-    const hoursOpen = isOpenNowParis(data.horaires, now);
-    const explicit = hasExplicitScheduleForDay(data.horaires, now);
-    restaurantWithDefaults.is_open_now = fm ? false : om ? (explicit ? hoursOpen : true) : hoursOpen;
+    const openFields = normalizeRestaurantOpenFields(data, now);
+    restaurantWithDefaults.ferme_manuellement = openFields.ferme_manuellement;
+    restaurantWithDefaults.ouvert_manuellement = false;
+    restaurantWithDefaults.is_open_now = openFields.is_open_now;
+    restaurantWithDefaults.is_manually_closed = openFields.is_manually_closed;
+    restaurantWithDefaults.daily_open_confirmed = openFields.daily_open_confirmed;
+    restaurantWithDefaults.needs_daily_open_confirmation = openFields.needs_daily_open_confirmation;
 
     const res = NextResponse.json(restaurantWithDefaults);
     res.headers.set('Cache-Control', 'no-store, max-age=0');

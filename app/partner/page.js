@@ -29,7 +29,8 @@ import {
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
-import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
+import PartnerDailyOpenModal from '@/components/PartnerDailyOpenModal';
+import { shouldPromptDailyOpen } from '@/lib/restaurant-daily-open';
 import PartnerOrderDeliverySlotPanel from '@/components/PartnerOrderDeliverySlotPanel';
 import { getDeliverySlotSummaryLine } from '@/lib/delivery-slots';
 import { buildOrderReceiptText, printWithRawBt } from '../../lib/rawbt-print';
@@ -110,6 +111,8 @@ export default function PartnerDashboard() {
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(25);
   const [prepTimeUpdatedAt, setPrepTimeUpdatedAt] = useState(null);
   const [showPrepTimeModal, setShowPrepTimeModal] = useState(false);
+  const [showDailyOpenModal, setShowDailyOpenModal] = useState(false);
+  const [savingDailyOpen, setSavingDailyOpen] = useState(false);
   const [savingPrepTime, setSavingPrepTime] = useState(false);
   const [prepPromptAudioEnabled, setPrepPromptAudioEnabled] = useState(true);
   const audioUnlockedRef = useRef(false);
@@ -257,12 +260,14 @@ export default function PartnerDashboard() {
       // Temps de préparation (si migration appliquée)
       setPrepTimeMinutes(Number.isFinite(parseInt(resto.prep_time_minutes, 10)) ? parseInt(resto.prep_time_minutes, 10) : 25);
       setPrepTimeUpdatedAt(resto.prep_time_updated_at || null);
-      // Normaliser les flags manuels avec priorité: fermé manuel > ouvert manuel > horaires.
       const toBool = (v) =>
         v === true || v === 1 || v === 'true' || v === '1' ||
         (typeof v === 'string' && String(v).trim().toLowerCase() === 'true');
       const normalizedFermeManuel = toBool(resto?.ferme_manuellement) && !toBool(resto?.ouvert_manuellement);
       setIsManuallyClosed(normalizedFermeManuel);
+      if (shouldPromptDailyOpen(resto)) {
+        setShowDailyOpenModal(true);
+      }
       console.log('📋 Restaurant chargé:', {
         nom: resto?.nom,
         ferme_manuellement_original: resto?.ferme_manuellement,
@@ -283,13 +288,15 @@ export default function PartnerDashboard() {
 
       // Prompt quotidien directement sur le dashboard (timezone France)
       try {
-        const tz = 'Europe/Paris';
-        const today = new Date().toLocaleDateString('fr-FR', { timeZone: tz });
-        const last = resto.prep_time_updated_at
-          ? new Date(resto.prep_time_updated_at).toLocaleDateString('fr-FR', { timeZone: tz })
-          : null;
-        if (!resto.prep_time_minutes || !last || last !== today) {
-          setShowPrepTimeModal(true);
+        if (!shouldPromptDailyOpen(resto)) {
+          const tz = 'Europe/Paris';
+          const today = new Date().toLocaleDateString('fr-FR', { timeZone: tz });
+          const last = resto.prep_time_updated_at
+            ? new Date(resto.prep_time_updated_at).toLocaleDateString('fr-FR', { timeZone: tz })
+            : null;
+          if (!resto.prep_time_minutes || !last || last !== today) {
+            setShowPrepTimeModal(true);
+          }
         }
       } catch {
         // ignore
@@ -1924,7 +1931,7 @@ export default function PartnerDashboard() {
           type: typeof normalizedStatus
         });
         
-        alert(normalizedStatus ? 'Restaurant fermé manuellement' : 'Fermeture manuelle désactivée (selon vos horaires)');
+        alert(normalizedStatus ? 'Service fermé pour le moment' : 'Fermeture manuelle levée — vous êtes visible selon vos horaires si vous avez confirmé l\'ouverture du jour');
         
         // Forcer le rafraîchissement de la page d'accueil pour mettre à jour le statut
         if (typeof window !== 'undefined') {
@@ -1959,6 +1966,71 @@ export default function PartnerDashboard() {
       alert('Erreur lors de la mise à jour du statut: ' + error.message);
     } finally {
       setTogglingManualStatus(false);
+    }
+  };
+
+  const dispatchRestaurantStatusChanged = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event('restaurant-status-changed'));
+    try {
+      if ('BroadcastChannel' in window && restaurant?.id) {
+        const bc = new BroadcastChannel('cvneat_restaurant_status');
+        bc.postMessage({ type: 'restaurant-status-changed', restaurantId: restaurant.id, at: Date.now() });
+        bc.close();
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const postDailyOpenAction = async (action) => {
+    if (!restaurant?.id || savingDailyOpen) return;
+    setSavingDailyOpen(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+      const res = await fetch(`/api/partner/restaurant/${restaurant.id}/daily-open`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error || data?.details || 'Impossible d\'enregistrer votre réponse.');
+        return;
+      }
+      if (data.restaurant) {
+        setRestaurant((prev) => ({ ...prev, ...data.restaurant }));
+        const fm = data.restaurant.ferme_manuellement === true || data.restaurant.ferme_manuellement === 'true';
+        setIsManuallyClosed(fm);
+      }
+      setShowDailyOpenModal(false);
+      dispatchRestaurantStatusChanged();
+      if (action === 'confirm' && data.restaurant) {
+        try {
+          const resto = data.restaurant;
+          const tz = 'Europe/Paris';
+          const today = new Date().toLocaleDateString('fr-FR', { timeZone: tz });
+          const last = resto.prep_time_updated_at
+            ? new Date(resto.prep_time_updated_at).toLocaleDateString('fr-FR', { timeZone: tz })
+            : null;
+          if (!resto.prep_time_minutes || !last || last !== today) {
+            setShowPrepTimeModal(true);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    } catch (error) {
+      alert(error?.message || 'Erreur lors de la confirmation');
+    } finally {
+      setSavingDailyOpen(false);
     }
   };
 
@@ -2693,9 +2765,16 @@ export default function PartnerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <OpenCloseManualNotice />
+      <PartnerDailyOpenModal
+        restaurant={restaurant}
+        open={showDailyOpenModal}
+        loading={savingDailyOpen}
+        onConfirm={() => postDailyOpenAction('confirm')}
+        onDecline={() => postDailyOpenAction('decline')}
+        onLater={() => setShowDailyOpenModal(false)}
+      />
       {/* Popup quotidien: temps de préparation */}
-      {showPrepTimeModal && restaurant?.id && (
+      {showPrepTimeModal && !showDailyOpenModal && restaurant?.id && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Temps de préparation du jour</h2>
@@ -2891,13 +2970,13 @@ export default function PartnerDashboard() {
                     ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800'
                     : 'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
                 }`}
-                title={isManuallyClosed === true ? 'Cliquez pour ouvrir le restaurant' : 'Cliquez pour fermer le restaurant'}
+                title={isManuallyClosed === true ? 'Rouvrir le service (vous restez fermé aux clients tant que vous n\'avez pas confirmé l\'ouverture du jour)' : 'Fermer le service maintenant'}
               >
                 {isManuallyClosed === true ? (
                   <>
                     <FaCheck className="h-4 w-4 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Ouvrir</span>
-                    <span className="sm:hidden">Ouvrir</span>
+                    <span className="hidden sm:inline">Rouvrir</span>
+                    <span className="sm:hidden">Rouvrir</span>
                   </>
                 ) : (
                   <>

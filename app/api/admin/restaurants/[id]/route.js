@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as sharedSupabaseAdmin } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { toParisDateString } from '../../../../../lib/restaurant-daily-open';
 
 const getAdminClient = () => {
   if (sharedSupabaseAdmin) {
@@ -132,6 +133,15 @@ export async function PUT(request, { params }) {
     if (manual_status_updated_by !== undefined) updateData.manual_status_updated_by = manual_status_updated_by;
     if (ferme_manuellement !== undefined || ouvert_manuellement !== undefined) {
       updateData.updated_at = new Date().toISOString();
+      const opening = ouvert_manuellement === true && ferme_manuellement !== true;
+      const closing = ferme_manuellement === true;
+      if (opening) {
+        updateData.daily_open_confirmed_at = new Date().toISOString();
+        updateData.daily_open_declined_date = null;
+      } else if (closing) {
+        updateData.daily_open_declined_date = toParisDateString();
+        updateData.daily_open_confirmed_at = null;
+      }
     }
 
     const { data: updatedRestaurant, error } = await supabase
