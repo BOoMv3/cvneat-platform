@@ -176,7 +176,6 @@ export async function GET(request) {
         refunded_at,
         stripe_refund_id,
         payment_status,
-        world_cup_ticket_code,
         restaurant:restaurants(id, nom, adresse, ville)
       `)
       .order('created_at', { ascending: false });
@@ -431,7 +430,7 @@ export async function GET(request) {
         payment_status: order.payment_status || 'pending',
         discount_amount: order.discount_amount != null ? parseFloat(order.discount_amount) : 0,
         orderFulfillment: order.order_fulfillment || 'delivery',
-        worldCupTicketCode: order.world_cup_ticket_code || null,
+        worldCupTicketCode: null,
       };
     }));
 

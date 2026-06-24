@@ -1184,31 +1184,36 @@ export default function Checkout() {
       throw new Error('ID de commande introuvable. Le paiement a été effectué, contactez le support avec votre numéro de transaction.');
     }
 
-    // Mettre à jour la commande existante (simplifié)
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
+    // Mettre à jour la commande existante : confirmation serveur (notifications restaurant/livreur, frais, fidélité)
     try {
-      const updateResponse = await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          stripe_payment_intent_id: confirmedPaymentIntentId,
-          payment_status: 'paid',
-          statut: 'en_attente'
-        })
+      const confirmResponse = await fetch('/api/payment/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: confirmedPaymentIntentId }),
       });
-
-      if (!updateResponse.ok) {
-        console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateResponse.status);
-        // Ne pas bloquer - le webhook Stripe gérera la mise à jour
+      if (!confirmResponse.ok) {
+        const errText = await confirmResponse.text().catch(() => '');
+        console.warn('⚠️ /api/payment/confirm échoué (fallback PUT):', confirmResponse.status, errText);
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const updateResponse = await fetch(`/api/orders/${orderId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            stripe_payment_intent_id: confirmedPaymentIntentId,
+            payment_status: 'paid',
+            statut: 'en_attente',
+          }),
+        });
+        if (!updateResponse.ok) {
+          console.warn('⚠️ Erreur mise à jour commande (fallback PUT):', updateResponse.status);
+        }
       }
-    } catch (updateError) {
-      console.warn('⚠️ Erreur mise à jour commande (non bloquant):', updateError);
-      // Ne pas bloquer - continuer vers la confirmation
+    } catch (confirmError) {
+      console.warn('⚠️ Erreur confirmation paiement (non bloquant):', confirmError);
     }
 
     // Enregistrer l'utilisation du code promo si présent
