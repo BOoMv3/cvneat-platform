@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
-import { toParisDateString } from '../../../../../lib/restaurant-daily-open';
+import { supabase } from '../../../../../../lib/supabase';
+import { toParisDateString } from '../../../../../../lib/restaurant-daily-open';
 
-(request, restaurantId) {
+async function getAuthedRestaurantOwner(request, restaurantId) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return { error: 'Token manquant', status: 401 };
 
