@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FaStar, FaClock, FaMotorcycle, FaMapMarkerAlt, FaHeart } from 'react-icons/fa';
 import StarRating from './StarRating';
+import {
+  isLaBonnePateRestaurant,
+  LA_BONNE_PATE_TAGLINE,
+  getLaBonnePateLogoUrl,
+} from '@/lib/restaurant-theme';
 
 export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false, hours = [], isOpen = true, isManuallyClosed = false }) {
   const [currentHours, setCurrentHours] = useState(null);
@@ -23,6 +28,11 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
   }, [hours]);
 
   if (!restaurant) return null;
+
+  const isLaBonnePate = isLaBonnePateRestaurant(restaurant);
+  const logoUrl = isLaBonnePate
+    ? getLaBonnePateLogoUrl(restaurant)
+    : restaurant.profile_image || restaurant.logo_image;
 
   const formatHours = (hours) => {
     if (!hours || hours.length === 0) return 'Horaires non définis';
@@ -45,18 +55,16 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
     <div className="relative w-full rounded-t-2xl sm:rounded-t-3xl">
       {/* Bannière principale */}
       <div 
-        className={`relative w-full bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 overflow-hidden rounded-t-2xl sm:rounded-t-3xl ${
-          // Pour "La Bonne Pâte", réduire légèrement la hauteur
-          restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')
-            ? "h-56 sm:h-64 md:h-72"
-            : "h-64 sm:h-72 md:h-80"
+        className={`relative w-full overflow-hidden rounded-t-2xl sm:rounded-t-3xl ${
+          isLaBonnePate
+            ? 'h-56 sm:h-64 md:h-72 bg-gradient-to-br from-[#5c6136] via-[#6b7040] to-[#4a4f2b]'
+            : 'h-64 sm:h-72 md:h-80 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800'
         }`}
       >
       {/* Image de fond avec overlay */}
       <div className="absolute inset-0 w-full h-full">
         {restaurant.banner_image ? (
-          // Pour "La Bonne Pâte", utiliser un style personnalisé pour préserver les néons
-          (restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')) ? (
+          isLaBonnePate ? (
             <img 
               src={restaurant.banner_image}
               alt={restaurant.nom}
@@ -99,13 +107,11 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
             sizes="100vw"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800" />
+          <div className={`w-full h-full ${isLaBonnePate ? 'bg-gradient-to-br from-[#5c6136] via-[#6b7040] to-[#4a4f2b]' : 'bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800'}`} />
         )}
       </div>
 
-      {/* Overlay sombre - Plus sombre en bas pour améliorer la visibilité du texte */}
-      {/* Pour "La Bonne Pâte", overlay très léger ou aucun overlay pour préserver les néons */}
-      {!(restaurant.nom?.toLowerCase().includes('bonne pâte') || restaurant.nom?.toLowerCase().includes('bonne pate')) && (
+      {!isLaBonnePate && (
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/60" />
       )}
 
@@ -133,25 +139,30 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       {/* Logo et nom du restaurant centrés - Optimisé pour ne pas empiéter */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full px-2 sm:px-4 pb-6 sm:pb-8 md:pb-10">
         {/* Logo du restaurant */}
-        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white rounded-full shadow-2xl flex items-center justify-center mb-2 sm:mb-3 md:mb-4 border-2 sm:border-3 md:border-4 border-white">
-          {restaurant.profile_image ? (
-            <Image
-              src={restaurant.profile_image}
-              alt={`Logo ${restaurant.nom}`}
-              width={64}
-              height={64}
-              className="rounded-full object-cover w-full h-full"
-              sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
-            />
-          ) : restaurant.logo_image ? (
-            <Image
-              src={restaurant.logo_image}
-              alt={`Logo ${restaurant.nom}`}
-              width={64}
-              height={64}
-              className="rounded-full object-cover w-full h-full"
-              sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
-            />
+        <div
+          className={`flex items-center justify-center mb-2 sm:mb-3 md:mb-4 shadow-2xl ${
+            isLaBonnePate
+              ? 'w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 bg-transparent'
+              : 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white rounded-full border-2 sm:border-3 md:border-4 border-white'
+          }`}
+        >
+          {logoUrl ? (
+            isLaBonnePate ? (
+              <img
+                src={logoUrl}
+                alt={`Logo ${restaurant.nom}`}
+                className="w-full h-full object-contain drop-shadow-lg"
+              />
+            ) : (
+              <Image
+                src={logoUrl}
+                alt={`Logo ${restaurant.nom}`}
+                width={64}
+                height={64}
+                className="rounded-full object-cover w-full h-full"
+                sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
+              />
+            )
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
               <span className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
@@ -161,22 +172,36 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
           )}
         </div>
 
-        {/* Nom du restaurant - Optimisé pour mobile avec meilleure visibilité */}
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white text-center mb-1 sm:mb-2 px-2 line-clamp-2 break-words relative z-10" style={{ 
-          textShadow: '2px 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 0, 0, 0.4)',
-          WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.3)'
-        }}>
+        <h1
+          className={`text-xl sm:text-2xl md:text-3xl font-bold text-white text-center mb-1 sm:mb-2 px-2 line-clamp-2 break-words relative z-10 ${
+            isLaBonnePate ? 'font-display-lbp tracking-wide uppercase' : ''
+          }`}
+          style={
+            isLaBonnePate
+              ? { textShadow: '1px 1px 4px rgba(0,0,0,0.5)' }
+              : {
+                  textShadow:
+                    '2px 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 0, 0, 0.4)',
+                  WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.3)',
+                }
+          }
+        >
           {restaurant.nom}
         </h1>
 
-        {/* Sous-titre - Masqué sur très petits écrans avec meilleure visibilité */}
-        {restaurant.description && (
-          <p className="text-white text-center text-xs sm:text-sm md:text-lg mb-2 sm:mb-3 md:mb-4 px-2 line-clamp-2 hidden sm:block relative z-10" style={{ 
-            textShadow: '2px 2px 6px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 0, 0, 0.4)',
-            WebkitTextStroke: '0.3px rgba(0, 0, 0, 0.3)'
-          }}>
-            {restaurant.description}
+        {isLaBonnePate ? (
+          <p className="font-script-lbp text-white text-center text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3 px-2 relative z-10 hidden sm:block" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>
+            {LA_BONNE_PATE_TAGLINE}
           </p>
+        ) : (
+          restaurant.description && (
+            <p className="text-white text-center text-xs sm:text-sm md:text-lg mb-2 sm:mb-3 md:mb-4 px-2 line-clamp-2 hidden sm:block relative z-10" style={{ 
+              textShadow: '2px 2px 6px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 0, 0, 0.4)',
+              WebkitTextStroke: '0.3px rgba(0, 0, 0, 0.3)'
+            }}>
+              {restaurant.description}
+            </p>
+          )
         )}
       </div>
 
@@ -185,7 +210,11 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       </div>
       
       {/* Informations en bas - Position ajustée pour réduire l'empiètement sur l'image */}
-      <div className="relative -mt-4 sm:-mt-5 md:-mt-6 bg-white dark:bg-gray-800 p-4 sm:p-5 md:p-6 rounded-t-2xl sm:rounded-t-3xl border-t border-x border-gray-200 dark:border-gray-700 z-20">
+      <div className={`relative -mt-4 sm:-mt-5 md:-mt-6 p-4 sm:p-5 md:p-6 rounded-t-2xl sm:rounded-t-3xl border-t border-x z-20 ${
+        isLaBonnePate
+          ? 'lbp-info-panel border-[var(--lbp-border)]'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+      }`}>
         {/* Étoiles, temps de livraison et frais - Visible en premier */}
         <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 md:gap-5">

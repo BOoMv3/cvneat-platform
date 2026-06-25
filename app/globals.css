@@ -1202,3 +1202,143 @@ html.wc-mode .via-red-500 {
   --tw-gradient-to: #15803d var(--tw-gradient-to-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), #22c55e, var(--tw-gradient-to) !important;
 }
+
+/* ——— La Bonne Pâte (labonnepate34.fr) ——— */
+.theme-la-bonne-pate {
+  --lbp-bg: #f7f4ed;
+  --lbp-card: #f0ebe0;
+  --lbp-secondary: #e8dcc4;
+  --lbp-primary: #5c6136;
+  --lbp-primary-dark: #4a4f2b;
+  --lbp-fg: #1f2118;
+  --lbp-muted: #5c5a52;
+  --lbp-border: rgba(31, 33, 24, 0.12);
+  background-color: var(--lbp-bg);
+  color: var(--lbp-fg);
+  font-family: 'Lato', system-ui, sans-serif;
+}
+
+.theme-la-bonne-pate h1,
+.theme-la-bonne-pate h2,
+.theme-la-bonne-pate h3,
+.theme-la-bonne-pate .font-display-lbp {
+  font-family: 'Oswald', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.theme-la-bonne-pate .font-script-lbp {
+  font-family: 'Great Vibes', cursive;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.theme-la-bonne-pate .bg-gray-50,
+.theme-la-bonne-pate .bg-white {
+  background-color: var(--lbp-bg) !important;
+}
+
+.theme-la-bonne-pate .dark\:bg-gray-800,
+.theme-la-bonne-pate .dark\:bg-gray-900 {
+  background-color: var(--lbp-bg) !important;
+}
+
+.theme-la-bonne-pate .border-gray-200,
+.theme-la-bonne-pate .border-gray-300,
+.theme-la-bonne-pate .dark\:border-gray-700 {
+  border-color: var(--lbp-border) !important;
+}
+
+.theme-la-bonne-pate .text-gray-900,
+.theme-la-bonne-pate .dark\:text-white {
+  color: var(--lbp-fg) !important;
+}
+
+.theme-la-bonne-pate .text-gray-600,
+.theme-la-bonne-pate .text-gray-700,
+.theme-la-bonne-pate .text-gray-800,
+.theme-la-bonne-pate .dark\:text-gray-300,
+.theme-la-bonne-pate .dark\:text-gray-400 {
+  color: var(--lbp-muted) !important;
+}
+
+.theme-la-bonne-pate .bg-orange-500,
+.theme-la-bonne-pate .bg-orange-600,
+.theme-la-bonne-pate .dark\:bg-orange-600 {
+  background-color: var(--lbp-primary) !important;
+}
+
+.theme-la-bonne-pate .hover\:bg-orange-600:hover,
+.theme-la-bonne-pate .hover\:bg-orange-700:hover,
+.theme-la-bonne-pate .dark\:hover\:bg-orange-700:hover {
+  background-color: var(--lbp-primary-dark) !important;
+}
+
+.theme-la-bonne-pate .text-orange-500,
+.theme-la-bonne-pate .text-orange-600,
+.theme-la-bonne-pate .dark\:text-orange-400 {
+  color: var(--lbp-primary) !important;
+}
+
+.theme-la-bonne-pate .hover\:text-orange-600:hover,
+.theme-la-bonne-pate .dark\:hover\:text-orange-400:hover {
+  color: var(--lbp-primary-dark) !important;
+}
+
+.theme-la-bonne-pate .border-orange-500,
+.theme-la-bonne-pate .hover\:border-orange-400:hover {
+  border-color: var(--lbp-primary) !important;
+}
+
+.theme-la-bonne-pate .bg-orange-50,
+.theme-la-bonne-pate .dark\:bg-orange-500\/10 {
+  background-color: var(--lbp-secondary) !important;
+}
+
+.theme-la-bonne-pate .bg-orange-100 {
+  background-color: var(--lbp-secondary) !important;
+}
+
+.theme-la-bonne-pate .text-orange-100 {
+  color: var(--lbp-secondary) !important;
+}
+
+.theme-la-bonne-pate .from-orange-500 {
+  --tw-gradient-from: var(--lbp-primary) var(--tw-gradient-from-position) !important;
+}
+
+.theme-la-bonne-pate .to-amber-500 {
+  --tw-gradient-to: #8b7340 var(--tw-gradient-to-position) !important;
+}
+
+.theme-la-bonne-pate .border-orange-200,
+.theme-la-bonne-pate .border-t-orange-500 {
+  border-color: var(--lbp-primary) !important;
+}
+
+.theme-la-bonne-pate .lbp-info-panel {
+  background-color: var(--lbp-card) !important;
+  border-color: var(--lbp-border) !important;
+}
+
+.theme-la-bonne-pate .lbp-menu-card {
+  background-color: var(--lbp-card) !important;
+  border-color: var(--lbp-border) !important;
+  box-shadow: 0 1px 3px rgba(31, 33, 24, 0.06);
+}
+
+.theme-la-bonne-pate .lbp-section-title {
+  font-family: 'Oswald', sans-serif;
+  color: var(--lbp-primary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.theme-la-bonne-pate .lbp-section-subtitle {
+  font-family: 'Great Vibes', cursive;
+  font-size: 1.35rem;
+  color: var(--lbp-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
