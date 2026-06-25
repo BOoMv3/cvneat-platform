@@ -7,7 +7,6 @@ import StarRating from './StarRating';
 import {
   isLaBonnePateRestaurant,
   LA_BONNE_PATE_TAGLINE,
-  getLaBonnePateLogoUrl,
 } from '@/lib/restaurant-theme';
 
 export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavorite = false, hours = [], isOpen = true, isManuallyClosed = false }) {
@@ -30,9 +29,7 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
   if (!restaurant) return null;
 
   const isLaBonnePate = isLaBonnePateRestaurant(restaurant);
-  const logoUrl = isLaBonnePate
-    ? getLaBonnePateLogoUrl(restaurant)
-    : restaurant.profile_image || restaurant.logo_image;
+  const logoUrl = restaurant.profile_image || restaurant.logo_image;
 
   const formatHours = (hours) => {
     if (!hours || hours.length === 0) return 'Horaires non définis';
@@ -139,30 +136,16 @@ export default function RestaurantBanner({ restaurant, onToggleFavorite, isFavor
       {/* Logo et nom du restaurant centrés - Optimisé pour ne pas empiéter */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full px-2 sm:px-4 pb-6 sm:pb-8 md:pb-10">
         {/* Logo du restaurant */}
-        <div
-          className={`flex items-center justify-center mb-2 sm:mb-3 md:mb-4 shadow-2xl ${
-            isLaBonnePate
-              ? 'w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 bg-transparent'
-              : 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white rounded-full border-2 sm:border-3 md:border-4 border-white'
-          }`}
-        >
+        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white rounded-full shadow-2xl flex items-center justify-center mb-2 sm:mb-3 md:mb-4 border-2 sm:border-3 md:border-4 border-white">
           {logoUrl ? (
-            isLaBonnePate ? (
-              <img
-                src={logoUrl}
-                alt={`Logo ${restaurant.nom}`}
-                className="w-full h-full object-contain drop-shadow-lg"
-              />
-            ) : (
-              <Image
-                src={logoUrl}
-                alt={`Logo ${restaurant.nom}`}
-                width={64}
-                height={64}
-                className="rounded-full object-cover w-full h-full"
-                sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
-              />
-            )
+            <Image
+              src={logoUrl}
+              alt={`Logo ${restaurant.nom}`}
+              width={96}
+              height={96}
+              className="rounded-full object-cover w-full h-full"
+              sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
+            />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
               <span className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
