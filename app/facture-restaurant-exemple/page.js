@@ -2,9 +2,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export const metadata = {
-  title: "Facture restaurant d'exemple | CVN'EAT",
+  title: "Relevé de ventes restaurant — exemple | CVN'EAT",
   description:
-    "Document d'exemple pour présenter aux futurs partenaires et à leur comptable le format des factures CVN'EAT.",
+    "Document d'exemple : relevé émis par le restaurant partenaire avec CVN'EAT comme client / plateforme.",
 };
 
 export default function FactureRestaurantExemplePage() {
@@ -14,9 +14,9 @@ export default function FactureRestaurantExemplePage() {
         <div className="flex items-center gap-4">
           <Image src="/cvneat-logo.png" alt="CVN'EAT" width={72} height={72} className="rounded-full" />
           <div>
-            <h1 className="text-2xl font-bold">Facture restaurant — exemple</h1>
+            <h1 className="text-2xl font-bold">Relevé de ventes — exemple</h1>
             <p className="text-slate-600 mt-1">
-              Document fictif au même format que les factures réelles transmises après chaque virement.
+              Document fictif au même format que les relevés transmis après chaque virement (restaurant émetteur).
             </p>
           </div>
         </div>
@@ -25,8 +25,8 @@ export default function FactureRestaurantExemplePage() {
           <p className="font-semibold">À transmettre à un futur partenaire ou à son expert-comptable</p>
           <p className="mt-2">
             Les coordonnées du restaurant, les numéros de commande et les montants sont volontairement fictifs.
-            Le document montre comment CVN&apos;EAT facture sa commission et détaille le net reversé au restaurant
-            (CA articles, commission plateforme, montant viré).
+            Le document montre les ventes réalisées via CVN&apos;EAT : le <strong>restaurant est l&apos;émetteur</strong>,
+            CVN&apos;EAT est le <strong>client / destinataire</strong>, avec le détail CA articles, commission plateforme et net viré.
           </p>
         </div>
 
@@ -59,10 +59,10 @@ export default function FactureRestaurantExemplePage() {
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-sm text-slate-700 space-y-2">
           <p className="font-semibold text-slate-900">Contenu du document d&apos;exemple</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Émetteur : CVN&apos;EAT (SAS) — SIRET, RCS, adresse Ganges</li>
-            <li>Restaurant fictif : SARL Le Bistrot du Marché (SIRET d&apos;exemple)</li>
-            <li>6 commandes sur mai 2026 — commission 20 % — total viré 146,88 €</li>
-            <li>Mention TVA : exonération art. 293 B du CGI (comme sur les factures réelles)</li>
+            <li>Émetteur : SARL Le Bistrot du Marché (SIRET d&apos;exemple, Montpellier)</li>
+            <li>Client / plateforme : CVN&apos;EAT (SAS) — SIRET, RCS, adresse Ganges</li>
+            <li>6 commandes sur mai 2026 — commission CVN&apos;EAT 20 % — total viré 146,88 €</li>
+            <li>Mention TVA CVN&apos;EAT : exonération art. 293 B du CGI (comme sur les relevés réels)</li>
           </ul>
         </div>
 
