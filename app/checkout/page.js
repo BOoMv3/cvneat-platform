@@ -1186,34 +1186,32 @@ export default function Checkout() {
 
     // Mettre à jour la commande existante : confirmation serveur (notifications restaurant/livreur, frais, fidélité)
     try {
-      const confirmResponse = await fetch('/api/payment/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentIntentId: confirmedPaymentIntentId }),
-      });
-      if (!confirmResponse.ok) {
-        const errText = await confirmResponse.text().catch(() => '');
-        console.warn('⚠️ /api/payment/confirm échoué (fallback PUT):', confirmResponse.status, errText);
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        const updateResponse = await fetch(`/api/orders/${orderId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            stripe_payment_intent_id: confirmedPaymentIntentId,
-            payment_status: 'paid',
-            statut: 'en_attente',
-          }),
+      let confirmOk = false;
+      let lastConfirmError = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const confirmResponse = await fetch('/api/payment/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: confirmedPaymentIntentId }),
         });
-        if (!updateResponse.ok) {
-          console.warn('⚠️ Erreur mise à jour commande (fallback PUT):', updateResponse.status);
+        if (confirmResponse.ok) {
+          confirmOk = true;
+          break;
+        }
+        lastConfirmError = await confirmResponse.text().catch(() => '');
+        console.warn(`⚠️ /api/payment/confirm tentative ${attempt + 1}/3:`, confirmResponse.status, lastConfirmError);
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
         }
       }
+      if (!confirmOk) {
+        throw new Error(
+          `Confirmation paiement échouée après 3 tentatives. Votre paiement est enregistré — contactez le support avec la référence ${confirmedPaymentIntentId}. ${lastConfirmError}`
+        );
+      }
     } catch (confirmError) {
-      console.warn('⚠️ Erreur confirmation paiement (non bloquant):', confirmError);
+      console.error('❌ Erreur confirmation paiement:', confirmError);
+      throw confirmError;
     }
 
     // Enregistrer l'utilisation du code promo si présent

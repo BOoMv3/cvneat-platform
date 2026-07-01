@@ -247,7 +247,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
 
     const byPi = await db
       .from('commandes')
-      .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, order_fulfillment, statut')
+      .select('id, user_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, order_fulfillment, statut')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .maybeSingle();
     order = byPi.data || null;
@@ -259,7 +259,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
         console.log('🔎 Webhook: fallback lookup commande via metadata.order_id:', metaOrderId);
         const byMeta = await db
           .from('commandes')
-          .select('id, order_number, customer_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, order_fulfillment, statut')
+          .select('id, user_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, order_fulfillment, statut')
           .eq('id', metaOrderId)
           .maybeSingle();
         order = byMeta.data || null;
@@ -325,7 +325,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
     if (updateError) {
       console.error('❌ Erreur mise à jour commande:', updateError);
     } else {
-      console.log('✅ Statut de commande mis à jour:', order.order_number);
+      console.log('✅ Statut de commande mis à jour:', order.id?.slice(0, 8));
 
       if (!wasPaidBefore) {
         try {
@@ -342,7 +342,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
           const { data: fullOrder } = await db
             .from('commandes')
             .select(
-              'id, order_number, restaurant_id, created_at, total, frais_livraison, discount_amount, total_paid, customer_first_name, customer_last_name, customer_phone, customer_email, adresse_livraison, ville_livraison'
+              'id, restaurant_id, created_at, total, frais_livraison, discount_amount, total_paid, customer_first_name, customer_last_name, customer_phone, customer_email, adresse_livraison, ville_livraison'
             )
             .eq('id', order.id)
             .maybeSingle();
@@ -381,7 +381,6 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
                 template: 'receipt_v1',
                 format: 'dantsu_escpos_markup',
                 order_id: order.id,
-                order_number: fullOrder?.order_number || null,
                 text,
               },
               lu: false,
@@ -498,7 +497,7 @@ async function handlePaymentFailed(paymentIntent, { origin } = {}) {
     const db = supabaseAdmin || supabasePublic;
     const { data: order, error: orderError } = await db
       .from('commandes')
-      .select('id, order_number, customer_id')
+      .select('id, user_id')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .single();
 
@@ -522,7 +521,7 @@ async function handlePaymentFailed(paymentIntent, { origin } = {}) {
     if (updateError) {
       console.error('❌ Erreur mise à jour commande:', updateError);
     } else {
-      console.log('✅ Commande annulée:', order.order_number);
+      console.log('✅ Commande annulée:', order.id?.slice(0, 8));
     }
 
   } catch (error) {
@@ -538,7 +537,7 @@ async function handleDisputeCreated(dispute) {
     // Trouver la commande liée au litige
     const { data: order, error: orderError } = await supabase
       .from('commandes')
-      .select('id, order_number, customer_id, restaurant_id')
+      .select('id, user_id, restaurant_id')
       .eq('stripe_charge_id', dispute.charge)
       .single();
 
@@ -552,7 +551,7 @@ async function handleDisputeCreated(dispute) {
       .from('complaints')
       .insert([{
         order_id: order.id,
-        customer_id: order.customer_id,
+        customer_id: order.user_id,
         restaurant_id: order.restaurant_id,
         complaint_type: 'dispute',
         title: `Litige Stripe: ${dispute.reason}`,
@@ -581,7 +580,7 @@ async function handlePaymentCanceled(paymentIntent) {
   try {
     const { data: order, error: orderError } = await supabase
       .from('commandes')
-      .select('id, order_number, customer_id')
+      .select('id, user_id')
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .single();
 
@@ -605,7 +604,7 @@ async function handlePaymentCanceled(paymentIntent) {
     if (updateError) {
       console.error('❌ Erreur mise à jour commande:', updateError);
     } else {
-      console.log('✅ Commande annulée:', order.order_number);
+      console.log('✅ Commande annulée:', order.id?.slice(0, 8));
     }
 
   } catch (error) {
@@ -621,7 +620,7 @@ async function handleRefundCreated(refund) {
     // Trouver la commande liée au remboursement
     const { data: order, error: orderError } = await supabase
       .from('commandes')
-      .select('id, order_number, customer_id')
+      .select('id, user_id')
       .eq('stripe_payment_intent_id', refund.payment_intent)
       .single();
 
@@ -658,7 +657,7 @@ async function handleRefundCreated(refund) {
     }
 
     // Envoyer une notification au client
-    await sendRefundNotification(order.customer_id, refund);
+    await sendRefundNotification(order.user_id, refund);
 
   } catch (error) {
     console.error('❌ Erreur traitement remboursement créé:', error);

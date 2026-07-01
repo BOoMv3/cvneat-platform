@@ -111,7 +111,7 @@ export async function POST(request) {
     // Charger la commande (pour calculs + notification + fidélité)
     const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
-      .select('id, order_number, user_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, payment_status, loyalty_points_used, loyalty_discount_amount')
+      .select('id, user_id, restaurant_id, total, frais_livraison, discount_amount, stripe_payment_intent_id, payment_status, loyalty_points_used, loyalty_discount_amount')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -275,7 +275,7 @@ export async function POST(request) {
             const { data: fullOrder } = await supabaseAdmin
               .from('commandes')
               .select(
-                'id, order_number, restaurant_id, created_at, total, frais_livraison, discount_amount, total_paid, customer_first_name, customer_last_name, customer_phone, customer_email, adresse_livraison, ville_livraison'
+                'id, restaurant_id, created_at, total, frais_livraison, discount_amount, total_paid, customer_first_name, customer_last_name, customer_phone, customer_email, adresse_livraison, ville_livraison'
               )
               .eq('id', updated.id)
               .maybeSingle();
@@ -314,7 +314,6 @@ export async function POST(request) {
                   template: 'receipt_v1',
                   format: 'dantsu_escpos_markup',
                   order_id: updated.id,
-                  order_number: fullOrder?.order_number || null,
                   text,
                 },
                 lu: false,
