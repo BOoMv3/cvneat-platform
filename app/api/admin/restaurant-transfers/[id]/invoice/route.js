@@ -5,6 +5,7 @@ import {
   buildRestaurantTransferInvoicePdfBuffer,
   invoicePdfFilename,
 } from '../../../../../../lib/restaurant-invoice-pdf';
+import { loadCvneatInvoiceLogoForPdf } from '../../../../../../lib/invoice-pdf-logo';
 import { requireFinanceAccess } from '../../../../../../lib/require-finance-access';
 
 export const runtime = 'nodejs';
@@ -41,12 +42,15 @@ export async function GET(request, { params }) {
       });
     }
 
+    const logoJpeg = await loadCvneatInvoiceLogoForPdf();
+
     const pdfBuffer = await buildRestaurantTransferInvoicePdfBuffer({
       restaurant: data.restaurant,
       transfer: data.transfer,
       orders: data.orders,
       totals: data.totals,
       invoiceNumber: data.invoiceNumber,
+      options: { logoBuffer: logoJpeg },
     });
 
     const filename = invoicePdfFilename(data.invoiceNumber);

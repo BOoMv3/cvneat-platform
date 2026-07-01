@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import path from 'path';
 import {
   buildSampleRestaurantInvoiceHtml,
   buildSampleRestaurantInvoicePdfBuffer,
@@ -9,6 +7,7 @@ import {
 import { invoicePdfFilename } from '@/lib/restaurant-invoice-pdf';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /** Facture restaurant fictive (présentation partenaires / comptables). */
 export async function GET(request) {
@@ -17,14 +16,10 @@ export async function GET(request) {
   const origin = new URL(request.url).origin;
 
   if (format === 'pdf') {
-    let logoBuffer = null;
-    try {
-      logoBuffer = await readFile(path.join(process.cwd(), 'public', 'cvneat-logo.png'));
-    } catch {
-      logoBuffer = null;
-    }
+    const { loadCvneatInvoiceLogoForPdf } = await import('@/lib/invoice-pdf-logo');
+    const logoJpeg = await loadCvneatInvoiceLogoForPdf();
 
-    const pdfBuffer = await buildSampleRestaurantInvoicePdfBuffer(logoBuffer);
+    const pdfBuffer = await buildSampleRestaurantInvoicePdfBuffer(logoJpeg);
     const filename = invoicePdfFilename(SAMPLE_INVOICE_NUMBER);
 
     return new NextResponse(pdfBuffer, {
