@@ -404,8 +404,8 @@ export default function RestaurantDetail({ params }) {
   const loadCartFromStorage = () => {
     const storedCart = safeLocalStorage.getJSON('cart');
     if (storedCart) {
-      // S'assurer que le panier correspond au restaurant actuel
-      if (storedCart.restaurant?.id === parseInt(restaurantId, 10)) {
+      // S'assurer que le panier correspond au restaurant actuel (UUID ou id numérique)
+      if (String(storedCart.restaurant?.id) === String(restaurantId)) {
         setCart(storedCart.items || []);
       } else {
         // Le panier concerne un autre restaurant, on le vide

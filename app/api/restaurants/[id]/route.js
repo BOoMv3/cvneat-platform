@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeRestaurantOpenFields } from '../../../../lib/restaurant-open-compute';
+import { isMaskedRestaurantName } from '../../../../lib/masked-restaurants';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -108,6 +109,10 @@ export async function GET(request, { params }) {
     }
 
     if (!data) {
+      return NextResponse.json({ message: "Restaurant non trouvé" }, { status: 404 });
+    }
+
+    if (isMaskedRestaurantName(data.nom)) {
       return NextResponse.json({ message: "Restaurant non trouvé" }, { status: 404 });
     }
 

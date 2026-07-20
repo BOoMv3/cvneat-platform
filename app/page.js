@@ -55,6 +55,7 @@ import {
 } from '@/lib/platform-promo';
 import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
+import { isMaskedRestaurantName } from '@/lib/masked-restaurants';
 
 const CvneatLogo = dynamic(() => import('@/components/CvneatLogo'), { ssr: false });
 
@@ -78,15 +79,6 @@ const RESTAURANTS_EN_VACANCES = new Set([
 // Restaurants pas encore prêts/opérationnels
 const RESTAURANTS_NON_OPERATIONNELS = new Set([
 ]);
-
-// Restaurants à ne plus afficher (fermés définitivement / retirés)
-const RESTAURANTS_MASQUES = new Set([
-  'molokai',
-  'le molokai',
-  'au bon coin',
-]);
-// Mots-clés : si le nom normalisé contient l’un d’eux, le restaurant est masqué
-const RESTAURANTS_MASQUES_CONTIENT = ['molokai', 'cinq pizza', 'au bon coin'];
 
 const normalizeName = (value = '') =>
   value
@@ -1319,8 +1311,7 @@ export default function Home() {
     const uniqueRestaurants = finalRestaurants.filter((restaurant) => {
       const key = normalizeName(restaurant.nom) || restaurant.id;
       if (seen.has(key)) return false;
-      if (RESTAURANTS_MASQUES.has(key)) return false;
-      if (RESTAURANTS_MASQUES_CONTIENT.some((mot) => key.includes(mot))) return false;
+      if (isMaskedRestaurantName(restaurant.nom)) return false;
       seen.add(key);
       return true;
     });

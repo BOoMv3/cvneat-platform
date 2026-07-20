@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { hasExplicitScheduleForDay } from '../../../lib/restaurant-horaires-paris';
 import { normalizeRestaurantOpenFields } from '../../../lib/restaurant-open-compute';
+import { isMaskedRestaurantName } from '../../../lib/masked-restaurants';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -71,12 +72,7 @@ export async function GET() {
     }
 
     // Exclure les restaurants retirés (ex. Molokai, Au Bon Coin)
-    const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    const masquesContient = ['molokai', 'cinq pizza', 'au bon coin'];
-    const filtered = data.filter((r) => {
-      const n = normalize(r.nom);
-      return !masquesContient.some((mot) => n.includes(mot));
-    });
+    const filtered = data.filter((r) => !isMaskedRestaurantName(r.nom));
 
     // Une seule lecture : on utilise directement les données du select (pas de relecture pour éviter cache/replica)
     const toBool = (v) => v === true || v === 1 || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
