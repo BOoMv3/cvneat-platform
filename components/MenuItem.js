@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { FaPlus, FaThumbsUp, FaLock } from 'react-icons/fa';
 import MenuItemModal from './MenuItemModal';
+import { isLaBonnePateRestaurant } from '@/lib/restaurant-theme';
 
 export default function MenuItem({ item, onAddToCart, restaurantId }) {
+  const isLaBonnePate = isLaBonnePateRestaurant(restaurantId);
   const [isAdding, setIsAdding] = useState(false);
   const [itemRating, setItemRating] = useState(null);
   const [itemReviewCount, setItemReviewCount] = useState(null);
@@ -122,11 +124,19 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
   return (
     <>
       <div 
-        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer group"
+        className={`rounded-xl border overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer group ${
+          isLaBonnePate
+            ? 'lbp-menu-card border-[var(--lbp-border)]'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+        }`}
         onClick={handleItemClick}
       >
       {/* Image de l'article - Design épuré */}
-      <div className="relative h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 overflow-hidden">
+      <div className={`relative h-48 w-full overflow-hidden ${
+        isLaBonnePate
+          ? 'bg-[var(--lbp-secondary)]'
+          : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'
+      }`}>
         {image_url ? (
           <img
             src={image_url}
@@ -178,7 +188,9 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
       {/* Informations de l'article - Design minimaliste */}
       <div className="p-5 space-y-3">
         {/* Titre - Plus grand et visible */}
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-2 leading-tight">
+        <h3 className={`font-bold text-lg line-clamp-2 leading-tight ${
+          isLaBonnePate ? 'font-display-lbp text-[var(--lbp-fg)]' : 'text-gray-900 dark:text-white'
+        }`}>
           {nom}
           {item.is_formula && (
             <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
@@ -187,9 +199,11 @@ export default function MenuItem({ item, onAddToCart, restaurantId }) {
           )}
         </h3>
 
-        {/* Description pour les formules */}
-        {item.is_formula && item.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+        {/* Description (formules ou carte La Bonne Pâte) */}
+        {(item.is_formula || isLaBonnePate) && item.description && (
+          <p className={`text-sm line-clamp-3 ${
+            isLaBonnePate ? 'text-[var(--lbp-muted)] font-normal normal-case' : 'text-gray-600 dark:text-gray-400'
+          }`}>
             {item.description}
           </p>
         )}

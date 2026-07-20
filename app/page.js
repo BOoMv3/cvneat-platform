@@ -56,22 +56,10 @@ import {
 import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
 
-const WorldCupHomeHero = dynamic(() => import('@/components/WorldCupHomeHero'), { ssr: false });
 const CvneatLogo = dynamic(() => import('@/components/CvneatLogo'), { ssr: false });
 
 /** Logs verbeux = coût en WebView (iOS/Android) ; uniquement en dev. */
 const DBG = process.env.NODE_ENV === 'development';
-
-function useWorldCupMode() {
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => {
-    fetch('/api/world-cup-status')
-      .then((r) => (r.ok ? r.json() : { enabled: false }))
-      .then((d) => setEnabled(!!d.enabled))
-      .catch(() => setEnabled(false));
-  }, []);
-  return enabled;
-}
 
 const TARGET_OPENING_HOUR = 18;
 const READY_RESTAURANTS_LABEL = '';
@@ -488,7 +476,6 @@ export default function Home() {
   const [restaurantsOpenStatus, setRestaurantsOpenStatus] = useState({}); // Statut d'ouverture de chaque restaurant
   const [isRestaurantRoute, setIsRestaurantRoute] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false); // Commande en cours pour mettre en avant "Ma commande"
-  const worldCupMode = useWorldCupMode();
 
   const searchInputRef = useRef(null);
   const lastFocusKeyRef = useRef('');
@@ -1433,13 +1420,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
-      {/* Bannière livraison masquée en mode CDM (évite 2 bandeaux coupés) */}
-      {!worldCupMode && <FreeDeliveryBanner />}
-
-      {worldCupMode && <WorldCupHomeHero />}
+      <FreeDeliveryBanner />
 
       {/* Hero Section avec carrousel visuel */}
-      {!worldCupMode && <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
+      <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
         {heroSlides.map((slide, index) => (
           <div
             key={slide.id}
@@ -1647,7 +1631,7 @@ export default function Home() {
             />
           ))}
         </div>
-      </section>}
+      </section>
 
       {/* Panier flottant - Optimisé mobile */}
       {showFloatingCart && cart.length > 0 && (

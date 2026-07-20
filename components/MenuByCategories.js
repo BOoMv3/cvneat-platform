@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import MenuItem from './MenuItem';
 import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf } from 'react-icons/fa';
+import { isLaBonnePateRestaurant } from '@/lib/restaurant-theme';
 
 const normalizeCategoryKey = (value = '') =>
   String(value || '')
@@ -20,6 +21,8 @@ export default function MenuByCategories({
   // Accepte: ['Entrées', 'Plats', ...] ou [{ name: 'Entrées' }, ...]
   categoryOrder = null
 }) {
+  const isLaBonnePate = isLaBonnePateRestaurant(restaurantId);
+
   // Grouper les menus par catégorie
   const menuByCategory = menu.reduce((acc, item) => {
     const category = item.category || item.categorie || 'Autres';
@@ -139,6 +142,10 @@ export default function MenuByCategories({
     // Poke Bowl générique (2.7) - Si pas déjà catégorisé
     if (catLower.includes('poke') && !catLower.includes('signature') && !catLower.includes('compose')) {
       return 2.7;
+    }
+    // Pâtes (2.6) — après pizzas
+    if (catLower.includes('pate') || catLower.includes('pâtes') || catLower.includes('pasta')) {
+      return 2.6;
     }
     // Salades (2.8)
     if (catLower.includes('salade')) {
@@ -275,6 +282,10 @@ export default function MenuByCategories({
     'Pizzas': FaPizzaSlice,
     'Puccias': FaBreadSlice,
     'puccias': FaBreadSlice,
+    'Pâtes': FaUtensils,
+    'pâtes': FaUtensils,
+    'Pates': FaUtensils,
+    'pates': FaUtensils,
     'Vins': FaWineGlass,
     'Autres': FaUtensils
   };
@@ -385,15 +396,25 @@ export default function MenuByCategories({
             return (
               <div key={category} className="space-y-6">
                 {/* En-tête de catégorie avec icône - Design épuré */}
-                <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
-                  <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
-                    <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
-                  </div>
+                <div className={`flex items-center gap-4 pb-3 border-b-2 ${
+                  isLaBonnePate ? 'border-[var(--lbp-primary)]' : 'border-orange-200 dark:border-orange-800'
+                }`}>
+                  {!isLaBonnePate && (
+                    <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
+                      <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />
+                    </div>
+                  )}
                   <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{getDisplayLabel(category)}</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
-                    </p>
+                  <h2 className={`text-2xl font-bold ${
+                    isLaBonnePate ? 'lbp-section-title' : 'text-gray-900 dark:text-white'
+                  }`}>{getDisplayLabel(category)}</h2>
+                    {isLaBonnePate ? (
+                      <p className="lbp-section-subtitle mt-0.5">Fait maison</p>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {menuByCategory[category].length} produit{menuByCategory[category].length > 1 ? 's' : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
                 
@@ -406,7 +427,9 @@ export default function MenuByCategories({
                 
                 {/* Séparateur entre catégories (sauf dernière) - Plus d'espace */}
                 {index < categories.length - 1 && (
-                  <div className="my-12 border-t-2 border-gray-200 dark:border-gray-700"></div>
+                  <div className={`my-12 border-t-2 ${
+                    isLaBonnePate ? 'lbp-category-separator' : 'border-gray-200 dark:border-gray-700'
+                  }`}></div>
                 )}
               </div>
             );
@@ -436,18 +459,28 @@ export default function MenuByCategories({
             </>
           ) : (
             <>
-              <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
-                <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
-                  {(() => {
-                    const Icon = getCategoryIcon(selectedCategory);
-                    return <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />;
-                  })()}
-                </div>
+              <div className={`flex items-center gap-4 pb-3 border-b-2 ${
+                isLaBonnePate ? 'border-[var(--lbp-primary)]' : 'border-orange-200 dark:border-orange-800'
+              }`}>
+                {!isLaBonnePate && (
+                  <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900 dark:to-amber-900 rounded-xl shadow-sm">
+                    {(() => {
+                      const Icon = getCategoryIcon(selectedCategory);
+                      return <Icon className="w-7 h-7 text-orange-600 dark:text-orange-400" />;
+                    })()}
+                  </div>
+                )}
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedCategory}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {menuByCategory[selectedCategory]?.length || 0} produit{(menuByCategory[selectedCategory]?.length || 0) > 1 ? 's' : ''}
-                  </p>
+                  <h2 className={`text-2xl font-bold ${
+                    isLaBonnePate ? 'lbp-section-title' : 'text-gray-900 dark:text-white'
+                  }`}>{getDisplayLabel(selectedCategory)}</h2>
+                  {isLaBonnePate ? (
+                    <p className="lbp-section-subtitle mt-0.5">Fait maison</p>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {menuByCategory[selectedCategory]?.length || 0} produit{(menuByCategory[selectedCategory]?.length || 0) > 1 ? 's' : ''}
+                    </p>
+                  )}
                 </div>
               </div>
               
