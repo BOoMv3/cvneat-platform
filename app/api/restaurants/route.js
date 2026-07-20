@@ -70,9 +70,9 @@ export async function GET() {
       return res;
     }
 
-    // Exclure les restaurants retirés (ex. Molokai)
+    // Exclure les restaurants retirés (ex. Molokai, Au Bon Coin)
     const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    const masquesContient = ['molokai'];
+    const masquesContient = ['molokai', 'cinq pizza', 'au bon coin'];
     const filtered = data.filter((r) => {
       const n = normalize(r.nom);
       return !masquesContient.some((mot) => n.includes(mot));

@@ -83,9 +83,10 @@ const RESTAURANTS_NON_OPERATIONNELS = new Set([
 const RESTAURANTS_MASQUES = new Set([
   'molokai',
   'le molokai',
+  'au bon coin',
 ]);
 // Mots-clés : si le nom normalisé contient l’un d’eux, le restaurant est masqué
-const RESTAURANTS_MASQUES_CONTIENT = ['molokai', 'cinq pizza'];
+const RESTAURANTS_MASQUES_CONTIENT = ['molokai', 'cinq pizza', 'au bon coin'];
 
 const normalizeName = (value = '') =>
   value
