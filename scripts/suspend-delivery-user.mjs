@@ -46,7 +46,7 @@ const days = Math.max(1, parseInt(arg('days', '14'), 10) || 14);
 const penalty = Math.max(0, parseFloat(arg('penalty', '30')) || 0);
 const reason =
   arg('reason') ||
-  "Votre compte livreur est temporairement suspendu suite à plusieurs signalements clients concernant votre comportement pendant les livraisons.";
+  'En raison de plusieurs plaintes sur le site, un bannissement et une pénalité automatique ont été mis en place.';
 
 if (!email) {
   console.error('Usage: node scripts/suspend-delivery-user.mjs --email=... [--days=14] [--penalty=30]');

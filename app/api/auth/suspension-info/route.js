@@ -41,28 +41,35 @@ export async function POST(request) {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Ne pas sélectionner les colonnes de suspension (peuvent être absentes en prod).
     const { data: profile } = await sb
       .from('users')
-      .select('id, suspended_until, suspension_reason, suspension_penalty_eur')
+      .select('id, email')
       .eq('email', email)
       .maybeSingle();
 
-    let row = null;
-    if (profile && (profile.suspended_until || profile.suspension_reason)) {
-      row = profile;
-    }
-
-    if ((!row || !isSuspensionActive(row)) && profile?.id) {
-      const { data: authData } = await sb.auth.admin.getUserById(profile.id);
-      const fromAuth = suspensionFromAuthUser(authData?.user);
-      if (isSuspensionActive(fromAuth)) row = fromAuth;
-    }
-
-    if (!row || !isSuspensionActive(row)) {
+    if (!profile?.id) {
       return NextResponse.json({ suspended: false });
     }
 
-    return NextResponse.json(suspensionPayload(row));
+    const { data: authData } = await sb.auth.admin.getUserById(profile.id);
+    const fromAuth = suspensionFromAuthUser(authData?.user);
+    const bannedUntil = authData?.user?.banned_until;
+    const authBanned = bannedUntil && new Date(bannedUntil).getTime() > Date.now();
+
+    if (isSuspensionActive(fromAuth) || authBanned) {
+      // Si ban Auth actif mais metadata incomplète, compléter avec banned_until
+      const row = {
+        suspended_until: fromAuth.suspended_until || bannedUntil || null,
+        suspension_reason:
+          fromAuth.suspension_reason ||
+          'En raison de plusieurs plaintes sur le site, un bannissement et une pénalité automatique ont été mis en place.',
+        suspension_penalty_eur: fromAuth.suspension_penalty_eur ?? 0,
+      };
+      return NextResponse.json(suspensionPayload(row));
+    }
+
+    return NextResponse.json({ suspended: false });
   } catch {
     return NextResponse.json({ suspended: false });
   }
