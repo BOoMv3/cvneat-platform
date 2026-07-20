@@ -24,6 +24,18 @@ export default function LoginPage() {
       setSuccess('Mot de passe mis à jour. Vous pouvez vous connecter avec votre nouveau mot de passe.');
     } else if (searchParams.get('confirm') === 'success') {
       setSuccess('Compte confirmé. Connectez-vous avec votre email et mot de passe.');
+    } else if (searchParams.get('suspended') === '1') {
+      const msg = safeLocalStorage.getItem('cvneat-suspension-message');
+      if (msg) {
+        setError(msg);
+        try {
+          safeLocalStorage.removeItem('cvneat-suspension-message');
+        } catch {
+          /* ignore */
+        }
+      } else {
+        setError('Votre compte est temporairement suspendu. Contactez le support CVN\'EAT.');
+      }
     }
   }, [searchParams]);
 
@@ -88,6 +100,20 @@ export default function LoginPage() {
           errorMessage = 'Votre compte n’est pas encore confirmé. Utilisez le lien reçu par email ou réinitialisez votre mot de passe ci-dessous.';
         } else if (error.message.includes('User is banned') || error.message?.includes('banned')) {
           errorMessage = 'Ce compte est suspendu. Contactez le support CVN\'EAT.';
+          try {
+            const suspRes = await fetch('/api/auth/suspension-info', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: normalizedEmail }),
+              signal: AbortSignal.timeout(5000),
+            });
+            const susp = await suspRes.json().catch(() => ({}));
+            if (susp?.suspended && susp?.message) {
+              errorMessage = susp.message;
+            }
+          } catch {
+            /* ignore */
+          }
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
         } else if (error.message.includes('User not found')) {
@@ -131,6 +157,14 @@ export default function LoginPage() {
           });
 
           const meData = await meResponse.json().catch(() => ({}));
+
+          if (meResponse.status === 403 && (meData?.suspended || meData?.error === 'Compte suspendu')) {
+            await supabase.auth.signOut().catch(() => {});
+            setError(meData?.message || 'Ce compte est temporairement suspendu. Contactez le support CVN\'EAT.');
+            setLoading(false);
+            return;
+          }
+
           let role = meResponse.ok ? meData?.role : null;
 
           // Fallback: certains déploiements de l'API /users/me ne renvoient pas encore "role"

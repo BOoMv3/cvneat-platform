@@ -56,6 +56,19 @@ export default function AuthGuard({ children, requiredRole, allowedRoles }) {
             'Content-Type': 'application/json',
           },
         });
+        if (res.status === 403) {
+          const me = await res.json().catch(() => ({}));
+          if (me?.suspended || me?.error === 'Compte suspendu') {
+            try {
+              safeLocalStorage.setItem('cvneat-suspension-message', me.message || 'Compte suspendu');
+            } catch {
+              /* ignore */
+            }
+            await supabase.auth.signOut();
+            router.push('/login?suspended=1');
+            return;
+          }
+        }
         if (res.ok) {
           const me = await res.json();
           role = normalizeRoleAliases(me?.role);

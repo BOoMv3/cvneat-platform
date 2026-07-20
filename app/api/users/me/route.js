@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  isSuspensionActive,
+  suspensionPayload,
+} from '@/lib/user-suspension';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,6 +140,25 @@ export async function GET(request) {
       // Si le profil existe mais sans role, le fixer au minimum
       await supabaseAdmin.from('users').update({ role: 'user' }).eq('id', user.id).catch(() => {});
       finalUser = { ...finalUser, role: 'user' };
+    }
+
+    const suspensionSource = {
+      suspended_until:
+        finalUser?.suspended_until || user?.app_metadata?.suspended_until || null,
+      suspension_reason:
+        finalUser?.suspension_reason || user?.app_metadata?.suspension_reason || null,
+      suspension_penalty_eur:
+        finalUser?.suspension_penalty_eur ?? user?.app_metadata?.suspension_penalty_eur ?? 0,
+    };
+
+    if (isSuspensionActive(suspensionSource)) {
+      return json(
+        {
+          error: 'Compte suspendu',
+          ...suspensionPayload(suspensionSource),
+        },
+        { status: 403 }
+      );
     }
 
     // Retourner les données formatées correctement
