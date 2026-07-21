@@ -7,6 +7,7 @@ import PushNotificationBootstrap from './components/PushNotificationBootstrap';
 import AppAutoRedirect from './components/AppAutoRedirect';
 import AppSplashOverlay from './components/AppSplashOverlay';
 import RoleAwareChrome from './components/RoleAwareChrome';
+import PresenceTracker from '@/components/PresenceTracker';
 
 // Importer l'intercepteur pour l'app mobile (s'exécute côté client uniquement)
 // IMPORTANT: Charger APRÈS Supabase pour éviter les conflits
@@ -440,6 +441,8 @@ export default function RootLayout({ children }) {
         <ThemeProvider>
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
           <PushNotificationBootstrap />
+          {/* Présence temps réel (admin /admin/presence) */}
+          <PresenceTracker />
           {/* Splash overlay (logo + animation) pendant le chargement */}
           <AppSplashOverlay />
           {/* Auto-redirect app mobile si déjà connecté (livreur/restaurant) */}
