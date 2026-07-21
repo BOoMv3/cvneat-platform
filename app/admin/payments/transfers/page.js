@@ -3,11 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
-import { getFixedCommissionRatePercentFromName } from '../../../../lib/commission';
-import {
-  computeOrderCommissionEur,
-  computeOrderRestaurantPayoutEur,
-} from '../../../../lib/restaurant-order-payout';
+import { computeRestaurantRemainingDue } from '../../../../lib/restaurant-remaining-due';
 import { 
   FaArrowLeft, 
   FaPlus, 
@@ -242,13 +238,7 @@ export default function TransfersTracking() {
 
       if (restaurantsError) throw restaurantsError;
 
-      // Même logique pour tous les restaurants : toutes les commandes livrées + payées, puis on déduit les virements
-      const is99StreetFood = (nom) => {
-        const n = (nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        return n.includes('99 street') || n.includes('99street') || n.includes('99 street food');
-      };
-
-      // Pour chaque restaurant, calculer les revenus dus (toutes les commandes livrées, puis − virements)
+      // Part restaurant − virements (helper partagé avec /admin/payments)
       const restaurantsWithPaymentsData = await Promise.all(
         (allRestaurants || []).map(async (restaurant) => {
           const { data: orders, error: ordersError } = await supabase
@@ -266,131 +256,46 @@ export default function TransfersTracking() {
               restaurantPayout: 0,
               totalTransfers: 0,
               remainingToPay: 0,
-              orderCount: 0
+              orderCount: 0,
             };
           }
 
-          // Filtrer les commandes payées par le client et exclure celles en commandes_payout_exclude
-          let paidOrders = (orders || []).filter(order =>
-            !['failed', 'cancelled', 'refunded'].includes((order.payment_status || '').toString().trim().toLowerCase()) &&
-            !excludedCommandeIds.has((order.id || '').toString().trim().toLowerCase())
-          );
+          const { data: transfers } = await supabase
+            .from('restaurant_transfers')
+            .select('amount, transfer_date, notes, period_start, period_end')
+            .eq('restaurant_id', restaurant.id)
+            .eq('status', 'completed');
 
-          // 99 Street Food : ne compter que les commandes à partir du 06/03/2026 (inclus) — dernier virement au 05/03
-          const DEBUT_99SF_UTC = new Date('2026-03-05T23:00:00.000Z'); // 00h00 le 06/03 à Paris
-          if (is99StreetFood(restaurant.nom) && paidOrders.length > 0) {
-            paidOrders = paidOrders.filter((o) => new Date(o.created_at) >= DEBUT_99SF_UTC);
-          }
-
-          // 99 Street Food : déduplication côté app (même date Paris, total, user_id) — garde une seule commande par groupe
-          if (is99StreetFood(restaurant.nom) && paidOrders.length > 0) {
-            const seen = new Set();
-            paidOrders = paidOrders.filter((order) => {
-              const dateParis = order.created_at
-                ? new Date(order.created_at).toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' })
-                : '';
-              const key = `${dateParis}|${Number(order.total) || 0}|${(order.user_id || '').toString().toLowerCase()}`;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-          }
-
-          // Calculer les revenus
-          const totalRevenue = paidOrders.reduce((sum, order) => {
-            return sum + (parseFloat(order.total || 0) || 0);
-          }, 0);
-
-          // Récupérer les virements déjà effectués pour ce restaurant
-          let totalTransfers = 0;
-          try {
-            const { data: transfers, error: transfersError } = await supabase
-              .from('restaurant_transfers')
-              .select('amount, transfer_date, notes, period_start, period_end')
-              .eq('restaurant_id', restaurant.id)
-              .eq('status', 'completed');
-
-            if (!transfersError && transfers) {
-              const is99 = is99StreetFood(restaurant.nom);
-              const DEBUT_99SF_DATE = '2026-03-06';
-              // 99 SF: ne déduire que les virements qui concernent la même période
-              // (évite de soustraire des virements historiques d'avant le 06/03).
-              const relevantTransfers = is99
-                ? transfers.filter((t) => {
-                    const d = (t.transfer_date || '').toString().slice(0, 10);
-                    return d >= DEBUT_99SF_DATE;
-                  })
-                : transfers;
-              totalTransfers = relevantTransfers.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-              console.log(`💰 ${restaurant.nom}: ${transfers.length} virement(s) = ${totalTransfers.toFixed(2)}€`);
-            } else if (transfersError) {
-              console.error(`❌ Erreur récupération virements pour ${restaurant.nom}:`, transfersError);
-            }
-          } catch (err) {
-            console.warn(`Erreur récupération virements pour ${restaurant.nom}:`, err);
-            // Continuer avec totalTransfers = 0
-          }
-
-          const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-          const parseRatePercent = (v) => {
-            const n = parseFloat(v);
-            return Number.isFinite(n) ? n : null;
-          };
-
-          // Règles de commission (France) - via helper central:
-          // - Bonne Pâte = 0% (tolère "La Bonne Pâte" / "Bonne Pâte")
-          // - All'ovale = 15%
-          // - Tous les autres = commission_rate DB si présent, sinon 20%
-          const fixedRate = getFixedCommissionRatePercentFromName(restaurant.nom);
-          const defaultRestaurantRatePercent =
-            restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
-              ? parseRatePercent(restaurant.commission_rate)
-              : null;
-
-          // Calculer commission/payout à partir des valeurs stockées par commande (historique exact)
-          let commission = 0;
-          let restaurantPayout = 0;
-
-          paidOrders.forEach((o) => {
-            const orderCommission = computeOrderCommissionEur(o, restaurant);
-            const orderPayout = computeOrderRestaurantPayoutEur(o, restaurant);
-            commission += orderCommission;
-            restaurantPayout += orderPayout;
-          });
-          commission = round2(commission);
-          restaurantPayout = round2(restaurantPayout);
-          
-          // Reste à payer = total part restaurant − virements déjà effectués.
-          // IMPORTANT: toujours soustraire les virements (y compris 99 Street Food).
-          // L'ancienne exception 99 SF empêchait la mise à jour du solde après virement.
-          const is99 = is99StreetFood(restaurant.nom);
-          let remainingToPay = Math.max(0, restaurantPayout - totalTransfers);
-          // Ajustement métier 99 Street Food : -15€ fixe sur le reste.
-          if (is99) {
-            remainingToPay = Math.max(0, remainingToPay - 15);
-          }
-          // Override manuel : si un montant a été saisi manuellement, on l'utilise à la place
-          const dbOverrideRaw = restaurant.remaining_to_pay_override;
           const localOverrideRaw = getLocalOverride(restaurant.id);
-          const effectiveOverrideRaw = dbOverrideRaw != null ? dbOverrideRaw : localOverrideRaw;
-          const hasManualOverride = effectiveOverrideRaw != null && effectiveOverrideRaw !== '';
-          if (hasManualOverride) {
-            const override = parseFloat(effectiveOverrideRaw);
-            remainingToPay = Number.isFinite(override) ? Math.max(0, override) : remainingToPay;
-          }
+          const effectiveOverrideRaw =
+            restaurant.remaining_to_pay_override != null
+              ? restaurant.remaining_to_pay_override
+              : localOverrideRaw;
+
+          const balance = computeRestaurantRemainingDue({
+            restaurant,
+            orders,
+            transfers: transfers || [],
+            excludedCommandeIds,
+            overrideAmount: effectiveOverrideRaw,
+          });
+
+          const totalRevenue = Math.round(
+            balance.paidOrders.reduce((sum, order) => sum + (parseFloat(order.total || 0) || 0), 0) * 100
+          ) / 100;
 
           return {
             ...restaurant,
-            totalRevenue: Math.round(totalRevenue * 100) / 100,
-            commission: Math.round(commission * 100) / 100,
-            restaurantPayout: Math.round(restaurantPayout * 100) / 100,
-            totalTransfers: Math.round(totalTransfers * 100) / 100,
-            remainingToPay: Math.round(remainingToPay * 100) / 100,
-            orderCount: paidOrders.length,
-            commissionRate: fixedRate !== null ? fixedRate : (defaultRestaurantRatePercent ?? 20),
-            is99StreetFood: is99StreetFood(restaurant.nom),
-            hasManualOverride,
-            remaining_to_pay_override: effectiveOverrideRaw
+            totalRevenue,
+            commission: balance.commission,
+            restaurantPayout: balance.restaurantPayout,
+            totalTransfers: balance.totalTransfers,
+            remainingToPay: balance.remainingToPay,
+            orderCount: balance.orderCount,
+            commissionRate: balance.commissionRate,
+            is99StreetFood: balance.is99StreetFood,
+            hasManualOverride: balance.hasManualOverride,
+            remaining_to_pay_override: effectiveOverrideRaw,
           };
         })
       );

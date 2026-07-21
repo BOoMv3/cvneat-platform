@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { getFixedCommissionRatePercentFromName } from '../../../lib/commission';
 import {
   computeOrderCommissionEur,
-  computeOrderRestaurantPayoutEur,
   getOrderArticlesAmountEur,
 } from '../../../lib/restaurant-order-payout';
+import { computeRestaurantRemainingDue } from '../../../lib/restaurant-remaining-due';
 import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt, FaCheck, FaTimes, FaMotorcycle } from 'react-icons/fa';
 import Link from 'next/link';
 
@@ -109,7 +108,18 @@ export default function AdminPayments() {
       setLoading(true);
       setError(null);
 
-      // Récupérer tous les restaurants avec leur commission_rate
+      // Exclusions (même source que la page suivi de virements)
+      let excludedCommandeIds = new Set();
+      try {
+        const { data: excluded } = await supabase.from('commandes_payout_exclude').select('commande_id');
+        (excluded || []).forEach((r) => {
+          const id = (r.commande_id || '').toString().trim().toLowerCase();
+          if (id) excludedCommandeIds.add(id);
+        });
+      } catch (_) {
+        /* table optionnelle */
+      }
+
       const { data: allRestaurants, error: restaurantsError } = await supabase
         .from('restaurants')
         .select('id, nom, user_id, status, commission_rate')
@@ -118,31 +128,15 @@ export default function AdminPayments() {
       if (restaurantsError) throw restaurantsError;
 
       const dateRange = getDateRange();
-      const dateFilterQuery = dateRange 
-        ? { gte: dateRange.startDate.toISOString(), lte: dateRange.endDate.toISOString() }
-        : {};
 
-      // Pour chaque restaurant, calculer les revenus
       const restaurantsWithPayments = await Promise.all(
         (allRestaurants || []).map(async (restaurant) => {
-          // Récupérer les commandes livrées pour ce restaurant
-          // IMPORTANT: Ne filtrer que par statut 'livree', payment_status peut ne pas exister ou être différent
-          let query = supabase
+          // Toujours charger tout l’historique pour le reste dû (= même logique que suivi virements)
+          const { data: orders, error: ordersError } = await supabase
             .from('commandes')
-            // select('*') pour tolérer des colonnes optionnelles (ex: stripe_fee_amount)
             .select('*')
             .eq('restaurant_id', restaurant.id)
             .eq('statut', 'livree');
-          
-          // Ne pas filtrer par payment_status ici car certaines commandes peuvent ne pas avoir cette colonne
-          // On filtrera après la récupération
-
-          if (dateRange) {
-            query = query.gte('created_at', dateRange.startDate.toISOString())
-                        .lte('created_at', dateRange.endDate.toISOString());
-          }
-
-          const { data: orders, error: ordersError } = await query;
 
           if (ordersError) {
             console.error(`Erreur récupération commandes pour ${restaurant.nom}:`, ordersError);
@@ -154,38 +148,43 @@ export default function AdminPayments() {
               totalTransfers: 0,
               unpaidOrderCount: 0,
               orderCount: 0,
-              error: ordersError.message
+              error: ordersError.message,
             };
           }
 
-          // Commandes livrées valides (exclure échecs / annulations / remboursements)
-          const paidOrders = (orders || []).filter((order) => {
-            const s = (order.payment_status || '').toString().trim().toLowerCase();
-            return !['failed', 'cancelled', 'refunded'].includes(s);
+          const { data: transfers } = await supabase
+            .from('restaurant_transfers')
+            .select('amount, transfer_date')
+            .eq('restaurant_id', restaurant.id)
+            .eq('status', 'completed');
+
+          const balance = computeRestaurantRemainingDue({
+            restaurant,
+            orders,
+            transfers: transfers || [],
+            excludedCommandeIds,
+            overrideAmount: null,
           });
 
-          // Reste à payer = commandes pas encore rattachées à un virement (même logique que create transfer)
-          const unpaidOrders = paidOrders.filter((order) => !order.restaurant_paid_at);
+          // Stats CA / Stripe : période filtrée (affichage), le reste dû reste global
+          const periodOrders = dateRange
+            ? balance.paidOrders.filter((o) => {
+                const t = new Date(o.created_at).getTime();
+                return t >= dateRange.startDate.getTime() && t <= dateRange.endDate.getTime();
+              })
+            : balance.paidOrders;
 
           const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-          const fixedRate = getFixedCommissionRatePercentFromName(restaurant.nom);
-
           let totalRevenue = 0;
           let totalGrossPaid = 0;
           let totalStripeFees = 0;
           let totalNetAfterStripe = 0;
           let stripeFeesMissingCount = 0;
-          let totalCommission = 0;
-          let grossRestaurantPayout = 0;
-          let remainingDue = 0;
+          let periodCommission = 0;
 
-          // Stats CA / commission : toutes les commandes de la période
-          paidOrders.forEach((order) => {
+          periodOrders.forEach((order) => {
             const articlesAmount = getOrderArticlesAmountEur(order);
-            if (Number.isNaN(articlesAmount)) {
-              console.warn(`⚠️ Commande ${order.id} avec total invalide:`, order.total);
-              return;
-            }
+            if (Number.isNaN(articlesAmount)) return;
             totalRevenue += articlesAmount;
 
             const grossPaid =
@@ -204,43 +203,8 @@ export default function AdminPayments() {
               totalNetAfterStripe += grossPaid;
             }
 
-            totalCommission += computeOrderCommissionEur(order, restaurant);
-            grossRestaurantPayout += computeOrderRestaurantPayoutEur(order, restaurant);
+            periodCommission += computeOrderCommissionEur(order, restaurant);
           });
-
-          unpaidOrders.forEach((order) => {
-            remainingDue += computeOrderRestaurantPayoutEur(order, restaurant);
-          });
-
-          // Virements déjà effectués (info affichage)
-          let totalTransfers = 0;
-          try {
-            let transfersQuery = supabase
-              .from('restaurant_transfers')
-              .select('amount, transfer_date')
-              .eq('restaurant_id', restaurant.id)
-              .eq('status', 'completed');
-
-            if (dateRange) {
-              transfersQuery = transfersQuery
-                .gte('transfer_date', dateRange.startDate.toISOString().slice(0, 10))
-                .lte('transfer_date', dateRange.endDate.toISOString().slice(0, 10));
-            }
-
-            const { data: transfers, error: transfersError } = await transfersQuery;
-            if (!transfersError && transfers) {
-              totalTransfers = transfers.reduce((sum, t) => sum + (parseFloat(t.amount || 0) || 0), 0);
-            }
-          } catch (err) {
-            console.warn(`Erreur virements ${restaurant.nom}:`, err);
-          }
-
-          const displayCommissionRate =
-            fixedRate !== null
-              ? fixedRate
-              : (restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
-                  ? restaurant.commission_rate
-                  : 20);
 
           return {
             ...restaurant,
@@ -249,21 +213,19 @@ export default function AdminPayments() {
             stripeFees: stripeFeesMissingCount > 0 ? null : round2(totalStripeFees),
             netAfterStripe: stripeFeesMissingCount > 0 ? null : round2(totalNetAfterStripe),
             stripeFeesMissingCount,
-            commission: round2(totalCommission),
-            // "Montant dû" = reste à payer (hors commandes déjà virées)
-            restaurantPayout: round2(remainingDue),
-            grossRestaurantPayout: round2(grossRestaurantPayout),
-            totalTransfers: round2(totalTransfers),
-            unpaidOrderCount: unpaidOrders.length,
-            orderCount: paidOrders.length,
-            commissionRate: displayCommissionRate,
+            commission: round2(periodCommission),
+            // Aligné sur /admin/payments/transfers : part restaurant − virements
+            restaurantPayout: balance.remainingToPay,
+            grossRestaurantPayout: balance.restaurantPayout,
+            totalTransfers: balance.totalTransfers,
+            unpaidOrderCount: balance.paidOrders.filter((o) => !o.restaurant_paid_at).length,
+            orderCount: periodOrders.length,
+            commissionRate: balance.commissionRate,
           };
         })
       );
 
-      // Trier par montant dû (décroissant)
       restaurantsWithPayments.sort((a, b) => b.restaurantPayout - a.restaurantPayout);
-
       setRestaurants(restaurantsWithPayments);
     } catch (err) {
       console.error('Erreur récupération paiements:', err);
@@ -713,6 +675,15 @@ export default function AdminPayments() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                     {totals.totalRevenue.toFixed(2)}€
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    {totals.totalGrossPaid.toFixed(2)}€
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
+                    {totals.totalStripeFees === null ? '—' : `-${totals.totalStripeFees.toFixed(2)}€`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-700">
+                    {totals.totalNetAfterStripe === null ? '—' : `${totals.totalNetAfterStripe.toFixed(2)}€`}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
                     {totals.totalCommission.toFixed(2)}€
                   </td>
@@ -722,6 +693,7 @@ export default function AdminPayments() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                     {totals.totalOrders}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap"></td>
                   <td className="px-6 py-4 whitespace-nowrap"></td>
                 </tr>
               </tfoot>
