@@ -3,7 +3,7 @@ import emailService from '@/lib/emailService';
 
 export const dynamic = 'force-dynamic';
 
-const RECIPIENTS = [
+const DEFAULT_RECIPIENTS = [
   { email: 'guillierpauline24@gmail.com', prenom: 'Pauline' },
   { email: 'ninamaheli0517@gmail.com', prenom: 'Nina' },
   { email: 'benedicte.noviant@hotmail.fr', prenom: 'Bénédicte' },
@@ -147,10 +147,35 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+
+    // Un destinataire : { email, prenom } — ou liste : { recipients: [{email,prenom}] }
+    // Sans body → liste par défaut (batch historique)
+    let recipients = DEFAULT_RECIPIENTS;
+    if (body?.email) {
+      recipients = [{ email: String(body.email).trim(), prenom: (body.prenom || '').trim() || 'Livreur' }];
+    } else if (Array.isArray(body?.recipients) && body.recipients.length > 0) {
+      recipients = body.recipients
+        .map((r) => ({
+          email: String(r.email || '').trim(),
+          prenom: String(r.prenom || '').trim() || 'Livreur',
+        }))
+        .filter((r) => r.email);
+    }
+
+    if (!recipients.length) {
+      return NextResponse.json({ error: 'Aucun destinataire' }, { status: 400 });
+    }
+
     const subject = "Votre candidature livreur CVN'EAT a été acceptée";
     const results = [];
 
-    for (const r of RECIPIENTS) {
+    for (const r of recipients) {
       try {
         const info = await emailService.sendEmail({
           to: r.email,
@@ -168,17 +193,16 @@ export async function POST(request) {
       }
     }
 
-    // Copie de vérification pour contact@cvneat.fr
     try {
       const verify = await emailService.sendEmail({
         to: 'contact@cvneat.fr',
         subject: `[COPIE VÉRIFICATION] ${subject}`,
         html:
-          buildHtml('Pauline') +
-          `<p style="padding:16px;font-size:12px;color:#6b7280;">Copie de vérification admin — emails envoyés à : ${RECIPIENTS.map((x) => x.email).join(', ')}</p>`,
+          buildHtml(recipients[0].prenom) +
+          `<p style="padding:16px;font-size:12px;color:#6b7280;">Copie de vérification admin — emails envoyés à : ${recipients.map((x) => x.email).join(', ')}</p>`,
         text:
-          buildText('Pauline') +
-          `\n\nCopie vérification — destinataires: ${RECIPIENTS.map((x) => x.email).join(', ')}`,
+          buildText(recipients[0].prenom) +
+          `\n\nCopie vérification — destinataires: ${recipients.map((x) => x.email).join(', ')}`,
       });
       results.push({
         email: 'contact@cvneat.fr',
@@ -197,3 +221,4 @@ export async function POST(request) {
     return NextResponse.json({ error: e.message || 'Erreur serveur' }, { status: 500 });
   }
 }
+
