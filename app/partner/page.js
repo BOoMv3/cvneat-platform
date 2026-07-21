@@ -25,7 +25,8 @@ import {
   FaMotorcycle,
   FaEnvelope,
   FaComments,
-  FaTag
+  FaTag,
+  FaFileInvoice
 } from 'react-icons/fa';
 import RealTimeNotifications from '../components/RealTimeNotifications';
 import OrderCountdown from '@/components/OrderCountdown';
@@ -2925,7 +2926,7 @@ export default function PartnerDashboard() {
             </div>
             
             {/* Boutons d'action - Responsive mobile et foldable */}
-            <div className="grid grid-cols-3 fold:grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1 fold:gap-1 xs:gap-2 sm:gap-3 lg:gap-4">
+            <div className="grid grid-cols-3 fold:grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-1 fold:gap-1 xs:gap-2 sm:gap-3 lg:gap-4">
               <button
                 onClick={() => router.push('/partner/analytics')}
                 className="bg-purple-600 text-white px-1 fold:px-1 xs:px-2 sm:px-3 lg:px-4 py-1.5 fold:py-1.5 xs:py-2 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col items-center justify-center space-y-0.5 fold:space-y-0.5 xs:space-y-1 text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium"
@@ -2941,6 +2942,15 @@ export default function PartnerDashboard() {
                 <FaFileAlt className="h-4 w-4 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Rapports</span>
                 <span className="sm:hidden">Rapports</span>
+              </button>
+              <button
+                onClick={() => router.push('/partner/factures')}
+                className="bg-emerald-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-emerald-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
+                title="Factures et paiements reçus"
+              >
+                <FaFileInvoice className="h-4 w-4 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Factures</span>
+                <span className="sm:hidden">Factures</span>
               </button>
               <button
                 onClick={() => router.push('/partner/hours')}
