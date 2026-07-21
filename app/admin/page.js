@@ -70,6 +70,7 @@ export default function AdminPage() {
     monthlyRevenue: [] // CA CVN'EAT par mois
   });
   const [psgom10Usage, setPsgom10Usage] = useState({ loading: true, count: 0, error: null });
+  const [syncingPlus, setSyncingPlus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -112,6 +113,7 @@ export default function AdminPage() {
       setUser(currentUser);
       fetchDashboardStats();
       fetchPsgom10Usage();
+      fetchCvneatPlusStats();
       
     } catch (err) {
       console.error('Erreur d\'authentification:', err);
@@ -185,6 +187,60 @@ export default function AdminPage() {
     }
   };
 
+  const fetchCvneatPlusStats = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch('/api/admin/cvneat-plus', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.error('CVN\'EAT Plus stats:', json?.error || res.status);
+        return;
+      }
+      setStats((prev) => ({
+        ...prev,
+        activeCvneatPlusSubscribers: Number(json.activeCount || 0),
+      }));
+    } catch (e) {
+      console.error('CVN\'EAT Plus stats:', e);
+    }
+  };
+
+  const syncCvneatPlusFromStripe = async () => {
+    try {
+      setSyncingPlus(true);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Session expirée');
+
+      const res = await fetch('/api/admin/cvneat-plus', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Sync impossible');
+
+      setStats((prev) => ({
+        ...prev,
+        activeCvneatPlusSubscribers: Number(json.activeCount || 0),
+      }));
+      alert(`CVN'EAT Plus synchronisé : ${json.activeCount || 0} abonné(s) actif(s) (${json.synced || 0} abo Stripe traités).`);
+    } catch (e) {
+      alert(e?.message || 'Erreur sync CVN\'EAT Plus');
+    } finally {
+      setSyncingPlus(false);
+    }
+  };
+
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
@@ -223,17 +279,6 @@ export default function AdminPage() {
 
       if (usersError) {
         console.error('Erreur récupération utilisateurs:', usersError);
-      }
-
-      // Récupérer le nombre d'abonnés CVN'EAT Plus actifs
-      const nowIso = new Date().toISOString();
-      const { count: activeCvneatPlusSubscribers, error: subscribersError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .gt('cvneat_plus_ends_at', nowIso);
-
-      if (subscribersError) {
-        console.error('Erreur récupération abonnés CVN\'EAT Plus:', subscribersError);
       }
 
       // Calculer les statistiques
@@ -306,7 +351,7 @@ export default function AdminPage() {
         console.warn('⚠️ Impossible de récupérer les visites (table site_visits manquante ?):', visitErr.message || visitErr);
       }
 
-      setStats({
+      setStats((prev) => ({
         totalOrders,
         pendingOrders,
         validatedOrders,
@@ -325,7 +370,7 @@ export default function AdminPage() {
         totalRestaurants,
         pendingPartners,
         totalUsers: totalUsers || 0,
-        activeCvneatPlusSubscribers: activeCvneatPlusSubscribers || 0,
+        activeCvneatPlusSubscribers: prev.activeCvneatPlusSubscribers || 0,
         recentOrders: recentOrders,
         recentRestaurants: recentRestaurants,
         allRestaurants: restaurants || [],
@@ -333,7 +378,7 @@ export default function AdminPage() {
         registeredVisitors,
         guestVisitors,
         monthlyRevenue
-      });
+      }));
 
     } catch (err) {
       setError('Erreur lors du chargement des statistiques');
@@ -572,7 +617,11 @@ export default function AdminPage() {
         <div className="text-center">
           <p className="text-red-600 font-bold mb-4">Erreur: {error}</p>
           <button
-            onClick={fetchDashboardStats}
+            onClick={() => {
+              fetchDashboardStats();
+              fetchCvneatPlusStats();
+              fetchPsgom10Usage();
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Réessayer
@@ -589,7 +638,10 @@ export default function AdminPage() {
         {/* Header avec bouton retour et info utilisateur - Optimisé mobile et foldable */}
         <div className="mb-3 fold:mb-3 xs:mb-4 sm:mb-6">
           <div className="flex items-center justify-between w-full gap-2 mb-3">
-            <h1 className="text-base fold:text-base xs:text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate flex-1 min-w-0">🚀 Dashboard Admin</h1>
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <h1 className="text-base fold:text-base xs:text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate min-w-0">🚀 Dashboard Admin</h1>
+              <AdminOnlineBadge />
+            </div>
             <button
               onClick={() => router.push('/')}
               className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base flex-shrink-0 px-2 py-1"
@@ -891,13 +943,24 @@ export default function AdminPage() {
               <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
                 <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Abonnés CVN&apos;EAT Plus</p>
                 <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-orange-700">{stats.activeCvneatPlusSubscribers || 0}</p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/admin/users')}
-                  className="text-[10px] text-orange-700 hover:text-orange-900 underline mt-0.5"
-                >
-                  Voir la liste
-                </button>
+                <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => router.push('/admin/users')}
+                    className="text-[10px] text-orange-700 hover:text-orange-900 underline"
+                  >
+                    Voir la liste
+                  </button>
+                  <button
+                    type="button"
+                    onClick={syncCvneatPlusFromStripe}
+                    disabled={syncingPlus}
+                    className="text-[10px] text-orange-700 hover:text-orange-900 underline disabled:opacity-50"
+                    title="Resynchroniser depuis Stripe"
+                  >
+                    {syncingPlus ? 'Sync…' : 'Sync Stripe'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -16,7 +16,7 @@ export default function AbonnementPage() {
   const [checkoutError, setCheckoutError] = useState(null);
   const [sessionBusy, setSessionBusy] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts = {}) => {
     setLoading(true);
     setCheckoutError(null);
     const { data: s } = await supabase.auth.getSession();
@@ -28,7 +28,8 @@ export default function AbonnementPage() {
       return;
     }
     setSignedIn(true);
-    const res = await fetch('/api/cvneat-plus/status', {
+    const syncQs = opts.sync ? '?sync=1' : '';
+    const res = await fetch(`/api/cvneat-plus/status${syncQs}`, {
       headers: { Authorization: `Bearer ${t}` },
       cache: 'no-store',
     });
@@ -39,7 +40,9 @@ export default function AbonnementPage() {
   }, []);
 
   useEffect(() => {
-    load();
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const fromCheckout = params?.get('cvneat_plus') === 'ok';
+    load({ sync: fromCheckout });
   }, [load]);
 
   const startCheckout = async () => {

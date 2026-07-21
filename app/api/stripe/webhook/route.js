@@ -139,14 +139,26 @@ export async function POST(request) {
         if (
           s?.mode === 'subscription' &&
           s?.subscription &&
-          (md.product === 'cvneat_plus' || md.product === 'vneat_plus')
+          (md.product === 'cvneat_plus' || md.product === 'vneat_plus' || md.supabase_user_id || s.client_reference_id)
         ) {
           try {
-            const sub = await stripe.subscriptions.retrieve(
+            const db = supabaseAdmin || supabasePublic;
+            let sub = await stripe.subscriptions.retrieve(
               typeof s.subscription === 'string' ? s.subscription : s.subscription.id
             );
-            await applyCvneatPlusFromStripeSubscription(sub, supabaseAdmin || supabasePublic);
-            console.log("✅ CVN'EAT Plus: abonnement synchronisé depuis checkout.session");
+            // Garantir metadata même si Stripe a perdu subscription_data
+            const userId = md.supabase_user_id || s.client_reference_id || sub.metadata?.supabase_user_id;
+            if (userId && (!sub.metadata?.supabase_user_id || !sub.metadata?.product)) {
+              sub = await stripe.subscriptions.update(sub.id, {
+                metadata: {
+                  ...sub.metadata,
+                  supabase_user_id: userId,
+                  product: 'cvneat_plus',
+                },
+              });
+            }
+            const applied = await applyCvneatPlusFromStripeSubscription(sub, db);
+            console.log("✅ CVN'EAT Plus: abonnement synchronisé depuis checkout.session", applied);
           } catch (e) {
             console.warn("⚠️ CVN'EAT Plus checkout sync:", e?.message || e);
           }
