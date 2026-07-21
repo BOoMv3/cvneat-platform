@@ -30,6 +30,7 @@ import {
   FaCircle
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
+import AdminOnlineBadge from '@/components/AdminOnlineBadge';
 import { livreurEarningNetEur } from '../../lib/livreur-delivery-earnings';
 import {
   aggregateCvneatRevenue,
