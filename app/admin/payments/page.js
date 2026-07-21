@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { getFixedCommissionRatePercentFromName } from '../../../lib/commission';
+import {
+  computeOrderCommissionEur,
+  computeOrderRestaurantPayoutEur,
+  getOrderArticlesAmountEur,
+} from '../../../lib/restaurant-order-payout';
 import { FaArrowLeft, FaEuroSign, FaStore, FaSpinner, FaDownload, FaCalendarAlt, FaListAlt, FaCheck, FaTimes, FaMotorcycle } from 'react-icons/fa';
 import Link from 'next/link';
 
@@ -146,61 +151,42 @@ export default function AdminPayments() {
               totalRevenue: 0,
               commission: 0,
               restaurantPayout: 0,
+              totalTransfers: 0,
+              unpaidOrderCount: 0,
               orderCount: 0,
               error: ordersError.message
             };
           }
 
-          // Filtrer les commandes payées (si payment_status existe, sinon toutes les livrées sont considérées payées)
-          const paidOrders = (orders || []).filter(order => {
-            // IMPORTANT: sur l'historique, on a parfois payment_status='pending' alors que la commande est bien livrée.
-            // Pour éviter de sous-estimer ce que l'on doit, on inclut toutes les commandes livrées SAUF
-            // celles explicitement échouées / annulées / remboursées.
+          // Commandes livrées valides (exclure échecs / annulations / remboursements)
+          const paidOrders = (orders || []).filter((order) => {
             const s = (order.payment_status || '').toString().trim().toLowerCase();
             return !['failed', 'cancelled', 'refunded'].includes(s);
           });
 
-          console.log(`📊 ${restaurant.nom}: ${paidOrders.length} commandes payées sur ${orders?.length || 0} commandes livrées`);
+          // Reste à payer = commandes pas encore rattachées à un virement (même logique que create transfer)
+          const unpaidOrders = paidOrders.filter((order) => !order.restaurant_paid_at);
 
-          // Calculer les revenus et commissions
+          const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+          const fixedRate = getFixedCommissionRatePercentFromName(restaurant.nom);
+
           let totalRevenue = 0;
           let totalGrossPaid = 0;
           let totalStripeFees = 0;
           let totalNetAfterStripe = 0;
           let stripeFeesMissingCount = 0;
           let totalCommission = 0;
-          let totalRestaurantPayout = 0;
+          let grossRestaurantPayout = 0;
+          let remainingDue = 0;
 
-          // Règles de commission (France):
-          // - La Bonne Pâte = 0%
-          // - All'ovale pizza = 15%
-          // - Tous les autres = 20% (si commission_rate non renseigné en DB)
-          const fixedRate = getFixedCommissionRatePercentFromName(restaurant.nom);
-          const isBonnePate = fixedRate === 0;
-          const isAllovale = fixedRate === 15;
-
-          const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-          const parseRatePercent = (v) => {
-            const n = parseFloat(v);
-            return Number.isFinite(n) ? n : null;
-          };
-          const defaultRestaurantRatePercent = restaurant.commission_rate !== null && restaurant.commission_rate !== undefined
-            ? parseRatePercent(restaurant.commission_rate)
-            : null;
-
-          // Log pour debug
-          console.log(`💰 ${restaurant.nom}: commission_rate(resto)=${restaurant.commission_rate ?? 'n/a'} (bonnePate=${isBonnePate}, allovale=${isAllovale})`);
-
-          // IMPORTANT:
-          // Le "dû au restaurant" doit suivre les valeurs stockées par commande (commission_rate/commission_amount/restaurant_payout)
-          // sinon une modification du taux du restaurant dans le temps fausse l'historique.
-          paidOrders.forEach(order => {
-            const orderTotal = parseFloat(order.total || 0);
-            if (isNaN(orderTotal)) {
+          // Stats CA / commission : toutes les commandes de la période
+          paidOrders.forEach((order) => {
+            const articlesAmount = getOrderArticlesAmountEur(order);
+            if (Number.isNaN(articlesAmount)) {
               console.warn(`⚠️ Commande ${order.id} avec total invalide:`, order.total);
               return;
             }
-            totalRevenue += orderTotal;
+            totalRevenue += articlesAmount;
 
             const grossPaid =
               order.total_paid !== null && order.total_paid !== undefined
@@ -215,39 +201,40 @@ export default function AdminPayments() {
               totalNetAfterStripe += grossPaid - stripeFee;
             } else {
               stripeFeesMissingCount += 1;
-              // On ne peut pas calculer le net réel sans la fee → on garde le brut dans ce total,
-              // mais on marquera le net comme "incomplet" dans l'affichage.
               totalNetAfterStripe += grossPaid;
             }
 
-            // La Bonne Pâte: 0% quoi qu'il arrive (même si des valeurs stockées sont incohérentes)
-            if (isBonnePate) {
-              totalCommission += 0;
-              totalRestaurantPayout += orderTotal;
-              return;
-            }
-
-            // Taux au moment de la commande (stocké), fallback resto, fallback défaut 20%
-            const orderRatePercent = parseRatePercent(order.commission_rate);
-            const effectiveRatePercent =
-              orderRatePercent ??
-              defaultRestaurantRatePercent ??
-              (isAllovale ? 15 : 20);
-
-            const orderCommission = order.commission_amount !== null && order.commission_amount !== undefined
-              ? round2(order.commission_amount)
-              : round2((orderTotal * effectiveRatePercent) / 100);
-
-            const orderPayout = order.restaurant_payout !== null && order.restaurant_payout !== undefined
-              ? round2(order.restaurant_payout)
-              : round2(orderTotal - orderCommission);
-
-            totalCommission += orderCommission;
-            totalRestaurantPayout += orderPayout;
+            totalCommission += computeOrderCommissionEur(order, restaurant);
+            grossRestaurantPayout += computeOrderRestaurantPayoutEur(order, restaurant);
           });
 
-          // Afficher le taux de commission du restaurant (pas un calcul moyen basé sur les commissions réelles)
-          // Utiliser le commission_rate du restaurant (0% pour La Bonne Pâte, sinon le taux du restaurant)
+          unpaidOrders.forEach((order) => {
+            remainingDue += computeOrderRestaurantPayoutEur(order, restaurant);
+          });
+
+          // Virements déjà effectués (info affichage)
+          let totalTransfers = 0;
+          try {
+            let transfersQuery = supabase
+              .from('restaurant_transfers')
+              .select('amount, transfer_date')
+              .eq('restaurant_id', restaurant.id)
+              .eq('status', 'completed');
+
+            if (dateRange) {
+              transfersQuery = transfersQuery
+                .gte('transfer_date', dateRange.startDate.toISOString().slice(0, 10))
+                .lte('transfer_date', dateRange.endDate.toISOString().slice(0, 10));
+            }
+
+            const { data: transfers, error: transfersError } = await transfersQuery;
+            if (!transfersError && transfers) {
+              totalTransfers = transfers.reduce((sum, t) => sum + (parseFloat(t.amount || 0) || 0), 0);
+            }
+          } catch (err) {
+            console.warn(`Erreur virements ${restaurant.nom}:`, err);
+          }
+
           const displayCommissionRate =
             fixedRate !== null
               ? fixedRate
@@ -255,7 +242,7 @@ export default function AdminPayments() {
                   ? restaurant.commission_rate
                   : 20);
 
-          const result = {
+          return {
             ...restaurant,
             totalRevenue: round2(totalRevenue),
             totalGrossPaid: round2(totalGrossPaid),
@@ -263,15 +250,14 @@ export default function AdminPayments() {
             netAfterStripe: stripeFeesMissingCount > 0 ? null : round2(totalNetAfterStripe),
             stripeFeesMissingCount,
             commission: round2(totalCommission),
-            restaurantPayout: round2(totalRestaurantPayout),
+            // "Montant dû" = reste à payer (hors commandes déjà virées)
+            restaurantPayout: round2(remainingDue),
+            grossRestaurantPayout: round2(grossRestaurantPayout),
+            totalTransfers: round2(totalTransfers),
+            unpaidOrderCount: unpaidOrders.length,
             orderCount: paidOrders.length,
-            commissionRate: displayCommissionRate
+            commissionRate: displayCommissionRate,
           };
-          
-          // Log pour debug
-          console.log(`💰 Résultat ${restaurant.nom}: CA=${result.totalRevenue}€, Commission=${result.commission}€, Dû=${result.restaurantPayout}€, Taux=${result.commissionRate}%`);
-          
-          return result;
         })
       );
 
@@ -296,9 +282,10 @@ export default function AdminPayments() {
       acc.totalStripeFeesMissing += restaurant.stripeFeesMissingCount || 0;
       acc.totalCommission += restaurant.commission || 0;
       acc.totalPayout += restaurant.restaurantPayout || 0;
+      acc.totalTransfers += restaurant.totalTransfers || 0;
       acc.totalOrders += restaurant.orderCount || 0;
       return acc;
-    }, { totalRevenue: 0, totalGrossPaid: 0, totalStripeFees: 0, totalNetAfterStripe: 0, totalStripeFeesMissing: 0, totalCommission: 0, totalPayout: 0, totalOrders: 0 });
+    }, { totalRevenue: 0, totalGrossPaid: 0, totalStripeFees: 0, totalNetAfterStripe: 0, totalStripeFeesMissing: 0, totalCommission: 0, totalPayout: 0, totalTransfers: 0, totalOrders: 0 });
 
     return {
       totalRevenue: Math.round(totals.totalRevenue * 100) / 100,
@@ -308,6 +295,7 @@ export default function AdminPayments() {
       totalStripeFeesMissing: totals.totalStripeFeesMissing,
       totalCommission: Math.round(totals.totalCommission * 100) / 100,
       totalPayout: Math.round(totals.totalPayout * 100) / 100,
+      totalTransfers: Math.round(totals.totalTransfers * 100) / 100,
       totalOrders: totals.totalOrders
     };
   };
@@ -323,13 +311,13 @@ export default function AdminPayments() {
           ? '7 derniers jours' 
           : `${customStartDate} au ${customEndDate}`;
 
-    let csv = 'Restaurant;CA Articles (€);Brut encaissé (€);Frais Stripe (€);Net après Stripe (€);Commission CVN\'EAT (€);Montant dû (€);Nb Commandes;Taux Commission (%)\n';
+    let csv = 'Restaurant;CA Articles (€);Brut encaissé (€);Frais Stripe (€);Net après Stripe (€);Commission CVN\'EAT (€);Reste dû (€);Déjà versé (€);Nb Commandes;Taux Commission (%)\n';
     
     restaurants.forEach(restaurant => {
-      csv += `${restaurant.nom || 'Inconnu'};${(restaurant.totalRevenue || 0).toFixed(2)};${(restaurant.totalGrossPaid || 0).toFixed(2)};${(restaurant.stripeFees || 0).toFixed(2)};${(restaurant.netAfterStripe || 0).toFixed(2)};${(restaurant.commission || 0).toFixed(2)};${(restaurant.restaurantPayout || 0).toFixed(2)};${restaurant.orderCount};${restaurant.commissionRate.toFixed(1)}\n`;
+      csv += `${restaurant.nom || 'Inconnu'};${(restaurant.totalRevenue || 0).toFixed(2)};${(restaurant.totalGrossPaid || 0).toFixed(2)};${(restaurant.stripeFees || 0).toFixed(2)};${(restaurant.netAfterStripe || 0).toFixed(2)};${(restaurant.commission || 0).toFixed(2)};${(restaurant.restaurantPayout || 0).toFixed(2)};${(restaurant.totalTransfers || 0).toFixed(2)};${restaurant.orderCount};${restaurant.commissionRate.toFixed(1)}\n`;
     });
 
-    csv += `\nTOTAL;${totals.totalRevenue.toFixed(2)};${totals.totalGrossPaid.toFixed(2)};${(totals.totalStripeFees ?? 0).toFixed(2)};${(totals.totalNetAfterStripe ?? 0).toFixed(2)};${totals.totalCommission.toFixed(2)};${totals.totalPayout.toFixed(2)};${totals.totalOrders};\n`;
+    csv += `\nTOTAL;${totals.totalRevenue.toFixed(2)};${totals.totalGrossPaid.toFixed(2)};${(totals.totalStripeFees ?? 0).toFixed(2)};${(totals.totalNetAfterStripe ?? 0).toFixed(2)};${totals.totalCommission.toFixed(2)};${totals.totalPayout.toFixed(2)};${totals.totalTransfers.toFixed(2)};${totals.totalOrders};\n`;
     csv += `\nPériode: ${periodText}\n`;
     csv += `Date export: ${new Date().toLocaleString('fr-FR')}\n`;
 
@@ -547,8 +535,11 @@ export default function AdminPayments() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total dû aux restaurants</p>
+                <p className="text-sm text-gray-600">Reste dû aux restaurants</p>
                 <p className="text-2xl font-bold text-purple-600">{totals.totalPayout.toFixed(2)}€</p>
+                {totals.totalTransfers > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">Déjà versé: {totals.totalTransfers.toFixed(2)}€</p>
+                )}
               </div>
               <FaStore className="h-8 w-8 text-purple-600" />
             </div>
@@ -592,7 +583,7 @@ export default function AdminPayments() {
                     Commission CVN'EAT
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Montant dû
+                    Reste dû
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Commandes
@@ -652,6 +643,16 @@ export default function AdminPayments() {
                       <div className="text-sm font-bold text-purple-600">
                         {restaurant.restaurantPayout.toFixed(2)}€
                       </div>
+                      {restaurant.totalTransfers > 0 && (
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          Versé: {restaurant.totalTransfers.toFixed(2)}€
+                        </div>
+                      )}
+                      {restaurant.unpaidOrderCount > 0 && (
+                        <div className="text-xs text-gray-400">
+                          {restaurant.unpaidOrderCount} cmd non virée{restaurant.unpaidOrderCount > 1 ? 's' : ''}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
