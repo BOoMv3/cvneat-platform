@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { livreurEarningNetEur } from '../../../../../lib/livreur-delivery-earnings';
+import { loadDeliveryTransferInvoice } from '../../../../../lib/delivery-invoice';
+import emailService from '../../../../../lib/emailService';
+import { createDeliveryInboxMessage } from '../../../../../lib/delivery-messaging';
+import { sendPushToUserIds } from '../../../../../lib/sendDeliveryAppPush';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -178,11 +182,69 @@ export async function POST(request) {
       }
     }
 
+    // Facture + notif livreur (email / inbox / push) — best effort
+    let invoiceNotified = false;
+    try {
+      const invoice = await loadDeliveryTransferInvoice(supabaseAdmin, transfer.id);
+      if (!invoice.error && invoice.html) {
+        const toEmail = delivery_email || driver.email;
+        const amountLabel = `${parseFloat(amount).toFixed(2)} €`;
+        const subject = `Votre paiement CVN'EAT de ${amountLabel}`;
+        const bodyText = `Bonjour,\n\nUn paiement de ${amountLabel} a été enregistré sur votre compte livreur CVN'EAT.\nRéférence facture : ${invoice.reference}\n\nLa facture est jointe à cet email. Vous pouvez aussi la retrouver dans l'app (Profil → Mes factures).\n\nL'équipe CVN'EAT`;
+
+        if (toEmail) {
+          await emailService.sendEmail({
+            to: toEmail,
+            subject,
+            text: bodyText,
+            html: `<p>Bonjour,</p>
+              <p>Un paiement de <strong>${amountLabel}</strong> a été enregistré sur votre compte livreur CVN'EAT.</p>
+              <p>Référence facture : <strong>${invoice.reference}</strong></p>
+              <p>La facture est jointe à cet email (fichier HTML). Vous pouvez aussi l'ouvrir dans l'app : Profil → Mes factures.</p>
+              <p>L'équipe CVN'EAT</p>`,
+            attachments: [
+              {
+                filename: `facture-${invoice.reference}.html`,
+                content: invoice.html,
+                contentType: 'text/html; charset=utf-8',
+              },
+            ],
+          });
+          invoiceNotified = true;
+        }
+
+        await createDeliveryInboxMessage({
+          adminId: auth.userId,
+          deliveryUserId: delivery_id,
+          subject: `Paiement de ${amountLabel} effectué`,
+          body: `Votre paiement de ${amountLabel} a été enregistré.\nRéférence : ${invoice.reference}\nOuvrez Profil → Mes factures pour télécharger le document.`,
+          kind: 'system',
+          eventType: 'payment_made',
+          data: { transferId: transfer.id, amount: parseFloat(amount), reference: invoice.reference },
+          push: false,
+        }).catch((e) => console.warn('inbox paiement:', e?.message));
+
+        await sendPushToUserIds(
+          [delivery_id],
+          'Paiement reçu 💰',
+          `${amountLabel} virés — facture disponible`,
+          {
+            type: 'payment_made',
+            url: '/delivery/profile',
+            transferId: transfer.id,
+          }
+        ).catch((e) => console.warn('push paiement:', e?.message));
+      }
+    } catch (notifyErr) {
+      console.warn('Notification facture livreur (non bloquant):', notifyErr?.message || notifyErr);
+    }
+
     return NextResponse.json({
       success: true,
       transfer,
       orders_marked: ordersToMark.length || 0,
       amount_marked: totalMarque || 0,
+      invoice_emailed: invoiceNotified,
       message: `Paiement enregistré. ${ordersToMark.length || 0} commande(s) marquée(s) comme payée(s). Le dashboard du livreur sera automatiquement mis à jour.`
     });
 

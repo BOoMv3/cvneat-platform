@@ -32,8 +32,14 @@ export default function DeliveryProfile() {
     nom: '',
     telephone: '',
     adresse: '',
-    photo_url: ''
+    code_postal: '',
+    ville: '',
+    photo_url: '',
+    legal_name: '',
+    siret: '',
+    vat_number: '',
   });
+  const [transfers, setTransfers] = useState([]);
 
   useEffect(() => {
     checkAuth();
@@ -51,6 +57,7 @@ export default function DeliveryProfile() {
       setUser(session.user);
       await fetchProfile(session.user.id);
       await fetchStats();
+      await fetchTransfers(session.access_token);
     } catch (error) {
       console.error('Erreur auth:', error);
       router.push('/login');
@@ -76,7 +83,12 @@ export default function DeliveryProfile() {
           nom: data.nom || '',
           telephone: data.telephone || '',
           adresse: data.adresse || '',
-          photo_url: data.photo_url || ''
+          code_postal: data.code_postal || '',
+          ville: data.ville || '',
+          photo_url: data.photo_url || '',
+          legal_name: data.legal_name || '',
+          siret: data.siret || '',
+          vat_number: data.vat_number || '',
         });
       }
     } catch (error) {
@@ -107,6 +119,42 @@ export default function DeliveryProfile() {
       }
     } catch (error) {
       console.error('Erreur récupération stats:', error);
+    }
+  };
+
+  const fetchTransfers = async (accessToken) => {
+    try {
+      const response = await fetch('/api/delivery/transfers', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTransfers(data.transfers || []);
+      }
+    } catch (error) {
+      console.error('Erreur factures:', error);
+    }
+  };
+
+  const openInvoice = async (transferId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/delivery/transfers/${transferId}/invoice`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Impossible d’ouvrir la facture');
+        return;
+      }
+      const html = await res.text();
+      const w = window.open('', '_blank');
+      if (w) {
+        w.document.write(html);
+        w.document.close();
+      }
+    } catch (e) {
+      alert(e.message || 'Erreur facture');
     }
   };
 
@@ -351,9 +399,87 @@ export default function DeliveryProfile() {
                   value={formData.adresse}
                   onChange={handleChange}
                   disabled={!editing}
-                  rows={3}
+                  rows={2}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Code postal</label>
+                <input
+                  type="text"
+                  name="code_postal"
+                  value={formData.code_postal}
+                  onChange={handleChange}
+                  disabled={!editing}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                <input
+                  type="text"
+                  name="ville"
+                  value={formData.ville}
+                  onChange={handleChange}
+                  disabled={!editing}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+                />
+              </div>
+            </div>
+
+            {/* Facturation auto-entrepreneur */}
+            <div className="border-t pt-4 mt-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Infos facturation</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Remplis une fois : ces infos apparaissent sur tes factures de paiement CVN&apos;EAT (SIRET / raison sociale).
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Raison sociale / nom commercial
+                  </label>
+                  <input
+                    type="text"
+                    name="legal_name"
+                    value={formData.legal_name}
+                    onChange={handleChange}
+                    disabled={!editing}
+                    placeholder="Ex: MEDJBOUR Baghdad"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
+                    <input
+                      type="text"
+                      name="siret"
+                      value={formData.siret}
+                      onChange={handleChange}
+                      disabled={!editing}
+                      placeholder="14 chiffres"
+                      inputMode="numeric"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      N° TVA (optionnel)
+                    </label>
+                    <input
+                      type="text"
+                      name="vat_number"
+                      value={formData.vat_number}
+                      onChange={handleChange}
+                      disabled={!editing}
+                      placeholder="FR..."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -369,7 +495,12 @@ export default function DeliveryProfile() {
                       nom: profile?.nom || '',
                       telephone: profile?.telephone || '',
                       adresse: profile?.adresse || '',
-                      photo_url: profile?.photo_url || ''
+                      code_postal: profile?.code_postal || '',
+                      ville: profile?.ville || '',
+                      photo_url: profile?.photo_url || '',
+                      legal_name: profile?.legal_name || '',
+                      siret: profile?.siret || '',
+                      vat_number: profile?.vat_number || '',
                     });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -387,6 +518,40 @@ export default function DeliveryProfile() {
               </div>
             )}
           </form>
+        </div>
+
+        {/* Factures */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Mes factures de paiement</h2>
+          {transfers.length === 0 ? (
+            <p className="text-sm text-gray-500">Aucun paiement reçu pour le moment.</p>
+          ) : (
+            <ul className="divide-y">
+              {transfers.map((t) => (
+                <li key={t.id} className="py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {parseFloat(t.amount || 0).toFixed(2)} €
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {t.transfer_date
+                        ? new Date(t.transfer_date).toLocaleDateString('fr-FR')
+                        : '—'}
+                      {t.orders_count ? ` · ${t.orders_count} course(s)` : ''}
+                      {t.reference_number ? ` · ${t.reference_number}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openInvoice(t.id)}
+                    className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-black"
+                  >
+                    Voir facture
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Section Sécurité */}

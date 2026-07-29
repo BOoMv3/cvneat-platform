@@ -6,107 +6,128 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// GET - Récupérer le profil du livreur
+function isDeliveryRole(role) {
+  const r = (role || '').toLowerCase();
+  return r === 'delivery' || r === 'livreur';
+}
+
+const PROFILE_SELECT_FULL =
+  'id, nom, prenom, email, telephone, role, adresse, code_postal, ville, photo_url, siret, legal_name, vat_number, created_at, updated_at';
+const PROFILE_SELECT_BASE =
+  'id, nom, prenom, email, telephone, role, adresse, photo_url, siret, legal_name, created_at, updated_at';
+
+async function getDeliveryUser(token) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAdmin.auth.getUser(token);
+  if (authError || !user) return { error: 'Non autorisé', status: 401 };
+
+  let { data: userData, error: userError } = await supabaseAdmin
+    .from('users')
+    .select(PROFILE_SELECT_FULL)
+    .eq('id', user.id)
+    .single();
+
+  if (userError) {
+    const fallback = await supabaseAdmin
+      .from('users')
+      .select(PROFILE_SELECT_BASE)
+      .eq('id', user.id)
+      .single();
+    userData = fallback.data;
+    userError = fallback.error;
+  }
+
+  if (userError || !userData) return { error: 'Utilisateur non trouvé', status: 404 };
+  if (!isDeliveryRole(userData.role)) return { error: 'Accès refusé - Rôle invalide', status: 403 };
+  return { user, userData };
+}
+
 export async function GET(request) {
   try {
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
-    }
+    if (!token) return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
 
-    // Vérifier l'utilisateur avec le token
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      console.error('❌ Erreur auth:', authError);
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
+    const auth = await getDeliveryUser(token);
+    if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-    // Vérifier que l'utilisateur est un livreur (ne jamais exposer password)
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id, nom, prenom, email, telephone, role, adresse, photo_url, created_at, updated_at')
-      .eq('id', user.id)
-      .single();
-
-    if (userError || !userData) {
-      console.error('❌ Erreur récupération utilisateur:', userError);
-      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
-    }
-
-    if (userData.role !== 'delivery') {
-      return NextResponse.json({ error: 'Accès refusé - Rôle invalide' }, { status: 403 });
-    }
-
-    return NextResponse.json(userData);
-
+    return NextResponse.json(auth.userData);
   } catch (error) {
-    console.error('❌ Erreur API profile:', error);
+    console.error('Erreur API profile:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
-// PUT - Mettre à jour le profil du livreur
 export async function PUT(request) {
   try {
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
-    }
+    if (!token) return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
 
-    // Vérifier l'utilisateur avec le token
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      console.error('❌ Erreur auth:', authError);
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
+    const auth = await getDeliveryUser(token);
+    if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-    // Vérifier que l'utilisateur est un livreur
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (userError || !userData || userData.role !== 'delivery') {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
-    }
-
-    // Récupérer les données à mettre à jour
     const body = await request.json();
-    const { prenom, nom, telephone, adresse, photo_url } = body;
+    const {
+      prenom,
+      nom,
+      telephone,
+      adresse,
+      code_postal,
+      ville,
+      photo_url,
+      siret,
+      legal_name,
+      vat_number,
+    } = body;
 
-    // Mettre à jour le profil
     const updateData = {};
     if (prenom !== undefined) updateData.prenom = prenom;
     if (nom !== undefined) updateData.nom = nom;
     if (telephone !== undefined) updateData.telephone = telephone;
     if (adresse !== undefined) updateData.adresse = adresse;
     if (photo_url !== undefined) updateData.photo_url = photo_url;
+    if (siret !== undefined) updateData.siret = String(siret || '').replace(/\s/g, '').trim() || null;
+    if (legal_name !== undefined) updateData.legal_name = String(legal_name || '').trim() || null;
 
-    const { data: updatedUser, error: updateError } = await supabaseAdmin
+    // Colonnes optionnelles (migration 20260729130000)
+    const optional = {};
+    if (code_postal !== undefined) optional.code_postal = code_postal;
+    if (ville !== undefined) optional.ville = ville;
+    if (vat_number !== undefined) optional.vat_number = String(vat_number || '').trim() || null;
+
+    let { data: updatedUser, error: updateError } = await supabaseAdmin
       .from('users')
-      .update(updateData)
-      .eq('id', user.id)
-      .select('id, nom, prenom, email, telephone, role, adresse, photo_url, updated_at')
+      .update({ ...updateData, ...optional })
+      .eq('id', auth.user.id)
+      .select(PROFILE_SELECT_FULL)
       .single();
 
     if (updateError) {
-      console.error('❌ Erreur mise à jour profil:', updateError);
-      return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
+      // Retry sans colonnes optionnelles si migration non appliquée
+      const retry = await supabaseAdmin
+        .from('users')
+        .update(updateData)
+        .eq('id', auth.user.id)
+        .select(PROFILE_SELECT_BASE)
+        .single();
+      updatedUser = retry.data;
+      updateError = retry.error;
     }
 
-    console.log('✅ Profil mis à jour avec succès');
-    return NextResponse.json(updatedUser);
+    if (updateError) {
+      console.error('Erreur mise à jour profil:', updateError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la mise à jour', details: updateError.message },
+        { status: 500 }
+      );
+    }
 
+    return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error('❌ Erreur API profile update:', error);
+    console.error('Erreur API profile update:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-
