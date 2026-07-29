@@ -269,6 +269,10 @@ export default function LoginPage() {
             setLoading(false);
             router.push('/admin');
             didNavigate = true;
+          } else if (role === 'associe') {
+            setLoading(false);
+            router.push('/associe');
+            didNavigate = true;
           } else if (role === 'comptable') {
             setLoading(false);
             router.push('/comptable');

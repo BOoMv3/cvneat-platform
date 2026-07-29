@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeOrderAmountsForLivreur } from '../../../../lib/livreur-delivery-earnings';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
 
@@ -143,7 +144,9 @@ export async function GET(request) {
     }));
 
     console.log('✅ Commandes récupérées:', ordersWithDetails?.length || 0);
-    return NextResponse.json(ordersWithDetails || []);
+    // Masquer total client / commission : le livreur ne voit que son gain net
+    const forLivreur = (ordersWithDetails || []).map(sanitizeOrderAmountsForLivreur);
+    return NextResponse.json(forLivreur);
   } catch (error) {
     console.error('❌ Erreur API commandes disponibles:', error);
     return NextResponse.json(

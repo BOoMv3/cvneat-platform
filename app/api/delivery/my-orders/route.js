@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeOrderAmountsForLivreur } from '../../../../lib/livreur-delivery-earnings';
 
 export async function GET(request) {
   try {
@@ -70,7 +71,7 @@ export async function GET(request) {
       const deliveryCity = order.ville_livraison || order.delivery_city || null;
       // Extraire le code postal de l'adresse si pas disponible directement
       const deliveryPostal = order.code_postal_livraison || order.delivery_postal_code || (order.adresse_livraison ? order.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null;
-      return {
+      return sanitizeOrderAmountsForLivreur({
         ...order,
         customer_name: order.users?.prenom && order.users?.nom
           ? `${order.users.prenom} ${order.users.nom}`
@@ -81,7 +82,7 @@ export async function GET(request) {
         delivery_city: deliveryCity,
         delivery_postal_code: deliveryPostal,
         delivery_instructions: order.instructions_livraison || (order.adresse_livraison ? (order.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null
-      };
+      });
     });
 
     console.log('✅ Commandes trouvées:', enrichedOrders.length || 0);

@@ -102,7 +102,7 @@ export default function PreventiveAlert({ order, onAccept, onDismiss }) {
               </div>
               
               <div className="text-sm font-semibold text-green-600">
-                💰 {order.delivery_fee}€ de frais
+                💰 Ton gain: {order.gain ?? order.delivery_fee}€
               </div>
             </div>
           </div>

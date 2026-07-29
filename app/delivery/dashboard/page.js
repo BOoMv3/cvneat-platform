@@ -127,8 +127,16 @@ export default function DeliveryDashboard() {
 
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-  // Gain net livreur (base course, pas le tarif client si livraison offerte fidélité)
-  const getOrderGain = (order) => livreurEarningNetEur(order);
+  // Gain net livreur (API masque le montant client ; préfère `gain` déjà calculé)
+  const getOrderGain = (order) => {
+    if (order?.gain != null && order.gain !== '' && !Number.isNaN(Number(order.gain))) {
+      return Number(order.gain);
+    }
+    if (order?.delivery_fee != null && order.delivery_fee !== '' && !Number.isNaN(Number(order.delivery_fee))) {
+      return Number(order.delivery_fee);
+    }
+    return livreurEarningNetEur(order);
+  };
 
   // Fonction pour calculer la distance entre deux points (formule de Haversine)
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
@@ -621,7 +629,7 @@ export default function DeliveryDashboard() {
 
     // Notification du navigateur
     showDeliveryNotification('Nouvelle commande disponible !', {
-      body: `Commande #${order.id} - ${getCustomerName(order)} - ${order.total}€`,
+      body: `Commande #${order.id} - ${getCustomerName(order)} - ton gain ${getOrderGain(order).toFixed(2)}€`,
       icon: '/icon-192x192.png',
       tag: 'new-order'
     });
@@ -949,7 +957,7 @@ export default function DeliveryDashboard() {
               <div>
                 <h3 className="font-bold text-lg">🔔 Nouvelle commande !</h3>
                 <p className="text-sm">Commande #{alertOrder.id}</p>
-                <p className="text-sm">{getCustomerName(alertOrder)} - {alertOrder.total}€</p>
+                <p className="text-sm">{getCustomerName(alertOrder)} — ton gain {getOrderGain(alertOrder).toFixed(2)}€</p>
                 <p className="text-xs">{alertOrder.delivery_address}</p>
               </div>
               <button
@@ -1176,7 +1184,8 @@ export default function DeliveryDashboard() {
                             <p className="text-gray-500 text-xs">{getCustomerName(order)}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-blue-600">{order.total?.toFixed(2)}€</p>
+                            <p className="font-bold text-green-600">{getOrderGain(order).toFixed(2)}€</p>
+                            <p className="text-[10px] text-gray-500">Ton gain</p>
                             {order.security_code && (
                               <p className="text-xs text-gray-500 font-mono">Code: {order.security_code}</p>
                             )}
@@ -1449,7 +1458,7 @@ export default function DeliveryDashboard() {
                           <strong>Adresse:</strong> {alert.restaurant_address}
                         </p>
                         <p className="text-orange-800 text-sm">
-                          <strong>Total:</strong> {alert.total_price}€
+                          <strong>Ton gain:</strong> {(alert.gain ?? alert.delivery_fee)}€
                         </p>
                         {alert.security_code && (
                           <p className="text-orange-800 text-sm">
@@ -1501,7 +1510,7 @@ export default function DeliveryDashboard() {
                                 #{order.id || 'N/A'}
                               </span>
                               <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                {getOrderGain(order).toFixed(2)}€
+                                Ton gain {getOrderGain(order).toFixed(2)}€
                               </span>
                               <span className="text-sm text-gray-500">
                                 {order.created_at ? new Date(order.created_at).toLocaleTimeString('fr-FR', { 
@@ -1532,8 +1541,7 @@ export default function DeliveryDashboard() {
                             </div>
                             
                             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                              <span>Total: {order.total || 'N/A'}€</span>
-                              <span>Gain: {getOrderGain(order).toFixed(2)}€</span>
+                              <span className="font-semibold text-green-700">Ton gain: {getOrderGain(order).toFixed(2)}€</span>
                               <span>Est. {order.preparation_time || 'N/A'} min</span>
                             </div>
                             {getDeliverySlotSummaryLine(order) && (

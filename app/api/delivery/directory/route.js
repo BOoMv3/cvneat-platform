@@ -24,31 +24,49 @@ async function requireDelivery(request) {
   if (!['delivery', 'livreur', 'admin'].includes(role)) {
     return { error: 'Accès livreur requis', status: 403 };
   }
-  return { user, admin };
+  return { user, admin, role };
 }
 
-/** Liste des autres livreurs pour démarrer un DM */
+/** Liste contacts : autres livreurs + admins (support) */
 export async function GET(request) {
   try {
     const auth = await requireDelivery(request);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-    const { data, error } = await auth.admin
-      .from('users')
-      .select('id, prenom, nom, email')
-      .in('role', ['delivery', 'livreur'])
-      .neq('id', auth.user.id)
-      .order('prenom', { ascending: true });
+    const [{ data: livreurs }, { data: admins }] = await Promise.all([
+      auth.admin
+        .from('users')
+        .select('id, prenom, nom, email, role')
+        .in('role', ['delivery', 'livreur'])
+        .neq('id', auth.user.id)
+        .order('prenom', { ascending: true }),
+      auth.admin
+        .from('users')
+        .select('id, prenom, nom, email, role')
+        .eq('role', 'admin')
+        .neq('id', auth.user.id)
+        .order('prenom', { ascending: true }),
+    ]);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    const livreurs = (data || []).map((u) => ({
+    const mapUser = (u, kind) => ({
       id: u.id,
-      name: `${u.prenom || ''} ${u.nom || ''}`.trim() || u.email || 'Livreur',
+      name:
+        kind === 'admin'
+          ? `Support CVN'EAT${u.prenom ? ` (${u.prenom})` : ''}`
+          : `${u.prenom || ''} ${u.nom || ''}`.trim() || u.email || 'Livreur',
       email: u.email,
-    }));
+      kind,
+    });
 
-    return NextResponse.json({ livreurs });
+    return NextResponse.json({
+      contacts: [
+        ...(admins || []).map((u) => mapUser(u, 'admin')),
+        ...(livreurs || []).map((u) => mapUser(u, 'delivery')),
+      ],
+      // rétrocompat
+      livreurs: (livreurs || []).map((u) => mapUser(u, 'delivery')),
+      admins: (admins || []).map((u) => mapUser(u, 'admin')),
+    });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'Erreur serveur' }, { status: 500 });
   }

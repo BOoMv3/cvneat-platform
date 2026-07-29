@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeOrderAmountsForLivreur } from '../../../../lib/livreur-delivery-earnings';
 
 export async function GET(request) {
   try {
@@ -78,7 +79,7 @@ export async function GET(request) {
         String(o.statut || '').toLowerCase() !== 'livree' &&
         ['paid', 'succeeded'].includes(String(o.payment_status || '').toLowerCase())
       );
-      return NextResponse.json({ orders: safe });
+      return NextResponse.json({ orders: safe.map(sanitizeOrderAmountsForLivreur) });
     }
 
     const paidOrders = (orders || []).filter(o =>
@@ -153,7 +154,9 @@ export async function GET(request) {
     }));
 
     console.log('✅ Commandes acceptées récupérées:', ordersWithAddresses.length);
-    return NextResponse.json({ orders: ordersWithAddresses });
+    return NextResponse.json({
+      orders: ordersWithAddresses.map(sanitizeOrderAmountsForLivreur),
+    });
   } catch (error) {
     console.error('❌ Erreur API accepted-orders:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

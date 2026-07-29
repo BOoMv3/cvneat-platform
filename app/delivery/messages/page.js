@@ -66,7 +66,7 @@ export default function DeliveryMessagesPage() {
     const dJson = await dRes.json().catch(() => ({}));
     if (!tRes.ok) throw new Error(tJson.error || 'Erreur conversations');
     setThreads(tJson.threads || []);
-    setDirectory(dJson.livreurs || []);
+    setDirectory(dJson.contacts || dJson.livreurs || []);
   }, [token, authHeaders]);
 
   const loadDmMessages = useCallback(async (threadId) => {
@@ -293,6 +293,7 @@ export default function DeliveryMessagesPage() {
                       onClick={() => startDm(l.id)}
                       className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100"
                     >
+                      {l.kind === 'admin' ? '🛟 ' : ''}
                       {l.name}
                     </button>
                   ))}

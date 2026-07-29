@@ -51,9 +51,17 @@ export async function GET(request) {
 
     const otherIds = [...new Set((threads || []).map((t) => (t.user_a === user.id ? t.user_b : t.user_a)))];
     const { data: peers } = otherIds.length
-      ? await admin.from('users').select('id, prenom, nom, email').in('id', otherIds)
+      ? await admin.from('users').select('id, prenom, nom, email, role').in('id', otherIds)
       : { data: [] };
     const peerMap = new Map((peers || []).map((p) => [p.id, p]));
+
+    const peerDisplayName = (peer) => {
+      const role = (peer?.role || '').toLowerCase();
+      if (role === 'admin') {
+        return `Support CVN'EAT${peer.prenom ? ` (${peer.prenom})` : ''}`;
+      }
+      return `${peer?.prenom || ''} ${peer?.nom || ''}`.trim() || peer?.email || 'Livreur';
+    };
 
     const enriched = [];
     for (const t of threads || []) {
@@ -85,8 +93,9 @@ export async function GET(request) {
         updated_at: t.updated_at,
         peer: {
           id: otherId,
-          name: `${peer.prenom || ''} ${peer.nom || ''}`.trim() || peer.email || 'Livreur',
+          name: peerDisplayName(peer),
           email: peer.email,
+          kind: (peer.role || '').toLowerCase() === 'admin' ? 'admin' : 'delivery',
         },
         last_message: lastMsg || null,
         unread,
@@ -114,8 +123,8 @@ export async function POST(request) {
       .eq('id', peerId)
       .maybeSingle();
     const role = (peer?.role || '').toLowerCase();
-    if (!peer || !['delivery', 'livreur'].includes(role)) {
-      return NextResponse.json({ error: 'Livreur introuvable' }, { status: 404 });
+    if (!peer || !['delivery', 'livreur', 'admin'].includes(role)) {
+      return NextResponse.json({ error: 'Contact introuvable' }, { status: 404 });
     }
 
     const thread = await getOrCreateDmThread(auth.user.id, peerId);

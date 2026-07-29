@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { livreurEarningNetEur } from '../../../../lib/livreur-delivery-earnings';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,8 +144,9 @@ export async function GET(request) {
         delivery_address: order.adresse_livraison || 'Adresse non disponible',
         delivery_city: '',
         delivery_postal_code: '',
-        total: parseFloat(order.total || 0) || 0,
-        delivery_fee: parseFloat(order.frais_livraison || 0) || 0,
+        // Gain net livreur uniquement (pas le total client ni les frais bruts)
+        gain: livreurEarningNetEur(order),
+        delivery_fee: livreurEarningNetEur(order),
         status: order.statut,
         created_at: order.created_at,
         updated_at: order.updated_at,

@@ -90,8 +90,7 @@ export default function DeliveryHistory() {
       'Restaurant',
       'Client',
       'Adresse',
-      'Total',
-      'Frais livraison',
+      'Ton gain',
       'Statut',
       'Note',
       'Commentaire'
@@ -105,8 +104,7 @@ export default function DeliveryHistory() {
         `"${order.restaurant_nom}"`,
         `"${order.customer_name}"`,
         `"${order.delivery_address}"`,
-        order.total,
-        order.delivery_fee,
+        order.gain ?? order.delivery_fee,
         order.status,
         order.rating || '',
         `"${order.comment || ''}"`
@@ -273,8 +271,7 @@ export default function DeliveryHistory() {
                       </div>
                       
                       <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
-                        <span>Total: {order.total}€</span>
-                        <span>Frais: {order.delivery_fee}€</span>
+                        <span>Ton gain: {(order.gain ?? order.delivery_fee ?? 0).toFixed ? (order.gain ?? order.delivery_fee).toFixed(2) : order.gain ?? order.delivery_fee}€</span>
                         <span className="break-all">{new Date(order.created_at).toLocaleString('fr-FR')}</span>
                       </div>
                       

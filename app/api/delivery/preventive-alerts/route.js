@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { livreurEarningNetEur } from '../../../../lib/livreur-delivery-earnings';
 
 // API pour récupérer les alertes préventives pour les livreurs
 export async function GET(request) {
@@ -83,8 +84,8 @@ export async function GET(request) {
           accepted_at: order.accepted_at,
           created_at: order.created_at,
           time_remaining_minutes: Math.ceil(timeRemaining / (60 * 1000)),
-          total_price: order.total,
-          delivery_fee: order.frais_livraison,
+          gain: livreurEarningNetEur(order),
+          delivery_fee: livreurEarningNetEur(order),
           items: order.details_commande,
           delivery_address: order.adresse_livraison,
           restaurant: order.restaurant
