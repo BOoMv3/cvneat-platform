@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { loadDeliveryTransferInvoice } from '../../../../../lib/delivery-invoice';
+import { loadDeliveryTransferInvoice } from '@/lib/delivery-invoice';
 
 export const dynamic = 'force-dynamic';
 

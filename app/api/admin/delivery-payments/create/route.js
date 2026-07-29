@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { livreurEarningNetEur } from '../../../../../lib/livreur-delivery-earnings';
-import { loadDeliveryTransferInvoice } from '../../../../../lib/delivery-invoice';
+import { loadDeliveryTransferInvoice } from '@/lib/delivery-invoice';
 import emailService from '../../../../../lib/emailService';
 import { createDeliveryInboxMessage } from '../../../../../lib/delivery-messaging';
 import { sendPushToUserIds } from '../../../../../lib/sendDeliveryAppPush';
