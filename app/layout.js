@@ -138,13 +138,24 @@ export default function RootLayout({ children }) {
                     return roleNow() === 'admin';
                   }
 
+                  // Routes autorisées pour les livreurs (profil, factures, messages, etc.)
+                  function deliveryPathAllowed(raw) {
+                    try {
+                      if (!raw) return false;
+                      var pathOnly = String(raw).split('?')[0].split('#')[0];
+                      if (pathOnly === '/login' || pathOnly === '/change-password' || pathOnly === '/push-test') return true;
+                      if (pathOnly === '/delivery' || pathOnly.indexOf('/delivery/') === 0) return true;
+                      return false;
+                    } catch (eA) {
+                      return false;
+                    }
+                  }
+
                   // Verrouillage ultra-tôt (avant hydration React):
-                  // si un rôle livreur est en cache, on force /delivery/dashboard.
-                  // si admin sur accueil, on force /admin.
-                  // IMPORTANT: on le fait même si la détection Capacitor rate (selon iOS/localhost).
+                  // livreur hors zone /delivery → dashboard ; admin sur accueil → /admin.
                   try {
                     var pathNow = window.location && window.location.pathname ? window.location.pathname : '';
-                    if (isDeliveryNow() && pathNow && pathNow !== '/delivery/dashboard') {
+                    if (isDeliveryNow() && pathNow && !deliveryPathAllowed(pathNow)) {
                       window.location.replace('/delivery/dashboard');
                       return;
                     }
@@ -191,8 +202,12 @@ export default function RootLayout({ children }) {
                       if (DEBUG) console.log('[API Interceptor] Interception:', input, '→', fullUrl);
                       var opts = init || {};
                       var headers = opts.headers || {};
-                      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
-                      headers['Accept'] = headers['Accept'] || 'application/json';
+                      // Ne pas forcer JSON si FormData (upload KBIS etc.)
+                      var isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+                      if (!isFormData) {
+                        headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+                        headers['Accept'] = headers['Accept'] || 'application/json';
+                      }
                       opts.headers = headers;
                       // IMPORTANT (Capacitor/WKWebView):
                       // On n'utilise PAS les cookies pour l'API (on utilise Authorization).
@@ -211,16 +226,13 @@ export default function RootLayout({ children }) {
                   };
                   if (DEBUG) console.log('[API Interceptor] Fetch intercepté !');
 
-                  // Lockdown HARD: le livreur doit rester H24 sur /delivery/dashboard.
-                  // - protège contre pushState/replaceState
-                  // - protège contre back/forward (popstate)
-                  // - et force périodiquement si une navigation est passée
+                  // Lockdown livreur: rester dans /delivery/* (profil, factures, messages…)
                   try {
                     var origPushState = window.history.pushState;
                     var origReplaceState = window.history.replaceState;
                     window.history.pushState = function(state, title, url) {
                       try {
-                        if (isDeliveryNow() && url && typeof url === 'string' && url.indexOf('/delivery/dashboard') !== 0) {
+                        if (isDeliveryNow() && url && typeof url === 'string' && !deliveryPathAllowed(url)) {
                           window.location.replace('/delivery/dashboard');
                           return;
                         }
@@ -229,7 +241,7 @@ export default function RootLayout({ children }) {
                     };
                     window.history.replaceState = function(state, title, url) {
                       try {
-                        if (isDeliveryNow() && url && typeof url === 'string' && url.indexOf('/delivery/dashboard') !== 0) {
+                        if (isDeliveryNow() && url && typeof url === 'string' && !deliveryPathAllowed(url)) {
                           window.location.replace('/delivery/dashboard');
                           return;
                         }
@@ -238,21 +250,21 @@ export default function RootLayout({ children }) {
                     };
                     window.addEventListener('popstate', function() {
                       try {
-                        if (isDeliveryNow() && window.location.pathname !== '/delivery/dashboard') {
+                        if (isDeliveryNow() && !deliveryPathAllowed(window.location.pathname)) {
                           window.location.replace('/delivery/dashboard');
                         }
                       } catch (eP) {}
                     });
                     document.addEventListener('visibilitychange', function() {
                       try {
-                        if (document.visibilityState === 'visible' && isDeliveryNow() && window.location.pathname !== '/delivery/dashboard') {
+                        if (document.visibilityState === 'visible' && isDeliveryNow() && !deliveryPathAllowed(window.location.pathname)) {
                           window.location.replace('/delivery/dashboard');
                         }
                       } catch (eV) {}
                     });
                     setInterval(function() {
                       try {
-                        if (isDeliveryNow() && window.location.pathname !== '/delivery/dashboard') {
+                        if (isDeliveryNow() && !deliveryPathAllowed(window.location.pathname)) {
                           window.location.replace('/delivery/dashboard');
                         }
                       } catch (eI) {}
@@ -265,9 +277,7 @@ export default function RootLayout({ children }) {
                   document.addEventListener('DOMContentLoaded', function() {
                     if (DEBUG) console.log('[Link Handler] Initialisation gestionnaire de liens');
 
-                    // IMPORTANT: lockdown livreur (app iOS/Android)
-                    // Le livreur ne doit accéder à rien d'autre que /delivery/dashboard.
-                    // On intercepte tous les clics sur liens (footer/tabbar inclus).
+                    // Lockdown livreur (app iOS/Android): autoriser toute la zone /delivery/*
                     document.addEventListener('click', function(event) {
                       try {
                         if (!isDeliveryNow()) return;
@@ -277,7 +287,6 @@ export default function RootLayout({ children }) {
                         var href0 = a.getAttribute('href') || '';
                         if (!href0 || href0 === '#' || href0.startsWith('javascript:')) return;
 
-                        // Convertir en path interne si besoin
                         var path0 = '';
                         if (href0.startsWith('http://') || href0.startsWith('https://')) {
                           if (href0.indexOf('cvneat.fr') >= 0) {
@@ -288,13 +297,13 @@ export default function RootLayout({ children }) {
                               path0 = '';
                             }
                           } else {
-                            path0 = ''; // lien externe quelconque => bloqué aussi
+                            path0 = '';
                           }
                         } else if (href0.startsWith('/')) {
                           path0 = href0;
                         }
 
-                        if (path0 && path0 !== '/delivery/dashboard' && !path0.startsWith('/delivery/dashboard?')) {
+                        if (path0 && !deliveryPathAllowed(path0)) {
                           event.preventDefault();
                           event.stopPropagation();
                           try { window.location.replace('/delivery/dashboard'); } catch (e1) {}
@@ -370,15 +379,32 @@ export default function RootLayout({ children }) {
                     var originalOpen = window.open;
                     window.open = function(url, target, features) {
                       if (DEBUG) console.log('[Link Handler] window.open intercepté:', url);
-                      // Lockdown livreur: empêcher toute navigation hors dashboard
                       try {
+                        var u = url == null ? '' : String(url);
+                        // Téléchargements / aperçus locaux (factures HTML en blob)
+                        if (!u || u.indexOf('blob:') === 0 || u.indexOf('data:') === 0 || u === 'about:blank') {
+                          return originalOpen.apply(window, arguments);
+                        }
                         if (isDeliveryNow()) {
-                          try { window.location.replace('/delivery/dashboard'); } catch (eL) {}
+                          var pathL = u;
+                          if (u.indexOf('http') === 0) {
+                            try { pathL = new URL(u).pathname + (new URL(u).search || ''); } catch (ePu) { pathL = ''; }
+                          }
+                          if (!deliveryPathAllowed(pathL)) {
+                            try { window.location.replace('/delivery/dashboard'); } catch (eL) {}
+                            return null;
+                          }
+                          try {
+                            window.history.pushState({}, '', pathL);
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                          } catch (eNav) {
+                            window.location.href = pathL;
+                          }
                           return null;
                         }
                       } catch (eL2) {}
-                      if (url && (url.includes('cvneat.fr') || url.startsWith('/'))) {
-                        var path = url.startsWith('http') ? new URL(url).pathname : url;
+                      if (url && (String(url).includes('cvneat.fr') || String(url).startsWith('/'))) {
+                        var path = String(url).startsWith('http') ? new URL(url).pathname : url;
                         try {
                           window.history.pushState({}, '', path);
                           window.dispatchEvent(new PopStateEvent('popstate'));

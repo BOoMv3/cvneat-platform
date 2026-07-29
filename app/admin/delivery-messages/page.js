@@ -83,12 +83,12 @@ export default function AdminDeliveryMessagesPage() {
     if (template === 'missing_docs') {
       setSubject('Documents manquants pour votre compte livreur');
       setBody(
-        `Bonjour,\n\nIl manque des informations / documents sur votre compte livreur CVN'EAT (SIRET, raison sociale ou pièce justificative).\n\nMerci de les renseigner dans l'app : Profil → Infos facturation, puis de nous prévenir.\n\nSans ces infos, vos factures de paiement seront incomplètes.\n\nL'équipe CVN'EAT`
+        `Bonjour,\n\nIl manque des infos facturation sur ton compte livreur CVN'EAT (raison sociale, SIRET et/ou KBIS).\n\nMerci de les renseigner dans l'app : Profil → SIRET / KBIS (factures).\n\nSans ces infos, tes factures de paiement seront incomplètes.\n\nL'équipe CVN'EAT`
       );
     } else if (template === 'welcome') {
       setSubject("Bienvenue dans l'équipe livreurs CVN'EAT");
       setBody(
-        `Bonjour,\n\nBienvenue ! Pense à compléter ton profil (SIRET / raison sociale) pour que tes factures de paiement soient correctes.\n\nTu peux aussi utiliser la messagerie dans l'app pour échanger avec l'équipe et les autres livreurs.\n\nÀ bientôt sur la route,\nL'équipe CVN'EAT`
+        `Bonjour,\n\nBienvenue ! Pense à compléter ton profil (SIRET, raison sociale + KBIS) dans Profil → SIRET / KBIS, et utilise Factures pour télécharger tes paiements.\n\nTu peux aussi utiliser la messagerie pour écrire au support.\n\nÀ bientôt sur la route,\nL'équipe CVN'EAT`
       );
     }
   }, [template]);

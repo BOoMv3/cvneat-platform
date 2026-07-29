@@ -14,8 +14,12 @@ import {
   FaCamera,
   FaMapMarkerAlt,
   FaStar,
-  FaCheckCircle
+  FaCheckCircle,
+  FaFileInvoice,
+  FaDownload,
+  FaUpload
 } from 'react-icons/fa';
+import Link from 'next/link';
 
 export default function DeliveryProfile() {
   const router = useRouter();
@@ -40,6 +44,8 @@ export default function DeliveryProfile() {
     vat_number: '',
   });
   const [transfers, setTransfers] = useState([]);
+  const [savingBilling, setSavingBilling] = useState(false);
+  const [uploadingKbis, setUploadingKbis] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -90,6 +96,7 @@ export default function DeliveryProfile() {
           siret: data.siret || '',
           vat_number: data.vat_number || '',
         });
+        // kbis_url reste sur profile
       }
     } catch (error) {
       console.error('Erreur récupération profil:', error);
@@ -136,7 +143,7 @@ export default function DeliveryProfile() {
     }
   };
 
-  const openInvoice = async (transferId) => {
+  const openInvoice = async (transferId, reference) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`/api/delivery/transfers/${transferId}/invoice`, {
@@ -148,13 +155,76 @@ export default function DeliveryProfile() {
         return;
       }
       const html = await res.text();
-      const w = window.open('', '_blank');
-      if (w) {
-        w.document.write(html);
-        w.document.close();
-      }
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `facture-${reference || transferId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } catch (e) {
       alert(e.message || 'Erreur facture');
+    }
+  };
+
+  const saveBilling = async () => {
+    setSavingBilling(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/delivery/profile', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          legal_name: formData.legal_name,
+          siret: formData.siret,
+          vat_number: formData.vat_number,
+          adresse: formData.adresse,
+          code_postal: formData.code_postal,
+          ville: formData.ville,
+        }),
+      });
+      if (!response.ok) throw new Error('Erreur enregistrement');
+      const updated = await response.json();
+      setProfile((p) => ({ ...p, ...updated }));
+      setMessage({ type: 'success', text: 'Infos facturation enregistrées' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } catch (e) {
+      setMessage({ type: 'error', text: e.message || 'Erreur' });
+    } finally {
+      setSavingBilling(false);
+    }
+  };
+
+  const uploadKbis = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingKbis(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/delivery/profile/kbis', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: fd,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Échec upload KBIS');
+      setProfile((p) => ({ ...p, kbis_url: json.kbis_url }));
+      setMessage({ type: 'success', text: 'KBIS enregistré' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Erreur KBIS' });
+    } finally {
+      setUploadingKbis(false);
     }
   };
 
@@ -430,58 +500,7 @@ export default function DeliveryProfile() {
               </div>
             </div>
 
-            {/* Facturation auto-entrepreneur */}
-            <div className="border-t pt-4 mt-2">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Infos facturation</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Remplis une fois : ces infos apparaissent sur tes factures de paiement CVN&apos;EAT (SIRET / raison sociale).
-              </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Raison sociale / nom commercial
-                  </label>
-                  <input
-                    type="text"
-                    name="legal_name"
-                    value={formData.legal_name}
-                    onChange={handleChange}
-                    disabled={!editing}
-                    placeholder="Ex: MEDJBOUR Baghdad"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
-                    <input
-                      type="text"
-                      name="siret"
-                      value={formData.siret}
-                      onChange={handleChange}
-                      disabled={!editing}
-                      placeholder="14 chiffres"
-                      inputMode="numeric"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      N° TVA (optionnel)
-                    </label>
-                    <input
-                      type="text"
-                      name="vat_number"
-                      value={formData.vat_number}
-                      onChange={handleChange}
-                      disabled={!editing}
-                      placeholder="FR..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Facturation déplacée hors formulaire (carte dédiée plus bas) */}
 
             {/* Boutons */}
             {editing && (
@@ -520,14 +539,126 @@ export default function DeliveryProfile() {
           </form>
         </div>
 
+        {/* Infos facturation — toujours accessible */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6 border-2 border-orange-100">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">SIRET / KBIS (factures)</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Obligatoire pour tes factures de paiement. Remplis une fois, c&apos;est bon.
+              </p>
+            </div>
+            {(!profile?.siret || !profile?.legal_name) && (
+              <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded">
+                À compléter
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Raison sociale / nom commercial
+              </label>
+              <input
+                type="text"
+                name="legal_name"
+                value={formData.legal_name}
+                onChange={handleChange}
+                placeholder="Ex: MEDJBOUR Baghdad"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
+                <input
+                  type="text"
+                  name="siret"
+                  value={formData.siret}
+                  onChange={handleChange}
+                  placeholder="14 chiffres"
+                  inputMode="numeric"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  N° TVA (optionnel)
+                </label>
+                <input
+                  type="text"
+                  name="vat_number"
+                  value={formData.vat_number}
+                  onChange={handleChange}
+                  placeholder="FR..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                KBIS / extrait (PDF ou photo)
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm cursor-pointer hover:bg-black">
+                  <FaUpload />
+                  {uploadingKbis ? 'Envoi…' : 'Téléverser le KBIS'}
+                  <input
+                    type="file"
+                    accept="application/pdf,image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={uploadingKbis}
+                    onChange={uploadKbis}
+                  />
+                </label>
+                {profile?.kbis_url && (
+                  <a
+                    href={profile.kbis_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-orange-600 underline"
+                  >
+                    Voir le document déposé
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={saveBilling}
+              disabled={savingBilling}
+              className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-50"
+            >
+              <FaSave />
+              {savingBilling ? 'Enregistrement…' : 'Enregistrer facturation'}
+            </button>
+          </div>
+        </div>
+
         {/* Factures */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Mes factures de paiement</h2>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <FaFileInvoice className="text-orange-500" />
+              Mes factures de paiement
+            </h2>
+            <Link
+              href="/delivery/factures"
+              className="text-sm font-medium text-orange-600 hover:underline"
+            >
+              Tout voir
+            </Link>
+          </div>
           {transfers.length === 0 ? (
-            <p className="text-sm text-gray-500">Aucun paiement reçu pour le moment.</p>
+            <p className="text-sm text-gray-500">
+              Aucun paiement reçu pour le moment. Tu seras notifié (push + email) à chaque virement.
+            </p>
           ) : (
             <ul className="divide-y">
-              {transfers.map((t) => (
+              {transfers.slice(0, 5).map((t) => (
                 <li key={t.id} className="py-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium text-gray-900">
@@ -543,10 +674,11 @@ export default function DeliveryProfile() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => openInvoice(t.id)}
-                    className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-black"
+                    onClick={() => openInvoice(t.id, t.reference_number)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-black"
                   >
-                    Voir facture
+                    <FaDownload />
+                    Télécharger
                   </button>
                 </li>
               ))}

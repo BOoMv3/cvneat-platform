@@ -12,9 +12,11 @@ function isDeliveryRole(role) {
 }
 
 const PROFILE_SELECT_FULL =
-  'id, nom, prenom, email, telephone, role, adresse, code_postal, ville, photo_url, siret, legal_name, vat_number, created_at, updated_at';
+  'id, nom, prenom, email, telephone, role, adresse, code_postal, ville, photo_url, siret, legal_name, vat_number, kbis_url, created_at, updated_at';
 const PROFILE_SELECT_BASE =
   'id, nom, prenom, email, telephone, role, adresse, photo_url, siret, legal_name, created_at, updated_at';
+const PROFILE_SELECT_MID =
+  'id, nom, prenom, email, telephone, role, adresse, code_postal, ville, photo_url, siret, legal_name, vat_number, created_at, updated_at';
 
 async function getDeliveryUser(token) {
   const {
@@ -30,13 +32,23 @@ async function getDeliveryUser(token) {
     .single();
 
   if (userError) {
-    const fallback = await supabaseAdmin
+    const mid = await supabaseAdmin
       .from('users')
-      .select(PROFILE_SELECT_BASE)
+      .select(PROFILE_SELECT_MID)
       .eq('id', user.id)
       .single();
-    userData = fallback.data;
-    userError = fallback.error;
+    if (!mid.error && mid.data) {
+      userData = mid.data;
+      userError = null;
+    } else {
+      const fallback = await supabaseAdmin
+        .from('users')
+        .select(PROFILE_SELECT_BASE)
+        .eq('id', user.id)
+        .single();
+      userData = fallback.data;
+      userError = fallback.error;
+    }
   }
 
   if (userError || !userData) return { error: 'Utilisateur non trouvé', status: 404 };

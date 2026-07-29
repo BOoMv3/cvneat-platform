@@ -200,7 +200,7 @@ export async function POST(request) {
             html: `<p>Bonjour,</p>
               <p>Un paiement de <strong>${amountLabel}</strong> a été enregistré sur votre compte livreur CVN'EAT.</p>
               <p>Référence facture : <strong>${invoice.reference}</strong></p>
-              <p>La facture est jointe à cet email (fichier HTML). Vous pouvez aussi l'ouvrir dans l'app : Profil → Mes factures.</p>
+              <p>La facture est jointe à cet email (fichier HTML). Vous pouvez aussi l'ouvrir dans l'app : Factures.</p>
               <p>L'équipe CVN'EAT</p>`,
             attachments: [
               {
@@ -217,10 +217,15 @@ export async function POST(request) {
           adminId: auth.userId,
           deliveryUserId: delivery_id,
           subject: `Paiement de ${amountLabel} effectué`,
-          body: `Votre paiement de ${amountLabel} a été enregistré.\nRéférence : ${invoice.reference}\nOuvrez Profil → Mes factures pour télécharger le document.`,
+          body: `Votre paiement de ${amountLabel} a été enregistré.\nRéférence : ${invoice.reference}\nOuvrez Factures dans l'app pour télécharger le document.`,
           kind: 'system',
           eventType: 'payment_made',
-          data: { transferId: transfer.id, amount: parseFloat(amount), reference: invoice.reference },
+          data: {
+            transferId: transfer.id,
+            amount: parseFloat(amount),
+            reference: invoice.reference,
+            url: '/delivery/factures',
+          },
           push: false,
         }).catch((e) => console.warn('inbox paiement:', e?.message));
 
@@ -230,7 +235,7 @@ export async function POST(request) {
           `${amountLabel} virés — facture disponible`,
           {
             type: 'payment_made',
-            url: '/delivery/profile',
+            url: '/delivery/factures',
             transferId: transfer.id,
           }
         ).catch((e) => console.warn('push paiement:', e?.message));
