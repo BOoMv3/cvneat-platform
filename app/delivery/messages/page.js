@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import DeliveryNavbar from '../../components/DeliveryNavbar';
@@ -22,6 +22,7 @@ export default function DeliveryMessagesPage() {
   const [selectedInbox, setSelectedInbox] = useState(null);
   const [error, setError] = useState(null);
   const [meId, setMeId] = useState(null);
+  const [tabFromUrl, setTabFromUrl] = useState(false);
 
   const authHeaders = useCallback(() => ({
     Authorization: `Bearer ${token}`,
@@ -31,7 +32,10 @@ export default function DeliveryMessagesPage() {
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
-      if (q.get('tab') === 'dm') setTab('dm');
+      if (q.get('tab') === 'dm') {
+        setTab('dm');
+        setTabFromUrl(true);
+      }
       if (q.get('thread')) setActiveThreadId(q.get('thread'));
     } catch {
       /* ignore */
@@ -67,6 +71,7 @@ export default function DeliveryMessagesPage() {
     if (!tRes.ok) throw new Error(tJson.error || 'Erreur conversations');
     setThreads(tJson.threads || []);
     setDirectory(dJson.contacts || dJson.livreurs || []);
+    return tJson.threads || [];
   }, [token, authHeaders]);
 
   const loadDmMessages = useCallback(async (threadId) => {
@@ -83,20 +88,49 @@ export default function DeliveryMessagesPage() {
       try {
         setLoading(true);
         setError(null);
-        await Promise.all([loadInbox(), loadThreads()]);
+        const [, loadedThreads] = await Promise.all([loadInbox(), loadThreads()]);
+        // Si unread chat support et pas d’onglet imposé par l’URL → ouvrir Discussions
+        if (!tabFromUrl && Array.isArray(loadedThreads)) {
+          const unreadSupport = loadedThreads.find(
+            (t) => t.unread > 0 && (t.peer?.kind === 'admin' || String(t.peer?.name || '').includes("Support"))
+          );
+          const anyUnread = loadedThreads.find((t) => t.unread > 0);
+          if (unreadSupport || anyUnread) {
+            setTab('dm');
+            setActiveThreadId((prev) => prev || (unreadSupport || anyUnread).id);
+          }
+        }
       } catch (e) {
         setError(e.message);
       } finally {
         setLoading(false);
       }
     })();
-  }, [token, loadInbox, loadThreads]);
+  }, [token, loadInbox, loadThreads, tabFromUrl]);
+
+  // Poll léger pour voir les nouveaux messages sans refresh manuel
+  useEffect(() => {
+    if (!token) return undefined;
+    const id = setInterval(() => {
+      loadInbox().catch(() => {});
+      loadThreads().catch(() => {});
+      if (tab === 'dm' && activeThreadId) {
+        loadDmMessages(activeThreadId).catch(() => {});
+      }
+    }, 12000);
+    return () => clearInterval(id);
+  }, [token, tab, activeThreadId, loadInbox, loadThreads, loadDmMessages]);
 
   useEffect(() => {
     if (tab === 'dm' && activeThreadId) {
       loadDmMessages(activeThreadId).catch((e) => setError(e.message));
     }
   }, [tab, activeThreadId, loadDmMessages]);
+
+  const unreadDm = useMemo(
+    () => threads.reduce((n, t) => n + (Number(t.unread) || 0), 0),
+    [threads]
+  );
 
   const markInboxRead = async (ids) => {
     if (!token || !ids?.length) return;
@@ -109,6 +143,14 @@ export default function DeliveryMessagesPage() {
   };
 
   const openInboxMessage = async (msg) => {
+    const threadId = msg?.data?.threadId;
+    if (threadId || msg?.event_type === 'admin_dm') {
+      if (!msg.read) await markInboxRead([msg.id]);
+      setTab('dm');
+      setActiveThreadId(threadId || null);
+      if (threadId) await loadDmMessages(threadId);
+      return;
+    }
     setSelectedInbox(msg);
     if (!msg.read) await markInboxRead([msg.id]);
   };
@@ -157,6 +199,8 @@ export default function DeliveryMessagesPage() {
   };
 
   const activeThread = threads.find((t) => t.id === activeThreadId);
+  const supportContacts = directory.filter((c) => c.kind === 'admin');
+  const livreurContacts = directory.filter((c) => c.kind !== 'admin');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -168,11 +212,13 @@ export default function DeliveryMessagesPage() {
               <FaComments className="text-orange-500" />
               Messagerie
             </h1>
-            <p className="text-sm text-gray-500 mt-1">Admin CVN&apos;EAT et autres livreurs</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Annonces admin + chat avec le support et les autres livreurs
+            </p>
           </div>
         </div>
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-4 flex-wrap">
           <button
             type="button"
             onClick={() => setTab('inbox')}
@@ -180,7 +226,7 @@ export default function DeliveryMessagesPage() {
               tab === 'inbox' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700 border'
             }`}
           >
-            <FaInbox /> Inbox admin
+            <FaInbox /> Annonces
             {unreadInbox > 0 && (
               <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{unreadInbox}</span>
             )}
@@ -192,7 +238,10 @@ export default function DeliveryMessagesPage() {
               tab === 'dm' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700 border'
             }`}
           >
-            <FaUsers /> Entre livreurs
+            <FaUsers /> Discussions
+            {unreadDm > 0 && (
+              <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{unreadDm}</span>
+            )}
           </button>
         </div>
 
@@ -210,7 +259,13 @@ export default function DeliveryMessagesPage() {
               <div className="px-4 py-3 border-b font-medium text-gray-800">Messages reçus</div>
               <div className="max-h-[60vh] overflow-y-auto divide-y">
                 {inbox.length === 0 && (
-                  <p className="p-4 text-sm text-gray-500">Aucun message pour le moment.</p>
+                  <p className="p-4 text-sm text-gray-500">
+                    Aucune annonce. Les chats avec le support sont dans l&apos;onglet{' '}
+                    <button type="button" className="text-orange-600 underline" onClick={() => setTab('dm')}>
+                      Discussions
+                    </button>
+                    .
+                  </p>
                 )}
                 {inbox.map((m) => (
                   <button
@@ -226,8 +281,12 @@ export default function DeliveryMessagesPage() {
                       {!m.read && <span className="w-2 h-2 rounded-full bg-orange-500 mt-1.5 shrink-0" />}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {m.kind === 'system' ? 'Système' : 'Admin'} ·{' '}
-                      {new Date(m.created_at).toLocaleString('fr-FR')}
+                      {m.event_type === 'admin_dm'
+                        ? 'Chat support'
+                        : m.kind === 'system'
+                          ? 'Système'
+                          : 'Admin'}{' '}
+                      · {new Date(m.created_at).toLocaleString('fr-FR')}
                     </div>
                   </button>
                 ))}
@@ -282,21 +341,40 @@ export default function DeliveryMessagesPage() {
                   <p className="p-3 text-xs text-gray-500">Pas encore de conversation.</p>
                 )}
               </div>
-              <div className="border-t px-3 py-2">
-                <p className="text-xs font-medium text-gray-600 mb-2">Nouveau message</p>
-                <div className="max-h-36 overflow-y-auto space-y-1">
-                  {directory.map((l) => (
-                    <button
-                      key={l.id}
-                      type="button"
-                      disabled={sending}
-                      onClick={() => startDm(l.id)}
-                      className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100"
-                    >
-                      {l.kind === 'admin' ? '🛟 ' : ''}
-                      {l.name}
-                    </button>
-                  ))}
+              <div className="border-t px-3 py-2 space-y-3">
+                {supportContacts.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-2">Écrire au support</p>
+                    <div className="max-h-28 overflow-y-auto space-y-1">
+                      {supportContacts.map((l) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          disabled={sending}
+                          onClick={() => startDm(l.id)}
+                          className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100"
+                        >
+                          🛟 {l.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-2">Autres livreurs</p>
+                  <div className="max-h-28 overflow-y-auto space-y-1">
+                    {livreurContacts.map((l) => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        disabled={sending}
+                        onClick={() => startDm(l.id)}
+                        className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100"
+                      >
+                        {l.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -307,7 +385,9 @@ export default function DeliveryMessagesPage() {
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[50vh]">
                 {!activeThreadId && (
-                  <p className="text-sm text-gray-500">Sélectionne un livreur pour discuter.</p>
+                  <p className="text-sm text-gray-500">
+                    Sélectionne le support ou un livreur pour discuter.
+                  </p>
                 )}
                 {dmMessages.map((m) => {
                   const mine = m.sender_id === meId;

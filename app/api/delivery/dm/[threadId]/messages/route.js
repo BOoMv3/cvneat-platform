@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getDeliveryMessagingAdmin } from '@/lib/delivery-messaging';
+import { getDeliveryMessagingAdmin, createDeliveryInboxMessage } from '@/lib/delivery-messaging';
 import { sendPushToUserIds } from '@/lib/sendDeliveryAppPush';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,7 @@ async function requireDelivery(request) {
   if (!['delivery', 'livreur', 'admin'].includes(role)) {
     return { error: 'Accès livreur requis', status: 403 };
   }
-  return { user, profile, admin };
+  return { user, profile: { ...profile, role }, admin };
 }
 
 async function assertThreadParticipant(admin, threadId, userId) {
@@ -107,14 +107,40 @@ export async function POST(request, { params }) {
       .eq('id', threadId);
 
     const peerId = thread.user_a === auth.user.id ? thread.user_b : thread.user_a;
-    const senderName =
-      `${auth.profile?.prenom || ''} ${auth.profile?.nom || ''}`.trim() || 'Un livreur';
+    const senderRole = (auth.profile?.role || '').toLowerCase();
+    const isAdminSender = senderRole === 'admin';
+    const senderName = isAdminSender
+      ? `Support CVN'EAT${auth.profile?.prenom ? ` (${auth.profile.prenom})` : ''}`
+      : `${auth.profile?.prenom || ''} ${auth.profile?.nom || ''}`.trim() || 'Un livreur';
 
     await sendPushToUserIds([peerId], `Message de ${senderName}`, text.slice(0, 120), {
       type: 'delivery_dm',
       url: `/delivery/messages?tab=dm&thread=${threadId}`,
       threadId,
     }).catch(() => {});
+
+    // Si l'admin écrit en chat, créer aussi une entrée Inbox pour que le livreur le voie
+    // sans devoir chercher l'onglet Discussions.
+    if (isAdminSender) {
+      const { data: peer } = await auth.admin
+        .from('users')
+        .select('id, role')
+        .eq('id', peerId)
+        .maybeSingle();
+      const peerRole = (peer?.role || '').toLowerCase();
+      if (peer && ['delivery', 'livreur'].includes(peerRole)) {
+        await createDeliveryInboxMessage({
+          adminId: auth.user.id,
+          deliveryUserId: peerId,
+          subject: 'Message du support CVN\'EAT',
+          body: text,
+          kind: 'admin',
+          eventType: 'admin_dm',
+          data: { threadId, url: `/delivery/messages?tab=dm&thread=${threadId}` },
+          push: false, // push déjà envoyé ci-dessus
+        }).catch((e) => console.warn('inbox mirror dm:', e?.message));
+      }
+    }
 
     return NextResponse.json({ message: msg });
   } catch (e) {

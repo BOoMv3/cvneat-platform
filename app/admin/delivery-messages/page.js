@@ -243,7 +243,9 @@ export default function AdminDeliveryMessagesPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Messages & chat livreurs</h1>
-            <p className="text-sm text-gray-500">Annonces + conversation en direct avec les livreurs</p>
+            <p className="text-sm text-gray-500">
+              Annonces = boîte du livreur · Chat live = discussion directe (aussi visible en Annonces)
+            </p>
           </div>
         </div>
 
