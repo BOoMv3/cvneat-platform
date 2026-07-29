@@ -12,7 +12,7 @@ import OrderCountdown from '@/components/OrderCountdown';
 import PreventiveAlert from '@/components/PreventiveAlert';
 // import SafeGeolocationButton from '@/components/SafeGeolocationButton';
 import { useRouter } from 'next/navigation';
-import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments } from 'react-icons/fa';
+import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments, FaFileInvoice, FaUserCog } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase';
 import RealTimeNotifications from '../../components/DeliveryNotifications';
 
@@ -986,6 +986,34 @@ export default function DeliveryDashboard() {
         ))}
         
         <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+          {/* Accès rapide — Messages / Factures / Profil (SIRET) */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <button
+              type="button"
+              onClick={() => router.push('/delivery/messages')}
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-orange-500 text-white rounded-xl shadow hover:bg-orange-600 min-h-[72px] touch-manipulation"
+            >
+              <FaComments className="h-5 w-5" />
+              <span className="text-xs sm:text-sm font-semibold">Messages</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/delivery/factures')}
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-slate-800 text-white rounded-xl shadow hover:bg-slate-900 min-h-[72px] touch-manipulation"
+            >
+              <FaFileInvoice className="h-5 w-5" />
+              <span className="text-xs sm:text-sm font-semibold">Factures</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/delivery/profile')}
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-amber-500 text-white rounded-xl shadow hover:bg-amber-600 min-h-[72px] touch-manipulation"
+            >
+              <FaUserCog className="h-5 w-5" />
+              <span className="text-xs sm:text-sm font-semibold">SIRET / KBIS</span>
+            </button>
+          </div>
+
           {/* Header avec notifications */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
