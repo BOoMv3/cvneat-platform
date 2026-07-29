@@ -23,6 +23,12 @@ const isCapacitorApp = () => {
 const normalizeRole = (role) => (role || '').toString().trim().toLowerCase();
 const ROLE_CACHE_KEY = 'cvneat-role-cache';
 
+const isDeliveryAllowedPath = (pathname) => {
+  const p = (pathname || '').split('?')[0].split('#')[0];
+  if (p === '/login' || p === '/change-password' || p === '/push-test') return true;
+  return p === '/delivery' || p.startsWith('/delivery/');
+};
+
 const getCachedRole = () => {
   try {
     const cached = safeLocalStorage.getJSON(ROLE_CACHE_KEY);
@@ -44,16 +50,13 @@ const setCachedRole = (role) => {
 };
 
 /**
- * Dans l'app mobile (Capacitor), forcer la navigation vers le bon dashboard.
- *
- * Problèmes visés:
- * - Après un retour du background, la WebView peut retomber sur '/' (accueil).
- * - Certains comptes ont le rôle "livreur" (et pas uniquement "delivery").
+ * Dans l'app mobile (Capacitor), forcer la navigation vers le bon espace.
  *
  * Comportement:
- * - Si connecté et rôle delivery/livreur: forcer /delivery/dashboard dès qu'on est hors /delivery
- *   (inclut '/', /login, etc.).
- * - Si connecté et rôle restaurant/partner: forcer /partner dès qu'on est sur '/' (accueil).
+ * - Livreur: rester dans /delivery/* (dashboard, profil, factures, messages…).
+ *   Hors de cette zone (accueil, etc.) → /delivery/dashboard.
+ * - Restaurant/partner: forcer /partner depuis '/'.
+ * - Admin: forcer /admin depuis '/'.
  */
 export default function AppAutoRedirect() {
   const router = useRouter();
@@ -132,9 +135,9 @@ export default function AppAutoRedirect() {
       };
 
       const schedulePolling = (reason) => {
-      // On ne poll que si on n'est pas déjà sur la cible (cas typique: resume -> '/')
+      // On ne poll que si on n'est pas déjà dans la zone livreur (cas typique: resume -> '/')
       // et uniquement dans l'app mobile.
-      if (pathname === '/delivery/dashboard') return;
+      if (isDeliveryAllowedPath(pathname)) return;
 
       const now = Date.now();
       if (!pollUntilRef.current || pollUntilRef.current < now) {
@@ -156,7 +159,7 @@ export default function AppAutoRedirect() {
       const cachedRole = getCachedRole();
       const isDelivery = cachedRole === 'delivery' || cachedRole === 'livreur';
       const isAdmin = cachedRole === 'admin';
-      if (isDelivery && pathname !== '/delivery/dashboard') {
+      if (isDelivery && !isDeliveryAllowedPath(pathname)) {
         forceTo('/delivery/dashboard', `cache_${reason}`, { role: cachedRole });
         return true;
       }
@@ -282,11 +285,10 @@ export default function AppAutoRedirect() {
       }
 
       // IMPORTANT:
-      // En app mobile, un utilisateur livreur ne doit pas rester sur l'accueil
-      // (et éviter qu'il doive fermer/réouvrir l'app). On le force vers /delivery.
+      // En app mobile, un livreur ne doit pas rester sur l'accueil.
+      // Il peut naviguer librement dans /delivery/* (profil, factures, messages…).
       if (isDelivery) {
-        // Exigence: le livreur ne doit accéder à rien d'autre que son dashboard.
-        if (pathname !== '/delivery/dashboard') {
+        if (!isDeliveryAllowedPath(pathname)) {
           forceTo('/delivery/dashboard', reason, { role });
         }
         try {
@@ -369,8 +371,8 @@ export default function AppAutoRedirect() {
     const cacheTick = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       enforceFromCache('tick');
-      // Si on est encore sur l'accueil (ou hors dashboard), retenter la détection.
-      if (window.location?.pathname !== '/delivery/dashboard') {
+      // Si hors zone livreur (ex: accueil), retenter la détection.
+      if (!isDeliveryAllowedPath(window.location?.pathname || '')) {
         run('tick').catch(() => {});
       }
     }, 1500);
