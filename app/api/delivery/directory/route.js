@@ -27,7 +27,7 @@ async function requireDelivery(request) {
   return { user, admin, role };
 }
 
-/** Liste contacts : autres livreurs + admins (support) */
+/** Liste contacts : autres livreurs + 1 seul Support CVN'EAT (admin principal) */
 export async function GET(request) {
   try {
     const auth = await requireDelivery(request);
@@ -48,24 +48,39 @@ export async function GET(request) {
         .order('prenom', { ascending: true }),
     ]);
 
-    const mapUser = (u, kind) => ({
+    // Un seul point d’entrée support (évite 2 chats « Support »)
+    const preferredEmail = (process.env.CVNEAT_SUPPORT_ADMIN_EMAIL || 'admin@cvneat.fr')
+      .trim()
+      .toLowerCase();
+    const supportAdmin =
+      (admins || []).find((a) => (a.email || '').toLowerCase() === preferredEmail) ||
+      (admins || []).find((a) => (a.email || '').toLowerCase().endsWith('@cvneat.fr')) ||
+      (admins || [])[0] ||
+      null;
+
+    const mapLivreur = (u) => ({
       id: u.id,
-      name:
-        kind === 'admin'
-          ? `Support CVN'EAT${u.prenom ? ` (${u.prenom})` : ''}`
-          : `${u.prenom || ''} ${u.nom || ''}`.trim() || u.email || 'Livreur',
+      name: `${u.prenom || ''} ${u.nom || ''}`.trim() || u.email || 'Livreur',
       email: u.email,
-      kind,
+      kind: 'delivery',
     });
+
+    const supportContact = supportAdmin
+      ? {
+          id: supportAdmin.id,
+          name: "Support CVN'EAT",
+          email: supportAdmin.email,
+          kind: 'admin',
+        }
+      : null;
 
     return NextResponse.json({
       contacts: [
-        ...(admins || []).map((u) => mapUser(u, 'admin')),
-        ...(livreurs || []).map((u) => mapUser(u, 'delivery')),
+        ...(supportContact ? [supportContact] : []),
+        ...(livreurs || []).map(mapLivreur),
       ],
-      // rétrocompat
-      livreurs: (livreurs || []).map((u) => mapUser(u, 'delivery')),
-      admins: (admins || []).map((u) => mapUser(u, 'admin')),
+      livreurs: (livreurs || []).map(mapLivreur),
+      admins: supportContact ? [supportContact] : [],
     });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'Erreur serveur' }, { status: 500 });

@@ -58,7 +58,7 @@ export async function GET(request) {
     const peerDisplayName = (peer) => {
       const role = (peer?.role || '').toLowerCase();
       if (role === 'admin') {
-        return `Support CVN'EAT${peer.prenom ? ` (${peer.prenom})` : ''}`;
+        return "Support CVN'EAT";
       }
       return `${peer?.prenom || ''} ${peer?.nom || ''}`.trim() || peer?.email || 'Livreur';
     };
