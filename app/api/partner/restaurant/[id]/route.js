@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
 const clampInt = (value, { min, max } = {}) => {
@@ -10,21 +9,32 @@ const clampInt = (value, { min, max } = {}) => {
   return n;
 };
 
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
+
 async function getAuthedRestaurantOwner(request, restaurantId) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return { error: 'Token manquant', status: 401 };
 
   const token = authHeader.split(' ')[1];
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAdmin.auth.getUser(token);
   if (authError || !user) return { error: 'Token invalide', status: 401 };
 
-  const { data: userData, error: userError } = await supabase
+  // Service role : lecture rôle fiable (RLS users bloque le client anon sans session JWT)
+  const { data: userData, error: userError } = await supabaseAdmin
     .from('users')
     .select('role')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (userError || !userData || !['restaurant', 'partner'].includes(userData.role)) {
+  const role = (userData?.role || '').toString().trim().toLowerCase();
+  if (userError || !userData || !['restaurant', 'partner'].includes(role)) {
     return { error: 'Accès refusé - Rôle restaurant/partenaire requis', status: 403 };
   }
 
@@ -49,7 +59,9 @@ async function getAuthedRestaurantOwner(request, restaurantId) {
   });
   const restaurantJson = await restaurantRes.json().catch(() => null);
   const restaurant = Array.isArray(restaurantJson) ? restaurantJson[0] : null;
-  const restaurantError = restaurantRes.ok ? null : { message: restaurantJson?.message || restaurantJson?.error || `HTTP ${restaurantRes.status}` };
+  const restaurantError = restaurantRes.ok
+    ? null
+    : { message: restaurantJson?.message || restaurantJson?.error || `HTTP ${restaurantRes.status}` };
 
   if (restaurantError || !restaurant) {
     if (restaurantRes.status === 404) {
