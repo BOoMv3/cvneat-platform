@@ -1,8 +1,10 @@
 'use client';
 
+import { isAdminViewerRole } from '../../lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import { useAdminAccess } from '../../components/AdminAccessContext';
 import { 
   FaUsers, 
   FaStore, 
@@ -43,6 +45,7 @@ import {
 } from '../../lib/week-half-off-promo';
 
 export default function AdminPage() {
+  const { readOnly, canWrite } = useAdminAccess();
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
@@ -104,7 +107,7 @@ export default function AdminPage() {
         .eq('id', currentUser.id)
         .single();
 
-      if (userError || !userData || userData.role !== 'admin') {
+      if (userError || !userData || !isAdminViewerRole(userData.role)) {
         // Rediriger vers login au lieu de la page d'accueil pour éviter la maintenance
         router.push('/login');
         return;
@@ -124,6 +127,10 @@ export default function AdminPage() {
   };
 
   const toggleRestaurantOpen = async (restaurant, shouldOpen) => {
+    if (!canWrite) {
+      alert('Lecture seule : modification impossible.');
+      return;
+    }
     try {
       setTogglingRestaurantId(restaurant.id);
       const { data: { session } } = await supabase.auth.getSession();
@@ -214,6 +221,10 @@ export default function AdminPage() {
   };
 
   const syncCvneatPlusFromStripe = async () => {
+    if (!canWrite) {
+      alert('Lecture seule : synchronisation impossible.');
+      return;
+    }
     try {
       setSyncingPlus(true);
       const {
@@ -388,6 +399,10 @@ export default function AdminPage() {
   };
 
   const broadcastPrepTimeToOpenRestaurants = async () => {
+    if (!canWrite) {
+      alert('Lecture seule : action impossible.');
+      return;
+    }
     try {
       setBroadcastPrepLoading(true);
       setBroadcastPrepResult(null);
@@ -456,6 +471,10 @@ export default function AdminPage() {
   };
 
   const cancelOrder = async (orderId) => {
+    if (!canWrite) {
+      alert('Lecture seule : annulation impossible.');
+      return;
+    }
     if (!window.confirm('Annuler cette commande et rembourser le client si le paiement a été reçu ?')) {
       return;
     }
@@ -658,7 +677,7 @@ export default function AdminPage() {
                 onClick={broadcastPrepTimeToOpenRestaurants}
                 className="flex items-center justify-center px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0 disabled:opacity-50"
                 title="Demander en direct le temps de préparation aux restaurants ouverts"
-                disabled={broadcastPrepLoading}
+                disabled={broadcastPrepLoading || readOnly}
               >
                 {broadcastPrepLoading ? (
                   <FaSpinner className="animate-spin h-4 w-4 sm:mr-2" />
@@ -675,6 +694,7 @@ export default function AdminPage() {
                 <FaGift className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Codes promo</span>
               </button>
+              {!readOnly && (
               <button
                 onClick={() => router.push('/admin/reset')}
                 className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
@@ -683,6 +703,7 @@ export default function AdminPage() {
                 <FaRedo className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Réinitialiser</span>
               </button>
+              )}
               <button
                 onClick={() => router.push('/admin/ads')}
                 className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
@@ -755,6 +776,7 @@ export default function AdminPage() {
                 <FaUserPlus className="h-4 w-4 mr-1 sm:mr-2" />
                 <span className="text-xs sm:text-sm">Candidatures livreurs</span>
               </button>
+              {!readOnly && (
               <button
                 onClick={() => router.push('/admin/create-order')}
                 className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
@@ -763,6 +785,8 @@ export default function AdminPage() {
                 <FaShoppingCart className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Créer commande</span>
               </button>
+              )}
+              {!readOnly && (
               <button
                 onClick={() => router.push('/admin/test-push')}
                 className="flex items-center justify-center px-3 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
@@ -771,6 +795,7 @@ export default function AdminPage() {
                 <FaBell className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Test push</span>
               </button>
+              )}
             </div>
           </div>
 
@@ -815,7 +840,7 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => toggleRestaurantOpen(r, true)}
-                        disabled={!isClosed || togglingRestaurantId === r.id}
+                        disabled={readOnly || !isClosed || togglingRestaurantId === r.id}
                         className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-green-500 text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Ouvrir
@@ -823,7 +848,7 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => toggleRestaurantOpen(r, false)}
-                        disabled={isClosed || togglingRestaurantId === r.id}
+                        disabled={readOnly || isClosed || togglingRestaurantId === r.id}
                         className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-red-500 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Fermer
@@ -959,6 +984,7 @@ export default function AdminPage() {
                   >
                     Voir la liste
                   </button>
+                  {!readOnly && (
                   <button
                     type="button"
                     onClick={syncCvneatPlusFromStripe}
@@ -968,6 +994,7 @@ export default function AdminPage() {
                   >
                     {syncingPlus ? 'Sync…' : 'Sync Stripe'}
                   </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1342,7 +1369,7 @@ export default function AdminPage() {
                         </td>
                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                           <div className="flex items-center gap-1">
-                            {canCancelOrder(order) && (
+                            {canWrite && canCancelOrder(order) && (
                               <button
                                 onClick={() => cancelOrder(order.id)}
                                 disabled={cancellingOrderId === order.id}

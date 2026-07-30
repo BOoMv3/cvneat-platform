@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdminViewerRole } from '../../../lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '../../../components/Navbar';
@@ -38,7 +39,7 @@ export default function AdminUsers() {
         .eq('id', user.id)
         .single();
 
-      if (userError || !userData || userData.role !== 'admin') {
+      if (userError || !userData || !isAdminViewerRole(userData.role)) {
         router.push('/');
         return;
       }
@@ -108,7 +109,7 @@ export default function AdminUsers() {
           .eq('id', user.id)
           .single();
 
-        if (userError || !userData || userData.role !== 'admin') {
+        if (userError || !userData || !isAdminViewerRole(userData.role)) {
           throw new Error('Accès refusé : vous devez être administrateur');
         }
 

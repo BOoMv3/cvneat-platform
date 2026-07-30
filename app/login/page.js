@@ -271,7 +271,7 @@ export default function LoginPage() {
             didNavigate = true;
           } else if (role === 'associe') {
             setLoading(false);
-            router.push('/associe');
+            router.push('/admin');
             didNavigate = true;
           } else if (role === 'comptable') {
             setLoading(false);

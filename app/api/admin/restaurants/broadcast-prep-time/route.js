@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../../lib/supabase';
 import sseBroadcaster from '../../../../../lib/sse-broadcast';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 function toMinutes(hhmm) {
   if (!hhmm || typeof hhmm !== 'string') return null;
@@ -64,7 +65,7 @@ async function getAdminUser(request) {
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) return null;
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
-  if (!profile?.role || profile.role !== 'admin') return null;
+  if (!profile?.role || !isAdminWriterRole(profile.role)) return null;
   return user;
 }
 

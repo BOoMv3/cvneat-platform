@@ -108,8 +108,8 @@ export default function AuthGuard({ children, requiredRole, allowedRoles }) {
 
       setCachedRole(role);
 
-      // Les admins ont accès à tout
-      if (role === 'admin') {
+      // Admin + associé (lecture seule) : accès aux écrans admin
+      if (role === 'admin' || role === 'associe') {
         setStatus('authenticated');
         return;
       }

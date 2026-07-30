@@ -71,11 +71,21 @@ export async function GET(request) {
 
     // Si absent: créer un profil minimal (évite "Utilisateur non trouvé" partout)
     if (!finalUser) {
-      const allowedRoles = new Set(['user', 'admin', 'restaurant', 'delivery', 'comptable']);
+      const allowedRoles = new Set([
+        'user',
+        'admin',
+        'restaurant',
+        'delivery',
+        'comptable',
+        'associe',
+      ]);
 
       let inferredRole = allowedRoles.has(user.user_metadata?.role) ? user.user_metadata.role : null;
       if (!inferredRole && (user.email || '').toLowerCase() === 'comptable@cvneat.fr') {
         inferredRole = 'comptable';
+      }
+      if (!inferredRole && (user.email || '').toLowerCase() === 'romeo@cvneat.fr') {
+        inferredRole = 'associe';
       }
 
       // Heuristique: si un restaurant existe pour ce user_id, c'est un partenaire restaurant

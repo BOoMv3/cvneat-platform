@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildRestaurantTransferInvoiceHtml } from '../../../../../lib/restaurant-invoice';
 import {
+import { isAdminWriterRole } from '@/lib/admin-viewer';
   computeTransferOrderTotals,
   periodFromOrders,
   selectOrdersForTransferAmount,
@@ -44,7 +45,7 @@ async function requireAdminUser(request) {
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
-  if (roleErr || !userData || userData.role !== 'admin') {
+  if (roleErr || !userData || !isAdminWriterRole(userData.role)) {
     return { ok: false, status: 403, error: 'Accès admin requis' };
   }
 

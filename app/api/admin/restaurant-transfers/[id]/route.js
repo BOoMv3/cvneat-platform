@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -24,7 +25,7 @@ async function requireAdminUser(request) {
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
-  if (roleErr || !userData || userData.role !== 'admin') {
+  if (roleErr || !userData || !isAdminWriterRole(userData.role)) {
     return { ok: false, status: 403, error: 'Accès admin requis' };
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 export async function GET(request) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request) {
       .eq('id', user.id)
       .single();
 
-    if (roleError || !userData || userData.role !== 'admin') {
+    if (roleError || !userData || !isAdminViewerRole(userData.role)) {
       return NextResponse.json({ error: 'Accès refusé - Admin requis' }, { status: 403 });
     }
 

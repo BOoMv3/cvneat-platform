@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdminViewerRole } from '../../../lib/admin-viewer';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
@@ -76,7 +77,7 @@ export default function AdminCreateOrder() {
         .eq('id', user.id)
         .single();
 
-      if (!userData || userData.role !== 'admin') {
+      if (!userData || !isAdminViewerRole(userData.role)) {
         router.push('/admin');
         return;
       }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 // Utiliser la clé de service pour les opérations admin
 const supabaseAdmin = createClient(
@@ -42,7 +43,7 @@ const verifyAdminToken = async (request) => {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'admin') {
+    if (userError || !userData || !isAdminWriterRole(userData.role)) {
       return { error: 'Accès non autorisé - Admin requis', status: 403 };
     }
 

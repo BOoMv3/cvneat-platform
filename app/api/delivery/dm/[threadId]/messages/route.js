@@ -26,19 +26,20 @@ async function requireDelivery(request) {
     .eq('id', user.id)
     .maybeSingle();
   const role = (profile?.role || '').toLowerCase();
-  if (!['delivery', 'livreur', 'admin'].includes(role)) {
+  if (!['delivery', 'livreur', 'admin', 'associe'].includes(role)) {
     return { error: 'Accès livreur requis', status: 403 };
   }
   return { user, profile: { ...profile, role }, admin };
 }
 
-async function assertThreadParticipant(admin, threadId, userId) {
+async function assertThreadParticipant(admin, threadId, userId, { staffViewer = false } = {}) {
   const { data: thread } = await admin
     .from('delivery_dm_threads')
     .select('*')
     .eq('id', threadId)
     .maybeSingle();
   if (!thread) return null;
+  if (staffViewer) return thread;
   if (thread.user_a !== userId && thread.user_b !== userId) return null;
   return thread;
 }
@@ -48,8 +49,11 @@ export async function GET(request, { params }) {
     const auth = await requireDelivery(request);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
+    const staffViewer = ['admin', 'associe'].includes((auth.profile?.role || '').toLowerCase());
     const threadId = params?.threadId;
-    const thread = await assertThreadParticipant(auth.admin, threadId, auth.user.id);
+    const thread = await assertThreadParticipant(auth.admin, threadId, auth.user.id, {
+      staffViewer,
+    });
     if (!thread) return NextResponse.json({ error: 'Conversation introuvable' }, { status: 404 });
 
     const { data: messages, error } = await auth.admin
@@ -80,6 +84,12 @@ export async function POST(request, { params }) {
   try {
     const auth = await requireDelivery(request);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if ((auth.profile?.role || '').toLowerCase() === 'associe') {
+      return NextResponse.json(
+        { error: 'Lecture seule : seuls les admins peuvent envoyer des messages' },
+        { status: 403 }
+      );
+    }
 
     const threadId = params?.threadId;
     const thread = await assertThreadParticipant(auth.admin, threadId, auth.user.id);
@@ -113,33 +123,56 @@ export async function POST(request, { params }) {
       ? `Support CVN'EAT${auth.profile?.prenom ? ` (${auth.profile.prenom})` : ''}`
       : `${auth.profile?.prenom || ''} ${auth.profile?.nom || ''}`.trim() || 'Un livreur';
 
-    await sendPushToUserIds([peerId], `Message de ${senderName}`, text.slice(0, 120), {
-      type: 'delivery_dm',
-      url: `/delivery/messages?tab=dm&thread=${threadId}`,
-      threadId,
-    }).catch(() => {});
+    const { data: peer } = await auth.admin
+      .from('users')
+      .select('id, role')
+      .eq('id', peerId)
+      .maybeSingle();
+    const peerRole = (peer?.role || '').toLowerCase();
+    const peerIsAdmin = peerRole === 'admin';
+
+    const livreurDmUrl = `/delivery/messages?tab=dm&thread=${threadId}`;
+    const adminDmUrl = `/admin/delivery-messages?tab=chat&thread=${threadId}`;
+
+    // Notif au destinataire (URL selon rôle admin / livreur)
+    await sendPushToUserIds(
+      [peerId],
+      `Message de ${senderName}`,
+      text.slice(0, 120),
+      {
+        type: 'delivery_dm',
+        url: peerIsAdmin ? adminDmUrl : livreurDmUrl,
+        threadId,
+      }
+    ).catch((e) => console.warn('dm push peer:', e?.message));
+
+    // Confirmation push à l’expéditeur admin (comme les annonces / hier)
+    if (isAdminSender) {
+      await sendPushToUserIds(
+        [auth.user.id],
+        'Message envoyé',
+        text.slice(0, 120),
+        {
+          type: 'delivery_dm',
+          url: adminDmUrl,
+          threadId,
+        }
+      ).catch((e) => console.warn('dm push admin confirm:', e?.message));
+    }
 
     // Si l'admin écrit en chat, créer aussi une entrée Inbox pour que le livreur le voie
     // sans devoir chercher l'onglet Discussions.
-    if (isAdminSender) {
-      const { data: peer } = await auth.admin
-        .from('users')
-        .select('id, role')
-        .eq('id', peerId)
-        .maybeSingle();
-      const peerRole = (peer?.role || '').toLowerCase();
-      if (peer && ['delivery', 'livreur'].includes(peerRole)) {
-        await createDeliveryInboxMessage({
-          adminId: auth.user.id,
-          deliveryUserId: peerId,
-          subject: 'Message du support CVN\'EAT',
-          body: text,
-          kind: 'admin',
-          eventType: 'admin_dm',
-          data: { threadId, url: `/delivery/messages?tab=dm&thread=${threadId}` },
-          push: false, // push déjà envoyé ci-dessus
-        }).catch((e) => console.warn('inbox mirror dm:', e?.message));
-      }
+    if (isAdminSender && peer && ['delivery', 'livreur'].includes(peerRole)) {
+      await createDeliveryInboxMessage({
+        adminId: auth.user.id,
+        deliveryUserId: peerId,
+        subject: "Message du support CVN'EAT",
+        body: text,
+        kind: 'admin',
+        eventType: 'admin_dm',
+        data: { threadId, url: livreurDmUrl },
+        push: false, // push déjà envoyé ci-dessus
+      }).catch((e) => console.warn('inbox mirror dm:', e?.message));
     }
 
     return NextResponse.json({ message: msg });

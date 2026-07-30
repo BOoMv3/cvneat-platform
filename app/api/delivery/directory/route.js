@@ -21,7 +21,7 @@ async function requireDelivery(request) {
   const admin = getDeliveryMessagingAdmin();
   const { data: profile } = await admin.from('users').select('id, role').eq('id', user.id).maybeSingle();
   const role = (profile?.role || '').toLowerCase();
-  if (!['delivery', 'livreur', 'admin'].includes(role)) {
+  if (!['delivery', 'livreur', 'admin', 'associe'].includes(role)) {
     return { error: 'Accès livreur requis', status: 403 };
   }
   return { user, admin, role };

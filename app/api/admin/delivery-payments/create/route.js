@@ -5,6 +5,7 @@ import { loadDeliveryTransferInvoice } from '@/lib/delivery-invoice';
 import emailService from '../../../../../lib/emailService';
 import { createDeliveryInboxMessage } from '../../../../../lib/delivery-messaging';
 import { sendPushToUserIds } from '../../../../../lib/sendDeliveryAppPush';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -33,7 +34,7 @@ const verifyAdminToken = async (request) => {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'admin') {
+    if (userError || !userData || !isAdminWriterRole(userData.role)) {
       return { error: 'Accès refusé - Admin requis', status: 403 };
     }
 
@@ -52,7 +53,7 @@ const verifyAdminToken = async (request) => {
     .eq('id', user.id)
     .single();
 
-  if (userError || !userData || userData.role !== 'admin') {
+  if (userError || !userData || !isAdminWriterRole(userData.role)) {
     return { error: 'Accès refusé - Admin requis', status: 403 };
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export async function POST(request) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'admin') {
+    if (userError || !userData || !isAdminWriterRole(userData.role)) {
       return NextResponse.json({ error: 'Accès refusé - Rôle admin requis' }, { status: 403 });
     }
 

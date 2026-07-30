@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as sharedSupabaseAdmin } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { toParisDateString } from '../../../../../lib/restaurant-daily-open';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const getAdminClient = () => {
   if (sharedSupabaseAdmin) {
@@ -45,7 +46,7 @@ export async function GET(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminViewerRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
@@ -91,7 +92,7 @@ export async function PUT(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminWriterRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
@@ -209,7 +210,7 @@ export async function DELETE(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminWriterRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 

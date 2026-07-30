@@ -102,10 +102,10 @@ async function main() {
   }
 
   console.log('\n========== IDENTIFIANTS ASSOCIÉ ROMÉO ==========\n');
-  console.log('URL          : https://www.cvneat.fr/associe');
+  console.log('URL          : https://www.cvneat.fr/admin');
   console.log(`Email        : ${COMPTE.email}`);
   console.log(`Mot de passe : ${COMPTE.password}`);
-  console.log('\nLecture seule — aperçu activité (pas de modifications admin).\n');
+  console.log('\nMême interface admin — lecture seule (bénéfices inclus, aucune modification).\n');
 }
 
 main().catch((e) => {

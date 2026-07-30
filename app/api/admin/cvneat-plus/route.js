@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { isCvneatPlusActive } from '@/lib/cvneat-plus';
 import { applyCvneatPlusFromStripeSubscription } from '@/lib/cvneat-plus-sync';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,10 +30,10 @@ async function requireAdmin(request) {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (!profile || profile.role !== 'admin') {
+  if (!profile || !isAdminViewerRole(profile.role)) {
     return { error: 'Accès refusé', status: 403 };
   }
-  return { user };
+  return { user, role: profile.role };
 }
 
 /** GET — compteur abonnés actifs (service role, hors RLS). */
@@ -81,6 +82,12 @@ export async function POST(request) {
     const auth = await requireAdmin(request);
     if (auth.error) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+    if (!isAdminWriterRole(auth.role)) {
+      return NextResponse.json(
+        { error: 'Lecture seule : seuls les admins peuvent synchroniser' },
+        { status: 403 }
+      );
     }
 
     if (!process.env.STRIPE_SECRET_KEY) {

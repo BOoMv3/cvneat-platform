@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getFixedCommissionRatePercentFromName, getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../../lib/commission';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -50,7 +51,7 @@ async function requireAdminUser(request) {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (roleErr || !userData || userData.role !== 'admin') {
+  if (roleErr || !userData || !isAdminViewerRole(userData.role)) {
     return { ok: false, status: 403, error: 'Accès admin requis' };
   }
 

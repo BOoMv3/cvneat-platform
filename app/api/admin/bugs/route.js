@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const getSupabaseAdmin = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jxbqrvlmvnofaxbtcmsw.supabase.co';
@@ -32,7 +33,7 @@ export async function GET(request) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'admin') {
+    if (userError || !userData || !isAdminViewerRole(userData.role)) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 

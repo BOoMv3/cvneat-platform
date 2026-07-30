@@ -4,6 +4,7 @@ import { getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '.
 import { supabase } from '../../../../../lib/supabase';
 import { getItemLineTotal } from '../../../../../lib/cartUtils';
 import { sendDeliveryAppPush } from '../../../../../lib/sendDeliveryAppPush';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -34,7 +35,7 @@ export async function POST(request) {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'admin') {
+    if (userError || !userData || !isAdminWriterRole(userData.role)) {
       return NextResponse.json({ error: 'Accès refusé - Rôle admin requis' }, { status: 403 });
     }
 

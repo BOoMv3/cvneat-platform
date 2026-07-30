@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -17,7 +18,7 @@ async function assertAdmin(request) {
     return { ok: false, status: 401, error: 'Token invalide' };
   }
   const { data: ud } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single();
-  if (!ud || ud.role !== 'admin') {
+  if (!ud || !isAdminViewerRole(ud.role)) {
     return { ok: false, status: 403, error: 'Rôle admin requis' };
   }
   return { ok: true, user };

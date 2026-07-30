@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdminViewerRole } from '../../../lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
@@ -31,7 +32,7 @@ export default function AdminMessagesPage() {
         return;
       }
       const { data: u } = await supabase.from('users').select('role').eq('id', user.id).single();
-      if (!u || u.role !== 'admin') {
+      if (!u || !isAdminViewerRole(u.role)) {
         router.push('/login');
         return;
       }

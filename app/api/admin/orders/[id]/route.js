@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -30,7 +31,7 @@ export async function GET(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminViewerRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
@@ -108,7 +109,7 @@ export async function PUT(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminWriterRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
@@ -243,7 +244,7 @@ export async function DELETE(request, { params }) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminWriterRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -31,7 +32,7 @@ const verifyAdminToken = async (request) => {
     .eq('id', user.id)
     .single();
 
-  if (userError || !userData || userData.role !== 'admin') {
+  if (userError || !userData || !isAdminWriterRole(userData.role)) {
     return { error: 'Accès refusé - Admin requis', status: 403 };
   }
 

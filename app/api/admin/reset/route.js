@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 const REQUIRED_CONFIRMATION = 'RÉINITIALISER TOUT';
 
@@ -42,7 +43,7 @@ export async function POST(request) {
       .eq('id', user.id)
       .single();
 
-    if (roleError || !userData || userData.role !== 'admin') {
+    if (roleError || !userData || !isAdminWriterRole(userData.role)) {
       return NextResponse.json({ error: 'Accès refusé - Admin requis' }, { status: 403 });
     }
 

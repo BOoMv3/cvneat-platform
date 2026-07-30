@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function GET(request) {
     }
 
     const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single();
-    if (userData?.role !== 'admin') {
+    if (!isAdminViewerRole(userData?.role)) {
       return NextResponse.json({ error: 'Admin requis' }, { status: 403 });
     }
 

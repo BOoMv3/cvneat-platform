@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { formatReceiptText } from '../../../../../lib/receipt/formatReceiptText';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -40,7 +41,7 @@ async function verifyAdmin(request) {
     .eq('id', user.id)
     .single();
 
-  if (profErr || !profile || profile.role !== 'admin') {
+  if (profErr || !profile || !isAdminWriterRole(profile.role)) {
     return { error: 'Accès refusé - Admin requis', status: 403 };
   }
 

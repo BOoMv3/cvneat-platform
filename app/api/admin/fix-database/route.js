@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 // Fonction pour obtenir le client Supabase admin (lazy initialization)
 const getSupabaseAdmin = () => {
@@ -45,7 +46,7 @@ const verifyAdminToken = async (request) => {
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.role !== 'admin') {
+    if (userError || !userData || !isAdminWriterRole(userData.role)) {
       return { error: 'Accès non autorisé - Admin requis', status: 403 };
     }
 

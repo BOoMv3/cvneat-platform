@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin as sharedSupabaseAdmin } from '../../../../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const getAdminClient = () => {
   if (sharedSupabaseAdmin) return sharedSupabaseAdmin;
@@ -38,7 +39,7 @@ export async function GET(request) {
       .select('role')
       .eq('id', user.id)
       .single();
-    if (adminError || adminUser?.role !== 'admin') {
+    if (adminError || !isAdminViewerRole(adminUser?.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 

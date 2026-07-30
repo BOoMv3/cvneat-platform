@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createDeliveryInboxMessage } from '@/lib/delivery-messaging';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ async function requireAdmin(request) {
     .select('role')
     .eq('id', user.id)
     .single();
-  if (!u || u.role !== 'admin') return null;
+  if (!u || !isAdminWriterRole(u.role)) return null;
   return user;
 }
 

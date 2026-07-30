@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -25,7 +26,7 @@ export async function GET(request) {
       .select('role')
       .eq('id', user.id)
       .single();
-    if (!u || u.role !== 'admin') {
+    if (!u || !isAdminViewerRole(u.role)) {
       return NextResponse.json({ error: 'Admin requis' }, { status: 403 });
     }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdminViewerRole } from '@/lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -29,7 +30,7 @@ export default function AdminTestPushPage() {
         .select('role')
         .eq('id', user.id)
         .maybeSingle();
-      if (userData?.role !== 'admin') {
+      if (!isAdminViewerRole(userData?.role)) {
         router.push('/admin');
         return;
       }

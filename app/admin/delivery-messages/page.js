@@ -1,8 +1,10 @@
 'use client';
 
+import { isAdminViewerRole } from '../../../lib/admin-viewer';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
+import { useAdminAccess } from '../../../components/AdminAccessContext';
 import {
   FaArrowLeft,
   FaPaperPlane,
@@ -14,6 +16,7 @@ import {
 } from 'react-icons/fa';
 
 export default function AdminDeliveryMessagesPage() {
+  const { readOnly, canWrite } = useAdminAccess();
   const router = useRouter();
   const [tab, setTab] = useState('broadcast');
   const [token, setToken] = useState(null);
@@ -46,6 +49,15 @@ export default function AdminDeliveryMessagesPage() {
   );
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search);
+    const t = q.get('tab');
+    if (t === 'chat' || t === 'dm') setTab('chat');
+    const thread = q.get('thread');
+    if (thread) setActiveThreadId(thread);
+  }, []);
+
+  useEffect(() => {
     (async () => {
       const {
         data: { session },
@@ -55,7 +67,7 @@ export default function AdminDeliveryMessagesPage() {
         return;
       }
       const { data: u } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-      if (!u || u.role !== 'admin') {
+      if (!u || !isAdminViewerRole(u.role)) {
         router.push('/login');
         return;
       }
@@ -125,6 +137,10 @@ export default function AdminDeliveryMessagesPage() {
 
   const handleSend = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      setError('Lecture seule : envoi impossible.');
+      return;
+    }
     setError(null);
     setSuccess(null);
     if (!subject.trim() || !body.trim()) {
@@ -156,14 +172,19 @@ export default function AdminDeliveryMessagesPage() {
       if (push) {
         if (push.total === 0) {
           pushInfo =
-            ' — ⚠️ aucune notif app : les livreurs n’ont pas de token appareil (ouvrir l’app livreur + autoriser les notifs).';
+            ' — ⚠️ aucune notif app : pas de token appareil (ouvrir l’app + autoriser les notifs).';
         } else {
           pushInfo = ` — push app : ${push.sent}/${push.total} appareil(s)`;
+          if (push.targetsAdmin != null) {
+            pushInfo += ` (dont ${push.targetsAdmin} admin)`;
+          }
           if (push.web) pushInfo += ' + web';
         }
       }
       setSuccess(
-        (targetType === 'all' ? 'Message envoyé à tous les livreurs' : 'Message envoyé') + pushInfo
+        (targetType === 'all'
+          ? 'Message envoyé à tous les livreurs (+ notif admin)'
+          : 'Message envoyé') + pushInfo
       );
       setSubject('');
       setBody('');
@@ -203,6 +224,10 @@ export default function AdminDeliveryMessagesPage() {
 
   const sendDm = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      setError('Lecture seule : envoi impossible.');
+      return;
+    }
     if (!activeThreadId || !dmBody.trim()) return;
     setSending(true);
     try {
@@ -357,11 +382,11 @@ export default function AdminDeliveryMessagesPage() {
 
               <button
                 type="submit"
-                disabled={sending}
+                disabled={sending || readOnly}
                 className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-60"
               >
                 {sending ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />}
-                Envoyer + notifier
+                {readOnly ? 'Lecture seule' : 'Envoyer + notifier'}
               </button>
             </form>
 
@@ -455,6 +480,7 @@ export default function AdminDeliveryMessagesPage() {
                 })}
               </div>
               {activeThreadId && (
+                canWrite ? (
                 <form onSubmit={sendDm} className="border-t p-3 flex gap-2">
                   <input
                     value={dmBody}
@@ -470,6 +496,11 @@ export default function AdminDeliveryMessagesPage() {
                     <FaPaperPlane /> Envoyer
                   </button>
                 </form>
+                ) : (
+                  <div className="border-t p-3 text-sm text-amber-700 bg-amber-50">
+                    Lecture seule — vous pouvez lire la conversation, pas y répondre.
+                  </div>
+                )
               )}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -28,7 +29,7 @@ const verifyAdminToken = async (request) => {
     .eq('id', user.id)
     .single();
 
-  if (userError || !userData || userData.role !== 'admin') {
+  if (userError || !userData || !isAdminWriterRole(userData.role)) {
     return { error: 'Accès refusé - Admin requis', status: 403 };
   }
 

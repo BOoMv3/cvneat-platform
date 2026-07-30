@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdminViewerRole } from '../../../lib/admin-viewer';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
@@ -27,7 +28,7 @@ export default function AdminCustomerSearchPage() {
         .select('role')
         .eq('id', user.id)
         .single();
-      if (meErr || !me || me.role !== 'admin') {
+      if (meErr || !me || !isAdminViewerRole(me.role)) {
         router.push('/');
       }
     };

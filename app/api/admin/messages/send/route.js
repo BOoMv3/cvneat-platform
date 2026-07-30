@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isAdminWriterRole } from '@/lib/admin-viewer';
 
 async function requireAdmin(request) {
   const authHeader = request.headers.get('authorization');
@@ -8,7 +9,7 @@ async function requireAdmin(request) {
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return { user: null };
   const { data: u } = await supabase.from('users').select('role').eq('id', user.id).single();
-  if (!u || u.role !== 'admin') return { user: null };
+  if (!u || !isAdminWriterRole(u.role)) return { user: null };
   return { user };
 }
 

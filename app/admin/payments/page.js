@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdminViewerRole } from '../../../lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
@@ -59,7 +60,7 @@ export default function AdminPayments() {
         .eq('id', currentUser.id)
         .single();
 
-      if (userError || !userData || userData.role !== 'admin') {
+      if (userError || !userData || !isAdminViewerRole(userData.role)) {
         router.push('/login');
         return;
       }

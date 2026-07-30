@@ -29,7 +29,7 @@ async function requireDelivery(request) {
     .eq('id', user.id)
     .maybeSingle();
   const role = (profile?.role || '').toLowerCase();
-  if (!['delivery', 'livreur', 'admin'].includes(role)) {
+  if (!['delivery', 'livreur', 'admin', 'associe'].includes(role)) {
     return { error: 'Accès livreur requis', status: 403 };
   }
   return { user, profile, admin };
@@ -39,33 +39,54 @@ export async function GET(request) {
   try {
     const auth = await requireDelivery(request);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
-    const { admin, user } = auth;
+    const { admin, user, profile } = auth;
+    const role = (profile?.role || '').toLowerCase();
+    const staffViewer = role === 'admin' || role === 'associe';
 
-    const { data: threads, error } = await admin
+    let threadsQuery = admin
       .from('delivery_dm_threads')
       .select('id, created_at, updated_at, user_a, user_b')
-      .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
       .order('updated_at', { ascending: false });
+
+    if (!staffViewer) {
+      threadsQuery = threadsQuery.or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
+    }
+
+    const { data: threads, error } = await threadsQuery;
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const otherIds = [...new Set((threads || []).map((t) => (t.user_a === user.id ? t.user_b : t.user_a)))];
-    const { data: peers } = otherIds.length
-      ? await admin.from('users').select('id, prenom, nom, email, role').in('id', otherIds)
+    const allIds = [
+      ...new Set((threads || []).flatMap((t) => [t.user_a, t.user_b]).filter(Boolean)),
+    ];
+    const { data: peers } = allIds.length
+      ? await admin.from('users').select('id, prenom, nom, email, role').in('id', allIds)
       : { data: [] };
     const peerMap = new Map((peers || []).map((p) => [p.id, p]));
 
     const peerDisplayName = (peer) => {
-      const role = (peer?.role || '').toLowerCase();
-      if (role === 'admin') {
+      const r = (peer?.role || '').toLowerCase();
+      if (r === 'admin' || r === 'associe') {
         return "Support CVN'EAT";
       }
       return `${peer?.prenom || ''} ${peer?.nom || ''}`.trim() || peer?.email || 'Livreur';
     };
 
+    const resolvePeerId = (t) => {
+      if (staffViewer) {
+        const a = peerMap.get(t.user_a);
+        const b = peerMap.get(t.user_b);
+        const aRole = (a?.role || '').toLowerCase();
+        const bRole = (b?.role || '').toLowerCase();
+        if (['delivery', 'livreur'].includes(aRole)) return t.user_a;
+        if (['delivery', 'livreur'].includes(bRole)) return t.user_b;
+      }
+      return t.user_a === user.id ? t.user_b : t.user_a;
+    };
+
     const enriched = [];
     for (const t of threads || []) {
-      const otherId = t.user_a === user.id ? t.user_b : t.user_a;
+      const otherId = resolvePeerId(t);
       const peer = peerMap.get(otherId) || {};
       const { data: lastMsg } = await admin
         .from('delivery_dm_messages')
@@ -95,7 +116,9 @@ export async function GET(request) {
           id: otherId,
           name: peerDisplayName(peer),
           email: peer.email,
-          kind: (peer.role || '').toLowerCase() === 'admin' ? 'admin' : 'delivery',
+          kind: ['admin', 'associe'].includes((peer.role || '').toLowerCase())
+            ? 'admin'
+            : 'delivery',
         },
         last_message: lastMsg || null,
         unread,
@@ -113,6 +136,12 @@ export async function POST(request) {
   try {
     const auth = await requireDelivery(request);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if ((auth.profile?.role || '').toLowerCase() === 'associe') {
+      return NextResponse.json(
+        { error: 'Lecture seule : impossible de démarrer une conversation' },
+        { status: 403 }
+      );
+    }
 
     const { peerId } = await request.json().catch(() => ({}));
     if (!peerId) return NextResponse.json({ error: 'peerId requis' }, { status: 400 });

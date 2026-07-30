@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 // GET /api/admin/orders - Récupérer la liste des commandes
 export async function GET(request) {
@@ -23,7 +24,7 @@ export async function GET(request) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminViewerRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
@@ -87,7 +88,7 @@ export async function POST(request) {
       .eq('id', user.id)
       .single();
 
-    if (adminError || adminUser.role !== 'admin') {
+    if (adminError || !isAdminWriterRole(adminUser.role)) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 

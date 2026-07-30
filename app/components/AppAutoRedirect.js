@@ -158,7 +158,7 @@ export default function AppAutoRedirect() {
       const enforceFromCache = (reason) => {
       const cachedRole = getCachedRole();
       const isDelivery = cachedRole === 'delivery' || cachedRole === 'livreur';
-      const isAdmin = cachedRole === 'admin';
+      const isAdmin = cachedRole === 'admin' || cachedRole === 'associe';
       if (isDelivery && !isDeliveryAllowedPath(pathname)) {
         forceTo('/delivery/dashboard', `cache_${reason}`, { role: cachedRole });
         return true;
@@ -272,7 +272,7 @@ export default function AppAutoRedirect() {
 
       const isDelivery = role === 'delivery' || role === 'livreur';
       const isRestaurant = role === 'restaurant' || role === 'partner';
-      const isAdmin = role === 'admin';
+      const isAdmin = role === 'admin' || role === 'associe';
 
       if (role) {
         setCachedRole(role);

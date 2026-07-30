@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdminViewerRole } from '../../../lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
@@ -57,7 +58,7 @@ export default function AdminComplaints() {
         .eq('id', session.user.id)
         .single();
 
-      if (userError || userData.role !== 'admin') {
+      if (userError || !isAdminViewerRole(userData.role)) {
         router.push('/');
         return;
       }
