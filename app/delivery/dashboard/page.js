@@ -1540,6 +1540,11 @@ export default function DeliveryDashboard() {
                               <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
                                 Ton gain {getOrderGain(order).toFixed(2)}€
                               </span>
+                              {order.prepay_search && (
+                                <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+                                  Client attend pour payer
+                                </span>
+                              )}
                               <span className="text-sm text-gray-500">
                                 {order.created_at ? new Date(order.created_at).toLocaleTimeString('fr-FR', { 
                                   hour: '2-digit', 

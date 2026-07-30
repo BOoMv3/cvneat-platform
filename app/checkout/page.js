@@ -10,6 +10,7 @@ import PromoCodeInput from '@/components/PromoCodeInput';
 import DeliverySlotPicker from '@/components/DeliverySlotPicker';
 import { formatSlotRangeParis } from '@/lib/delivery-slots';
 import SupportContactBlock from '@/components/SupportContactBlock';
+import DriverSearchPanel from '@/components/DriverSearchPanel';
 // PROMO TERMINÉE : Plus besoin du composant FreeDeliveryBanner
 // import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import { 
@@ -85,6 +86,9 @@ export default function Checkout() {
   const [addressValidationMessage, setAddressValidationMessage] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showDriverSearch, setShowDriverSearch] = useState(false);
+  const [checkoutAccessToken, setCheckoutAccessToken] = useState(null);
+  const [pendingPaymentTotal, setPendingPaymentTotal] = useState(null);
   const [paymentIntentId, setPaymentIntentId] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
   const [orderData, setOrderData] = useState(null); // Stocker les données de commande avant paiement
@@ -1024,31 +1028,30 @@ export default function Checkout() {
         loyaltyPointsCost: adj.pointsCost || 0,
         platformPromoDiscount,
       });
+      setPendingPaymentTotal(totalAmount);
 
-      // Créer le PaymentIntent Stripe avec l'ID de commande
-      // Le montant a déjà été validé et ajusté ci-dessus (minimum 0.50€)
-      // Double vérification de sécurité
+      // Livraison: recherche livreur AVANT paiement
+      if (orderFulfillment === 'delivery') {
+        const {
+          data: { session: sess },
+        } = await supabase.auth.getSession();
+        if (!sess?.access_token) {
+          throw new Error('Connecte-toi pour lancer la recherche de livreur.');
+        }
+        setCheckoutAccessToken(sess.access_token);
+        setShowDriverSearch(true);
+        setShowPaymentForm(false);
+        setSubmitting(false);
+        return;
+      }
+
+      // Retrait sur place: paiement immédiat
       if (!totalAmount || totalAmount <= 0 || isNaN(totalAmount)) {
-        console.error('❌ ERREUR CRITIQUE: Montant invalide après validation:', totalAmount);
         throw new Error('Erreur de calcul du montant. Veuillez réessayer ou contacter le support.');
       }
-
       if (totalAmount < 0.50) {
-        console.error('❌ ERREUR CRITIQUE: Montant trop faible après validation:', totalAmount);
         throw new Error('Le montant minimum de commande est de 0.50€. Veuillez ajouter des articles à votre panier.');
       }
-
-      console.log('💳 Création PaymentIntent Stripe pour montant:', totalAmount, '€');
-      console.log('📊 Détails:', {
-        cartTotal,
-        discountAmount,
-        subtotalAfterPromo,
-        subtotalAfterAllDiscounts,
-        deliveryBeforeLoyalty,
-        finalDeliveryFromLoyalty,
-        PLATFORM_FEE,
-        totalAmount
-      });
 
       const paymentResponse = await fetch('/api/payment/create-payment-intent', {
         method: 'POST',
@@ -1068,56 +1071,24 @@ export default function Checkout() {
       });
 
       if (!paymentResponse.ok) {
-        // Gestion spécifique de l'erreur 429 (Rate Limit)
         if (paymentResponse.status === 429) {
-          const errorMessage = 'Trop de requêtes. Veuillez patienter quelques instants avant de réessayer.';
-          alert(errorMessage);
+          alert('Trop de requêtes. Veuillez patienter quelques instants avant de réessayer.');
           setSubmitting(false);
           return;
         }
-        
         let errorData;
         try {
           errorData = await paymentResponse.json();
         } catch {
           errorData = { error: `Erreur HTTP ${paymentResponse.status}` };
         }
-        
-        // Message d'erreur plus clair pour l'utilisateur
-        const errorMessage = errorData.error || `Erreur lors de la création du paiement (${paymentResponse.status})`;
-        console.error('❌ Erreur création PaymentIntent:', {
-          status: paymentResponse.status,
-          error: errorMessage,
-          totalAmount,
-          cartTotal,
-          discountAmount: appliedPromoCode?.discountAmount || 0,
-          maxDiscount: typeof maxDiscount !== 'undefined' ? maxDiscount : 'non calculé',
-          subtotalAfterPromo: typeof subtotalAfterPromo !== 'undefined' ? subtotalAfterPromo : 'non calculé',
-          subtotalAfterAllDiscounts:
-            typeof subtotalAfterAllDiscounts !== 'undefined'
-              ? subtotalAfterAllDiscounts
-              : 'non calculé',
-          deliveryBeforeLoyalty:
-            typeof deliveryBeforeLoyalty !== 'undefined' ? deliveryBeforeLoyalty : 'non calculé',
-          finalDeliveryFromLoyalty:
-            typeof finalDeliveryFromLoyalty !== 'undefined'
-              ? finalDeliveryFromLoyalty
-              : 'non calculé',
-        });
-        
-        throw new Error(errorMessage);
+        throw new Error(errorData.error || `Erreur lors de la création du paiement (${paymentResponse.status})`);
       }
 
       const paymentData = await paymentResponse.json();
       setPaymentIntentId(paymentData.paymentIntentId);
-      
-      // Stocker le clientSecret pour le formulaire de paiement
       setClientSecret(paymentData.clientSecret);
-      
-      // Track Facebook Pixel - InitiateCheckout
       FacebookPixelEvents.initiateCheckout(cartTotal, cart);
-      
-      // Afficher le formulaire de paiement
       setShowPaymentForm(true);
       setSubmitting(false);
       
@@ -1146,6 +1117,77 @@ export default function Checkout() {
       
       setSubmitting(false);
     }
+  };
+
+  const createPaymentIntentForOrder = async (totalAmount, orderId) => {
+    if (!totalAmount || totalAmount <= 0 || isNaN(totalAmount)) {
+      throw new Error('Erreur de calcul du montant.');
+    }
+    if (totalAmount < 0.5) {
+      throw new Error('Le montant minimum de commande est de 0.50€.');
+    }
+    const paymentResponse = await fetch('/api/payment/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: totalAmount,
+        currency: 'eur',
+        metadata: {
+          order_id: orderId,
+          user_id: user?.id || '',
+          restaurant_id: orderData?.restaurant_id || restaurant?.id || '',
+        },
+      }),
+    });
+    if (!paymentResponse.ok) {
+      const errorData = await paymentResponse.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Erreur création paiement');
+    }
+    const paymentData = await paymentResponse.json();
+    setPaymentIntentId(paymentData.paymentIntentId);
+    setClientSecret(paymentData.clientSecret);
+  };
+
+  const handleDriverFound = async () => {
+    try {
+      setSubmitting(true);
+      const amount = pendingPaymentTotal || orderData?.paymentTotal;
+      if (!amount || !orderData?.orderId) throw new Error('Montant ou commande manquant');
+      await createPaymentIntentForOrder(amount, orderData.orderId);
+      FacebookPixelEvents.initiateCheckout(cartTotal, cart);
+      setShowDriverSearch(false);
+      setShowPaymentForm(true);
+    } catch (e) {
+      alert(e.message || 'Erreur préparation paiement');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSwitchPickupFromSearch = async () => {
+    if (!orderData?.orderId || !checkoutAccessToken) return;
+    const res = await fetch(`/api/orders/${orderData.orderId}/switch-pickup`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${checkoutAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'Impossible de basculer en retrait');
+
+    const deliveryFeeNow = parseFloat(fraisLivraison) || 0;
+    setOrderFulfillment('pickup');
+    setFraisLivraison(0);
+    const newTotal = Math.max(
+      0.5,
+      Math.round(((pendingPaymentTotal || orderData.paymentTotal || 0) - deliveryFeeNow) * 100) / 100
+    );
+    setPendingPaymentTotal(newTotal);
+    setOrderData((d) => (d ? { ...d, paymentTotal: newTotal, totalAmount: newTotal } : d));
+    setShowDriverSearch(false);
+    await createPaymentIntentForOrder(newTotal, orderData.orderId);
+    setShowPaymentForm(true);
   };
 
   // Fonction SIMPLIFIÉE : Mettre à jour la commande après paiement réussi
@@ -1307,6 +1349,16 @@ export default function Checkout() {
       friendly += msg ? `Détails : ${msg}` : 'Réessayez ou contactez le support (07 86 01 41 71).';
     }
     alert(friendly);
+    // Informer le livreur réservé
+    if (orderData?.orderId && checkoutAccessToken) {
+      fetch(`/api/orders/${orderData.orderId}/payment-failed-notify`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${checkoutAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }).catch(() => {});
+    }
     setShowPaymentForm(false);
     setSubmitting(false);
   };
@@ -1957,7 +2009,7 @@ export default function Checkout() {
               </div>
             )}
 
-            {!showPaymentForm ? (
+            {!showPaymentForm && !showDriverSearch ? (
               <>
                 <button
                   onClick={submitOrder}
@@ -1976,6 +2028,8 @@ export default function Checkout() {
                       <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
                       Préparation...
                     </div>
+                  ) : orderFulfillment === 'delivery' ? (
+                    `Chercher un livreur · ${loyaltyCheckout.totalToPay.toFixed(2)}€`
                   ) : (
                     `Payer ${loyaltyCheckout.totalToPay.toFixed(2)}€`
                   )}
@@ -2002,6 +2056,19 @@ export default function Checkout() {
                   </p>
                 )}
               </>
+            ) : showDriverSearch && orderData?.orderId && checkoutAccessToken ? (
+              <div className="mt-4 sm:mt-6">
+                <DriverSearchPanel
+                  orderId={orderData.orderId}
+                  accessToken={checkoutAccessToken}
+                  onDriverFound={handleDriverFound}
+                  onSwitchPickup={handleSwitchPickupFromSearch}
+                  onCancel={() => {
+                    setShowDriverSearch(false);
+                    setOrderData(null);
+                  }}
+                />
+              </div>
             ) : (
               <div className="mt-4 sm:mt-6">
                 {/* Récapitulatif final avant paiement */}

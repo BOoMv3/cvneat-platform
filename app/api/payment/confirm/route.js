@@ -323,7 +323,7 @@ export async function POST(request) {
 
           const { data: paidOrder } = await supabaseAdmin
             .from('commandes')
-            .select('id, restaurant_id, total, frais_livraison, statut, order_fulfillment, payment_status')
+            .select('id, restaurant_id, total, frais_livraison, statut, order_fulfillment, payment_status, livreur_id, driver_search_status')
             .eq('id', updated.id)
             .maybeSingle();
 
@@ -331,8 +331,23 @@ export async function POST(request) {
             const { notifyPartnerNewOrder } = await import('../../../../lib/notify-partner-new-order');
             await notifyPartnerNewOrder(paidOrder, { supabaseAdmin, origin });
             console.log('✅ [payment/confirm] Notification partenaire retrait:', updated.id);
+          } else if (paidOrder?.livreur_id) {
+            // Nouveau flux: livreur déjà réservé → confirmer livreur + notifier resto
+            const { notifyAssignedDriver } = await import('../../../../lib/driver-search');
+            const { notifyPartnerNewOrder } = await import('../../../../lib/notify-partner-new-order');
+            await notifyAssignedDriver(paidOrder, {
+              title: 'Course validée ✅',
+              body: `Le client a payé #${String(paidOrder.id).slice(0, 8)} — direction le restaurant.`,
+              type: 'course_validee',
+            });
+            await notifyPartnerNewOrder(paidOrder, { supabaseAdmin, origin });
+            await supabaseAdmin
+              .from('commandes')
+              .update({ driver_search_status: 'reserved', updated_at: new Date().toISOString() })
+              .eq('id', paidOrder.id);
+            console.log('✅ [payment/confirm] Livreur confirmé + resto notifié:', updated.id);
           } else {
-            // Appel direct (même logique que webhook) pour fiabilité — livraison uniquement
+            // Legacy: pas encore de livreur → broadcast disponibilités
             try {
               const pushResult = await sendDeliveryAppPush({
                 orderId: updated.id,

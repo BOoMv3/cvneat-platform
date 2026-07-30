@@ -144,60 +144,83 @@ export async function POST(request, { params }) {
       }, { status: 400, headers: corsHeaders });
     }
 
-    // Vérifier que le paiement est validé - UNIQUEMENT les paiements confirmés
-    if (!order.payment_status || !['paid', 'succeeded'].includes(order.payment_status)) {
-      console.log('❌ Paiement non validé:', {
+    // Accepter si:
+    // - paiement validé (flux legacy / déjà payé), OU
+    // - recherche livreur active avant paiement
+    const paidOk = order.payment_status && ['paid', 'succeeded'].includes(order.payment_status);
+    const searchActive =
+      order.driver_search_status === 'searching' &&
+      order.driver_search_expires_at &&
+      new Date(order.driver_search_expires_at).getTime() > Date.now() &&
+      !paidOk;
+
+    if (!paidOk && !searchActive) {
+      console.log('❌ Paiement non validé / recherche inactive:', {
         payment_status: order.payment_status,
+        driver_search_status: order.driver_search_status,
+        driver_search_expires_at: order.driver_search_expires_at,
         order_id: order.id,
-        required_statuses: ['paid', 'succeeded'],
-        statut: order.statut
       });
-      return NextResponse.json({ 
-        error: 'Commande non disponible', 
-        details: `Le paiement n'a pas été validé (statut: ${order.payment_status || 'non défini'}). Seuls les paiements confirmés (paid, succeeded) peuvent être acceptés.` 
-      }, { status: 400, headers: corsHeaders });
+      return NextResponse.json(
+        {
+          error: 'Commande non disponible',
+          details: paidOk
+            ? undefined
+            : `Recherche livreur inactive ou expirée (paiement: ${order.payment_status || 'non défini'}).`,
+        },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
-    // Accepter la commande
-    // Le livreur accepte la commande en assignant son ID
-    // Le statut reste 'en_attente' jusqu'à ce que le restaurant accepte
-    console.log('📤 Mise à jour commande:', {
-      orderId,
-      livreur_id: user.id,
-      statut_actuel: order.statut,
-      nouveau_statut: 'en_attente' // On garde le statut en_attente, le restaurant acceptera après
-    });
-    
+    const nowIso = new Date().toISOString();
     const updatePayload = {
       livreur_id: user.id,
-      updated_at: new Date().toISOString()
-      // Le statut reste 'en_attente', le restaurant changera le statut quand il acceptera
+      updated_at: nowIso,
     };
-    
-    // Ajouter delivery_time si fourni par le livreur (seulement si la valeur est valide)
-    // Note: Si la colonne n'existe pas encore en base, cette ligne sera ignorée silencieusement
+
+    if (searchActive) {
+      updatePayload.driver_search_status = 'reserved';
+      updatePayload.driver_reserved_at = nowIso;
+    }
+
     if (delivery_time !== null && delivery_time !== undefined && delivery_time > 0) {
       updatePayload.delivery_time = delivery_time;
-      console.log('📦 Temps de livraison ajouté:', delivery_time, 'minutes');
     }
-    const { data: updatedOrder, error: updateError } = await supabaseAdmin
+
+    // Acceptation atomique : seul le premier livreur gagne
+    let updateQuery = supabaseAdmin
       .from('commandes')
       .update(updatePayload)
       .eq('id', orderId)
-      .select()
-      .single();
+      .eq('statut', 'en_attente');
+
+    if (!order.livreur_id) {
+      updateQuery = updateQuery.is('livreur_id', null);
+    } else if (order.livreur_id === user.id) {
+      updateQuery = updateQuery.eq('livreur_id', user.id);
+    }
+
+    if (searchActive) {
+      updateQuery = updateQuery.eq('driver_search_status', 'searching');
+    }
+
+    const { data: updatedOrder, error: updateError } = await updateQuery.select().maybeSingle();
 
     if (updateError) {
       console.error('❌ Erreur acceptation commande:', updateError);
-      console.error('❌ Détails erreur:', JSON.stringify(updateError, null, 2));
       return NextResponse.json({ error: 'Erreur acceptation commande' }, { status: 500, headers: corsHeaders });
     }
 
-    console.log('✅ Commande acceptée par livreur:', user.email);
-    console.log('✅ Commande mise à jour:', {
+    if (!updatedOrder) {
+      return NextResponse.json(
+        { error: 'Commande déjà prise par un autre livreur' },
+        { status: 409, headers: corsHeaders }
+      );
+    }
+
+    console.log('✅ Commande acceptée par livreur:', user.email, {
+      prepay: searchActive,
       id: updatedOrder.id,
-      statut: updatedOrder.statut,
-      livreur_id: updatedOrder.livreur_id
     });
 
     const { data: enrichedOrder } = await supabaseAdmin
@@ -242,6 +265,8 @@ export async function POST(request, { params }) {
     const formattedOrder = enrichedOrder
       ? {
           ...enrichedOrder,
+          prepay_search: searchActive,
+          awaiting_client_payment: searchActive,
           user_addresses: deliveryAddress,
           adresse_livraison: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           ville_livraison: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
@@ -261,56 +286,57 @@ export async function POST(request, { params }) {
           delivery_address: enrichedOrder.adresse_livraison || deliveryAddress?.address || null,
           delivery_city: enrichedOrder.ville_livraison || deliveryAddress?.city || null,
           delivery_postal_code: enrichedOrder.code_postal_livraison || deliveryAddress?.postal_code || (enrichedOrder.adresse_livraison ? enrichedOrder.adresse_livraison.match(/\b(\d{5})\b/)?.[1] : null) || null,
-          delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || (enrichedOrder.adresse_livraison ? (enrichedOrder.adresse_livraison.match(/\(Instructions:\s*(.+?)\)/)?.[1]?.trim() || null) : null) || null
+          delivery_instructions: enrichedOrder.instructions_livraison || deliveryAddress?.instructions || null
         }
       : updatedOrder;
 
-    // Note: L'email sera envoyé plus tard, quand le restaurant marque la commande comme prête
-    // et que le livreur commence la livraison (statut passe à 'en_livraison')
+    // Notifier le restaurant UNIQUEMENT si déjà payé (flux legacy).
+    // Nouveau flux prepay: le resto est notifié après paiement validé.
+    if (paidOk) {
+      try {
+        const origin = new URL(request.url).origin;
+        const notificationTotal = (
+          parseFloat(updatedOrder.total || 0) + parseFloat(updatedOrder.frais_livraison || 0)
+        ).toFixed(2);
 
-    // NOUVEAU WORKFLOW: notifier le restaurant UNIQUEMENT quand un livreur accepte.
-    try {
-      const origin = new URL(request.url).origin;
-      const notificationTotal = (
-        parseFloat(updatedOrder.total || 0) + parseFloat(updatedOrder.frais_livraison || 0)
-      ).toFixed(2);
+        if (updatedOrder.restaurant_id) {
+          sseBroadcaster.broadcast(updatedOrder.restaurant_id, {
+            type: 'new_order',
+            message: `Nouvelle commande (livreur assigné) #${updatedOrder.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
+            order: updatedOrder,
+            timestamp: new Date().toISOString(),
+          });
 
-      // SSE (web resto)
-      if (updatedOrder.restaurant_id) {
-        sseBroadcaster.broadcast(updatedOrder.restaurant_id, {
-          type: 'new_order',
-          message: `Nouvelle commande (livreur assigné) #${updatedOrder.id?.slice(0, 8) || 'N/A'} - ${notificationTotal}€`,
-          order: updatedOrder,
-          timestamp: new Date().toISOString(),
-        });
+          const { data: rest } = await supabaseAdmin
+            .from('restaurants')
+            .select('user_id')
+            .eq('id', updatedOrder.restaurant_id)
+            .maybeSingle();
 
-        // Push resto
-        const { data: rest } = await supabaseAdmin
-          .from('restaurants')
-          .select('user_id')
-          .eq('id', updatedOrder.restaurant_id)
-          .maybeSingle();
-
-        if (rest?.user_id) {
-          await fetch(`${origin}/api/notifications/send-push`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: rest.user_id,
-              title: 'Nouvelle commande (livreur OK) ✅',
-              body: `Commande #${updatedOrder.id?.slice(0, 8)} - ${notificationTotal}€`,
-              data: { type: 'new_order', orderId: updatedOrder.id, url: '/partner/orders' },
-            }),
-          }).catch(() => {});
+          if (rest?.user_id) {
+            await fetch(`${origin}/api/notifications/send-push`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: rest.user_id,
+                title: 'Nouvelle commande (livreur OK) ✅',
+                body: `Commande #${updatedOrder.id?.slice(0, 8)} - ${notificationTotal}€`,
+                data: { type: 'new_order', orderId: updatedOrder.id, url: '/partner/orders' },
+              }),
+            }).catch(() => {});
+          }
         }
+      } catch (e) {
+        console.warn('⚠️ accept-order: erreur notif restaurant (non bloquant):', e?.message || e);
       }
-    } catch (e) {
-      console.warn('⚠️ accept-order: erreur notif restaurant (non bloquant):', e?.message || e);
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Commande acceptée avec succès',
+      message: searchActive
+        ? 'Course réservée — en attente du paiement client'
+        : 'Commande acceptée avec succès',
+      awaiting_client_payment: searchActive,
       order: formattedOrder
     }, { headers: corsHeaders });
   } catch (error) {

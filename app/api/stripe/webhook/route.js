@@ -414,7 +414,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
         try {
           const { data: paidOrder } = await db
             .from('commandes')
-            .select('id, restaurant_id, total, frais_livraison, statut, order_fulfillment, payment_status')
+            .select('id, restaurant_id, total, frais_livraison, statut, order_fulfillment, payment_status, livreur_id, driver_search_status')
             .eq('id', order.id)
             .maybeSingle();
 
@@ -423,8 +423,21 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
           if (paidOrder && isPickupOrder(paidOrder)) {
             await notifyPartnerNewOrder(paidOrder, { supabaseAdmin: db, origin });
             console.log('✅ Notification partenaire (retrait sur place):', order.id);
+          } else if (paidOrder?.livreur_id) {
+            const { notifyAssignedDriver } = await import('../../../../lib/driver-search');
+            await notifyAssignedDriver(paidOrder, {
+              title: 'Course validée ✅',
+              body: `Le client a payé #${String(paidOrder.id).slice(0, 8)} — direction le restaurant.`,
+              type: 'course_validee',
+            });
+            await notifyPartnerNewOrder(paidOrder, { supabaseAdmin: db, origin });
+            await db
+              .from('commandes')
+              .update({ driver_search_status: 'reserved', updated_at: new Date().toISOString() })
+              .eq('id', paidOrder.id);
+            console.log('✅ Webhook: livreur confirmé + resto notifié:', order.id);
           } else {
-            // Livraison : notifier les livreurs uniquement
+            // Livraison sans livreur encore : notifier les livreurs (legacy)
             try {
               const pushResult = await sendDeliveryAppPush({
                 orderId: order.id,
@@ -432,41 +445,8 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
                 data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
               });
               console.log('✅ Notification push livreurs+admins (app):', pushResult.sent, '/', pushResult.total);
-              if (pushResult.sent === 0 && pushResult.total === 0) {
-                console.warn('⚠️ Aucun token: vérifier roles delivery/livreur/admin et device_tokens.');
-              }
             } catch (pushErr) {
-              console.warn('⚠️ Erreur push direct, tentative fallback HTTP:', pushErr?.message);
-              try {
-                const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
-                const bodyBase = {
-                  title: 'Nouvelle commande disponible 🚚',
-                  body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
-                  data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' },
-                };
-                const pushResDel = await fetch(`${base}/api/notifications/send-push`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ role: 'delivery', ...bodyBase }),
-                });
-                if (pushResDel.ok) {
-                  const fallback = await pushResDel.json().catch(() => ({}));
-                  console.log('✅ Fallback HTTP push livreurs:', fallback.sent, '/', fallback.total);
-                }
-                const pushResAdm = await fetch(`${base}/api/notifications/send-push`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    role: 'admin',
-                    ...bodyBase,
-                    data: { ...bodyBase.data, url: '/admin/orders' },
-                  }),
-                });
-                if (pushResAdm.ok) {
-                  const fb2 = await pushResAdm.json().catch(() => ({}));
-                  console.log('✅ Fallback HTTP push admins:', fb2.sent, '/', fb2.total);
-                }
-              } catch (_) {}
+              console.warn('⚠️ Erreur push direct:', pushErr?.message);
             }
             try {
               if (db) {
@@ -495,38 +475,39 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
 // Gestion du paiement échoué
 async function handlePaymentFailed(paymentIntent, { origin } = {}) {
   console.log('❌ Paiement échoué:', paymentIntent.id);
-  
+
   try {
     const db = supabaseAdmin || supabasePublic;
-    const { data: order, error: orderError } = await db
+    let { data: order } = await db
       .from('commandes')
-      .select('id, user_id')
+      .select('id, user_id, livreur_id, payment_status')
       .eq('stripe_payment_intent_id', paymentIntent.id)
-      .single();
+      .maybeSingle();
 
-    if (orderError || !order) {
+    if (!order && paymentIntent?.metadata?.order_id) {
+      const byMeta = await db
+        .from('commandes')
+        .select('id, user_id, livreur_id, payment_status')
+        .eq('id', paymentIntent.metadata.order_id)
+        .maybeSingle();
+      order = byMeta.data;
+    }
+
+    if (!order) {
       console.warn('⚠️ Commande non trouvée pour le payment intent:', paymentIntent.id);
       return;
     }
 
-    // Mettre à jour le statut de la commande - DÉSACTIVÉ POUR DEBUG
-    console.log('⚠️ STRIPE WEBHOOK DÉSACTIVÉ - Ne pas annuler la commande pour paiement échoué');
-    
-    // const { error: updateError } = await supabase
-    //   .from('commandes')
-    //   .update({
-    //     payment_status: 'failed',
-    //     statut: 'annulee',
-    //     updated_at: new Date().toISOString()
-    //   })
-    //   .eq('id', order.id);
-
-    if (updateError) {
-      console.error('❌ Erreur mise à jour commande:', updateError);
-    } else {
-      console.log('✅ Commande annulée:', order.id?.slice(0, 8));
+    // Ne pas annuler automatiquement — le client peut réessayer.
+    // Informer le livreur réservé.
+    if (order.livreur_id) {
+      const { notifyAssignedDriver } = await import('../../../../lib/driver-search');
+      await notifyAssignedDriver(order, {
+        title: 'Paiement client échoué ⚠️',
+        body: `La course #${String(order.id).slice(0, 8)} : le paiement a échoué. Le client peut réessayer.`,
+        type: 'payment_failed',
+      });
     }
-
   } catch (error) {
     console.error('❌ Erreur traitement paiement échoué:', error);
   }
