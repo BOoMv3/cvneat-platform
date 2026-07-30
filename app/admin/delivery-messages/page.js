@@ -151,7 +151,20 @@ export default function AdminDeliveryMessagesPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || 'Erreur envoi');
-      setSuccess(targetType === 'all' ? 'Message envoyé à tous les livreurs' : 'Message envoyé');
+      const push = json.push;
+      let pushInfo = '';
+      if (push) {
+        if (push.total === 0) {
+          pushInfo =
+            ' — ⚠️ aucune notif app : les livreurs n’ont pas de token appareil (ouvrir l’app livreur + autoriser les notifs).';
+        } else {
+          pushInfo = ` — push app : ${push.sent}/${push.total} appareil(s)`;
+          if (push.web) pushInfo += ' + web';
+        }
+      }
+      setSuccess(
+        (targetType === 'all' ? 'Message envoyé à tous les livreurs' : 'Message envoyé') + pushInfo
+      );
       setSubject('');
       setBody('');
       setTemplate('');

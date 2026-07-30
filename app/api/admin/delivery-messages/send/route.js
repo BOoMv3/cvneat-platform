@@ -60,7 +60,12 @@ export async function POST(request) {
       push: push !== false,
     });
 
-    return NextResponse.json({ success: true, id: row.id, created_at: row.created_at });
+    return NextResponse.json({
+      success: true,
+      id: row.id,
+      created_at: row.created_at,
+      push: row.pushResult || null,
+    });
   } catch (e) {
     console.error('admin delivery-messages send:', e);
     return NextResponse.json({ error: e.message || 'Erreur serveur' }, { status: 500 });
