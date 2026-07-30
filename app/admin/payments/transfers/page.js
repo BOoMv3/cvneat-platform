@@ -4,6 +4,7 @@ import { isAdminViewerRole } from '../../../../lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
+import { useAdminAccess } from '../../../../components/AdminAccessContext';
 import { computeRestaurantRemainingDue } from '../../../../lib/restaurant-remaining-due';
 import { 
   FaArrowLeft, 
@@ -20,6 +21,7 @@ import {
 } from 'react-icons/fa';
 
 export default function TransfersTracking() {
+  const { readOnly, canWrite } = useAdminAccess();
   const OVERRIDE_STORAGE_KEY = 'restaurant_remaining_override_v1';
   const router = useRouter();
 
@@ -350,18 +352,30 @@ export default function TransfersTracking() {
   };
 
   const handleQuickValidateClick = (restaurant) => {
+    if (!canWrite) {
+      alert('Lecture seule : virement impossible.');
+      return;
+    }
     setSelectedRestaurantForValidation(restaurant);
     setQuickValidateAmount(restaurant.remainingToPay.toFixed(2));
     setShowQuickValidateModal(true);
   };
 
   const handleOpenOverride = (restaurant) => {
+    if (!canWrite) {
+      alert('Lecture seule : modification impossible.');
+      return;
+    }
     setRestaurantForOverride(restaurant);
     setOverrideAmount(restaurant.remaining_to_pay_override != null ? String(restaurant.remaining_to_pay_override) : '0');
     setShowOverrideModal(true);
   };
 
   const handleSaveOverride = async () => {
+    if (!canWrite) {
+      alert('Lecture seule : modification impossible.');
+      return;
+    }
     if (!restaurantForOverride) return;
     const val = parseFloat(overrideAmount.replace(',', '.'));
     const amount = Number.isFinite(val) ? Math.max(0, val) : null;
@@ -414,6 +428,10 @@ export default function TransfersTracking() {
   };
 
   const handleQuickValidate = async () => {
+    if (!canWrite) {
+      alert('Lecture seule : virement impossible.');
+      return;
+    }
     if (!selectedRestaurantForValidation) return;
     
     const amount = parseFloat(quickValidateAmount);
@@ -481,6 +499,10 @@ export default function TransfersTracking() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      alert('Lecture seule : virement impossible.');
+      return;
+    }
     
     if (!formData.restaurant_id || !formData.amount || !formData.transfer_date) {
       alert('Veuillez remplir tous les champs obligatoires');
@@ -550,6 +572,10 @@ export default function TransfersTracking() {
   };
 
   const handleCancelTransfer = async (transfer) => {
+    if (!canWrite) {
+      alert('Lecture seule : annulation impossible.');
+      return;
+    }
     if (!transfer?.id) return;
     const labelRestaurant = transfer.restaurant_name || 'ce restaurant';
     const amount = parseFloat(transfer.amount || 0) || 0;
@@ -634,6 +660,7 @@ export default function TransfersTracking() {
               <p className="text-gray-600 mt-1">Enregistrez et suivez tous vos virements aux restaurants</p>
             </div>
           </div>
+          {canWrite && (
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -641,6 +668,12 @@ export default function TransfersTracking() {
             <FaPlus />
             <span>Nouveau Virement</span>
           </button>
+          )}
+          {readOnly && (
+            <span className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
+              Lecture seule
+            </span>
+          )}
         </div>
 
         {error && (
@@ -703,6 +736,7 @@ export default function TransfersTracking() {
                         )}
                       </div>
                       <div className="flex items-center space-x-2">
+                        {canWrite && (
                         <button
                           type="button"
                           onClick={() => handleOpenOverride(restaurant)}
@@ -711,11 +745,13 @@ export default function TransfersTracking() {
                         >
                           {restaurant.hasManualOverride ? 'Modifier' : 'Montant manuel'}
                         </button>
-                        {restaurant.hasManualOverride && (
+                        )}
+                        {canWrite && restaurant.hasManualOverride && (
                           <button type="button" onClick={() => handleClearOverride(restaurant)} className="px-2 py-2 text-xs text-gray-500 hover:text-red-600" title="Supprimer le montant manuel">
                             Réinitialiser
                           </button>
                         )}
+                        {canWrite && (
                         <button
                           onClick={() => handleQuickValidateClick(restaurant)}
                           className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -724,6 +760,7 @@ export default function TransfersTracking() {
                           <FaCheck />
                           <span>J&apos;ai effectué ce virement</span>
                         </button>
+                        )}
                         <button
                           onClick={() => handleQuickPayment(restaurant)}
                           className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -907,7 +944,7 @@ export default function TransfersTracking() {
                           <FaDownload />
                           <span>{transfer.invoice_number || 'Facture'}</span>
                         </button>
-                        {(transfer.status || '').toLowerCase() === 'completed' && (
+                        {(transfer.status || '').toLowerCase() === 'completed' && canWrite && (
                           <button
                             onClick={() => handleCancelTransfer(transfer)}
                             className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"

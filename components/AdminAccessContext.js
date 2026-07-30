@@ -22,6 +22,20 @@ export function useAdminAccess() {
   return useContext(AdminAccessContext);
 }
 
+const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function shouldBlockReadonlyMutation(url, method) {
+  if (!MUTATING.has(method)) return false;
+  // Auth / refresh session : toujours OK
+  if (url.includes('/auth/v1/')) return false;
+  // Mutations PostgREST (écritures directes supabase.from().insert/update/delete)
+  if (url.includes('/rest/v1/')) return true;
+  // APIs admin / chat
+  if (url.includes('/api/admin')) return true;
+  if (url.includes('/api/delivery/dm')) return true;
+  return false;
+}
+
 export function AdminAccessProvider({ children }) {
   const router = useRouter();
   const [state, setState] = useState({
@@ -85,6 +99,80 @@ export function AdminAccessProvider({ children }) {
     };
   }, [router]);
 
+  // Coupe nette : aucune écriture API / Supabase en mode associé
+  useEffect(() => {
+    if (!state.ready || !state.readOnly) return undefined;
+    if (typeof window === 'undefined' || window.__cvneatReadonlyFetchPatched) {
+      return undefined;
+    }
+
+    const originalFetch = window.fetch.bind(window);
+    window.__cvneatReadonlyFetchPatched = true;
+    window.__cvneatOriginalFetch = originalFetch;
+
+    window.fetch = async (input, init = {}) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input?.url
+            ? String(input.url)
+            : String(input);
+      const method = (init?.method || (typeof input !== 'string' && input?.method) || 'GET')
+        .toString()
+        .toUpperCase();
+
+      if (shouldBlockReadonlyMutation(url, method)) {
+        console.warn('[associe readonly] mutation bloquée:', method, url);
+        if (typeof window !== 'undefined') {
+          try {
+            window.dispatchEvent(
+              new CustomEvent('cvneat-readonly-block', {
+                detail: { method, url },
+              })
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+        return new Response(
+          JSON.stringify({
+            error:
+              'Lecture seule : le compte associé ne peut rien modifier.',
+            code: 'ASSOCIE_READONLY',
+          }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      return originalFetch(input, init);
+    };
+
+    const onBlock = () => {
+      // Une seule alerte à la fois
+      if (window.__cvneatReadonlyAlerting) return;
+      window.__cvneatReadonlyAlerting = true;
+      try {
+        alert('Mode associé — lecture seule : aucune modification possible.');
+      } finally {
+        setTimeout(() => {
+          window.__cvneatReadonlyAlerting = false;
+        }, 800);
+      }
+    };
+    window.addEventListener('cvneat-readonly-block', onBlock);
+
+    return () => {
+      window.removeEventListener('cvneat-readonly-block', onBlock);
+      if (window.__cvneatOriginalFetch) {
+        window.fetch = window.__cvneatOriginalFetch;
+        delete window.__cvneatOriginalFetch;
+        delete window.__cvneatReadonlyFetchPatched;
+      }
+    };
+  }, [state.ready, state.readOnly]);
+
   const value = useMemo(() => state, [state]);
 
   if (!state.ready) {
@@ -99,7 +187,8 @@ export function AdminAccessProvider({ children }) {
     <AdminAccessContext.Provider value={value}>
       {state.readOnly && (
         <div className="sticky top-0 z-[60] bg-amber-500 text-white text-center text-sm font-medium px-3 py-2 shadow">
-          Mode associé — lecture seule : vous voyez tout comme l’admin, sans pouvoir modifier.
+          Mode associé — lecture seule : vous voyez tout comme l’admin, sans pouvoir
+          modifier (virements, messages, restaurants…).
         </div>
       )}
       {children}

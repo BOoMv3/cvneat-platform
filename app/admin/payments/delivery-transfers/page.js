@@ -4,6 +4,7 @@ import { isAdminViewerRole } from '../../../../lib/admin-viewer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
+import { useAdminAccess } from '../../../../components/AdminAccessContext';
 import { livreurEarningNetEur } from '../../../../lib/livreur-delivery-earnings';
 import { 
   FaArrowLeft, 
@@ -19,6 +20,7 @@ import {
 } from 'react-icons/fa';
 
 export default function DeliveryTransfersTracking() {
+  const { readOnly, canWrite } = useAdminAccess();
   const router = useRouter();
   const [transfers, setTransfers] = useState([]);
   const [deliveryDrivers, setDeliveryDrivers] = useState([]);
@@ -246,6 +248,10 @@ export default function DeliveryTransfersTracking() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      alert('Lecture seule : paiement impossible.');
+      return;
+    }
     
     if (!formData.delivery_id || !formData.amount) {
       setError('Veuillez remplir tous les champs obligatoires');
@@ -366,14 +372,21 @@ export default function DeliveryTransfersTracking() {
               <p className="text-gray-600 mt-1">Gestion des paiements aux livreurs</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <FaPlus />
-            <span>Nouveau Paiement</span>
-          </button>
-        </div>
+            {canWrite && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FaPlus />
+              <span>Nouveau Paiement</span>
+            </button>
+            )}
+            {readOnly && (
+              <span className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
+                Lecture seule
+              </span>
+            )}
+          </div>
 
         {error && (
           <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
