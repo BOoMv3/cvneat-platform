@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildRestaurantTransferInvoiceHtml } from '../../../../../lib/restaurant-invoice';
-import {
 import { isAdminWriterRole } from '@/lib/admin-viewer';
+import {
   computeTransferOrderTotals,
   periodFromOrders,
   selectOrdersForTransferAmount,
