@@ -12,9 +12,12 @@ import OrderCountdown from '@/components/OrderCountdown';
 import PreventiveAlert from '@/components/PreventiveAlert';
 // import SafeGeolocationButton from '@/components/SafeGeolocationButton';
 import { useRouter } from 'next/navigation';
-import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments, FaFileInvoice, FaUserCog } from 'react-icons/fa';
+import { FaCalendarAlt, FaMotorcycle, FaBoxOpen, FaCheckCircle, FaStar, FaDownload, FaChartLine, FaBell, FaComments, FaFileInvoice, FaUserCog, FaInfoCircle, FaTimes } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase';
 import RealTimeNotifications from '../../components/DeliveryNotifications';
+import { safeLocalStorage } from '@/lib/localStorage';
+
+const DRIVER_FLOW_INFO_KEY = 'cvneat-driver-prepay-flow-v1';
 
 const isNotificationSupported = () => typeof window !== 'undefined' && 'Notification' in window;
 
@@ -118,6 +121,7 @@ export default function DeliveryDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [preparationAlerts, setPreparationAlerts] = useState([]);
+  const [showPrepayFlowInfo, setShowPrepayFlowInfo] = useState(true);
   const [preventiveAlerts, setPreventiveAlerts] = useState([]);
   const [pushRegistrationAttempted, setPushRegistrationAttempted] = useState(false);
   const [showDeliveryTimeModal, setShowDeliveryTimeModal] = useState(false);
@@ -126,6 +130,16 @@ export default function DeliveryDashboard() {
   const [acceptingOrder, setAcceptingOrder] = useState(false);
 
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+  useEffect(() => {
+    const dismissed = safeLocalStorage.getItem(DRIVER_FLOW_INFO_KEY);
+    if (dismissed === '1') setShowPrepayFlowInfo(false);
+  }, []);
+
+  const dismissPrepayFlowInfo = () => {
+    safeLocalStorage.setItem(DRIVER_FLOW_INFO_KEY, '1');
+    setShowPrepayFlowInfo(false);
+  };
 
   // Gain net livreur (API masque le montant client ; préfère `gain` déjà calculé)
   const getOrderGain = (order) => {
@@ -1014,6 +1028,55 @@ export default function DeliveryDashboard() {
             </button>
           </div>
 
+          {showPrepayFlowInfo && (
+            <div className="mb-4 sm:mb-6 rounded-xl border border-orange-200 bg-orange-50 p-4 sm:p-5 relative shadow-sm">
+              <button
+                type="button"
+                onClick={dismissPrepayFlowInfo}
+                className="absolute top-3 right-3 p-2 text-orange-700/70 hover:text-orange-900 hover:bg-orange-100 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
+                aria-label="Fermer"
+                title="J’ai compris"
+              >
+                <FaTimes className="h-4 w-4" />
+              </button>
+              <div className="flex gap-3 pr-10">
+                <div className="shrink-0 mt-0.5">
+                  <FaInfoCircle className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold text-orange-950">
+                    Nouveau fonctionnement des courses
+                  </h2>
+                  <ol className="mt-2 space-y-1.5 text-sm text-orange-950/90 list-decimal list-inside">
+                    <li>
+                      Le client <strong>cherche un livreur avant de payer</strong>.
+                    </li>
+                    <li>
+                      Tu reçois une notif / vois la course → tu <strong>acceptes</strong>.
+                    </li>
+                    <li>
+                      La commande <strong>n’apparaît pas tout de suite</strong> dans tes courses en cours.
+                    </li>
+                    <li>
+                      Elle s’affiche <strong>une fois le paiement du client validé</strong> — tu peux alors aller au restaurant.
+                    </li>
+                  </ol>
+                  <p className="mt-3 text-xs sm:text-sm text-orange-800/90">
+                    Si le client ne paie pas, la course est annulée et tu es prévenu. Les courses marquées
+                    « Client attend pour payer » sont encore en attente de paiement.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={dismissPrepayFlowInfo}
+                    className="mt-3 inline-flex items-center px-3 py-2 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 min-h-[44px] touch-manipulation"
+                  >
+                    J’ai compris
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Header avec notifications */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
@@ -1522,7 +1585,10 @@ export default function DeliveryDashboard() {
                     <FaBell className="h-8 w-8 text-gray-400" />
                   </div>
                   <p className="text-lg font-medium">Aucune commande disponible</p>
-                  <p className="text-sm">Les nouvelles commandes apparaîtront ici</p>
+                  <p className="text-sm mt-1">
+                    Les nouvelles courses apparaissent ici. Après acceptation, la course n’entre en cours
+                    qu’une fois le paiement client validé.
+                  </p>
                 </div>
               ) : null}
               
