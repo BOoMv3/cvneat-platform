@@ -76,14 +76,18 @@ async function main() {
   }
 
   const prevMeta = { ...(authBefore.user.app_metadata || {}) };
-  delete prevMeta.suspended_until;
-  delete prevMeta.suspension_reason;
-  delete prevMeta.suspension_penalty_eur;
 
   // ban_duration: 'none' lève le ban Auth Supabase
+  // Les clés metadata doivent être mises à null (merge) pour disparaître réellement.
   const { error: unbanErr } = await sb.auth.admin.updateUserById(user.id, {
     ban_duration: 'none',
-    app_metadata: prevMeta,
+    app_metadata: {
+      ...prevMeta,
+      suspended_until: null,
+      suspension_reason: null,
+      suspension_penalty_eur: null,
+      suspension_type: null,
+    },
   });
 
   if (unbanErr) {
