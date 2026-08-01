@@ -283,15 +283,12 @@ export async function PUT(request, { params }) {
         // - Ici, on notifie uniquement l'évolution (préparation / prêt à récupérer).
         if ((status === 'en_preparation' || status === 'pret_a_livrer') && updatedOrder?.livreur_id) {
           try {
-            const totalWithDelivery = (
-              parseFloat(updatedOrder.total || 0) + parseFloat(updatedOrder.frais_livraison || 0)
-            ).toFixed(2);
-
             const isReady = status === 'pret_a_livrer';
+            const shortId = updatedOrder.id?.slice(0, 8);
             const title = isReady ? 'Commande prête à récupérer 📦' : 'Commande en préparation 👨‍🍳';
             const bodyText = isReady
-              ? `Commande #${updatedOrder.id?.slice(0, 8)} prête - Total ${totalWithDelivery}€`
-              : `Commande #${updatedOrder.id?.slice(0, 8)} en préparation - Total ${totalWithDelivery}€`;
+              ? `Commande #${shortId} prête à récupérer au restaurant`
+              : `Commande #${shortId} en préparation`;
 
             const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/notifications/send-push`, {
               method: 'POST',
