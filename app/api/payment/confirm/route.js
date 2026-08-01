@@ -360,7 +360,7 @@ export async function POST(request) {
             }
             await notifyDeliverySubscribers(supabaseAdmin, {
               title: 'Nouvelle commande disponible 🚚',
-              body: `Commande #${updated.id?.slice(0, 8)} - ${notificationTotal}€`,
+              body: `Nouvelle course #${updated.id?.slice(0, 8)} — ouvre l’app pour accepter`,
               data: { type: 'new_order_available', orderId: updated.id, url: '/delivery/dashboard' },
             }).catch(() => {});
           }

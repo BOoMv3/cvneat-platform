@@ -452,7 +452,7 @@ async function handlePaymentSucceeded(paymentIntent, { origin } = {}) {
               if (db) {
                 await notifyDeliverySubscribers(db, {
                   title: 'Nouvelle commande disponible 🚚',
-                  body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+                  body: `Nouvelle course #${order.id?.slice(0, 8)} — ouvre l’app pour accepter`,
                   data: { type: 'new_order_available', orderId: order.id, url: '/delivery/dashboard' }
                 });
               }
