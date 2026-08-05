@@ -45,6 +45,7 @@ const FEE_5_EUR = 5;       // 5€ – Laroque, Moulès, Cazilhac
 const FEE_BRISSAC = 7.5;   // 7,50€ – Brissac (un peu plus loin)
 const FEE_SAINT_HIPPOLYTE = 8.5; // 8,50€ – Saint-Hippolyte-du-Fort (Gard, ~14 km route de Ganges)
 const FEE_LE_VIGAN = 10; // 10€ – Le Vigan
+const FEE_SAINT_ANDRE_DE_BUEGES = 10; // 10€ – Saint-André-de-Buèges (zone éloignée)
 const FEE_AVEZE = 11; // 11€ – Avèze (un peu plus loin)
 const FEE_BREAU = 14; // 14€ – Bréau-et-Salagosse
 const FEE_REST = 7;        // 7€ – le reste des villages
@@ -109,6 +110,10 @@ const AUTHORIZED_CITIES = [
   'saint-hippolyte',
   'saint-hippolyte-du-fort',
   'st-hippolyte',
+  'saint-andre-de-bueges',
+  'saint-andre',
+  'saint andré',
+  'bueges',
   'le vigan',
   'vigan',
   'aveze',
@@ -149,6 +154,7 @@ const COORDINATES_DB = {
   'gornies': { lat: 43.8833, lng: 3.6167, name: 'Gorniès' },
   'saint-julien-de-la-nef': { lat: 43.9667, lng: 3.6833, name: 'Saint-Julien-de-la-Nef' },
   'saint-hippolyte': { lat: 43.9572, lng: 3.8500, name: 'Saint-Hippolyte-du-Fort' },
+  'saint-andre-de-bueges': { lat: 43.9167, lng: 3.6833, name: 'Saint-André-de-Buèges' },
   'saint-martial': { lat: 43.9833, lng: 3.7333, name: 'Saint-Martial' },
   'saint-roman-de-codieres': { lat: 43.9500, lng: 3.7667, name: 'Saint-Roman-de-Codières' },
   'roquedur': { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
@@ -176,6 +182,7 @@ const SNAP_TOWN_CENTERS = [
   { lat: 43.9750, lng: 3.6750, name: 'Roquedur' },
   { lat: 43.9333, lng: 3.6500, name: 'Saint-Laurent-le-Minier' },
   { lat: 43.9572, lng: 3.8500, name: 'Saint-Hippolyte-du-Fort' },
+  { lat: 43.9167, lng: 3.6833, name: 'Saint-André-de-Buèges' },
   { lat: 44.0221, lng: 3.5244, name: 'Bréau-et-Salagosse' },
 ];
 const SNAP_RADIUS_KM = 4; // Si le point géocodé est à moins de 4 km d'un centre, on utilise ce centre (frais stables, évite rejets abusifs)
@@ -631,6 +638,7 @@ const DELIVERY_ZONE_FEE = {
   'saint-roman-de-codieres': FEE_REST,
   roquedur: FEE_REST,
   'saint-hippolyte': FEE_SAINT_HIPPOLYTE,
+  'saint-andre-de-bueges': FEE_SAINT_ANDRE_DE_BUEGES,
   'le-vigan': FEE_LE_VIGAN,
   'breau-et-salagosse': FEE_BREAU,
 };
@@ -653,6 +661,7 @@ function getDeliveryZoneFromAddress(address) {
     { key: 'agones', patterns: ['agones', 'agonès'] },
     { key: 'gornies', patterns: ['gornies', 'gorniès'] },
     { key: 'saint-julien-de-la-nef', patterns: ['saint julien', 'saint-julien-de-la-nef'] },
+    { key: 'saint-andre-de-bueges', patterns: ['saint-andre-de-bueges', 'saint andre de bueges', 'saint-andre', 'bueges', 'buèges'] },
     { key: 'roquedur', patterns: ['roquedur'] },
     { key: 'saint-laurent-le-minier', patterns: ['saint laurent', 'saint-laurent', 'minier'] },
     { key: 'saint-martial', patterns: ['saint martial'] },
@@ -740,6 +749,7 @@ function getKnownTownCoordsFromAddress(address) {
     { key: 'agones', patterns: ['agones', 'agonès'] },
     { key: 'gornies', patterns: ['gornies', 'gorniès'] },
     { key: 'saint-julien-de-la-nef', patterns: ['saint julien', 'saint-julien-de-la-nef'] },
+    { key: 'saint-andre-de-bueges', patterns: ['saint-andre-de-bueges', 'saint andre de bueges', 'saint-andre', 'bueges', 'buèges'] },
     { key: 'roquedur', patterns: ['roquedur'] },
     { key: 'saint-laurent-le-minier', patterns: ['saint laurent', 'saint-laurent', 'minier'] },
     { key: 'saint-martial', patterns: ['saint martial'] },
@@ -953,6 +963,9 @@ function getFixedDeliveryFeeByTown(city, address) {
   if (combined.includes('moules') || combined.includes('moulès')) return FEE_5_EUR;
   if (referencesCazilhacInText(address || '', city || '')) return FEE_5_EUR;
   if (combined.includes('brissac')) return FEE_BRISSAC;
+  if (combined.includes('saint andre de bueges') || combined.includes('saint-andre-de-bueges') || combined.includes('bueges') || combined.includes('buèges')) {
+    return FEE_SAINT_ANDRE_DE_BUEGES;
+  }
   if (
     combined.includes('saint-hippolyte') ||
     combined.includes('saint hippolyte') ||
