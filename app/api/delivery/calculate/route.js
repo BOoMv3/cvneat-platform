@@ -945,7 +945,10 @@ function getFixedDeliveryFeeByTown(city, address) {
   const cityN = normalizeForTown(city || '');
   const addrN = normalizeForTown(address || '');
   const combined = `${cityN} ${addrN}`;
-  if (combined.includes('ganges')) return FEE_GANGES;
+  // IMPORTANT:
+  // Prioriser la ville réelle de livraison avant le texte libre de l'adresse.
+  // Ex: "ancien chemin de ganges, Saint-Bauzille..." ne doit PAS tomber en tarif Ganges.
+  if (combined.includes('saint bauzille') || combined.includes('putois')) return FEE_REST;
   if (combined.includes('laroque')) return FEE_5_EUR;
   if (combined.includes('moules') || combined.includes('moulès')) return FEE_5_EUR;
   if (referencesCazilhacInText(address || '', city || '')) return FEE_5_EUR;
@@ -970,6 +973,8 @@ function getFixedDeliveryFeeByTown(city, address) {
   if (isLeViganZone({ address, city })) {
     return FEE_LE_VIGAN;
   }
+  // Ganges en dernier, sinon les rues "de Ganges" faussent le tarif des autres communes.
+  if (cityN.includes('ganges') || (!cityN && addrN.includes('ganges'))) return FEE_GANGES;
   return FEE_REST;
 }
 
