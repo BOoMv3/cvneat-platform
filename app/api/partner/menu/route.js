@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '../../../../lib/supabase';
 const { sanitizeInput, isValidAmount, isValidId } = require('@/lib/validation');
 
+function normalizeRole(role) {
+  return (role || '').toString().trim().toLowerCase();
+}
+
+function isPartnerMenuRole(role) {
+  const r = normalizeRole(role);
+  return r === 'restaurant' || r === 'partner' || r === 'partenaire';
+}
+
 /** Colonne optionnelle (migration alcool) : ne pas bloquer création / mise à jour du plat. */
 async function trySetMenuContainsAlcohol(menuId, value) {
   if (!menuId) return;
@@ -111,15 +120,15 @@ export async function POST(request) {
     };
 
     // 2. Vérifier que l'utilisateur a le rôle restaurant
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await (supabaseAdmin || supabase)
       .from('users')
       .select('id, role')
       .eq('email', user_email)
       .single();
 
-    if (userError || !userData || userData.role !== 'restaurant') {
+    if (userError || !userData || !isPartnerMenuRole(userData.role)) {
       console.log('❌ DEBUG API MENU - Erreur rôle:', userError || 'Rôle incorrect:', userData?.role);
-      return NextResponse.json({ error: 'Accès refusé - Rôle restaurant requis' }, { status: 403 });
+      return NextResponse.json({ error: 'Accès refusé - Rôle restaurant/partenaire requis' }, { status: 403 });
     }
     
     console.log('✅ DEBUG API MENU - Rôle restaurant confirmé pour:', userData.id);
@@ -542,15 +551,15 @@ export async function PATCH(request) {
       );
     }
 
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await (supabaseAdmin || supabase)
       .from('users')
       .select('id, role')
       .eq('email', user_email)
       .single();
 
-    if (userError || !userData || userData.role !== 'restaurant') {
+    if (userError || !userData || !isPartnerMenuRole(userData.role)) {
       return NextResponse.json(
-        { error: 'Accès refusé - Rôle restaurant requis' },
+        { error: 'Accès refusé - Rôle restaurant/partenaire requis' },
         { status: 403 }
       );
     }
