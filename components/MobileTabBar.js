@@ -66,8 +66,8 @@ export default function MobileTabBar() {
 
   return (
     <>
-      {/* Spacer pour éviter que le contenu soit caché par la barre */}
-      <div className="h-16 md:hidden" aria-hidden="true" />
+      {/* Spacer large: évite que les taps sur "Voir le menu" touchent Panier (écran court Sunmi) */}
+      <div className="h-24 md:hidden" aria-hidden="true" />
 
       <nav
         className="fixed left-0 right-0 bottom-0 z-[80] md:hidden bg-zinc-900/95 backdrop-blur border-t border-zinc-800"

@@ -39,16 +39,14 @@ export default function Panier() {
   const router = useRouter();
   const [cart, setCart] = useState([]);
   const [restaurant, setRestaurant] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Ne jamais bloquer sur "Chargement..." si le JS/useEffect ne tourne pas (Sunmi Android 7)
+  const [loading, setLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = en cours de vérification
 
   useEffect(() => {
     loadCart();
     checkAuth();
-    // Sunmi / vieux WebView: si un effet plante, ne jamais rester bloqué sur "Chargement..."
-    const failsafe = setTimeout(() => setLoading(false), 2000);
-    return () => clearTimeout(failsafe);
   }, []);
 
   const checkAuth = async () => {
@@ -186,12 +184,16 @@ export default function Panier() {
     }
   };
 
+  // Ne jamais bloquer sur "Chargement..." (écran mort si useEffect ne tourne pas)
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Chargement de votre panier...</p>
+          <a href="/" className="inline-block mt-6 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold">
+            Retour à l&apos;accueil
+          </a>
         </div>
       </div>
     );

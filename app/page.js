@@ -1253,22 +1253,7 @@ export default function Home() {
     }, 500);
   };
 
-  const handleRestaurantClick = (restaurant) => {
-    // IMPORTANT: éviter /restaurants/[id] et le stub /restaurants ("Redirection vers l'accueil").
-    // Sur Sunmi (Android 7 / vieux WebView) et certains navigateurs tablette,
-    // router.push (soft-nav Next) peut échouer → navigation hard systématique.
-    if (!restaurant?.id) return;
-    const targetUrl = `/restaurant-view?id=${encodeURIComponent(restaurant.id)}`;
-
-    if (typeof window !== 'undefined') {
-      console.log('[Navigation] Redirection vers restaurant:', targetUrl, 'ID:', restaurant.id);
-      window.location.assign(targetUrl);
-      return;
-    }
-    router.push(targetUrl);
-  };
-
-    const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
+  const filteredAndSortedRestaurants = restaurants.filter(restaurant => {
     if (restaurant.is_active === false || restaurant.active === false || restaurant.status === 'inactive') {
       return false;
     }
@@ -1789,7 +1774,7 @@ export default function Home() {
         </section>
 
         {/* Section des restaurants avec défilement vertical élégant */}
-        <section id="liste-restaurants" className="mb-12">
+        <section id="liste-restaurants" className="mb-12 pb-16">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent mb-2">Restaurants populaires</h2>
@@ -1952,10 +1937,10 @@ export default function Home() {
                 }
                 
                 return (
-                <div
+                <a
                   key={restaurant.id}
-                  className="group transform transition-all duration-300 cursor-pointer hover:scale-[1.02]"
-                  onClick={() => handleRestaurantClick(restaurant)}
+                  href={`/restaurant-view?id=${encodeURIComponent(restaurant.id)}`}
+                  className="group block transform transition-all duration-300 cursor-pointer hover:scale-[1.02] no-underline text-inherit"
                 >
                   <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl transition-all duration-500 overflow-hidden border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-1">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
@@ -2004,7 +1989,9 @@ export default function Home() {
                         
                         {/* Bouton favori */}
                         <button
+                          type="button"
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             handleToggleFavorite(restaurant);
                           }}
@@ -2076,20 +2063,16 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        {/* Bouton commander - Design moderne et premium */}
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRestaurantClick(restaurant);
-                          }}
-                          className="w-full py-4 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation relative overflow-hidden font-display bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                        {/* Bouton commander - vrai lien (Sunmi / JS partiel) */}
+                        <span
+                          className="w-full inline-flex items-center justify-center py-4 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation relative overflow-hidden font-display bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98]"
                         >
                           Voir le menu
-                        </button>
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
+                </a>
               );
               })}
             </div>

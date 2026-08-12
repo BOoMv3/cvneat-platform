@@ -30,8 +30,15 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const getRestaurantId = () => {
     if (propRestaurantId) return propRestaurantId;
     if (typeof window !== 'undefined') {
+      try {
+        const sp = new URLSearchParams(window.location.search || '');
+        const q = (sp.get('id') || sp.get('restaurantId') || '').trim();
+        if (q) return q;
+      } catch (_) {}
       const match = window.location.pathname.match(/\/restaurants\/([^\/]+)/);
       if (match && match[1]) return match[1];
+      const viewMatch = window.location.pathname.match(/\/restaurant-view\/([^\/]+)/);
+      if (viewMatch && viewMatch[1]) return viewMatch[1];
     }
     return null;
   };
