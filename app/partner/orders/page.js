@@ -270,10 +270,15 @@ export default function PartnerOrders() {
       if (!result.ok) {
         throw new Error(result.error || "Impossible d'imprimer");
       }
+      if (result.method === 'sunmi') {
+        alert('Ticket envoyé à l’imprimante Sunmi.');
+      }
     } catch (err) {
-      setError(
-        "Impression impossible. Sur Sunmi V2 Pro, l'imprimante intégrée doit être active. Sinon installez RawBT."
-      );
+      const msg =
+        err?.message ||
+        "Impression impossible. Utilise l'app CVN'EAT sur le Sunmi (pas Chrome).";
+      setError(msg);
+      alert(msg);
       console.error('Erreur impression ticket:', err);
     }
   };
