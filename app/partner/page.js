@@ -3173,77 +3173,53 @@ export default function PartnerDashboard() {
         </div>
       </div>
 
-      {/* Alcool / menu : visible sur tous les onglets (beaucoup de partenaires utilisent Dashboard sans ouvrir Menu) */}
-      {restaurant && (
-        <div className="bg-amber-50/90 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm text-amber-950 dark:text-amber-100 leading-snug">
-              <strong>Ventes d&apos;alcool :</strong> vous pouvez ajouter bières, vins, etc. Ouvrez l&apos;onglet{' '}
-              <strong>Menu</strong>, cliquez sur un plat puis cochez <strong>« Alcool »</strong> pour chaque article concerné
-              (attestation majeur côté client au paiement). La case se trouve dans la fenêtre d&apos;édition du plat, sous « Disponible ».
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('menu');
-                if (typeof window !== 'undefined') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-              className="shrink-0 self-start sm:self-center px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold shadow-sm"
-            >
-              Ouvrir l&apos;onglet Menu
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Content */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* Section d'aide */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                    <FaFileAlt className="mr-2 text-blue-600 dark:text-blue-400" />
-                    Guide d'utilisation du dashboard
-                  </h2>
-                  <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">📋 Gestion des commandes</h3>
-                      <ul className="list-disc list-inside ml-2 space-y-1">
-                        <li>Acceptez ou refusez les commandes depuis l'onglet "Commandes"</li>
-                        <li>Indiquez le temps de préparation lors de l'acceptation</li>
-                        <li>Marquez la commande comme "Prête" quand elle est prête à être livrée</li>
-                        <li>Cliquez sur "Remise au livreur" quand vous remettez la commande au livreur</li>
-                        <li>Vous pouvez retirer des ingrédients (viandes, sauces) si vous n'en avez plus</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">🍽️ Gestion du menu</h3>
-                      <ul className="list-disc list-inside ml-2 space-y-1">
-                        <li>Ajoutez, modifiez ou supprimez des plats depuis l'onglet "Menu"</li>
-                        <li>Pour les tacos/kebabs : vous pouvez désactiver temporairement des viandes (ex: kebab) en décochant "Disponible" dans les options de viande</li>
-                        <li>Les viandes désactivées n'apparaîtront plus pour les clients</li>
-                        <li>Rendez un plat indisponible avec le bouton vert/rouge à côté de chaque plat</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">🕐 Ouverture/Fermeture</h3>
-                      <ul className="list-disc list-inside ml-2 space-y-1">
-                        <li>Le problème d'ouverture/fermeture est résolu ✅</li>
-                        <li>Vous pouvez laisser votre restaurant suivre vos horaires automatiquement</li>
-                        <li>Le bouton "Ouvert/Fermé" reste disponible uniquement si vous voulez forcer une fermeture manuelle exceptionnelle</li>
-                      </ul>
-                    </div>
-                  </div>
+            <details className="group bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold text-gray-900 dark:text-white select-none">
+                <span className="flex items-center min-w-0">
+                  <FaFileAlt className="mr-2 shrink-0 text-blue-600 dark:text-blue-400" />
+                  Guide d&apos;utilisation
+                </span>
+                <span className="shrink-0 text-xs font-medium text-blue-700 dark:text-blue-300 group-open:hidden">
+                  Voir →
+                </span>
+                <span className="shrink-0 text-xs font-medium text-blue-700 dark:text-blue-300 hidden group-open:inline">
+                  Masquer
+                </span>
+              </summary>
+              <div className="px-4 pb-4 space-y-3 text-sm text-gray-700 dark:text-gray-300 border-t border-blue-200/60 dark:border-blue-800/60 pt-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Gestion des commandes</h3>
+                  <ul className="list-disc list-inside ml-2 space-y-1">
+                    <li>Acceptez ou refusez les commandes depuis l&apos;onglet &quot;Commandes&quot;</li>
+                    <li>Indiquez le temps de préparation lors de l&apos;acceptation</li>
+                    <li>Marquez la commande comme &quot;Prête&quot; quand elle est prête à être livrée</li>
+                    <li>Cliquez sur &quot;Remise au livreur&quot; quand vous remettez la commande au livreur</li>
+                    <li>Vous pouvez retirer des ingrédients (viandes, sauces) si vous n&apos;en avez plus</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Gestion du menu</h3>
+                  <ul className="list-disc list-inside ml-2 space-y-1">
+                    <li>Ajoutez, modifiez ou supprimez des plats depuis l&apos;onglet &quot;Menu&quot;</li>
+                    <li>Pour les tacos/kebabs : désactivez une viande en décochant &quot;Disponible&quot;</li>
+                    <li>Rendez un plat indisponible avec le bouton vert/rouge à côté de chaque plat</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Ouverture / fermeture</h3>
+                  <ul className="list-disc list-inside ml-2 space-y-1">
+                    <li>Le restaurant suit vos horaires automatiquement</li>
+                    <li>Le bouton Ouvert/Fermé sert uniquement à forcer une fermeture exceptionnelle</li>
+                  </ul>
                 </div>
               </div>
-            </div>
-            
+            </details>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -4313,15 +4289,6 @@ export default function PartnerDashboard() {
 
         {activeTab === 'menu' && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/40 p-4 text-sm text-blue-900 dark:text-blue-100">
-              <p className="font-semibold mb-1">Boissons alcoolisées autorisées sur CVN&apos;EAT</p>
-              <p className="mb-2">
-                Vous pouvez proposer bières, vins et autres produits alcoolisés dans votre carte, sous votre responsabilité
-                (licences, règlement local). Pour chaque article concerné, cochez <strong>« Alcool »</strong> dans la fiche plat :
-                le client devra alors confirmer être <strong>majeur</strong> avant de payer. Cela limite les risques pour la plateforme
-                tout en vous laissant commercialiser votre carte complète.
-              </p>
-            </div>
             <div className="flex flex-wrap justify-between items-center gap-3">
               <h2 className="text-lg font-semibold">Gestion du menu</h2>
               <div className="flex gap-2">

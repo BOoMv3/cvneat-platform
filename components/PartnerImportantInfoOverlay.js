@@ -8,7 +8,8 @@ import {
 } from '@/lib/partner-important-info';
 
 /**
- * Modale obligatoire (jusqu’à validation) + bandeau fixe sur tout l’espace partenaire.
+ * Modale obligatoire à la première visite (jusqu’à validation).
+ * Pas de bandeau de rappel permanent en haut de l’écran.
  */
 export default function PartnerImportantInfoOverlay({ children }) {
   const [clientReady, setClientReady] = useState(false);
@@ -30,11 +31,6 @@ export default function PartnerImportantInfoOverlay({ children }) {
     setShowModal(false);
   }, [checked]);
 
-  const openModal = useCallback(() => {
-    setChecked(acknowledged);
-    setShowModal(true);
-  }, [acknowledged]);
-
   const mustBlockUi = !clientReady || (!acknowledged && showModal);
 
   return (
@@ -45,52 +41,7 @@ export default function PartnerImportantInfoOverlay({ children }) {
         </div>
       )}
 
-      {clientReady && (
-        <>
-      {/* Bandeau toujours visible */}
-      <div
-        className={`sticky top-0 z-[45] border-b-2 shadow-md ${
-          acknowledged
-            ? 'bg-orange-100 dark:bg-orange-950/80 border-orange-400'
-            : 'bg-red-600 border-red-800 animate-pulse'
-        }`}
-        role="banner"
-      >
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <p
-            className={`text-sm font-bold leading-snug ${
-              acknowledged ? 'text-orange-950 dark:text-orange-100' : 'text-white'
-            }`}
-          >
-            {acknowledged ? (
-              <>
-                Rappel CVN&apos;EAT : commission <strong>20&nbsp;%</strong> (et <strong>15&nbsp;% en retrait sur place</strong>)
-                · promos à notre charge · community manager en visite prochainement · tablette = usage CVN&apos;EAT
-                uniquement
-              </>
-            ) : (
-              <>
-                ⚠️ MESSAGE IMPORTANT — vous devez le lire avant de continuer (retrait sur place, commission, promos,
-                tablettes)
-              </>
-            )}
-          </p>
-          <button
-            type="button"
-            onClick={openModal}
-            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-bold shadow ${
-              acknowledged
-                ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                : 'bg-white text-red-700 hover:bg-red-50'
-            }`}
-          >
-            {acknowledged ? 'Relire le message' : 'Lire maintenant'}
-          </button>
-        </div>
-      </div>
-
-      {/* Modale bloquante tant que non validée */}
-      {showModal && (
+      {clientReady && showModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-3 py-6">
           <div
             className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border-4 border-orange-500"
@@ -105,8 +56,7 @@ export default function PartnerImportantInfoOverlay({ children }) {
               </p>
               {!acknowledged && (
                 <p className="mt-2 text-sm font-semibold text-red-700 dark:text-red-300">
-                  Merci de lire ce message en entier, puis de confirmer ci-dessous. Il reste accessible via le bandeau
-                  orange en haut de l&apos;écran.
+                  Merci de lire ce message en entier, puis de confirmer ci-dessous.
                 </p>
               )}
             </div>
@@ -151,8 +101,6 @@ export default function PartnerImportantInfoOverlay({ children }) {
             </div>
           </div>
         </div>
-      )}
-        </>
       )}
 
       <div className={mustBlockUi ? 'pointer-events-none select-none' : undefined}>{children}</div>
