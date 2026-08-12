@@ -462,19 +462,44 @@ export default function RestaurantOrders() {
 
   const getOrderItemsForPrint = (order) => {
     if (!order) return [];
-    if (Array.isArray(order.details_commande) && order.details_commande.length > 0) {
-      return order.details_commande.map((item) => ({
-        name: item?.menus?.nom || item?.name || 'Article',
+    const mapDetail = (item) => {
+      let customizations = {};
+      if (item?.customizations) {
+        if (typeof item.customizations === 'string') {
+          try {
+            customizations = JSON.parse(item.customizations);
+          } catch {
+            customizations = {};
+          }
+        } else if (typeof item.customizations === 'object') {
+          customizations = item.customizations;
+        }
+      }
+      let supplements = [];
+      if (item?.supplements) {
+        if (typeof item.supplements === 'string') {
+          try {
+            supplements = JSON.parse(item.supplements);
+          } catch {
+            supplements = [];
+          }
+        } else if (Array.isArray(item.supplements)) {
+          supplements = item.supplements;
+        }
+      }
+      return {
+        name: item?.menus?.nom || item?.name || item?.nom || 'Article',
         quantity: Number(item?.quantite || item?.quantity || 1),
-        price: Number(item?.prix_unitaire || item?.prix || item?.menus?.prix || 0),
-      }));
+        price: Number(item?.prix_unitaire || item?.prix || item?.price || item?.menus?.prix || 0),
+        supplements,
+        customizations,
+      };
+    };
+    if (Array.isArray(order.details_commande) && order.details_commande.length > 0) {
+      return order.details_commande.map(mapDetail);
     }
     if (Array.isArray(order.items) && order.items.length > 0) {
-      return order.items.map((item) => ({
-        name: item?.name || item?.nom || 'Article',
-        quantity: Number(item?.quantity || item?.quantite || 1),
-        price: Number(item?.price || item?.prix || 0),
-      }));
+      return order.items.map(mapDetail);
     }
     return [];
   };
