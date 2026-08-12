@@ -89,16 +89,42 @@ export default function MobileTabBar() {
           <button
             type="button"
             onClick={() => {
-              // Aller sur l'accueil et focus recherche
-              const qs = `?focus=search&t=${Date.now()}`;
+              // Focus recherche SANS soft-nav Next (évite écran "Chargement..." bloqué sur WebView Sunmi)
+              const focusSearch = () => {
+                try {
+                  const input =
+                    document.querySelector('input[placeholder*="Rechercher"]') ||
+                    document.querySelector('input[type="search"]') ||
+                    document.querySelector('input[name="search"]');
+                  if (input) {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    input.focus();
+                    return true;
+                  }
+                } catch (_) {}
+                return false;
+              };
+
               if (pathname === '/') {
-                router.replace(`/${qs}`);
-              } else {
-                router.push(`/${qs}`);
+                if (!focusSearch()) {
+                  window.dispatchEvent(new CustomEvent('cvneat-focus-search'));
+                }
+                return;
               }
+
+              try {
+                router.push('/');
+              } catch (_) {
+                window.location.href = '/';
+              }
+              setTimeout(() => {
+                if (!focusSearch()) {
+                  window.dispatchEvent(new CustomEvent('cvneat-focus-search'));
+                }
+              }, 400);
             }}
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/search') ? 'text-orange-500' : 'text-zinc-400'
+              pathname === '/' ? 'text-orange-500' : 'text-zinc-400'
             }`}
           >
             <FaSearch className="h-5 w-5" />

@@ -5,8 +5,13 @@ const config: CapacitorConfig = {
   appName: "CVN'EAT",
   webDir: 'out',
   bundledWebRuntime: false,
-  // App native : utiliser les fichiers locaux (pas de serveur distant)
-  // Les appels API seront interceptés et redirigés vers https://cvneat.fr/api
+  // Sunmi / Android partenaires : charger le site live (évite APK bloqué sur un vieux export `out/`)
+  // Les plugins natifs (SunmiPrint, push) restent disponibles.
+  server: {
+    url: 'https://www.cvneat.fr',
+    cleartext: false,
+    allowNavigation: ['cvneat.fr', 'www.cvneat.fr', '*.cvneat.fr'],
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,

@@ -494,6 +494,21 @@ export default function Home() {
       }
     }, 50);
   }, [searchParams]);
+
+  useEffect(() => {
+    const onFocusSearch = () => {
+      try {
+        if (searchInputRef.current) {
+          searchInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          searchInputRef.current.focus();
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('cvneat-focus-search', onFocusSearch);
+    return () => window.removeEventListener('cvneat-focus-search', onFocusSearch);
+  }, []);
   
   const nextOpeningDate = useMemo(() => getNextOpeningDate(), []);
   const nextOpeningLabel = useMemo(() => {
