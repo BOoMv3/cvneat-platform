@@ -1072,8 +1072,11 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
+            <a href="/" className="mt-8 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold">
+              Retour à l&apos;accueil
+            </a>
           </div>
         </div>
       </div>
