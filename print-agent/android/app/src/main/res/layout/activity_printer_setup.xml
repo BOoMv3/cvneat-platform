@@ -6,12 +6,28 @@
   android:padding="20dp">
 
   <TextView
+    android:id="@+id/title"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:text="Choisir l’imprimante Bluetooth (pairée)"
+    android:text="Choisir l’imprimante"
     android:textStyle="bold"
     android:textSize="18sp"
     android:paddingBottom="10dp" />
+
+  <Button
+    android:id="@+id/useSunmi"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Utiliser l’imprimante intégrée Sunmi"
+    android:visibility="gone"
+    android:layout_marginBottom="12dp" />
+
+  <TextView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Ou imprimante Bluetooth pairée :"
+    android:textSize="14sp"
+    android:paddingBottom="6dp" />
 
   <ListView
     android:id="@+id/list"
@@ -26,6 +42,13 @@
     android:text="Test impression"
     android:layout_marginTop="12dp" />
 
+  <Button
+    android:id="@+id/continueBtn"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Continuer"
+    android:layout_marginTop="8dp" />
+
   <TextView
     android:id="@+id/status"
     android:layout_width="match_parent"
@@ -34,4 +57,3 @@
     android:layout_marginTop="12dp" />
 
 </LinearLayout>
-

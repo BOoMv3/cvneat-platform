@@ -48,7 +48,17 @@ class LoginActivity : AppCompatActivity() {
           val accessToken = SupabaseAuth.login(e, p)
           prefs.setAccessToken(accessToken)
           withContext(Dispatchers.Main) {
-            startActivity(Intent(this@LoginActivity, StatusActivity::class.java))
+            // Sur Sunmi : auto-config imprimante intégrée, sinon setup manuel
+            if (!prefs.hasPrinterConfigured()) {
+              if (SunmiPrint.isServiceAvailable(this@LoginActivity) || SunmiPrint.isLikelySunmiDevice()) {
+                prefs.selectSunmi()
+                startActivity(Intent(this@LoginActivity, StatusActivity::class.java))
+              } else {
+                startActivity(Intent(this@LoginActivity, PrinterSetupActivity::class.java))
+              }
+            } else {
+              startActivity(Intent(this@LoginActivity, StatusActivity::class.java))
+            }
             finish()
           }
         } catch (ex: Throwable) {

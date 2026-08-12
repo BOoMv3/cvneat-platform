@@ -117,7 +117,7 @@ export default function PartnerDashboard() {
              <ActionCard title="Gérer le Menu" description="Ajoutez, modifiez ou supprimez des plats et catégories." link="/restaurant/menu/edit" icon={<FaUtensils />} />
              <ActionCard title="Voir les Commandes" description="Consultez l'historique et le statut de vos commandes." link="/partner/orders" icon={<FaBoxOpen />} />
              <ActionCard title="Gérer les Horaires" description="Mettez à jour vos heures d'ouverture et de fermeture." link="/partner/hours" icon={<FaPlus />} />
-             <ActionCard title="Tester impression ticket" description="Ouvrir les commandes et cliquer sur « Imprimer »." link="/partner/orders" icon={<FaFileAlt />} />
+             <ActionCard title="Tester impression ticket" description="Sur Sunmi V2 Pro : bouton Imprimer (imprimante intégrée). Sinon RawBT / Print Agent." link="/partner/orders" icon={<FaFileAlt />} />
           </div>
 
           <div className="mb-6 rounded-lg border border-gray-300 bg-white p-4 text-sm text-gray-800">

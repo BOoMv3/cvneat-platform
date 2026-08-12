@@ -1,36 +1,44 @@
-# CVNEAT Print Agent (Android)
+# CVNEAT Print Agent (Android) — Sunmi V2 Pro
 
-This is a small Android app that sits near the Bluetooth thermal printer and prints CVNEAT receipts automatically.
+Petite app Android dédiée à l’impression automatique des bons de commande.
 
-## Why this exists
+## Pourquoi
 
-iOS Safari cannot reliably print raw ESC/POS over Bluetooth to receipt printers.  
-So restaurants can keep using the partner dashboard on iPhone/iPad, while an Android device handles Bluetooth printing.
+- Sur iPhone/iPad, l’impression ESC/POS Bluetooth n’est pas fiable.
+- Les **Sunmi V2 Pro** ont une **imprimante thermique intégrée** : on imprime directement dessus, sans RawBT ni imprimante Bluetooth externe.
 
-## How it works
+## Fonctionnement
 
-- On login, the app obtains a Supabase access token (email/password).
-- It polls CVNEAT for unread notifications of type `print_receipt`:
-  - `GET https://www.cvneat.fr/api/partner/notifications?unreadOnly=1&type=print_receipt&limit=5`
-- For each job, it prints `notification.data.text` to the paired Bluetooth printer (ESC/POS).
-- After a successful print, it marks the notification as read:
-  - `PATCH https://www.cvneat.fr/api/partner/notifications` with `{ "notificationId": "..." }`
+1. Connexion avec le compte partenaire (email / mot de passe).
+2. Sélection imprimante :
+   - **Sunmi intégrée** (détectée auto sur V2 Pro)
+   - ou Bluetooth pairée (ancien mode)
+3. L’app poll les jobs `print_receipt` :
+   - `GET /api/partner/notifications?unreadOnly=1&type=print_receipt`
+4. Impression puis marquage lu :
+   - `PATCH /api/partner/notifications`
 
-## Setup
+Les jobs sont créés automatiquement au paiement (Stripe webhook / payment confirm).
 
-1. Pair your printer in Android settings (Bluetooth). The printer should appear as paired (ex: `TP85 V AFB9`).
-2. Open `print-agent/android/` in Android Studio.
-3. Build + install on the dedicated Android device.
-4. In the app:
-   - Login with the partner restaurant account.
-   - Select the paired printer.
-   - Leave the app open (kiosk/always-on recommended).
+## Installation Sunmi V2 Pro (partenaires)
 
-## Test printing (no fake order)
+1. Ouvrir le projet `print-agent/android/` dans Android Studio.
+2. Build → Installer l’APK sur le Sunmi.
+3. Ouvrir **CVNEAT Print Agent**.
+4. Se connecter avec le compte restaurant.
+5. Vérifier « Sunmi (imprimante intégrée) » → **Test impression**.
+6. Laisser l’app ouverte (idéalement en kiosk / toujours allumée).
 
-From an admin session, call:
+## App Capacitor CVN’EAT (même appareil)
 
-- `POST /api/admin/restaurants/enqueue-print-test` with `{ "restaurantId": "<id>" }`
+Sur l’app Android `fr.cvneat.app`, le bouton **Imprimer** du dashboard partenaire utilise d’abord l’imprimante Sunmi intégrée (plugin natif), puis RawBT en secours.
 
-The Android agent should fetch the job and print a test receipt.
+## Test sans vraie commande
 
+Admin :
+
+- `POST /api/admin/restaurants/enqueue-print-test` avec `{ "restaurantId": "<id>" }`
+
+## Versions
+
+- `1.1.0-sunmi` : support imprimante intégrée Sunmi + Bluetooth legacy

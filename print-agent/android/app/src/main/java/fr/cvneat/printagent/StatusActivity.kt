@@ -42,10 +42,23 @@ class StatusActivity : AppCompatActivity() {
       return
     }
 
-    val printerMac = prefs.getPrinterMac()
-    info.text = "Imprimante: ${printerMac ?: "non configurée"}\nAPI: ${AppConfig.CVNEAT_BASE_URL}"
+    if (!prefs.hasPrinterConfigured()) {
+      // Sur Sunmi : sélection auto de l'imprimante intégrée
+      if (SunmiPrint.isServiceAvailable(this) || SunmiPrint.isLikelySunmiDevice()) {
+        prefs.selectSunmi()
+      } else {
+        startActivity(Intent(this, PrinterSetupActivity::class.java))
+      }
+    }
 
+    info.text = "Imprimante: ${prefs.printerLabel()}\nAPI: ${AppConfig.CVNEAT_BASE_URL}"
     appendLog(log, "Démarrage polling...")
+  }
+
+  override fun onResume() {
+    super.onResume()
+    val info = findViewById<TextView>(R.id.info)
+    info.text = "Imprimante: ${prefs.printerLabel()}\nAPI: ${AppConfig.CVNEAT_BASE_URL}"
   }
 
   override fun onStart() {
@@ -66,11 +79,10 @@ class StatusActivity : AppCompatActivity() {
     if (loopJob != null) return
 
     loopJob = CoroutineScope(Dispatchers.Main).launch {
-      var idleDelayMs = 20000L
+      var idleDelayMs = 15000L
       while (true) {
         try {
-          val printerMac = prefs.getPrinterMac()
-          if (printerMac.isNullOrBlank()) {
+          if (!prefs.hasPrinterConfigured()) {
             appendLog(log, "Imprimante non configurée. Ouvre 'Changer d’imprimante'.")
             delay(10000)
             continue
@@ -79,14 +91,14 @@ class StatusActivity : AppCompatActivity() {
           val jobs = CvneatApi.fetchPrintJobs(token)
           if (jobs.isEmpty()) {
             delay(idleDelayMs)
-            idleDelayMs = minOf(idleDelayMs + 5000L, 60000L)
+            idleDelayMs = minOf(idleDelayMs + 5000L, 45000L)
             continue
           }
 
-          idleDelayMs = 20000L
+          idleDelayMs = 15000L
           for (job in jobs) {
             appendLog(log, "Impression job ${job.notificationId} ...")
-            BluetoothPrint.print(printerMac, job.text)
+            printJob(job.text)
             CvneatApi.markPrinted(token, job.notificationId)
             appendLog(log, "OK job ${job.notificationId}")
           }
@@ -95,8 +107,19 @@ class StatusActivity : AppCompatActivity() {
           delay(250)
         } catch (e: Throwable) {
           appendLog(log, "Erreur: ${e.message}")
-          delay(30000)
+          delay(20000)
         }
+      }
+    }
+  }
+
+  private suspend fun printJob(text: String) {
+    when (prefs.getPrinterType()) {
+      Prefs.TYPE_SUNMI -> SunmiPrint.printFormatted(this@StatusActivity, text)
+      else -> {
+        val mac = prefs.getPrinterMac()
+          ?: throw RuntimeException("MAC imprimante Bluetooth manquant")
+        BluetoothPrint.print(mac, text)
       }
     }
   }
@@ -107,4 +130,3 @@ class StatusActivity : AppCompatActivity() {
     tv.text = if (next.length > 8000) next.takeLast(8000) else next
   }
 }
-

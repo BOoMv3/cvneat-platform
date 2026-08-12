@@ -63,7 +63,9 @@ Ces commandes peuvent être exécutées après la configuration de l'environneme
 ## 5. Plugins / fonctionnalités natives
 
 - Les plugins Capacitor peuvent être ajoutés via `npm install @capacitor/<plugin>` puis `npx cap sync`.
-- Pour l'impression Bluetooth / USB : prévoir un plugin dédié (ex. plugin ESC/POS) et tester sur la passerelle matérielle cible.
+- Pour l'impression :
+  - **Sunmi V2 Pro** : imprimante intégrée via plugin natif `SunmiPrint` + app `print-agent` (auto-print).
+  - Autres tablettes : RawBT / Print Agent Bluetooth ESC/POS.
 
 ## 6. Publication
 

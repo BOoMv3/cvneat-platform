@@ -34,7 +34,7 @@ import PartnerDailyOpenModal from '@/components/PartnerDailyOpenModal';
 import { shouldPromptDailyOpen } from '@/lib/restaurant-daily-open';
 import PartnerOrderDeliverySlotPanel from '@/components/PartnerOrderDeliverySlotPanel';
 import { getDeliverySlotSummaryLine } from '@/lib/delivery-slots';
-import { buildOrderReceiptText, printWithRawBt } from '../../lib/rawbt-print';
+import { buildOrderReceiptText, printPartnerTicket } from '../../lib/rawbt-print';
 
 const CATEGORY_OPTIONS = [
   { value: 'entree', label: 'Entrée' },
@@ -1541,11 +1541,15 @@ export default function PartnerDashboard() {
         deliveryFee,
         total,
       });
-      const launched = await printWithRawBt(ticket);
-      if (!launched) throw new Error("Impossible d'ouvrir RawBT");
+      const result = await printPartnerTicket(ticket);
+      if (!result.ok) {
+        throw new Error(result.error || "Impossible d'imprimer");
+      }
     } catch (error) {
       console.error('Erreur impression ticket partenaire:', error);
-      alert("Impression impossible. Installez/ouvrez RawBT puis reessayez.");
+      alert(
+        "Impression impossible. Sur Sunmi V2 Pro, l'imprimante intégrée doit être active. Sinon installez RawBT."
+      );
     }
   };
 

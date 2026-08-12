@@ -15,6 +15,8 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
+    // Plugin impression Sunmi V2 Pro (imprimante intégrée)
+    registerPlugin(SunmiPrintPlugin.class);
     super.onCreate(savedInstanceState);
     createDefaultNotificationChannel();
   }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { buildOrderReceiptText, printWithRawBt } from '../../../lib/rawbt-print';
+import { buildOrderReceiptText, printPartnerTicket } from '../../../lib/rawbt-print';
 
 export default function RestaurantOrders() {
   const router = useRouter();
@@ -496,12 +496,14 @@ export default function RestaurantOrders() {
         deliveryFee,
         total,
       });
-      const launched = await printWithRawBt(ticket);
-      if (!launched) {
-        throw new Error("Impossible d'ouvrir RawBT");
+      const result = await printPartnerTicket(ticket);
+      if (!result.ok) {
+        throw new Error(result.error || "Impossible d'imprimer");
       }
     } catch (err) {
-      setError("Impression impossible. Installez/ouvrez RawBT puis reessayez.");
+      setError(
+        "Impression impossible. Sur Sunmi V2 Pro, l'imprimante intégrée doit être active. Sinon installez RawBT."
+      );
       console.error('Erreur impression ticket:', err);
     }
   };

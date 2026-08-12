@@ -733,14 +733,39 @@ export default function Home() {
       }
       lastRestaurantsFetchAtRef.current = now;
 
+      const withTimeout = async (promise, timeoutMs, message) => {
+        let timeoutId;
+        try {
+          return await Promise.race([
+            promise,
+            new Promise((_, reject) => {
+              timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+            }),
+          ]);
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
+        }
+      };
+
+      // Garde-fou anti-blocage WebView (Sunmi/Android OEM): jamais loader infini.
+      let loadingWatchdog = null;
+
       try {
         setLoading(true);
         setError(null);
+        loadingWatchdog = setTimeout(() => {
+          setLoading(false);
+          setError((prev) => prev || "Réseau lent: chargement relancé automatiquement.");
+        }, 15000);
         const fetchRestaurantsFromSupabaseFallback = async () => {
-          const { data: rows, error: sbError } = await supabase
-            .from('restaurants')
-            .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description')
-            .neq('status', 'inactive');
+          const { data: rows, error: sbError } = await withTimeout(
+            supabase
+              .from('restaurants')
+              .select('*, frais_livraison, ferme_manuellement, ouvert_manuellement, horaires, offre_active, offre_label, offre_description')
+              .neq('status', 'inactive'),
+            10000,
+            'Timeout lecture restaurants (fallback Supabase)'
+          );
           if (sbError) throw sbError;
           return Array.isArray(rows) ? rows : [];
         };
@@ -774,35 +799,47 @@ export default function Home() {
           for (const url of candidates) {
             try {
               if (DBG) console.log('[Restaurants] GET', url);
-              const response = await fetch(url, {
-                ...(isCapacitorApp
-                  ? {
-                      cache: 'no-store',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        'Cache-Control': 'no-cache',
-                        Pragma: 'no-cache',
-                      },
-                    }
-                  : {
-                      headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                      },
-                    }),
-              });
+              const response = await withTimeout(
+                fetch(url, {
+                  ...(isCapacitorApp
+                    ? {
+                        cache: 'no-store',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Accept: 'application/json',
+                          'Cache-Control': 'no-cache',
+                          Pragma: 'no-cache',
+                        },
+                      }
+                    : {
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Accept: 'application/json',
+                        },
+                      }),
+                }),
+                9000,
+                `Timeout API restaurants (${url})`
+              );
               if (DBG) console.log('[Restaurants] HTTP', response.status, response.url);
               if (!response.ok) {
                 let errorData;
                 try {
-                  errorData = await response.json();
+                  errorData = await withTimeout(
+                    response.json(),
+                    3000,
+                    `Timeout parsing JSON (${url})`
+                  );
                 } catch (e) {
                   errorData = { message: `Erreur ${response.status}: ${response.statusText}` };
                 }
                 throw new Error(errorData.message || errorData.error || `Erreur ${response.status}: ${response.statusText}`);
               }
-              const parsed = await response.json();
+              const parsed = await withTimeout(
+                response.json(),
+                5000,
+                `Timeout parsing restaurants (${url})`
+              );
               if (!Array.isArray(parsed)) {
                 throw new Error('Format de données invalide: la réponse n\'est pas un tableau');
               }
@@ -1061,6 +1098,7 @@ export default function Home() {
         setRestaurants([]);
         setRestaurantsOpenStatus({});
       } finally {
+        if (loadingWatchdog) clearTimeout(loadingWatchdog);
         setLoading(false);
       }
     };
@@ -1316,61 +1354,22 @@ export default function Home() {
       return true;
     });
 
-    const boostOrder = (restaurant) => {
-      const normalized = normalizeName(restaurant.nom);
-      
-      // Restaurants prioritaires (partagent activement CVN'EAT)
-      if (normalized.includes('la bonne pate') || normalized.includes('la bonne pâte')) return 0; // 1er
-      if (normalized.includes('99 street food') || normalized.includes('99street')) return 1; // 2ème
-      if (normalized.includes('assiette des saison') || normalized.includes('assiette des saisons')) return 2;
-      if (normalized.includes('smaash')) return 3;
-      
-      // Restaurants pénalisés (ne partagent jamais CVN'EAT)
-      if (normalized.includes('all\'ovale') || normalized.includes('all ovale') || normalized.includes('allovale')) return 997; // Toujours en bas
-      if (normalized.includes('burger cevenol') || normalized.includes('burger cévenol') || normalized.includes('burgercevenol')) return 996; // Presque toujours en bas
-      
-      if (normalized.includes('dolce vita')) return 1000; // Dernier
-      
-      // Autres restaurants = ordre normal (5+)
-      return 5;
-    };
-
     return uniqueRestaurants.sort((a, b) => {
       const statusA = restaurantsOpenStatus[a.id] || {};
       const statusB = restaurantsOpenStatus[b.id] || {};
       const isOpenA = statusA.isOpen === true && statusA.isManuallyClosed !== true;
       const isOpenB = statusB.isOpen === true && statusB.isManuallyClosed !== true;
 
-      // Calculer le boostOrder pour chaque restaurant
-      const boostA = boostOrder(a);
-      const boostB = boostOrder(b);
+      // 1) Ouverts devant fermés
+      if (isOpenA !== isOpenB) return isOpenA ? -1 : 1;
 
-      // Priorité 1 : Si l'un est ouvert et l'autre fermé, l'ouvert passe devant
-      // EXCEPTION : Si les deux sont prioritaires (boostOrder < 5), on respecte le boostOrder même si l'un est fermé
-      // Cela permet à La Bonne Pâte (boostOrder 0) de rester en haut même fermée par rapport aux autres prioritaires
-      
-      if (isOpenA !== isOpenB) {
-        // Si les deux sont prioritaires (boostOrder < 5), celui qui est ouvert passe devant
-        if (boostA < 5 && boostB < 5) {
-          return isOpenA ? -1 : 1;
-        }
-        
-        // Si un prioritaire (boostOrder < 5) est fermé et l'autre est un restaurant normal (boostOrder >= 5) ouvert
-        // Le restaurant normal ouvert passe devant le prioritaire fermé
-        if (boostA < 5 && !isOpenA && isOpenB && boostB >= 5) {
-          return 1; // Normal ouvert passe devant prioritaire fermé
-        }
-        if (boostB < 5 && !isOpenB && isOpenA && boostA >= 5) {
-          return -1; // Normal ouvert passe devant prioritaire fermé
-        }
-        
-        // Pour tous les autres cas, l'ouvert passe devant le fermé
-        return isOpenA ? -1 : 1;
-      }
+      // 2) Plus de commandes payées = plus haut dans la liste
+      const countA = Number(a.orders_count || 0);
+      const countB = Number(b.orders_count || 0);
+      if (countA !== countB) return countB - countA;
 
-      // Priorité 2 : Même statut ouvert/fermé, on respecte le boostOrder (partage réseaux sociaux)
-      // Les restaurants qui partagent le plus passent devant
-      return boostA - boostB;
+      // 3) Égalité : ordre alphabétique
+      return String(a.nom || '').localeCompare(String(b.nom || ''), 'fr', { sensitivity: 'base' });
     });
   }, [finalRestaurants, restaurantsOpenStatus]);
 
