@@ -158,10 +158,30 @@ export default function RootLayout({ children }) {
                     }
                   }
 
+                  function isLegacyAndroidNow() {
+                    try {
+                      var ua = navigator.userAgent || '';
+                      var m = ua.match(/Android\s([0-9.]+)/i);
+                      if (!m) return false;
+                      var v = parseFloat(m[1]);
+                      return !isNaN(v) && v <= 7.1;
+                    } catch (eL) {
+                      return false;
+                    }
+                  }
+
                   // Verrouillage ultra-tôt (avant hydration React):
                   // livreur hors zone /delivery → dashboard ; admin sur accueil → /admin.
                   try {
                     var pathNow = window.location && window.location.pathname ? window.location.pathname : '';
+
+                    // Sunmi Android 7.1: login Next.js reste souvent en "Chargement..."
+                    // → page HTML statique (XHR) qui marche sans React.
+                    if (isLegacyAndroidNow() && (pathNow === '/login' || pathNow === '/login/')) {
+                      window.location.replace('/login-legacy.html');
+                      return;
+                    }
+
                     if (isDeliveryNow() && pathNow && !deliveryPathAllowed(pathNow)) {
                       window.location.replace('/delivery/dashboard');
                       return;
@@ -177,6 +197,38 @@ export default function RootLayout({ children }) {
                   } catch (e0) {
                     // ignore
                   }
+
+                  // Android 7: forcer navigation full-page (évite soft-nav Next bloquée)
+                  try {
+                    if (isLegacyAndroidNow()) {
+                      document.addEventListener('click', function (ev) {
+                        try {
+                          var t = ev.target;
+                          var a = t && t.closest ? t.closest('a') : null;
+                          if (!a) return;
+                          var href = a.getAttribute('href') || '';
+                          if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+                          if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
+                          if (a.target === '_blank') return;
+                          var path = href;
+                          if (href.indexOf('http') === 0) {
+                            if (href.indexOf('cvneat.fr') < 0) return;
+                            try {
+                              var u = new URL(href);
+                              path = u.pathname + (u.search || '') + (u.hash || '');
+                            } catch (eU) {
+                              return;
+                            }
+                          } else if (href.charAt(0) !== '/') {
+                            return;
+                          }
+                          ev.preventDefault();
+                          ev.stopPropagation();
+                          window.location.href = path;
+                        } catch (eC) {}
+                      }, true);
+                    }
+                  } catch (eHard) {}
 
                   // Le reste (intercepteur fetch + link handler) est uniquement pour Capacitor.
                   var isCapacitor = false;

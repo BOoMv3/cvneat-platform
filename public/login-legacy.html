@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>Connexion partenaire — CVN'EAT (Sunmi)</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; }
+    .wrap { max-width: 420px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+    h1 { font-size: 22px; margin: 0 0 8px; color: #111; }
+    p.sub { color: #6b7280; margin: 0 0 20px; font-size: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 6px; color: #374151; }
+    input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; }
+    button { width: 100%; margin-top: 18px; padding: 14px; border: 0; border-radius: 8px; background: #ea580c; color: #fff; font-weight: 700; font-size: 16px; }
+    button:disabled { opacity: .6; }
+    .err { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 10px; border-radius: 8px; margin-top: 12px; font-size: 14px; display: none; }
+    .ok { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-top: 12px; font-size: 14px; display: none; }
+    a { color: #ea580c; }
+    .foot { margin-top: 16px; font-size: 13px; text-align: center; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Connexion partenaire</h1>
+    <p class="sub">Page compatible Sunmi / Android 7.1 (sans Next.js).</p>
+    <form id="f">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email" required placeholder="votre@email.com" />
+      <label for="password">Mot de passe</label>
+      <input id="password" type="password" autocomplete="current-password" required placeholder="Mot de passe" />
+      <button id="btn" type="submit">Se connecter</button>
+    </form>
+    <div id="err" class="err"></div>
+    <div id="ok" class="ok"></div>
+    <div class="foot">
+      <a href="/partner">Espace partenaire</a> ·
+      <a href="/login">Login classique</a> ·
+      <a href="/">Accueil</a>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var SUPABASE_URL = 'https://jxbgrvlmvnofaxbtcmsw.supabase.co';
+      var SUPABASE_ANON =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4Ymdydmxtdm5vZmF4YnRjbXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNjQyNDMsImV4cCI6MjA3MTk0MDI0M30.FqDYhevVvPYe-1t52OcidgP6jG-ynJVOFkyGTPHk84A';
+      var STORAGE_KEY = 'sb-jxbgrvlmvnofaxbtcmsw-auth-token';
+
+      var form = document.getElementById('f');
+      var btn = document.getElementById('btn');
+      var err = document.getElementById('err');
+      var ok = document.getElementById('ok');
+
+      function showErr(msg) {
+        err.style.display = 'block';
+        ok.style.display = 'none';
+        err.textContent = msg || 'Erreur';
+      }
+      function showOk(msg) {
+        ok.style.display = 'block';
+        err.style.display = 'none';
+        ok.textContent = msg || 'OK';
+      }
+
+      function xhrJson(method, url, body, headers) {
+        return new Promise(function (resolve, reject) {
+          var xhr = new XMLHttpRequest();
+          xhr.open(method, url, true);
+          xhr.timeout = 20000;
+          var h = headers || {};
+          for (var k in h) {
+            if (h.hasOwnProperty(k)) xhr.setRequestHeader(k, h[k]);
+          }
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var data = {};
+            try {
+              data = JSON.parse(xhr.responseText || '{}');
+            } catch (e) {}
+            if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+            else reject(data);
+          };
+          xhr.ontimeout = function () {
+            reject({ error_description: 'Délai dépassé (réseau)' });
+          };
+          xhr.onerror = function () {
+            reject({ error_description: 'Erreur réseau' });
+          };
+          xhr.send(body ? JSON.stringify(body) : null);
+        });
+      }
+
+      form.onsubmit = function (e) {
+        e.preventDefault();
+        err.style.display = 'none';
+        ok.style.display = 'none';
+        btn.disabled = true;
+        btn.textContent = 'Connexion…';
+
+        var email = String(document.getElementById('email').value || '')
+          .trim()
+          .toLowerCase();
+        var password = String(document.getElementById('password').value || '');
+
+        xhrJson(
+          'POST',
+          SUPABASE_URL + '/auth/v1/token?grant_type=password',
+          { email: email, password: password },
+          {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_ANON,
+            Authorization: 'Bearer ' + SUPABASE_ANON,
+          }
+        )
+          .then(function (data) {
+            if (!data || !data.access_token) {
+              throw { error_description: 'Réponse login invalide' };
+            }
+            // Format attendu par @supabase/supabase-js (persistSession)
+            var session = {
+              access_token: data.access_token,
+              refresh_token: data.refresh_token,
+              expires_in: data.expires_in,
+              expires_at: data.expires_at || Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
+              token_type: data.token_type || 'bearer',
+              user: data.user || null,
+            };
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+              localStorage.setItem(
+                'cvneat-role-cache',
+                JSON.stringify({ role: 'restaurant', at: Date.now() })
+              );
+            } catch (storageErr) {}
+            showOk('Connecté. Redirection…');
+            setTimeout(function () {
+              window.location.href = '/partner';
+            }, 400);
+          })
+          .catch(function (data) {
+            var msg =
+              (data && (data.error_description || data.msg || data.message || data.error)) ||
+              'Email ou mot de passe incorrect';
+            showErr(String(msg));
+            btn.disabled = false;
+            btn.textContent = 'Se connecter';
+          });
+      };
+    })();
+  </script>
+</body>
+</html>

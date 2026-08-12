@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import Head from 'next/head';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
-  const searchParams = useSearchParams();
+  // Pas de useSearchParams ici: sur Sunmi/Android 7 ça suspend la page → "Chargement..." infini.
 
   useEffect(() => {
     let reset = '';
@@ -30,10 +30,6 @@ export default function LoginPage() {
         reset = sp.get('reset') || '';
         confirm = sp.get('confirm') || '';
         suspended = sp.get('suspended') || '';
-      } else if (searchParams) {
-        reset = searchParams.get('reset') || '';
-        confirm = searchParams.get('confirm') || '';
-        suspended = searchParams.get('suspended') || '';
       }
     } catch (_) {}
 
@@ -54,7 +50,7 @@ export default function LoginPage() {
         setError('Votre compte est temporairement suspendu. Contactez le support CVN\'EAT.');
       }
     }
-  }, [searchParams]);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -350,6 +346,12 @@ export default function LoginPage() {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
           Connectez-vous à votre compte
+        </p>
+        <p className="mt-3 text-center text-xs text-gray-500">
+          Sunmi / Android 7 :{' '}
+          <a href="/login-legacy.html" className="text-orange-600 font-semibold underline">
+            ouvrir la connexion compatible
+          </a>
         </p>
       </div>
 

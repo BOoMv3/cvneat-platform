@@ -19,11 +19,26 @@ function isCapacitorLike() {
   }
 }
 
+function isLegacyAndroid() {
+  try {
+    const ua = navigator.userAgent || '';
+    const m = ua.match(/Android\s([0-9.]+)/i);
+    if (!m) return false;
+    const v = parseFloat(m[1]);
+    return !Number.isNaN(v) && v <= 7.1;
+  } catch {
+    return false;
+  }
+}
+
 export default function AppSplashOverlay() {
   const [enabled, setEnabled] = useState(false);
   const [phase, setPhase] = useState('hidden'); // visible | exiting | hidden
 
   useEffect(() => {
+    // Sunmi Android 7: ne jamais afficher le splash React (bloque souvent)
+    if (isLegacyAndroid()) return;
+
     // iOS: window.Capacitor peut arriver après coup, donc on attend un peu.
     if (isCapacitorLike()) {
       setEnabled(true);
