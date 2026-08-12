@@ -112,6 +112,16 @@ const nextConfig = {
     ];
   },
 
+  // Stub /restaurants (sans id) → accueil. Évite l'écran "Redirection vers l'accueil..."
+  // (footer / vieux liens). Ignoré en BUILD_MOBILE (export statique) — page client en secours.
+  ...(process.env.BUILD_MOBILE === 'true'
+    ? {}
+    : {
+        async redirects() {
+          return [{ source: '/restaurants', destination: '/', permanent: false }];
+        },
+      }),
+
   // Headers CORS pour l'app mobile Capacitor
   async headers() {
     return [

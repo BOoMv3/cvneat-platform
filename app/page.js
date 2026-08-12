@@ -686,12 +686,11 @@ export default function Home() {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           
-          if (!session?.user) {
-            // Pas connecté dans l'app mobile, rediriger vers login
-            // Utiliser setTimeout pour éviter de bloquer la navigation
-            setTimeout(() => {
-              router.replace('/login');
-            }, 100);
+          // Sur Sunmi/tablette partenaire: on laisse voir l'accueil (catalogue).
+          // La connexion se fait via l'onglet Compte /login — ne pas forcer /login au boot
+          // (sinon UX confuse + course avec le bridge Capacitor).
+          if (session?.user) {
+            // Rien: AppAutoRedirect gère restaurant → /partner, livreur → /delivery, etc.
             return;
           }
         } catch (error) {
@@ -1255,25 +1254,18 @@ export default function Home() {
   };
 
   const handleRestaurantClick = (restaurant) => {
-    // IMPORTANT: dans l'app mobile (export statique), éviter /restaurants/[id]
-    // car le fallback HTML peut créer un refresh en boucle.
-    // On utilise une route statique /restaurant-view?id=...
+    // IMPORTANT: éviter /restaurants/[id] et le stub /restaurants ("Redirection vers l'accueil").
+    // Sur Sunmi (Android 7 / vieux WebView) et certains navigateurs tablette,
+    // router.push (soft-nav Next) peut échouer → navigation hard systématique.
+    if (!restaurant?.id) return;
+    const targetUrl = `/restaurant-view?id=${encodeURIComponent(restaurant.id)}`;
+
     if (typeof window !== 'undefined') {
-      const targetUrl = `/restaurant-view?id=${encodeURIComponent(restaurant.id)}`;
       console.log('[Navigation] Redirection vers restaurant:', targetUrl, 'ID:', restaurant.id);
-      
-      // Dans l'app mobile Capacitor, forcer la navigation avec un rechargement complet
-      const isCapacitorApp = window.location.protocol === 'capacitor:' || 
-                            window.location.href.indexOf('capacitor://') === 0 ||
-                            window.Capacitor !== undefined;
-      
-      // Sur web/app: route statique, donc router.push suffit.
-      // (Sur Capacitor, c'est aussi plus stable que window.location.href)
-      router.push(targetUrl);
-    } else {
-      // Fallback pour SSR
-      router.push(`/restaurant-view?id=${encodeURIComponent(restaurant.id)}`);
+      window.location.assign(targetUrl);
+      return;
     }
+    router.push(targetUrl);
   };
 
     const filteredAndSortedRestaurants = restaurants.filter(restaurant => {

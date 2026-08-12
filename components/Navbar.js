@@ -130,7 +130,7 @@ export default function Navbar() {
 
           {/* Navigation Links - Desktop */}
           <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <Link href="/restaurants" className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-sm lg:text-base">
+            <Link href="/" className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-sm lg:text-base">
               Restaurants
             </Link>
 
@@ -278,7 +278,7 @@ export default function Navbar() {
               )}
 
               <Link
-                href="/restaurants"
+                href="/"
                 className="text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-2 text-sm sm:text-base"
                 onClick={() => setIsMenuOpen(false)}
               >

@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FaHome, FaSearch, FaShoppingCart, FaUser } from 'react-icons/fa';
@@ -76,7 +75,7 @@ export default function MobileTabBar() {
         aria-label="Navigation"
       >
         <div className="grid grid-cols-4">
-          <Link
+          <a
             href="/"
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
               isActive('/') ? 'text-orange-500' : 'text-zinc-400'
@@ -84,7 +83,7 @@ export default function MobileTabBar() {
           >
             <FaHome className="h-5 w-5" />
             <span className="mt-1">Accueil</span>
-          </Link>
+          </a>
 
           <button
             type="button"
@@ -123,15 +122,13 @@ export default function MobileTabBar() {
                 }
               }, 400);
             }}
-            className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              pathname === '/' ? 'text-orange-500' : 'text-zinc-400'
-            }`}
+            className="flex flex-col items-center justify-center py-2.5 text-xs font-semibold text-zinc-400"
           >
             <FaSearch className="h-5 w-5" />
             <span className="mt-1">Rechercher</span>
           </button>
 
-          <Link
+          <a
             href="/panier"
             className={`relative flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
               isActive('/panier') ? 'text-orange-500' : 'text-zinc-400'
@@ -144,9 +141,9 @@ export default function MobileTabBar() {
                 {cartCount}
               </span>
             )}
-          </Link>
+          </a>
 
-          <Link
+          <a
             href="/profile"
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
               isActive('/profile') ? 'text-orange-500' : 'text-zinc-400'
@@ -154,7 +151,7 @@ export default function MobileTabBar() {
           >
             <FaUser className="h-5 w-5" />
             <span className="mt-1">Compte</span>
-          </Link>
+          </a>
         </div>
       </nav>
     </>

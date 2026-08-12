@@ -46,6 +46,9 @@ export default function Panier() {
   useEffect(() => {
     loadCart();
     checkAuth();
+    // Sunmi / vieux WebView: si un effet plante, ne jamais rester bloqué sur "Chargement..."
+    const failsafe = setTimeout(() => setLoading(false), 2000);
+    return () => clearTimeout(failsafe);
   }, []);
 
   const checkAuth = async () => {
@@ -214,7 +217,7 @@ export default function Panier() {
               Découvrir nos restaurants
             </button>
             <button
-              onClick={() => router.push('/restaurants')}
+              onClick={() => router.push('/')}
               className="bg-white text-blue-600 border-2 border-blue-600 px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:bg-blue-50 transition-all duration-200 font-semibold min-h-[44px] touch-manipulation text-sm sm:text-base"
             >
                 Voir tous les restaurants

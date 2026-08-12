@@ -5,23 +5,38 @@ import { initPushNotifications, isNativeApp } from '@/lib/capacitor-push-notific
 
 /**
  * Initialise les push natifs (APNs/FCM) dans l'app Capacitor, sans afficher de UI.
- * Permet d'enregistrer le token dès que possible.
- * Sécurisé pour éviter tout plantage Android (try/catch autour de l'init).
+ * Important (Sunmi / server.url) : window.Capacitor peut arriver APRÈS l'hydratation,
+ * donc on retente plusieurs fois au lieu d'abandonner au 1er tick.
  */
 export default function PushNotificationBootstrap() {
   useEffect(() => {
     let cancelled = false;
-    try {
-      if (!isNativeApp()) return;
-      initPushNotifications()
-        .catch((err) => {
+    let tries = 0;
+    const maxTries = 20; // ~10s
+
+    const attempt = () => {
+      if (cancelled) return;
+      tries += 1;
+      try {
+        if (!isNativeApp()) {
+          if (tries < maxTries) {
+            setTimeout(attempt, 500);
+          }
+          return;
+        }
+        initPushNotifications().catch((err) => {
           if (!cancelled) console.warn('Push bootstrap (non bloquant):', err?.message || err);
         });
-    } catch (e) {
-      // Init synchrone qui throw (ex: Android plugin non dispo) — ne pas faire crasher l'app
-      if (!cancelled) console.warn('Push bootstrap init (non bloquant):', e?.message || e);
-    }
-    return () => { cancelled = true; };
+      } catch (e) {
+        if (!cancelled) console.warn('Push bootstrap init (non bloquant):', e?.message || e);
+        if (tries < maxTries) setTimeout(attempt, 500);
+      }
+    };
+
+    attempt();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return null;
