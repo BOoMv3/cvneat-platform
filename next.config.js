@@ -62,16 +62,9 @@ const nextConfig = {
   // On désactive donc SWC minify pour fiabiliser les builds (web + mobile).
   swcMinify: false,
 
-  // Transpiler les dépendances modernes pour Sunmi / Android 7.1
-  transpilePackages: [
-    '@supabase/supabase-js',
-    '@supabase/auth-helpers-nextjs',
-    '@supabase/gotrue-js',
-    '@supabase/postgrest-js',
-    '@supabase/realtime-js',
-    '@supabase/storage-js',
-    '@supabase/functions-js',
-  ],
+  // Note: ne pas utiliser transpilePackages sur @supabase/* —
+  // ça casse le build Next ("Expected to replace at least one import").
+  // La compat Android 7.1 passe par browserslist + polyfills + navigation hard.
   
   // Export statique UNIQUEMENT pour l'app mobile (pas pour le déploiement web)
   // Les appels API pointeront vers https://cvneat.fr/api
