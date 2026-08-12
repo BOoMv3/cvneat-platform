@@ -1,4 +1,5 @@
 import './globals.css';
+import Script from 'next/script';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -101,8 +102,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="fr" className="scroll-smooth">
       <head>
-        {/* Polyfills Sunmi Android 7.1 — avant tout JS applicatif */}
-        <script src="/legacy-polyfills.js" />
         {/* Intercepteur fetch pour Capacitor - DOIT être chargé en premier */}
         <script
           dangerouslySetInnerHTML={{
