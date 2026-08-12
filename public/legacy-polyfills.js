@@ -5,8 +5,35 @@
 (function () {
   if (typeof window === 'undefined') return;
 
+  // AbortController (absent avant Chrome 66)
+  if (typeof AbortController === 'undefined') {
+    window.AbortController = function () {
+      this.signal = {
+        aborted: false,
+        onabort: null,
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        dispatchEvent: function () {
+          return false;
+        },
+      };
+      this.abort = function () {
+        this.signal.aborted = true;
+        if (typeof this.signal.onabort === 'function') {
+          try {
+            this.signal.onabort();
+          } catch (e) {}
+        }
+      };
+    };
+  }
+
+  if (typeof AbortSignal === 'undefined') {
+    window.AbortSignal = {};
+  }
+
   // AbortSignal.timeout (login + API client) — absent avant Chrome 103
-  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout !== 'function') {
+  if (typeof AbortSignal.timeout !== 'function') {
     AbortSignal.timeout = function (ms) {
       var controller = new AbortController();
       setTimeout(function () {
@@ -73,7 +100,7 @@
     };
   }
 
-  // Promise.prototype.finally (Chrome 63+ — parfois absent sur 7.1)
+  // Promise.prototype.finally
   if (typeof Promise !== 'undefined' && Promise.prototype && !Promise.prototype.finally) {
     Promise.prototype.finally = function (callback) {
       var P = this.constructor;
