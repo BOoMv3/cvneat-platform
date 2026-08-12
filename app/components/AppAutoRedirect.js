@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { safeLocalStorage } from '@/lib/localStorage';
 import { getPendingNotificationUrl } from '@/lib/capacitor-push-notifications';
+import { hardNavigate, isLegacyWebView } from '@/lib/compat';
 
 const isCapacitorApp = () => {
   if (typeof window === 'undefined') return false;
@@ -101,6 +102,12 @@ export default function AppAutoRedirect() {
       lastForcedAtRef.current = now;
 
       console.log('[AppAutoRedirect] Force navigation:', { to: target, from: pathname, reason, ...extra });
+
+      // Sunmi / Android 7.1 : navigation hard immédiate (router Next souvent KO)
+      if (isLegacyWebView()) {
+        hardNavigate(target);
+        return;
+      }
 
       // 1) Essayer via Next router (SPA)
       try {

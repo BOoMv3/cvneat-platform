@@ -1,4 +1,5 @@
 'use client';
+import { goPartnerLogin } from '@/lib/partner-nav';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,7 +25,7 @@ export default function PartnerOffrePage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 

@@ -1,4 +1,5 @@
 'use client';
+import { goPartnerLogin } from '@/lib/partner-nav';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -144,7 +145,7 @@ export default function PartnerOrders() {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 
@@ -173,7 +174,7 @@ export default function PartnerOrders() {
       setAcceptingOrder(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 
@@ -216,7 +217,7 @@ export default function PartnerOrders() {
       setRejectingOrder(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 

@@ -1,4 +1,5 @@
 'use client';
+import { goPartnerLogin } from '@/lib/partner-nav';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -29,7 +30,7 @@ export default function MenuSupplements() {
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.push('/login');
+      goPartnerLogin();
       return;
     }
 

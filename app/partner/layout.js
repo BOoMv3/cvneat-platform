@@ -1,5 +1,11 @@
-import PartnerImportantInfoOverlay from '@/components/PartnerImportantInfoOverlay';
+import Script from 'next/script';
+import PartnerLegacyShell from '@/components/PartnerLegacyShell';
 
 export default function PartnerLayout({ children }) {
-  return <PartnerImportantInfoOverlay>{children}</PartnerImportantInfoOverlay>;
+  return (
+    <>
+      <Script src="/legacy-polyfills.js" strategy="beforeInteractive" />
+      <PartnerLegacyShell>{children}</PartnerLegacyShell>
+    </>
+  );
 }

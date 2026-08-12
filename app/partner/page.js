@@ -1,4 +1,6 @@
 'use client';
+import { goPartnerLogin, goPartnerPath } from '@/lib/partner-nav';
+import { hardNavigate } from '@/lib/compat';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
@@ -172,11 +174,17 @@ export default function PartnerDashboard() {
     }
   }, [activeTab]);
 
+  // Sunmi Android 7.1 : ne jamais rester bloqué sur le spinner
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 15000);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
       authTokenRef.current = session.access_token || null;
@@ -200,7 +208,7 @@ export default function PartnerDashboard() {
       if (userError || !userData || !['restaurant', 'partner', 'admin'].includes(userData.role)) {
         console.log('❌ ACCÈS REFUSÉ - Redirection vers login');
         console.log('Rôle utilisateur:', userData?.role, 'Attendu: restaurant, partner ou admin');
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
       
@@ -246,7 +254,7 @@ export default function PartnerDashboard() {
         }
 
         // Pas de restaurant: flux normal de création
-        router.push('/profil-partenaire');
+        goPartnerPath('/profil-partenaire');
         return;
       }
 
@@ -1208,7 +1216,7 @@ export default function PartnerDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         console.error('❌ Aucune session trouvée');
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 
@@ -1282,7 +1290,7 @@ export default function PartnerDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         console.error('❌ Aucune session trouvée');
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 
@@ -1329,7 +1337,7 @@ export default function PartnerDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         console.error('❌ Aucune session trouvée');
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 
@@ -2762,8 +2770,12 @@ export default function PartnerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <p className="mt-4 text-gray-600 text-sm">Chargement espace partenaire…</p>
+        <a href="/login" className="mt-6 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold no-underline">
+          Connexion partenaire
+        </a>
       </div>
     );
   }
@@ -2899,7 +2911,7 @@ export default function PartnerDashboard() {
             <div className="flex items-center justify-between w-full gap-2 fold:gap-2">
               <div className="flex items-center space-x-1.5 fold:space-x-1.5 xs:space-x-3 min-w-0 flex-1">
                 <button
-                  onClick={() => router.push('/')}
+                  onClick={() => hardNavigate('/')}
                   className="bg-blue-600 dark:bg-blue-700 text-white p-1.5 fold:p-1.5 xs:p-2 sm:p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center space-x-1 fold:space-x-1 xs:space-x-2 flex-shrink-0"
                   title="Retour à l'accueil"
                 >
@@ -2932,7 +2944,7 @@ export default function PartnerDashboard() {
             {/* Boutons d'action - Responsive mobile et foldable */}
             <div className="grid grid-cols-3 fold:grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-1 fold:gap-1 xs:gap-2 sm:gap-3 lg:gap-4">
               <button
-                onClick={() => router.push('/partner/analytics')}
+                onClick={() => goPartnerPath('/partner/analytics')}
                 className="bg-purple-600 text-white px-1 fold:px-1 xs:px-2 sm:px-3 lg:px-4 py-1.5 fold:py-1.5 xs:py-2 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors flex flex-col items-center justify-center space-y-0.5 fold:space-y-0.5 xs:space-y-1 text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium"
               >
                 <FaChartLine className="h-4 w-4 sm:h-4 sm:w-4" />
@@ -2940,7 +2952,7 @@ export default function PartnerDashboard() {
                 <span className="sm:hidden">Stats</span>
               </button>
               <button
-                onClick={() => router.push('/partner/reports')}
+                onClick={() => goPartnerPath('/partner/reports')}
                 className="bg-green-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-green-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
                 <FaFileAlt className="h-4 w-4 sm:h-4 sm:w-4" />
@@ -2948,7 +2960,7 @@ export default function PartnerDashboard() {
                 <span className="sm:hidden">Rapports</span>
               </button>
               <button
-                onClick={() => router.push('/partner/factures')}
+                onClick={() => goPartnerPath('/partner/factures')}
                 className="bg-emerald-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-emerald-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
                 title="Factures et paiements reçus"
               >
@@ -2957,7 +2969,7 @@ export default function PartnerDashboard() {
                 <span className="sm:hidden">Factures</span>
               </button>
               <button
-                onClick={() => router.push('/partner/hours')}
+                onClick={() => goPartnerPath('/partner/hours')}
                 className="bg-orange-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-orange-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
                 <FaClock className="h-4 w-4 sm:h-4 sm:w-4" />
@@ -2965,7 +2977,7 @@ export default function PartnerDashboard() {
                 <span className="sm:hidden">Horaires</span>
               </button>
               <button
-                onClick={() => router.push('/partner/offre')}
+                onClick={() => goPartnerPath('/partner/offre')}
                 className="bg-amber-500 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-amber-600 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
                 title="Créer une offre / Promo"
               >
@@ -3012,7 +3024,7 @@ export default function PartnerDashboard() {
                 <span className="sm:hidden">{prepTimeMinutes || 25}m</span>
               </button>
               <button
-                onClick={() => router.push('/partner/settings')}
+                onClick={() => goPartnerPath('/partner/settings')}
                 className="bg-gray-600 text-white px-2 sm:px-3 lg:px-4 py-2 sm:py-2 rounded-lg hover:bg-gray-700 transition-colors flex flex-col items-center justify-center space-y-1 text-xs sm:text-sm font-medium"
               >
                 <svg className="h-4 w-4 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

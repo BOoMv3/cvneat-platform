@@ -8,6 +8,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Link from 'next/link';
 import { safeLocalStorage } from '@/lib/localStorage';
 import SupportContactBlock from '@/components/SupportContactBlock';
+import { fetchWithTimeout, navigateAfterLogin } from '@/lib/compat';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,11 +21,27 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get('reset') === 'success') {
+    let reset = '';
+    let confirm = '';
+    let suspended = '';
+    try {
+      if (typeof window !== 'undefined') {
+        const sp = new URLSearchParams(window.location.search || '');
+        reset = sp.get('reset') || '';
+        confirm = sp.get('confirm') || '';
+        suspended = sp.get('suspended') || '';
+      } else if (searchParams) {
+        reset = searchParams.get('reset') || '';
+        confirm = searchParams.get('confirm') || '';
+        suspended = searchParams.get('suspended') || '';
+      }
+    } catch (_) {}
+
+    if (reset === 'success') {
       setSuccess('Mot de passe mis à jour. Vous pouvez vous connecter avec votre nouveau mot de passe.');
-    } else if (searchParams.get('confirm') === 'success') {
+    } else if (confirm === 'success') {
       setSuccess('Compte confirmé. Connectez-vous avec votre email et mot de passe.');
-    } else if (searchParams.get('suspended') === '1') {
+    } else if (suspended === '1') {
       const msg = safeLocalStorage.getItem('cvneat-suspension-message');
       if (msg) {
         setError(msg);
@@ -71,12 +88,11 @@ export default function LoginPage() {
 
       if (isCredsOrUnconfirmed) {
         try {
-          const confirmRes = await fetch('/api/auth/ensure-email-confirmed', {
+          const confirmRes = await fetchWithTimeout('/api/auth/ensure-email-confirmed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: normalizedEmail }),
-            signal: AbortSignal.timeout(8000),
-          });
+          }, 8000);
           const confirmData = await confirmRes.json().catch(() => ({}));
           if (confirmData?.success && confirmData?.updated) {
             loginResult = await supabase.auth.signInWithPassword({
@@ -101,12 +117,11 @@ export default function LoginPage() {
         } else if (error.message.includes('User is banned') || error.message?.includes('banned')) {
           errorMessage = 'Ce compte est suspendu. Contactez le support CVN\'EAT.';
           try {
-            const suspRes = await fetch('/api/auth/suspension-info', {
+            const suspRes = await fetchWithTimeout('/api/auth/suspension-info', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: normalizedEmail }),
-              signal: AbortSignal.timeout(5000),
-            });
+            }, 5000);
             const susp = await suspRes.json().catch(() => ({}));
             if (susp?.suspended && susp?.message) {
               errorMessage = susp.message;
@@ -144,17 +159,16 @@ export default function LoginPage() {
 
           if (!accessToken) {
             setLoading(false);
-            router.push('/');
+            navigateAfterLogin('/');
             didNavigate = true;
             return;
           }
 
-          const meResponse = await fetch('/api/users/me', {
+          const meResponse = await fetchWithTimeout('/api/users/me', {
             headers: {
               Authorization: `Bearer ${accessToken}`,
             },
-            signal: AbortSignal.timeout(8000),
-          });
+          }, 8000);
 
           const meData = await meResponse.json().catch(() => ({}));
 
@@ -260,42 +274,42 @@ export default function LoginPage() {
           if (redirectAfterLogin) {
             localStorage.removeItem('redirectAfterLogin');
             setLoading(false);
-            router.push(redirectAfterLogin);
+            navigateAfterLogin(redirectAfterLogin);
             didNavigate = true;
             return;
           }
 
           if (role === 'admin') {
             setLoading(false);
-            router.push('/admin');
+            navigateAfterLogin('/admin');
             didNavigate = true;
           } else if (role === 'associe') {
             setLoading(false);
-            router.push('/admin');
+            navigateAfterLogin('/admin');
             didNavigate = true;
           } else if (role === 'comptable') {
             setLoading(false);
-            router.push('/comptable');
+            navigateAfterLogin('/comptable');
             didNavigate = true;
           } else if (role === 'delivery') {
             setLoading(false);
-            router.push('/delivery/dashboard');
+            navigateAfterLogin('/delivery/dashboard');
             didNavigate = true;
           } else if (role === 'restaurant' || role === 'partner') {
             setLoading(false);
-            router.push('/partner');
+            navigateAfterLogin('/partner');
             didNavigate = true;
           } else {
             // Pour les clients, rediriger vers la page d'accueil
             setLoading(false);
-            router.push('/');
+            navigateAfterLogin('/');
             didNavigate = true;
           }
         } catch (userError) {
           console.error('❌ Erreur récupération utilisateur:', userError);
           // Rediriger vers la page d'accueil en cas d'erreur
           setLoading(false);
-          router.push('/');
+          navigateAfterLogin('/');
           didNavigate = true;
         }
       } else {

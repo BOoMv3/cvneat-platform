@@ -5,6 +5,12 @@
   "engines": {
     "node": "24.x"
   },
+  "browserslist": [
+    "Android >= 7.1",
+    "Chrome >= 51",
+    "iOS >= 10",
+    "not dead"
+  ],
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbo",

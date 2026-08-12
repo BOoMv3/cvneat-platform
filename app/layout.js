@@ -101,6 +101,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="fr" className="scroll-smooth">
       <head>
+        {/* Polyfills Sunmi Android 7.1 — avant tout JS applicatif */}
+        <script src="/legacy-polyfills.js" />
         {/* Intercepteur fetch pour Capacitor - DOIT être chargé en premier */}
         <script
           dangerouslySetInnerHTML={{
@@ -138,6 +140,11 @@ export default function RootLayout({ children }) {
                     return roleNow() === 'admin';
                   }
 
+                  function isRestaurantNow() {
+                    var r = roleNow();
+                    return r === 'restaurant' || r === 'partner' || r === 'partenaire';
+                  }
+
                   // Routes autorisées pour les livreurs (profil, factures, messages, etc.)
                   function deliveryPathAllowed(raw) {
                     try {
@@ -161,6 +168,10 @@ export default function RootLayout({ children }) {
                     }
                     if (isAdminNow() && pathNow === '/') {
                       window.location.replace('/admin');
+                      return;
+                    }
+                    if (isRestaurantNow() && pathNow === '/') {
+                      window.location.replace('/partner');
                       return;
                     }
                   } catch (e0) {

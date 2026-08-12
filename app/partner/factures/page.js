@@ -1,4 +1,5 @@
 'use client';
+import { goPartnerLogin } from '@/lib/partner-nav';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -45,7 +46,7 @@ export default function PartnerFacturesPage() {
           data: { session },
         } = await supabase.auth.getSession();
         if (!session?.user) {
-          router.push('/login');
+          goPartnerLogin();
           return;
         }
 
@@ -91,7 +92,7 @@ export default function PartnerFacturesPage() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        router.push('/login');
+        goPartnerLogin();
         return;
       }
 
