@@ -125,6 +125,8 @@ export default function PartnerDashboard() {
   const [partnerMessagesUnread, setPartnerMessagesUnread] = useState(0);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [printStatus, setPrintStatus] = useState(null); // { type:'info'|'ok'|'err', text }
+  const [printingOrderId, setPrintingOrderId] = useState(null);
   const router = useRouter();
 
   const [supplementForm, setSupplementForm] = useState({
@@ -1538,6 +1540,9 @@ export default function PartnerDashboard() {
   };
 
   const handlePrintOrder = async (order) => {
+    const orderId = order?.id || 'unknown';
+    setPrintingOrderId(orderId);
+    setPrintStatus({ type: 'info', text: 'Impression en cours…' });
     try {
       const items = getOrderItems(order);
       const subtotal = getSubtotal(order);
@@ -1549,21 +1554,30 @@ export default function PartnerDashboard() {
         deliveryFee,
         total,
       });
+      console.log('[partner] print click', { orderId, ticketLen: ticket.length, hasCap: !!window.Capacitor });
       const result = await printPartnerTicket(ticket);
       if (!result.ok) {
         throw new Error(result.error || "Impossible d'imprimer");
       }
-      if (result.method === 'sunmi') {
-        alert('Ticket envoyé à l’imprimante Sunmi.');
-      } else if (result.method === 'rawbt') {
-        alert(result.warning || 'Impression lancée via RawBT.');
-      }
+      setPrintStatus({
+        type: 'ok',
+        text:
+          result.method === 'sunmi'
+            ? 'Ticket envoyé à l’imprimante Sunmi.'
+            : 'Impression lancée.',
+      });
     } catch (error) {
       console.error('Erreur impression ticket partenaire:', error);
-      alert(
-        error?.message ||
-          "Impression impossible. Utilise l'app CVN'EAT sur le Sunmi (pas Chrome), avec une APK qui inclut le plugin imprimante."
-      );
+      setPrintStatus({
+        type: 'err',
+        text: error?.message || "Impression impossible",
+      });
+    } finally {
+      setPrintingOrderId(null);
+      // garder le message visible
+      setTimeout(() => {
+        setPrintStatus((prev) => (prev?.type === 'info' ? null : prev));
+      }, 8000);
     }
   };
 
@@ -2788,6 +2802,27 @@ export default function PartnerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {printStatus && (
+        <div
+          className={`fixed top-0 left-0 right-0 z-[10000] px-4 py-3 text-center text-sm font-semibold shadow-lg ${
+            printStatus.type === 'ok'
+              ? 'bg-green-600 text-white'
+              : printStatus.type === 'err'
+                ? 'bg-red-600 text-white'
+                : 'bg-orange-500 text-white'
+          }`}
+          role="status"
+        >
+          {printStatus.text}
+          <button
+            type="button"
+            className="ml-3 underline font-normal"
+            onClick={() => setPrintStatus(null)}
+          >
+            Fermer
+          </button>
+        </div>
+      )}
       <PartnerDailyOpenModal
         restaurant={restaurant}
         open={showDailyOpenModal}
@@ -4038,11 +4073,17 @@ export default function PartnerDashboard() {
                               
                               <div className="flex flex-wrap gap-2 justify-end">
                                 <button
-                                  onClick={() => handlePrintOrder(order)}
-                                  className="bg-gray-900 text-white px-3 py-2 rounded text-sm hover:bg-black transition-colors"
-                                  title="Imprimer ticket RawBT"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handlePrintOrder(order);
+                                  }}
+                                  disabled={printingOrderId === order.id}
+                                  className="bg-gray-900 text-white px-3 py-2 rounded text-sm hover:bg-black transition-colors disabled:opacity-60"
+                                  title="Imprimer ticket cuisine (Sunmi)"
                                 >
-                                  🖨️ Imprimer
+                                  {printingOrderId === order.id ? 'Impression…' : 'Imprimer'}
                                 </button>
                                 {order.statut === 'en_attente' && (
                                   <>

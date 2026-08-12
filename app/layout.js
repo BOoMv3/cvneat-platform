@@ -110,6 +110,31 @@ export default function RootLayout({ children }) {
               (function() {
                 try {
                   if (typeof window === 'undefined' || !window.location) return;
+
+                  // Helper impression Sunmi (bridge natif) — avant React
+                  window.__cvneatSunmiPrint = function(text) {
+                    return new Promise(function(resolve, reject) {
+                      try {
+                        var cap = window.Capacitor;
+                        if (!cap) {
+                          reject(new Error('Capacitor absent — ouvre l’app CVN’EAT'));
+                          return;
+                        }
+                        var payload = { text: String(text || '') };
+                        if (typeof cap.nativePromise === 'function') {
+                          cap.nativePromise('SunmiPrint', 'printText', payload).then(resolve).catch(reject);
+                          return;
+                        }
+                        if (cap.Plugins && cap.Plugins.SunmiPrint && typeof cap.Plugins.SunmiPrint.printText === 'function') {
+                          cap.Plugins.SunmiPrint.printText(payload).then(resolve).catch(reject);
+                          return;
+                        }
+                        reject(new Error('Bridge SunmiPrint indisponible'));
+                      } catch (eP) {
+                        reject(eP);
+                      }
+                    });
+                  };
                   
                   function readCachedRole() {
                     try {

@@ -270,15 +270,14 @@ export default function PartnerOrders() {
       if (!result.ok) {
         throw new Error(result.error || "Impossible d'imprimer");
       }
-      if (result.method === 'sunmi') {
-        alert('Ticket envoyé à l’imprimante Sunmi.');
-      }
+      setError('');
+      // Bandeau + message visible (alert souvent bloqué sur Sunmi WebView)
+      window.__cvneat_last_print = result;
     } catch (err) {
       const msg =
         err?.message ||
         "Impression impossible. Utilise l'app CVN'EAT sur le Sunmi (pas Chrome).";
       setError(msg);
-      alert(msg);
       console.error('Erreur impression ticket:', err);
     }
   };
