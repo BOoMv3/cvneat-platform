@@ -1563,7 +1563,7 @@ export default function PartnerDashboard() {
         type: 'ok',
         text:
           result.method === 'sunmi'
-            ? 'Ticket envoyé à l’imprimante Sunmi.'
+            ? 'Commande envoyée à l’imprimante Sunmi — vérifie qu’il y a du papier thermique.'
             : 'Impression lancée.',
       });
     } catch (error) {
