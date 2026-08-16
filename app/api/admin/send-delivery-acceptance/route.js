@@ -15,8 +15,27 @@ const logoUrl = 'https://www.cvneat.fr/cvneat-logo.png';
 const loginUrl = 'https://www.cvneat.fr/login';
 const siteUrl = 'https://www.cvneat.fr';
 
-function buildHtml(prenom) {
+function buildCredentialsBlock(loginEmail, password) {
+  if (!loginEmail || !password) return '';
+  return `
+              <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:18px;margin:0 0 20px;">
+                <p style="margin:0 0 10px;font-size:15px;font-weight:bold;color:#1e3a8a;">Vos identifiants de connexion</p>
+                <p style="margin:0 0 6px;font-size:14px;line-height:1.6;color:#1e40af;">
+                  <strong>Email :</strong> ${loginEmail}
+                </p>
+                <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#1e40af;">
+                  <strong>Mot de passe :</strong> ${password}
+                </p>
+                <p style="margin:0;font-size:13px;line-height:1.5;color:#1e3a8a;">
+                  Connectez-vous sur <a href="${loginUrl}" style="color:#ea580c;font-weight:bold;">cvneat.fr/login</a> puis ouvrez votre espace livreur.
+                  Nous vous recommandons de changer le mot de passe après la première connexion.
+                </p>
+              </div>`;
+}
+
+function buildHtml(prenom, { loginEmail, password } = {}) {
   const name = prenom || '';
+  const credentialsHtml = buildCredentialsBlock(loginEmail, password);
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -45,6 +64,7 @@ function buildHtml(prenom) {
               <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;">
                 Votre compte livreur est maintenant activé. Connectez-vous pour accéder à votre espace et commencer les courses.
               </p>
+              ${credentialsHtml}
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px;">
                 <tr>
                   <td style="border-radius:10px;background:#ea580c;">
@@ -106,13 +126,26 @@ function buildHtml(prenom) {
 </html>`;
 }
 
-function buildText(prenom) {
+function buildText(prenom, { loginEmail, password } = {}) {
+  const credentials =
+    loginEmail && password
+      ? `
+
+VOS IDENTIFIANTS DE CONNEXION
+Email : ${loginEmail}
+Mot de passe : ${password}
+Connexion : ${loginUrl}
+(Changez le mot de passe après la première connexion.)
+`
+      : `
+
+Connectez-vous : ${loginUrl}
+`;
+
   return `Bonjour ${prenom},
 
 Votre candidature livreur CVN'EAT a été acceptée. Votre compte est activé.
-
-Connectez-vous : ${loginUrl}
-
+${credentials}
 OBLIGATION LÉGALE — AUTO-ENTREPRENEUR
 Pour livrer avec CVN'EAT, vous devez obligatoirement être déclaré en auto-entrepreneur (micro-entreprise) auprès de l'URSSAF.
 CVN'EAT ne vous salarie pas : vous êtes indépendant.
@@ -154,16 +187,26 @@ export async function POST(request) {
       body = {};
     }
 
-    // Un destinataire : { email, prenom } — ou liste : { recipients: [{email,prenom}] }
+    // Un destinataire : { email, prenom, loginEmail?, password? }
+    // ou liste : { recipients: [{email,prenom,loginEmail?,password?}] }
     // Sans body → liste par défaut (batch historique)
     let recipients = DEFAULT_RECIPIENTS;
     if (body?.email) {
-      recipients = [{ email: String(body.email).trim(), prenom: (body.prenom || '').trim() || 'Livreur' }];
+      recipients = [
+        {
+          email: String(body.email).trim(),
+          prenom: (body.prenom || '').trim() || 'Livreur',
+          loginEmail: (body.loginEmail || body.email || '').trim() || null,
+          password: body.password ? String(body.password) : null,
+        },
+      ];
     } else if (Array.isArray(body?.recipients) && body.recipients.length > 0) {
       recipients = body.recipients
         .map((r) => ({
           email: String(r.email || '').trim(),
           prenom: String(r.prenom || '').trim() || 'Livreur',
+          loginEmail: (r.loginEmail || r.email || '').trim() || null,
+          password: r.password ? String(r.password) : null,
         }))
         .filter((r) => r.email);
     }
@@ -177,11 +220,12 @@ export async function POST(request) {
 
     for (const r of recipients) {
       try {
+        const creds = { loginEmail: r.loginEmail || r.email, password: r.password || null };
         const info = await emailService.sendEmail({
           to: r.email,
           subject,
-          html: buildHtml(r.prenom),
-          text: buildText(r.prenom),
+          html: buildHtml(r.prenom, creds),
+          text: buildText(r.prenom, creds),
         });
         results.push({
           email: r.email,
@@ -194,14 +238,18 @@ export async function POST(request) {
     }
 
     try {
+      const firstCreds = {
+        loginEmail: recipients[0].loginEmail || recipients[0].email,
+        password: recipients[0].password || null,
+      };
       const verify = await emailService.sendEmail({
         to: 'contact@cvneat.fr',
         subject: `[COPIE VÉRIFICATION] ${subject}`,
         html:
-          buildHtml(recipients[0].prenom) +
+          buildHtml(recipients[0].prenom, firstCreds) +
           `<p style="padding:16px;font-size:12px;color:#6b7280;">Copie de vérification admin — emails envoyés à : ${recipients.map((x) => x.email).join(', ')}</p>`,
         text:
-          buildText(recipients[0].prenom) +
+          buildText(recipients[0].prenom, firstCreds) +
           `\n\nCopie vérification — destinataires: ${recipients.map((x) => x.email).join(', ')}`,
       });
       results.push({
