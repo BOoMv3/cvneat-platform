@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeRestaurantOpenFields } from '../../../../lib/restaurant-open-compute';
 import { isMaskedRestaurantName } from '../../../../lib/masked-restaurants';
+import { applyClientDeliverySurcharge } from '../../../../lib/delivery-client-fee';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -133,7 +134,7 @@ export async function GET(request, { params }) {
     // Ajouter les valeurs par défaut pour les colonnes manquantes
     const restaurantWithDefaults = {
       ...data,
-      frais_livraison: data.frais_livraison || 2.50,
+      frais_livraison: applyClientDeliverySurcharge(parseFloat(data.frais_livraison) || 2.5),
       deliveryTime: data.deliveryTime || 30,
       minOrder: data.minOrder || 15,
       rating: calculatedRating || data.rating || 0, // Utiliser la note calculée ou celle de la DB

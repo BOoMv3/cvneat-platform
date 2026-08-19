@@ -11,6 +11,7 @@ import DeliverySlotPicker from '@/components/DeliverySlotPicker';
 import { formatSlotRangeParis } from '@/lib/delivery-slots';
 import SupportContactBlock from '@/components/SupportContactBlock';
 import DriverSearchPanel from '@/components/DriverSearchPanel';
+import { CLIENT_DELIVERY_MIN_FEE_EUR } from '@/lib/delivery-client-fee';
 // PROMO TERMINÉE : Plus besoin du composant FreeDeliveryBanner
 // import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
 import { 
@@ -72,7 +73,7 @@ export default function Checkout() {
   const [cart, setCart] = useState([]);
   const [restaurant, setRestaurant] = useState(null);
   const [cartTotal, setCartTotal] = useState(0);
-  const [fraisLivraison, setFraisLivraison] = useState(2.50); // Base 2,50€ + 0,50€/km
+  const [fraisLivraison, setFraisLivraison] = useState(CLIENT_DELIVERY_MIN_FEE_EUR);
   const [totalAvecLivraison, setTotalAvecLivraison] = useState(0);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -356,7 +357,7 @@ export default function Checkout() {
     if (savedCart && Array.isArray(savedCart.items)) {
       setCart(savedCart.items);
       setRestaurant(savedCart.restaurant || null);
-      setFraisLivraison(savedCart.frais_livraison || 2.50);
+      setFraisLivraison(savedCart.frais_livraison || CLIENT_DELIVERY_MIN_FEE_EUR);
     }
     setLoading(false);
   }, []);
@@ -633,7 +634,7 @@ export default function Checkout() {
 
       // SUCCÈS - Mettre à jour les frais (calculés par l'API: 2,50€ + 0,50€/km)
       // IMPORTANT: Arrondir à 2 décimales pour garantir la cohérence
-      const newFrais = Math.round(parseFloat(data.frais_livraison || 2.50) * 100) / 100;
+      const newFrais = Math.round(parseFloat(data.frais_livraison || CLIENT_DELIVERY_MIN_FEE_EUR) * 100) / 100;
       setDeliveryFromApi(newFrais);
       const withCvneat = applyCvneatToRawDelivery(newFrais);
       setFraisLivraison(withCvneat);
@@ -764,9 +765,9 @@ export default function Checkout() {
         finalDeliveryFee = Math.round(parseFloat(recalculateData.frais_livraison || 0) * 100) / 100;
 
         // Vérification de sécurité : minimum 2,50 € seulement si des frais sont facturés
-        if (finalDeliveryFee > 0 && finalDeliveryFee < 2.5) {
+        if (finalDeliveryFee > 0 && finalDeliveryFee < CLIENT_DELIVERY_MIN_FEE_EUR) {
           console.warn('⚠️ Frais de livraison anormalement bas, utilisation du minimum');
-          finalDeliveryFee = 2.5;
+          finalDeliveryFee = CLIENT_DELIVERY_MIN_FEE_EUR;
         }
       } else {
         finalDeliveryFee = 0;
@@ -842,7 +843,7 @@ export default function Checkout() {
       const discountAmount = manualPromoDiscount + autoPromoDiscount;
       
       // Gérer la livraison gratuite si le code promo le prévoit (avant palier fidélité « livraison gratuite »)
-      let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || 2.50) * 100) / 100;
+      let finalDeliveryFeeForTotal = Math.round(parseFloat(finalDeliveryFee || fraisLivraison || CLIENT_DELIVERY_MIN_FEE_EUR) * 100) / 100;
       if (appliedPromoCode?.discountType === 'free_delivery') {
         finalDeliveryFeeForTotal = 0;
       } else if (appliedPromoCode?.discountType === 'delivery_percent') {

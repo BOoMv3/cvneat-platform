@@ -13,6 +13,7 @@ import { computeLoyaltyAdjustments, getLoyaltyRewardById } from '@/lib/loyalty-r
 import { computeCheckoutPlatformDiscountEur } from '@/lib/platform-promo';
 import { getTonightAutoPromo } from '@/lib/tonight-promo';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
+import { CLIENT_DELIVERY_MIN_FEE_EUR } from '@/lib/delivery-client-fee';
 import {
   buildOrderDeliverySlotColumns,
   parseClientDeliverySlot,
@@ -716,11 +717,14 @@ export async function POST(request) {
     let fraisLivraison = isPickupOrder
       ? 0
       : Math.round(parseFloat(deliveryFee ?? restaurant.frais_livraison ?? 0) * 100) / 100;
-    // Garde-fou: si frais entre 0 et 2.50€ (hors 0 = livraison déjà offerte côté client), forcer 2.50€
-    // Sauf promo « % sur la livraison » où les frais peuvent légitimement être sous 2,50€ après réduction.
-    if (fraisLivraison > 0 && fraisLivraison < 2.50 && !promoDeliveryPercent) {
-      console.warn('⚠️ Frais livraison anormalement bas, application du minimum 2.50€:', fraisLivraison);
-      fraisLivraison = 2.50;
+    // Garde-fou: si frais anormalement bas (hors livraison offerte), forcer le minimum client.
+    // Sauf promo « % sur la livraison » où les frais peuvent légitimement être sous le minimum après réduction.
+    if (fraisLivraison > 0 && fraisLivraison < CLIENT_DELIVERY_MIN_FEE_EUR && !promoDeliveryPercent) {
+      console.warn(
+        `⚠️ Frais livraison anormalement bas, application du minimum ${CLIENT_DELIVERY_MIN_FEE_EUR}€:`,
+        fraisLivraison
+      );
+      fraisLivraison = CLIENT_DELIVERY_MIN_FEE_EUR;
     }
     // Base course livreur: doit rester positive même si la livraison client est offerte (fidélité/promo).
     const fraisLivraisonBaseCourse = isPickupOrder ? 0 : fraisLivraison;

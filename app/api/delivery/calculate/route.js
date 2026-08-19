@@ -6,6 +6,7 @@ import {
   isBlockedDeliveryAddress,
   referencesCazilhacInText,
 } from '../../../../lib/delivery-address-rules';
+import { applyClientDeliverySurcharge } from '../../../../lib/delivery-client-fee';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1026,23 +1027,25 @@ function buildBreauZoneResponse({
   distanceSource = null,
 }) {
   if (minimumOrderReferenceAmount < MIN_ORDER_BREAU) {
+    const clientBreauFee = applyClientDeliverySurcharge(FEE_BREAU);
     return json({
       success: false,
       livrable: false,
       ...(distance != null ? { distance, distance_source: distanceSource } : {}),
       minimum_order_amount: MIN_ORDER_BREAU,
       order_amount_for_minimum: minimumOrderReferenceAmount,
-      required_delivery_fee: FEE_BREAU,
+      required_delivery_fee: clientBreauFee,
       message: `${BREAU_ZONE_LABEL}: minimum de commande ${MIN_ORDER_BREAU}€ obligatoire (articles, avant promo). Il vous manque ${(MIN_ORDER_BREAU - minimumOrderReferenceAmount).toFixed(2)}€.`,
       code: 'BREAU_MIN_ORDER',
     }, { status: 200 });
   }
 
+  const clientBreauFee = applyClientDeliverySurcharge(FEE_BREAU);
   return json({
     success: true,
     livrable: true,
     ...(distance != null ? { distance, distance_source: distanceSource } : {}),
-    frais_livraison: FEE_BREAU,
+    frais_livraison: clientBreauFee,
     minimum_order_amount: MIN_ORDER_BREAU,
     restaurant: restaurantName,
     ...(restaurantCoords ? { restaurant_coordinates: restaurantCoords } : {}),
@@ -1050,7 +1053,7 @@ function buildBreauZoneResponse({
     order_amount: orderAmountNumeric,
     order_amount_for_minimum: minimumOrderReferenceAmount,
     client_address: clientAddress,
-    message: `${BREAU_ZONE_LABEL}: livraison possible à ${FEE_BREAU.toFixed(2)}€ (minimum ${MIN_ORDER_BREAU}€ de commande).`,
+    message: `${BREAU_ZONE_LABEL}: livraison possible à ${clientBreauFee.toFixed(2)}€ (minimum ${MIN_ORDER_BREAU}€ de commande).`,
   });
 }
 
@@ -1374,6 +1377,7 @@ export async function POST(request) {
         city: clientCoords.city,
       });
       const zoneDeliveryFee = isAveze ? FEE_AVEZE : FEE_LE_VIGAN;
+      const clientZoneFee = applyClientDeliverySurcharge(zoneDeliveryFee);
       const zoneLabel = isAveze ? 'Avèze (30120)' : LE_VIGAN_ZONE_LABEL;
       if (minimumOrderReferenceAmount < MIN_ORDER_LE_VIGAN) {
         return json({
@@ -1383,7 +1387,7 @@ export async function POST(request) {
           distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
           minimum_order_amount: MIN_ORDER_LE_VIGAN,
           order_amount_for_minimum: minimumOrderReferenceAmount,
-          required_delivery_fee: zoneDeliveryFee,
+          required_delivery_fee: clientZoneFee,
           message: `${zoneLabel}: minimum de commande ${MIN_ORDER_LE_VIGAN}€ obligatoire (articles, avant promo). Il vous manque ${(MIN_ORDER_LE_VIGAN - minimumOrderReferenceAmount).toFixed(2)}€.`,
           code: 'LE_VIGAN_MIN_ORDER',
         }, { status: 200 });
@@ -1394,7 +1398,7 @@ export async function POST(request) {
         livrable: true,
         distance: tempRoundedDistance,
         distance_source: roadDistanceKm != null ? 'route' : 'vol_oiseau',
-        frais_livraison: zoneDeliveryFee,
+        frais_livraison: clientZoneFee,
         minimum_order_amount: MIN_ORDER_LE_VIGAN,
         restaurant: restaurantName,
         restaurant_coordinates: restaurantCoords,
@@ -1402,7 +1406,7 @@ export async function POST(request) {
         order_amount: orderAmountNumeric,
         order_amount_for_minimum: minimumOrderReferenceAmount,
         client_address: clientCoords.display_name,
-        message: `${zoneLabel}: livraison possible à ${zoneDeliveryFee.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande).`
+        message: `${zoneLabel}: livraison possible à ${clientZoneFee.toFixed(2)}€ (minimum ${MIN_ORDER_LE_VIGAN}€ de commande).`
       });
     }
 
@@ -1457,7 +1461,7 @@ export async function POST(request) {
 
     const isGanges = isGangesAddress(clientAddress);
     if (deliveryDistanceKm < 0.01 || isGanges) {
-      const finalDeliveryFee = 3; // Ganges = 3€ fixe
+      const finalDeliveryFee = applyClientDeliverySurcharge(FEE_GANGES);
       console.log(`📏 ${isGanges ? 'Ganges (adresse)' : 'Distance très faible'} → ${finalDeliveryFee}€`);
       return json({
         success: true,
@@ -1489,8 +1493,8 @@ export async function POST(request) {
     }
 
     // 7. Frais fixes par commune : Laroque/Moulès/Cazilhac 5€, Brissac 7,50€, reste 7€
-    const finalDeliveryFee = getFixedDeliveryFeeByTown(clientCoords.city, clientAddress);
-    console.log(`💰 Frais (tarif commune): ${finalDeliveryFee}€`);
+    const finalDeliveryFee = applyClientDeliverySurcharge(getFixedDeliveryFeeByTown(clientCoords.city, clientAddress));
+    console.log(`💰 Frais (tarif commune + supplément client): ${finalDeliveryFee}€`);
 
     return json({
       success: true,

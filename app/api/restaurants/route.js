@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { hasExplicitScheduleForDay } from '../../../lib/restaurant-horaires-paris';
 import { normalizeRestaurantOpenFields } from '../../../lib/restaurant-open-compute';
 import { isMaskedRestaurantName } from '../../../lib/masked-restaurants';
+import { applyClientDeliverySurcharge } from '../../../lib/delivery-client-fee';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -186,6 +187,7 @@ export async function GET() {
       const fm = openFields.ferme_manuellement;
       return {
         ...r,
+        frais_livraison: applyClientDeliverySurcharge(parseFloat(r.frais_livraison) || 2.5),
         cuisine_type: r.type_cuisine ?? null,
         ferme_manuellement: fm,
         ouvert_manuellement: false,
