@@ -1,6 +1,7 @@
 'use client';
 import { goPartnerLogin, goPartnerPath } from '@/lib/partner-nav';
-import { hardNavigate } from '@/lib/compat';
+import { hardNavigate, isLegacyAndroid, fetchWithTimeout, legacyPollingIntervalMs } from '@/lib/compat';
+import { dispatchPartnerNewOrder } from '@/lib/partner-order-alert-bridge';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
@@ -153,6 +154,23 @@ export default function PartnerDashboard() {
   // Variable pour éviter les requêtes simultanées (utiliser useRef pour persister entre renders)
   const isFetchingRef = useRef(false);
   const isFetchingCombosRef = useRef(false);
+  const fetchOrdersDebounceRef = useRef(null);
+  const lastFetchOrdersAtRef = useRef(0);
+
+  /** Refresh commandes debouncé — évite 3 fetch simultanés au moment d'une notif (Sunmi). */
+  const scheduleFetchOrders = (restaurantId, delayMs) => {
+    if (!restaurantId) return;
+    clearTimeout(fetchOrdersDebounceRef.current);
+    const delay =
+      typeof delayMs === 'number'
+        ? delayMs
+        : isLegacyAndroid()
+          ? 2500
+          : 800;
+    fetchOrdersDebounceRef.current = setTimeout(() => {
+      fetchOrders(restaurantId).catch(() => {});
+    }, delay);
+  };
 
   // Synchroniser activeTab avec l'URL hash (uniquement lors des clics de navigation, pas au chargement)
   useEffect(() => {
@@ -343,11 +361,15 @@ export default function PartnerDashboard() {
             if (data?.type === 'prep_time_prompt') {
               setShowPrepTimeModal(true);
             }
-            // Nouvelle commande (livreur a accepté) — déclencher l'alerte dans RealTimeNotifications
+            // Nouvelle commande — popup d'abord, refresh léger ensuite (évite crash Sunmi)
             if (data?.type === 'new_order' && data?.order) {
-              window.dispatchEvent(new CustomEvent('partner-new-order', { detail: data.order }));
-              setActiveTab('orders');
-              if (restaurant?.id) fetchOrders(restaurant.id);
+              dispatchPartnerNewOrder(data.order);
+              if (!isLegacyAndroid()) {
+                setActiveTab('orders');
+              }
+              if (restaurant?.id) {
+                scheduleFetchOrders(restaurant.id);
+              }
             }
           } catch {
             // ignore
@@ -384,7 +406,7 @@ export default function PartnerDashboard() {
   }, [restaurant?.id]);
 
   const playPrepPromptSound = async () => {
-    if (!prepPromptAudioEnabled) return;
+    if (!prepPromptAudioEnabled || isLegacyAndroid()) return;
     try {
       // AudioContext (beep) — évite de dépendre d'un fichier audio
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -420,8 +442,9 @@ export default function PartnerDashboard() {
     }
   };
 
-  // Tenter d'“unlock” l'audio après la première interaction utilisateur
+  // Tenter d'“unlock” l'audio après la première interaction utilisateur (hors Sunmi)
   useEffect(() => {
+    if (isLegacyAndroid()) return undefined;
     const unlock = async () => {
       if (audioUnlockedRef.current) return;
       audioUnlockedRef.current = true;
@@ -545,9 +568,9 @@ export default function PartnerDashboard() {
       const ordersInterval = setInterval(() => {
         // Vérifier que l'onglet est actif avant de rafraîchir
         if (document.visibilityState === 'visible') {
-          fetchOrders(restaurant.id);
+          fetchOrders(restaurant.id).catch(() => {});
         }
-      }, 60000); // 60 secondes (augmenté pour éviter rate limiting)
+      }, legacyPollingIntervalMs(60000, 120000));
       
       // Nettoyer l'intervalle lors du démontage
       return () => {
@@ -1645,28 +1668,32 @@ export default function PartnerDashboard() {
   const fetchOrders = async (restaurantId) => {
     // Éviter les requêtes simultanées
     if (isFetchingRef.current) {
-      console.log('⏳ fetchOrders: Requête déjà en cours, ignorée');
+      return;
+    }
+
+    const minGap = isLegacyAndroid() ? 4000 : 1500;
+    if (Date.now() - lastFetchOrdersAtRef.current < minGap) {
+      scheduleFetchOrders(restaurantId, minGap);
       return;
     }
 
     isFetchingRef.current = true;
+    const verbose = !isLegacyAndroid();
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('🔍 DEBUG fetchOrders - Session:', session ? 'Présente' : 'Absente');
       if (!session) {
-        console.error('❌ Aucune session trouvée');
         isFetchingRef.current = false;
         return;
       }
       
       const token = session.access_token;
-      console.log('🔍 DEBUG fetchOrders - Token:', token ? 'Présent' : 'Absent');
-      console.log('🔍 DEBUG fetchOrders - RestaurantId:', restaurantId);
       
-      const response = await fetch(`/api/partner/orders?restaurantId=${restaurantId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetchWithTimeout(
+        `/api/partner/orders?restaurantId=${restaurantId}`,
+        { headers: { 'Authorization': `Bearer ${token}` } },
+        isLegacyAndroid() ? 25000 : 15000
+      );
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
@@ -1693,41 +1720,10 @@ export default function PartnerDashboard() {
       }
       
       setOrders(data);
+      lastFetchOrdersAtRef.current = Date.now();
       
-      // DEBUG: Afficher les statuts des commandes pour diagnostiquer
-      console.log('🔍 DEBUG fetchOrders - Statuts des commandes:', 
-        data.map(o => ({ 
-          id: o.id?.slice(0, 8), 
-          statut: o.statut,
-          statut_type: typeof o.statut,
-          statut_length: o.statut?.length,
-          statut_raw: JSON.stringify(o.statut), // Pour voir les caractères invisibles
-          ready_for_delivery: o.ready_for_delivery,
-          created_at: o.created_at,
-          updated_at: o.updated_at
-        }))
-      );
-      
-      // DEBUG: Vérifier spécifiquement les commandes en_preparation
-      const prepOrders = data.filter(o => o.statut === 'en_preparation' || (o.statut && o.statut.includes('preparation')));
-      if (prepOrders.length > 0) {
-        console.log('✅ Commandes trouvées avec statut en_preparation:', prepOrders.map(o => ({
-          id: o.id?.slice(0, 8),
-          statut: o.statut,
-          statut_raw: JSON.stringify(o.statut)
-        })));
-      }
-      
-      // DEBUG: Vérifier spécifiquement les commandes qui devraient être en_preparation
-      const ordersWithIssues = data.filter(o => 
-        o.statut === 'annulee' && o.created_at && new Date(o.created_at).getTime() > Date.now() - 3600000 // Dernière heure
-      );
-      if (ordersWithIssues.length > 0) {
-        console.warn('⚠️ Commandes récemment créées mais marquées comme annulées:', ordersWithIssues.map(o => ({
-          id: o.id?.slice(0, 8),
-          statut: o.statut,
-          created_at: o.created_at
-        })));
+      if (verbose) {
+        console.log('🔍 fetchOrders:', data.length, 'commandes');
       }
         
       // Calculer les statistiques seulement si data est un tableau valide
@@ -3094,17 +3090,14 @@ export default function PartnerDashboard() {
                 <RealTimeNotifications 
                   restaurantId={restaurant?.id} 
                   onOrderClick={() => {
-                    // Ne pas réinitialiser les commandes, juste changer l'onglet
-                    if (activeTab !== 'orders') {
+                    if (activeTab !== 'orders' && !isLegacyAndroid()) {
                       setActiveTab('orders');
                     }
-                    // Forcer le scroll vers le haut pour voir l'onglet
                     setTimeout(() => {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      window.scrollTo({ top: 0, behavior: isLegacyAndroid() ? 'auto' : 'smooth' });
                     }, 100);
-                    // Rafraîchir les commandes pour s'assurer qu'elles sont à jour
                     if (restaurant?.id) {
-                      fetchOrders(restaurant.id);
+                      scheduleFetchOrders(restaurant.id);
                     }
                   }}
                 />

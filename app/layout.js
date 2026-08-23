@@ -551,6 +551,7 @@ export default function RootLayout({ children }) {
         <meta name="rating" content="General" />
       </head>
       <body className="font-sans transition-colors duration-300">
+        <Script src="/legacy-polyfills.js" strategy="beforeInteractive" />
         <ThemeProvider>
           {/* Init push natif (APNs/FCM) via Capacitor - sans UI */}
           <PushNotificationBootstrap />

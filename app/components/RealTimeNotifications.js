@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FaBell, FaTimes, FaShoppingCart, FaEuroSign, FaExclamationCircle } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
+import { isLegacyAndroid, legacyPollingIntervalMs } from '../../lib/compat';
 
 const isNotificationSupported = () => typeof window !== 'undefined' && 'Notification' in window;
 
@@ -36,13 +37,23 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
   const [alertOrder, setAlertOrder] = useState(null);
   const [isBlinking, setIsBlinking] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const stored = localStorage.getItem('restaurant-sound-enabled');
+      if (stored !== null) return stored === 'true';
+    } catch (_) {}
+    // Sunmi Android 7 : Web Audio instable → son désactivé par défaut
+    return !isLegacyAndroid();
+  });
   const [restaurant, setRestaurant] = useState(null);
   const audioContextRef = useRef(null);
   const lastOrderCheckRef = useRef(null);
   const soundIntervalRef = useRef(null);
   const soundRepeatCountRef = useRef(0);
   const triggerRef = useRef(null);
+  const triggerNewOrderAlertRef = useRef(null);
+  const legacyDevice = typeof window !== 'undefined' && isLegacyAndroid();
   const [panelStyle, setPanelStyle] = useState({});
   const [isSmallScreen, setIsSmallScreen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : true));
   const stopSoundInterval = () => {
@@ -175,53 +186,27 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
           if (isPickup && paymentJustPaid && payload.new.statut === 'en_attente') {
             console.log('✅ Nouvelle commande retrait payée, notification envoyée:', payload.new.id);
-            triggerNewOrderAlert(payload.new);
-          } else if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
-            console.log('✅ Nouvelle commande avec livreur assigné, notification envoyée:', payload.new.id);
-            triggerNewOrderAlert(payload.new);
-          } else {
-            console.log('⚠️ Commande ignorée (pas retrait payé ni nouveau livreur):', payload.new.id);
+            triggerNewOrderAlertRef.current?.(payload.new);
             return;
           }
-          
-          // IMPORTANT: Calculer le montant total avec les frais de livraison
-          const totalWithDelivery = (parseFloat(payload.new.total || 0) + parseFloat(payload.new.frais_livraison || 0)).toFixed(2);
-          
-          // Afficher une notification du navigateur
-          showBrowserNotification(isPickup ? 'Nouvelle commande à emporter !' : 'Nouvelle commande (Livreur assigné) !', {
-            body: isPickup
-              ? `Retrait #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`
-              : `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`,
-            icon: '/icon-192x192.png',
-            tag: 'new-order',
-            requireInteraction: false
-          });
-          
-          // Ajouter la notification avec un effet visuel
-          const newNotification = {
-            id: Date.now(),
-            type: 'new_order',
-            message: isPickup
-              ? `Retrait #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€`
-              : `Nouvelle commande #${payload.new.id?.slice(0, 8) || 'N/A'} - ${totalWithDelivery}€ (Livreur assigné)`,
-            data: payload.new,
-            timestamp: new Date().toISOString(),
-            isNew: true
-          };
-          
-          setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
-          
-          // Auto-fermer la pop-up après 10 secondes
-          setTimeout(() => {
-            setShowAlert(false);
-          }, 10000);
-          
-          // Supprimer l'effet "nouveau" après 5 secondes
-          setTimeout(() => {
-            setNotifications(prev => 
-              prev.map(n => n.id === newNotification.id ? { ...n, isNew: false } : n)
-            );
-          }, 5000);
+          if (oldHasDelivery && newHasDelivery && payload.new.statut === 'en_attente') {
+            console.log('✅ Nouvelle commande avec livreur assigné, notification envoyée:', payload.new.id);
+            triggerNewOrderAlertRef.current?.(payload.new);
+            return;
+          }
+          // Livreur déjà réservé avant paiement : alerte au passage payment_status → paid
+          if (
+            !isPickup &&
+            paymentJustPaid &&
+            newHasDelivery &&
+            payload.new.statut === 'en_attente'
+          ) {
+            console.log('✅ Commande livraison payée (livreur déjà assigné):', payload.new.id);
+            triggerNewOrderAlertRef.current?.(payload.new);
+            return;
+          }
+
+          console.log('⚠️ Commande ignorée (pas retrait payé ni nouveau livreur):', payload.new.id);
         }
       )
       .on('postgres_changes',
@@ -293,7 +278,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
             if (!orderError && fullOrder && fullOrder.statut === 'en_attente' && fullOrder.payment_status === 'paid') {
               const isPickup = String(fullOrder.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
               if (isPickup || fullOrder.livreur_id) {
-                triggerNewOrderAlert(fullOrder);
+                triggerNewOrderAlertRef.current?.(fullOrder);
                 lastOrderCheckRef.current = latestOrderId;
               }
             } else if (fullOrder && fullOrder.payment_status !== 'paid') {
@@ -339,7 +324,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       } catch (pollingError) {
         console.warn('⚠️ Erreur polling:', pollingError);
       }
-    }, 20000); // 20 s (limite charge serveur)
+    }, legacyPollingIntervalMs(20000, 45000)); // Sunmi : polling moins agressif
 
     // Nettoyer la connexion
     return () => {
@@ -357,7 +342,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       const order = e?.detail;
       if (order && order.restaurant_id === restaurantId) {
         console.log('🔔 Nouvelle commande reçue via SSE, déclenchement alerte:', order.id);
-        triggerNewOrderAlert(order);
+        triggerNewOrderAlertRef.current?.(order);
       }
     };
     window.addEventListener('partner-new-order', handler);
@@ -366,6 +351,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Fonction pour déclencher l'alerte de nouvelle commande
   const triggerNewOrderAlert = (order) => {
+    try {
     // Ne déclencher l'alerte que pour les commandes en attente
     if (order.statut !== 'en_attente') {
       console.log('⚠️ Commande non en attente, alerte ignorée:', order.statut);
@@ -392,25 +378,27 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     // Afficher une pop-up d'alerte
     setAlertOrder(order);
     setShowAlert(true);
-    setIsBlinking(true);
+    setIsBlinking(!legacyDevice);
     setPendingOrderId(order.id);
     
-    // Jouer une alerte sonore initiale (double bip contrôlé)
-    const initialPlayed = playNotificationSound();
+    // Jouer une alerte sonore initiale (désactivé par défaut sur Sunmi)
+    const initialPlayed = legacyDevice ? false : playNotificationSound();
     soundRepeatCountRef.current = initialPlayed ? 1 : 0;
-    if (initialPlayed) {
+    if (initialPlayed && !legacyDevice) {
       setTimeout(() => {
         playNotificationSound();
       }, 400);
     }
     
-    // Démarrer un intervalle pour jouer le son de rappel avec limite
+    // Rappels sonores — uniquement hors Sunmi (Web Audio instable)
     stopSoundInterval();
-    soundIntervalRef.current = setInterval(() => {
-      checkOrderStatusAndPlaySound(order.id);
-    }, SOUND_REPEAT_INTERVAL);
+    if (!legacyDevice) {
+      soundIntervalRef.current = setInterval(() => {
+        checkOrderStatusAndPlaySound(order.id);
+      }, SOUND_REPEAT_INTERVAL);
+    }
     
-    // Afficher une notification du navigateur
+    // Afficher une notification du navigateur (sans requireInteraction sur Sunmi)
     showBrowserNotification('🎉 NOUVELLE COMMANDE !', {
       body: `Commande #${order.id?.slice(0, 8) || 'N/A'} - ${(() => {
         // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
@@ -420,7 +408,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       })()}€`,
       icon: '/icon-192x192.png',
       tag: `order-${order.id}`,
-      requireInteraction: true,
+      requireInteraction: !legacyDevice,
       badge: '/icon-192x192.png'
     });
 
@@ -444,21 +432,29 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     setTimeout(() => {
       setIsBlinking(false);
     }, 10000);
+    } catch (alertError) {
+      console.warn('triggerNewOrderAlert erreur (non bloquante):', alertError?.message || alertError);
+    }
   };
+
+  triggerNewOrderAlertRef.current = triggerNewOrderAlert;
 
   // Fonction pour déclencher l'alerte de commande annulée
   const triggerCancellationAlert = (order) => {
+    try {
     console.log('🚨 DÉCLENCHEMENT ALERTE - Commande annulée:', order.id);
     
     // Afficher une pop-up d'alerte pour annulation
     setAlertOrder(order);
     setShowAlert(true);
-    setIsBlinking(true);
+    setIsBlinking(!legacyDevice);
     
-    // Jouer une alerte sonore (triple bip pour différencier d'une nouvelle commande)
-    playCancellationSound();
-    setTimeout(() => playCancellationSound(), 300);
-    setTimeout(() => playCancellationSound(), 600);
+    // Son uniquement hors Sunmi
+    if (!legacyDevice) {
+      playCancellationSound();
+      setTimeout(() => playCancellationSound(), 300);
+      setTimeout(() => playCancellationSound(), 600);
+    }
     
     // Afficher une notification du navigateur
     showBrowserNotification('⚠️ COMMANDE ANNULÉE', {
@@ -490,6 +486,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
     setTimeout(() => {
       setShowAlert(false);
     }, 30000);
+    } catch (cancelError) {
+      console.warn('triggerCancellationAlert erreur (non bloquante):', cancelError?.message || cancelError);
+    }
   };
 
   // Fonction pour jouer une alerte sonore d'annulation (son différent)
@@ -594,7 +593,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Fonction pour jouer une alerte sonore
   const playNotificationSound = () => {
-    if (!soundEnabled) {
+    if (!soundEnabled || isLegacyAndroid()) {
       return false;
     }
     try {
@@ -700,6 +699,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
 
   // Fallback pour le son (utilise un élément audio HTML5)
   const playFallbackSound = () => {
+    if (isLegacyAndroid()) return;
     try {
       // Créer un élément audio temporaire pour jouer un bip
       const audio = document.createElement('audio');
@@ -774,9 +774,9 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
       {/* Pop-up d'alerte pour nouvelle commande */}
       {showAlert && alertOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 ${isBlinking ? 'animate-pulse ring-4 ring-yellow-400 dark:ring-yellow-500' : ''}`} style={{
-            animation: isBlinking ? 'blink 0.5s infinite' : 'none',
-            boxShadow: isBlinking ? '0 0 20px rgba(251, 191, 36, 0.8)' : ''
+          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 ${isBlinking && !legacyDevice ? 'animate-pulse ring-4 ring-yellow-400 dark:ring-yellow-500' : 'ring-2 ring-yellow-400 dark:ring-yellow-500'}`} style={{
+            animation: isBlinking && !legacyDevice ? 'blink 0.5s infinite' : 'none',
+            boxShadow: isBlinking && !legacyDevice ? '0 0 20px rgba(251, 191, 36, 0.8)' : undefined
           }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
@@ -811,7 +811,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
-                      <p className={`text-2xl font-bold ${isBlinking ? 'text-red-600 dark:text-red-400 animate-bounce' : 'text-green-600 dark:text-green-400'}`}>
+                      <p className={`text-2xl font-bold ${isBlinking && !legacyDevice ? 'text-red-600 dark:text-red-400 animate-bounce' : 'text-green-600 dark:text-green-400'}`}>
                         {(() => {
                           // IMPORTANT: Le prix affiché côté restaurant ne doit PAS inclure les frais de livraison
                           // order.total contient uniquement le montant des articles (chiffre d'affaires du restaurant)
