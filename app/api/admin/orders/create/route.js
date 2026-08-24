@@ -347,8 +347,12 @@ export async function POST(request) {
         console.warn('⚠️ Restaurant sans user_id: push restaurant ignoré (admin)');
       }
 
-      // 2) Push livreurs + admins (même logique que webhook Stripe / paiement)
+      // 2) Livraison uniquement : push livreurs + admins. Retrait : pas de notif livreur.
       try {
+        const pickup = String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
+        if (pickup) {
+          console.log('ℹ️ Commande admin en retrait : pas de push livreurs');
+        } else {
         const pushResult = await sendDeliveryAppPush({
           orderId: order.id,
           total: notificationTotal,
@@ -360,6 +364,7 @@ export async function POST(request) {
           },
         });
         console.log('✅ Push livreurs+admins (admin create):', pushResult.sent, '/', pushResult.total);
+        }
       } catch (pushDelErr) {
         console.warn('⚠️ Push livreurs+admins (admin create):', pushDelErr?.message || pushDelErr);
       }

@@ -24,7 +24,7 @@ async function requireOrderOwner(request, orderId) {
   );
   const { data: order } = await admin
     .from('commandes')
-    .select('id, user_id, customer_email')
+    .select('id, user_id, customer_email, order_fulfillment')
     .eq('id', orderId)
     .maybeSingle();
   if (!order) return { error: 'Commande introuvable', status: 404 };
@@ -48,6 +48,13 @@ export async function POST(request, { params }) {
     if (!orderId) return NextResponse.json({ error: 'id requis' }, { status: 400 });
     const auth = await requireOrderOwner(request, orderId);
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+    if (String(auth.order?.order_fulfillment || 'delivery').toLowerCase() === 'pickup') {
+      return NextResponse.json(
+        { error: 'Pas de recherche livreur pour un retrait sur place' },
+        { status: 400 }
+      );
+    }
 
     const result = await startDriverSearch(orderId, { supabaseAdmin: auth.admin });
     const status = await getDriverSearchStatus(orderId, { supabaseAdmin: auth.admin });

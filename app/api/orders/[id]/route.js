@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { sendDeliveryAppPush } from '../../../../lib/sendDeliveryAppPush';
+import { isPickupOrder, notifyPartnerNewOrder } from '../../../../lib/notify-partner-new-order';
 // DÉSACTIVÉ: Remboursements automatiques désactivés
 // import { cleanupExpiredOrders } from '../../../../lib/orderCleanup';
 
@@ -663,7 +664,7 @@ export async function PUT(request, { params }) {
     // Lire la commande avant update (contrôle + transition)
     const { data: before, error: beforeErr } = await supabaseAdmin
       .from('commandes')
-      .select('id, user_id, restaurant_id, total, frais_livraison, discount_amount, loyalty_points_used, payment_status')
+      .select('id, user_id, restaurant_id, total, frais_livraison, discount_amount, loyalty_points_used, payment_status, order_fulfillment, statut')
       .eq('id', id)
       .single();
     if (beforeErr || !before) {
@@ -728,13 +729,20 @@ export async function PUT(request, { params }) {
     const hasStripePi = !!(body.stripe_payment_intent_id || data?.stripe_payment_intent_id);
     if (nowPaid && wasNotPaid && hasStripePi && before?.restaurant_id) {
       try {
-        const total = parseFloat(before.total || 0) + parseFloat(before.frais_livraison || 0);
-        const pushResult = await sendDeliveryAppPush({
-          orderId: id,
-          total: total.toFixed(2),
-          data: { type: 'new_order_available', orderId: id, url: '/delivery/dashboard' },
-        });
-        console.log(`✅ [PUT /orders] Push livreurs+admins (fallback):`, pushResult.sent, '/', pushResult.total);
+        const paidRow = { ...before, ...data };
+        if (isPickupOrder(paidRow)) {
+          const origin = new URL(request.url).origin;
+          await notifyPartnerNewOrder(paidRow, { supabaseAdmin, origin });
+          console.log(`✅ [PUT /orders] Retrait : resto + admin, pas de livreur:`, id);
+        } else {
+          const total = parseFloat(before.total || 0) + parseFloat(before.frais_livraison || 0);
+          const pushResult = await sendDeliveryAppPush({
+            orderId: id,
+            total: total.toFixed(2),
+            data: { type: 'new_order_available', orderId: id, url: '/delivery/dashboard' },
+          });
+          console.log(`✅ [PUT /orders] Push livreurs+admins (fallback):`, pushResult.sent, '/', pushResult.total);
+        }
       } catch (e) {
         console.warn(`⚠️ [PUT /orders] Push fallback erreur:`, e?.message);
       }

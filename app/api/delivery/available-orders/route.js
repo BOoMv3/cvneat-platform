@@ -143,8 +143,10 @@ export async function GET(request) {
     const merged = [...(paidRes.data || []), ...(searchRes.data || [])];
     const seen = new Set();
     const orders = merged.filter((o) => {
-      if (seen.has(o.id)) return false;
+      if (!o?.id || seen.has(o.id)) return false;
       seen.add(o.id);
+      // Filet de sécurité : jamais de retrait sur place chez les livreurs
+      if (String(o.order_fulfillment || 'delivery').toLowerCase() === 'pickup') return false;
       // Recherche: uniquement unpaid
       if (o.driver_search_status === 'searching') {
         const ps = String(o.payment_status || '').toLowerCase();
