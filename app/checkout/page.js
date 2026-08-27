@@ -1154,12 +1154,34 @@ export default function Checkout() {
       setSubmitting(true);
       const amount = pendingPaymentTotal || orderData?.paymentTotal;
       if (!amount || !orderData?.orderId) throw new Error('Montant ou commande manquant');
+      // Vérifier côté client qu’un livreur est bien réservé avant d’ouvrir Stripe
+      try {
+        const { data: { session: sess } } = await supabase.auth.getSession();
+        const token = sess?.access_token || checkoutAccessToken;
+        if (token) {
+          const st = await fetch(`/api/orders/${orderData.orderId}/driver-search`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const json = await st.json().catch(() => ({}));
+          if (!json.reserved || !json.livreur_id) {
+            throw new Error(
+              'Le livreur n’est plus réservé. Relance la recherche ou passe en retrait sur place.'
+            );
+          }
+        }
+      } catch (verifyErr) {
+        if (verifyErr?.message?.includes('Relance') || verifyErr?.message?.includes('réservé')) {
+          throw verifyErr;
+        }
+      }
       await createPaymentIntentForOrder(amount, orderData.orderId);
       FacebookPixelEvents.initiateCheckout(cartTotal, cart);
       setShowDriverSearch(false);
       setShowPaymentForm(true);
     } catch (e) {
       alert(e.message || 'Erreur préparation paiement');
+      setShowPaymentForm(false);
+      setShowDriverSearch(true);
     } finally {
       setSubmitting(false);
     }
@@ -2069,6 +2091,14 @@ export default function Checkout() {
                     setOrderData(null);
                   }}
                 />
+              </div>
+            ) : showDriverSearch && orderData?.orderId && !checkoutAccessToken ? (
+              <div className="mt-4 sm:mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 text-sm text-amber-900 dark:text-amber-100">
+                Session expirée : reconnecte-toi pour lancer la recherche d&apos;un livreur avant de payer.
+              </div>
+            ) : orderFulfillment === 'delivery' && showPaymentForm && !checkoutAccessToken ? (
+              <div className="mt-4 sm:mt-6 p-4 bg-red-50 rounded-xl border border-red-200 text-sm text-red-800">
+                Paiement livraison impossible sans livreur. Relance la commande.
               </div>
             ) : (
               <div className="mt-4 sm:mt-6">

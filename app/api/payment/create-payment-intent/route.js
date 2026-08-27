@@ -66,11 +66,40 @@ export async function POST(request) {
         try {
           const { data: order, error: orderErr } = await sb
             .from('commandes')
-            .select('id, discount_amount, promo_code_id, frais_livraison, total, platform_discount_amount')
+            .select(
+              'id, discount_amount, promo_code_id, frais_livraison, total, platform_discount_amount, order_fulfillment, livreur_id, payment_status, statut'
+            )
             .eq('id', orderId)
             .single();
 
           if (!orderErr && order) {
+            // Livraison : un livreur doit avoir accepté AVANT le paiement.
+            // Sans ça on se retrouve avec une commande payée orpheline (cas Smaash 27/08).
+            const fulfillment = String(order.order_fulfillment || 'delivery').toLowerCase();
+            const alreadyPaid = ['paid', 'succeeded'].includes(
+              String(order.payment_status || '').toLowerCase()
+            );
+            if (
+              fulfillment !== 'pickup' &&
+              !order.livreur_id &&
+              !alreadyPaid &&
+              order.statut !== 'annulee'
+            ) {
+              console.warn('❌ create-payment-intent refusé: livraison sans livreur', {
+                orderId,
+                fulfillment,
+                livreur_id: order.livreur_id,
+              });
+              return NextResponse.json(
+                {
+                  error:
+                    'Aucun livreur n’a encore accepté cette course. Attends qu’un livreur soit trouvé avant de payer, ou choisis le retrait sur place.',
+                  code: 'DRIVER_REQUIRED_BEFORE_PAYMENT',
+                },
+                { status: 409, headers: corsHeaders }
+              );
+            }
+
             const PLATFORM_FEE = 0.49;
             const AMOUNT_TOLERANCE = 0.50; // Tolérance arrondi (50 centimes) pour éviter refus sur petits écarts
 
