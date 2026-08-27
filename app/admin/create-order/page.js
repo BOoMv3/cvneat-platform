@@ -40,6 +40,9 @@ export default function AdminCreateOrder() {
     postalCode: '',
     instructions: ''
   });
+
+  /** 'delivery' | 'pickup' — même logique que le checkout client, sans paiement Stripe */
+  const [orderFulfillment, setOrderFulfillment] = useState('delivery');
   
   const [customerInfo, setCustomerInfo] = useState({
     firstName: '',
@@ -617,7 +620,8 @@ export default function AdminCreateOrder() {
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    const deliveryFee = selectedRestaurantData?.frais_livraison || 0;
+    const deliveryFee =
+      orderFulfillment === 'pickup' ? 0 : selectedRestaurantData?.frais_livraison || 0;
     return subtotal + deliveryFee;
   };
 
@@ -632,7 +636,10 @@ export default function AdminCreateOrder() {
       return;
     }
 
-    if (!deliveryInfo.address || !deliveryInfo.city || !deliveryInfo.postalCode) {
+    if (
+      orderFulfillment === 'delivery' &&
+      (!deliveryInfo.address || !deliveryInfo.city || !deliveryInfo.postalCode)
+    ) {
       setError('Veuillez remplir l\'adresse de livraison');
       return;
     }
@@ -687,19 +694,28 @@ export default function AdminCreateOrder() {
       const orderData = {
         restaurantId: selectedRestaurant,
         items: items,
-        deliveryInfo: {
-          address: deliveryInfo.address,
-          city: deliveryInfo.city,
-          postalCode: deliveryInfo.postalCode,
-          instructions: deliveryInfo.instructions || ''
-        },
+        orderFulfillment,
+        deliveryInfo:
+          orderFulfillment === 'pickup'
+            ? {
+                address: 'Retrait sur place',
+                city: selectedRestaurantData?.ville || '',
+                postalCode: selectedRestaurantData?.code_postal || '',
+                instructions: deliveryInfo.instructions || '',
+              }
+            : {
+                address: deliveryInfo.address,
+                city: deliveryInfo.city,
+                postalCode: deliveryInfo.postalCode,
+                instructions: deliveryInfo.instructions || '',
+              },
         customerInfo: {
           firstName: customerInfo.firstName,
           lastName: customerInfo.lastName,
           phone: customerInfo.phone,
           email: customerInfo.email || ''
         },
-        deliveryFee: selectedRestaurantData?.frais_livraison || 0,
+        deliveryFee: orderFulfillment === 'pickup' ? 0 : selectedRestaurantData?.frais_livraison || 0,
         totalAmount: calculateSubtotal()
       };
 
@@ -718,10 +734,12 @@ export default function AdminCreateOrder() {
         throw new Error(result.error || 'Erreur lors de la création de la commande');
       }
 
-      setSuccess(`Commande créée avec succès ! ID: #${result.order.id.slice(0, 8)}`);
+      const modeLabel = orderFulfillment === 'pickup' ? 'à emporter' : 'livraison';
+      setSuccess(`Commande ${modeLabel} créée ! ID: #${result.order.id.slice(0, 8)}`);
       setCart([]);
       setDeliveryInfo({ address: '', city: '', postalCode: '', instructions: '' });
       setCustomerInfo({ firstName: '', lastName: '', phone: '', email: '' });
+      setOrderFulfillment('delivery');
       
       setTimeout(() => {
         router.push(`/admin/orders/${result.order.id}`);
@@ -887,8 +905,12 @@ export default function AdminCreateOrder() {
                     <span>{calculateSubtotal().toFixed(2)}€</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
-                    <span>Frais de livraison:</span>
-                    <span>{(selectedRestaurantData?.frais_livraison || 0).toFixed(2)}€</span>
+                    <span>{orderFulfillment === 'pickup' ? 'Retrait sur place' : 'Frais de livraison'}:</span>
+                    <span>
+                      {orderFulfillment === 'pickup'
+                        ? '0.00€'
+                        : `${(selectedRestaurantData?.frais_livraison || 0).toFixed(2)}€`}
+                    </span>
                   </div>
                   <div className="flex justify-between text-xl font-bold mt-2 pt-2 border-t">
                     <span>Total:</span>
@@ -901,9 +923,43 @@ export default function AdminCreateOrder() {
 
           {/* Colonne droite - Informations client et livraison */}
           <div className="space-y-6">
+            {/* Mode commande */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">3. Mode de commande</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setOrderFulfillment('delivery')}
+                  className={`px-4 py-3 rounded-lg border-2 font-medium text-sm transition-colors ${
+                    orderFulfillment === 'delivery'
+                      ? 'border-blue-600 bg-blue-50 text-blue-800'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  Livraison
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderFulfillment('pickup')}
+                  className={`px-4 py-3 rounded-lg border-2 font-medium text-sm transition-colors ${
+                    orderFulfillment === 'pickup'
+                      ? 'border-blue-600 bg-blue-50 text-blue-800'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  À emporter
+                </button>
+              </div>
+              {orderFulfillment === 'pickup' && (
+                <p className="mt-3 text-sm text-gray-600">
+                  Pas d’adresse ni de livreur. Le restaurant est notifié directement (marquée payée, sans Stripe).
+                </p>
+              )}
+            </div>
+
             {/* Informations client */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">3. Informations client</h2>
+              <h2 className="text-xl font-semibold mb-4">4. Informations client</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -955,9 +1011,10 @@ export default function AdminCreateOrder() {
               </div>
             </div>
 
-            {/* Adresse de livraison */}
+            {/* Adresse de livraison — uniquement si livraison */}
+            {orderFulfillment === 'delivery' ? (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">4. Adresse de livraison</h2>
+              <h2 className="text-xl font-semibold mb-4">5. Adresse de livraison</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1008,6 +1065,25 @@ export default function AdminCreateOrder() {
                 </div>
               </div>
             </div>
+            ) : (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-2">5. Retrait sur place</h2>
+              <p className="text-sm text-gray-600 mb-3">
+                Le client récupère au restaurant
+                {selectedRestaurantData?.nom ? ` « ${selectedRestaurantData.nom} »` : ''}.
+              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Note / instructions (optionnel)
+              </label>
+              <textarea
+                value={deliveryInfo.instructions}
+                onChange={(e) => setDeliveryInfo({ ...deliveryInfo, instructions: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="2"
+                placeholder="Ex. prêt dans 20 min, client déjà sur place…"
+              />
+            </div>
+            )}
 
             {/* Bouton créer */}
             <button
@@ -1020,6 +1096,8 @@ export default function AdminCreateOrder() {
                   <FaSpinner className="animate-spin mr-2" />
                   Création en cours...
                 </>
+              ) : orderFulfillment === 'pickup' ? (
+                'Créer commande à emporter'
               ) : (
                 'Créer la commande'
               )}

@@ -40,7 +40,17 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { restaurantId, deliveryInfo, items, deliveryFee, totalAmount, customerInfo } = body;
+    const {
+      restaurantId,
+      deliveryInfo,
+      items,
+      deliveryFee,
+      totalAmount,
+      customerInfo,
+      orderFulfillment = 'delivery',
+    } = body;
+    const isPickup =
+      String(orderFulfillment || 'delivery').toLowerCase() === 'pickup';
 
     // Validation des données
     if (!restaurantId) {
@@ -51,7 +61,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Aucun article dans la commande' }, { status: 400 });
     }
 
-    if (!deliveryInfo || !deliveryInfo.address || !deliveryInfo.city || !deliveryInfo.postalCode) {
+    if (
+      !isPickup &&
+      (!deliveryInfo || !deliveryInfo.address || !deliveryInfo.city || !deliveryInfo.postalCode)
+    ) {
       return NextResponse.json({ error: 'Adresse de livraison incomplète' }, { status: 400 });
     }
 
@@ -82,63 +95,66 @@ export async function POST(request) {
     // Générer un code de sécurité
     const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // IMPORTANT: Valider la distance de livraison AVANT de créer la commande
-    const fullAddress = `${deliveryInfo.address}, ${deliveryInfo.postalCode} ${deliveryInfo.city}, France`;
-    const deliveryValidationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/delivery/calculate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: fullAddress,
-        deliveryAddress: fullAddress,
-        restaurantId: restaurantId
-      })
-    });
+    let calculatedDeliveryFee = 0;
+    let deliveryCommissionCvneat = 0;
+    let adresseComplete = 'Retrait sur place';
+    let villeLivraison = restaurant.ville || null;
 
-    if (!deliveryValidationResponse.ok) {
-      console.error('❌ Erreur validation livraison:', await deliveryValidationResponse.text());
-      return NextResponse.json({ 
-        error: 'Erreur lors de la validation de la zone de livraison' 
-      }, { status: 400 });
-    }
+    if (!isPickup) {
+      // IMPORTANT: Valider la distance de livraison AVANT de créer la commande
+      const fullAddress = `${deliveryInfo.address}, ${deliveryInfo.postalCode} ${deliveryInfo.city}, France`;
+      const deliveryValidationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr'}/api/delivery/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: fullAddress,
+          deliveryAddress: fullAddress,
+          restaurantId: restaurantId
+        })
+      });
 
-    const deliveryValidation = await deliveryValidationResponse.json();
-    
-    if (!deliveryValidation.livrable || !deliveryValidation.success) {
-      console.error('❌ Livraison impossible:', deliveryValidation.message);
-      return NextResponse.json({ 
-        error: deliveryValidation.message || 'Livraison impossible à cette adresse' 
-      }, { status: 400 });
-    }
+      if (!deliveryValidationResponse.ok) {
+        console.error('❌ Erreur validation livraison:', await deliveryValidationResponse.text());
+        return NextResponse.json({ 
+          error: 'Erreur lors de la validation de la zone de livraison' 
+        }, { status: 400 });
+      }
 
-    // Distance et zone : uniquement /api/delivery/calculate (plafonds 34190/30440, 30170, etc.)
+      const deliveryValidation = await deliveryValidationResponse.json();
+      
+      if (!deliveryValidation.livrable || !deliveryValidation.success) {
+        console.error('❌ Livraison impossible:', deliveryValidation.message);
+        return NextResponse.json({ 
+          error: deliveryValidation.message || 'Livraison impossible à cette adresse' 
+        }, { status: 400 });
+      }
 
-    // Utiliser les frais de livraison calculés par l'API au lieu de ceux fournis
-    const calculatedDeliveryFee = parseFloat(deliveryValidation.frais_livraison || deliveryFee || 0);
+      calculatedDeliveryFee = parseFloat(deliveryValidation.frais_livraison || deliveryFee || 0);
 
-    // Commission livraison CVN'EAT (Option B):
-    // Si frais_livraison <= 2.50€ → commission = 0€
-    // Si frais_livraison > 2.50€ → commission = frais_livraison * 10%
-    const DELIVERY_COMMISSION_RATE = 0.10;
-    const DELIVERY_BASE_FEE = 2.50;
-    const deliveryCommissionCvneat =
-      calculatedDeliveryFee > DELIVERY_BASE_FEE
-        ? Math.round(calculatedDeliveryFee * DELIVERY_COMMISSION_RATE * 100) / 100
-        : 0;
+      const DELIVERY_COMMISSION_RATE = 0.10;
+      const DELIVERY_BASE_FEE = 2.50;
+      deliveryCommissionCvneat =
+        calculatedDeliveryFee > DELIVERY_BASE_FEE
+          ? Math.round(calculatedDeliveryFee * DELIVERY_COMMISSION_RATE * 100) / 100
+          : 0;
 
-    // Construire l'adresse complète
-    let adresseComplete = `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`;
-    if (deliveryInfo.instructions && deliveryInfo.instructions.trim()) {
-      adresseComplete += ` (Instructions: ${deliveryInfo.instructions.trim()})`;
+      adresseComplete = `${deliveryInfo.address}, ${deliveryInfo.city} ${deliveryInfo.postalCode}`;
+      if (deliveryInfo.instructions && deliveryInfo.instructions.trim()) {
+        adresseComplete += ` (Instructions: ${deliveryInfo.instructions.trim()})`;
+      }
+      villeLivraison = deliveryInfo.city || null;
     }
 
     // Créer la commande avec payment_status = 'paid' (mais sans stripe_payment_intent_id)
     const orderData = {
       restaurant_id: restaurantId,
-      user_id: user.id, // L'admin est le user_id (ou on pourrait créer un user système)
+      user_id: user.id,
       adresse_livraison: adresseComplete,
-      ville_livraison: deliveryInfo.city || null,
+      ville_livraison: villeLivraison,
       total: totalAmount,
-      frais_livraison: calculatedDeliveryFee, // Utiliser les frais calculés par l'API de validation
+      frais_livraison: calculatedDeliveryFee,
+      frais_livraison_course: isPickup ? 0 : calculatedDeliveryFee,
+      order_fulfillment: isPickup ? 'pickup' : 'delivery',
       statut: 'en_attente',
       payment_status: 'paid', // IMPORTANT: Marqué comme payé mais sans Stripe
       security_code: securityCode,
@@ -150,20 +166,27 @@ export async function POST(request) {
       commission_rate: effectiveRatePercent,
       commission_amount: commissionGross,
       restaurant_payout: restaurantPayout,
-      delivery_commission_cvneat: deliveryCommissionCvneat
+      delivery_commission_cvneat: deliveryCommissionCvneat,
+      ...(isPickup
+        ? {
+            livreur_id: null,
+            driver_search_status: null,
+          }
+        : {}),
     };
 
     console.log('📦 Création commande admin:', {
       restaurant_id: restaurantId,
       total: totalAmount,
-      items_count: items.length
+      items_count: items.length,
+      order_fulfillment: orderData.order_fulfillment,
     });
 
     // Créer la commande
     const { data: order, error: orderError } = await supabaseAdmin
       .from('commandes')
       .insert([orderData])
-      .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, created_at, payment_status')
+      .select('id, restaurant_id, total, frais_livraison, statut, adresse_livraison, created_at, payment_status, order_fulfillment')
       .single();
 
     if (orderError) {
@@ -310,9 +333,7 @@ export async function POST(request) {
       }
     }
 
-    // 🔔 IMPORTANT: Envoyer les notifications (push) comme pour une commande "réelle"
-    // Le dashboard admin crée des commandes déjà marquées "paid" (sans Stripe),
-    // donc on doit notifier le restaurant + les livreurs ici.
+    // 🔔 Notifications : retrait → resto (+ admin info), livraison → resto + livreurs
     try {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cvneat.fr';
       const notificationTotal = (
@@ -320,53 +341,61 @@ export async function POST(request) {
         (parseFloat(order.frais_livraison || 0) || 0)
       ).toFixed(2);
 
-      // 1) Push au restaurant
-      if (restaurant?.user_id) {
-        const pushRestaurant = await fetch(`${baseUrl}/api/notifications/send-push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: restaurant.user_id,
-            title: 'Nouvelle commande ! 🎉',
-            body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+      if (isPickup) {
+        const { notifyPartnerNewOrder } = await import('../../../../../lib/notify-partner-new-order');
+        await notifyPartnerNewOrder(
+          {
+            ...order,
+            order_fulfillment: 'pickup',
+            statut: order.statut || 'en_attente',
+          },
+          { supabaseAdmin, origin: baseUrl }
+        );
+        console.log('✅ Notif partenaire retrait (admin create):', order.id);
+      } else {
+        // 1) Push au restaurant
+        if (restaurant?.user_id) {
+          const pushRestaurant = await fetch(`${baseUrl}/api/notifications/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: restaurant.user_id,
+              title: 'Nouvelle commande ! 🎉',
+              body: `Commande #${order.id?.slice(0, 8)} - ${notificationTotal}€`,
+              data: {
+                type: 'new_order',
+                orderId: order.id,
+                url: '/partner/orders',
+                source: 'admin',
+              },
+            }),
+          });
+          if (pushRestaurant.ok) {
+            const result = await pushRestaurant.json().catch(() => ({}));
+            console.log('✅ Push restaurant (admin):', result.sent, '/', result.total);
+          } else {
+            console.warn('⚠️ Push restaurant (admin) HTTP:', pushRestaurant.status);
+          }
+        } else {
+          console.warn('⚠️ Restaurant sans user_id: push restaurant ignoré (admin)');
+        }
+
+        // 2) Push livreurs + admins
+        try {
+          const pushResult = await sendDeliveryAppPush({
+            orderId: order.id,
+            total: notificationTotal,
             data: {
-              type: 'new_order',
+              type: 'new_order_available',
               orderId: order.id,
-              url: '/partner/orders',
+              url: '/delivery/dashboard',
               source: 'admin',
             },
-          }),
-        });
-        if (pushRestaurant.ok) {
-          const result = await pushRestaurant.json().catch(() => ({}));
-          console.log('✅ Push restaurant (admin):', result.sent, '/', result.total);
-        } else {
-          console.warn('⚠️ Push restaurant (admin) HTTP:', pushRestaurant.status);
+          });
+          console.log('✅ Push livreurs+admins (admin create):', pushResult.sent, '/', pushResult.total);
+        } catch (pushDelErr) {
+          console.warn('⚠️ Push livreurs+admins (admin create):', pushDelErr?.message || pushDelErr);
         }
-      } else {
-        console.warn('⚠️ Restaurant sans user_id: push restaurant ignoré (admin)');
-      }
-
-      // 2) Livraison uniquement : push livreurs + admins. Retrait : pas de notif livreur.
-      try {
-        const pickup = String(order.order_fulfillment || 'delivery').toLowerCase() === 'pickup';
-        if (pickup) {
-          console.log('ℹ️ Commande admin en retrait : pas de push livreurs');
-        } else {
-        const pushResult = await sendDeliveryAppPush({
-          orderId: order.id,
-          total: notificationTotal,
-          data: {
-            type: 'new_order_available',
-            orderId: order.id,
-            url: '/delivery/dashboard',
-            source: 'admin',
-          },
-        });
-        console.log('✅ Push livreurs+admins (admin create):', pushResult.sent, '/', pushResult.total);
-        }
-      } catch (pushDelErr) {
-        console.warn('⚠️ Push livreurs+admins (admin create):', pushDelErr?.message || pushDelErr);
       }
     } catch (pushErr) {
       console.warn('⚠️ Erreur envoi push (admin create order):', pushErr?.message || pushErr);
