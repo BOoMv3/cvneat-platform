@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { computeOrderRefundableAmountEur } from '../../../../../lib/order-refund-amount';
 
 export async function POST(request, { params }) {
   try {
@@ -85,27 +86,22 @@ export async function POST(request, { params }) {
       }, { status: 400 });
     }
 
-    // IMPORTANT: Calculer le montant de remboursement avec les frais de livraison
-    // order.total contient uniquement les articles, il faut ajouter les frais de livraison
-    const orderSubtotal = parseFloat(order.total || 0);
-    const deliveryFee = parseFloat(order.frais_livraison || 0);
-    const orderTotal = orderSubtotal + deliveryFee; // Total réel payé par le client
+    // IMPORTANT: rembourser ce que le client a réellement payé (total_paid / recalcul après promos)
+    const orderTotal = computeOrderRefundableAmountEur(order);
     
-    // Si un montant spécifique est fourni, s'assurer qu'il n'excède pas le total avec frais
-    // Sinon, utiliser le total complet (articles + frais de livraison)
+    // Si un montant spécifique est fourni, s'assurer qu'il n'excède pas le total payé
     const refundAmount = amount 
       ? Math.min(parseFloat(amount), orderTotal) 
       : orderTotal;
 
     if (refundAmount <= 0 || refundAmount > orderTotal) {
       return NextResponse.json({ 
-        error: `Montant de remboursement invalide. Le montant maximum remboursable est ${orderTotal.toFixed(2)}€ (articles: ${orderSubtotal.toFixed(2)}€ + frais de livraison: ${deliveryFee.toFixed(2)}€)` 
+        error: `Montant de remboursement invalide. Le montant maximum remboursable est ${orderTotal.toFixed(2)}€`
       }, { status: 400 });
     }
     
     console.log('💰 Calcul remboursement demande:', {
-      orderSubtotal,
-      deliveryFee,
+      total_paid: order.total_paid,
       orderTotal,
       refundAmount_FINAL: refundAmount
     });

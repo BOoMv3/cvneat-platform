@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { isAdminWriterRole } from '@/lib/admin-viewer';
+import { computeOrderRefundableAmountEur } from '@/lib/order-refund-amount';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -85,10 +86,8 @@ export async function POST(request) {
     // Traiter chaque commande
     for (const order of pendingOrders) {
       try {
-        // Calculer le montant à rembourser (total + frais de livraison)
-        const deliveryFee = parseFloat(order.frais_livraison || 0);
-        const orderTotal = parseFloat(order.total || 0);
-        const refundAmount = orderTotal + deliveryFee;
+        // Rembourser le montant réellement encaissé (total_paid / après promos)
+        const refundAmount = computeOrderRefundableAmountEur(order);
 
         // Vérifier si la commande a besoin d'un remboursement
         const needsRefund = order.stripe_payment_intent_id && refundAmount > 0;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { getOrderArticlesAmountEur } from '../../../../lib/restaurant-order-payout';
 
 async function getUserFromRequest(request) {
   try {
@@ -67,10 +68,9 @@ export async function GET(request) {
       .or('statut.eq.en_preparation,and(statut.eq.en_attente,livreur_id.not.is.null)');
 
     // IMPORTANT : Le chiffre d'affaires n'inclut PAS les frais de livraison (qui vont au livreur)
-    // On utilise uniquement order.total qui contient le montant des articles uniquement
     const { data: revenueData, error: revenueError } = await supabase
       .from('commandes')
-      .select('total')
+      .select('total, discount_amount')
       .eq('restaurant_id', restaurantId)
       .eq('statut', 'livree');
       
@@ -79,8 +79,9 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Erreur lors du calcul des statistiques' }, { status: 500 });
     }
 
-    // Le total contient uniquement les articles, pas les frais de livraison
-    const total_revenue = revenueData ? revenueData.reduce((sum, order) => sum + (order.total || 0), 0) : 0;
+    const total_revenue = revenueData
+      ? revenueData.reduce((sum, order) => sum + getOrderArticlesAmountEur(order), 0)
+      : 0;
 
     return NextResponse.json({
       today_orders: today_orders || 0,

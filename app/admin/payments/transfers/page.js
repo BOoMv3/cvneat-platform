@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabase';
 import { useAdminAccess } from '../../../../components/AdminAccessContext';
 import { computeRestaurantRemainingDue } from '../../../../lib/restaurant-remaining-due';
+import { getOrderArticlesAmountEur } from '../../../../lib/restaurant-order-payout';
 import { 
   FaArrowLeft, 
   FaPlus, 
@@ -284,7 +285,7 @@ export default function TransfersTracking() {
           });
 
           const totalRevenue = Math.round(
-            balance.paidOrders.reduce((sum, order) => sum + (parseFloat(order.total || 0) || 0), 0) * 100
+            balance.paidOrders.reduce((sum, order) => sum + getOrderArticlesAmountEur(order), 0) * 100
           ) / 100;
 
           return {
@@ -297,6 +298,7 @@ export default function TransfersTracking() {
             orderCount: balance.orderCount,
             commissionRate: balance.commissionRate,
             is99StreetFood: balance.is99StreetFood,
+            isBonnePate: balance.isBonnePate,
             hasManualOverride: balance.hasManualOverride,
             remaining_to_pay_override: effectiveOverrideRaw,
           };
@@ -719,6 +721,9 @@ export default function TransfersTracking() {
                             {restaurant.orderCount} commande(s) • CA: {restaurant.totalRevenue.toFixed(2)}€ • Commission: {restaurant.commission.toFixed(2)}€
                             {restaurant.is99StreetFood && (
                               <span className="ml-1 text-xs text-amber-600">(depuis le 06/03/2026)</span>
+                            )}
+                            {restaurant.isBonnePate && (
+                              <span className="ml-1 text-xs text-amber-600">(−56,20€ remboursement livreur poche exclus des virements)</span>
                             )}
                           </p>
                         </div>

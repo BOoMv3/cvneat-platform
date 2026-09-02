@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getFixedCommissionRatePercentFromName, getEffectiveCommissionRatePercent, computeCommissionAndPayout } from '../../../../../lib/commission';
+import { getFixedCommissionRatePercentFromName } from '../../../../../lib/commission';
+import {
+  computeOrderCommissionEur,
+  computeOrderRestaurantPayoutEur,
+  getOrderArticlesAmountEur,
+} from '../../../../../lib/restaurant-order-payout';
 import { isAdminViewerRole, isAdminWriterRole } from '@/lib/admin-viewer';
 
 const supabaseAdmin = createClient(
@@ -210,7 +215,7 @@ export async function GET(request) {
 
   let query = supabaseAdmin
     .from('commandes')
-    .select('id, created_at, total, statut, payment_status, commission_rate, commission_amount, restaurant_payout')
+    .select('id, created_at, total, discount_amount, statut, payment_status, commission_rate, commission_amount, restaurant_payout, loyalty_article_subsidy_eur')
     .eq('restaurant_id', restaurantId)
     .eq('statut', 'livree')
     .gte('created_at', startDate.toISOString())
@@ -236,59 +241,27 @@ export async function GET(request) {
       : (Number(restRate) || 20);
 
   const lines = paidOrders.map((o) => {
-    const ratePercent = getEffectiveCommissionRatePercent({
-      restaurantName: restaurant.nom,
-      orderRatePercent: o.commission_rate,
-      restaurantRatePercent: restRate,
-    });
-
-    // Si on est sur une règle fixe, on recalcule toujours (ça corrige l'historique si des valeurs stockées sont incohérentes).
-    // Sinon, on préfère les valeurs stockées par commande pour respecter l'historique.
-    const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
-    const commission =
-      fixedRatePercent !== null
-        ? computed.commission
-        : (o.commission_amount ?? computed.commission);
-    const payout =
-      fixedRatePercent !== null
-        ? computed.payout
-        : (o.restaurant_payout ?? computed.payout);
+    const articles = getOrderArticlesAmountEur(o);
+    const commission = computeOrderCommissionEur(o, restaurant);
+    const payout = computeOrderRestaurantPayoutEur(o, restaurant);
     return {
       date: formatDateFR(o.created_at),
       ref: (o.id || '').slice(0, 8),
-      amount: formatEUR(o.total || 0),
+      amount: formatEUR(articles),
       commission: formatEUR(commission),
       payout: formatEUR(payout),
     };
   });
 
-  const total = paidOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
-  const commissionTotal = paidOrders.reduce((acc, o) => {
-    const ratePercent = getEffectiveCommissionRatePercent({
-      restaurantName: restaurant.nom,
-      orderRatePercent: o.commission_rate,
-      restaurantRatePercent: restRate,
-    });
-    const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
-    const commission =
-      fixedRatePercent !== null
-        ? computed.commission
-        : (o.commission_amount ?? computed.commission);
-    return acc + commission;
-  }, 0);
-  const payoutTotal = paidOrders.reduce((acc, o) => {
-    const ratePercent = getEffectiveCommissionRatePercent({
-      restaurantName: restaurant.nom,
-      orderRatePercent: o.commission_rate,
-      restaurantRatePercent: restRate,
-    });
-    const computed = computeCommissionAndPayout(Number(o.total || 0), ratePercent);
-    const payout =
-      fixedRatePercent !== null
-        ? computed.payout
-        : (o.restaurant_payout ?? computed.payout);
-    return acc + payout;
-  }, 0);
+  const total = paidOrders.reduce((acc, o) => acc + getOrderArticlesAmountEur(o), 0);
+  const commissionTotal = paidOrders.reduce(
+    (acc, o) => acc + computeOrderCommissionEur(o, restaurant),
+    0
+  );
+  const payoutTotal = paidOrders.reduce(
+    (acc, o) => acc + computeOrderRestaurantPayoutEur(o, restaurant),
+    0
+  );
 
   const issuer = {
     lines: [

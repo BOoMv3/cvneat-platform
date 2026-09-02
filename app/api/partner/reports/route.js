@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import json2csv from 'json2csv';
+import { getOrderArticlesAmountEur } from '../../../../lib/restaurant-order-payout';
+import { getEffectiveCommissionRatePercent } from '../../../../lib/commission';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,24 +99,20 @@ export async function GET(request) {
     if (ordersError) throw ordersError;
 
     // Calculer les statistiques du rapport
-    // IMPORTANT : Le chiffre d'affaires n'inclut PAS les frais de livraison (qui vont au livreur)
-    // On utilise uniquement order.total qui contient le montant des articles uniquement
+    // CA = articles après codes promo (hors frais livraison)
     const totalOrders = orders?.length || 0;
     const totalRevenue = orders?.reduce((sum, order) => {
-      // Ne compter que les commandes livrées pour le chiffre d'affaires
       if (order.statut === 'livree') {
-        return sum + parseFloat(order.total || 0);
+        return sum + getOrderArticlesAmountEur(order);
       }
       return sum;
     }, 0) || 0;
     
-    // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-    const normalizedRestaurantName = (restaurant.nom || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-    const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-    const commissionRate = isInternalRestaurant ? 0 : (restaurant.commission_rate || 20) / 100;
+    const commissionRate =
+      getEffectiveCommissionRatePercent({
+        restaurantName: restaurant.nom,
+        restaurantRatePercent: restaurant.commission_rate,
+      }) / 100;
     const commissionEarned = totalRevenue * commissionRate;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -264,9 +262,9 @@ async function generateOrdersReport(restaurantId, startDate) {
     summary: {
       totalOrders: orders?.length || 0,
       // Le chiffre d'affaires n'inclut PAS les frais de livraison
-      totalRevenue: orders?.reduce((sum, order) => sum + parseFloat(order.total || 0), 0) || 0,
+      totalRevenue: orders?.reduce((sum, order) => sum + getOrderArticlesAmountEur(order), 0) || 0,
       averageOrderValue: orders?.length > 0 ? 
-        orders.reduce((sum, order) => sum + parseFloat(order.total), 0) / orders.length : 0,
+        orders.reduce((sum, order) => sum + getOrderArticlesAmountEur(order), 0) / orders.length : 0,
       statusBreakdown: {
         en_attente: orders?.filter(o => o.statut === 'en_attente').length || 0,
         en_preparation: orders?.filter(o => o.statut === 'en_preparation').length || 0,
@@ -299,7 +297,7 @@ async function generateRevenueReport(restaurantId, startDate) {
     if (!dailyRevenue[date]) {
       dailyRevenue[date] = { revenue: 0, orders: 0 };
     }
-    dailyRevenue[date].revenue += parseFloat(order.total);
+    dailyRevenue[date].revenue += getOrderArticlesAmountEur(order);
     dailyRevenue[date].orders += 1;
   });
 
@@ -311,7 +309,7 @@ async function generateRevenueReport(restaurantId, startDate) {
     },
     summary: {
       // Le chiffre d'affaires n'inclut PAS les frais de livraison
-      totalRevenue: orders?.reduce((sum, order) => sum + parseFloat(order.total || 0), 0) || 0,
+      totalRevenue: orders?.reduce((sum, order) => sum + getOrderArticlesAmountEur(order), 0) || 0,
       totalOrders: orders?.length || 0,
       averageDailyRevenue: Object.values(dailyRevenue).reduce((sum, day) => sum + day.revenue, 0) / 
         Math.max(Object.keys(dailyRevenue).length, 1)

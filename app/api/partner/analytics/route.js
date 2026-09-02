@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import {
+  computeOrderRestaurantPayoutEur,
+  getOrderArticlesAmountEur,
+} from '../../../../lib/restaurant-order-payout';
+import { getEffectiveCommissionRatePercent } from '../../../../lib/commission';
 
-const computeArticleAmount = (order) => {
-  if (!order) return 0;
-  const fraisLivraison = parseFloat(order.frais_livraison || 0) || 0;
-
-  if (order.total !== null && order.total !== undefined) {
-    const parsed = parseFloat(order.total || 0) || 0;
-    return Math.max(0, Math.round(parsed * 100) / 100);
-  }
-
-  const totalAmount = parseFloat(order.total_amount || 0) || 0;
-  const calculated = totalAmount - fraisLivraison;
-  if (!Number.isFinite(calculated)) {
-    return Math.max(0, Math.round(totalAmount * 100) / 100);
-  }
-  return Math.max(0, Math.round(calculated * 100) / 100);
-};
+const computeArticleAmount = (order) => getOrderArticlesAmountEur(order);
 
 // GET /api/partner/analytics - Récupérer les analytics du partenaire
 export async function GET(request) {
@@ -87,6 +77,11 @@ export async function GET(request) {
         updated_at,
         statut,
         total,
+        discount_amount,
+        commission_rate,
+        commission_amount,
+        restaurant_payout,
+        loyalty_article_subsidy_eur,
         frais_livraison,
         restaurant_id,
         user_id,
@@ -111,33 +106,32 @@ export async function GET(request) {
     if (ordersError) throw ordersError;
 
     // Statistiques générales
-    // IMPORTANT : Le chiffre d'affaires du restaurant = total des articles (sans frais de livraison)
-    // On ne compte QUE les commandes livrées (statut = 'livree')
+    // CA articles après codes promo ; revenu resto = payout (après commission)
     const deliveredOrders = orders?.filter(order => order.statut === 'livree') || [];
     const totalOrders = deliveredOrders.length;
-    
-    const normalizedRestaurantName = (restaurant.nom || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-    const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-    const commissionRatePercent = restaurant.commission_rate ?? 20;
-    const commissionRate = isInternalRestaurant ? 0 : commissionRatePercent / 100;
+
+    const commissionRatePercent = getEffectiveCommissionRatePercent({
+      restaurantName: restaurant.nom,
+      restaurantRatePercent: restaurant.commission_rate,
+    });
 
     const totalArticleRevenue = deliveredOrders.reduce((sum, order) => {
       return sum + computeArticleAmount(order);
     }, 0);
-    const commissionEarned = totalArticleRevenue * commissionRate;
-    const restaurantRevenue = totalArticleRevenue - commissionEarned;
+    const restaurantRevenue = deliveredOrders.reduce(
+      (sum, order) => sum + computeOrderRestaurantPayoutEur(order, restaurant),
+      0
+    );
+    const commissionEarned = Math.round((totalArticleRevenue - restaurantRevenue) * 100) / 100;
 
     console.log('📊 Analytics - Calcul CA:', {
       totalOrders: orders?.length || 0,
       deliveredOrders: deliveredOrders.length,
       restaurantRevenue: Math.round(restaurantRevenue * 100) / 100,
-      commissionRateApplied: commissionRate * 100,
+      commissionRateApplied: commissionRatePercent,
       sampleOrder: deliveredOrders[0] ? {
         total: deliveredOrders[0].total,
-        total_amount: deliveredOrders[0].total_amount,
+        discount_amount: deliveredOrders[0].discount_amount,
         frais_livraison: deliveredOrders[0].frais_livraison,
         montantArticles: computeArticleAmount(deliveredOrders[0])
       } : null
@@ -187,7 +181,7 @@ export async function GET(request) {
         acc[dateKey] = { orders: 0, revenue: 0 };
       }
       acc[dateKey].orders += 1;
-      acc[dateKey].revenue += computeArticleAmount(order) * (1 - commissionRate);
+      acc[dateKey].revenue += computeOrderRestaurantPayoutEur(order, restaurant);
       return acc;
     }, {});
 
@@ -206,7 +200,7 @@ export async function GET(request) {
         acc[hour] = { orders: 0, revenue: 0 };
       }
       acc[hour].orders += 1;
-      acc[hour].revenue += computeArticleAmount(order) * (1 - commissionRate);
+      acc[hour].revenue += computeOrderRestaurantPayoutEur(order, restaurant);
       return acc;
     }, {});
 
