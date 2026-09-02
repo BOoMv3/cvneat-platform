@@ -3,9 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 import { buildRestaurantTransferInvoiceHtml } from '../../../../../lib/restaurant-invoice';
 import { isAdminWriterRole } from '@/lib/admin-viewer';
 import {
+  alignOrdersPayoutToTransferAmount,
   computeTransferOrderTotals,
   periodFromOrders,
   selectOrdersForTransferAmount,
+  serializeTransferNotes,
 } from '../../../../../lib/restaurant-transfer-orders';
 
 const supabaseAdmin = createClient(
@@ -168,11 +170,12 @@ export async function POST(request) {
       })
       .map((o) => ({ ...o, _restaurant: restaurant }));
 
-    const { orders, nextIdx: _nextIdx, sum: _selectedSum } = selectOrdersForTransferAmount(
+    const { orders: selectedOrders } = selectOrdersForTransferAmount(
       unpaidPaid,
       0,
       amountNum
     );
+    const orders = alignOrdersPayoutToTransferAmount(selectedOrders, restaurant, amountNum);
 
     const period =
       period_start && period_end
@@ -208,6 +211,12 @@ export async function POST(request) {
       invoiceNumber = `FAC-${year}-${transfer.id.slice(0, 6).toUpperCase()}`;
     }
 
+    const notesPayload = serializeTransferNotes({
+      orderIds: orders.map((o) => o.id).filter(Boolean),
+      text: notes || null,
+    });
+    transfer.notes = notes || null;
+
     const invoiceHtml = buildRestaurantTransferInvoiceHtml({
       restaurant,
       transfer,
@@ -224,6 +233,7 @@ export async function POST(request) {
           invoice_number: invoiceNumber,
           invoice_generated_at: new Date().toISOString(),
           invoice_html: invoiceHtml,
+          notes: notesPayload,
         })
         .eq('id', transfer.id);
       if (upd.error) {
