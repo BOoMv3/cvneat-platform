@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isAdminWriterRole } from '@/lib/admin-viewer';
+import { activateDeliveryFromApplication } from '@/lib/activate-delivery-application';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -40,6 +41,48 @@ export async function PATCH(request, { params }) {
     const { status } = body;
     if (!['pending', 'approved', 'rejected'].includes(status)) {
       return NextResponse.json({ error: 'Statut invalide (pending, approved, rejected)' }, { status: 400 });
+    }
+
+    const { data: application, error: fetchErr } = await supabaseAdmin
+      .from('delivery_applications')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !application) {
+      return NextResponse.json({ error: 'Candidature introuvable' }, { status: 404 });
+    }
+
+    if (status === 'approved') {
+      try {
+        const activation = await activateDeliveryFromApplication(supabaseAdmin, application, {
+          sendEmail: true,
+          resetPassword: true,
+        });
+
+        const { data: updated } = await supabaseAdmin
+          .from('delivery_applications')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        return NextResponse.json({
+          application: updated || { ...application, status: 'approved', user_id: activation.userId },
+          activation: {
+            userId: activation.userId,
+            email: activation.email,
+            emailSent: !!activation.emailMessageId,
+            emailError: activation.emailError || null,
+            createdAuth: activation.createdAuth,
+          },
+        });
+      } catch (actErr) {
+        console.error('Activation livreur échouée:', actErr);
+        return NextResponse.json(
+          { error: actErr?.message || "Impossible d'activer le compte livreur" },
+          { status: 500 }
+        );
+      }
     }
 
     const { data, error } = await supabaseAdmin

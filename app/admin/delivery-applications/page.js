@@ -90,7 +90,15 @@ export default function DeliveryApplicationsPage() {
         },
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error('Erreur mise à jour');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Erreur mise à jour');
+      if (status === 'approved') {
+        alert(
+          data.activation?.emailSent
+            ? "Candidature approuvée : accès dashboard livreur activé et email de confirmation envoyé."
+            : "Candidature approuvée : accès dashboard livreur activé."
+        );
+      }
       await fetchApplications();
     } catch (err) {
       alert(err.message || 'Erreur');
@@ -120,7 +128,7 @@ export default function DeliveryApplicationsPage() {
           Candidatures livreurs
         </h1>
         <p className="text-gray-600 mt-1">
-          Les demandes de devenir livreur sont stockées ici. Tu peux les approuver ou refuser.
+          Les demandes de devenir livreur sont stockées ici. Approuver une candidature active le compte livreur (accès dashboard) et envoie l&apos;email de confirmation.
         </p>
 
         {error && (
