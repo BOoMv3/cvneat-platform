@@ -30,7 +30,10 @@ import {
   FaBell,
   FaSearch,
   FaCircle,
-  FaMotorcycle
+  FaMotorcycle,
+  FaChevronDown,
+  FaChevronUp,
+  FaEllipsisH
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 import AdminOnlineBadge from '@/components/AdminOnlineBadge';
@@ -82,6 +85,8 @@ export default function AdminPage() {
   const [broadcastPrepLoading, setBroadcastPrepLoading] = useState(false);
   const [broadcastPrepResult, setBroadcastPrepResult] = useState(null);
   const [cancellingOrderId, setCancellingOrderId] = useState(null);
+  const [showMoreTools, setShowMoreTools] = useState(false);
+  const [showRestaurantControl, setShowRestaurantControl] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -631,377 +636,221 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <OpenCloseManualNotice />
-      <div className="max-w-full mx-auto px-2 fold:px-2 xs:px-3 sm:px-4 py-2 fold:py-2 xs:py-3 sm:py-8">
-        {/* Header avec bouton retour et info utilisateur - Optimisé mobile et foldable */}
-        <div className="mb-3 fold:mb-3 xs:mb-4 sm:mb-6">
-          <div className="flex items-center justify-between w-full gap-2 mb-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <h1 className="text-base fold:text-base xs:text-lg sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate min-w-0">🚀 Dashboard Admin</h1>
-              <AdminOnlineBadge />
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        {/* Header compact */}
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Admin</h1>
+                <AdminOnlineBadge />
+              </div>
+              {readOnly && (
+                <p className="text-xs text-amber-700 mt-0.5">Lecture seule</p>
+              )}
             </div>
             <button
+              type="button"
               onClick={() => {
-                // Navigation pleine page pour éviter tout soft-redirect admin
                 if (typeof window !== 'undefined') window.location.href = '/';
                 else router.push('/');
               }}
-              className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base flex-shrink-0 px-2 py-1"
-              title="Aller sur le site client"
+              className="shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 min-h-[44px]"
             >
-              <FaArrowLeft className="mr-1 sm:mr-2" />
-              <span className="hidden xs:inline">Site client</span>
+              Site client
             </button>
           </div>
-          
-          {/* Boutons d'action - Scroll horizontal sur mobile, grille lisible sur PC */}
-          <div className="overflow-x-auto sm:overflow-visible scrollbar-hide -mx-2 px-2">
-            <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-3 min-w-max sm:min-w-0 pb-2">
+
+          {/* Accès prioritaires — grille tactile */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
+            {[
+              { href: '/admin/orders', label: 'Commandes', icon: FaShoppingCart, color: 'bg-orange-500' },
+              { href: '/admin/live-delivery', label: 'Live livreurs', icon: FaMotorcycle, color: 'bg-indigo-500' },
+              { href: '/admin/payments', label: 'Paiements', icon: FaEuroSign, color: 'bg-purple-500' },
+              { href: '/admin/restaurants', label: 'Restaurants', icon: FaStore, color: 'bg-emerald-500' },
+              { href: '/admin/customer-search', label: 'Clients', icon: FaSearch, color: 'bg-cyan-500' },
+              { href: '/admin/messages', label: 'Messages', icon: FaComments, color: 'bg-blue-500' },
+            ].map((item) => (
               <button
-                onClick={broadcastPrepTimeToOpenRestaurants}
-                className="flex items-center justify-center px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0 disabled:opacity-50"
-                title="Demander en direct le temps de préparation aux restaurants ouverts"
-                disabled={broadcastPrepLoading || readOnly}
+                key={item.href}
+                type="button"
+                onClick={() => router.push(item.href)}
+                className="flex items-center gap-3 rounded-2xl bg-white border border-gray-200 px-3 py-3.5 text-left shadow-sm hover:border-gray-300 min-h-[56px] touch-manipulation"
               >
-                {broadcastPrepLoading ? (
-                  <FaSpinner className="animate-spin h-4 w-4 sm:mr-2" />
-                ) : (
-                  <FaClock className="h-4 w-4 sm:mr-2" />
-                )}
-                <span className="hidden sm:inline">Demander temps</span>
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-white ${item.color}`}>
+                  <item.icon className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-semibold text-gray-900">{item.label}</span>
               </button>
-              <button
-                onClick={() => router.push('/admin/promo-codes')}
-                className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Codes promo"
-              >
-                <FaGift className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Codes promo</span>
-              </button>
-              {!readOnly && (
-              <button
-                onClick={() => router.push('/admin/reset')}
-                className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Réinitialiser"
-              >
-                <FaRedo className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Réinitialiser</span>
-              </button>
-              )}
-              <button
-                onClick={() => router.push('/admin/ads')}
-                className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Publicités"
-              >
-                <FaEye className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Publicités</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/payments')}
-                className="flex items-center justify-center px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Paiements"
-              >
-                <FaEuroSign className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Paiements</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/newsletter')}
-                className="flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Newsletter"
-              >
-                <FaEnvelope className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Newsletter</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/messages')}
-                className="flex items-center justify-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Messagerie partenaires"
-              >
-                <FaComments className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Messagerie</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/live-delivery')}
-                className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Vue live des courses (comme dashboard livreur)"
-              >
-                <FaMotorcycle className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Live livreurs</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/delivery-messages')}
-                className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Messages & chat livreurs"
-              >
-                <FaTruck className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Chat livreurs</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/customer-search')}
-                className="flex items-center justify-center px-3 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Rechercher un client (nom, email, téléphone)"
-              >
-                <FaSearch className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Recherche client</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/presence')}
-                className="flex items-center justify-center px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Qui est en ligne en temps réel"
-              >
-                <FaCircle className="sm:mr-2 h-3 w-3 text-emerald-200" />
-                <span className="hidden sm:inline">En ligne</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/delivery-leaderboard')}
-                className="flex items-center justify-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Classement livreurs"
-              >
-                <FaTruck className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="text-xs sm:text-sm">Livreurs</span>
-              </button>
-              <button
-                onClick={() => router.push('/admin/delivery-applications')}
-                className="flex items-center justify-center px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Candidatures livreurs"
-              >
-                <FaUserPlus className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="text-xs sm:text-sm">Candidatures livreurs</span>
-              </button>
-              {!readOnly && (
-              <button
-                onClick={() => router.push('/admin/create-order')}
-                className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Créer une commande"
-              >
-                <FaShoppingCart className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Créer commande</span>
-              </button>
-              )}
-              {!readOnly && (
-              <button
-                onClick={() => router.push('/admin/test-push')}
-                className="flex items-center justify-center px-3 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
-                title="Test push : mon compte, admins, livreurs ou restaurants"
-              >
-                <FaBell className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Test push</span>
-              </button>
-              )}
-            </div>
+            ))}
           </div>
 
-          {/* Contrôle manuel des restaurants (ouvrir / fermer) */}
-          <div className="mt-3 sm:mt-4 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
-            <div className="px-3 py-3 sm:px-4 sm:py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Contrôle des restaurants (ouverture / fermeture)
-                </h2>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  Liste complète des restaurants. Tu peux les ouvrir ou les fermer manuellement depuis ici pour éviter les oublis.
-                </p>
-              </div>
-            </div>
-            <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-              {(stats.allRestaurants || []).map((r) => {
-                const isClosed = !!r.ferme_manuellement;
-                return (
-                  <div
-                    key={r.id}
-                    className="px-3 py-2 sm:px-4 sm:py-3 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {r.nom || 'Restaurant sans nom'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {isClosed ? 'Fermé manuellement' : 'Ouvert (suivant les horaires)'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          isClosed
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
-                            : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                        }`}
-                      >
-                        {isClosed ? 'Fermé' : 'Ouvert'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleRestaurantOpen(r, true)}
-                        disabled={readOnly || !isClosed || togglingRestaurantId === r.id}
-                        className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-green-500 text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Ouvrir
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleRestaurantOpen(r, false)}
-                        disabled={readOnly || isClosed || togglingRestaurantId === r.id}
-                        className="px-2 py-1 rounded-lg text-xs sm:text-sm font-medium border border-red-500 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Fermer
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              {(stats.allRestaurants || []).length === 0 && (
-                <div className="px-3 py-4 sm:px-4 sm:py-5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Aucun restaurant trouvé.
-                </div>
+          {/* Plus d'outils */}
+          <button
+            type="button"
+            onClick={() => setShowMoreTools((v) => !v)}
+            className="w-full flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 min-h-[48px]"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FaEllipsisH className="text-gray-400" />
+              Plus d&apos;outils
+            </span>
+            {showMoreTools ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
+          </button>
+
+          {showMoreTools && (
+            <div className="mt-2 rounded-2xl border border-gray-200 bg-white p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+              {[
+                { href: '/admin/promo-codes', label: 'Codes promo', icon: FaGift },
+                { href: '/admin/newsletter', label: 'Newsletter', icon: FaEnvelope },
+                { href: '/admin/delivery-messages', label: 'Chat livreurs', icon: FaTruck },
+                { href: '/admin/presence', label: 'Qui est en ligne', icon: FaCircle },
+                { href: '/admin/delivery-leaderboard', label: 'Classement livreurs', icon: FaTruck },
+                { href: '/admin/delivery-applications', label: 'Candidatures livreurs', icon: FaUserPlus },
+                { href: '/admin/users', label: 'Utilisateurs', icon: FaUsers },
+                { href: '/admin/partnerships', label: 'Partenaires', icon: FaStore },
+                { href: '/admin/complaints', label: 'Réclamations', icon: FaTimesCircle },
+                { href: '/admin/ads', label: 'Publicités', icon: FaEye },
+                { href: '/admin/bugs', label: 'Bugs signalés', icon: FaLock },
+                ...(!readOnly
+                  ? [
+                      { href: '/admin/create-order', label: 'Créer une commande', icon: FaShoppingCart },
+                      { href: '/admin/test-push', label: 'Test push', icon: FaBell },
+                      { href: '/admin/reset', label: 'Réinitialiser', icon: FaRedo },
+                    ]
+                  : []),
+              ].map((item) => (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => router.push(item.href)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-gray-800 hover:bg-gray-50 min-h-[48px] touch-manipulation"
+                >
+                  <item.icon className="h-4 w-4 text-gray-500 shrink-0" />
+                  {item.label}
+                </button>
+              ))}
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={broadcastPrepTimeToOpenRestaurants}
+                  disabled={broadcastPrepLoading}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-orange-800 hover:bg-orange-50 min-h-[48px] touch-manipulation disabled:opacity-50 sm:col-span-2"
+                >
+                  {broadcastPrepLoading ? (
+                    <FaSpinner className="h-4 w-4 animate-spin shrink-0" />
+                  ) : (
+                    <FaClock className="h-4 w-4 shrink-0" />
+                  )}
+                  Demander temps de prépa aux restos ouverts
+                </button>
               )}
             </div>
-          </div>
+          )}
 
           {broadcastPrepResult && (
             <div className="mt-2 text-xs sm:text-sm">
               {broadcastPrepResult.error ? (
-                <div className="text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  ❌ {broadcastPrepResult.error}
+                <div className="text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                  {broadcastPrepResult.error}
                 </div>
               ) : (
-                <div className="text-orange-800 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-                  ✅ Demande envoyée — Restaurants ouverts ciblés: <strong>{broadcastPrepResult.targeted ?? 0}</strong> • Notifs créées: <strong>{broadcastPrepResult.inserted ?? 0}</strong> • Popups envoyées en direct: <strong>{broadcastPrepResult.broadcasted ?? 0}</strong>
-                  {broadcastPrepResult.insertError?.code ? (
-                    <div className="mt-1 text-[11px] sm:text-xs text-orange-700">
-                      ⚠️ Insert notifications impossible: {broadcastPrepResult.insertError.code} — {broadcastPrepResult.insertError.message}
-                      <span className="ml-1">(il faut appliquer la migration `20260121000003_create_notifications_table.sql`)</span>
-                    </div>
-                  ) : null}
+                <div className="text-orange-800 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                  Demande envoyée — ciblés: {broadcastPrepResult.targeted ?? 0} · notifs: {broadcastPrepResult.inserted ?? 0} · popups: {broadcastPrepResult.broadcasted ?? 0}
                 </div>
               )}
             </div>
           )}
-          
-          <div className="text-xs sm:text-sm text-gray-600 mt-2">
-            Connecté en tant qu'admin
+
+          {/* Contrôle restos — replié par défaut */}
+          <div className="mt-3 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowRestaurantControl((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left min-h-[52px]"
+            >
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Ouverture / fermeture restos</p>
+                <p className="text-xs text-gray-500">
+                  {(stats.allRestaurants || []).filter((r) => r.ferme_manuellement).length} fermé(s) manuellement · {(stats.allRestaurants || []).length} total
+                </p>
+              </div>
+              {showRestaurantControl ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
+            </button>
+            {showRestaurantControl && (
+              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 border-t border-gray-100">
+                {(stats.allRestaurants || []).map((r) => {
+                  const isClosed = !!r.ferme_manuellement;
+                  return (
+                    <div
+                      key={r.id}
+                      className="px-3 py-2.5 sm:px-4 flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {r.nom || 'Restaurant sans nom'}
+                        </p>
+                        <p className={`text-xs ${isClosed ? 'text-red-600' : 'text-green-600'}`}>
+                          {isClosed ? 'Fermé manuellement' : 'Ouvert'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleRestaurantOpen(r, isClosed)}
+                        disabled={readOnly || togglingRestaurantId === r.id}
+                        className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold min-h-[40px] disabled:opacity-40 ${
+                          isClosed
+                            ? 'bg-green-600 text-white'
+                            : 'bg-red-600 text-white'
+                        }`}
+                      >
+                        {togglingRestaurantId === r.id ? '…' : isClosed ? 'Ouvrir' : 'Fermer'}
+                      </button>
+                    </div>
+                  );
+                })}
+                {(stats.allRestaurants || []).length === 0 && (
+                  <div className="px-4 py-4 text-sm text-gray-500 text-center">
+                    Aucun restaurant trouvé.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Statistiques principales - Optimisées mobile et foldable */}
-        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 gap-2 fold:gap-2 xs:gap-2 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                <FaUsers className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Total Utilisateurs</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalUsers || 0}</p>
-              </div>
+        {/* KPI essentiels */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+          {[
+            { label: 'Commandes', value: stats.totalOrders, sub: `${stats.pendingOrders} en attente` },
+            { label: 'CA total', value: formatPrice(stats.totalRevenue), sub: 'Articles + livraison' },
+            { label: 'Restaurants', value: stats.totalRestaurants, sub: `${stats.pendingPartners} partenaires` },
+            { label: 'Utilisateurs', value: stats.totalUsers || 0, sub: `${stats.activeCvneatPlusSubscribers || 0} Plus` },
+          ].map((kpi) => (
+            <div key={kpi.label} className="rounded-2xl bg-white border border-gray-200 p-3 sm:p-4 shadow-sm">
+              <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-0.5">{kpi.value}</p>
+              <p className="text-[11px] text-gray-400 mt-1">{kpi.sub}</p>
             </div>
-          </div>
+          ))}
+        </div>
 
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-green-100 text-green-600 flex-shrink-0">
-                <FaStore className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Restaurants</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalRestaurants}</p>
-              </div>
-            </div>
+        {/* Ancien contenu stats détaillées — conservé plus bas, allégé */}
+        <div className="hidden sm:grid grid-cols-3 gap-3 mb-6">
+          <div className="rounded-2xl bg-white border border-gray-200 p-4">
+            <p className="text-xs text-gray-500">Visiteurs</p>
+            <p className="text-xl font-bold text-gray-900">{stats.totalVisitors || 0}</p>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-purple-100 text-purple-600 flex-shrink-0">
-                <FaShoppingCart className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Total Commandes</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
-              </div>
-            </div>
+          <div className="rounded-2xl bg-white border border-gray-200 p-4">
+            <p className="text-xs text-gray-500">Avec compte</p>
+            <p className="text-xl font-bold text-gray-900">{stats.registeredVisitors || 0}</p>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600 flex-shrink-0">
-                <FaEuroSign className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">CA Total</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
-                <p className="text-[9px] fold:text-[9px] xs:text-xs text-gray-500 mt-0.5 fold:mt-0.5 xs:mt-1 hidden fold:hidden xs:block">(Articles + Livraison)</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6 border border-orange-200">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-orange-100 text-orange-600 flex-shrink-0">
-                <FaGift className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Abonnés CVN&apos;EAT Plus</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-orange-700">{stats.activeCvneatPlusSubscribers || 0}</p>
-                <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => router.push('/admin/users')}
-                    className="text-[10px] text-orange-700 hover:text-orange-900 underline"
-                  >
-                    Voir la liste
-                  </button>
-                  {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={syncCvneatPlusFromStripe}
-                    disabled={syncingPlus}
-                    className="text-[10px] text-orange-700 hover:text-orange-900 underline disabled:opacity-50"
-                    title="Resynchroniser depuis Stripe"
-                  >
-                    {syncingPlus ? 'Sync…' : 'Sync Stripe'}
-                  </button>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="rounded-2xl bg-white border border-gray-200 p-4">
+            <p className="text-xs text-gray-500">Invités</p>
+            <p className="text-xl font-bold text-gray-900">{stats.guestVisitors || 0}</p>
           </div>
         </div>
 
-        {/* Statistiques visiteurs */}
-        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 fold:gap-2 xs:gap-3 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
-                <FaUser className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs totaux</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalVisitors || 0}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-green-100 text-green-600 flex-shrink-0">
-                <FaUserPlus className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs avec compte</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.registeredVisitors || 0}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-red-100 text-red-600 flex-shrink-0">
-                <FaSignInAlt className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
-              </div>
-              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
-                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs invités</p>
-                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.guestVisitors || 0}</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {isWeekHalfOffPromoActive() && (
@@ -1189,99 +1038,42 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Statistiques détaillées - Optimisées mobile */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
-          {/* Commandes */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 sm:p-6 border-b border-gray-200">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Statistiques des Commandes</h2>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base text-gray-600">Commandes en attente</span>
-                  <span className="font-semibold text-yellow-600 text-sm sm:text-base">{stats.pendingOrders}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base text-gray-600">Commandes validées</span>
-                  <span className="font-semibold text-green-600 text-sm sm:text-base">{stats.validatedOrders}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base text-gray-600">Demandes partenariat</span>
-                  <span className="font-semibold text-blue-600 text-sm sm:text-base">{stats.pendingPartners}</span>
-                </div>
-              </div>
-            </div>
+        {/* Statistiques commandes compactes */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4 sm:mb-6">
+          <div className="p-4 border-b border-gray-100">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">État des commandes</h2>
           </div>
-
-          {/* Actions rapides */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 sm:p-6 border-b border-gray-200">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Actions Rapides</h2>
+          <div className="p-4 grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-xl font-bold text-yellow-600">{stats.pendingOrders}</p>
+              <p className="text-[11px] text-gray-500 mt-1">En attente</p>
             </div>
-            <div className="p-4 sm:p-6">
-              <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                <button 
-                  onClick={() => router.push('/admin/users')}
-                  className="p-3 sm:p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  👥 Gérer les Utilisateurs
-                </button>
-                <button
-                  onClick={() => router.push('/admin/users')}
-                  className="p-3 sm:p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  ⭐ Voir les abonnés CVN&apos;EAT Plus ({stats.activeCvneatPlusSubscribers || 0})
-                </button>
-                <button 
-                  onClick={() => router.push('/admin/partnerships')}
-                  className="p-3 sm:p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  🤝 Valider les Partenaires
-                </button>
-                <button 
-                  onClick={() => router.push('/admin/complaints')}
-                  className="p-3 sm:p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  ⚠️ Gérer les Réclamations
-                </button>
-                <button 
-                  onClick={() => router.push('/admin/restaurants')}
-                  className="p-3 sm:p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  🏪 Gérer les Restaurants
-                </button>
-                <button 
-                  onClick={() => router.push('/admin/orders')}
-                  className="p-3 sm:p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  📋 Voir toutes les Commandes
-                </button>
-                <button 
-                  onClick={() => router.push('/admin/newsletter')}
-                  className="p-3 sm:p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  📧 Envoyer Newsletter (Email en masse)
-                </button>
-                <button 
-                  onClick={() => router.push('/admin/bugs')}
-                  className="p-3 sm:p-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-left text-sm sm:text-base min-h-[48px] touch-manipulation"
-                >
-                  🐛 Signalements de bugs
-                </button>
-              </div>
+            <div>
+              <p className="text-xl font-bold text-green-600">{stats.validatedOrders}</p>
+              <p className="text-[11px] text-gray-500 mt-1">Validées</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-blue-600">{stats.pendingPartners}</p>
+              <p className="text-[11px] text-gray-500 mt-1">Partenaires</p>
             </div>
           </div>
         </div>
 
         {/* Commandes récentes */}
-        <div className="bg-white rounded-lg shadow mb-6 sm:mb-8">
-          <div className="p-4 sm:p-6 border-b border-gray-200">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Commandes Récentes</h2>
-            {stats.recentOrders.length === 0 && (
-              <p className="text-xs sm:text-sm text-gray-500 mt-2">Aucune commande trouvée dans la base de données</p>
-            )}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-6 sm:mb-8">
+          <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between gap-3">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Commandes récentes</h2>
+            <button
+              type="button"
+              onClick={() => router.push('/admin/orders')}
+              className="text-sm font-medium text-orange-600 hover:text-orange-700"
+            >
+              Tout voir
+            </button>
           </div>
+          {stats.recentOrders.length === 0 && (
+            <p className="text-sm text-gray-500 p-4">Aucune commande trouvée</p>
+          )}
           {stats.recentOrders.length > 0 ? (
             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
               <table className="min-w-full divide-y divide-gray-200">
