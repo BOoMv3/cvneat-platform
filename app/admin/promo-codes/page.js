@@ -48,7 +48,7 @@ export default function AdminPromoCodesPage() {
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
   const [q, setQ] = useState('');
-  const [selectedCode, setSelectedCode] = useState('PSGOM10');
+  const [selectedCode, setSelectedCode] = useState('');
   const [selectedSummary, setSelectedSummary] = useState(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
   const [selectedError, setSelectedError] = useState('');
@@ -56,10 +56,10 @@ export default function AdminPromoCodesPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [form, setForm] = useState({
-    code: 'PSGOM10',
+    code: '',
     discount_type: 'percentage',
     discount_value: 10,
-    description: 'PSG vs OM -10% ce soir',
+    description: '',
     valid_until: '',
     is_active: true,
   });
@@ -183,7 +183,7 @@ export default function AdminPromoCodesPage() {
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Rechercher un code (ex: PSGOM10)…"
+                  placeholder="Rechercher un code promo…"
                   className="w-full md:flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900"
                 />
                 <button

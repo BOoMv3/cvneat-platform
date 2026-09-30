@@ -143,9 +143,50 @@ export async function PUT(request, { params }) {
         updateData.daily_open_declined_date = toParisDateString();
         updateData.daily_open_confirmed_at = null;
       }
+      // Preuve obligatoire pour le trigger enforce_manual_status_change_proof
+      updateData.manual_status_updated_at = new Date().toISOString();
+      updateData.manual_status_updated_by = user.id;
     }
 
-    const { data: updatedRestaurant, error } = await supabase
+    // Client service role : contourne RLS (le client anon n'a pas le JWT de la requête)
+    const supabaseAdmin = getAdminClient();
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'Configuration serveur manquante' }, { status: 500 });
+    }
+
+    // Toggle manuel ouvert/fermé
+    if (ferme_manuellement !== undefined || ouvert_manuellement !== undefined) {
+      const ferme = !!ferme_manuellement;
+      const ouvert = !!ouvert_manuellement && !ferme;
+      const { data: updatedRestaurant, error } = await supabaseAdmin
+        .from('restaurants')
+        .update({
+          ferme_manuellement: ferme,
+          ouvert_manuellement: ouvert,
+          updated_at: new Date().toISOString(),
+          manual_status_updated_at: new Date().toISOString(),
+          manual_status_updated_by: user.id,
+          ...(ouvert
+            ? { daily_open_confirmed_at: new Date().toISOString(), daily_open_declined_date: null }
+            : ferme
+              ? { daily_open_declined_date: toParisDateString(), daily_open_confirmed_at: null }
+              : {}),
+        })
+        .eq('id', params.id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Erreur toggle manuel restaurant:', error);
+        return NextResponse.json(
+          { error: error.message || 'Impossible de modifier le statut ouvert/fermé', details: error.details || error.hint },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({ success: true, restaurant: updatedRestaurant });
+    }
+
+    const { data: updatedRestaurant, error } = await supabaseAdmin
       .from('restaurants')
       .update(updateData)
       .eq('id', params.id)

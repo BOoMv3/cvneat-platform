@@ -57,7 +57,7 @@ const setCachedRole = (role) => {
  * - Livreur: rester dans /delivery/* (dashboard, profil, factures, messages…).
  *   Hors de cette zone (accueil, etc.) → /delivery/dashboard.
  * - Restaurant/partner: forcer /partner depuis '/'.
- * - Admin: forcer /admin depuis '/'.
+ * - Admin: libre (site client + dashboard).
  */
 export default function AppAutoRedirect() {
   const router = useRouter();
@@ -165,13 +165,8 @@ export default function AppAutoRedirect() {
       const enforceFromCache = (reason) => {
       const cachedRole = getCachedRole();
       const isDelivery = cachedRole === 'delivery' || cachedRole === 'livreur';
-      const isAdmin = cachedRole === 'admin' || cachedRole === 'associe';
       if (isDelivery && !isDeliveryAllowedPath(pathname)) {
         forceTo('/delivery/dashboard', `cache_${reason}`, { role: cachedRole });
-        return true;
-      }
-      if (isAdmin && pathname === '/') {
-        forceTo('/admin', `cache_${reason}`, { role: cachedRole });
         return true;
       }
       return false;
@@ -279,7 +274,6 @@ export default function AppAutoRedirect() {
 
       const isDelivery = role === 'delivery' || role === 'livreur';
       const isRestaurant = role === 'restaurant' || role === 'partner';
-      const isAdmin = role === 'admin' || role === 'associe';
 
       if (role) {
         setCachedRole(role);
@@ -313,10 +307,7 @@ export default function AppAutoRedirect() {
         forceTo('/partner', reason, { role });
       }
 
-      // Admin: rediriger vers le dashboard admin si on est sur l'accueil
-      if (isAdmin && pathname === '/') {
-        forceTo('/admin', reason, { role });
-      }
+      // Admin / associé : pas de redirect forcé (peuvent naviguer sur le site)
 
       try {
         window.__cvneat_boot_done = true;
