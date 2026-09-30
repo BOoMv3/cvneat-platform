@@ -70,7 +70,7 @@ export default function MobileTabBar() {
       <div className="h-24 md:hidden" aria-hidden="true" />
 
       <nav
-        className="fixed left-0 right-0 bottom-0 z-[80] md:hidden bg-zinc-900/95 backdrop-blur border-t border-zinc-800"
+        className="fixed left-0 right-0 bottom-0 z-[80] md:hidden bg-white/95 backdrop-blur border-t border-orange-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Navigation"
       >
@@ -78,7 +78,7 @@ export default function MobileTabBar() {
           <a
             href="/"
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/') ? 'text-orange-500' : 'text-zinc-400'
+              isActive('/') ? 'text-orange-600' : 'text-gray-500'
             }`}
           >
             <FaHome className="h-5 w-5" />
@@ -122,7 +122,7 @@ export default function MobileTabBar() {
                 }
               }, 400);
             }}
-            className="flex flex-col items-center justify-center py-2.5 text-xs font-semibold text-zinc-400"
+            className="flex flex-col items-center justify-center py-2.5 text-xs font-semibold text-gray-500"
           >
             <FaSearch className="h-5 w-5" />
             <span className="mt-1">Rechercher</span>
@@ -131,13 +131,13 @@ export default function MobileTabBar() {
           <a
             href="/panier"
             className={`relative flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/panier') ? 'text-orange-500' : 'text-zinc-400'
+              isActive('/panier') ? 'text-orange-600' : 'text-gray-500'
             }`}
           >
             <FaShoppingCart className="h-5 w-5" />
             <span className="mt-1">Panier</span>
             {cartCount > 0 && (
-              <span className="absolute top-1 right-6 bg-red-500 text-white text-[10px] rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center font-bold">
+              <span className="absolute top-1 right-6 bg-orange-500 text-white text-[10px] rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center font-bold">
                 {cartCount}
               </span>
             )}
@@ -146,7 +146,7 @@ export default function MobileTabBar() {
           <a
             href="/profile"
             className={`flex flex-col items-center justify-center py-2.5 text-xs font-semibold ${
-              isActive('/profile') ? 'text-orange-500' : 'text-zinc-400'
+              isActive('/profile') ? 'text-orange-600' : 'text-gray-500'
             }`}
           >
             <FaUser className="h-5 w-5" />
