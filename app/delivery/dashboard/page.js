@@ -961,22 +961,22 @@ export default function DeliveryDashboard() {
 
   return (
     <AuthGuard allowedRoles={['delivery']}>
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4">
+      <div className="min-h-screen bg-gradient-to-b from-orange-50/40 via-gray-50 to-gray-50 text-gray-900">
         <DeliveryNavbar />
         
         {/* Alerte de nouvelle commande */}
         {showAlert && alertOrder && (
-          <div className="fixed top-2 left-2 right-2 sm:top-4 sm:right-4 sm:left-auto z-50 bg-green-500 text-white p-3 sm:p-4 rounded-lg shadow-lg animate-pulse max-w-sm mx-auto sm:mx-0">
+          <div className="fixed top-2 left-2 right-2 sm:top-4 sm:right-4 sm:left-auto z-50 bg-orange-500 text-white p-3 sm:p-4 rounded-2xl shadow-xl animate-pulse max-w-sm mx-auto sm:mx-0">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-lg">🔔 Nouvelle commande !</h3>
-                <p className="text-sm">Commande #{alertOrder.id}</p>
-                <p className="text-sm">{getCustomerName(alertOrder)} — ton gain {getOrderGain(alertOrder).toFixed(2)}€</p>
-                <p className="text-xs">{alertOrder.delivery_address}</p>
+                <h3 className="font-bold text-lg">Nouvelle course</h3>
+                <p className="text-sm opacity-90">#{String(alertOrder.id).slice(0, 8)}</p>
+                <p className="text-sm font-semibold">{getCustomerName(alertOrder)} — {getOrderGain(alertOrder).toFixed(2)} €</p>
+                <p className="text-xs opacity-80">{alertOrder.delivery_address}</p>
               </div>
               <button
                 onClick={() => setShowAlert(false)}
-                className="ml-4 text-white hover:text-gray-200"
+                className="ml-4 text-white hover:text-orange-100"
               >
                 ✕
               </button>
@@ -990,22 +990,53 @@ export default function DeliveryDashboard() {
             key={alert.id}
             order={alert}
             onAccept={(orderId) => {
-              // Ici on peut accepter la commande directement
               acceptOrder(orderId);
             }}
             onDismiss={(orderId) => {
-              // Ici on peut marquer l'alerte comme ignorée
             }}
           />
         ))}
         
-        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-          {/* Accès rapide — Messages / Factures / Profil (SIRET) */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <main className="mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-8">
+          {/* Header pro */}
+          <div className="mb-5 sm:mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">Espace livreur</p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-gray-900">Dashboard</h1>
+              <p className="mt-1 text-sm text-gray-600">Courses, gains et statut en un coup d&apos;œil</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <DeliveryNotifications deliveryId={deliveryId} />
+              <button
+                onClick={toggleAudio}
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold min-h-[44px] touch-manipulation ${
+                  audioEnabled
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
+                }`}
+              >
+                {audioEnabled ? '🔊' : '🔇'} Son
+              </button>
+              <button
+                onClick={toggleAvailability}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold min-h-[44px] touch-manipulation ${
+                  isAvailable
+                    ? 'bg-green-500 text-white hover:bg-green-600'
+                    : 'bg-gray-900 text-white hover:bg-black'
+                }`}
+              >
+                <span className={`h-2.5 w-2.5 rounded-full ${isAvailable ? 'bg-white animate-pulse' : 'bg-red-400'}`} />
+                {isAvailable ? 'En ligne' : 'Hors ligne'}
+              </button>
+            </div>
+          </div>
+
+          {/* Accès rapide */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
             <button
               type="button"
               onClick={() => router.push('/delivery/messages')}
-              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-orange-500 text-white rounded-xl shadow hover:bg-orange-600 min-h-[72px] touch-manipulation"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-orange-500 text-white rounded-2xl shadow-md shadow-orange-500/20 hover:bg-orange-600 min-h-[72px] touch-manipulation"
             >
               <FaComments className="h-5 w-5" />
               <span className="text-xs sm:text-sm font-semibold">Messages</span>
@@ -1013,7 +1044,7 @@ export default function DeliveryDashboard() {
             <button
               type="button"
               onClick={() => router.push('/delivery/factures')}
-              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-slate-800 text-white rounded-xl shadow hover:bg-slate-900 min-h-[72px] touch-manipulation"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-gray-900 text-white rounded-2xl shadow hover:bg-black min-h-[72px] touch-manipulation"
             >
               <FaFileInvoice className="h-5 w-5" />
               <span className="text-xs sm:text-sm font-semibold">Factures</span>
@@ -1021,15 +1052,15 @@ export default function DeliveryDashboard() {
             <button
               type="button"
               onClick={() => router.push('/delivery/profile')}
-              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-amber-500 text-white rounded-xl shadow hover:bg-amber-600 min-h-[72px] touch-manipulation"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-white text-gray-900 border border-orange-100 rounded-2xl shadow-sm hover:border-orange-300 min-h-[72px] touch-manipulation"
             >
-              <FaUserCog className="h-5 w-5" />
-              <span className="text-xs sm:text-sm font-semibold">SIRET / KBIS</span>
+              <FaUserCog className="h-5 w-5 text-orange-500" />
+              <span className="text-xs sm:text-sm font-semibold">Profil</span>
             </button>
           </div>
 
           {showPrepayFlowInfo && (
-            <div className="mb-4 sm:mb-6 rounded-xl border border-orange-200 bg-orange-50 p-4 sm:p-5 relative shadow-sm">
+            <div className="mb-5 rounded-2xl border border-orange-200 bg-orange-50 p-4 sm:p-5 relative shadow-sm">
               <button
                 type="button"
                 onClick={dismissPrepayFlowInfo}
@@ -1061,14 +1092,10 @@ export default function DeliveryDashboard() {
                       Elle s’affiche <strong>une fois le paiement du client validé</strong> — tu peux alors aller au restaurant.
                     </li>
                   </ol>
-                  <p className="mt-3 text-xs sm:text-sm text-orange-800/90">
-                    Si le client ne paie pas, la course est annulée et tu es prévenu. Les courses marquées
-                    « Client attend pour payer » sont encore en attente de paiement.
-                  </p>
                   <button
                     type="button"
                     onClick={dismissPrepayFlowInfo}
-                    className="mt-3 inline-flex items-center px-3 py-2 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 min-h-[44px] touch-manipulation"
+                    className="mt-3 inline-flex items-center px-3 py-2 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 min-h-[44px] touch-manipulation"
                   >
                     J’ai compris
                   </button>
@@ -1077,141 +1104,52 @@ export default function DeliveryDashboard() {
             </div>
           )}
 
-          {/* Header avec notifications */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-            <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Dashboard Livreur</h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">Gérez vos livraisons et suivez vos performances</p>
+          {/* Stats brand */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+            <div className="rounded-2xl bg-gray-900 p-4 sm:p-5 text-white shadow-lg">
+              <p className="text-xs font-semibold text-gray-400">À encaisser</p>
+              <p className="mt-1 text-2xl sm:text-3xl font-black tracking-tight">{stats?.total_deliveries || 0}</p>
+              <p className="mt-1 text-[11px] text-gray-400">Total {stats?.total_deliveries_all || 0} courses</p>
             </div>
-            <div className="space-y-3 sm:space-y-0">
-              <DeliveryNotifications deliveryId={deliveryId} />
-              
-              <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                <button
-                  onClick={toggleAudio}
-                  className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation ${
-                    audioEnabled 
-                      ? 'bg-green-600 text-white hover:bg-green-700' 
-                      : 'bg-orange-600 text-white hover:bg-orange-700'
-                  }`}
-                >
-                  <span className="text-sm">{audioEnabled ? '🔊' : '🔇'}</span>
-                  <span className="text-xs sm:text-sm">{audioEnabled ? 'Audio' : 'Audio'}</span>
-                </button>
-                
-                <button
-                  onClick={() => router.push('/delivery/history')}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
-                >
-                  <FaCalendarAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Historique</span>
-                </button>
-                
-                <button
-                  onClick={() => router.push('/delivery/reviews')}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
-                >
-                  <FaStar className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Avis</span>
-                </button>
-                
-                <button
-                  onClick={exportEarnings}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
-                >
-                  <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Export</span>
-                </button>
-
-                <button
-                  onClick={() => router.push('/push-test')}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation"
-                >
-                  <FaBell className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm">Test notif</span>
-                </button>
-              </div>
-              
-              <div className="flex items-center justify-center sm:justify-end space-x-2">
-                <div className={`w-3 h-3 rounded-full ${isAvailable ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                <span className="text-xs sm:text-sm font-medium text-gray-700">
-                  {isAvailable ? 'Disponible' : 'Indisponible'}
-                </span>
+            <div className="rounded-2xl bg-orange-500 p-4 sm:p-5 text-white shadow-lg shadow-orange-500/25">
+              <p className="text-xs font-semibold text-orange-100">Gains</p>
+              <p className="mt-1 text-2xl sm:text-3xl font-black tracking-tight">{Number(stats?.total_earnings || 0).toFixed(2)} €</p>
+              <p className="mt-1 text-[11px] text-orange-100/90">En attente de virement</p>
+            </div>
+            <div className="rounded-2xl border border-orange-100 bg-white p-4 sm:p-5 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500">Note</p>
+              <p className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-gray-900">{Number(stats?.average_rating || 0).toFixed(1)}<span className="text-base text-gray-400">/5</span></p>
+              <p className="mt-1 text-[11px] text-gray-500">Avis clients</p>
+            </div>
+            <div className="rounded-2xl border border-orange-100 bg-white p-4 sm:p-5 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500">Statut</p>
+              <p className="mt-1 text-xl sm:text-2xl font-black tracking-tight text-gray-900">{isAvailable ? 'Actif' : 'Pause'}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <button onClick={() => router.push('/delivery/history')} className="text-[11px] font-semibold text-orange-600 hover:underline">Historique</button>
+                <button onClick={() => router.push('/delivery/reviews')} className="text-[11px] font-semibold text-orange-600 hover:underline">Avis</button>
+                <button onClick={exportEarnings} className="text-[11px] font-semibold text-orange-600 hover:underline">Export</button>
               </div>
             </div>
           </div>
 
-          {/* Statistiques améliorées */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Livraisons à encaisser</p>
-                  <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.total_deliveries || 0}</p>
-                  <p className="text-blue-100 text-[10px] sm:text-xs mt-1">Total: {stats?.total_deliveries_all || 0}</p>
-                </div>
-                <div className="bg-blue-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
-                  <FaChartLine className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-xs sm:text-sm font-medium">Gains à encaisser</p>
-                  <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.total_earnings?.toFixed(2) || 0}€</p>
-                  <p className="text-green-100 text-[10px] sm:text-xs mt-1">Total: {stats?.total_earnings_all?.toFixed?.(2) ? stats.total_earnings_all.toFixed(2) : (stats?.total_earnings_all || 0).toFixed?.(2) || '0.00'}€</p>
-                </div>
-                <div className="bg-green-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
-                  <FaDownload className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-yellow-100 text-xs sm:text-sm font-medium">Note Moyenne</p>
-                  <p className="text-lg sm:text-2xl lg:text-3xl font-bold">{stats?.average_rating?.toFixed(1) || 0}/5</p>
-                </div>
-                <div className="bg-yellow-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
-                  <FaStar className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 text-white transform hover:scale-105 transition-all duration-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-xs sm:text-sm font-medium">Statut</p>
-                  <p className="text-sm sm:text-lg lg:text-xl font-bold">{isAvailable ? 'Actif' : 'Inactif'}</p>
-                </div>
-                <div className="bg-purple-400 bg-opacity-30 p-2 sm:p-3 rounded-full">
-                  <FaBell className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Disponibilité améliorée */}
-          <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border p-4 sm:p-6 mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+          {/* Disponibilité */}
+          <div className="rounded-2xl border border-orange-100 bg-white p-4 sm:p-5 mb-5 sm:mb-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div>
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Statut de disponibilité</h3>
-                <p className="text-sm sm:text-base text-gray-600 mt-1">
-                  {isAvailable ? 'Vous êtes actuellement disponible pour les livraisons' : 'Vous êtes actuellement indisponible'}
+                <h3 className="text-base font-bold text-gray-900">Disponibilité</h3>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {isAvailable ? 'Tu reçois les nouvelles courses' : 'Tu n’es pas proposé pour les courses'}
                 </p>
               </div>
               <button
                 onClick={toggleAvailability}
-                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 min-h-[44px] touch-manipulation ${
+                className={`px-5 py-3 rounded-xl font-bold min-h-[44px] touch-manipulation ${
                   isAvailable
-                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg'
-                    : 'bg-green-500 text-white hover:bg-green-600 shadow-lg'
+                    ? 'bg-gray-900 text-white hover:bg-black'
+                    : 'bg-orange-500 text-white hover:bg-orange-600'
                 }`}
               >
-                <span className="text-sm sm:text-base">{isAvailable ? 'Se mettre indisponible' : 'Se mettre disponible'}</span>
+                {isAvailable ? 'Passer hors ligne' : 'Passer en ligne'}
               </button>
             </div>
           </div>
@@ -1220,17 +1158,16 @@ export default function DeliveryDashboard() {
           {acceptedOrders.length > 0 && (
             <div className="space-y-4 mb-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Mes commandes acceptées ({acceptedOrders.length})</h2>
+                <h2 className="text-lg sm:text-xl font-black text-gray-900">Mes courses ({acceptedOrders.length})</h2>
                 <button
                   onClick={() => {
-                    // Développer/réduire toutes les commandes
                     if (expandedOrders.size === acceptedOrders.length) {
                       setExpandedOrders(new Set());
                     } else {
                       setExpandedOrders(new Set(acceptedOrders.map(o => o.id)));
                     }
                   }}
-                  className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                  className="text-sm px-3 py-1.5 bg-orange-50 text-orange-700 rounded-xl hover:bg-orange-100 transition-colors font-semibold"
                 >
                   {expandedOrders.size === acceptedOrders.length ? 'Réduire tout' : 'Développer tout'}
                 </button>
@@ -1241,10 +1178,10 @@ export default function DeliveryDashboard() {
                 {acceptedOrders.map((order) => {
                   const isExpanded = expandedOrders.has(order.id);
                   return (
-                    <div key={order.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                    <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden">
                       {/* En-tête compact */}
                       <div 
-                        className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        className="p-4 cursor-pointer hover:bg-orange-50/50 transition-colors"
                         onClick={() => {
                           const newExpanded = new Set(expandedOrders);
                           if (isExpanded) {
@@ -1572,148 +1509,100 @@ export default function DeliveryDashboard() {
             </div>
           )}
 
-          {/* Commandes disponibles améliorées */}
-          <div className="bg-white rounded-xl shadow-sm border">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Commandes disponibles</h2>
-              <p className="text-gray-600 mt-1">Acceptez une nouvelle livraison</p>
-            </div>
-            <div className="divide-y">
-              {!Array.isArray(availableOrders) || availableOrders.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FaBell className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <p className="text-lg font-medium">Aucune commande disponible</p>
-                  <p className="text-sm mt-1">
-                    Les nouvelles courses apparaissent ici. Après acceptation, la course n’entre en cours
-                    qu’une fois le paiement client validé.
-                  </p>
-                </div>
+          {/* Commandes disponibles — style app pro */}
+          <div className="mb-8">
+            <div className="mb-4 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black text-gray-900">Courses disponibles</h2>
+                <p className="text-sm text-gray-600 mt-0.5">Accepte une course pour commencer</p>
+              </div>
+              {Array.isArray(availableOrders) && availableOrders.length > 0 ? (
+                <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+                  {availableOrders.length}
+                </span>
               ) : null}
-              
-              {Array.isArray(availableOrders) && availableOrders.length > 0 && (
-                <div>
-                  {availableOrders.map((order, index) => {
-                    return (
-                      <div key={`order-${order.id}-${index}`} className="p-6 hover:bg-gray-50 transition-colors">
-                        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start space-y-4 lg:space-y-0">
-                          <div className="flex-1">
-                            <div className="flex flex-wrap items-center gap-2 mb-3">
-                              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                #{order.id || 'N/A'}
-                              </span>
-                              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                Ton gain {getOrderGain(order).toFixed(2)}€
-                              </span>
-                              {order.prepay_search && (
-                                <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
-                                  Client attend pour payer
-                                </span>
-                              )}
-                              <span className="text-sm text-gray-500">
-                                {order.created_at ? new Date(order.created_at).toLocaleTimeString('fr-FR', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                }) : 'N/A'}
-                              </span>
-                            </div>
-                          
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="bg-gray-50 p-3 rounded-lg">
-                                <h4 className="font-semibold text-gray-900 mb-1 text-sm">🍽️ Restaurant</h4>
-                                <p className="text-gray-700 font-medium text-sm">{order.restaurant?.nom || order.restaurant_nom || 'N/A'}</p>
-                                <p className="text-gray-600 text-xs">{order.restaurant?.adresse || order.restaurant_adresse || 'N/A'}</p>
-                              </div>
-                              
-                              <div className="bg-gray-50 p-3 rounded-lg">
-                                <h4 className="font-semibold text-gray-900 mb-1 text-sm">🏠 Livraison</h4>
-                                <p className="text-gray-700 font-medium text-sm">{getCustomerName(order)}</p>
-                                <p className="text-gray-600 text-xs">{order.delivery_address || 'N/A'}</p>
-                                {getCustomerPhone(order) && (
-                                  <p className="text-gray-500 text-xs mt-1">📞 {getCustomerPhone(order)}</p>
-                                )}
-                                {getCustomerEmail(order) && (
-                                  <p className="text-gray-400 text-xs mt-1 break-all">✉️ {getCustomerEmail(order)}</p>
-                                )}
-                              </div>
-                            </div>
-                            
-                            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                              <span className="font-semibold text-green-700">Ton gain: {getOrderGain(order).toFixed(2)}€</span>
-                              <span>Est. {order.preparation_time || 'N/A'} min</span>
-                            </div>
-                            {getDeliverySlotSummaryLine(order) && (
-                              <p className="mt-2 text-sm font-semibold text-orange-800 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-                                🕐 Créneau client : {getDeliverySlotSummaryLine(order)}
-                              </p>
-                            )}
-                          
-                          {/* Décompte en temps réel - affiché pour toutes les commandes avec temps de préparation */}
-                          {order.preparation_time && (order.statut === 'en_preparation' || order.statut === 'pret_a_livrer' || order.statut === 'en_livraison') && (
-                            <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-semibold text-orange-800">⏰ Temps de préparation</h4>
-                                  <p className="text-sm text-orange-600">
-                                    {order.statut === 'en_preparation' ? 'Commande en préparation' : 
-                                     order.statut === 'pret_a_livrer' ? 'Commande prête' : 
-                                     'En livraison'} - {order.preparation_time} min estimées
-                                  </p>
-                                </div>
-                                <OrderCountdown 
-                                  order={order} 
-                                  onTimeUp={(orderId) => {
-                                    // Optionnel : notification ou action
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
+            </div>
+
+            {!Array.isArray(availableOrders) || availableOrders.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-orange-200 bg-white p-10 text-center shadow-sm">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
+                  <FaMotorcycle className="h-7 w-7" />
+                </div>
+                <p className="text-lg font-bold text-gray-900">Aucune course pour le moment</p>
+                <p className="mt-1 text-sm text-gray-500 max-w-md mx-auto">
+                  Reste en ligne : les nouvelles courses apparaissent ici. Après acceptation, elles passent en cours une fois le paiement client validé.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {availableOrders.map((order, index) => {
+                  const gain = getOrderGain(order);
+                  const resto =
+                    order.restaurant?.nom || order.restaurant_nom || 'Restaurant';
+                  const dest = order.delivery_address || 'Adresse client';
+                  const shortId = String(order.id || '').slice(0, 8) || 'N/A';
+                  return (
+                    <div
+                      key={`order-${order.id}-${index}`}
+                      className="relative overflow-hidden rounded-3xl bg-gray-900 p-5 text-white shadow-xl shadow-orange-500/10"
+                    >
+                      <div className="mb-3 flex items-center justify-between text-sm text-gray-300">
+                        <span className="font-semibold">Course disponible</span>
+                        <span className="font-mono text-xs text-gray-400">#{shortId}</span>
+                      </div>
+                      <p className="text-4xl font-black tracking-tight">{gain.toFixed(2)} €</p>
+                      <p className="mt-1 text-sm text-gray-400">Ton gain net</p>
+
+                      {order.prepay_search ? (
+                        <span className="mt-3 inline-flex rounded-full bg-orange-500/20 px-2.5 py-1 text-[11px] font-bold text-orange-300">
+                          Client attend pour payer
+                        </span>
+                      ) : null}
+
+                      <div className="mt-4 space-y-2">
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Restaurant</p>
+                          <p className="text-sm font-semibold text-white">{resto}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{order.restaurant?.adresse || order.restaurant_adresse || ''}</p>
                         </div>
-                        
-                        <div className="mt-4 lg:mt-0 lg:ml-6 flex flex-col gap-2">
-                          {(order.statut === 'en_attente' || order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') ? (
-                            // Dans le nouveau workflow, le livreur accepte les commandes 'en_attente'
-                            <button
-                              onClick={() => acceptOrder(order.id)}
-                              className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg text-sm min-h-[44px] touch-manipulation"
-                            >
-                              ✅ Accepter
-                            </button>
-                          ) : order.statut === 'en_livraison' && order.livreur_id === user?.id ? (
-                            // Commande acceptée par ce livreur - SEUL ce livreur peut la livrer
-                            <div className="flex flex-col gap-2">
-                              <span className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg font-semibold text-xs text-center">
-                                📦 En cours
-                              </span>
-                              <button
-                                onClick={() => completeDelivery(order.id)}
-                                className="w-full px-4 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm min-h-[44px] touch-manipulation"
-                              >
-                                🚚 Livrer
-                              </button>
-                            </div>
-                          ) : order.statut === 'en_livraison' && order.livreur_id !== user?.id ? (
-                            // Commande acceptée par un autre livreur - AUCUNE action possible
-                            <span className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-xs text-center">
-                              👤 Autre livreur
-                            </span>
-                          ) : order.statut === 'livree' ? (
-                            // Commande déjà livrée
-                            <span className="px-3 py-2 bg-green-100 text-green-800 rounded-lg font-semibold text-xs text-center">
-                              ✅ Livrée
-                            </span>
-                          ) : null}
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Livraison</p>
+                          <p className="text-sm font-semibold text-white">{getCustomerName(order)}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{dest}</p>
                         </div>
                       </div>
+
+                      {getDeliverySlotSummaryLine(order) ? (
+                        <p className="mt-3 text-xs font-semibold text-orange-300">
+                          Créneau : {getDeliverySlotSummaryLine(order)}
+                        </p>
+                      ) : null}
+
+                      <div className="mt-5">
+                        {(order.statut === 'en_attente' || order.statut === 'pret_a_livrer' || order.statut === 'en_preparation') ? (
+                          <button
+                            onClick={() => acceptOrder(order.id)}
+                            className="w-full rounded-xl bg-orange-500 py-3.5 text-sm font-bold text-white hover:bg-orange-600 min-h-[48px] touch-manipulation"
+                          >
+                            Accepter la course
+                          </button>
+                        ) : order.statut === 'en_livraison' && order.livreur_id === user?.id ? (
+                          <button
+                            onClick={() => completeDelivery(order.id)}
+                            className="w-full rounded-xl bg-orange-500 py-3.5 text-sm font-bold text-white hover:bg-orange-600 min-h-[48px]"
+                          >
+                            Marquer livrée
+                          </button>
+                        ) : (
+                          <span className="block text-center text-sm text-gray-400 py-2">Indisponible</span>
+                        )}
+                      </div>
                     </div>
-                      );
-                    })}
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            </div>
+            )}
+          </div>
         </main>
 
         {/* Chat Modal */}
@@ -1729,11 +1618,11 @@ export default function DeliveryDashboard() {
         {/* Modal pour saisir le temps de livraison */}
         {showDeliveryTimeModal && selectedOrderForAccept && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-3">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-5">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5 border border-orange-100">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Accepter la commande</h2>
+                <h2 className="text-xl font-black text-gray-900">Accepter la course</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Indiquez le temps de livraison estimé (en minutes). Pensez à vos autres courses en cours.
+                  Indique le temps de livraison estimé (en minutes). Pense à tes autres courses en cours.
                 </p>
               </div>
 
@@ -1751,8 +1640,8 @@ export default function DeliveryDashboard() {
                       onClick={() => setDeliveryTime(time)}
                       className={`px-2 py-2 text-xs sm:text-sm font-medium rounded-lg border transition-colors ${
                         deliveryTime === time
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          ? 'bg-orange-500 text-white border-orange-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-orange-50'
                       }`}
                     >
                       {time}
@@ -1792,9 +1681,9 @@ export default function DeliveryDashboard() {
                 <button
                   onClick={confirmAcceptOrder}
                   disabled={acceptingOrder}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50"
                 >
-                  {acceptingOrder ? 'Acceptation...' : 'Accepter'}
+                  {acceptingOrder ? 'Acceptation…' : 'Accepter la course'}
                 </button>
               </div>
             </div>

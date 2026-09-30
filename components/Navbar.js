@@ -20,7 +20,6 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
   const [userRole, setUserRole] = useState('');
-  const [cvneatPlusActive, setCvneatPlusActive] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
   const router = useRouter();
 
@@ -29,7 +28,6 @@ export default function Navbar() {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
       setUserRole('');
-      setCvneatPlusActive(false);
       if (session?.user) {
         const { data: userData } = await supabase
           .from('users')
@@ -39,18 +37,6 @@ export default function Navbar() {
         if(userData) {
           setUserPoints(userData.points_fidelite || 0);
           setUserRole((userData.role || '').toString().trim().toLowerCase());
-        }
-        try {
-          const plusRes = await fetch('/api/cvneat-plus/status', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-            cache: 'no-store',
-          });
-          if (plusRes.ok) {
-            const plusData = await plusRes.json().catch(() => ({}));
-            setCvneatPlusActive(plusData?.active === true);
-          }
-        } catch {
-          setCvneatPlusActive(false);
         }
       }
     };
@@ -70,7 +56,6 @@ export default function Navbar() {
       setUser(session?.user || null);
       if (!session?.user) {
         setUserRole('');
-        setCvneatPlusActive(false);
       } else {
         checkUser();
       }
@@ -155,16 +140,6 @@ export default function Navbar() {
                 <span className="text-xs lg:text-sm font-medium text-yellow-800 dark:text-yellow-200">{userPoints} pts</span>
               </Link>
             )}
-            {user && cvneatPlusActive && (
-              <Link
-                href="/abonnement"
-                className="flex items-center bg-gradient-to-r from-orange-500 to-red-500 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg text-white text-xs lg:text-sm font-extrabold shadow-md animate-pulse"
-                title="Abonné CVN'EAT Plus"
-              >
-                CVN&apos;EAT Plus
-              </Link>
-            )}
-            
             {/* Panier */}
             {cartItemCount > 0 && (
               <button
@@ -266,17 +241,6 @@ export default function Navbar() {
                   <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">{userPoints} points de fidélité</span>
                 </div>
               )}
-              {user && cvneatPlusActive && (
-                <Link
-                  href="/abonnement"
-                  className="flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 rounded-lg text-white text-sm font-extrabold shadow-md animate-pulse"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <FaGift className="h-4 w-4" />
-                  <span>Abonné CVN&apos;EAT Plus</span>
-                </Link>
-              )}
-
               <Link
                 href="/"
                 className="text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-2 text-sm sm:text-base"

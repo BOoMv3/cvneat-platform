@@ -96,7 +96,7 @@ export default function BecomeDeliveryPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      <header className="sticky top-0 z-40 border-b border-emerald-100/80 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-orange-100/80 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-2 min-w-0">
             <CvneatLogo size="sm" href={null} />
@@ -105,20 +105,20 @@ export default function BecomeDeliveryPage() {
             </span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm font-semibold text-gray-600 md:flex">
-            <button type="button" onClick={() => scrollTo('comment')} className="hover:text-emerald-600">
+            <button type="button" onClick={() => scrollTo('comment')} className="hover:text-orange-600">
               Comment ça marche
             </button>
-            <button type="button" onClick={() => scrollTo('offre')} className="hover:text-emerald-600">
+            <button type="button" onClick={() => scrollTo('offre')} className="hover:text-orange-600">
               L&apos;offre
             </button>
-            <button type="button" onClick={() => scrollTo('faq')} className="hover:text-emerald-600">
+            <button type="button" onClick={() => scrollTo('faq')} className="hover:text-orange-600">
               FAQ
             </button>
           </nav>
           <button
             type="button"
             onClick={() => scrollTo('rejoindre')}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-3.5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-orange-600"
           >
             Devenir livreur
             <FaArrowRight className="h-3 w-3" />
@@ -126,15 +126,15 @@ export default function BecomeDeliveryPage() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden border-b border-emerald-100 bg-gradient-to-b from-emerald-50/80 via-white to-white">
+      <section className="relative overflow-hidden border-b border-orange-100 bg-gradient-to-b from-orange-50/80 via-white to-white">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-20">
           <div>
-            <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-600">
+            <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">
               CVN&apos;EAT pour les livreurs
             </p>
             <h1 className="text-4xl font-black leading-[1.08] tracking-tight text-gray-900 sm:text-5xl lg:text-[3.25rem]">
               Livrez près de chez vous.{' '}
-              <span className="text-emerald-600">Gagnez à votre rythme.</span>
+              <span className="text-orange-600">Gagnez à votre rythme.</span>
             </h1>
             <p className="mt-5 max-w-xl text-base text-gray-600 sm:text-lg">
               Rejoignez l&apos;équipe locale CVN&apos;EAT : courses flexibles, paiements suivis, zone
@@ -145,41 +145,41 @@ export default function BecomeDeliveryPage() {
               <button
                 type="button"
                 onClick={() => scrollTo('rejoindre')}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-base font-bold text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3.5 text-base font-bold text-white shadow-md shadow-orange-500/25 hover:bg-orange-600"
               >
                 Postuler maintenant
                 <FaArrowRight className="h-3.5 w-3.5" />
               </button>
-              <button
-                type="button"
-                onClick={() => scrollTo('comment')}
-                className="text-sm font-semibold text-gray-600 underline-offset-4 hover:text-emerald-600 hover:underline"
+              <Link
+                href="/login?redirect=/delivery/dashboard"
+                className="text-sm font-semibold text-gray-600 underline-offset-4 hover:text-orange-600 hover:underline"
               >
-                Découvrir comment ça marche
-              </button>
+                Déjà livreur ? Se connecter
+              </Link>
             </div>
             <p className="mt-5 text-sm text-gray-500">Vélo, trottinette, scooter, moto ou voiture.</p>
           </div>
 
           <div className="relative mx-auto w-full max-w-md">
-            <div className="absolute -left-2 top-6 z-10 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-md sm:-left-6">
-              Nouvelle course <span className="text-emerald-600">+5,00 €</span>
+            <div className="absolute -left-2 top-6 z-10 rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-md sm:-left-6">
+              Nouvelle course <span className="text-orange-600">+5,00 €</span>
             </div>
-            <div className="absolute -right-1 top-24 z-10 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-md sm:-right-4">
+            <div className="absolute -right-1 top-24 z-10 rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-md sm:-right-4">
               Pick-up prêt <FaCheck className="ml-1 inline text-green-500" />
             </div>
-            <div className="absolute bottom-16 left-0 z-10 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-md sm:-left-4">
+            <div className="absolute bottom-16 left-0 z-10 rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-md sm:-left-4">
               Client à 1,2 km
             </div>
 
-            <div className="relative -rotate-1 rounded-3xl bg-gray-900 p-5 text-white shadow-2xl shadow-emerald-600/20 sm:-rotate-2 sm:p-6">
+            <div className="relative -rotate-1 rounded-3xl bg-gray-900 p-5 text-white shadow-2xl shadow-orange-500/20 sm:-rotate-2 sm:p-6">
               <div className="mb-4 flex items-center justify-between text-sm text-gray-300">
                 <span>Course disponible</span>
                 <span className="font-mono text-xs">#3921</span>
               </div>
               <p className="text-4xl font-black tracking-tight">5,00 €</p>
+              <p className="mt-1 text-sm text-gray-400">Ton gain net</p>
               <div className="mt-5 flex items-center gap-2 text-sm">
-                <FaMapMarkerAlt className="text-emerald-400" />
+                <FaMapMarkerAlt className="text-orange-400" />
                 <span className="text-gray-300">Ganges → Laroque · ~10 min</span>
               </div>
               <div className="mt-4 grid gap-2">
@@ -192,7 +192,7 @@ export default function BecomeDeliveryPage() {
               </div>
               <button
                 type="button"
-                className="mt-5 w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-white"
+                className="mt-5 w-full rounded-xl bg-orange-500 py-3 text-sm font-bold text-white"
               >
                 Accepter la course
               </button>
@@ -201,14 +201,14 @@ export default function BecomeDeliveryPage() {
         </div>
       </section>
 
-      <section id="offre" className="scroll-mt-24 border-b border-emerald-100 bg-white py-16 sm:py-20">
+      <section id="offre" className="scroll-mt-24 border-b border-orange-100 bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-600">
+          <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">
             Une offre simple
           </p>
           <h2 className="max-w-3xl text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">
             Travaillez quand vous voulez.{' '}
-            <span className="text-emerald-600">Soyez payé pour chaque course.</span>
+            <span className="text-orange-600">Soyez payé pour chaque course.</span>
           </h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {[
@@ -218,10 +218,10 @@ export default function BecomeDeliveryPage() {
             ].map((item) => (
               <div
                 key={item.k}
-                className="rounded-2xl border border-emerald-100 bg-emerald-50/50 px-6 py-8 text-center"
+                className="rounded-2xl border border-orange-100 bg-orange-50/50 px-6 py-8 text-center"
               >
-                <item.icon className="mx-auto mb-3 h-6 w-6 text-emerald-600" />
-                <p className="text-3xl font-black text-emerald-600 sm:text-4xl">{item.k}</p>
+                <item.icon className="mx-auto mb-3 h-6 w-6 text-orange-600" />
+                <p className="text-3xl font-black text-orange-600 sm:text-4xl">{item.k}</p>
                 <p className="mt-2 text-sm font-semibold text-gray-600">{item.v}</p>
               </div>
             ))}
@@ -229,9 +229,9 @@ export default function BecomeDeliveryPage() {
         </div>
       </section>
 
-      <section id="comment" className="scroll-mt-24 border-b border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white py-16 sm:py-20">
+      <section id="comment" className="scroll-mt-24 border-b border-orange-100 bg-gradient-to-b from-orange-50/40 to-white py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-600">
+          <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">
             Comment ça marche
           </p>
           <h2 className="max-w-3xl text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">
@@ -255,10 +255,10 @@ export default function BecomeDeliveryPage() {
                 text: 'Acceptez les courses autour de chez vous quand vous êtes dispo.',
               },
             ].map((step) => (
-              <div key={step.n} className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
+              <div key={step.n} className="rounded-2xl border border-orange-100 bg-white p-6 shadow-sm">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="text-sm font-black text-emerald-500">{step.n}</span>
-                  <FaMotorcycle className="h-5 w-5 text-emerald-500" />
+                  <span className="text-sm font-black text-orange-500">{step.n}</span>
+                  <FaMotorcycle className="h-5 w-5 text-orange-500" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">{step.title}</h3>
                 <p className="mt-2 text-sm text-gray-600">{step.text}</p>
@@ -268,7 +268,7 @@ export default function BecomeDeliveryPage() {
         </div>
       </section>
 
-      <section id="rejoindre" className="scroll-mt-24 border-b border-emerald-100 bg-white py-16 sm:py-20">
+      <section id="rejoindre" className="scroll-mt-24 border-b border-orange-100 bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-xl px-4 sm:px-6">
           <div className="text-center">
             <h2 className="text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">
@@ -290,7 +290,7 @@ export default function BecomeDeliveryPage() {
               <button
                 type="button"
                 onClick={() => setSuccess(false)}
-                className="mt-6 text-sm font-semibold text-emerald-600 hover:underline"
+                className="mt-6 text-sm font-semibold text-orange-600 hover:underline"
               >
                 Envoyer une autre candidature
               </button>
@@ -298,19 +298,19 @@ export default function BecomeDeliveryPage() {
           ) : (
             <form
               onSubmit={onSubmit}
-              className="mt-10 space-y-4 rounded-3xl border border-emerald-100 bg-white p-6 shadow-lg shadow-emerald-600/10 sm:p-8"
+              className="mt-10 space-y-4 rounded-3xl border border-orange-100 bg-white p-6 shadow-lg shadow-orange-600/10 sm:p-8"
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                    Prénom <span className="text-emerald-500">*</span>
+                    Prénom <span className="text-orange-500">*</span>
                   </label>
                   <input
                     name="prenom"
                     required
                     value={form.prenom}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-orange-500/30 focus:ring-2"
                   />
                 </div>
                 <div>
@@ -319,13 +319,13 @@ export default function BecomeDeliveryPage() {
                     name="nom"
                     value={form.nom}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-orange-500/30 focus:ring-2"
                   />
                 </div>
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                  Email <span className="text-emerald-500">*</span>
+                  Email <span className="text-orange-500">*</span>
                 </label>
                 <input
                   name="email"
@@ -333,12 +333,12 @@ export default function BecomeDeliveryPage() {
                   required
                   value={form.email}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-orange-500/30 focus:ring-2"
                 />
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                  Téléphone <span className="text-emerald-500">*</span>
+                  Téléphone <span className="text-orange-500">*</span>
                 </label>
                 <input
                   name="telephone"
@@ -347,12 +347,12 @@ export default function BecomeDeliveryPage() {
                   value={form.telephone}
                   onChange={onChange}
                   placeholder="06 12 34 56 78"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-orange-500/30 focus:ring-2"
                 />
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                  Ville <span className="text-emerald-500">*</span>
+                  Ville <span className="text-orange-500">*</span>
                 </label>
                 <input
                   name="ville"
@@ -360,7 +360,7 @@ export default function BecomeDeliveryPage() {
                   value={form.ville}
                   onChange={onChange}
                   placeholder="Ex. Ganges"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-orange-500/30 focus:ring-2"
                 />
               </div>
               <div>
@@ -369,7 +369,7 @@ export default function BecomeDeliveryPage() {
                   name="vehicleType"
                   value={form.vehicleType}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-orange-500/30 focus:ring-2"
                 >
                   <option value="bike">Vélo</option>
                   <option value="trotinette">Trottinette</option>
@@ -384,7 +384,7 @@ export default function BecomeDeliveryPage() {
                   name="availability"
                   value={form.availability}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none ring-orange-500/30 focus:ring-2"
                 />
               </div>
 
@@ -397,7 +397,7 @@ export default function BecomeDeliveryPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-base font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3.5 text-base font-bold text-white hover:bg-orange-600 disabled:opacity-60"
               >
                 {submitting ? 'Envoi…' : 'Postuler'}
                 {!submitting ? <FaArrowRight className="h-3.5 w-3.5" /> : null}
@@ -407,12 +407,12 @@ export default function BecomeDeliveryPage() {
         </div>
       </section>
 
-      <section id="faq" className="scroll-mt-24 bg-gradient-to-b from-emerald-50/50 to-white py-16 sm:py-20">
+      <section id="faq" className="scroll-mt-24 bg-gradient-to-b from-orange-50/50 to-white py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <h2 className="text-center text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">
             Questions fréquentes
           </h2>
-          <div className="mt-10 divide-y divide-emerald-100 rounded-2xl border border-emerald-100 bg-white">
+          <div className="mt-10 divide-y divide-orange-100 rounded-2xl border border-orange-100 bg-white">
             {FAQ.map((item, idx) => {
               const open = openFaq === idx;
               return (
@@ -424,7 +424,7 @@ export default function BecomeDeliveryPage() {
                   >
                     <span className="font-bold text-gray-900">{item.q}</span>
                     <FaChevronDown
-                      className={`h-3.5 w-3.5 shrink-0 text-emerald-500 transition-transform ${
+                      className={`h-3.5 w-3.5 shrink-0 text-orange-500 transition-transform ${
                         open ? 'rotate-180' : ''
                       }`}
                     />
@@ -439,7 +439,7 @@ export default function BecomeDeliveryPage() {
         </div>
       </section>
 
-      <footer className="border-t border-emerald-100 bg-gray-950 py-10 text-white">
+      <footer className="border-t border-orange-100 bg-gray-950 py-10 text-white">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 sm:flex-row sm:items-center sm:px-6">
           <div>
             <p className="font-black">CVN&apos;EAT</p>

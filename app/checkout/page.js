@@ -1886,26 +1886,6 @@ export default function Checkout() {
               );
             })()}
 
-            {/* Bloc CVN'EAT Plus (déplacé ici pour ne pas casser la home) */}
-            <div className="border-t dark:border-gray-700 pt-4 mt-4 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/70 dark:bg-emerald-950/20 p-3">
-              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
-                {CVNEAT_PLUS_NAME}
-              </p>
-              <p className="text-xs text-emerald-800/90 dark:text-emerald-200/90 mt-1 leading-relaxed">
-                -50% sur la livraison + frais plateforme offerts dès {CVNEAT_PLUS_MIN_ORDER_EUR}€ d’articles.
-              </p>
-              {cvneatPlus.active && (
-                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
-                  Avantage actif sur cette commande.
-                </p>
-              )}
-              {!cvneatPlus.active && (
-                <a href="/abonnement" className="inline-block mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline">
-                  Voir l’abonnement
-                </a>
-              )}
-            </div>
-
             {/* Utiliser mes points de fidélité */}
             {userPoints > 0 && (
               <div className="border-t dark:border-gray-700 pt-4 mt-4">

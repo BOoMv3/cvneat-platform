@@ -58,7 +58,6 @@ import {
   getPlatformPromoCheckoutLine,
 } from '@/lib/platform-promo';
 import { getTonightAutoPromo } from '@/lib/tonight-promo';
-import { CVNEAT_PLUS_NAME, CVNEAT_PLUS_PITCH } from '@/lib/cvneat-plus';
 import { isMaskedRestaurantName } from '@/lib/masked-restaurants';
 
 const CvneatLogo = dynamic(() => import('@/components/CvneatLogo'), { ssr: false });
@@ -465,7 +464,6 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [user, setUser] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
-  const [cvneatPlusActive, setCvneatPlusActive] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showFloatingCart, setShowFloatingCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState({}); // Pour l'animation d'ajout au panier
@@ -564,7 +562,6 @@ export default function Home() {
     if (!authUser) {
       setUserPoints(0);
       setHasActiveOrder(false);
-      setCvneatPlusActive(false);
       return;
     }
     try {
@@ -579,20 +576,6 @@ export default function Home() {
       }
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
-        try {
-          const plusRes = await fetch('/api/cvneat-plus/status', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-            cache: 'no-store',
-          });
-          if (plusRes.ok) {
-            const plusData = await plusRes.json().catch(() => ({}));
-            setCvneatPlusActive(plusData?.active === true);
-          } else {
-            setCvneatPlusActive(false);
-          }
-        } catch {
-          setCvneatPlusActive(false);
-        }
         const res = await fetch('/api/orders/active', {
           headers: { Authorization: `Bearer ${session.access_token}` },
           cache: 'no-store',
@@ -1607,25 +1590,6 @@ export default function Home() {
         <section className="mb-8">
           <Advertisement position="banner_middle" />
         </section>
-
-        {!cvneatPlusActive && (
-          <section className="mb-8">
-            <div className="flex flex-col gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 dark:border-orange-900/40 dark:bg-orange-950/20">
-              <div>
-                <p className="text-sm font-extrabold text-orange-700 dark:text-orange-300">{CVNEAT_PLUS_NAME}</p>
-                <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">
-                  {CVNEAT_PLUS_PITCH.benefits?.[0] || 'Livraison à moitié prix et avantages fidélité.'}
-                </p>
-              </div>
-              <Link
-                href={user ? '/abonnement' : '/login?redirect=abonnement'}
-                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600"
-              >
-                Découvrir
-              </Link>
-            </div>
-          </section>
-        )}
 
         <section className="mb-8">
           <InviteFriendsBanner />

@@ -51,16 +51,16 @@ export default function DeliveryNavbar() {
   };
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+    <nav className="bg-white/95 backdrop-blur border-b border-orange-100 sticky top-0 z-40 shadow-sm">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
         <div className="flex justify-between items-center h-14 sm:h-16 gap-2">
           <Link href="/delivery/dashboard" className="flex items-center space-x-2 shrink-0">
-            <div className="bg-orange-500 text-white p-2 rounded-lg">
+            <div className="bg-orange-500 text-white p-2 rounded-xl shadow-md shadow-orange-500/30">
               <FaMotorcycle className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="hidden xs:block sm:block">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">CVN&apos;EAT</h1>
-              <p className="text-[10px] sm:text-xs text-gray-600">Livreur</p>
+              <h1 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">CVN&apos;EAT</h1>
+              <p className="text-[10px] sm:text-xs font-semibold text-orange-600 uppercase tracking-wide">Livreur</p>
             </div>
           </Link>
 
