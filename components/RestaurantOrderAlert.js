@@ -309,14 +309,7 @@ export default function RestaurantOrderAlert() {
                 const deliveryFee = parseFloat(order.delivery_fee || order.frais_livraison || 0);
                 const total = totalAmount + deliveryFee;
                 
-                // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-                const normalizedRestaurantName = (restaurant?.nom || '')
-                  .normalize('NFD')
-                  .replace(/[\u0300-\u036f]/g, '')
-                  .toLowerCase();
-                const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-                const commissionRate = isInternalRestaurant ? 0 : 0.20; // 20% pour CVN'EAT
-                
+                const commissionRate = 0.2;
                 const commission = totalAmount * commissionRate;
                 const restaurantGain = totalAmount - commission;
                 
@@ -330,11 +323,9 @@ export default function RestaurantOrderAlert() {
                         <p className="text-sm font-semibold text-green-600">
                           Votre gain: {restaurantGain.toFixed(2)}€
                         </p>
-                        {commissionRate > 0 && (
-                          <p className="text-xs text-gray-500">
-                            (Commission 20%: {commission.toFixed(2)}€)
-                          </p>
-                        )}
+                        <p className="text-xs text-gray-500">
+                          (Commission 20 % HT: {commission.toFixed(2)}€)
+                        </p>
                       </>
                     )}
                     <p className="text-sm text-gray-500 mt-1">

@@ -83,9 +83,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Restaurant non trouvé' }, { status: 404 });
     }
 
-    // Calculer les commissions (règles fixes: Bonne Pâte 0%, All'ovale 15%, sinon commission_rate ou 20%)
+    // Commission 20 % HT (ou restaurant.commission_rate)
     const effectiveRatePercent = getEffectiveCommissionRatePercent({
-      restaurantName: restaurant?.nom,
       restaurantRatePercent: restaurant?.commission_rate,
     });
     const computedCommission = computeCommissionAndPayout(totalAmount, effectiveRatePercent);

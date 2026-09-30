@@ -6,7 +6,8 @@ const ISSUER = {
   rcs: 'RCS Montpellier 989 966 700',
   address: '1 bis Rue Armand Sabatier, 34190 Ganges, France',
   email: 'contact@cvneat.fr',
-  tvaNote: 'Mention actuelle sur les factures : exonération TVA art. 293 B du CGI (à valider avec votre expert-comptable).',
+  tvaNote:
+    "Les annuaires (societe.com) affichent un n° TVA FR90989966700 calculé automatiquement à partir du SIREN. Ça ne prouve PAS que CVN'EAT est assujetti à la TVA. La mention « exonération art. 293 B » sur les factures doit être validée avec votre expert-comptable / espace pro impots.gouv.fr.",
 };
 
 export default function ComptableEntreprisePage() {

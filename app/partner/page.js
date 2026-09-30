@@ -1799,24 +1799,24 @@ export default function PartnerDashboard() {
   };
 
   const calculateCommission = (totalAmount, order = null) => {
-    // S'assurer que totalAmount est un nombre valide
     const amount = parseFloat(totalAmount || 0) || 0;
     if (isNaN(amount) || amount < 0) {
       console.warn('⚠️ calculateCommission: totalAmount invalide:', totalAmount);
-      return { commission: 0, restaurantRevenue: 0 };
+      return { commission: 0, restaurantRevenue: 0, commissionRatePercent: 20 };
     }
-    
-    // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-    const normalizedRestaurantName = (restaurant?.nom || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-    const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-    
+
     const fulfillment = String(order?.order_fulfillment || 'delivery').toLowerCase();
-    const defaultRate = fulfillment === 'pickup' ? 0.15 : 0.20;
-    // Pas de commission pour "La Bonne Pâte"
-    const commissionRate = isInternalRestaurant ? 0 : defaultRate;
+    const defaultRate = fulfillment === 'pickup' ? 0.15 : 0.2;
+    const stored =
+      restaurant?.commission_rate != null && restaurant?.commission_rate !== ''
+        ? parseFloat(restaurant.commission_rate)
+        : null;
+    const commissionRate =
+      fulfillment === 'pickup'
+        ? 0.15
+        : Number.isFinite(stored)
+          ? stored / 100
+          : defaultRate;
     const commission = amount * commissionRate;
     const restaurantRevenue = amount - commission;
     return { commission, restaurantRevenue, commissionRatePercent: commissionRate * 100 };

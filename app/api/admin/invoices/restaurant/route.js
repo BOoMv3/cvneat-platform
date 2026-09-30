@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getFixedCommissionRatePercentFromName } from '../../../../../lib/commission';
 import {
   computeOrderCommissionEur,
   computeOrderRestaurantPayoutEur,
@@ -232,13 +231,8 @@ export async function GET(request) {
     return !['failed', 'cancelled', 'refunded'].includes(s);
   });
 
-  // Règle fixe éventuelle (Bonne Pâte / All'ovale)
-  const fixedRatePercent = getFixedCommissionRatePercentFromName(restaurant.nom);
   const restRate = restaurant.commission_rate ?? 20;
-  const displayRatePercent =
-    fixedRatePercent !== null
-      ? fixedRatePercent
-      : (Number(restRate) || 20);
+  const displayRatePercent = Number(restRate) || 20;
 
   const lines = paidOrders.map((o) => {
     const articles = getOrderArticlesAmountEur(o);

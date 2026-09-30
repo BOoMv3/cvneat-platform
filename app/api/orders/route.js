@@ -922,11 +922,10 @@ export async function POST(request) {
       // create-payment-intent soustrait platform_discount_amount: on y ajoute 0,49€.
       platform_discount_amount = Math.round((platform_discount_amount + 0.49) * 100) / 100;
     }
-    // Règles fixes: La Bonne Pâte = 0%, All'ovale = 15%, sinon restaurant.commission_rate ou 20%
+    // Commission : 20 % HT livraison (ou restaurant.commission_rate), 15 % HT en retrait
     const effectiveRatePercent = isPickupOrder
-      ? getPickupCommissionRatePercent({ restaurantName: restaurant?.nom })
+      ? getPickupCommissionRatePercent()
       : getEffectiveCommissionRatePercent({
-          restaurantName: restaurant?.nom,
           restaurantRatePercent: restaurant?.commission_rate,
         });
     const computedCommission = computeCommissionAndPayout(totalAfterDiscount, effectiveRatePercent);

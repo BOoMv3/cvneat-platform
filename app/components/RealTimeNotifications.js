@@ -984,13 +984,7 @@ export default function RealTimeNotifications({ restaurantId, onOrderClick }) {
                           </p>
                           {notification.data && (() => {
                             const totalAmount = parseFloat(notification.data.total_amount || notification.data.total || 0);
-                            // Vérifier si c'est "La Bonne Pâte" (pas de commission)
-                            const normalizedRestaurantName = (restaurant?.nom || '')
-                              .normalize('NFD')
-                              .replace(/[\u0300-\u036f]/g, '')
-                              .toLowerCase();
-                            const isInternalRestaurant = normalizedRestaurantName.includes('la bonne pate');
-                            const commissionRate = isInternalRestaurant ? 0 : 0.20; // 20% pour CVN'EAT
+                            const commissionRate = 0.2;
                             const restaurantGain = totalAmount * (1 - commissionRate);
                             
                             return (
