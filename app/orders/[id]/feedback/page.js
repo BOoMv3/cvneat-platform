@@ -99,28 +99,23 @@ export default function OrderFeedback() {
         return;
       }
 
-      // Sauvegarder le feedback
-      const feedbackData = {
-        order_id: orderId,
-        customer_id: session.user.id,
-        restaurant_id: order.restaurant?.id || order.restaurant_id,
-        ...feedback,
-        submitted_at: new Date().toISOString()
-      };
-
-      const { error: feedbackError } = await supabase
-        .from('order_feedback')
-        .insert([feedbackData]);
-
-      if (feedbackError) {
-        throw feedbackError;
+      const feedbackRes = await fetch(`/api/orders/${orderId}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(feedback),
+      });
+      const feedbackResult = await feedbackRes.json().catch(() => ({}));
+      if (!feedbackRes.ok) {
+        throw new Error(feedbackResult.error || 'Erreur lors de la soumission du feedback');
       }
 
       // Noter aussi le livreur (delivery_ratings) si livraison et au moins une note > 0
-      // (avant: seulement delivery_quality/delivery_speed → beaucoup de clients ne notaient jamais)
       const livreurNote = feedback.delivery_quality || feedback.delivery_speed || feedback.overall_satisfaction;
-      if (order.livreur_id && livreurNote > 0) {
-        const livreurRating = livreurNote;
+      const livreurId = order.livreur_id || feedbackResult.livreur_id;
+      if (livreurId && livreurNote > 0) {
         try {
           await fetch('/api/delivery/ratings', {
             method: 'POST',
@@ -130,7 +125,7 @@ export default function OrderFeedback() {
             },
             body: JSON.stringify({
               order_id: orderId,
-              rating: livreurRating,
+              rating: livreurNote,
               comment: feedback.comment || null
             })
           });

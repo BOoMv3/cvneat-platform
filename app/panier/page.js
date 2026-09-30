@@ -23,6 +23,7 @@ import {
 } from 'react-icons/fa';
 import PriceInfoBanner from '@/components/PriceInfoBanner';
 import { getItemLineTotal } from '@/lib/cartUtils';
+import { getRestaurantMinOrderEur, isMinOrderReached } from '@/lib/restaurant-min-order';
 import {
   SECOND_ARTICLE_PROMO_BANNER,
   LA_BONNE_PATE_STOCK_PROMO_BANNER,
@@ -165,6 +166,9 @@ export default function Panier() {
     return Math.max(0, Math.round((subtotalBrut - secondArticlePromo) * 100) / 100) + getDeliveryFee();
   };
 
+  const articlesSubtotal = Math.max(0, Math.round((subtotalBrut - secondArticlePromo) * 100) / 100);
+  const minOrderCheck = isMinOrderReached(articlesSubtotal, restaurant);
+
   const getItemCount = () => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
@@ -172,6 +176,12 @@ export default function Panier() {
   const handleCheckout = () => {
     if (cart.length === 0) {
       alert('Votre panier est vide');
+      return;
+    }
+    if (!minOrderCheck.ok) {
+      alert(
+        `Commande minimum : ${minOrderCheck.min}€. Ajoutez encore ${minOrderCheck.missing.toFixed(2)}€ d'articles.`
+      );
       return;
     }
     router.push('/checkout');
@@ -522,6 +532,18 @@ export default function Panier() {
                 </div>
               </div>
 
+              {/* Minimum de commande */}
+              {!minOrderCheck.ok && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 mb-4">
+                  <p className="text-sm font-medium text-amber-900">
+                    Minimum de commande : {minOrderCheck.min}€
+                  </p>
+                  <p className="text-xs text-amber-800 mt-1">
+                    Il manque {minOrderCheck.missing.toFixed(2)}€ d&apos;articles pour commander.
+                  </p>
+                </div>
+              )}
+
               {/* Informations de livraison */}
               <div className="bg-blue-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
                 <div className="flex items-center space-x-2 mb-1 sm:mb-2">
@@ -530,6 +552,9 @@ export default function Panier() {
                 </div>
                 <p className="text-xs sm:text-sm text-blue-700">
                   {restaurant?.deliveryTime || 30} minutes
+                </p>
+                <p className="text-xs sm:text-sm text-blue-700 mt-1">
+                  Min. commande : {getRestaurantMinOrderEur(restaurant)}€
                 </p>
               </div>
 
@@ -584,9 +609,16 @@ export default function Panier() {
               <div className="space-y-2 sm:space-y-3">
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] touch-manipulation"
+                  disabled={!minOrderCheck.ok}
+                  className={`w-full py-3 sm:py-4 rounded-lg transition-all duration-200 font-semibold text-sm sm:text-base min-h-[44px] touch-manipulation ${
+                    minOrderCheck.ok
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 transform hover:scale-105'
+                      : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  }`}
                 >
-                  Passer la commande
+                  {minOrderCheck.ok
+                    ? 'Passer la commande'
+                    : `Minimum ${minOrderCheck.min}€ (encore ${minOrderCheck.missing.toFixed(2)}€)`}
                 </button>
                 
                 <button

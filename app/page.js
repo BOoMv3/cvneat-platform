@@ -1981,7 +1981,7 @@ export default function Home() {
                               <span className="whitespace-nowrap">Livraison à partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€</span>
                             </div>
                             <div className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                              Min. {restaurant.minOrder || 15}€
+                              Min. {restaurant.commande_min || restaurant.minOrder || 15}€
                             </div>
                           </div>
                         </div>

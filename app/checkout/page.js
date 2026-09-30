@@ -31,6 +31,7 @@ import {
   FaGift
 } from 'react-icons/fa';
 import { getItemLineTotal, computeCartTotalWithExtras, reconcileCartWithMenu, cartHasAlcohol } from '@/lib/cartUtils';
+import { getRestaurantMinOrderEur, isMinOrderReached } from '@/lib/restaurant-min-order';
 import { LOYALTY_REWARDS_CATALOG, LOYALTY_CHECKOUT_HELP, computeLoyaltyAdjustments } from '@/lib/loyalty-rewards';
 import {
   computeCheckoutPlatformDiscountEur,
@@ -702,6 +703,16 @@ export default function Checkout() {
 
       if (!activeRestaurant) {
         alert('Erreur: Restaurant non trouvé');
+        setSubmitting(false);
+        return;
+      }
+
+      const cartSubtotalForMin = computeCartTotalWithExtras(cart);
+      const minCheck = isMinOrderReached(cartSubtotalForMin, activeRestaurant);
+      if (!minCheck.ok) {
+        alert(
+          `Commande minimum : ${minCheck.min}€. Votre panier est à ${minCheck.sub.toFixed(2)}€ (il manque ${minCheck.missing.toFixed(2)}€).`
+        );
         setSubmitting(false);
         return;
       }

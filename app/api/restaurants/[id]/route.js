@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { normalizeRestaurantOpenFields } from '../../../../lib/restaurant-open-compute';
 import { isMaskedRestaurantName } from '../../../../lib/masked-restaurants';
 import { applyClientDeliverySurcharge } from '../../../../lib/delivery-client-fee';
+import { getRestaurantMinOrderEur } from '../../../../lib/restaurant-min-order';
 
 // Créer un client admin pour bypasser RLS
 const supabaseAdmin = createClient(
@@ -131,14 +132,15 @@ export async function GET(request, { params }) {
     reviewsCount = reviews.length;
   }
 
-    // Ajouter les valeurs par défaut pour les colonnes manquantes
+    const minOrder = getRestaurantMinOrderEur(data);
     const restaurantWithDefaults = {
       ...data,
       frais_livraison: applyClientDeliverySurcharge(parseFloat(data.frais_livraison) || 2.5),
       deliveryTime: data.deliveryTime || 30,
-      minOrder: data.minOrder || 15,
-      rating: calculatedRating || data.rating || 0, // Utiliser la note calculée ou celle de la DB
-      reviews_count: reviewsCount || data.reviews_count || 0,
+      commande_min: minOrder,
+      minOrder,
+      rating: calculatedRating || Number(data.rating) || 0,
+      reviews_count: reviewsCount || Number(data.reviews_count) || 0,
       mise_en_avant: data.mise_en_avant || false,
       mise_en_avant_fin: data.mise_en_avant_fin || null
     };

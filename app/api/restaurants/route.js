@@ -4,6 +4,8 @@ import { hasExplicitScheduleForDay } from '../../../lib/restaurant-horaires-pari
 import { normalizeRestaurantOpenFields } from '../../../lib/restaurant-open-compute';
 import { isMaskedRestaurantName } from '../../../lib/masked-restaurants';
 import { applyClientDeliverySurcharge } from '../../../lib/delivery-client-fee';
+import { aggregateRestaurantRatings } from '../../../lib/restaurant-ratings';
+import { getRestaurantMinOrderEur } from '../../../lib/restaurant-min-order';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -177,6 +179,12 @@ export async function GET() {
       const isMidnightClose = closeRaw === '00:00' || closeRaw === '0:00';
       return inRange(start, end, isMidnightClose);
     };
+      // Une seule requête d'avis (évite N+1) — colonnes rating/reviews_count souvent absentes en DB
+      const ratingById = await aggregateRestaurantRatings(
+        supabaseAdmin,
+        filtered.map((r) => r.id).filter(Boolean)
+      );
+
       const withFermeManuel = filtered.map((r) => {
       const oa = r.offre_active;
       let offreActiveFinal = oa === true || oa === 1 || (typeof oa === 'string' && oa.trim().toLowerCase() === 'true');
@@ -185,6 +193,8 @@ export async function GET() {
       const openFields = normalizeRestaurantOpenFields(r, now);
       const isOpenNow = openFields.is_open_now;
       const fm = openFields.ferme_manuellement;
+      const fromReviews = ratingById[r.id];
+      const minOrder = getRestaurantMinOrderEur(r);
       return {
         ...r,
         frais_livraison: applyClientDeliverySurcharge(parseFloat(r.frais_livraison) || 2.5),
@@ -194,16 +204,16 @@ export async function GET() {
         is_open_now: isOpenNow,
         daily_open_confirmed: openFields.daily_open_confirmed,
         needs_daily_open_confirmation: openFields.needs_daily_open_confirmation,
-        rating: 0,
-        reviews_count: 0,
+        rating: fromReviews?.rating ?? (Number(r.rating) || 0),
+        reviews_count: fromReviews?.reviews_count ?? (Number(r.reviews_count) || 0),
+        commande_min: minOrder,
+        minOrder,
         offre_active: offreActiveFinal,
         offre_label: isLaBonnePate(r.nom) ? null : (r.offre_label ?? null),
         offre_description: isLaBonnePate(r.nom) ? null : (r.offre_description ?? null)
       };
     });
 
-    // Performance: do not query `reviews` per restaurant (N+1 queries).
-    // We rely on stored `rating` / `reviews_count` columns in `restaurants`.
     const res = NextResponse.json(withFermeManuel);
     // Cache court : moins de charge serveur, rafraîchissement auto côté client toutes les 3 min
     res.headers.set('Cache-Control', 'public, s-maxage=45, stale-while-revalidate=120');

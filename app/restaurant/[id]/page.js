@@ -732,7 +732,11 @@ export default function RestaurantPage({ params }) {
             <div className="flex flex-wrap items-center space-x-6 text-white/90">
               <div className="flex items-center space-x-2">
                 <FaStar className="h-5 w-5 text-yellow-400" />
-                <span className="font-semibold">{restaurant.rating || '4.5'}</span>
+                <span className="font-semibold">
+                  {(restaurant.reviews_count || 0) > 0
+                    ? Number(restaurant.rating || 0).toFixed(1)
+                    : 'Pas encore noté'}
+                </span>
               </div>
               <div className="flex items-center space-x-2">
                 <FaClock className="h-5 w-5" />
@@ -741,6 +745,9 @@ export default function RestaurantPage({ params }) {
               <div className="flex items-center space-x-2">
                 <FaMotorcycle className="h-5 w-5" />
                 <span>À partir de {restaurant.frais_livraison || restaurant.deliveryFee || 2.50}€</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span>Min. {restaurant.commande_min || restaurant.minOrder || 15}€</span>
               </div>
             </div>
           </div>

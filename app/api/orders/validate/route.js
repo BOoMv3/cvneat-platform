@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { isValidId, isValidAmount } from '@/lib/validation';
 import { isBlockedDeliveryAddress } from '@/lib/delivery-address-rules';
+import { getRestaurantMinOrderEur, isMinOrderReached } from '@/lib/restaurant-min-order';
 
 // POST /api/orders/validate - Valider une commande avant paiement
 export async function POST(request) {
@@ -18,7 +19,7 @@ export async function POST(request) {
     // 1. Vérifier si le restaurant existe et est actif
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, nom, is_active, horaires, ferme_manuellement, ouvert_manuellement, commande_min')
+      .select('id, nom, status, horaires, ferme_manuellement, ouvert_manuellement')
       .eq('id', restaurantId)
       .single();
 
@@ -29,7 +30,7 @@ export async function POST(request) {
       );
     }
 
-    if (!restaurant.is_active) {
+    if (restaurant.status && restaurant.status !== 'active') {
       return NextResponse.json(
         { 
           error: 'Restaurant temporairement fermé',
@@ -92,14 +93,16 @@ export async function POST(request) {
 
     // 4. Vérifier la commande minimum
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    if (subtotal < (restaurant.commande_min || 0)) {
+    const minCheck = isMinOrderReached(subtotal, restaurant);
+    if (!minCheck.ok) {
+      const minRequired = getRestaurantMinOrderEur(restaurant);
       return NextResponse.json(
         { 
           error: 'Commande minimum non atteinte',
           code: 'MINIMUM_ORDER',
-          message: `Commande minimum: ${restaurant.commande_min}€`,
+          message: `Commande minimum: ${minRequired}€ (il manque ${minCheck.missing.toFixed(2)}€)`,
           currentAmount: subtotal,
-          minimumRequired: restaurant.commande_min
+          minimumRequired: minRequired
         },
         { status: 400 }
       );

@@ -26,12 +26,18 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
     logo,
     rating,
     review_count,
+    reviews_count,
     delivery_time,
     prep_time_minutes,
     delivery_fee,
     minimum_order,
+    commande_min,
+    minOrder,
     is_sponsored
   } = restaurant;
+
+  const avisCount = Number(reviews_count ?? review_count) || 0;
+  const minCmd = minimum_order ?? commande_min ?? minOrder;
 
   const isRestaurantReady = READY_RESTAURANTS.has(normalizeName(nom));
 
@@ -142,15 +148,15 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
             <div className="flex items-center gap-1">
               <FaStar className="text-yellow-400" />
               <span className="font-semibold text-gray-800">
-                {(review_count || 0) > 0 ? (parseFloat(rating) || 0).toFixed(1) : '—'}
+                {avisCount > 0 ? (parseFloat(rating) || 0).toFixed(1) : '—'}
               </span>
               <span className="text-gray-600">
-                ({(review_count || 0) > 0 ? review_count : '0'} avis)
+                ({avisCount > 0 ? avisCount : '0'} avis)
               </span>
             </div>
-            {minimum_order && (
+            {minCmd != null && minCmd !== '' && (
               <span className="text-xs text-gray-500">
-                Min. {minimum_order}€
+                Min. {minCmd}€
               </span>
             )}
           </div>

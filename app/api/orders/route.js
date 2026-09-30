@@ -24,6 +24,7 @@ import {
   applyCvneatPlusHalfOnDelivery,
   cvneatPlusAppliesToPlatformFeeWaiver,
 } from '@/lib/cvneat-plus';
+import { getRestaurantMinOrderEur, isMinOrderReached } from '@/lib/restaurant-min-order';
 
 /** IDs menus référencés dans le panier (lignes, boissons formule, sous-éléments). */
 function collectMenuIdsFromOrderItems(items = []) {
@@ -535,6 +536,31 @@ export async function POST(request) {
         { error: 'Montant invalide' },
         { status: 400 }
       );
+    }
+
+    // Minimum de commande (sous-total articles, hors livraison)
+    // Note: colonne commande_min absente en prod → fallback 15€ via getRestaurantMinOrderEur
+    {
+      const articlesSubtotal = items.reduce((sum, item) => {
+        try {
+          return sum + (getItemLineTotal(item) || 0);
+        } catch {
+          return sum + (Number(item.price) || 0) * (Number(item.quantity) || 1);
+        }
+      }, 0);
+      const minCheck = isMinOrderReached(articlesSubtotal, null);
+      if (!minCheck.ok) {
+        const minRequired = getRestaurantMinOrderEur(null);
+        return json(
+          {
+            error: `Commande minimum non atteinte : ${minRequired}€ (panier : ${minCheck.sub.toFixed(2)}€)`,
+            code: 'MINIMUM_ORDER',
+            minimumRequired: minRequired,
+            currentAmount: minCheck.sub,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Sanitisation des informations de livraison / retrait
