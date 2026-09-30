@@ -1988,6 +1988,9 @@ export default function Checkout() {
               <PromoCodeInput
                 onCodeApplied={(codeData) => {
                   setAppliedPromoCode(codeData);
+                  try {
+                    safeLocalStorage.removeItem('pending_promo_code');
+                  } catch (_) {}
                 }}
                 appliedCode={appliedPromoCode}
                 cartTotal={cartTotal}
@@ -1995,6 +1998,7 @@ export default function Checkout() {
                 restaurantId={restaurant?.id || restaurant?.restaurant_id || null}
                 userId={user?.id}
                 isFirstOrder={false}
+                initialCode={typeof window !== 'undefined' ? (safeLocalStorage.getItem('pending_promo_code') || '') : ''}
               />
             </div>
 

@@ -17,7 +17,7 @@ const CvneatLogo = dynamic(() => import('@/components/CvneatLogo'), { ssr: false
 const FAQ = [
   {
     q: 'Combien coûte CVN’EAT ?',
-    a: 'Rien à payer de votre côté pour démarrer : pas d’abonnement mensuel, pas de frais d’entrée. CVN’EAT applique uniquement une commission de 20 % sur les commandes réalisées via la plateforme.',
+    a: 'Rien à payer de votre côté pour démarrer : pas d’abonnement mensuel, pas de frais d’entrée. CVN’EAT applique uniquement une commission de 20 % HT sur les commandes réalisées via la plateforme.',
   },
   {
     q: 'Suis-je engagé avec CVN’EAT ?',
@@ -64,7 +64,7 @@ export default function DevenirPartenairePage() {
     email: '',
   });
 
-  const offerLine = useMemo(() => '20 % · 0 € pour démarrer · Sans engagement', []);
+  const offerLine = useMemo(() => '20 % HT · 0 € pour démarrer · Sans engagement', []);
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -217,7 +217,7 @@ export default function DevenirPartenairePage() {
           </h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {[
-              { k: '20 %', v: 'Commission' },
+              { k: '20 % HT', v: 'Commission' },
               { k: '0 €', v: 'À payer pour démarrer' },
               { k: 'Libre', v: 'Sans engagement' },
             ].map((item) => (
@@ -488,7 +488,7 @@ export default function DevenirPartenairePage() {
                 {!submitting ? <FaArrowRight className="h-3.5 w-3.5" /> : null}
               </button>
               <p className="text-center text-xs text-gray-500">
-                Commission 20 % · 0 € pour démarrer · Sans engagement
+                Commission 20 % HT · 0 € pour démarrer · Sans engagement
               </p>
             </form>
           )}

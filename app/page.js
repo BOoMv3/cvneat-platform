@@ -47,7 +47,7 @@ import Advertisement from '@/components/Advertisement';
 import OptimizedRestaurantImage from '@/components/OptimizedRestaurantImage';
 import RestaurantCardSkeleton from '@/components/RestaurantCardSkeleton';
 import { FacebookPixelEvents } from '@/components/FacebookPixel';
-import FreeDeliveryBanner from '@/components/FreeDeliveryBanner';
+import InviteFriendsBanner from '@/components/InviteFriendsBanner';
 import {
   LOYALTY_EARN_SHORT,
   LOYALTY_CHECKOUT_HELP,
@@ -625,29 +625,6 @@ export default function Home() {
     { id: 'fast', name: 'Fast Food', icon: FaFire, color: 'from-orange-500 to-red-500', tagline: 'Rapide & efficace' }
   ];
 
-  const heroSlides = useMemo(() => [
-    {
-      id: 'slide-1',
-      image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop',
-      title: 'Livraison rapide et repas délicieux',
-      subtitle: 'Découvrez les meilleurs restaurants locaux sans bouger de votre canapé'
-    },
-    {
-      id: 'slide-2',
-      image: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?q=80&w=2000&auto=format&fit=crop',
-      title: 'Partenaires passionnés',
-      subtitle: 'Des chefs soigneusement sélectionnés pour la qualité de leurs produits'
-    },
-    {
-      id: 'slide-3',
-      image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=2070&auto=format&fit=crop',
-      title: 'Commandez en toute simplicité',
-      subtitle: 'Une expérience de commande fluide et sécurisée pour satisfaire vos envies'
-    }
-  ], []);
-
-  const [currentSlide, setCurrentSlide] = useState(0);
-
   // Synchroniser le panier avec le localStorage (panier rempli depuis une page restaurant)
   useEffect(() => {
     try {
@@ -713,14 +690,6 @@ export default function Home() {
     
     return () => clearTimeout(timeoutId);
   }, [router]);
-
-  useEffect(() => {
-    if (!heroSlides.length) return;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [heroSlides.length]);
 
   // Track Facebook Pixel - Search (avec debounce)
   useEffect(() => {
@@ -1416,225 +1385,147 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-gray-900">
-      <FreeDeliveryBanner />
-
-      {/* Hero Section avec carrousel visuel */}
-      <section className="relative h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
-        {heroSlides.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-[1200ms] ease-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
-          >
-            {slide.image ? (
-              <Image
-                src={slide.image}
-                alt={slide.title}
-                fill
-                className="object-cover"
-                priority={index === 0}
-                sizes="100vw"
-              />
-            ) : (
-              <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient || 'from-orange-500 to-red-600'}`} />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-black/20" />
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      {/* Header pro style catalogue */}
+      <header className="sticky top-0 z-40 border-b border-orange-100/80 bg-white/95 backdrop-blur dark:bg-gray-950/95 dark:border-gray-800">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <CvneatLogo size="sm" />
+            <span className="hidden truncate text-lg font-black tracking-tight text-gray-900 dark:text-white sm:inline">
+              CVN&apos;EAT
+            </span>
           </div>
-        ))}
-        
-        {/* Logo CVN'EAT */}
-        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 z-20">
-          <CvneatLogo size="xl" />
-        </div>
-        
-          {/* Actions utilisateur en haut à droite - Design compact avec icônes - Optimisé mobile */}
-        {/* Sur mobile, la navigation passe par la barre d'onglets en bas.
-            On garde les raccourcis (Partenaire/Livreur/Pub/Ma commande) uniquement sur sm+ */}
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 z-20 hidden sm:flex items-center flex-wrap gap-1 sm:gap-1.5 md:gap-2 max-w-[calc(100vw-5rem)] sm:max-w-none">
-          {/* Bouton Devenir Partenaire */}
-          <Link href="/devenir-partenaire" className="bg-blue-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
-            <FaStore className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Partenaire</span>
-          </Link>
-          {/* Bouton Devenir Livreur */}
-          <Link href="/become-delivery" className="bg-green-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-green-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
-            <FaMotorcycle className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Livreur</span>
-          </Link>
-          {/* Bouton Publicité */}
-          <Link href="/advertise" className="bg-purple-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-purple-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
-            <FaImage className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Pub</span>
-          </Link>
-          {/* Bouton Suivre ma commande - mis en avant si commande active */}
-          <Link
-            href="/track-order"
-            className={`px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation ${
-              hasActiveOrder
-                ? 'bg-green-500 hover:bg-green-600 text-white ring-2 ring-white/50'
-                : 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
-            }`}
-          >
-            <FaTruck className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">{hasActiveOrder ? 'Ma commande en cours' : 'Ma commande'}</span>
-          </Link>
-          
-          {user ? (
-            <>
-              {/* Points de fidélité - Compact, cliquable */}
-              <Link
-                href="/profile?tab=loyalty"
-                className="hidden sm:flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-full shadow-md min-h-[36px] sm:min-h-[38px] md:min-h-[40px] hover:bg-white/30 transition-colors"
-                title="Voir mes points de fidélité"
-              >
-                <FaGift className="text-yellow-400 h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="text-white text-[10px] sm:text-xs md:text-sm font-semibold">{userPoints}</span>
-              </Link>
-              {cvneatPlusActive && (
-                <Link
-                  href="/abonnement"
-                  className="hidden sm:inline-flex items-center rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-extrabold text-white shadow-lg shadow-orange-500/40 animate-pulse"
-                  title="Abonné CVN'EAT Plus"
-                >
-                  {CVNEAT_PLUS_NAME}
-                </Link>
-              )}
-              
-              {/* Profil - Icône seule */}
-              <Link href="/profile" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation">
-                <FaUser className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4 text-white" />
-              </Link>
-              
-              {/* Déconnexion - Icône seule */}
+          <nav className="hidden items-center gap-5 text-sm font-semibold text-gray-600 dark:text-gray-300 md:flex">
+            <a href="#liste-restaurants" className="text-orange-600">Accueil</a>
+            <Link href="/zones" className="hover:text-orange-600">Zones</Link>
+            <Link href="/track-order" className="hover:text-orange-600">Commandes</Link>
+            <Link href="/devenir-partenaire" className="hover:text-orange-600">Partenaires</Link>
+            <Link href="/become-delivery" className="hover:text-orange-600">Livreurs</Link>
+          </nav>
+          <div className="flex items-center gap-2">
+            {cart.length > 0 && (
               <button
-                onClick={handleLogout}
-                className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-red-500/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation"
-                title="Déconnexion"
+                type="button"
+                onClick={() => setShowFloatingCart(!showFloatingCart)}
+                className="relative rounded-full border border-orange-200 bg-orange-50 p-2.5 text-orange-700 hover:bg-orange-100"
+                aria-label="Panier"
               >
-                <FaSignOutAlt className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4" />
+                <FaShoppingCart className="h-4 w-4" />
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white">
+                  {cart.length}
+                </span>
               </button>
-            </>
-          ) : (
-            <>
-              {/* Connexion - Icône seule */}
-              <Link href="/login" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation" title="Connexion">
-                <FaSignInAlt className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4" />
-              </Link>
-              
-              {/* Inscription - Icône seule */}
-              <Link href="/register" className="hidden sm:flex bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation" title="Inscription">
-                <FaUserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4" />
-              </Link>
-            </>
-          )}
-          
-          {/* Panier flottant - Icône avec badge */}
-          {cart.length > 0 && (
-            <button
-              onClick={() => setShowFloatingCart(!showFloatingCart)}
-              className="hidden sm:flex relative bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 rounded-full hover:bg-white/30 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] min-w-[36px] sm:min-w-[38px] md:min-w-[40px] items-center justify-center touch-manipulation"
-            >
-              <FaShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4 md:w-4 text-white" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] sm:text-xs rounded-full h-4 w-4 sm:h-4.5 sm:w-4.5 md:h-5 md:w-5 flex items-center justify-center font-bold shadow-sm">
-                {cart.length}
-              </span>
-            </button>
-          )}
-        </div>
-        
-        <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 h-full flex items-center">
-          <div className="text-white max-w-2xl w-full">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl font-bold mb-3 sm:mb-4 md:mb-6 leading-tight">
-              {heroSlides[currentSlide]?.title}
-            </h1>
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl mb-4 sm:mb-5 md:mb-6 lg:mb-8 text-gray-200">
-              {heroSlides[currentSlide]?.subtitle}
-            </p>
-
-            {/* Barre de recherche intégrée - Optimisée mobile */}
-            <div className="bg-white rounded-xl p-3 sm:p-4 shadow-lg max-w-full sm:max-w-lg">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <FaSearch className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Nom du restaurant, cuisine, plat..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1 border-none outline-none text-gray-900 placeholder-gray-500 text-sm sm:text-base min-h-[44px] touch-manipulation"
-                />
-              </div>
-            </div>
-
-            {/* CTA clair sur mobile (au lieu des icônes en haut à droite) */}
-            <div className="mt-3 sm:hidden">
-              <div className="flex flex-wrap gap-2">
+            )}
+            {user ? (
+              <>
                 <Link
-                  href="/track-order"
-                  className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                  href="/profile?tab=loyalty"
+                  className="hidden items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 sm:inline-flex"
                 >
-                  <FaTruck className="h-4 w-4" />
-                  <span>Suivre ma commande</span>
+                  <FaGift className="h-3.5 w-3.5" />
+                  {userPoints}
                 </Link>
-
                 <Link
-                  href="/zones"
-                  className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                  href="/profile"
+                  className="rounded-full border border-gray-200 p-2.5 text-gray-700 hover:border-orange-300 hover:text-orange-600 dark:border-gray-700 dark:text-gray-200"
+                  aria-label="Profil"
                 >
-                  <FaMapMarkerAlt className="h-4 w-4" />
-                  <span>Zones</span>
+                  <FaUser className="h-4 w-4" />
                 </Link>
-
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="hidden rounded-full border border-gray-200 p-2.5 text-gray-600 hover:border-red-200 hover:text-red-600 sm:inline-flex dark:border-gray-700"
+                  title="Déconnexion"
+                >
+                  <FaSignOutAlt className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <>
                 <Link
-                  href="/devenir-partenaire"
-                  className="inline-flex items-center justify-center gap-2 bg-blue-600/90 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                  href="/login"
+                  className="rounded-full px-3 py-2 text-sm font-semibold text-gray-700 hover:text-orange-600 dark:text-gray-200"
                 >
-                  <FaStore className="h-4 w-4" />
-                  <span>Devenir partenaire</span>
+                  Connexion
                 </Link>
-
                 <Link
-                  href="/become-delivery"
-                  className="inline-flex items-center justify-center gap-2 bg-green-600/90 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-green-700 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                  href="/register"
+                  className="rounded-full bg-orange-500 px-3.5 py-2 text-sm font-bold text-white hover:bg-orange-600"
                 >
-                  <FaMotorcycle className="h-4 w-4" />
-                  <span>Devenir livreur</span>
+                  Inscription
                 </Link>
-
-                {user && (
-                  <Link
-                    href="/profile?tab=loyalty"
-                    className="inline-flex items-center justify-center gap-2 bg-amber-500/95 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-amber-600 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
-                  >
-                    <FaGift className="h-4 w-4" />
-                    <span>Mes points ({userPoints})</span>
-                  </Link>
-                )}
-                {user && cvneatPlusActive && (
-                  <Link
-                    href="/abonnement"
-                    className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:from-orange-600 hover:to-red-600 transition-all duration-200 text-sm font-extrabold shadow-lg shadow-orange-500/40 min-h-[44px] touch-manipulation animate-pulse"
-                  >
-                    <FaGift className="h-4 w-4" />
-                    <span>{CVNEAT_PLUS_NAME}</span>
-                  </Link>
-                )}
-              </div>
-            </div>
-
+              </>
+            )}
           </div>
         </div>
+      </header>
 
-        {/* Indicateurs du carrousel */}
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 z-20">
-          {heroSlides.map((slide, index) => (
-            <button
-              key={slide.id}
-              aria-label={`Aller au slide ${index + 1}`}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-110' : 'bg-white/40 hover:bg-white/70'}`}
+      <section className="border-b border-orange-50 bg-gradient-to-b from-orange-50/70 to-white dark:from-gray-950 dark:to-gray-900 dark:border-gray-800">
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">
+            Livraison locale · Cévennes
+          </p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+            {user ? 'Bonjour' : 'Parcourir les restaurants'}
+            {user ? <span className="text-orange-600">.</span> : <span className="text-orange-600"> près de chez vous</span>}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+            {user
+              ? 'Choisissez un restaurant et commandez en quelques clics.'
+              : 'Découvrez les menus sans créer de compte. Connectez-vous pour passer commande.'}
+          </p>
+
+          <div className="mt-6 flex items-center gap-3 rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <FaSearch className="h-4 w-4 shrink-0 text-gray-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Rechercher un restaurant..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border-none bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white sm:text-base"
             />
-          ))}
+          </div>
+
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {categories.map((category) => {
+              const Icon = category.icon;
+              const isSelected = selectedCategory === category.id;
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${
+                    isSelected
+                      ? 'border-orange-500 bg-orange-500 text-white'
+                      : 'border-orange-100 bg-white text-gray-700 hover:border-orange-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {category.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {!user && (
+            <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-gray-900 px-4 py-4 text-white sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div>
+                <p className="font-bold">Bienvenue sur CVN&apos;EAT</p>
+                <p className="mt-0.5 text-sm text-gray-300">
+                  Créez un compte pour commander et cumuler des points fidélité.
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-orange-50"
+              >
+                Se connecter
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1712,95 +1603,40 @@ export default function Home() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Section des catégories style Uber Eats - Optimisé mobile */}
-        <section className="mb-10">
-          <div className="flex items-stretch space-x-2 sm:space-x-3 lg:space-x-4 overflow-x-auto pb-4 scrollbar-hide px-1">
-            {categories.map((category) => {
-              const Icon = category.icon;
-              const isSelected = selectedCategory === category.id;
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`relative flex-shrink-0 w-28 sm:w-32 md:w-36 h-24 sm:h-28 rounded-3xl transition-all duration-300 focus:outline-none group ${
-                    isSelected ? 'scale-105 shadow-2xl' : 'hover:scale-105 hover:shadow-xl'
-                  }`}
-                >
-                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${category.color} ${isSelected ? 'opacity-100 shadow-2xl' : 'opacity-85 group-hover:opacity-100 group-hover:shadow-xl'} transition-all duration-300`} />
-                  <div className={`absolute inset-0 rounded-3xl border-2 ${isSelected ? 'border-white/80 shadow-inner' : 'border-white/30 group-hover:border-white/60'} transition-all duration-300`} />
-                  {/* Effet de brillance au hover */}
-                  {!isSelected && (
-                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 opacity-0 group-hover:opacity-100"></div>
-                  )}
-                  <div className="relative h-full w-full p-3 sm:p-4 flex flex-col justify-between text-left text-white">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center shadow-md">
-                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm sm:text-lg font-bold leading-tight">{category.name}</p>
-                      <p className="text-[10px] sm:text-xs text-white/85 mt-0.5">
-                        {category.tagline}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Espace publicitaire géré par l'admin */}
-        <section className="mb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <section className="mb-8">
           <Advertisement position="banner_middle" />
         </section>
 
-        {/* CVN'EAT Plus (position milieu d'accueil) */}
-        <section className="mb-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl border border-orange-200/80 dark:border-orange-800/60 bg-gradient-to-r from-orange-50 via-amber-50 to-red-50 dark:from-orange-950/40 dark:via-amber-950/35 dark:to-red-950/30 px-4 py-4 sm:px-6 sm:py-5 shadow-lg ring-1 ring-orange-300/40 dark:ring-orange-700/40">
-            <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-orange-300/30 blur-2xl" />
-            <div className="pointer-events-none absolute -left-8 -bottom-8 h-24 w-24 rounded-full bg-red-300/25 blur-2xl" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 animate-pulse" />
-            <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 bg-clip-text text-transparent drop-shadow-sm animate-pulse">
-                  {CVNEAT_PLUS_NAME}
+        {!cvneatPlusActive && (
+          <section className="mb-8">
+            <div className="flex flex-col gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 dark:border-orange-900/40 dark:bg-orange-950/20">
+              <div>
+                <p className="text-sm font-extrabold text-orange-700 dark:text-orange-300">{CVNEAT_PLUS_NAME}</p>
+                <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">
+                  {CVNEAT_PLUS_PITCH.benefits?.[0] || 'Livraison à moitié prix et avantages fidélité.'}
                 </p>
-                <ul className="mt-2 space-y-1.5 text-sm text-orange-900/95 dark:text-orange-100/95">
-                  {CVNEAT_PLUS_PITCH.benefits.map((benefit) => (
-                    <li key={benefit} className="leading-snug flex items-start gap-2">
-                      <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-orange-600 dark:bg-orange-300" />
-                      <span>{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <Link
-                  href="/abonnement"
-                  className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-orange-700 transition-colors min-h-[44px]"
-                >
-                  S&apos;abonner
-                </Link>
-                {!user && (
-                  <Link
-                    href="/login?redirect=abonnement"
-                    className="inline-flex items-center justify-center rounded-xl border-2 border-orange-600/70 bg-white/90 dark:bg-gray-900/80 px-4 py-2.5 text-sm font-semibold text-orange-900 dark:text-orange-200 hover:bg-orange-100/80 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
-                  >
-                    Se connecter
-                  </Link>
-                )}
-              </div>
+              <Link
+                href={user ? '/abonnement' : '/login?redirect=abonnement'}
+                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600"
+              >
+                Découvrir
+              </Link>
             </div>
-          </div>
+          </section>
+        )}
+
+        <section className="mb-8">
+          <InviteFriendsBanner />
         </section>
 
         {/* Section des restaurants avec défilement vertical élégant */}
         <section id="liste-restaurants" className="mb-12 pb-16">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
             <div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent mb-2">Restaurants populaires</h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base font-medium">Découvrez les meilleurs restaurants de votre région</p>
+            <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white sm:text-3xl">Tous les restaurants</h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Choisissez et commandez en quelques clics</p>
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -1884,7 +1720,7 @@ export default function Home() {
               <p className="text-gray-600 text-lg">Essayez de modifier vos critères de recherche</p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {displayRestaurants.map((restaurant, index) => {
                 // Statut affiché sur l'accueil = 100% manuel (source de vérité : flags DB)
                 // Priorité : ferme_manuellement > ouvert_manuellement
@@ -1962,12 +1798,12 @@ export default function Home() {
                 <a
                   key={restaurant.id}
                   href={`/restaurant-view?id=${encodeURIComponent(restaurant.id)}`}
-                  className="group block transform transition-all duration-300 cursor-pointer hover:scale-[1.02] no-underline text-inherit"
+                  className="group block cursor-pointer no-underline text-inherit"
                 >
-                  <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl transition-all duration-500 overflow-hidden border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-1">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
-                      {/* Image du restaurant - Optimisé mobile */}
-                      <div className="relative sm:col-span-1 overflow-hidden h-48 sm:h-56 md:h-64 lg:h-72">
+                  <div className="overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-sm transition hover:border-orange-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                    <div className="flex flex-col">
+                      {/* Image du restaurant */}
+                      <div className="relative h-44 overflow-hidden sm:h-48">
                         <div className="relative h-full w-full">
                           <OptimizedRestaurantImage
                             restaurant={restaurant}
@@ -1993,13 +1829,13 @@ export default function Home() {
                             </span>
                           )}
                           {restaurant.offre_active === true && (
-                            <span className="inline-flex items-center bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 rounded-full text-xs sm:text-sm font-extrabold shadow-xl shadow-orange-500/40 ring-2 ring-white/50 animate-pulse">
-                              🏷️ {restaurant.offre_label || 'Promo'}
+                            <span className="inline-flex items-center rounded-md bg-orange-600 px-2.5 py-1 text-xs font-bold text-white shadow">
+                              {restaurant.offre_label || 'Promo'}
                             </span>
                           )}
                           {restaurant.mise_en_avant && restaurant.mise_en_avant_fin && new Date(restaurant.mise_en_avant_fin) > new Date() && (
-                            <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-sm border border-white/30 animate-pulse">
-                              ⭐ Sponsorisé
+                            <span className="rounded-md bg-amber-500 px-2.5 py-1 text-xs font-bold text-white shadow">
+                              Sponsorisé
                             </span>
                           )}
                           {favorites.includes(restaurant.id) && (
@@ -2033,18 +1869,22 @@ export default function Home() {
                             </div>
                             {restaurantStatus.isOpen && Number.isFinite(parseInt(restaurant.prep_time_minutes, 10)) && (
                               <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-0.5">
-                                Préparation ~{parseInt(restaurant.prep_time_minutes, 10)} min
+                                {(() => {
+                                  const prep = parseInt(restaurant.prep_time_minutes, 10);
+                                  const lo = Math.max(5, prep - 5);
+                                  const hi = prep + 10;
+                                  return `${lo}–${hi} min`;
+                                })()}
                               </span>
                             )}
                           </div>
                         </div>
                       </div>
                       
-                      {/* Contenu de la carte - Optimisé mobile avec plus d'espacement */}
-                      <div className="sm:col-span-2 p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col justify-between">
+                      <div className="flex flex-1 flex-col justify-between p-4">
                         <div>
                           <div className="flex items-start justify-between mb-2 sm:mb-3 md:mb-4 gap-2">
-                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors flex-1 min-w-0 break-words font-display">
+                            <h3 className="min-w-0 flex-1 break-words text-base font-bold text-gray-900 transition-colors group-hover:text-orange-600 dark:text-gray-100 dark:group-hover:text-orange-400 sm:text-lg">
                               {restaurant.nom}
                             </h3>
                             <div className="flex items-center bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/40 dark:to-amber-900/40 px-2 sm:px-2.5 md:px-3 py-1 rounded-full flex-shrink-0 shadow-md border border-yellow-200/50 dark:border-yellow-700/50">
@@ -2055,8 +1895,8 @@ export default function Home() {
                             </div>
                           </div>
                           
-                          <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed mb-4 sm:mb-5 md:mb-6 line-clamp-2 sm:line-clamp-3">
-                            {restaurant.description}
+                          <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                            {[restaurant.adresse, restaurant.ville].filter(Boolean).join(', ') || restaurant.description}
                           </p>
                           
                           {/* Détails de la promo (partenaires qui ont activé une offre) */}
@@ -2086,9 +1926,7 @@ export default function Home() {
                         </div>
                         
                         {/* Bouton commander - vrai lien (Sunmi / JS partiel) */}
-                        <span
-                          className="w-full inline-flex items-center justify-center py-4 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg text-base sm:text-base lg:text-lg min-h-[52px] sm:min-h-[56px] touch-manipulation relative overflow-hidden font-display bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98]"
-                        >
+                        <span className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white hover:bg-orange-600">
                           Voir le menu
                         </span>
                       </div>

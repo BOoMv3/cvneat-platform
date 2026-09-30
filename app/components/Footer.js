@@ -28,6 +28,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/become-delivery" className="text-gray-400 hover:text-white">
+                  Devenir livreur
+                </Link>
+              </li>
+              <li>
                 <Link href="/zones" className="text-gray-400 hover:text-white">
                   Zones de livraison
                 </Link>

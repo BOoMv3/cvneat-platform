@@ -3543,7 +3543,7 @@ export default function PartnerDashboard() {
               <div className="p-6 border-b dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Gestion des commandes</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                  Gérez vos commandes et calculez vos gains (CVN'EAT prélève 20% de commission)
+                  Gérez vos commandes et calculez vos gains (CVN'EAT prélève 20% HT de commission)
                 </p>
               </div>
               <div className="p-6">

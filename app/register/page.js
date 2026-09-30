@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 // import Navbar from '@/components/Navbar';
 import FormInput from '@/components/FormInput';
 import SupportContactBlock from '@/components/SupportContactBlock';
 import { supabase } from '@/lib/supabase';
+import { safeLocalStorage } from '@/lib/localStorage';
 import {
   isValidEmail,
   validatePassword,
@@ -68,6 +69,17 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Code parrainage (?ref=AMI…) → localStorage pour le checkout
+  useEffect(() => {
+    try {
+      const ref = (searchParams?.get('ref') || '').trim().toUpperCase();
+      if (ref) {
+        safeLocalStorage.setItem('pending_promo_code', ref);
+      }
+    } catch (_) {}
+  }, [searchParams]);
 
   // Charger le script reCAPTCHA
   useEffect(() => {

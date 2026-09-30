@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaTag, FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 
 async function readResponseBody(res) {
@@ -20,11 +20,16 @@ export default function PromoCodeInput({
   deliveryFeeEur = null,
   restaurantId, 
   userId,
-  isFirstOrder = false 
+  isFirstOrder = false,
+  initialCode = '',
 }) {
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(initialCode || '');
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+
+  useEffect(() => {
+    if (initialCode && !code) setCode(String(initialCode).toUpperCase());
+  }, [initialCode]);
 
   const validatePromoCode = async () => {
     if (!code.trim()) {

@@ -141,6 +141,21 @@ export default function PartnerOffrePage() {
               <p className="text-sm text-gray-500 mt-1">
                 Court et percutant (50 caractères max). Si vide, &quot;Promo&quot; sera affiché.
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {['1 acheté = 1 offert', 'Promo', 'Livraison offerte', 'Offre du jour'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      setOffreLabel(preset);
+                      setOffreActive(true);
+                    }}
+                    className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>

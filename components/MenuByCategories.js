@@ -1,7 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import MenuItem from './MenuItem';
-import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf } from 'react-icons/fa';
+import { FaUtensils, FaHamburger, FaPizzaSlice, FaIceCream, FaCoffee, FaWineGlass, FaBreadSlice, FaLeaf, FaHeart, FaTag } from 'react-icons/fa';
 import { isLaBonnePateRestaurant } from '@/lib/restaurant-theme';
 
 const normalizeCategoryKey = (value = '') =>
@@ -35,14 +35,36 @@ export default function MenuByCategories({
 
   const specialSelections = [
     {
+      id: 'bons-plans',
+      label: 'Bons plans',
+      icon: FaTag,
+      match: (item) => {
+        const cat = String(item.category || '').toLowerCase();
+        const name = String(item.nom || '').toLowerCase();
+        if (Boolean(item.promo_label)) return true;
+        if (cat.includes('bon plan') || cat.includes('promo')) return true;
+        return name.includes('1 achet') || name.includes('1+1') || name.includes('offre');
+      },
+    },
+    {
+      id: 'coups-de-coeur',
+      label: 'Coups de cœur',
+      icon: FaHeart,
+      match: (item) => {
+        const cat = String(item.category || '').toLowerCase();
+        if (item.is_featured === true) return true;
+        return cat.includes('coup de') || cat.includes('coups de') || cat.includes('favori');
+      },
+    },
+    {
       id: 'pizza-du-moment',
       label: 'Pizza du moment',
       icon: FaPizzaSlice,
       match: (item) => {
         const label = `${item.category || ''} ${item.nom || ''}`.toLowerCase();
         return label.includes('pizza du moment');
-      }
-    }
+      },
+    },
   ];
 
   const specialCategories = specialSelections.reduce((acc, selection) => {
@@ -367,22 +389,22 @@ export default function MenuByCategories({
         <>
           {specialCategories.length > 0 && (
             <div className="space-y-6">
-              <div className="flex items-center gap-4 pb-3 border-b-2 border-purple-200 dark:border-purple-800">
-                <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-xl shadow-sm">
-                  <FaPizzaSlice className="w-7 h-7 text-purple-600 dark:text-purple-300" />
+              <div className="flex items-center gap-4 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
+                <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-200 dark:from-orange-900 dark:to-amber-800 rounded-xl shadow-sm">
+                  <FaHeart className="w-7 h-7 text-orange-600 dark:text-orange-300" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sélection spéciale</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bons plans & coups de cœur</h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Découvre les nouveautés et suggestions du chef
+                    Promos et suggestions du restaurant
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-6">
-                {specialCategories.map(({ items }) =>
+                {specialCategories.map(({ items, id }) =>
                   items.map((item) => (
-                    <MenuItem key={`special-${item.id}`} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
+                    <MenuItem key={`special-${id}-${item.id}`} item={item} onAddToCart={onAddToCart} restaurantId={restaurantId} />
                   ))
                 )}
               </div>

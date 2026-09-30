@@ -125,7 +125,15 @@ export default function RestaurantCard({ restaurant, onToggleFavorite, isFavorit
             </div>
             <div className="flex items-center gap-1">
               <FaClock className="text-gray-500" />
-              <span>{prep_time_minutes || delivery_time || '25'} min</span>
+              <span>
+                {(() => {
+                  const prep = parseInt(prep_time_minutes || delivery_time || '25', 10);
+                  if (!Number.isFinite(prep)) return '25 min';
+                  const lo = Math.max(5, prep - 5);
+                  const hi = prep + 10;
+                  return `${lo}–${hi} min`;
+                })()}
+              </span>
             </div>
           </div>
 
