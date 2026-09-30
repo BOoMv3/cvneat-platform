@@ -16,7 +16,7 @@ export default function PartnerImportantInfoContent({ compact = false }) {
         <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Commission & concurrence</h3>
         <p>
           Certains d&apos;entre vous ont signé avec un concurrent qui prélève environ{' '}
-          <strong>36&nbsp;% TTC</strong>. Chez CVN&apos;EAT, la commission est de <strong>20&nbsp;%</strong>.
+          <strong>36&nbsp;%</strong>. Chez CVN&apos;EAT, la commission est de <strong>20&nbsp;%</strong>.
         </p>
         <p className="mt-2">
           <strong className="text-emerald-700 dark:text-emerald-300">

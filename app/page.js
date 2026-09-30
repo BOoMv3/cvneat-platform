@@ -35,7 +35,11 @@ import {
   FaStore,
   FaImage,
   FaArrowRight,
-  FaTag
+  FaTag,
+  FaFish,
+  FaPepperHot,
+  FaSeedling,
+  FaMapMarkerAlt
 } from 'react-icons/fa';
 import AdBanner from '@/components/AdBanner';
 import { getResolvedOpenFlags } from '../lib/restaurant-open-client';
@@ -610,6 +614,11 @@ export default function Home() {
     { id: 'traditional', name: 'Traditionnel', icon: FaUtensils, color: 'from-amber-600 to-red-500', tagline: 'Recettes authentiques' },
     { id: 'pizza', name: 'Pizza', icon: FaPizzaSlice, color: 'from-red-500 to-orange-500', tagline: 'Aux saveurs d\'Italie' },
     { id: 'burger', name: 'Burgers', icon: FaHamburger, color: 'from-amber-500 to-orange-500', tagline: 'Gourmand et fondant' },
+    { id: 'sushi', name: 'Sushis', icon: FaFish, color: 'from-cyan-500 to-blue-500', tagline: 'Frais & raffiné' },
+    { id: 'halal', name: 'Halal', icon: FaPepperHot, color: 'from-emerald-600 to-green-500', tagline: 'Cuisine halal' },
+    { id: 'asian', name: 'Asiatique', icon: FaUtensils, color: 'from-rose-500 to-orange-500', tagline: 'Saveurs d\'Asie' },
+    { id: 'indian', name: 'Indien', icon: FaFire, color: 'from-amber-600 to-red-600', tagline: 'Épices & curry' },
+    { id: 'vegan', name: 'Vegan', icon: FaSeedling, color: 'from-lime-500 to-green-600', tagline: '100 % végétal' },
     { id: 'coffee', name: 'Café', icon: FaCoffee, color: 'from-amber-600 to-yellow-600', tagline: 'Pause sucrée' },
     { id: 'dessert', name: 'Desserts', icon: FaIceCream, color: 'from-pink-400 to-orange-400', tagline: 'Douceurs sucrées' },
     { id: 'healthy', name: 'Healthy', icon: FaLeaf, color: 'from-green-500 to-emerald-500', tagline: 'Léger & vitaminé' },
@@ -1272,6 +1281,11 @@ export default function Home() {
       const categoryMap = {
         'pizza': ['pizza', 'italien', 'italian', 'pizzeria'],
         'burger': ['burger', 'hamburger', 'fast food', 'fast-food', 'sandwich'],
+        'sushi': ['sushi', 'sushis', 'poke', 'japonais', 'japanese', 'maki', 'nigiri'],
+        'halal': ['halal'],
+        'asian': ['asiatique', 'asian', 'chinois', 'chinese', 'thai', 'thaï', 'vietnamien', 'japonais', 'korean', 'coréen', 'noodles', 'wok'],
+        'indian': ['indien', 'indian', 'curry', 'tandoori', 'pakistani'],
+        'vegan': ['vegan', 'végétarien', 'vegetarien', 'plant-based', 'vega'],
         'coffee': ['café', 'coffee', 'cafe', 'boulangerie', 'bakery', 'boulanger'],
         'dessert': ['dessert', 'patisserie', 'pâtisserie', 'glace', 'ice cream', 'sucré'],
         'healthy': ['healthy', 'salade', 'salad', 'bio', 'organic', 'végétarien', 'vegan'],
@@ -1438,7 +1452,7 @@ export default function Home() {
             On garde les raccourcis (Partenaire/Livreur/Pub/Ma commande) uniquement sur sm+ */}
         <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 z-20 hidden sm:flex items-center flex-wrap gap-1 sm:gap-1.5 md:gap-2 max-w-[calc(100vw-5rem)] sm:max-w-none">
           {/* Bouton Devenir Partenaire */}
-          <Link href="/restaurant-request" className="bg-blue-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
+          <Link href="/devenir-partenaire" className="bg-blue-600/90 backdrop-blur-sm px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs md:text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 min-h-[36px] sm:min-h-[38px] md:min-h-[40px] touch-manipulation">
             <FaStore className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="hidden sm:inline">Partenaire</span>
           </Link>
@@ -1564,7 +1578,15 @@ export default function Home() {
                 </Link>
 
                 <Link
-                  href="/restaurant-request"
+                  href="/zones"
+                  className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-white/30 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
+                >
+                  <FaMapMarkerAlt className="h-4 w-4" />
+                  <span>Zones</span>
+                </Link>
+
+                <Link
+                  href="/devenir-partenaire"
                   className="inline-flex items-center justify-center gap-2 bg-blue-600/90 backdrop-blur-sm px-4 py-2 rounded-full text-white hover:bg-blue-700 transition-all duration-200 text-sm font-semibold shadow-md min-h-[44px] touch-manipulation"
                 >
                   <FaStore className="h-4 w-4" />

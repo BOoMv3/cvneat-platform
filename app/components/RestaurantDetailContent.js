@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { safeLocalStorage } from '../../lib/localStorage';
-import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaStar, FaClock, FaMotorcycle, FaPlus, FaMinus, FaShoppingCart, FaMapMarkerAlt, FaSearch } from 'react-icons/fa';
 import Modal from './Modal';
 import RestaurantBanner from '@/components/RestaurantBanner';
 import MenuItem from '@/components/MenuItem';
@@ -49,6 +49,7 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
   const [deliveryFee, setDeliveryFee] = useState(null); // Pas de frais jusqu'à ce qu'une adresse soit sélectionnée
   const [deliveryInfoLoading, setDeliveryInfoLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [menuSearch, setMenuSearch] = useState('');
   const [favorites, setFavorites] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showCartNotification, setShowCartNotification] = useState(false);
@@ -1064,9 +1065,14 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
     router.push('/checkout');
   };
 
-  const filteredMenu = menu.filter(item => 
-    selectedCategory === 'all' || (item.category || item.categorie || 'Autres') === selectedCategory
-  );
+  const menuMatchingSearch = useMemo(() => {
+    const q = menuSearch.trim().toLowerCase();
+    if (!q) return menu;
+    return menu.filter((item) => {
+      const hay = `${item.nom || ''} ${item.name || ''} ${item.description || ''} ${item.category || item.categorie || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [menu, menuSearch]);
 
   if (loading) {
     return (
@@ -1286,14 +1292,32 @@ export default function RestaurantDetailContent({ restaurantId: propRestaurantId
                   <p>Aucun plat disponible pour ce restaurant.</p>
                 </div>
               ) : (
-                <MenuByCategories
-                  menu={menu}
-                  selectedCategory={selectedCategory}
-                  onCategorySelect={setSelectedCategory}
-                  onAddToCart={addToCart}
-                  restaurantId={restaurantId}
-                  categoryOrder={menuCategoryOrder}
-                />
+                <>
+                  <div className="mb-4 relative">
+                    <FaSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="search"
+                      value={menuSearch}
+                      onChange={(e) => setMenuSearch(e.target.value)}
+                      placeholder="Rechercher un produit..."
+                      className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 outline-none ring-orange-500/30 placeholder:text-gray-400 focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    />
+                  </div>
+                  {menuMatchingSearch.length === 0 ? (
+                    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                      <p>Aucun produit ne correspond à « {menuSearch} ».</p>
+                    </div>
+                  ) : (
+                    <MenuByCategories
+                      menu={menuMatchingSearch}
+                      selectedCategory={selectedCategory}
+                      onCategorySelect={setSelectedCategory}
+                      onAddToCart={addToCart}
+                      restaurantId={restaurantId}
+                      categoryOrder={menuCategoryOrder}
+                    />
+                  )}
+                </>
               )}
             </div>
           </div>
