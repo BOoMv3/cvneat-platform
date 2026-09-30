@@ -194,7 +194,8 @@ export default function RootLayout({ children }) {
                   }
 
                   // Verrouillage ultra-tôt (avant hydration React):
-                  // livreur hors zone /delivery → dashboard ; admin sur accueil → /admin.
+                  // livreur hors zone /delivery → dashboard.
+                  // Admin et resto peuvent naviguer librement (accueil inclus).
                   try {
                     var pathNow = window.location && window.location.pathname ? window.location.pathname : '';
 
@@ -207,14 +208,6 @@ export default function RootLayout({ children }) {
 
                     if (isDeliveryNow() && pathNow && !deliveryPathAllowed(pathNow)) {
                       window.location.replace('/delivery/dashboard');
-                      return;
-                    }
-                    if (isAdminNow() && pathNow === '/') {
-                      window.location.replace('/admin');
-                      return;
-                    }
-                    if (isRestaurantNow() && pathNow === '/') {
-                      window.location.replace('/partner');
                       return;
                     }
                   } catch (e0) {

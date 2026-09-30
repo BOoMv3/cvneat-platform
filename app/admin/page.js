@@ -29,7 +29,8 @@ import {
   FaComments,
   FaBell,
   FaSearch,
-  FaCircle
+  FaCircle,
+  FaMotorcycle
 } from 'react-icons/fa';
 import OpenCloseManualNotice from '@/components/OpenCloseManualNotice';
 import AdminOnlineBadge from '@/components/AdminOnlineBadge';
@@ -662,11 +663,16 @@ export default function AdminPage() {
               <AdminOnlineBadge />
             </div>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => {
+                // Navigation pleine page pour éviter tout soft-redirect admin
+                if (typeof window !== 'undefined') window.location.href = '/';
+                else router.push('/');
+              }}
               className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm sm:text-base flex-shrink-0 px-2 py-1"
+              title="Aller sur le site client"
             >
               <FaArrowLeft className="mr-1 sm:mr-2" />
-              <span className="hidden xs:inline">Retour</span>
+              <span className="hidden xs:inline">Site client</span>
             </button>
           </div>
           
@@ -735,6 +741,14 @@ export default function AdminPage() {
               >
                 <FaComments className="sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Messagerie</span>
+              </button>
+              <button
+                onClick={() => router.push('/admin/live-delivery')}
+                className="flex items-center justify-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium min-h-[44px] min-w-[44px] touch-manipulation flex-shrink-0"
+                title="Vue live des courses (comme dashboard livreur)"
+              >
+                <FaMotorcycle className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Live livreurs</span>
               </button>
               <button
                 onClick={() => router.push('/admin/delivery-messages')}

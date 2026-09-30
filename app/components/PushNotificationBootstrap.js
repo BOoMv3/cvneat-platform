@@ -6,8 +6,11 @@ import { initPushNotifications, isNativeApp } from '@/lib/capacitor-push-notific
 async function hideNativeSplashSoon() {
   try {
     if (typeof window === 'undefined' || !window.Capacitor) return;
-    const { SplashScreen } = await import('@capacitor/splash-screen');
-    await SplashScreen.hide({ fadeOutDuration: 0 });
+    // Évite import webpack de @capacitor/splash-screen (pas installé en build Vercel)
+    const SplashScreen = window.Capacitor?.Plugins?.SplashScreen;
+    if (SplashScreen && typeof SplashScreen.hide === 'function') {
+      await SplashScreen.hide({ fadeOutDuration: 0 });
+    }
   } catch {
     // ignore si plugin absent
   }
