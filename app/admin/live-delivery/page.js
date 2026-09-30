@@ -60,7 +60,7 @@ function OrderCard({ order, highlight }) {
             {order.driver_search_status === 'searching' ? ' · Recherche livreur' : ''}
           </p>
           <p className="text-sm font-semibold text-gray-900">
-            #{order.numero_commande || order.id?.slice(0, 8)}
+            #{String(order.id || '').slice(0, 8)}
           </p>
         </div>
         <p className="text-xs text-gray-500 whitespace-nowrap">{fmtTime(order.created_at)}</p>

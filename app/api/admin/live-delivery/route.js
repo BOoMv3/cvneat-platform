@@ -48,7 +48,6 @@ export async function GET(request) {
       .from('commandes')
       .select(`
         id,
-        numero_commande,
         statut,
         payment_status,
         driver_search_status,
