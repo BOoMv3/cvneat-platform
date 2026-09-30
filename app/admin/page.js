@@ -636,8 +636,8 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <OpenCloseManualNotice />
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        {/* Header compact */}
+      <div className="max-w-full mx-auto px-2 fold:px-2 xs:px-3 sm:px-4 py-2 fold:py-2 xs:py-3 sm:py-8">
+        {/* Header compact mobile-first */}
         <div className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div className="min-w-0">
@@ -645,9 +645,9 @@ export default function AdminPage() {
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Admin</h1>
                 <AdminOnlineBadge />
               </div>
-              {readOnly && (
+              {readOnly ? (
                 <p className="text-xs text-amber-700 mt-0.5">Lecture seule</p>
-              )}
+              ) : null}
             </div>
             <button
               type="button"
@@ -661,7 +661,6 @@ export default function AdminPage() {
             </button>
           </div>
 
-          {/* Accès prioritaires — grille tactile */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
             {[
               { href: '/admin/orders', label: 'Commandes', icon: FaShoppingCart, color: 'bg-orange-500' },
@@ -685,7 +684,6 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* Plus d'outils */}
           <button
             type="button"
             onClick={() => setShowMoreTools((v) => !v)}
@@ -698,7 +696,7 @@ export default function AdminPage() {
             {showMoreTools ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
           </button>
 
-          {showMoreTools && (
+          {showMoreTools ? (
             <div className="mt-2 rounded-2xl border border-gray-200 bg-white p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
               {[
                 { href: '/admin/promo-codes', label: 'Codes promo', icon: FaGift },
@@ -712,14 +710,15 @@ export default function AdminPage() {
                 { href: '/admin/complaints', label: 'Réclamations', icon: FaTimesCircle },
                 { href: '/admin/ads', label: 'Publicités', icon: FaEye },
                 { href: '/admin/bugs', label: 'Bugs signalés', icon: FaLock },
-                ...(!readOnly
+              ].concat(
+                !readOnly
                   ? [
                       { href: '/admin/create-order', label: 'Créer une commande', icon: FaShoppingCart },
                       { href: '/admin/test-push', label: 'Test push', icon: FaBell },
                       { href: '/admin/reset', label: 'Réinitialiser', icon: FaRedo },
                     ]
-                  : []),
-              ].map((item) => (
+                  : []
+              ).map((item) => (
                 <button
                   key={item.href}
                   type="button"
@@ -730,7 +729,7 @@ export default function AdminPage() {
                   {item.label}
                 </button>
               ))}
-              {!readOnly && (
+              {!readOnly ? (
                 <button
                   type="button"
                   onClick={broadcastPrepTimeToOpenRestaurants}
@@ -744,11 +743,11 @@ export default function AdminPage() {
                   )}
                   Demander temps de prépa aux restos ouverts
                 </button>
-              )}
+              ) : null}
             </div>
-          )}
+          ) : null}
 
-          {broadcastPrepResult && (
+          {broadcastPrepResult ? (
             <div className="mt-2 text-xs sm:text-sm">
               {broadcastPrepResult.error ? (
                 <div className="text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
@@ -760,9 +759,8 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
-          )}
+          ) : null}
 
-          {/* Contrôle restos — replié par défaut */}
           <div className="mt-3 rounded-2xl border border-gray-200 bg-white overflow-hidden">
             <button
               type="button"
@@ -777,19 +775,14 @@ export default function AdminPage() {
               </div>
               {showRestaurantControl ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
             </button>
-            {showRestaurantControl && (
+            {showRestaurantControl ? (
               <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 border-t border-gray-100">
                 {(stats.allRestaurants || []).map((r) => {
                   const isClosed = !!r.ferme_manuellement;
                   return (
-                    <div
-                      key={r.id}
-                      className="px-3 py-2.5 sm:px-4 flex items-center justify-between gap-2"
-                    >
+                    <div key={r.id} className="px-3 py-2.5 sm:px-4 flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {r.nom || 'Restaurant sans nom'}
-                        </p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{r.nom || 'Restaurant sans nom'}</p>
                         <p className={`text-xs ${isClosed ? 'text-red-600' : 'text-green-600'}`}>
                           {isClosed ? 'Fermé manuellement' : 'Ouvert'}
                         </p>
@@ -799,9 +792,7 @@ export default function AdminPage() {
                         onClick={() => toggleRestaurantOpen(r, isClosed)}
                         disabled={readOnly || togglingRestaurantId === r.id}
                         className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold min-h-[40px] disabled:opacity-40 ${
-                          isClosed
-                            ? 'bg-green-600 text-white'
-                            : 'bg-red-600 text-white'
+                          isClosed ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
                         }`}
                       >
                         {togglingRestaurantId === r.id ? '…' : isClosed ? 'Ouvrir' : 'Fermer'}
@@ -809,48 +800,135 @@ export default function AdminPage() {
                     </div>
                   );
                 })}
-                {(stats.allRestaurants || []).length === 0 && (
-                  <div className="px-4 py-4 text-sm text-gray-500 text-center">
-                    Aucun restaurant trouvé.
-                  </div>
-                )}
+                {(stats.allRestaurants || []).length === 0 ? (
+                  <div className="px-4 py-4 text-sm text-gray-500 text-center">Aucun restaurant trouvé.</div>
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
-        {/* KPI essentiels */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
-          {[
-            { label: 'Commandes', value: stats.totalOrders, sub: `${stats.pendingOrders} en attente` },
-            { label: 'CA total', value: formatPrice(stats.totalRevenue), sub: 'Articles + livraison' },
-            { label: 'Restaurants', value: stats.totalRestaurants, sub: `${stats.pendingPartners} partenaires` },
-            { label: 'Utilisateurs', value: stats.totalUsers || 0, sub: `${stats.activeCvneatPlusSubscribers || 0} Plus` },
-          ].map((kpi) => (
-            <div key={kpi.label} className="rounded-2xl bg-white border border-gray-200 p-3 sm:p-4 shadow-sm">
-              <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
-              <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-0.5">{kpi.value}</p>
-              <p className="text-[11px] text-gray-400 mt-1">{kpi.sub}</p>
+        {/* Statistiques principales - Optimisées mobile et foldable */}
+        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 gap-2 fold:gap-2 xs:gap-2 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                <FaUsers className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Total Utilisateurs</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalUsers || 0}</p>
+              </div>
             </div>
-          ))}
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                <FaStore className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Restaurants</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalRestaurants}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-purple-100 text-purple-600 flex-shrink-0">
+                <FaShoppingCart className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">Total Commandes</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600 flex-shrink-0">
+                <FaEuroSign className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">CA Total</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900">{formatPrice(stats.totalRevenue)}</p>
+                <p className="text-[9px] fold:text-[9px] xs:text-xs text-gray-500 mt-0.5 fold:mt-0.5 xs:mt-1 hidden fold:hidden xs:block">(Articles + Livraison)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6 border border-orange-200">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-orange-100 text-orange-600 flex-shrink-0">
+                <FaGift className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Abonnés CVN&apos;EAT Plus</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-orange-700">{stats.activeCvneatPlusSubscribers || 0}</p>
+                <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => router.push('/admin/users')}
+                    className="text-[10px] text-orange-700 hover:text-orange-900 underline"
+                  >
+                    Voir la liste
+                  </button>
+                  {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={syncCvneatPlusFromStripe}
+                    disabled={syncingPlus}
+                    className="text-[10px] text-orange-700 hover:text-orange-900 underline disabled:opacity-50"
+                    title="Resynchroniser depuis Stripe"
+                  >
+                    {syncingPlus ? 'Sync…' : 'Sync Stripe'}
+                  </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Ancien contenu stats détaillées — conservé plus bas, allégé */}
-        <div className="hidden sm:grid grid-cols-3 gap-3 mb-6">
-          <div className="rounded-2xl bg-white border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Visiteurs</p>
-            <p className="text-xl font-bold text-gray-900">{stats.totalVisitors || 0}</p>
+        {/* Statistiques visiteurs */}
+        <div className="grid grid-cols-1 fold:grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 fold:gap-2 xs:gap-3 sm:gap-4 mb-3 fold:mb-3 xs:mb-4 sm:mb-8">
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
+                <FaUser className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs totaux</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalVisitors || 0}</p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-2xl bg-white border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Avec compte</p>
-            <p className="text-xl font-bold text-gray-900">{stats.registeredVisitors || 0}</p>
-          </div>
-          <div className="rounded-2xl bg-white border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Invités</p>
-            <p className="text-xl font-bold text-gray-900">{stats.guestVisitors || 0}</p>
-          </div>
-        </div>
 
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                <FaUserPlus className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs avec compte</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.registeredVisitors || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-2 fold:p-2 xs:p-3 sm:p-6">
+            <div className="flex items-center">
+              <div className="p-1.5 fold:p-1.5 xs:p-2 sm:p-3 rounded-full bg-red-100 text-red-600 flex-shrink-0">
+                <FaSignInAlt className="text-sm fold:text-sm xs:text-base sm:text-2xl" />
+              </div>
+              <div className="ml-2 fold:ml-2 xs:ml-2 sm:ml-4 min-w-0 flex-1">
+                <p className="text-[10px] fold:text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">Visiteurs invités</p>
+                <p className="text-xs fold:text-xs xs:text-sm sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.guestVisitors || 0}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {isWeekHalfOffPromoActive() && (
@@ -1038,42 +1116,51 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Statistiques commandes compactes */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4 sm:mb-6">
-          <div className="p-4 border-b border-gray-100">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900">État des commandes</h2>
+        {/* Statistiques détaillées - Optimisées mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
+          {/* Commandes */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Statistiques des Commandes</h2>
+            </div>
+            <div className="p-4 sm:p-6">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm sm:text-base text-gray-600">Commandes en attente</span>
+                  <span className="font-semibold text-yellow-600 text-sm sm:text-base">{stats.pendingOrders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm sm:text-base text-gray-600">Commandes validées</span>
+                  <span className="font-semibold text-green-600 text-sm sm:text-base">{stats.validatedOrders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm sm:text-base text-gray-600">Demandes partenariat</span>
+                  <span className="font-semibold text-blue-600 text-sm sm:text-base">{stats.pendingPartners}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="p-4 grid grid-cols-3 gap-3 text-center">
-            <div>
-              <p className="text-xl font-bold text-yellow-600">{stats.pendingOrders}</p>
-              <p className="text-[11px] text-gray-500 mt-1">En attente</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-green-600">{stats.validatedOrders}</p>
-              <p className="text-[11px] text-gray-500 mt-1">Validées</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-blue-600">{stats.pendingPartners}</p>
-              <p className="text-[11px] text-gray-500 mt-1">Partenaires</p>
+
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">Raccourcis</h2>
+            <p className="text-sm text-gray-500 mb-3">Les accès principaux sont en haut de page.</p>
+            <div className="grid grid-cols-1 gap-2">
+              <button type="button" onClick={() => router.push('/admin/users')} className="rounded-xl border border-gray-200 px-3 py-3 text-left text-sm font-medium hover:bg-gray-50 min-h-[48px]">Utilisateurs / abonnés Plus</button>
+              <button type="button" onClick={() => router.push('/admin/partnerships')} className="rounded-xl border border-gray-200 px-3 py-3 text-left text-sm font-medium hover:bg-gray-50 min-h-[48px]">Partenaires</button>
+              <button type="button" onClick={() => router.push('/admin/complaints')} className="rounded-xl border border-gray-200 px-3 py-3 text-left text-sm font-medium hover:bg-gray-50 min-h-[48px]">Réclamations</button>
+              <button type="button" onClick={() => router.push('/admin/bugs')} className="rounded-xl border border-gray-200 px-3 py-3 text-left text-sm font-medium hover:bg-gray-50 min-h-[48px]">Bugs</button>
             </div>
           </div>
         </div>
 
         {/* Commandes récentes */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-6 sm:mb-8">
-          <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between gap-3">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Commandes récentes</h2>
-            <button
-              type="button"
-              onClick={() => router.push('/admin/orders')}
-              className="text-sm font-medium text-orange-600 hover:text-orange-700"
-            >
-              Tout voir
-            </button>
+        <div className="bg-white rounded-lg shadow mb-6 sm:mb-8">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Commandes Récentes</h2>
+            {stats.recentOrders.length === 0 && (
+              <p className="text-xs sm:text-sm text-gray-500 mt-2">Aucune commande trouvée dans la base de données</p>
+            )}
           </div>
-          {stats.recentOrders.length === 0 && (
-            <p className="text-sm text-gray-500 p-4">Aucune commande trouvée</p>
-          )}
           {stats.recentOrders.length > 0 ? (
             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
               <table className="min-w-full divide-y divide-gray-200">
