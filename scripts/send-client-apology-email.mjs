@@ -15,72 +15,70 @@ const dryRun = process.argv.includes('--dry-run') || !process.argv.includes('--s
 const testArg = process.argv.find((a) => a.startsWith('--test='));
 const testEmail = testArg ? testArg.split('=')[1] : null;
 
-const SUBJECT = 'Nos excuses — ce qui se passe chez CVN’EAT en ce moment';
+const SUBJECT = 'Nos excuses — problèmes de livraison ces dernières semaines';
 
 const HTML = `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #1f2937; line-height: 1.65; font-size: 16px;">
-  <p style="margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #ea580c;">CVN'EAT</p>
-  <h1 style="margin: 0 0 20px; font-size: 24px; line-height: 1.25; color: #111827;">On vous doit des excuses</h1>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937; line-height: 1.7; font-size: 16px;">
+  <p style="margin: 0 0 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #ea580c;">CVN'EAT</p>
+  <h1 style="margin: 0 0 22px; font-size: 26px; line-height: 1.25; color: #111827;">On s’excuse — et on vous explique</h1>
 
   <p>Bonjour,</p>
 
   <p>
-    Depuis quelque temps, trop de commandes chez CVN'EAT se passent mal :
-    <strong>attente trop longue</strong>, livreur difficile à trouver, commande qui trainait,
-    parfois même une annulation. Si ça vous est arrivé, on le sait — et on est
-    <strong>vraiment désolés</strong>.
+    Depuis plusieurs semaines, le service de livraison CVN'EAT n’est pas à la hauteur.
+    Trop de commandes ont pris trop de temps, se sont retrouvées sans livreur, ou ont dû être annulées.
+    Si ça vous est arrivé : <strong>on est sincèrement désolés</strong>.
   </p>
 
   <p>
-    Ce n’est pas un problème de restaurants. La plupart sont prêts et font leur job.
-    Le vrai frein, ces dernières semaines, c’est le <strong>manque de livreurs disponibles</strong>
-    au moment où vous commandez. Sans livreur sur la zone, on ne peut pas garantir
-    le même rythme qu’une grosse app nationale.
+    <strong>Ce qui se passe :</strong> le problème ne vient en général pas des restaurants.
+    Ils préparent correctement. Le frein, c’est surtout le <strong>manque de livreurs disponibles</strong>
+    au moment où vous commandez — surtout en soirée et le week-end. Sans livreur près de chez vous,
+    on ne peut pas livrer aussi vite ni aussi régulièrement qu’on le voudrait.
   </p>
 
   <p>
     CVN'EAT, c’est une <strong>petite équipe locale</strong>. On fait tourner la plateforme
-    en parallèle d’autres jobs : ce n’est pas une machine avec des dizaines de personnes
-    derrière. On ne gagne pas d’argent sur le dos de CVN'EAT — on essaie surtout de
-    <strong>faire vivre un service près de chez vous</strong>, avec les restos du coin.
+    en parallèle d’autres jobs. On ne gagne pas d’argent sur le dos de CVN'EAT :
+    l’objectif, c’est de proposer un service utile près de chez vous, avec les restos du coin.
   </p>
 
   <p>
-    On travaille pour stabiliser les livraisons (recrutement livreurs, outils, suivi).
-    Ça prendra encore un peu de temps, mais on ne lâche pas.
+    <strong>Ce qu’on fait :</strong> on recrute et on active plus de livreurs, on améliore
+    le suivi des commandes, et on travaille pour que vous soyez mieux informés quand une livraison
+    risque d’être longue ou impossible. Ça ne se règle pas en un clic, mais on y travaille concrètement.
   </p>
 
   <p>
-    Merci d’avoir tenu le coup avec nous. Si une commande s’est mal passée pour vous,
-    écrivez-nous à
-    <a href="mailto:contact@cvneat.fr" style="color: #ea580c; font-weight: 600;">contact@cvneat.fr</a>
-    — on lira et on répondra.
+    Merci d’avoir patienté. Si une commande s’est mal passée pour vous, écrivez-nous à
+    <a href="mailto:contact@cvneat.fr" style="color: #ea580c; font-weight: 700;">contact@cvneat.fr</a>
+    avec le n° de commande — on vous répondra.
   </p>
 
   <p style="margin-top: 28px;">
     Encore désolés,<br>
-    <strong>L’équipe CVN'EAT</strong>
+    <strong>Tony &amp; l’équipe CVN'EAT</strong>
   </p>
 </div>
 `.trim();
 
 const TEXT = `
-On vous doit des excuses — CVN'EAT
+Nos excuses — problèmes de livraison ces dernières semaines
 
 Bonjour,
 
-Depuis quelque temps, trop de commandes chez CVN'EAT se passent mal : attente trop longue, livreur difficile à trouver, commande qui trainait, parfois même une annulation. Si ça vous est arrivé, on le sait — et on est vraiment désolés.
+Depuis plusieurs semaines, le service de livraison CVN'EAT n’est pas à la hauteur. Trop de commandes ont pris trop de temps, se sont retrouvées sans livreur, ou ont dû être annulées. Si ça vous est arrivé : on est sincèrement désolés.
 
-Ce n’est pas un problème de restaurants. La plupart sont prêts et font leur job. Le vrai frein, ces dernières semaines, c’est le manque de livreurs disponibles au moment où vous commandez. Sans livreur sur la zone, on ne peut pas garantir le même rythme qu’une grosse app nationale.
+Ce qui se passe : le problème ne vient en général pas des restaurants. Ils préparent correctement. Le frein, c’est surtout le manque de livreurs disponibles au moment où vous commandez — surtout en soirée et le week-end. Sans livreur près de chez vous, on ne peut pas livrer aussi vite ni aussi régulièrement qu’on le voudrait.
 
-CVN'EAT, c’est une petite équipe locale. On fait tourner la plateforme en parallèle d’autres jobs : ce n’est pas une machine avec des dizaines de personnes derrière. On ne gagne pas d’argent sur le dos de CVN'EAT — on essaie surtout de faire vivre un service près de chez vous, avec les restos du coin.
+CVN'EAT, c’est une petite équipe locale. On fait tourner la plateforme en parallèle d’autres jobs. On ne gagne pas d’argent sur le dos de CVN'EAT : l’objectif, c’est de proposer un service utile près de chez vous, avec les restos du coin.
 
-On travaille pour stabiliser les livraisons (recrutement livreurs, outils, suivi). Ça prendra encore un peu de temps, mais on ne lâche pas.
+Ce qu’on fait : on recrute et on active plus de livreurs, on améliore le suivi des commandes, et on travaille pour que vous soyez mieux informés quand une livraison risque d’être longue ou impossible. Ça ne se règle pas en un clic, mais on y travaille concrètement.
 
-Merci d’avoir tenu le coup avec nous. Si une commande s’est mal passée pour vous, écrivez-nous à contact@cvneat.fr — on lira et on répondra.
+Merci d’avoir patienté. Si une commande s’est mal passée pour vous, écrivez-nous à contact@cvneat.fr avec le n° de commande — on vous répondra.
 
 Encore désolés,
-L’équipe CVN'EAT
+Tony & l’équipe CVN'EAT
 `.trim();
 
 const sb = createClient(

@@ -6,7 +6,6 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import PushNotificationBootstrap from './components/PushNotificationBootstrap';
 import AppAutoRedirect from './components/AppAutoRedirect';
-import AppSplashOverlay from './components/AppSplashOverlay';
 import RoleAwareChrome from './components/RoleAwareChrome';
 import PresenceTracker from '@/components/PresenceTracker';
 
@@ -557,8 +556,6 @@ export default function RootLayout({ children }) {
           <PushNotificationBootstrap />
           {/* Présence temps réel (admin /admin/presence) */}
           <PresenceTracker />
-          {/* Splash overlay (logo + animation) pendant le chargement */}
-          <AppSplashOverlay />
           {/* Auto-redirect app mobile si déjà connecté (livreur/restaurant) */}
           <AppAutoRedirect />
           <div className="min-h-screen flex flex-col">
