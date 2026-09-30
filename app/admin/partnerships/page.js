@@ -36,40 +36,33 @@ export default function PartnershipRequests() {
   const updateRequestStatus = async (requestId, status) => {
     setProcessing(true);
     setError('');
+    setSuccess('');
     try {
-      // 1. Mettre à jour le statut de la demande
-      const { error: updateError } = await supabase
-        .from('restaurant_requests')
-        .update({ status, processed_at: new Date().toISOString() })
-        .eq('id', requestId);
-      
-      if (updateError) {
-        console.error('Erreur mise à jour statut:', updateError);
-        throw new Error(`Erreur lors de la mise à jour du statut: ${updateError.message}`);
-      }
-
-      // 2. Si accepté, créer le restaurant et mettre à jour le rôle
       if (status === 'accepted') {
-        const request = requests.find(r => r.id === requestId);
-        if (request) {
-          try {
-            const restaurant = await createRestaurantFromRequest(request);
-            setError(''); // Réinitialiser l'erreur en cas de succès
-            setSuccess(`✅ Partenaire validé avec succès ! Restaurant "${restaurant.nom}" créé. Le compte utilisateur "${request.email}" a été créé automatiquement avec le rôle restaurant. Un email avec les identifiants de connexion sera envoyé.`);
-            setTimeout(() => setSuccess(''), 10000); // Afficher pendant 10 secondes
-          } catch (createError) {
-            console.error('Erreur création restaurant:', createError);
-            // Revenir le statut à "pending" si la création échoue
-            await supabase
-              .from('restaurant_requests')
-              .update({ status: 'pending', processed_at: null })
-              .eq('id', requestId);
-            throw createError;
-          }
+        const request = requests.find((r) => r.id === requestId);
+        if (!request) throw new Error('Demande introuvable');
+
+        const result = await createRestaurantFromRequest(request);
+        const emailNote = result.emailSent
+          ? 'Un email avec les identifiants a été envoyé au partenaire.'
+          : result.emailError
+            ? `Attention : email non envoyé (${result.emailError}).`
+            : 'Email envoyé au partenaire (vérifiez aussi contact@cvneat.fr).';
+        setSuccess(
+          `✅ Partenaire validé — fiche « ${result.restaurant?.nom || request.nom} » prête à configurer. ${emailNote}`
+        );
+        setTimeout(() => setSuccess(''), 12000);
+      } else {
+        const { error: updateError } = await supabase
+          .from('restaurant_requests')
+          .update({ status, processed_at: new Date().toISOString() })
+          .eq('id', requestId);
+
+        if (updateError) {
+          throw new Error(`Erreur lors de la mise à jour du statut: ${updateError.message}`);
         }
       }
 
-      // 3. Rafraîchir la liste
       await fetchPartnershipRequests();
       setSelectedRequest(null);
     } catch (err) {
@@ -81,57 +74,39 @@ export default function PartnershipRequests() {
   };
 
   const createRestaurantFromRequest = async (request) => {
-    try {
-      console.log('🔵 Début création restaurant pour:', request.email);
-      
-      // Récupérer le token de session pour l'authentification
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Session expirée. Veuillez vous reconnecter.');
-      }
-
-      console.log('✅ Session récupérée, appel API...');
-
-      // Appeler l'API pour créer le restaurant (utilise le client admin côté serveur)
-      const response = await fetch('/api/admin/create-restaurant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          email: request.email,
-          nom: request.nom,
-          description: request.description,
-          adresse: request.adresse,
-          ville: request.ville,
-          code_postal: request.code_postal,
-          telephone: request.telephone
-        })
-      });
-
-      console.log('📡 Réponse API:', response.status, response.statusText);
-
-      const data = await response.json();
-      console.log('📦 Données API:', data);
-
-      if (!response.ok) {
-        console.error('❌ Erreur API:', data);
-        throw new Error(data.error || 'Erreur lors de la création du restaurant');
-      }
-
-      if (!data.restaurant) {
-        console.error('❌ Pas de restaurant dans la réponse:', data);
-        throw new Error('Restaurant non retourné par l\'API');
-      }
-
-      console.log('✅ Restaurant créé avec succès:', data.restaurant);
-      return data.restaurant;
-    } catch (err) {
-      console.error('❌ Erreur complète lors de la création du restaurant:', err);
-      console.error('❌ Stack:', err.stack);
-      throw err;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Session expirée. Veuillez vous reconnecter.');
     }
+
+    const response = await fetch('/api/admin/create-restaurant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        request_id: request.id,
+        email: request.email,
+        nom: request.nom,
+        description: request.description,
+        adresse: request.adresse,
+        ville: request.ville,
+        code_postal: request.code_postal,
+        telephone: request.telephone,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Erreur lors de la création du restaurant');
+    }
+    if (!data.restaurant) {
+      throw new Error("Restaurant non retourné par l'API");
+    }
+    return data;
   };
 
   const getStatusColor = (status) => {
